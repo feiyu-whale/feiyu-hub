@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #faf8ef;
+    font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 16px; color: #776e65; user-select: none;
+  }
+  .wrap { width: 100%; max-width: 420px; }
+  .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  h1 { font-size: 44px; }
+  .scores { display: flex; gap: 8px; }
+  .score-box { background: #bbada0; color: #f9f6f2; border-radius: 6px; padding: 6px 14px; text-align: center; min-width: 82px; }
+  .score-box .label { font-size: 12px; color: #eee4da; letter-spacing: 1px; }
+  .score-box .val { font-size: 22px; font-weight: bold; }
+  .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+  .bar p { font-size: 14px; }
+  button { background: #8f7a66; color: #f9f6f2; border: none; border-radius: 6px; padding: 10px 18px; font-size: 15px; font-weight: bold; cursor: pointer; }
+  button:hover { background: #9f8b77; }
+  .board { position: relative; background: #bbada0; border-radius: 8px; padding: 10px; width: 100%; aspect-ratio: 1 / 1; }
+  .inner-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 10px; width: 100%; height: 100%; }
+  .cell {
+    border-radius: 6px; display: flex; justify-content: center; align-items: center;
+    font-weight: bold; font-size: clamp(18px, 8vw, 34px); background: rgba(238,228,218,0.35);
+    color: #776e65;
+  }
+  .c2    { background: #eee4da; }
+  .c4    { background: #ede0c8; }
+  .c8    { background: #f2b179; color: #f9f6f2; }
+  .c16   { background: #f59563; color: #f9f6f2; }
+  .c32   { background: #f67c5f; color: #f9f6f2; }
+  .c64   { background: #f65e3b; color: #f9f6f2; }
+  .c128  { background: #edcf72; color: #f9f6f2; }
+  .c256  { background: #edcc61; color: #f9f6f2; }
+  .c512  { background: #edc850; color: #f9f6f2; }
+  .c1024 { background: #edc53f; color: #f9f6f2; font-size: clamp(15px,6.5vw,28px); }
+  .c2048 { background: #edc22e; color: #f9f6f2; font-size: clamp(15px,6.5vw,28px); }
+  .cbig  { background: #3c3a32; color: #f9f6f2; font-size: clamp(13px,5.5vw,24px); }
+  .pop { animation: pop .16s ease; }
+  @keyframes pop { 0% { transform: scale(.4); } 100% { transform: scale(1); } }
+  .overlay {
+    position: absolute; inset: 0; border-radius: 8px; background: rgba(238,228,218,.73);
+    display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 14px;
+  }
+  .overlay.show { display: flex; }
+  .overlay h2 { font-size: 44px; }
+  .hint { font-size: 13px; color: #948b80; text-align: center; margin-top: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>2048</h1>
+    <div class="scores">
+      <div class="score-box"><div class="label">得分</div><div class="val" id="score">0</div></div>
+      <div class="score-box"><div class="label">最高</div><div class="val" id="best">0</div></div>
+    </div>
+  </div>
+  <div class="bar">
+    <p>合并相同数字，凑出 <b>2048</b>！</p>
+    <button id="newgame">新游戏</button>
+  </div>
+  <div class="board">
+    <div class="inner-grid" id="grid"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="overlayText">游戏结束</h2>
+      <button id="retry">再来一局</button>
+    </div>
+  </div>
+  <p class="hint">方向键 / WASD 移动 · 手机可滑动 · 目标：2048</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const SIZE = 4;
+  const gridEl = document.getElementById("grid");
+  const overlay = document.getElementById("overlay");
+  const overlayText = document.getElementById("overlayText");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  let grid, score, best, won, over;
+
+  best = parseInt(localStorage.getItem("best2048") || "0", 10);
+  bestEl.textContent = best;
+
+  function emptyGrid() {
+    return Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+  }
+
+  function spawnRandom() {
+    const empties = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (grid[r][c] === 0) empties.push([r, c]);
+    if (!empties.length) return false;
+    const [r, c] = empties[Math.floor(Math.random() * empties.length)];
+    grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+    return true;
+  }
+
+  function render(justSpawned) {
+    gridEl.innerHTML = "";
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const v = grid[r][c];
+        const d = document.createElement("div");
+        d.className = "cell";
+        if (v) {
+          d.textContent = v;
+          d.classList.add(v <= 2048 ? "c" + v : "cbig");
+          if (justSpawned && justSpawned[0] === r && justSpawned[1] === c) d.classList.add("pop");
+        }
+        gridEl.appendChild(d);
+      }
+    }
+    scoreEl.textContent = score;
+    if (score > best) {
+      best = score;
+      bestEl.textContent = best;
+      localStorage.setItem("best2048", String(best));
+    }
+  }
+
+  // slide a single row to the left; returns {row, gained, moved}
+  function slideRow(row) {
+    const nums = row.filter(x => x !== 0);
+    const out = [];
+    let gained = 0;
+    for (let i = 0; i < nums.length; i++) {
+      if (i + 1 < nums.length && nums[i] === nums[i + 1]) {
+        const merged = nums[i] * 2;
+        out.push(merged);
+        gained += merged;
+        i++; // skip next
+      } else {
+        out.push(nums[i]);
+      }
+    }
+    while (out.length < SIZE) out.push(0);
+    const moved = out.some((v, i) => v !== row[i]);
+    return { row: out, gained, moved };
+  }
+
+  // dir: 0=up,1=right,2=down,3=left
+  function move(dir) {
+    if (over) return;
+    let moved = false;
+    let gainedTotal = 0;
+    const g = grid;
+
+    const getLine = (i) => {
+      const line = [];
+      for (let j = 0; j < SIZE; j++) {
+        if (dir === 0) line.push(g[j][i]);
+        else if (dir === 2) line.push(g[SIZE - 1 - j][i]);
+        else if (dir === 3) line.push(g[i][j]);
+        else line.push(g[i][SIZE - 1 - j]); // right
+      }
+      return line;
+    };
+    const setLine = (i, line) => {
+      for (let j = 0; j < SIZE; j++) {
+        if (dir === 0) g[j][i] = line[j];
+        else if (dir === 2) g[SIZE - 1 - j][i] = line[j];
+        else if (dir === 3) g[i][j] = line[j];
+        else g[i][SIZE - 1 - j] = line[j];
+      }
+    };
+
+    for (let i = 0; i < SIZE; i++) {
+      const line = getLine(i);
+      const res = slideRow(line);
+      if (res.moved) moved = true;
+      gainedTotal += res.gained;
+      setLine(i, res.row);
+    }
+
+    if (!moved) return;
+
+    score += gainedTotal;
+
+    // win check
+    if (!won) {
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+          if (grid[r][c] === 2048) won = true;
+    }
+    if (won && overlayText.textContent !== "达成 2048") {
+      overlayText.textContent = "达成 2048！";
+      overlay.classList.add("show");
+      // continue allowed after a moment
+      setTimeout(() => overlay.classList.remove("show"), 1200);
+      won = true;
+    }
+
+    // spawn new tile
+    const spot = pickSpot();
+    spawnRandom();
+    render(spot);
+
+    if (!canMove()) {
+      over = true;
+      overlayText.textContent = "游戏结束";
+      overlay.classList.add("show");
+    }
+  }
+
+  function pickSpot() {
+    // returns an empty cell that will be filled, for pop animation (best effort)
+    const empties = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (grid[r][c] === 0) empties.push([r, c]);
+    if (!empties.length) return null;
+    return empties[Math.floor(Math.random() * empties.length)];
+  }
+
+  function canMove() {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        if (grid[r][c] === 0) return true;
+        const v = grid[r][c];
+        if (c + 1 < SIZE && grid[r][c + 1] === v) return true;
+        if (r + 1 < SIZE && grid[r + 1][c] === v) return true;
+      }
+    return false;
+  }
+
+  function newGame() {
+    grid = emptyGrid();
+    score = 0; won = false; over = false;
+    overlay.classList.remove("show");
+    overlayText.textContent = "游戏结束";
+    spawnRandom(); spawnRandom();
+    render();
+  }
+
+  // controls
+  const keyMap = {
+    ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3,
+    w: 0, d: 1, s: 2, a: 3, W: 0, D: 1, S: 2, A: 3
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key in keyMap) { e.preventDefault(); move(keyMap[e.key]); }
+  });
+
+  document.getElementById("newgame").addEventListener("click", newGame);
+  document.getElementById("retry").addEventListener("click", newGame);
+
+  // touch
+  let sx = 0, sy = 0;
+  document.addEventListener("touchstart", (e) => {
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : 3);
+    else move(dy > 0 ? 2 : 0);
+  }, { passive: true });
+
+  newGame();
+
+  // minimal self-test hook
+  window.__test2048 = function () {
+    const tests = [];
+    // slideRow tests
+    let r1 = slideRow([2,2,0,0]); tests.push(["merge 2,2", r1.row.join() === "4,0,0,0" && r1.gained === 4]);
+    let r2 = slideRow([2,2,2,2]); tests.push(["merge 2,2,2,2", r2.row.join() === "4,4,0,0" && r2.gained === 8]);
+    let r3 = slideRow([0,2,2,4]); tests.push(["slide+merge", r3.row.join() === "4,4,0,0" && r3.gained === 4]);
+    let r4 = slideRow([2,4,2,4]); tests.push(["no merge", r4.row.join() === "2,4,2,4" && r4.moved === false]);
+    // spawn logic
+    grid = emptyGrid(); spawnRandom();
+    let cnt = 0; for (let r=0;r<4;r++) for(let c=0;c<4;c++) if(grid[r][c]) cnt++;
+    tests.push(["spawn one tile", cnt === 1]);
+    return tests;
+  };
+})();
+</script>
+</body>
+</html>

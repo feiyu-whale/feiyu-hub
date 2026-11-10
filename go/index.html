@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>肥鱼围棋 🐳</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #0a1628 0%, #123 60%, #0a1f33 100%);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #dbeafe; padding: 12px; user-select: none;
+  }
+  h1 { font-size: 20px; margin: 4px 0 8px; color: #8fd0ff; font-weight: 600; letter-spacing: 1px; }
+  #status { min-height: 24px; font-size: 15px; margin-bottom: 8px; color: #bcdcff; display: flex; align-items: center; gap: 6px; }
+  #status b { color: #ffd86b; }
+  #board-wrap { position: relative; background: #e8b96a; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 0 0 2px #c99a4e; padding: 10px; max-width: 96vw; }
+  canvas { display: block; touch-action: manipulation; cursor: pointer; max-width: 100%; height: auto; }
+  .btns { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: #1c3d5a; color: #9fd8ff; border: 1px solid #2e6f9e;
+    padding: 9px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;
+    transition: .15s; font-family: inherit;
+  }
+  button:active { background: #2a5a82; transform: scale(.96); }
+  button.on { background: #2a6a3a; border-color: #48b06a; color: #b6f0c8; }
+  #endBar { display:none; margin-top:8px; }
+  #endBar.on { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .foot { margin-top: 10px; font-size: 12px; color: #5b7a99; text-align: center; line-height: 1.6; }
+  /* AI 思考中：转圈 + 小提示（伪装动画） */
+  #aiHud { display:none; position:absolute; top:10px; right:10px; align-items:center; gap:7px;
+           background:rgba(10,22,40,.82); border:1px solid #2e6f9e; border-radius:20px;
+           padding:6px 13px 6px 8px; font-size:12.5px; color:#9fd8ff; z-index:5;
+           box-shadow:0 3px 14px rgba(0,0,0,.4); }
+  #aiHud.on { display:flex; }
+  .spinner { width:15px; height:15px; border:2.5px solid rgba(159,216,255,.25);
+             border-top-color:#9fd8ff; border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #aiHud .dots::after { content:''; animation:dots 1.4s steps(4,end) infinite; }
+  @keyframes dots { 0%{content:'';}25%{content:'·';}50%{content:'··';}75%{content:'···';}100%{content:'';} }
+  /* AI 休息：全屏遮罩 */
+  #restMask { display:none; position:fixed; inset:0; background:rgba(6,13,24,.85); backdrop-filter:blur(3px);
+              align-items:center; justify-content:center; flex-direction:column; gap:14px; z-index:50; text-align:center; padding:30px; }
+  #restMask.on { display:flex; }
+  #restMask .big { font-size:44px; }
+  #restMask .txt { font-size:17px; color:#9fd8ff; letter-spacing:1px; }
+  #restMask .sub { font-size:13px; color:#6b8fb3; }
+</style>
+</head>
+<body>
+  <h1>🐳 肥鱼围棋</h1>
+  <div id="status">你的回合（黑棋）</div>
+  <div id="board-wrap">
+    <canvas id="cv"></canvas>
+    <div id="aiHud"><span class="spinner"></span><span>AI 正在思考<span class="dots"></span></span></div>
+    <div id="verTag" style="position:absolute;left:6px;bottom:4px;font-size:11px;color:#3a5a7a;opacity:.7">v4-AI房搁置 20261014</div>
+    <div id="dbgTag" style="position:absolute;right:6px;bottom:4px;font-size:11px;color:#b33;opacity:.85"></div>
+  </div>
+  <div id="restMask"><div class="big">🐳💤</div><div class="txt">今日本鲸鱼大脑散热中，请明日再来。</div><div class="sub">（AI 今日休息）</div></div>
+  <div class="btns">
+    <button id="endBtn" onclick="toggleEndMode()">终局数子</button>
+    <button onclick="resign()">认输</button>
+  </div>
+  <div class="btns" id="endBar">
+    <button id="deadToggle" onclick="toggleDeadMode()">标记死子：关</button>
+    <button onclick="confirmScore()">确认数子</button>
+    <button onclick="cancelEndMode()">取消终局</button>
+  </div>
+  <div class="btns">
+    <button id="modeBtn" onclick="toggleMode()">本地对战</button>
+    <button id="onlineBtn" onclick="toggleOnline()">联机：关</button>
+    <button id="aiBtn" onclick="startAI()" style="display:none">对 AI 下棋</button>
+    <button onclick="resetGame()">重新开始</button>
+  </div>
+  <div class="foot" id="onlineBar" style="display:none;"></div>
+  <div class="foot" id="score">黑 0 · 白 0 · 空 0</div>
+  <div class="foot">19×19 · 中国规则数子 · 本地对战：同屏轮流落子</div>
+
+<script>
+/* ==================== 肥鱼围棋 v1 ====================
+   - 19x19 标准棋盘
+   - 规则：气判定 / 提子 / 禁自杀 / 打劫(简版 ko)
+   - 判胜负：中国规则数子（黑贴 7.5 目可选）
+   - 模式：本地对战（同屏轮流）+ 弱AI陪玩
+   ==================================================== */
+const API = '/api/room';                                              // 联机（走站内代理）
+const API_AI = '/api/room';   // 伪AI房（同一后端，同代理）
+const AI_API = '/api/gnugo';   // GNU Go 对手（走站内代理）
+const N = 19;
+const PAD = 18;        // 逻辑边距
+let CELL = 18, R = 8;  // 动态尺寸
+let board;             // 0空 1黑 2白
+let turn;              // 1黑 2白
+let gameOver, moveHistory, passCount, lastMove, koPoint;
+let lastCaptured = [];   // 最近一手被提的子，供上传同步
+let aiThinking = false;
+// 联机状态
+let onlineMode = false;   // 是否联机对局
+let myColor = 0;          // 联机时我执哪方（1黑 2白）
+let roomId = '';
+let onlineSeq = 0;        // 已同步到的操作序号
+let pollTimer = null;
+let applyingRemote = false;
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const statusEl = document.getElementById('status');
+const scoreEl = document.getElementById('score');
+
+function computeSize(){
+  const chrome = 24 + 20; // body padding + wrap padding
+  const avail = Math.min(window.innerWidth, 520) - chrome;
+  const size = Math.max(avail, 240);
+  CELL = Math.max(Math.floor((size - PAD*2) / (N-1)), 9);
+  R = Math.max(Math.round(CELL*0.46), 4);
+}
+function setupCanvas(){
+  computeSize();
+  const size = CELL*(N-1)+PAD*2;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = size*dpr; cv.height = size*dpr;
+  cv.style.width = size+'px'; cv.style.height = size+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+setupCanvas();
+
+function initState(){
+  board = Array.from({length:N},()=>new Array(N).fill(0));
+  turn = 1; gameOver=false; moveHistory=[]; passCount=0; lastMove=null; koPoint=null; aiThinking=false;
+}
+function idx(r,c){ return r*N+c; }
+function inB(r,c){ return r>=0&&r<N&&c>=0&&c<N; }
+
+/* ---------- 绘制 ---------- */
+function draw(){
+  const size = CELL*(N-1)+PAD*2;
+  ctx.clearRect(0,0,size,size);
+  // 木色底
+  ctx.fillStyle = '#e8b96a'; ctx.fillRect(0,0,size,size);
+  // 网格
+  ctx.strokeStyle = '#6a4a1e'; ctx.lineWidth = 1;
+  for(let i=0;i<N;i++){
+    const p = PAD + i*CELL;
+    ctx.beginPath(); ctx.moveTo(PAD, p); ctx.lineTo(PAD+(N-1)*CELL, p); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p, PAD); ctx.lineTo(p, PAD+(N-1)*CELL); ctx.stroke();
+  }
+  // 星位
+  const stars=[[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]];
+  ctx.fillStyle='#6a4a1e';
+  stars.forEach(([x,y])=>{ ctx.beginPath(); ctx.arc(PAD+x*CELL,PAD+y*CELL,Math.max(CELL*0.12,2),0,Math.PI*2); ctx.fill(); });
+  // 棋子
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(board[r][c]) drawStone(c,r,board[r][c], deadSet.has(idx(r,c)));
+  // 最后一手标记
+  if(lastMove){ ctx.beginPath(); ctx.arc(PAD+lastMove.c*CELL,PAD+lastMove.r*CELL,R+Math.max(CELL*0.14,2),0,Math.PI*2); ctx.strokeStyle='#ff5a5a'; ctx.lineWidth=2; ctx.stroke(); }
+  // 实时自检角标
+  const dbg=document.getElementById('dbgTag');
+  if(dbg){ let n=0; for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(board[r][c])n++; dbg.textContent=(aiRoomMode?('AI房/'+(aiRoomId||'-')):(onlineMode?('联机/'+(roomId||'-')):'本地'))+' 子'+n+' 手'+((typeof moveHistory!=='undefined'&&moveHistory)?moveHistory.length:0); }
+}
+function drawStone(c,r,who,dead){
+  const x=PAD+c*CELL, y=PAD+r*CELL;
+  ctx.globalAlpha = dead ? 0.32 : 1;
+  const g=ctx.createRadialGradient(x-R*0.35,y-R*0.35,R*0.15,x,y,R);
+  if(who===1){ g.addColorStop(0,'#5a5a5a'); g.addColorStop(1,'#0a0a0a'); }
+  else { g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#c8ccd4'); }
+  ctx.beginPath(); ctx.arc(x,y,R,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+  ctx.strokeStyle = who===1?'#000':'#9aa'; ctx.lineWidth=1; ctx.stroke();
+  // 死子标记：打叉
+  if(dead){ ctx.strokeStyle='#ff3030'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(x-R*0.6,y-R*0.6); ctx.lineTo(x+R*0.6,y+R*0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+R*0.6,y-R*0.6); ctx.lineTo(x-R*0.6,y+R*0.6); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function setStatus(h){ statusEl.innerHTML=h; }
+
+/* ---------- 规则核心 ---------- */
+// 取某点所在“块”的所有子 + 气数
+function group(b, r, c){
+  const color = b[r][c];
+  const seen = new Set();
+  const stones = [];
+  let libs = new Set();
+  const stack = [[r,c]];
+  while(stack.length){
+    const [cr,cc] = stack.pop();
+    const k = idx(cr,cc);
+    if(seen.has(k)) continue;
+    seen.add(k); stones.push([cr,cc]);
+    for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const nr=cr+dr, nc=cc+dc;
+      if(!inB(nr,nc)) continue;
+      const v = b[nr][nc];
+      if(v===0) libs.add(idx(nr,nc));
+      else if(v===color && !seen.has(idx(nr,nc))) stack.push([nr,nc]);
+    }
+  }
+  return {stones, libs: libs.size};
+}
+// 尝试落子（含提子/禁自杀/打劫）。返回是否合法 + 新棋盘
+function tryMove(b, r, c, color, ko){
+  if(b[r][c]!==0) return null;
+  if(ko && ko.r===r && ko.c===c) return null;   // 打劫禁着
+  const nb = b.map(row=>row.slice());
+  nb[r][c] = color;
+  const opp = color===1?2:1;
+  let captured = [];
+  for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+    const nr=r+dr, nc=c+dc;
+    if(!inB(nr,nc)) continue;
+    if(nb[nr][nc]===opp){
+      const g = group(nb, nr, nc);
+      if(g.libs===0){ g.stones.forEach(([sr,sc])=>{ nb[sr][sc]=0; captured.push([sr,sc]); }); }
+    }
+  }
+  // 自杀判定：自己这一块无气
+  const me = group(nb, r, c);
+  if(me.libs===0) return null;
+  // 打劫：单子提子且成劫 → 新劫点
+  let newKo = null;
+  if(captured.length===1 && me.stones.length===1){
+    newKo = { r:captured[0][0], c:captured[0][1] };
+  }
+  return { board: nb, captured, ko: newKo };
+}
+
+function placeStone(r,c){
+  const res = tryMove(board, r, c, turn, koPoint);
+  if(!res){ setStatus('这里不能落子（有子/打劫/自杀）'); return false; }
+  board = res.board;
+  lastMove = {r,c};
+  moveHistory.push({ r, c, color:turn, captured:res.captured, ko:koPoint });
+  koPoint = res.ko;
+  passCount = 0;
+  turn = turn===1?2:1;
+  updateScore();
+  lastCaptured = res.captured || [];   // 把“被提的子”带出来，供上传同步
+  return true;
+}
+
+/* ---------- 数子（中国规则：子+围空） ---------- */
+function updateScore(){
+  if(!board){ scoreEl.textContent='黑 0 · 白 0 · 空 0'; return; }
+  let black=0, white=0, empty=0;
+  // 数子：棋盘上黑/白子数
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(board[r][c]===1) black++; else if(board[r][c]===2) white++; else empty++;
+  }
+  scoreEl.textContent = '黑 '+black+' · 白 '+white+' · 空 '+empty;
+}
+
+/* ---------- 胜负（简化数子，终局时算） ---------- */
+function scoreBoard(){
+  // 简化：每个空点看它被哪方包围（洪水填充），归给唯一接触的一方
+  const visited = new Set();
+  let black=0, white=0;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(board[r][c]===1) black++;
+    else if(board[r][c]===2) white++;
+  }
+  // 空地域归属
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(board[r][c]!==0 || visited.has(idx(r,c))) continue;
+    // 洪水填充一块空区
+    const region=[], stack=[[r,c]], borders=new Set();
+    while(stack.length){
+      const [cr,cc]=stack.pop();
+      const k=idx(cr,cc);
+      if(visited.has(k)) continue;
+      if(!inB(cr,cc)||board[cr][cc]!==0) continue;
+      visited.add(k); region.push(k);
+      for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+        const nr=cr+dr,nc=cc+dc;
+        if(!inB(nr,nc)) continue;   // 棋盘边缘=中性边界，不算任何颜色
+        const v=board[nr][nc];
+        if(v===0 && !visited.has(idx(nr,nc))) stack.push([nr,nc]);
+        else if(v!==0) borders.add(v);
+      }
+    }
+    // 空区只被单一颜色（可含棋盘边缘）包围 → 归该方
+    if(borders.size===1){
+      if(borders.has(1)) black+=region.length;
+      else white+=region.length;
+    }
+  }
+  return {black, white};
+}
+
+function endGame(reason){
+  gameOver = true;
+  const s = scoreBoard();
+  // 中国规则：黑贴 7.5 目（白方+7.5）
+  const bScore = s.black;
+  const wScore = s.white + 7.5;
+  let result;
+  if(bScore>wScore) result = '黑棋胜（'+bScore+' : '+wScore+'）';
+  else if(wScore>bScore) result = '白棋胜（'+bScore+' : '+wScore+'）';
+  else result = '和棋';
+  draw();
+  setStatus('🏁 <b>终局</b> · '+result+' · 原因：'+reason);
+}
+
+/* ---------- 终局数子 + 标记死子 ---------- */
+let endMode = false;      // 是否在终局数子模式
+let deadMode = false;     // 是否在标记死子模式
+let deadSet = new Set();  // 被标记为死的棋子坐标 idx
+function toggleEndMode(){
+  if(endMode){ cancelEndMode(); return; }
+  if(moveHistory.length===0){ setStatus('还没落子，无法终局。'); return; }
+  endMode = true; deadMode = false; deadSet = new Set();
+  document.getElementById('endBar').classList.add('on');
+  document.getElementById('endBtn').style.display='none';
+  document.getElementById('deadToggle').textContent='标记死子：关';
+  setStatus('终局中：可点<b>标记死子</b>把死掉的子点掉（变暗），再<b>确认数子</b>');
+  draw();
+}
+function cancelEndMode(){
+  endMode=false; deadMode=false; deadSet=new Set();
+  document.getElementById('endBar').classList.remove('on');
+  document.getElementById('endBtn').style.display='';
+  draw();
+  setStatus((turn===1?'黑方回合':'白方回合'));
+}
+function toggleDeadMode(){
+  deadMode = !deadMode;
+  document.getElementById('deadToggle').textContent = '标记死子：'+(deadMode?'开':'关');
+  setStatus(deadMode ? '点棋盘上的子 → 标记/取消死子（变暗=已标记死）' : '已退出标记，可点确认数子');
+}
+// 标记/取消一子（连带整块）
+function toggleDeadStone(r,c){
+  if(board[r][c]===0) return;
+  const g = group(board, r, c);
+  const anyDead = g.stones.some(([sr,sc])=>deadSet.has(idx(sr,sc)));
+  g.stones.forEach(([sr,sc])=>{
+    if(anyDead) deadSet.delete(idx(sr,sc));
+    else deadSet.add(idx(sr,sc));
+  });
+  draw();
+}
+function confirmScore(){
+  // 把死子从盘上移除 → 算地（死子所在处归对方）
+  const b = board.map(row=>row.slice());
+  let deadBlack=0, deadWhite=0;
+  deadSet.forEach(k=>{
+    const r=(k/N)|0, c=k%N;
+    if(b[r][c]===1){ deadBlack++; b[r][c]=0; }
+    else if(b[r][c]===2){ deadWhite++; b[r][c]=0; }
+  });
+  // 临时用 b 算地
+  const s = scoreWith(b);
+  // 中国规则：黑=黑子+黑围空+吃掉的白死子；白同理；黑贴7.5
+  const bScore = s.black + deadWhite;
+  const wScore = s.white + deadBlack + 7.5;
+  let result;
+  if(bScore>wScore) result='黑棋胜（'+bScore+' : '+wScore+'）';
+  else if(wScore>bScore) result='白棋胜（'+bScore+' : '+wScore+'）';
+  else result='和棋';
+  endMode=false; deadMode=false;
+  document.getElementById('endBar').classList.remove('on');
+  document.getElementById('endBtn').style.display='';
+  setStatus('🏁 <b>终局</b> · '+result+' · 死子：黑'+deadBlack+' 白'+deadWhite);
+}
+// 给定棋盘算子+地（复用 scoreBoard 逻辑，但传入棋盘）
+/* ---------- 数子（重写版）----------
+   原则：终局“标记死子”后才数。
+    - 黑分 = 活黑子数 + 被黑独自包围的空
+    - 白分 = 活白子数 + 被白独自包围的空
+    - 一片空若同时挨黑与白（或什么都挨不着）→ 中立，谁都不算
+    - 棋盘边缘当作“墙”，不算任何颜色（边角围地有效）*/
+function scoreWith(b){
+  const visited=new Set();
+  let black=0, white=0;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){ if(b[r][c]===1)black++; else if(b[r][c]===2)white++; }
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(b[r][c]!==0||visited.has(idx(r,c))) continue;
+    const stack=[[r,c]], region=[], borders=new Set();
+    while(stack.length){
+      const [cr,cc]=stack.pop(); const k=idx(cr,cc);
+      if(visited.has(k)) continue;
+      if(!inB(cr,cc)||b[cr][cc]!==0) continue;
+      visited.add(k); region.push(k);
+      for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+        const nr=cr+dr,nc=cc+dc; if(!inB(nr,nc)) continue;   // 边缘=墙
+        const v=b[nr][nc];
+        if(v===0 && !visited.has(idx(nr,nc))) stack.push([nr,nc]);
+        else if(v!==0) borders.add(v);
+      }
+    }
+    if(borders.size===1){ if(borders.has(1))black+=region.length; else white+=region.length; }
+  }
+  return {black, white};
+}
+
+/* ---------- 联机 ---------- */
+function toggleOnline(){
+  if(onlineMode){ leaveRoom(); return; }
+  // 进入联机：创建房间
+  fetch(API+'/create',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(!d.ok) throw 0;
+    roomId = d.id;
+    myColor = 1;   // 创建者执黑
+    enterRoom();
+    // 生成分享网址
+    const url = location.protocol+'//'+location.hostname+':8899/p80t4qnk1t/?room='+roomId;
+    setOnlineBar('🐟 房间 <b>'+roomId+'</b> · 你执黑<br>把网址发对方：<br><span style="color:#ffd86b;word-break:break-all">'+url+'</span>');
+  }).catch(()=>{ setOnlineBar('⚠️ 创建房间失败（联机服务没开？）'); });
+}
+function joinRoom(id){
+  fetch(API+'/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    .then(r=>r.json()).then(d=>{
+      if(!d.ok) throw 0;
+      roomId=id; myColor=2; onlineSeq=d.seq||0;   // 加入者执白，从当前同步
+      enterRoom();
+      setOnlineBar('🐟 已加入房间 <b>'+id+'</b> · 你执白，等待黑方落子…');
+    }).catch(()=>{ setOnlineBar('⚠️ 房间不存在或已过期'); });
+}
+function enterRoom(){
+  onlineMode = true;
+  document.getElementById('onlineBtn').textContent='联机：开';
+  document.getElementById('onlineBtn').className='on';
+  document.getElementById('modeBtn').disabled = true;
+  document.getElementById('onlineBar').style.display='block';
+  resetGame();
+  setStatus(myColor===1?'黑方回合（你执黑）':'白方回合（等黑方）');
+  onlineSeq = 0;
+  startPolling();
+}
+function leaveRoom(){
+  onlineMode=false; roomId='';
+  document.getElementById('onlineBtn').textContent='联机：关';
+  document.getElementById('onlineBtn').className='';
+  document.getElementById('modeBtn').disabled = false;
+  setOnlineBar('');
+  document.getElementById('onlineBar').style.display='none';
+  stopPolling();
+  resetGame();
+}
+function setOnlineBar(html){ document.getElementById('onlineBar').innerHTML = html || ''; }
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(()=>{
+    fetch(API+'/poll?id='+roomId+'&since='+onlineSeq).then(r=>r.json()).then(d=>{
+      if(!d.ok) return;
+      if(d.ops && d.ops.length){
+        d.ops.forEach(op=>applyRemoteOp(op));
+        onlineSeq = d.seq;
+      }
+    }).catch(()=>{});
+  }, 800);
+}
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+/* ==================== 伪AI模式（名义对AI，实为人工后台接管） ==================== */
+let aiRoomMode = false;   // 是否在伪AI房
+let aiRoomId = '';
+let aiSeq = 0;
+let aiPoller = null;
+let aiResting = false;
+
+function showAiHud(on){
+  const h=document.getElementById('aiHud');
+  if(h) h.className = on?'on':'';
+}
+function showRestMask(on){
+  // 方案B：不再用全屏遮罩锁死页面；休息状态只在状态栏提示 + 拒落子
+  // （保留函数体兼容旧调用，实际转为只提示不盖屏）
+}
+
+function startAI(){
+  if(aiRoomMode){ leaveAi(); return; }
+  fetch(API_AI+'/ai/create',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(!d.ok) throw 0;
+    aiRoomId=d.id; aiRoomMode=true; aiSeq=0; aiResting=false;
+    myColor=1;  // 玩家执黑先手
+    enterAiRoom();
+  }).catch(()=>{ setStatus('⚠️ 对局服务未响应，稍后再试'); });
+}
+function enterAiRoom(){
+  gameOver=false;
+  onlineMode=true; roomId=aiRoomId;   // ★ 复用联机收棋逻辑：以服务端为唯一真相（纯重放）
+  const b=document.getElementById('aiBtn');
+  if(b){ b.textContent='AI对局中（结束）'; b.className='on'; }
+  document.getElementById('modeBtn').disabled=true;
+  document.getElementById('onlineBtn').disabled=true;
+  initState(); draw(); updateScore();
+  setStatus('黑方回合（你执黑）');
+  resetGame();
+  onlineSeq=0;
+  startPolling();   // ★ 用联机轮询（纯服务端重放），不用 AI 房那套本地算
+}
+function leaveAi(){
+  if(aiRoomId){ fetch(API_AI+'/ai/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:aiRoomId})}).catch(()=>{}); }
+  aiRoomMode=false; aiRoomId='';
+  const b=document.getElementById('aiBtn');
+  if(b){ b.textContent='对 AI 下棋'; b.className=''; }
+  document.getElementById('modeBtn').disabled=false;
+  document.getElementById('onlineBtn').disabled=false;
+  showAiHud(false); showRestMask(false);
+  stopAiPolling();
+  initState(); draw(); updateScore();
+  setStatus('黑方回合');
+}
+// 被踢出（房间没了）→ 清房、复位、弹提示
+function kickOut(msg){
+  stopAiPolling();
+  aiRoomMode=false; aiRoomId=''; aiResting=false;
+  const b=document.getElementById('aiBtn');
+  if(b){ b.textContent='对 AI 下棋'; b.className=''; }
+  document.getElementById('modeBtn').disabled=false;
+  document.getElementById('onlineBtn').disabled=false;
+  showAiHud(false); showRestMask(false);
+  initState(); draw(); updateScore();
+  setStatus(msg);
+  alert(msg);
+}
+function startAiPolling(){
+  stopAiPolling();
+  aiPoller=setInterval(()=>{
+    // 以服务端为唯一真相：每次拉全量 moves（since=0），整体重建棋盘
+    fetch(API_AI+'/poll?id='+aiRoomId+'&since=0').then(r=>r.json()).then(d=>{
+      if(!d.ok){
+        kickOut('😴 AI 要休息了，本局已关闭。请重新开始。');
+        return;
+      }
+      // 休息状态
+      if(d.isAI && d.aiState==='resting'){
+        aiResting=true; showAiHud(false);
+        setStatus('😴 AI 休息中，暂时无法落子，请稍后再试');
+      } else {
+        if(aiResting){ aiResting=false; setStatus(turn===1?'黑方回合':'白方回合'); }
+        if(d.isAI && d.aiState==='thinking'){ showAiHud(true); } else { showAiHud(false); }
+      }
+      // 【唯一真相】用后端全量 moves 重建整盘
+      if(d.ops && d.ops.length){
+        rebuildFromMoves(d.ops);
+        aiSeq=d.seq;
+      } else if(d.seq>aiSeq){ aiSeq=d.seq; }
+    }).catch(()=>{});
+  }, 800);
+}
+// 从后端 moves 全量重建棋盘（唯一真相，不在本地重算）
+function rebuildFromMoves(moves){
+  const b=Array.from({length:N},()=>new Array(N).fill(0));
+  let last=null, lastColor=null;
+  for(const m of moves){
+    if(m.type==='move'){
+      const color=(m.color==='B'||m.color===1)?1:2;
+      b[m.r][m.c]=color; last={r:m.r,c:m.c}; lastColor=color;
+      if(m.captured&&m.captured.length){
+        m.captured.forEach(p=>{ const sr=Array.isArray(p)?p[0]:p.r, sc=Array.isArray(p)?p[1]:p.c; if(sr>=0&&sr<N&&sc>=0&&sc<N) b[sr][sc]=0; });
+      }
+    } else if(m.type==='reset'){
+      for(let r=0;r<N;r++)for(let c=0;c<N;c++) b[r][c]=0; last=null; lastColor=null;
+    }
+  }
+  board=b; lastMove=last;
+  let cnt=0; for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(board[r][c]) cnt++;
+  turn = (cnt%2===0)?1:2;   // 粗推轮次（黑先）
+  updateScore(); draw();
+}
+function stopAiPolling(){ if(aiPoller){ clearInterval(aiPoller); aiPoller=null; } }
+function sendAiOp(op){
+  if(!aiRoomMode) return;
+  fetch(API_AI+'/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:aiRoomId,op})})
+    .then(r=>r.json()).then(d=>{ if(d.ok){ aiSeq=d.seq; showAiHud(true); } }).catch(()=>{});
+}
+
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+function sendOp(op){
+  // 联机房用 roomId；AI 房用 aiRoomId（玩家通道 /move，无需密钥）
+  if(!onlineMode && !aiRoomMode) return;
+  const rid = aiRoomMode ? aiRoomId : roomId;
+  fetch(API+'/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:rid,op})})
+    .then(r=>r.json()).then(d=>{ if(d.ok){ if(aiRoomMode) aiSeq=d.seq; else onlineSeq=d.seq; } }).catch(()=>{});
+}
+function applyRemoteOp(op){
+  if(!op || !op.type) return;
+  applyingRemote = true;
+  if(op.type==='move'){
+    // 【直摆】照后端数据直接落子 + 按 captured 抹子，不再本地重算（避免双重计算→幽灵）
+    const color = (op.color==='B'||op.color===1)?1:2;
+    const nb = board.map(row=>row.slice());
+    nb[op.r][op.c] = color;
+    if(op.captured && op.captured.length){
+      op.captured.forEach(p=>{ const sr=Array.isArray(p)?p[0]:p.r, sc=Array.isArray(p)?p[1]:p.c; if(sr>=0&&sr<N&&sc>=0&&sc<N) nb[sr][sc]=0; });
+    }
+    board = nb;
+    lastMove={r:op.r,c:op.c};
+    moveHistory.push({r:op.r,c:op.c,color:color,captured:op.captured||[],ko:null});
+    koPoint=null; passCount=0; turn = color===1?2:1;
+  } else if(op.type==='pass'){
+    passCount++; lastMove=null; turn = turn===1?2:1;
+  } else if(op.type==='undo'){
+    const m=moveHistory.pop();
+    if(m&&!m.pass){ board[m.r][m.c]=0; if(m.captured) m.captured.forEach(([sr,sc])=>{board[sr][sc]=m.color===1?2:1;}); turn=m.color; }
+    koPoint=null; lastMove=null;
+  } else if(op.type==='reset'){
+    initState();
+  } else if(op.type==='resign'){
+    gameOver=true;
+    // 对方认输 → 我这边提示
+    const l = op.loser || '对方';
+    const w = l==='黑'?'白':'黑';
+    setStatus('🏁 <b>对方（'+l+'方）认输，你（'+w+'方）胜！</b>');
+  }
+  applyingRemote=false;
+  updateScore(); draw();
+  if(op.type==='resign') return;   // 认输已定状态，不再覆盖
+  if(!gameOver) setStatus((turn===1?'黑方回合':'白方回合') + (onlineMode? (turn===myColor?'（你的回合）':'（等对方）') : ''));
+}
+
+/* ---------- 操作 ---------- */
+function handleClick(e){
+  if(aiThinking) return;
+  if(endMode){
+    // 终局模式：只做标记死子
+    if(!deadMode) return;
+    const rect=cv.getBoundingClientRect();
+    const scaleX=(CELL*(N-1)+PAD*2)/rect.width, scaleY=(CELL*(N-1)+PAD*2)/rect.height;
+    const x=(e.clientX-rect.left)*scaleX, y=(e.clientY-rect.top)*scaleY;
+    const c=Math.round((x-PAD)/CELL), r=Math.round((y-PAD)/CELL);
+    if(!inB(r,c)) return;
+    if(Math.hypot(x-(PAD+c*CELL), y-(PAD+r*CELL))>CELL*0.7) return;
+    toggleDeadStone(r,c);
+    return;
+  }
+  if(gameOver) return;
+  if(aiRoomMode && aiResting){ setStatus('AI 休息中'); return; }
+  if(aiRoomMode && turn!==1){ setStatus('等 AI（白）落子后再下…'); return; }
+  const rect=cv.getBoundingClientRect();
+  const scaleX=(CELL*(N-1)+PAD*2)/rect.width, scaleY=(CELL*(N-1)+PAD*2)/rect.height;
+  const x=(e.clientX-rect.left)*scaleX, y=(e.clientY-rect.top)*scaleY;
+  const c=Math.round((x-PAD)/CELL), r=Math.round((y-PAD)/CELL);
+  if(!inB(r,c)) return;
+  if(Math.hypot(x-(PAD+c*CELL), y-(PAD+r*CELL))>CELL*0.7) return;
+  if(placeStone(r,c)){
+    draw();
+    const cap = lastCaptured || [];
+    if(onlineMode && !applyingRemote) sendOp({type:'move',r,c,color:turn===1?2:1,captured:cap});
+    if(aiRoomMode && !applyingRemote){ sendOp({type:'move',r,c,color:turn===1?2:1,captured:cap}); showAiHud(true); }
+    afterMove();
+  }
+}
+function afterMove(){
+  if(gameOver) return;
+  if(passCount>=2){ endGame('双方停一手'); return; }
+  setStatus(turn===1?'黑方回合':'白方回合');
+}
+/* 停一手 / 悔一步 按钮已移除（保留函数定义供内部用，防止引用报错） */
+function _passUnused(){}
+function _undoUnused(){}
+function undo(){
+  if(gameOver||moveHistory.length===0||aiThinking) return;
+  if(onlineMode){
+    // 联机：只允许撤销自己最近一手，并广播
+    if(turn===myColor) { setStatus('等对方落子后再悔。'); return; }
+    const m=moveHistory[moveHistory.length-1];
+    if(!m || m.color!==myColor){ setStatus('只能悔自己最近一手。'); return; }
+    sendOp({type:'undo'});
+    return;
+  }
+  // 撤一步
+  let steps = 1;
+  while(steps>0 && moveHistory.length>0){
+    const m = moveHistory.pop();
+    if(m.pass){ passCount=Math.max(0,passCount-1); }
+    else {
+      board[m.r][m.c]=0;
+      if(m.captured) m.captured.forEach(([sr,sc])=>{ board[sr][sc]=m.color===1?2:1; });
+      turn = m.color;
+    }
+    steps--;
+  }
+  koPoint=null; lastMove=null;
+  updateScore(); draw();
+  setStatus(turn===1?'黑方回合':'白方回合');
+}
+function resign(){
+  if(gameOver) return;
+  if(moveHistory.length===0){ setStatus('还没落子就认输？'); return; }
+  if(!confirm('确定认输吗？')) return;
+  const loser = turn===1?'黑':'白';
+  gameOver=true; draw();
+  setStatus('🏁 '+loser+'方认输，'+(turn===1?'白':'黑')+'方胜');
+  if(onlineMode && !applyingRemote) sendOp({type:'resign', color:myColor, loser:loser});
+  if(aiRoomMode && !applyingRemote) sendAiOp({type:'resign', color:myColor, loser:loser});
+}
+function toggleMode(){
+  // 本地对战（原“模式切换”已废弃）
+  const b=document.getElementById('modeBtn');
+  if(b){ b.textContent='本地对战'; b.className=''; }
+  setStatus('本地对战：两人同屏轮流落子');
+}
+function resetGame(){
+  if(aiRoomMode){
+    // 重开一局：关掉旧房（后台那边自动消失），再开新房
+    const oldId=aiRoomId;
+    if(oldId){ fetch(API_AI+'/ai/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:oldId})}).catch(()=>{}); }
+    fetch(API_AI+'/ai/create',{method:'POST'}).then(r=>r.json()).then(d=>{
+      if(d.ok){ aiRoomId=d.id; aiSeq=0; initState(); draw(); updateScore(); setStatus('黑方回合（你执黑）'); }
+      else { initState(); draw(); updateScore(); setStatus('黑方回合'); }
+    }).catch(()=>{ initState(); draw(); updateScore(); setStatus('黑方回合'); });
+    return;
+  }
+  if(onlineMode){
+    // 联机重开 → 广播 reset，自己在 applyRemoteOp 里生效
+    initState(); draw(); updateScore();
+    setStatus((turn===myColor?'黑方回合（你执黑）':'等待对方…'));
+    return;
+  }
+  initState();
+  draw(); updateScore();
+  setStatus('黑方回合 · 本地对战');
+}
+
+/* ---------- 事件 ---------- */
+cv.addEventListener('click', handleClick);
+window.addEventListener('resize', ()=>{ setupCanvas(); draw(); });
+window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ setupCanvas(); draw(); },200); });
+
+resetGame();
+// 启动时若有 ?room=xxx → 自动加入
+(function autoJoin(){
+  const m = location.search.match(/[?&]room=([a-z0-9]+)/i);
+  if(m){ joinRoom(m[1]); }
+})();
+</script>
+</body>
+</html>

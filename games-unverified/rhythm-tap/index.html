@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>节奏敲击</title>
+<style>
+body{margin:0;background:#0a1628;color:#fff;font-family:sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#c{display:block;width:100vw;height:100vh}
+.ov{position:fixed;inset:0;background:rgba(10,22,40,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:10}
+h1{color:#4a9eff;font-size:2.2em;margin:0 0 12px}
+p{color:#9db;max-width:320px;line-height:1.6;margin:6px 0}
+.btn{background:#4a9eff;border:none;color:#fff;font-size:1.3em;padding:16px 48px;border-radius:8px;margin-top:20px;cursor:pointer;min-width:44px;min-height:44px}
+.btn:active{background:#ffd54a}
+#end{display:none}
+.big{font-size:2.4em;color:#ffd54a}
+#ver{position:fixed;right:4px;bottom:4px;color:#556;font-size:11px;z-index:20}
+.res{font-size:1.4em;margin:4px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="ov" id="start"><h1>节奏敲击</h1><p>音符沿四条轨道落下，落到判定线时按 D F J K 或点击对应轨道。判定越准分越高，连击可提升倍数！速度会逐渐加快。</p><button class="btn" id="go">开始游戏</button></div>
+<div class="ov" id="end"><h1>结束！</h1><div class="big" id="fs">0</div><div class="res" id="fa">准确率 0%</div><div class="res" id="fm">最大连击 0</div><button class="btn" id="re">再来一局</button></div>
+<div id="ver">v1.0.0-rhythm-tap 20261109</div>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W,H;function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight}rs();addEventListener('resize',rs);
+const KEYS=['D','F','J','K'],KC={KeyD:0,KeyF:1,KeyJ:2,KeyK:3};
+const G={state:'menu',notes:[],parts:[],score:0,combo:0,maxCombo:0,disp:0,hits:0,total:0,speed:300,spawnT:0,beat:0,lanes:[0,0,0,0],judge:[null,null,null,null],flash:[0,0,0,0],time:0};
+const JY=()=>H-140,LH=()=>W/4;
+function ac(){if(!G.ctx)G.ctx=new (window.AudioContext||window.webkitAudioContext)();return G.ctx}
+function beep(f,d,t,g){const a=ac(),o=a.createOscillator(),v=a.createGain();o.type=t||'sine';o.frequency.value=f;v.gain.setValueAtTime(g||0.2,a.currentTime);v.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);o.connect(v);v.connect(a.destination);o.start();o.stop(a.currentTime+d)}
+function judgeTxt(s){return s==='P'?'PERFECT':s==='G'?'GOOD':'MISS'}
+function hitJudge(l,t){const t0=performance.now();let best=null;for(const n of G.notes){if(n.l!==l)continue;const d=Math.abs(n.y-JY());if(d<80&&(!best||d<best.d))best={n,d}}if(!best)return;G.notes.splice(G.notes.indexOf(best.n),1);const d=best.d;let s;if(d<22)s='P';else s='G';const base=s==='P'?300:150;G.combo++;G.maxCombo=Math.max(G.maxCombo,G.combo);const mult=1+Math.floor(G.combo/10)*0.5;G.score+=Math.round(base*mult);G.hits++;G.judge[l]=s;G.judge[l+'t']=t0;G.flash[l]=1;G.lanes[l]=1;if(s==='P')beep(660+l*80,0.15,'triangle',0.15);else beep(440+l*60,0.12,'square',0.1);burst(l,s==='P'?'#ffd54a':'#4a9eff')}
+function miss(n){G.notes.splice(G.notes.indexOf(n),1);G.combo=0;G.judge[n.l]='M';G.judge[n.l+'t']=performance.now();beep(120,0.2,'sawtooth',0.08)}
+function burst(l,c){const x=l*LH()+LH()/2;for(let i=0;i<10;i++)G.parts.push({x:x+(Math.random()-0.5)*30,y:JY(),vx:(Math.random()-0.5)*200,vy:-Math.random()*250-50,l:0,c})}
+function update(dt){G.time+=dt;if(G.state!=='play')return;G.speed=300+G.time*12;G.spawnT-=dt;if(G.spawnT<=0){G.beat++;G.spawnT=60/G.speed*(G.beat%4===3?2:1)*(Math.random()<0.15?2:1)/2;const l=Math.floor(Math.random()*4);G.notes.push({l,y:-40,h:1});if(Math.random()<0.25&&G.time>8){let l2=(l+1+Math.floor(Math.random()*3))%4;G.notes.push({l:l2,y:-40,h:1})}}for(const n of G.notes){n.y+=G.speed*dt;if(n.y>JY()+80)miss(n)}for(const p of G.parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=600*dt;p.l+=dt}G.parts=G.parts.filter(p=>p.l<0.6);for(let i=0;i<4;i++){G.lanes[i]*=Math.pow(0.001,dt);G.flash[i]*=Math.pow(0.01,dt)}G.disp+=(G.score-G.disp)*Math.min(1,dt*10)}
+function draw(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a1628');g.addColorStop(1,'#0d2540');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);const lw=LH();const now=performance.now();
+ctx.fillStyle='rgba(74,158,255,0.06)';for(let i=0;i<4;i++){if(i%2)ctx.fillRect(i*lw,0,lw,H)}
+ctx.strokeStyle='rgba(74,158,255,0.3)';ctx.lineWidth=1;for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(i*lw,0);ctx.lineTo(i*lw,H);ctx.stroke()}
+const jy=JY();const grd=ctx.createLinearGradient(0,jy-60,0,jy+60);grd.addColorStop(0,'rgba(255,213,74,0)');grd.addColorStop(0.5,'rgba(255,213,74,0.12)');grd.addColorStop(1,'rgba(255,213,74,0)');ctx.fillStyle=grd;ctx.fillRect(0,jy-60,W,120);
+for(let i=0;i<4;i++){const x=i*lw+lw/2;const f=G.flash[i];ctx.fillStyle=`rgba(74,158,255,${0.25+f*0.4})`;ctx.beginPath();ctx.arc(x,jy,lw*0.3+f*20,0,7);ctx.fill();ctx.fillStyle='#4a9eff';ctx.font='bold '+Math.min(24,lw*0.22)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(KEYS[i],x,jy)}
+for(const n of G.notes){const x=n.l*lw+lw/2;const sz=lw*0.22*(1+(n.y>jy&&n.y<jy+80?0.1:0));const d=Math.abs(n.y-jy);let c=n.y>jy?'#ffd54a':'#4a9eff';ctx.fillStyle=c;ctx.shadowColor=c;ctx.shadowBlur=15;ctx.beginPath();ctx.arc(x,n.y,sz,0,7);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#0a1628';ctx.beginPath();ctx.arc(x,n.y,sz*0.4,0,7);ctx.fill()}
+for(const p of G.parts){ctx.globalAlpha=1-p.l/0.6;ctx.fillStyle=p.c;ctx.fillRect(p.x-3,p.y-3,6,6)}ctx.globalAlpha=1;
+ctx.fillStyle='#fff';ctx.font='bold '+Math.min(42,W*0.08)+'px sans-serif';ctx.textAlign='left';ctx.fillText(Math.round(G.disp),16,44);ctx.font=Math.min(18,W*0.04)+'px sans-serif';ctx.fillStyle='#ffd54a';ctx.fillText('COMBO x'+G.combo+(G.combo>=10?'  倍率'+(1+Math.floor(G.combo/10)*0.5).toFixed(1):''),16,74);
+if(G.judge[0]){for(let i=0;i<4;i++){const s=G.judge[i];if(s&&now-G.judge[i+'t']<600){ctx.globalAlpha=1-(now-G.judge[i+'t'])/600;ctx.fillStyle=s==='P'?'#ffd54a':s==='G'?'#4a9eff':'#e55';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText(judgeTxt(s),i*lw+lw/2,jy-90);ctx.globalAlpha=1}}}}
+function end(){G.state='end';const acc=G.total?Math.round(G.hits/G.total*100):0;G.total=G.hits+G.notes.length;beep(880,0.3,'triangle',0.2);beep(1100,0.4,'sine',0.15);document.getElementById('fs').textContent=Math.round(G.score);document.getElementById('fa').textContent='准确率 '+Math.round(G.hits/Math.max(1,G.total)*100)+'%';document.getElementById('fm').textContent='最大连击 '+G.maxCombo;document.getElementById('end').style.display='flex'}
+function reset(){G.notes=[];G.parts=[];G.score=0;G.disp=0;G.combo=0;G.maxCombo=0;G.hits=0;G.total=0;G.speed=300;G.spawnT=0.5;G.beat=0;G.judge=[null,null,null,null];G.flash=[0,0,0,0];G.lanes=[0,0,0,0];G.time=0;G.last=performance.now();G.state='play'}
+function loop(t){const dt=Math.min(0.05,(t-(G.last||t))/1000);G.last=t;update(dt);draw();if(G.state==='play'&&G.time>60)end();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+addEventListener('keydown',e=>{const l=KC[e.code];if(l!==undefined&&G.state==='play'){e.preventDefault();hitJudge(l,performance.now())}});
+function pt(e){if(G.state!=='play')return;const t=e.touches?e.touches[0]:e;const l=Math.floor(t.clientX/LH());if(l>=0&&l<4)hitJudge(l,performance.now())}
+cv.addEventListener('touchstart',e=>{e.preventDefault();pt(e)},{passive:false});cv.addEventListener('mousedown',pt);
+document.getElementById('go').onclick=()=>{document.getElementById('start').style.display='none';ac().resume&&ac().resume();reset()};
+document.getElementById('re').onclick=()=>{document.getElementById('end').style.display='none';reset()};
+</script>
+</body>
+</html>

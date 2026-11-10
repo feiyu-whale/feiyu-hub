@@ -1,0 +1,55 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>推箱工坊</title><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:linear-gradient(#0a1628,#0d2540);font-family:monospace;touch-action:none;-webkit-user-select:none}#hud{position:fixed;top:0;left:0;right:0;padding:8px 12px;display:flex;justify-content:space-between;color:#4a9eff;font-size:22px;font-weight:bold;text-shadow:0 0 8px #4a9eff77;pointer-events:none}#hud .y{color:#ffd54a}#ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:rgba(10,22,40,.92);color:#cfe4ff;text-align:center;padding:20px;z-index:10}#ui h1{color:#ffd54a;font-size:34px;text-shadow:0 0 14px #ffd54a66}#ui p{font-size:14px;line-height:1.7;max-width:340px}#ui button{min-width:120px;min-height:44px;font-size:18px;font-family:monospace;background:#123a6b;color:#cfe4ff;border:2px solid #4a9eff;border-radius:8px;cursor:pointer}#ui button:active{background:#4a9eff}#bar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:8px;padding:6px;z-index:5}#bar button{min-width:44px;min-height:44px;font-size:15px;font-family:monospace;background:#123a6b;color:#cfe4ff;border:1px solid #4a9eff;border-radius:6px;cursor:pointer}#ver{position:fixed;right:6px;bottom:6px;color:#4a9eff88;font-size:11px;z-index:20}#cv{display:block;margin:auto}</style></head><body><div id="hud"><span id="lv"></span><span class="y" id="st"></span></div><canvas id="cv"></canvas><div id="bar"><button id="bU">撤销</button><button id="bR">重玩</button><button id="bP">上一关</button><button id="bN">下一关</button></div><div id="ui"><h1>推箱工坊</h1><p id="msg">方向键/WASD 移动，手机滑动画布。把所有箱子推到黄色目标点。U撤销 R重玩。共20关。</p><button id="bS">开始游戏</button></div><div id="ver">v1.0.0-box-pusher 20261109</div><script>
+"use strict";
+const LV=[
+"####\n#. $#\n# .#\n####",
+"######\n#  @ #\n# $. #\n# .$ #\n#  . #\n######",
+"#######\n#  .  #\n# $$$ #\n# .@. #\n#     #\n#######",
+"########\n#      #\n# .**$ #\n#  @   #\n#  $.. #\n#      #\n########",
+"#######\n#@ $ .#\n#  ###\n# .  #\n####$#\n   . #\n  ###",
+"  ####\n###  #\n#.$@ #\n# .$ #\n#  . #\n######",
+"########\n#   .  #\n# $ $  #\n#  ### #\n# .@.  #\n#      #\n########",
+" ######\n##    #\n#  $  #\n# .$. #\n##. @ #\n #.   #\n ######",
+"#########\n#    #  #\n# $$ .  #\n#  .  ###\n###@.   #\n#  $  # #\n#    .  #\n#########",
+"  #######\n  #     #\n### $ . #\n# .$@.  #\n# .$ #  #\n#  .    #\n#########",
+"########\n#   #  #\n# $ .  #\n##.#$##\n# . . #\n#  @  #\n########",
+" #######\n #  .  #\n## $ # #\n#  $   #\n# .# ###\n#@ .   #\n########",
+"  ######\n###    #\n#. $@  #\n# .$#  #\n# . #  #\n######  \n#####  #\n    #  #\n    ####",
+"#########\n#   #   #\n# $ . $ #\n#  ...  #\n## .$@ ##\n#    #  #\n#########",
+"  #######\n###  .  #\n#  $### #\n# #$  . #\n# . @$# #\n#   .   #\n#########",
+"#########\n#     . #\n# $$$ . #\n##.#.####\n# . .@  #\n# $ .   #\n#       #\n#########",
+"  #####\n###   #\n# $ # #\n# .  ###\n##@$$. #\n # . #  \n #####  ",
+"#########\n#    .  #\n# ##$#  #\n#  .$ ##\n## .$   #\n# .  @  #\n#########",
+" ########\n #   .  #\n## $ #  #\n#  $  ###\n# .#.#  #\n# . @   #\n#########",
+"#########\n#  #  . #\n# $ $ . #\n#  ###  #\n##.@..  #\n# $ $   #\n#  #    #\n#########"
+];
+const S={scr:"start",g:null,level:0,t:0};
+const cv=document.getElementById("cv"),cx=cv.getContext("2d");
+function fit(){cv.width=innerWidth;cv.height=innerHeight-60;draw();}
+addEventListener("resize",fit);
+function parse(s){const rows=s.split("\n");let w=0;rows.forEach(r=>w=Math.max(w,r.length));const wall=[],goal=[],box=[];let px=0,py=0;for(let y=0;y<rows.length;y++){for(let x=0;x<w;x++){const c=rows[y][x]||" ";if(c=="#")wall.push([x,y]);if(c=="."||c=="*"||c=="+")goal.push([x,y]);if(c=="$"||c=="*")box.push([x,y]);if(c=="@"||c=="+"){px=x;py=y;}}}return{w,h:rows.length,wall,goal,box,px,py,steps:0,pushes:0,hist:[]};}
+function newGame(){S.level=0;S.scr="play";S.g=parse(LV[0]);updHud();document.getElementById("ui").style.display="none";}
+function restart(){S.g=parse(LV[S.level]);updHud();msg("");}
+function updHud(){document.getElementById("lv").textContent="关卡 "+(S.level+1)+"/20";const g=S.g;if(g)document.getElementById("st").textContent="步 "+g.steps+" 推 "+g.pushes;}
+function msg(t){document.getElementById("msg").innerHTML=t;}
+function key(e){if(S.scr!="play")return;const k=e.key.toLowerCase();let d=null;if(k=="arrowup"||k=="w")d=[0,-1];else if(k=="arrowdown"||k=="s")d=[0,1];else if(k=="arrowleft"||k=="a")d=[-1,0];else if(k=="arrowright"||k=="d")d=[1,0];else if(k=="u")undo();else if(k=="r")restart();if(d){e.preventDefault();move(d);}}
+function move(d){const g=S.g,nx=g.px+d[0],ny=g.py+d[1];const hit=(x,y)=>g.box.find(b=>b[0]==x&&b[1]==y);const isW=(x,y)=>g.wall.some(w=>w[0]==x&&w[1]==y);if(isW(nx,ny))return;const b=hit(nx,ny);if(b){const bx=nx+d[0],by=ny+d[1];if(isW(bx,by)||hit(bx,by))return;g.hist.push({px:g.px,py:g.py,bx:b[0],by:b[1]});b[0]=bx;b[1]=by;g.px=nx;g.py=ny;g.steps++;g.pushes++;}else{g.hist.push({px:g.px,py:g.py});g.px=nx;g.py=ny;g.steps++;}updHud();if(g.box.every(b=>g.goal.some(p=>p[0]==b[0]&&p[1]==b[1])))win();}
+function undo(){const g=S.g;if(!g.hist.length)return;const h=g.hist.pop();if(h.bx!==undefined){const b=g.box.find(b=>b[0]==h.px+0&&b[1]==h.py+0);g.box=[g.box.filter(b=>!(b[0]==h.px&&b[1]==h.py))[0]];const bb=g.box.find(b=>true);g.box=[{0:h.bx,1:h.by}];g.box=[[h.bx,h.by]];g.box=g.box;}g.px=h.px;g.py=h.py;g.steps++;if(h.bx!==undefined)g.pushes++;g.box=g.box.filter(b=>!(b[0]==h.px&&b[1]==h.py));if(h.bx!==undefined)g.box.push([h.bx,h.by]);updHud();}
+function win(){if(S.level>=19){S.scr="end";msg("🎉 全部通关！<br>最终关卡步数 "+S.g.steps+"，推箱 "+S.g.pushes+"<br>感谢游玩！");document.getElementById("bS").textContent="再来一局";document.getElementById("ui").style.display="flex";}else{msg("✓ 过关！步数 "+S.g.steps+" 推箱 "+S.g.pushes+"，<br>按 N 或点「下一关」继续");}}
+function next(){if(S.level<19){S.level++;restart();}}
+function prev(){if(S.level>0){S.level--;restart();}}
+let tx=null,ty=null;
+cv.addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;});
+cv.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.max(Math.abs(dx),Math.abs(dy))>20){if(Math.abs(dx)>Math.abs(dy))move([dx>0?1:-1,0]);else move([0,dy>0?1:-1]);}tx=null;});
+cv.addEventListener("click",e=>{if(S.scr!="play")return;const g=S.g,ts=tileSize(g);const ox=(cv.width-ts*g.w)/2,oy=(cv.height-ts*g.h)/2;const x=Math.floor((e.clientX-ox)/ts),y=Math.floor((e.clientY-oy)/ts);const d=[x-g.px,y-g.py];if(Math.abs(d[0])+Math.abs(d[1])==1)move(d);});
+function tileSize(g){return Math.max(20,Math.min(48,Math.floor(Math.min(cv.width/(g.w+.5),cv.height/(g.h+.5)))));}
+function anim(t){return .5+.5*Math.sin(t/300);}
+function draw(){cx.fillStyle="#0a1628";cx.fillRect(0,0,cv.width,cv.height);const gr=cx.createLinearGradient(0,0,0,cv.height);gr.addColorStop(0,"#0a1628");gr.addColorStop(1,"#0d2540");cx.fillStyle=gr;cx.fillRect(0,0,cv.width,cv.height);if(S.scr!="play"||!S.g)return;const g=S.g,ts=tileSize(g),ox=(cv.width-ts*g.w)/2,oy=(cv.height-ts*g.h)/2,a=anim(S.t);g.goal.forEach(p=>{cx.fillStyle="#ffd54a";cx.beginPath();cx.arc(ox+p[0]*ts+ts/2,oy+p[1]*ts+ts/2,ts*.16*(1+.15*a),0,7);cx.fill();});g.wall.forEach(w=>{cx.fillStyle="#16355e";cx.fillRect(ox+w[0]*ts+1,oy+w[1]*ts+1,ts-2,ts-2);cx.strokeStyle="#4a9eff55";cx.strokeRect(ox+w[0]*ts+1,oy+w[1]*ts+1,ts-2,ts-2);});g.box.forEach(b=>{const on=g.goal.some(p=>p[0]==b[0]&&p[1]==b[1]);cx.fillStyle=on?"#ffd54a":"#4a9eff";const x=ox+b[0]*ts+ts*.18,y=oy+b[1]*ts+ts*.18,s=ts*.64;cx.fillRect(x,y,s,s);cx.strokeStyle="rgba(255,255,255,.4)";cx.strokeRect(x+3,y+3,s-6,s-6);});cx.fillStyle="#ffd54a";cx.beginPath();cx.arc(ox+g.px*ts+ts/2,oy+g.py*ts+ts/2,ts*.3,0,7);cx.fill();cx.fillStyle="#0a1628";cx.beginPath();cx.arc(ox+g.px*ts+ts/2,oy+g.py*ts+ts*.32,ts*.08,0,7);cx.fill();}
+document.getElementById("bS").onclick=()=>newGame();
+document.getElementById("bU").onclick=undo;
+document.getElementById("bR").onclick=restart;
+document.getElementById("bP").onclick=prev;
+document.getElementById("bN").onclick=next;
+addEventListener("keydown",key);
+function loop(t){S.t=t;draw();requestAnimationFrame(loop);}
+fit();requestAnimationFrame(loop);
+</script></body></html>

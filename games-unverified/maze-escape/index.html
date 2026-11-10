@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>深海迷宫</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a1628;font-family:system-ui,sans-serif;touch-action:none}
+#c{display:block;width:100vw;height:100vh}
+.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,12,25,.85);color:#cfe6ff;text-align:center;padding:20px;z-index:10}
+.ov h1{font-size:min(11vw,44px);color:#4a9eff;text-shadow:0 0 20px #4a9eff88;margin-bottom:14px}
+.ov p{font-size:14px;line-height:1.7;margin-bottom:10px;color:#8fb8e0;max-width:340px}
+.ov .sc{font-size:20px;color:#ffd54a;margin-bottom:16px;font-weight:bold}
+.btn{min-width:120px;min-height:48px;padding:12px 30px;font-size:17px;font-weight:bold;color:#06121f;background:#4a9eff;border:none;border-radius:10px;cursor:pointer;box-shadow:0 0 18px #4a9eff66}
+.btn:active{background:#ffd54a}
+.hud{position:fixed;top:0;left:0;right:0;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-size:min(5.5vw,26px);font-weight:bold;color:#ffd54a;text-shadow:0 0 8px #000;z-index:5;pointer-events:none}
+.hud span{color:#4a9eff}
+#ver{position:fixed;right:6px;bottom:6px;font-size:11px;color:#4a7fae;z-index:9}
+#joy{position:fixed;right:18px;bottom:30px;width:120px;height:120px;border-radius:50%;background:rgba(74,158,255,.12);border:2px solid rgba(74,158,255,.35);z-index:6;display:none}
+#jk{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(74,158,255,.5)}
+@media(pointer:coarse){#joy{display:block}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="hud"></div>
+<div id="joy"><div id="jk"></div></div>
+<div class="ov" id="start"><h1>深海迷宫</h1><p>潜入深海，在黑暗迷雾中寻找出口！你只能看见周围 3 格。收集⚡可点亮全图。限时 60 秒，过关迷宫更大、时间重置。</p><button class="btn" id="b1">开始游戏</button></div>
+<div class="ov" id="end" style="display:none"><h1 id="et">逃出成功！</h1><div class="sc" id="es"></div><p>步数消耗能量，能量耗尽失败。</p><button class="btn" id="b2">再来一局</button></div>
+<div id="ver">v1.0.0-maze-escape 20261109</div>
+<script>
+"use strict";
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),hud=document.getElementById('hud');
+let W,H,DPR;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',resize);resize();
+const G={state:'menu',lvl:1,score:0,time:0,steps:0,energy:100,maze:null,mw:0,mh:0,px:0,py:0,pdx:0,pdy:0,reveal:0,particles:[],moveT:0,win:false};
+const player={x:0,y:0,tx:0,ty:0};
+function newMaze(w,h){const m=[];for(let y=0;y<h;y++){m.push([]);for(let x=0;x<w;x++)m[y].push({v:0,w:[1,1,1,1]});}const st=[[0,0]];m[0][0].v=1;const dx=[0,1,0,-1],dy=[-1,0,1,0];
+while(st.length){const[cx,cy]=st[st.length-1],d=[];for(let i=0;i<4;i++){const nx=cx+dx[i],ny=cy+dy[i];if(nx>=0&&ny>=0&&nx<w&&ny<h&&!m[ny][nx].v)d.push(i);}
+if(d.length){const i=d[Math.random()*d.length|0];m[cy][cx].w[i]=0;m[cy+dy[i]][cx+dx[i]].w[(i+2)%4]=0;m[cy+dy[i]][cx+dx[i]].v=1;st.push([cx+dx[i],cy+dy[i]]);}else st.pop();}
+return m;}
+function startGame(){G.state='play';G.lvl=1;G.score=0;G.time=0;G.steps=0;G.energy=100;G.reveal=0;G.particles=[];genLevel();document.getElementById('start').style.display='none';document.getElementById('end').style.display='none';}
+function genLevel(){const s=Math.min(8+G.lvl*2,21);G.mw=s;G.mh=s;G.maze=newMaze(s,s);G.px=0;G.py=0;player.x=0;player.y=0;player.tx=0;player.ty=0;G.time=60+G.lvl*5;G.energy=100;G.reveal=0;let n=2+(G.lvl>1?1:0);while(n>0){const x=Math.random()*s|0,y=Math.random()*s|0;if(!G.maze[y][x].p&&!(x===0&&y===0)&&!(x===s-1&&y===s-1)){G.maze[y][x].p=1;n--;}}}
+function tryMove(dx,dy){if(G.state!=='play'||G.moveT>0)return;const c=G.maze[G.py][G.px];let i=-1;if(dx===0&&dy===-1&&c.w[0]===0)i=0;if(dx===1&&dy===0&&c.w[1]===0)i=1;if(dx===0&&dy===1&&c.w[2]===0)i=2;if(dx===-1&&dy===0&&c.w[3]===0)i=3;if(i<0)return;G.px+=dx;G.py+=dy;G.steps++;G.energy=Math.max(0,G.energy-1);G.moveT=0.12;spawnBub(player.x+player.tx,player.y+player.ty);if(G.maze[G.py][G.px].p){G.maze[G.py][G.px].p=0;G.reveal=3;G.score+=50;}if(G.px===G.mw-1&&G.py===G.mh-1)winLevel();}
+function winLevel(){G.score+=1000+Math.floor(G.time)*10+G.lvl*100;G.lvl++;G.state='won';setTimeout(()=>{if(G.state==='won'){genLevel();G.state='play';}},900);}
+function lose(msg){G.state='over';document.getElementById('et').textContent=msg;document.getElementById('es').textContent='得分 '+G.score+' · 关卡 '+G.lvl+' · 步数 '+G.steps;document.getElementById('end').style.display='flex';}
+function spawnBub(x,y){for(let i=0;i<5;i++)G.particles.push({x:x*CS()+CS()/2,y:y*CS()+CS()/2,vx:(Math.random()-.5)*60,vy:-Math.random()*60-10,l:0.6,t:0,c:'#4a9eff'});}
+function CS(){return Math.min(W,G.mw? (W-20)/G.mw : 40, H-90)/Math.max(G.mw,G.mh,1);}
+function update(dt){if(G.state!=='play')return;G.time-=dt;if(G.time<=0){G.time=0;lose('时间耗尽！');return;}if(G.energy<=0){lose('能量耗尽！');return;}if(G.reveal>0)G.reveal-=dt;if(G.moveT>0){G.moveT-=dt;const t=1-Math.max(G.moveT,0)/0.12;player.tx=(G.px-player.x);player.ty=(G.py-player.y);player.x+= (G.px-player.x)*Math.min(1,dt*14);player.y+=(G.py-player.y)*Math.min(1,dt*14);if(G.moveT<=0){player.x=G.px;player.y=G.py;player.tx=0;player.ty=0;}}
+for(let i=G.particles.length-1;i>=0;i--){const p=G.particles[i];p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.t>p.l)G.particles.splice(i,1);}}
+function draw(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a1628');g.addColorStop(1,'#0d2540');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+if(G.state==='menu'||G.state==='over')return;
+const cs=CS(),ox=(W-cs*G.mw)/2,oy=60+(H-70-cs*G.mh)/2;
+for(let y=0;y<G.mh;y++)for(let x=0;x<G.mw;x++){const d=Math.abs(x-player.x)+Math.abs(y-player.y);let vis=G.reveal>0||d<=3;
+if(!vis){ctx.fillStyle='rgba(10,22,40,.75)';ctx.fillRect(ox+x*cs,oy+y*cs,cs,cs);continue;}
+const c=G.maze[y][x];ctx.fillStyle=d<=3?'rgba(13,37,64,.95)':'rgba(20,50,90,.9)';ctx.fillRect(ox+x*cs,oy+y*cs,cs,cs);
+ctx.strokeStyle='#4a9eff';ctx.lineWidth=2;ctx.beginPath();
+if(c.w[0]){ctx.moveTo(ox+x*cs,oy+y*cs);ctx.lineTo(ox+(x+1)*cs,oy+y*cs);}if(c.w[1]){ctx.moveTo(ox+(x+1)*cs,oy+y*cs);ctx.lineTo(ox+(x+1)*cs,oy+(y+1)*cs);}if(c.w[2]){ctx.moveTo(ox+x*cs,oy+(y+1)*cs);ctx.lineTo(ox+(x+1)*cs,oy+(y+1)*cs);}if(c.w[3]){ctx.moveTo(ox+x*cs,oy+y*cs);ctx.lineTo(ox+x*cs,oy+(y+1)*cs);}ctx.stroke();
+if(c.p){ctx.font=cs*.7+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffd54a';ctx.fillText('⚡',ox+x*cs+cs/2,oy+y*cs+cs/2+Math.sin(performance.now()/300+x+y)*2);}
+if(x===G.mw-1&&y===G.mh-1){ctx.fillStyle='rgba(255,213,74,'+(0.25+0.15*Math.sin(performance.now()/300))+')';ctx.fillRect(ox+x*cs,oy+y*cs,cs,cs);}}
+const pr=cs*.35;ctx.fillStyle='#ffd54a';ctx.beginPath();ctx.arc(ox+player.x*cs+cs/2,oy+player.y*cs+cs/2,pr+Math.sin(performance.now()/200)*1.5,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ox+player.x*cs+cs/2-2,oy+player.y*cs+cs/2-2,pr*.3,0,7);ctx.fill();
+for(const p of G.particles){ctx.globalAlpha=1-p.t/p.l;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,3,0,7);ctx.fill();}ctx.globalAlpha=1;
+hud.innerHTML='关卡 <span>'+G.lvl+'</span>　⏱ <span>'+Math.ceil(G.time)+'s</span>　能量 <span>'+G.energy+'</span>　步数 '+G.steps+'　得分 <span>'+G.score+'</span>';}
+let last=0;function loop(t){const dt=Math.min((t-last)/1000,0.05);last=t;update(dt);draw();requestAnimationFrame(loop);}requestAnimationFrame(loop);
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(G.state==='menu'&&(k==='enter'||k===' '))startGame();const m={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]};if(m[k]){e.preventDefault();tryMove(...m[k]);}});
+let ts=null;
+cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];ts={x:t.clientX,y:t.clientY};},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();if(!ts)return;const t=e.changedTouches[0],dx=t.clientX-ts.x,dy=t.clientY-ts.y;if(Math.abs(dx)<15&&Math.abs(dy)<15){tapMove(t.clientX,t.clientY);}else if(Math.abs(dx)>Math.abs(dy))tryMove(dx>0?1:-1,0);else tryMove(0,dy>0?1:-1);ts=null;},{passive:false});
+cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+function tapMove(cx,cy){const cs=CS(),ox=(W-cs*G.mw)/2,oy=60+(H-70-cs*G.mh)/2;const gx=Math.floor((cx-ox)/cs),gy=Math.floor((cy-oy)/cs);const dx=gx-player.x,dy=gy-player.y;if(Math.abs(dx)+Math.abs(dy)===1)tryMove(dx,dy);}
+const joy=document.getElementById('joy'),jk=document.getElementById('jk');let jc=null;
+joy.addEventListener('touchstart',e=>{e.preventDefault();jc=e.touches[0];},{passive:false});
+joy.addEventListener('touchmove',e=>{e.preventDefault();if(!jc)return;const t=e.touches[0],r=joy.getBoundingClientRect();let dx=t.clientX-(r.left+60),dy=t.clientY-(r.top+60);const d=Math.hypot(dx,dy),mx=35;if(d>mx){dx*=mx/d;dy*=mx/d;}jk.style.left=35+dx+'px';jk.style.top=35+dy+'px';if(Math.abs(dx)>Math.abs(dy))tryMove(dx>0?1:-1,0);else if(Math.abs(dy)>10)tryMove(0,dy>0?1:-1);},{passive:false});
+joy.addEventListener('touchend',e=>{e.preventDefault();jc=null;jk.style.left='35px';jk.style.top='35px';},{passive:false});
+document.getElementById('b1').addEventListener('click',startGame);
+document.getElementById('b2').addEventListener('click',startGame);
+</script>
+</body>
+</html>
