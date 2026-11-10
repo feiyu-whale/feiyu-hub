@@ -260,7 +260,7 @@ function bfInit() {
     if (g) g.classList.toggle('fold');
   });
 
-  // 拖拽进入画布
+  // 拖拽进入画布（桌面 HTML5 DnD）
   lib.addEventListener('dragstart', e => {
     const it = e.target.closest('.bf-libitem');
     if (it) e.dataTransfer.setData('text/plain', it.dataset.block);
@@ -278,8 +278,79 @@ function bfInit() {
       (e.clientY - r.top) / BF.scale - 20);
   });
 
-  // 点块库也能加（防拖拽不稳）
+  /* ===== 触摸/手写笔：从块库拖到画布（Pointer Events）===== */
+  let libDrag = null;      // { blockId, ghost, startX, startY, moved }
+
+  lib.addEventListener('pointerdown', e => {
+    // 只处理触摸/笔，鼠标走原生 DnD
+    if (e.pointerType === 'mouse') return;
+    const it = e.target.closest('.bf-libitem');
+    if (!it) return;
+
+    libDrag = {
+      blockId: it.dataset.block,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      ghost: null
+    };
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('pointermove', e => {
+    if (!libDrag) return;
+    const dx = e.clientX - libDrag.startX;
+    const dy = e.clientY - libDrag.startY;
+
+    // 超过 8px 才算拖动，否则当点击
+    if (!libDrag.moved && Math.hypot(dx, dy) > 8) {
+      libDrag.moved = true;
+      const def = bfBlockDef(libDrag.blockId);
+      const g = document.createElement('div');
+      g.className = 'bf-drag-ghost';
+      g.innerHTML = '<b>' + (def ? def.icon : '📦') + '</b><span>' +
+                    (def ? def.name : '积木') + '</span>';
+      document.body.appendChild(g);
+      libDrag.ghost = g;
+    }
+
+    if (libDrag.moved && libDrag.ghost) {
+      libDrag.ghost.style.left = e.clientX + 'px';
+      libDrag.ghost.style.top = e.clientY + 'px';
+    }
+  });
+
+  window.addEventListener('pointerup', e => {
+    if (!libDrag) return;
+
+    const wasDrag = libDrag.moved;
+    const blockId = libDrag.blockId;
+    if (libDrag.ghost) libDrag.ghost.remove();
+    libDrag = null;
+
+    if (!wasDrag) {
+      // 没拖动 → 当点击，加到画布
+      bfAddNode(blockId);
+      return;
+    }
+
+    // 拖动了 → 判断落点是否在画布上
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el) return;
+    const cv = document.getElementById('bfCanvas');
+    if (!cv.contains(el) && el !== cv) return;
+
+    const r = cv.getBoundingClientRect();
+    bfAddNode(blockId,
+      (e.clientX - r.left) / BF.scale - 70,
+      (e.clientY - r.top) / BF.scale - 20);
+  });
+
+  // 点块库也能加（仅鼠标；触摸已在 pointerup 处理，避免重复加块）
+  let lastPointerType = 'mouse';
+  lib.addEventListener('pointerdown', e => { lastPointerType = e.pointerType; }, true);
   lib.addEventListener('click', e => {
+    if (lastPointerType !== 'mouse') return;   // 触摸/笔都交给 pointerup
     const it = e.target.closest('.bf-libitem');
     if (it) bfAddNode(it.dataset.block);
   });
@@ -293,7 +364,7 @@ function bfBindCanvasEvents(canvas) {
   const viewport = document.getElementById('bfViewport');
 
   /* 按下：拖节点 / 拉线 / 点选 */
-  canvas.addEventListener('mousedown', e => {
+  canvas.addEventListener('pointerdown', e => {
     const head = e.target.closest('[data-drag]');
     const port = e.target.closest('.bf-port');
     const nodeEl = e.target.closest('.bf-node');
@@ -304,6 +375,7 @@ function bfBindCanvasEvents(canvas) {
         from: { node: port.dataset.uid, port: port.dataset.port, type: port.dataset.type, side: port.dataset.side },
         start: c, tmp: c
       };
+      try { port.setPointerCapture(e.pointerId); } catch (_) {}
       e.preventDefault();
       return;
     }
@@ -314,6 +386,7 @@ function bfBindCanvasEvents(canvas) {
       if (!n) return;
       BF.selected = uid;
       BF.drag = { uid, ox: e.clientX, oy: e.clientY, nx: n.x, ny: n.y };
+      try { head.setPointerCapture(e.pointerId); } catch (_) {}
       document.querySelectorAll('.bf-node').forEach(el =>
         el.classList.toggle('sel', el.dataset.uid === uid));
       e.preventDefault();
@@ -327,7 +400,7 @@ function bfBindCanvasEvents(canvas) {
   });
 
   /* 移动 */
-  window.addEventListener('mousemove', e => {
+  window.addEventListener('pointermove', e => {
     if (BF.drag) {
       const n = BF.nodes.find(x => x.uid === BF.drag.uid);
       if (!n) return;
@@ -349,7 +422,7 @@ function bfBindCanvasEvents(canvas) {
   });
 
   /* 松开 */
-  window.addEventListener('mouseup', e => {
+  window.addEventListener('pointerup', e => {
     if (BF.drag) { BF.drag = null; bfSave(); }
 
     if (BF.linking) {
