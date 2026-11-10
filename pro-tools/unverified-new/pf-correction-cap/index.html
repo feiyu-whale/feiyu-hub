@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>无功补偿容量计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe3ff;font:14px/1.55 system-ui,-apple-system,"Microsoft YaHei",sans-serif}
+header{padding:14px 16px;background:linear-gradient(90deg,#0d2140,#123056);border-bottom:1px solid #1e3f70}
+h1{margin:0;font-size:18px;color:#eaf4ff}
+.sub{font-size:12px;color:#7ea8d8;margin-top:4px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#0c1c33;border-bottom:1px solid #17355e}
+.tab{padding:6px 12px;border:1px solid #1e3f70;border-radius:6px;background:#102240;color:#9cc4ee;cursor:pointer;font-size:13px}
+.tab.on{background:#4a9eff;border-color:#4a9eff;color:#06111f;font-weight:600}
+main{max-width:880px;margin:0 auto;padding:14px}
+.card{background:#0f1f38;border:1px solid #1b3a63;border-radius:10px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:15px;color:#4a9eff;border-left:3px solid #4a9eff;padding-left:8px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.f{flex:1 1 170px;min-width:0;display:flex;flex-direction:column;gap:4px}
+label{font-size:12px;color:#8fb6e0}
+input,select{width:100%;padding:8px;background:#08172c;border:1px solid #234a7d;border-radius:6px;color:#e6f1ff;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+button{padding:10px 18px;background:#4a9eff;border:0;border-radius:6px;color:#04121f;font-weight:700;cursor:pointer;font-size:14px}
+button.sec{background:#1c3a63;color:#bcd9ff}
+.err{color:#ff7b7b;font-size:12px;min-height:16px}
+.ok{color:#5be08a}
+.res{display:flex;flex-wrap:wrap;gap:10px}
+.kv{flex:1 1 165px;min-width:0;background:#0a1a30;border:1px solid #1b3a63;border-radius:8px;padding:10px}
+.kv b{display:block;font-size:11px;color:#7ea8d8;font-weight:400}
+.kv span{font-size:17px;color:#4a9eff;font-weight:700;word-break:break-all}
+.kv span.sm{font-size:13px;color:#e6f1ff}
+.kv em{font-style:normal;font-size:11px;color:#7ea8d8}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{border:1px solid #1b3a63;padding:5px 6px;text-align:left}
+th{background:#102a4a;color:#9cc4ee}
+pre{background:#071426;border:1px solid #17355e;border-radius:8px;padding:10px;overflow:auto;font-size:12px;color:#9fd0ff;margin:0;line-height:1.5}
+.hide{display:none}
+.foot{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4a7bb5;background:#0a1628cc;padding:2px 6px;border-radius:4px}
+p{margin:6px 0;font-size:13px;line-height:1.7}
+@media(max-width:520px){.kv{flex:1 1 100%}main{padding:10px}h1{font-size:16px}}
+</style></head><body>
+<header><h1>无功补偿容量计算器</h1><div class="sub">按目标功率因数计算 kvar · 分组投切建议 · 谐波环境电抗率选择</div></header>
+<div class="tabs">
+<button class="tab on" data-t="calc">计算工具</button>
+<button class="tab" data-t="src">JS 源码</button>
+<button class="tab" data-t="test">单元测试</button>
+<button class="tab" data-t="help">使用说明</button>
+</div>
+<main>
+<section id="calc">
+<div class="card"><h2>输入工况参数</h2>
+<div class="row">
+<div class="f"><label>有功功率 P (kW)</label><input id="P" value="500" inputmode="decimal"></div>
+<div class="f"><label>现状功率因数 cosφ1</label><input id="pf1" value="0.80" inputmode="decimal"></div>
+<div class="f"><label>目标功率因数 cosφ2</label><input id="pf2" value="0.95" inputmode="decimal"></div>
+</div>
+<div class="row">
+<div class="f"><label>系统标称电压 Un (V)</label><select id="Un"><option>380</option><option>400</option><option>660</option><option>10000</option></select></div>
+<div class="f"><label>电容器额定电压 Uc (V)</label><select id="Uc"><option>400</option><option>415</option><option>450</option><option>480</option><option>690</option><option>11000</option></select></div>
+<div class="f"><label>谐波环境</label><select id="harm"><option value="none">无显著谐波</option><option value="h5">5 次及以上为主</option><option value="h3">3 次及以下为主</option></select></div>
+<div class="f"><label>负载特性</label><select id="load"><option value="steady">稳定负载</option><option value="fluc">波动负载</option><option value="impact">冲击性负载</option></select></div>
+</div>
+<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button onclick="run()">计算</button><button class="sec" onclick="resetAll()">重置</button></div>
+<div class="err" id="err"></div>
+</div>
+<div class="card hide" id="out"><h2>计算结果</h2><div class="res" id="res"></div><div id="note" style="font-size:12px;color:#7ea8d8;margin-top:10px;line-height:1.8"></div></div>
+</section>
+<section id="src" class="hide"><div class="card"><h2>计算核心 JS 源码（纯函数，可单独测试）</h2><pre id="srcbox"></pre></div></section>
+<section id="test" class="hide"><div class="card"><h2>单元测试（14 条用例）</h2><button onclick="runTests()">运行全部测试</button><div id="tres" style="margin-top:10px"></div></div></section>
+<section id="help" class="hide"><div class="card"><h2>使用说明与依据</h2>
+<p><b>输入：</b>有功功率 P、现状 cosφ1、目标 cosφ2、系统标称电压 Un、电容器额定电压 Uc、谐波环境、负载特性。</p>
+<p><b>容量公式：</b>Qc = P × (tanφ1 − tanφ2)。电容器实际输出无功与其端电压平方成正比，故安装容量 Qn = Qc × (Uc/Un)²。依据：《工业与民用配电设计手册》第四版；GB 50052-2009《供配电系统设计规范》无功补偿章节。</p>
+<p><b>串联电抗率：</b>按 GB 50227-2017《并联电容器装置设计规范》，以 5 次及以上谐波为主时取 4.5%~6%（本工具取 6%），以 3 次及以下谐波为主时取 12%~13%（本工具取 13%），无显著谐波时不设电抗器。</p>
+<p><b>分组段数：</b>稳定负载 2 段 / 波动负载 4 段 / 冲击性负载 6 段。本参数为行业经验值，未经标准核对。</p>
+<p><b>投切方式：</b>稳定负载用电容器专用接触器（CJ19 类）、波动负载用复合开关（机电一体化）、冲击性负载用晶闸管开关 TSC。本参数为行业经验值，未经标准核对。</p>
+<p><b>提示：</b>所有输入均有中文校验提示；窄屏自适应，无横向溢出。</p>
+</div></section>
+</main>
+<div class="foot">v1.0.0-pf-correction-cap 20261108</div>
+<script>
+function $(id){return document.getElementById(id)}
+function TAN(pf){return Math.tan(Math.acos(pf))}
+function validate(o){
+var P=parseFloat(o.P),p1=parseFloat(o.pf1),p2=parseFloat(o.pf2),Un=parseFloat(o.Un),Uc=parseFloat(o.Uc);
+if(!isFinite(P))return '请输入有功功率 P';
+if(P<=0)return '有功功率必须大于 0';
+if(P>1000000)return '有功功率超出范围（≤1000000 kW）';
+if(!isFinite(p1))return '请输入现状功率因数 cosφ1';
+if(p1<0.1||p1>0.99)return '现状功率因数应在 0.10~0.99 之间';
+if(!isFinite(p2))return '请输入目标功率因数 cosφ2';
+if(p2<0.5||p2>1)return '目标功率因数应在 0.50~1.00 之间';
+if(p2<=p1)return '目标功率因数必须大于现状功率因数';
+if(!isFinite(Un)||Un<100||Un>40000)return '系统电压应在 100~40000 V';
+if(!isFinite(Uc)||Uc<100||Uc>40000)return '电容器额定电压应在 100~40000 V';
+if(Uc<Un*0.8||Uc>Un*1.5)return '电容器额定电压与系统电压不匹配（0.8~1.5 倍）';
+return ''}
+function pfCalc(o){
+var e=validate(o);if(e)return {err:e};
+var P=+o.P,p1=+o.pf1,p2=+o.pf2,Un=+o.Un,Uc=+o.Uc;
+var t1=TAN(p1),t2=TAN(p2),Q=P*(t1-t2),K=Math.pow(Uc/Un,2),Qn=Q*K;
+var n=o.load==='impact'?6:(o.load==='fluc'?4:2);
+var r=o.harm==='h3'?13:(o.harm==='h5'?6:0);
+var sw=o.load==='impact'?'晶闸管开关 TSC':(o.load==='fluc'?'复合开关（机电一体化）':'电容器专用接触器 CJ19');
+return {t1:t1,t2:t2,Q:Q,K:K,Qn:Qn,n:n,per:Q/n,r:r,sw:sw}}
+function mk(P,pf1,pf2,harm,load){return {P:P,pf1:pf1,pf2:pf2,Un:380,Uc:400,harm:harm||'none',load:load||'steady'}}
+var TESTS=[
+['100 kW 0.80→0.95 得 42.13 kvar',mk(100,.8,.95),r=>Math.abs(r.Q-42.13)<.02],
+['500 kW 0.70→0.90 得 267.94 kvar',mk(500,.7,.9),r=>Math.abs(r.Q-267.94)<.05],
+['1000 kW 0.85→0.95 得 291.06 kvar',mk(1000,.85,.95),r=>Math.abs(r.Q-291.06)<.05],
+['电压修正系数 K=(Uc/Un)²',mk(100,.8,.95),r=>Math.abs(r.K-1.108033)<1e-5],
+['安装容量 Qn = Qc·K',mk(100,.8,.95),r=>Math.abs(r.Qn/r.Q-r.K)<1e-9],
+['5 次谐波为主 → 电抗率 6%',mk(100,.8,.95,'h5'),r=>r.r===6],
+['3 次谐波为主 → 电抗率 13%',mk(100,.8,.95,'h3'),r=>r.r===13],
+['无显著谐波 → 不设电抗器',mk(100,.8,.95,'none'),r=>r.r===0],
+['冲击性负载 → 6 段分组',mk(100,.8,.95,'none','impact'),r=>r.n===6],
+['波动负载 → 4 段分组',mk(100,.8,.95,'none','fluc'),r=>r.n===4],
+['稳定负载 → 2 段分组',mk(100,.8,.95,'none','steady'),r=>r.n===2],
+['冲击性负载 → 晶闸管投切',mk(100,.8,.95,'none','impact'),r=>/晶闸管/.test(r.sw)],
+['空输入 → 返回中文错误',{P:'',pf1:.8,pf2:.95,Un:380,Uc:400,harm:'none',load:'steady'},r=>!!r.err],
+['目标≤现状 → 返回错误',mk(100,.9,.9),r=>!!r.err],
+['有功功率为负 → 返回错误',mk(-5,.8,.95),r=>!!r.err]
+];
+function run(){
+var o={P:$('P').value,pf1:$('pf1').value,pf2:$('pf2').value,Un:$('Un').value,Uc:$('Uc').value,harm:$('harm').value,load:$('load').value};
+var r=pfCalc(o);
+if(r.err){$('err').textContent='⚠ '+r.err;$('out').classList.add('hide');return}
+$('err').textContent='';$('out').classList.remove('hide');
+var it=[['需补偿容量 Qc',r.Q.toFixed(2),'kvar',0],
+['电容器安装容量 Qn',r.Qn.toFixed(2),'kvar',0],
+['tanφ1 / tanφ2',r.t1.toFixed(4)+' / '+r.t2.toFixed(4),'—',1],
+['电压修正系数 K',r.K.toFixed(4),'(Uc/Un)²',1],
+['分组段数 / 单段容量',r.n+' 段 / '+r.per.toFixed(2),'kvar',1],
+['串联电抗率',r.r+'%',r.r?'抑制谐波':'不设电抗器',1],
+['建议投切方式',r.sw,'',1]];
+$('res').innerHTML=it.map(function(x){return '<div class="kv"><b>'+x[0]+'</b><span class="'+(x[3]?'sm':'')+'">'+x[1]+'</span><em>'+x[2]+'</em></div>'}).join('');
+$('note').innerHTML='计算式：Qc = P × (tanφ1 − tanφ2) = '+P('P')+' × ('+r.t1.toFixed(4)+' − '+r.t2.toFixed(4)+')<br>安装容量：Qn = Qc × (Uc/Un)² = '+r.Qn.toFixed(2)+' kvar<br>依据：《工业与民用配电设计手册》第四版、GB 50052-2009；电抗率按 GB 50227-2017；分组段数与投切方式为行业经验值，未经标准核对。'}
+function P(id){return $(id).value}
+function resetAll(){$('P').value=500;$('pf1').value=0.80;$('pf2').value=0.95;$('Un').value=380;$('Uc').value=400;$('harm').value='none';$('load').value='steady';$('err').textContent='';$('out').classList.add('hide')}
+function runTests(){
+var h='<table><tr><th>#</th><th>用例</th><th>结果</th></tr>',p=0;
+TESTS.forEach(function(t,i){
+var r=pfCalc(t[1]),ok=false;
+try{ok=!!t[2](r)}catch(e){ok=false}
+if(ok)p++;
+h+='<tr><td>'+(i+1)+'</td><td>'+t[0]+'</td><td class="'+(ok?'ok':'err')+'">'+(ok?'通过':'失败'+(r.err?'（'+r.err+'）':''))+'</td></tr>'});
+h+='</table><div style="margin-top:8px" class="'+(p===TESTS.length?'ok':'err')+'">通过 '+p+' / '+TESTS.length+' 条</div>';
+$('tres').innerHTML=h}
+document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+b.classList.add('on');
+['calc','src','test','help'].forEach(function(id){$(id).classList.toggle('hide',id!==b.dataset.t)})}});
+$('srcbox').textContent=[TAN,validate,pfCalc].map(String).join('\n\n');
+run();
+</script>
+</body></html>

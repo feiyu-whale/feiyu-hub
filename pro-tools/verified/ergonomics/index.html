@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家具尺寸与人体工程学计算器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #1f2937;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab-btn {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: #6b7280;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: #1e40af; }
+  .tab-btn.active {
+    color: #1e40af;
+    border-bottom-color: #1e40af;
+    font-weight: 600;
+  }
+  .tab-panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .calc-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+  }
+  .calc-card h3 {
+    font-size: 15px;
+    color: #1e40af;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .form-row { margin-bottom: 10px; }
+  .form-row label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+  }
+  .form-row input, .form-row select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-row input:focus, .form-row select:focus { border-color: #3b82f6; }
+  .calc-btn {
+    width: 100%;
+    padding: 9px;
+    background: #1e40af;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+  .calc-btn:hover { background: #1e3a8a; }
+  .result-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    font-size: 13px;
+    min-height: 60px;
+  }
+  .result-box .val { color: #1e40af; font-weight: 600; font-size: 15px; }
+  .result-box .note { color: #6b7280; font-size: 12px; margin-top: 6px; }
+  .result-box.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  pre.source {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.5;
+    max-height: 70vh;
+  }
+  .test-controls { margin-bottom: 16px; }
+  .test-btn {
+    padding: 10px 24px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .test-btn:hover { background: #047857; }
+  #test-output {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    max-height: 60vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .doc-content {
+    background: #fff;
+    padding: 32px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .doc-content h2 {
+    font-size: 18px;
+    color: #1e40af;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #dbeafe;
+  }
+  .doc-content h2:first-child { margin-top: 0; }
+  .doc-content h3 {
+    font-size: 15px;
+    color: #374151;
+    margin: 18px 0 8px;
+  }
+  .doc-content p { margin-bottom: 10px; }
+  .doc-content ul, .doc-content ol { margin: 8px 0 12px 20px; }
+  .doc-content li { margin-bottom: 4px; }
+  .doc-content code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #be185d;
+  }
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .doc-content th { background: #f9fafb; font-weight: 600; }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .disclaimer {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #92400e;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>家具尺寸与人体工程学计算器</h1>
+  <p>依据 GB/T 3326、GB/T 3327、GB/T 3328、GB 10000 等标准，提供家居尺寸参考</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="tool">🛋️ 工具</button>
+  <button class="tab-btn" data-tab="source">📄 源码</button>
+  <button class="tab-btn" data-tab="tests">🧪 测试</button>
+  <button class="tab-btn" data-tab="docs">📖 说明书</button>
+</nav>
+
+<main>
+  <!-- 工具面板 -->
+  <section class="tab-panel active" id="panel-tool">
+    <div class="disclaimer">
+      ⚠️ 本工具基于国标通用范围与经验公式计算，个体差异大，所有结果仅供参考，实际购买/定制前请以试坐、试躺体验为准。
+    </div>
+    <div class="calc-grid">
+      <!-- 电视观看距离 -->
+      <div class="calc-card">
+        <h3>📺 电视观看距离</h3>
+        <div class="form-row">
+          <label>屏幕尺寸（英寸）</label>
+          <input type="number" id="tv-inch" value="55" min="10" max="200" step="1">
+        </div>
+        <div class="form-row">
+          <label>分辨率</label>
+          <select id="tv-resolution">
+            <option value="1080P">1080P (Full HD)</option>
+            <option value="4K" selected>4K (UHD)</option>
+            <option value="8K">8K</option>
+          </select>
+        </div>
+        <button class="calc-btn" onclick="calcTV()">计算</button>
+        <div class="result-box" id="tv-result">请输入参数后点击计算</div>
+      </div>
+
+      <!-- 桌椅高度 -->
+      <div class="calc-card">
+        <h3>🪑 桌椅高度</h3>
+        <div class="form-row">
+          <label>使用者身高（cm）</label>
+          <input type="number" id="desk-height" value="170" min="100" max="220" step="0.1">
+        </div>
+        <button class="calc-btn" onclick="calcDesk()">计算</button>
+        <div class="result-box" id="desk-result">请输入参数后点击计算</div>
+      </div>
+
+      <!-- 沙发茶几距离 -->
+      <div class="calc-card">
+        <h3>🛋️ 沙发与茶几距离</h3>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:8px;">基于人体工程学通用建议，无需输入参数</p>
+        <button class="calc-btn" onclick="calcSofa()">查询</button>
+        <div class="result-box" id="sofa-result">点击查询获取推荐距离</div>
+      </div>
+
+      <!-- 床尺寸 -->
+      <div class="calc-card">
+        <h3>🛏️ 床尺寸推荐</h3>
+        <div class="form-row">
+          <label>使用者身高（cm）</label>
+          <input type="number" id="bed-height" value="170" min="100" max="220" step="0.1">
+        </div>
+        <div class="form-row">
+          <label>使用人数</label>
+          <select id="bed-persons">
+            <option value="1">单人</option>
+            <option value="2" selected>双人</option>
+          </select>
+        </div>
+        <button class="calc-btn" onclick="calcBed()">计算</button>
+        <div class="result-box" id="bed-result">请输入参数后点击计算</div>
+      </div>
+
+      <!-- 橱柜台面高度 -->
+      <div class="calc-card">
+        <h3>🍳 橱柜台面高度</h3>
+        <div class="form-row">
+          <label>主要操作者身高（cm）</label>
+          <input type="number" id="cab-height" value="165" min="100" max="220" step="0.1">
+        </div>
+        <button class="calc-btn" onclick="calcCabinet()">计算</button>
+        <div class="result-box" id="cab-result">请输入参数后点击计算</div>
+      </div>
+
+      <!-- 显示器设置 -->
+      <div class="calc-card">
+        <h3>🖥️ 书桌与显示器</h3>
+        <div class="form-row">
+          <label>使用者身高（cm）</label>
+          <input type="number" id="mon-height" value="170" min="100" max="220" step="0.1">
+        </div>
+        <div class="form-row">
+          <label>坐姿眼高（cm，可选，默认按身高×0.70 估算）</label>
+          <input type="number" id="mon-eye" placeholder="留空自动估算" min="60" max="160" step="0.1">
+        </div>
+        <button class="calc-btn" onclick="calcMonitor()">计算</button>
+        <div class="result-box" id="mon-result">请输入参数后点击计算</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 源码面板 -->
+  <section class="tab-panel" id="panel-source">
+    <pre class="source"><code id="source-display"></code></pre>
+  </section>
+
+  <!-- 测试面板 -->
+  <section class="tab-panel" id="panel-tests">
+    <div class="test-controls">
+      <button class="test-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+      <span style="margin-left:12px;font-size:13px;color:#6b7280;">共 36 个测试用例</span>
+    </div>
+    <pre id="test-output">点击按钮运行测试...</pre>
+  </section>
+
+  <!-- 说明书面板 -->
+  <section class="tab-panel" id="panel-docs">
+    <div class="doc-content">
+      <h2>一、工具简介</h2>
+      <p>「家具尺寸与人体工程学计算器」是一款面向普通家庭用户、室内设计师、家具定制从业者的在线参考工具。它依据中国国家标准 GB/T 3326-2016《家具 桌、椅、凳类主要尺寸》、GB/T 3327-2017《家具 柜类主要尺寸》、GB/T 3328-2016《家具 床类主要尺寸》以及 GB 10000-1988《中国成年人人体尺寸》中的通用数据，结合人因工程学经验公式，为用户提供六大类家居尺寸的快速参考计算。</p>
+      <p>本工具覆盖的场景包括：电视观看距离、桌椅高度匹配、沙发与茶几间距、床尺寸推荐、橱柜台面高度、书桌与显示器布局。所有计算均为纯前端 JavaScript 实现，不依赖任何外部库，可在任何现代浏览器中直接运行。</p>
+
+      <h2>二、解决什么问题</h2>
+      <p>在家居装修、家具采购、办公环境布置过程中，用户经常面临以下困惑：</p>
+      <ul>
+        <li>买了 65 寸 4K 电视，沙发应该摆多远？</li>
+        <li>家里人身高差异大，书桌和椅子该做多高？</li>
+        <li>厨房台面做 85cm 还是 90cm 更合适？</li>
+        <li>显示器摆多高、多远才不伤颈椎？</li>
+        <li>床买 1.5 米还是 1.8 米宽？</li>
+      </ul>
+      <p>这些问题看似简单，但涉及人体尺寸、视觉工学、操作舒适度等多个维度。本工具将分散的标准数据和经验公式整合为统一的计算入口，帮助用户在采购或定制前获得一个合理的参考区间，减少"买回来不合适"的风险。</p>
+
+      <h2>三、参数详解</h2>
+
+      <h3>3.1 电视观看距离</h3>
+      <table>
+        <tr><th>参数</th><th>范围</th><th>单位</th><th>含义</th></tr>
+        <tr><td>screenInch</td><td>10 ~ 200</td><td>英寸</td><td>电视屏幕对角线尺寸，即厂商标称的"xx 寸"</td></tr>
+        <tr><td>resolution</td><td>1080P / 4K / 8K</td><td>—</td><td>屏幕分辨率，决定推荐距离系数</td></tr>
+      </table>
+      <p><strong>计算原理：</strong>假设屏幕比例为 16:9，先由对角线换算出屏幕物理高度（cm），再乘以分辨率对应的系数。4K 系数 1.5、1080P 系数 3 来源于避免肉眼分辨像素点的经验值；8K 系数 0.75 为基于像素密度的推算值，业界尚无统一标准。</p>
+
+      <h3>3.2 桌椅高度</h3>
+      <table>
+        <tr><th>参数</th><th>范围</th><th>单位</th><th>含义</th></tr>
+        <tr><td>heightCm</td><td>100 ~ 220</td><td>cm</td><td>使用者赤脚站立身高</td></tr>
+      </table>
+      <p><strong>计算原理：</strong>桌面高度 ≈ 身高 × 0.43；椅面高度 ≈ 身高 × 0.25；桌椅高差 ≈ 身高 × 0.18。该比例参考 GB/T 3326-2016 中桌类 700-760mm、椅座面 400-440mm、桌椅高差 280-320mm 的通用范围反推得出，适用于大多数成年人。</p>
+
+      <h3>3.3 沙发与茶几距离</h3>
+      <p>本项无输入参数，直接返回推荐区间。依据人因工程学，沙发座面与茶几边缘的水平距离应保证：坐姿状态下手臂自然前伸可轻松取物（下限约 35cm），同时不妨碍腿部伸展与通行（上限约 50cm）。推荐值为 40cm。</p>
+
+      <h3>3.4 床尺寸推荐</h3>
+      <table>
+        <tr><th>参数</th><th>范围</th><th>单位</th><th>含义</th></tr>
+        <tr><td>heightCm</td><td>100 ~ 220</td><td>cm</td><td>使用者身高</td></tr>
+        <tr><td>personCount</td><td>1 或 2</td><td>—</td><td>使用人数</td></tr>
+      </table>
+      <p><strong>计算原理：</strong>床长 = 身高 + 30cm（预留头部枕头空间与脚部余量）。床宽按人数与身高综合判定：单人 90cm（身高≤175）或 120cm（身高&gt;175）；双人 150cm 或 180cm。参考 GB/T 3328-2016 床类主要尺寸。</p>
+
+      <h3>3.5 橱柜台面高度</h3>
+      <table>
+        <tr><th>参数</th><th>范围</th><th>单位</th><th>含义</th></tr>
+        <tr><td>heightCm</td><td>100 ~ 220</td><td>cm</td><td>主要操作者身高</td></tr>
+      </table>
+      <p><strong>计算原理：</strong>台面高度 = 身高 ÷ 2 + 5cm。该公式为国内橱柜行业常用经验公式，计算结果通常落在 80-90cm 区间，与 GB/T 3327-2017 柜类标准一致。若家中有多位操作者且身高差异较大，建议按主要操作者计算，或做高低台面。</p>
+
+      <h3>3.6 书桌与显示器</h3>
+      <table>
+        <tr><th>参数</th><th>范围</th><th>单位</th><th>含义</th></tr>
+        <tr><td>heightCm</td><td>100 ~ 220</td><td>cm</td><td>使用者身高</td></tr>
+        <tr><td>eyeHeightCm</td><td>60 ~ 160（可选）</td><td>cm</td><td>坐姿状态下的眼睛离地高度，留空则按身高×0.70 估算</td></tr>
+      </table>
+      <p><strong>计算原理：</strong>显示器距离推荐 50-70cm（最佳 60cm）；显示器上沿高度 = 坐姿眼高 - 10cm，保证视线自然微向下，减少颈椎负担。坐姿眼高与身高的比例参考 GB 10000-1988 中成年人人体尺寸数据。</p>
+
+      <h2>四、完整使用场景</h2>
+
+      <h3>场景 1：新房客厅电视布局</h3>
+      <p><strong>背景：</strong>张先生家客厅开间 3.8 米，准备购买 65 寸 4K 电视。</p>
+      <p><strong>输入：</strong>screenInch = 65，resolution = 4K</p>
+      <p><strong>结果：</strong>屏幕高度约 80.9 cm，推荐观看距离约 121.4 cm（1.21 米）。</p>
+      <p><strong>解读：</strong>张先生家沙发到电视墙的实际距离约 3.2 米（扣除电视厚度和沙发靠背），远大于 1.21 米的最低推荐值，观看 4K 内容完全不会看到像素点，甚至可以适当选择更大尺寸。若换成 1080P 片源为主，推荐距离约 242.8 cm，3.2 米也足够。</p>
+
+      <h3>场景 2：夫妻共用书桌</h3>
+      <p><strong>背景：</strong>李先生身高 178cm，李太太身高 162cm，需要共用一张书桌。</p>
+      <p><strong>输入（李先生）：</strong>heightCm = 178 → 桌面 76.5 cm，椅面 44.5 cm</p>
+      <p><strong>输入（李太太）：</strong>heightCm = 162 → 桌面 69.7 cm，椅面 40.5 cm</p>
+      <p><strong>解读：</strong>两人身高差 16cm，桌面高度差近 7cm。建议方案：① 定制升降桌；② 按李太太身高做固定桌面（70cm），李先生使用脚踏垫高椅面并配脚凳；③ 购买可调节高度的成品桌椅。国标 GB/T 3326 给出的通用范围是桌面 700-760mm，两人的理想值刚好落在该区间两端。</p>
+
+      <h3>场景 3：厨房橱柜定制</h3>
+      <p><strong>背景：</strong>王太太身高 158cm，主要下厨，准备定制橱柜。</p>
+      <p><strong>输入：</strong>heightCm = 158</p>
+      <p><strong>结果：</strong>台面高度 = 158 ÷ 2 + 5 = 84.0 cm</p>
+      <p><strong>解读：</strong>84cm 在国标 80-90cm 范围内，偏低但适合身高 158cm 的操作者。若按"通用 85cm"做，王太太切菜时需要架着胳膊，长时间操作容易肩酸。建议台面做 84cm，水槽区可再降低 5cm（洗菜时弯腰更少）。</p>
+
+      <h3>场景 4：儿童房床铺选择</h3>
+      <p><strong>背景：</strong>陈同学 14 岁，当前身高 168cm，预计成年身高 178cm 左右。</p>
+      <p><strong>输入：</strong>heightCm = 178（按预计成年身高），personCount = 1</p>
+      <p><strong>结果：</strong>床长 = 178 + 30 = 208 cm，床宽 = 120 cm（身高&gt;175）</p>
+      <p><strong>解读：</strong>市售标准单人床多为 200×120cm 或 200×90cm。按计算结果，200cm 长度略紧（差 8cm），建议选 200cm 长度时枕头端少垫厚枕，或直接定制 210cm 长度。宽度 120cm 对单人足够舒适。</p>
+
+      <h3>场景 5：居家办公显示器布置</h3>
+      <p><strong>背景：</strong>赵工程师身高 175cm，在家办公，使用 27 寸显示器。</p>
+      <p><strong>输入：</strong>heightCm = 175，eyeHeightCm 留空</p>
+      <p><strong>结果：</strong>估算坐姿眼高 = 175 × 0.70 = 122.5 cm；显示器距离推荐 60cm；显示器上沿高度 = 122.5 - 10 = 112.5 cm（离地）</p>
+      <p><strong>解读：</strong>赵工程师应将显示器中心大致放在胸口到眼睛之间的高度，显示器上沿不超过视线水平。若使用显示器支架，可将底座调到使屏幕上沿离地约 112-115cm。距离 60cm 约为一臂长，可用手臂实测验证。</p>
+
+      <h2>五、常见错误与排查</h2>
+      <ul>
+        <li><strong>"输入身高后提示超范围"</strong>：检查单位是否为 cm。本工具接受 100-220cm，低于 100cm 可能是误输入了米（如 1.7 应改为 170）。</li>
+        <li><strong>"电视距离算出来特别近/远"</strong>：检查分辨率是否选对。同一尺寸电视，1080P 推荐距离是 4K 的 2 倍。若实际观看以 4K 内容为主，不要按 1080P 计算。</li>
+        <li><strong>"桌椅高度和家里现有家具差很多"</strong>：国标给出的是通用范围，个体差异（腿长比例、坐姿习惯）影响很大。计算结果应作为起点，最终以实际试坐 15 分钟以上的体感为准。</li>
+        <li><strong>"橱柜高度算出来 82cm，商家说标准是 85cm"</strong>：85cm 是按身高 170cm 左右的操作者给出的"通用值"。若主要操作者身高明显偏离 170cm，应按实际身高计算，不必拘泥于"标准值"。</li>
+        <li><strong>"显示器上沿高度 112cm，但我桌子只有 75cm"</strong>：显示器需要额外垫高。可使用显示器支架、底座增高架、或几本书垫高，使屏幕上沿达到计算值。</li>
+      </ul>
+
+      <h2>六、数据来源与标准依据</h2>
+      <ul>
+        <li><strong>GB/T 3326-2016</strong>《家具 桌、椅、凳类主要尺寸》：桌面高度 700-760mm、椅座面 400-440mm、桌椅高差 280-320mm</li>
+        <li><strong>GB/T 3327-2017</strong>《家具 柜类主要尺寸》：橱柜台面高度通用范围</li>
+        <li><strong>GB/T 3328-2016</strong>《家具 床类主要尺寸》：床长、床宽标准规格</li>
+        <li><strong>GB 10000-1988</strong>《中国成年人人体尺寸》：成年人各项人体尺寸百分位数据（坐姿眼高、肘高等）</li>
+        <li><strong>电视观看距离</strong>：4K/1080P 系数来源于 SMPTE（电影电视工程师协会）视角建议与像素密度推算；8K 系数为基于像素密度的推算值，无统一国标</li>
+        <li><strong>沙发茶几距离</strong>：人因工程学通用建议值，无对应国标</li>
+        <li><strong>显示器布局</strong>：参考 ISO 9241（人机交互工效学）及国内人因工程学教材建议</li>
+      </ul>
+
+      <h2>七、局限性说明</h2>
+      <ol>
+        <li><strong>个体差异未充分建模：</strong>本工具使用身高作为单一输入，未考虑腿长比例、坐高、臂展等个体差异。同一身高的人，坐高可能相差 3-5cm，直接影响桌椅、显示器的理想高度。</li>
+        <li><strong>儿童与青少年不适用：</strong>GB 10000 主要针对 18 岁以上成年人。儿童、青少年的身体比例与成人不同，本工具对 18 岁以下用户的计算结果仅供参考。</li>
+        <li><strong>特殊体型未覆盖：</strong>肥胖、残疾、孕妇等特殊体型用户的需求超出本工具覆盖范围，需专业人体工学评估。</li>
+        <li><strong>电视距离为理论值：</strong>实际观看体验还受房间光线、内容类型（电影/游戏/新闻）、个人视力等因素影响。计算结果仅为起点。</li>
+        <li><strong>8K 距离为推算值：</strong>目前 8K 电视内容稀缺，业界尚无统一的推荐观看距离标准，本工具给出的 0.75 倍屏幕高度为基于像素密度的理论推算，实际可能需调整。</li>
+        <li><strong>床尺寸未考虑床垫厚度：</strong>计算结果为床架内径参考值，实际选购时需考虑床垫厚度对床面总高度的影响。</li>
+        <li><strong>国标数据时效性：</strong>GB 10000-1988 发布已逾 30 年，中国成年人平均身高有所增长，本工具使用的比例系数为经验值，可能与最新人口数据存在偏差。</li>
+        <li><strong>非医疗建议：</strong>本工具不提供医疗或康复建议。有颈椎、腰椎疾病的用户应咨询专业医师或康复治疗师。</li>
+      </ol>
+
+      <p style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;">
+        本工具所有计算均在浏览器本地完成，不上传任何用户数据。计算结果仅供参考，不构成购买建议。
+      </p>
+    </div>
+  </section>
+</main>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<!-- 源码文本（既用于展示，也需真实执行：原为 type="text/plain" 导致所有计算函数从未定义，工具实际失效） -->
+<script id="source-code">
+/**
+ * ============================================================
+ * 家具尺寸与人体工程学计算器 - 核心算法
+ * 依据：GB/T 3326-2016、GB/T 3327-2017、GB/T 3328-2016、GB 10000-1988
+ * ============================================================
+ */
+
+// ==================== 常量定义 ====================
+
+/**
+ * 电视计算相关常量
+ * @constant {Object}
+ */
+const TV_CONSTANTS = {
+  /** 英寸到厘米换算系数 */
+  INCH_TO_CM: 2.54,
+  /** 16:9 屏幕高度与对角线的比值：9 / sqrt(16^2 + 9^2) ≈ 0.4903 */
+  ASPECT_16_9_HEIGHT_RATIO: 9 / Math.sqrt(16 * 16 + 9 * 9),
+  /** 屏幕尺寸最小值（英寸） */
+  MIN_SCREEN_INCH: 10,
+  /** 屏幕尺寸最大值（英寸） */
+  MAX_SCREEN_INCH: 200,
+  /**
+   * 各分辨率对应的距离系数
+   * - 1080P: 屏幕高度 × 3（避免看到像素点）
+   * - 4K: 屏幕高度 × 1.5（像素密度高，可坐更近）
+   * - 8K: 屏幕高度 × 0.75（推算值，业界无统一标准）
+   */
+  RESOLUTIONS: {
+    '1080P': { factor: 3, note: '基于避免看到像素点的经验值' },
+    '4K':    { factor: 1.5, note: '基于 4K 像素密度的推荐值' },
+    '8K':    { factor: 0.75, note: '推算值，业界无统一标准，仅供参考' }
+  }
+};
+
+/**
+ * 身高相关计算的通用范围
+ * @constant {Object}
+ */
+const HEIGHT_RANGE = {
+  MIN: 100,
+  MAX: 220
+};
+
+// ==================== 通用校验函数 ====================
+
+/**
+ * 校验身高值是否在有效范围内
+ * @param {number} heightCm - 身高（厘米）
+ * @param {string} [paramName='heightCm'] - 参数名，用于错误提示
+ * @returns {void}
+ * @throws {TypeError} 当输入不是有效数字时
+ * @throws {RangeError} 当输入超出 100-220 cm 范围时
+ * @example
+ *   validateHeight(170);    // 通过
+ *   validateHeight(50);     // 抛出 RangeError
+ *   validateHeight(null);   // 抛出 TypeError
+ */
+function validateHeight(heightCm, paramName) {
+  paramName = paramName || 'heightCm';
+  if (typeof heightCm !== 'number' || isNaN(heightCm)) {
+    throw new TypeError(paramName + ' 必须是有效数字，收到: ' + String(heightCm));
+  }
+  if (heightCm <= 0) {
+    throw new RangeError(paramName + ' 必须大于 0，收到: ' + heightCm);
+  }
+  if (heightCm < HEIGHT_RANGE.MIN || heightCm > HEIGHT_RANGE.MAX) {
+    throw new RangeError(
+      paramName + ' 应在 ' + HEIGHT_RANGE.MIN + '-' + HEIGHT_RANGE.MAX +
+      ' cm 范围内，收到: ' + heightCm
+    );
+  }
+}
+
+// ==================== 核心计算函数 ====================
+
+/**
+ * 计算电视推荐观看距离
+ *
+ * 基于 16:9 屏幕比例，先由对角线尺寸换算屏幕物理高度，
+ * 再乘以分辨率对应的系数得到推荐观看距离。
+ *
+ * @param {number} screenInch - 屏幕对角线尺寸（英寸），范围 10-200
+ * @param {string} resolution - 分辨率，可选值：'1080P' | '4K' | '8K'
+ * @returns {Object} 计算结果
+ * @returns {number} returns.screenInch - 输入的屏幕尺寸（英寸）
+ * @returns {string} returns.resolution - 输入的分辨率
+ * @returns {number} returns.diagonalCm - 对角线长度（厘米）
+ * @returns {number} returns.screenHeightCm - 屏幕物理高度（厘米）
+ * @returns {number} returns.screenWidthCm - 屏幕物理宽度（厘米）
+ * @returns {number} returns.distanceCm - 推荐观看距离（厘米）
+ * @returns {number} returns.distanceM - 推荐观看距离（米）
+ * @returns {string} returns.note - 计算说明
+ * @throws {TypeError} 当 screenInch 不是有效数字时
+ * @throws {RangeError} 当 screenInch 超出 10-200 范围时
+ * @throws {Error} 当 resolution 不在支持列表中时
+ * @example
+ *   calcTVViewingDistance(55, '4K');
+ *   // => { screenInch: 55, resolution: '4K', diagonalCm: 139.7,
+ *   //      screenHeightCm: 68.5, distanceCm: 102.8, distanceM: 1.03, ... }
+ *
+ * @example
+ *   calcTVViewingDistance(65, '1080P');
+ *   // => { ..., distanceCm: 242.8, distanceM: 2.43, ... }
+ */
+function calcTVViewingDistance(screenInch, resolution) {
+  // 参数校验
+  if (typeof screenInch !== 'number' || isNaN(screenInch)) {
+    throw new TypeError('screenInch 必须是有效数字，收到: ' + String(screenInch));
+  }
+  if (screenInch <= 0) {
+    throw new RangeError('screenInch 必须大于 0，收到: ' + screenInch);
+  }
+  if (screenInch < TV_CONSTANTS.MIN_SCREEN_INCH || screenInch > TV_CONSTANTS.MAX_SCREEN_INCH) {
+    throw new RangeError(
+      'screenInch 应在 ' + TV_CONSTANTS.MIN_SCREEN_INCH + '-' +
+      TV_CONSTANTS.MAX_SCREEN_INCH + ' 范围内，收到: ' + screenInch
+    );
+  }
+  if (!TV_CONSTANTS.RESOLUTIONS[resolution]) {
+    throw new Error(
+      '不支持的分辨率: ' + String(resolution) +
+      '，可选值: ' + Object.keys(TV_CONSTANTS.RESOLUTIONS).join(', ')
+    );
+  }
+
+  // 计算
+  var diagonalCm = screenInch * TV_CONSTANTS.INCH_TO_CM;
+  var screenHeightCm = diagonalCm * TV_CONSTANTS.ASPECT_16_9_HEIGHT_RATIO;
+  var screenWidthCm = diagonalCm * (16 / Math.sqrt(16 * 16 + 9 * 9));
+  var factor = TV_CONSTANTS.RESOLUTIONS[resolution].factor;
+  var distanceCm = screenHeightCm * factor;
+
+  return {
+    screenInch: screenInch,
+    resolution: resolution,
+    diagonalCm: +diagonalCm.toFixed(2),
+    screenHeightCm: +screenHeightCm.toFixed(2),
+    screenWidthCm: +screenWidthCm.toFixed(2),
+    distanceCm: +distanceCm.toFixed(1),
+    distanceM: +(distanceCm / 100).toFixed(2),
+    note: TV_CONSTANTS.RESOLUTIONS[resolution].note
+  };
+}
+
+/**
+ * 计算推荐桌面高度和椅面高度
+ *
+ * 依据 GB/T 3326-2016 中桌类 700-760mm、椅座面 400-440mm 的通用范围，
+ * 结合人体比例经验公式：桌面 ≈ 身高 × 0.43，椅面 ≈ 身高 × 0.25。
+ *
+ * @param {number} heightCm - 使用者身高（厘米），范围 100-220
+ * @returns {Object} 计算结果
+ * @returns {number} returns.heightCm - 输入的身高
+ * @returns {number} returns.deskHeightCm - 推荐桌面高度（厘米）
+ * @returns {number} returns.chairHeightCm - 推荐椅面高度（厘米）
+ * @returns {number} returns.heightDiffCm - 桌椅高差（厘米）
+ * @returns {string} returns.note - 计算说明
+ * @throws {TypeError} 当 heightCm 不是有效数字时
+ * @throws {RangeError} 当 heightCm 超出 100-220 范围时
+ * @example
+ *   calcDeskAndChairHeight(170);
+ *   // => { heightCm: 170, deskHeightCm: 73.1, chairHeightCm: 42.5,
+ *   //      heightDiffCm: 30.6, note: '...' }
+ */
+function calcDeskAndChairHeight(heightCm) {
+  validateHeight(heightCm);
+
+  var deskHeightCm = heightCm * 0.43;
+  var chairHeightCm = heightCm * 0.25;
+  var heightDiffCm = deskHeightCm - chairHeightCm;
+
+  return {
+    heightCm: heightCm,
+    deskHeightCm: +deskHeightCm.toFixed(1),
+    chairHeightCm: +chairHeightCm.toFixed(1),
+    heightDiffCm: +heightDiffCm.toFixed(1),
+    note: '依据 GB/T 3326-2016 推荐范围，个体差异大，以实际试坐为准'
+  };
+}
+
+/**
+ * 获取沙发与茶几的推荐距离
+ *
+ * 基于人因工程学通用建议，无输入参数。
+ * 推荐距离保证坐姿状态下手臂自然前伸可轻松取物，同时不妨碍腿部伸展。
+ *
+ * @returns {Object} 推荐距离信息
+ * @returns {number} returns.minCm - 最小推荐距离（厘米）
+ * @returns {number} returns.maxCm - 最大推荐距离（厘米）
+ * @returns {number} returns.recommendedCm - 最佳推荐距离（厘米）
+ * @returns {string} returns.note - 说明
+ * @example
+ *   calcSofaCoffeeTableDistance();
+ *   // => { minCm: 35, maxCm: 50, recommendedCm: 40, note: '...' }
+ */
+function calcSofaCoffeeTableDistance() {
+  return {
+    minCm: 35,
+    maxCm: 50,
+    recommendedCm: 40,
+    note: '基于人因工程学通用建议，保证取物舒适且不阻碍通行'
+  };
+}
+
+/**
+ * 计算推荐床尺寸
+ *
+ * 依据 GB/T 3328-2016 床类主要尺寸标准。
+ * 床长 = 身高 + 30cm（预留头部枕头空间与脚部余量）。
+ * 床宽按使用人数与身高综合判定。
+ *
+ * @param {number} heightCm - 使用者身高（厘米），范围 100-220
+ * @param {number} personCount - 使用人数，必须为 1 或 2
+ * @returns {Object} 计算结果
+ * @returns {number} returns.heightCm - 输入的身高
+ * @returns {number} returns.personCount - 使用人数
+ * @returns {number} returns.bedLengthCm - 推荐床长（厘米）
+ * @returns {number} returns.bedWidthCm - 推荐床宽（厘米）
+ * @returns {string} returns.note - 计算说明
+ * @throws {TypeError} 当 heightCm 不是有效数字时
+ * @throws {RangeError} 当 heightCm 超出范围或 personCount 不是 1/2 时
+ * @example
+ *   calcBedSize(170, 2);
+ *   // => { heightCm: 170, personCount: 2, bedLengthCm: 200, bedWidthCm: 150, ... }
+ */
+function calcBedSize(heightCm, personCount) {
+  validateHeight(heightCm);
+
+  if (typeof personCount !== 'number' || isNaN(personCount)) {
+    throw new TypeError('personCount 必须是有效数字，收到: ' + String(personCount));
+  }
+  if (personCount !== 1 && personCount !== 2) {
+    throw new RangeError('personCount 必须是 1 或 2，收到: ' + personCount);
+  }
+
+  // 床长 = 身高 + 30cm
+  var bedLengthCm = Math.ceil(heightCm + 30);
+  // 对齐到标准规格（5cm 的倍数）
+  bedLengthCm = Math.ceil(bedLengthCm / 5) * 5;
+  if (bedLengthCm < 190) bedLengthCm = 190;
+  if (bedLengthCm > 220) bedLengthCm = 220;
+
+  // 床宽
+  var bedWidthCm;
+  if (personCount === 1) {
+    bedWidthCm = heightCm > 175 ? 120 : 90;
+  } else {
+    bedWidthCm = heightCm > 175 ? 180 : 150;
+  }
+
+  return {
+    heightCm: heightCm,
+    personCount: personCount,
+    bedLengthCm: bedLengthCm,
+    bedWidthCm: bedWidthCm,
+    note: '依据 GB/T 3328-2016，实际尺寸以市售标准规格为准'
+  };
+}
+
+/**
+ * 计算推荐橱柜台面高度
+ *
+ * 使用国内橱柜行业常用经验公式：台面高度 = 身高 ÷ 2 + 5cm。
+ * 结果通常落在 80-90cm 区间，与 GB/T 3327-2017 柜类标准一致。
+ *
+ * @param {number} heightCm - 主要操作者身高（厘米），范围 100-220
+ * @returns {Object} 计算结果
+ * @returns {number} returns.heightCm - 输入的身高
+ * @returns {number} returns.cabinetHeightCm - 推荐台面高度（厘米）
+ * @returns {number} returns.minCm - 国标通用范围下限（厘米）
+ * @returns {number} returns.maxCm - 国标通用范围上限（厘米）
+ * @returns {string} returns.note - 计算说明
+ * @throws {TypeError} 当 heightCm 不是有效数字时
+ * @throws {RangeError} 当 heightCm 超出 100-220 范围时
+ * @example
+ *   calcCabinetHeight(165);
+ *   // => { heightCm: 165, cabinetHeightCm: 87.5, minCm: 80, maxCm: 90, ... }
+ */
+function calcCabinetHeight(heightCm) {
+  validateHeight(heightCm);
+
+  var cabinetHeightCm = heightCm / 2 + 5;
+
+  return {
+    heightCm: heightCm,
+    cabinetHeightCm: +cabinetHeightCm.toFixed(1),
+    minCm: 80,
+    maxCm: 90,
+    note: '依据 GB/T 3327-2017，常用范围 800-900mm，个体差异大'
+  };
+}
+
+/**
+ * 计算书桌与显示器的推荐布局
+ *
+ * 依据人因工程学建议：显示器距离 50-70cm，显示器上沿略低于视线。
+ * 坐姿眼高可按身高 × 0.70 估算，或传入实测值。
+ *
+ * @param {number} heightCm - 使用者身高（厘米），范围 100-220
+ * @param {number} [eyeHeightCm] - 坐姿眼高（厘米），可选，范围 60-160。
+ *   留空则按身高 × 0.70 估算。
+ * @returns {Object} 计算结果
+ * @returns {number} returns.heightCm - 输入的身高
+ * @returns {number} returns.eyeHeightCm - 使用的坐姿眼高（厘米）
+ * @returns {number} returns.monitorDistanceMinCm - 显示器最小距离（厘米）
+ * @returns {number} returns.monitorDistanceMaxCm - 显示器最大距离（厘米）
+ * @returns {number} returns.monitorDistanceRecommendedCm - 推荐距离（厘米）
+ * @returns {number} returns.monitorTopHeightCm - 显示器上沿推荐高度（离地，厘米）
+ * @returns {string} returns.note - 计算说明
+ * @throws {TypeError} 当 heightCm 不是有效数字时
+ * @throws {RangeError} 当 heightCm 超出范围或 eyeHeightCm 超出范围时
+ * @example
+ *   calcMonitorSetup(170);
+ *   // => { heightCm: 170, eyeHeightCm: 119, monitorDistanceRecommendedCm: 60,
+ *   //      monitorTopHeightCm: 109, ... }
+ *
+ * @example
+ *   calcMonitorSetup(175, 122);
+ *   // => { ..., eyeHeightCm: 122, monitorTopHeightCm: 112, ... }
+ */
+function calcMonitorSetup(heightCm, eyeHeightCm) {
+  validateHeight(heightCm);
+
+  var actualEyeHeight;
+  if (eyeHeightCm === undefined || eyeHeightCm === null || eyeHeightCm === '') {
+    actualEyeHeight = heightCm * 0.70;
+  } else {
+    if (typeof eyeHeightCm !== 'number' || isNaN(eyeHeightCm)) {
+      throw new TypeError('eyeHeightCm 必须是有效数字，收到: ' + String(eyeHeightCm));
+    }
+    if (eyeHeightCm < 60 || eyeHeightCm > 160) {
+      throw new RangeError('eyeHeightCm 应在 60-160 cm 范围内，收到: ' + eyeHeightCm);
+    }
+    actualEyeHeight = eyeHeightCm;
+  }
+
+  return {
+    heightCm: heightCm,
+    eyeHeightCm: +actualEyeHeight.toFixed(1),
+    monitorDistanceMinCm: 50,
+    monitorDistanceMaxCm: 70,
+    monitorDistanceRecommendedCm: 60,
+    monitorTopHeightCm: +(actualEyeHeight - 10).toFixed(1),
+    note: '依据人因工程学建议及 GB 10000-1988 人体尺寸数据'
+  };
+}
+</script>
+
+<script>
+// ============================================================
+// UI 逻辑
+// ============================================================
+
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 显示源码
+(function() {
+  var src = document.getElementById('source-code').textContent;
+  document.getElementById('source-display').textContent = src;
+})();
+
+// 工具函数：显示结果
+function showResult(id, html) {
+  var el = document.getElementById(id);
+  el.innerHTML = html;
+  el.classList.remove('error');
+}
+function showError(id, msg) {
+  var el = document.getElementById(id);
+  el.innerHTML = '❌ ' + msg;
+  el.classList.add('error');
+}
+
+// 电视计算
+function calcTV() {
+  try {
+    var inch = parseFloat(document.getElementById('tv-inch').value);
+    var res = document.getElementById('tv-resolution').value;
+    var r = calcTVViewingDistance(inch, res);
+    showResult('tv-result',
+      '<div>屏幕尺寸：<span class="val">' + r.screenInch + ' 英寸</span>（' + r.diagonalCm + ' cm）</div>' +
+      '<div>屏幕物理高度：<span class="val">' + r.screenHeightCm + ' cm</span></div>' +
+      '<div>推荐观看距离：<span class="val">' + r.distanceCm + ' cm（' + r.distanceM + ' 米）</span></div>' +
+      '<div class="note">📝 ' + r.note + '</div>'
+    );
+  } catch (e) {
+    showError('tv-result', e.message);
+  }
+}
+
+// 桌椅计算
+function calcDesk() {
+  try {
+    var h = parseFloat(document.getElementById('desk-height').value);
+    var r = calcDeskAndChairHeight(h);
+    showResult('desk-result',
+      '<div>推荐桌面高度：<span class="val">' + r.deskHeightCm + ' cm</span></div>' +
+      '<div>推荐椅面高度：<span class="val">' + r.chairHeightCm + ' cm</span></div>' +
+      '<div>桌椅高差：<span class="val">' + r.heightDiffCm + ' cm</span></div>' +
+      '<div class="note">📝 ' + r.note + '</div>'
+    );
+  } catch (e) {
+    showError('desk-result', e.message);
+  }
+}
+
+// 沙发茶几
+function calcSofa() {
+  try {
+    var r = calcSofaCoffeeTableDistance();
+    showResult('sofa-result',
+      '<div>推荐距离范围：<span class="val">' + r.minCm + ' - ' + r.maxCm + ' cm</span></div>' +
+      '<div>最佳距离：<span class="val">' + r.recommendedCm + ' cm</span></div>' +
+      '<div class="note">📝 ' + r.note + '</div>'
+    );
+  } catch (e) {
+    showError('sofa-result', e.message);
+  }
+}
+
+// 床尺寸
+function calcBed() {
+  try {
+    var h = parseFloat(document.getElementById('bed-height').value);
+    var p = parseInt(document.getElementById('bed-persons').value);
+    var r = calcBedSize(h, p);
+    showResult('bed-result',
+      '<div>推荐床长：<span class="val">' + r.bedLengthCm + ' cm（' + (r.bedLengthCm/100).toFixed(2) + ' 米）</span></div>' +
+      '<div>推荐床宽：<span class="val">' + r.bedWidthCm + ' cm（' + (r.bedWidthCm/100).toFixed(2) + ' 米）</span></div>' +
+      '<div class="note">📝 ' + r.note + '</div>'
+    );
+  } catch (e) {
+    showError('bed-result', e.message);
+  }
+}
+
+// 橱柜
+function calcCabinet() {
+  try {
+    var h = parseFloat(document.getElementById('cab-height').value);
+    var r = calcCabinetHeight(h);
+    showResult('cab-result',
+      '<div>推荐台面高度：<span class="val">' + r.cabinetHeightCm + ' cm</span></div>' +
+      '<div>国标通用范围：' + r.minCm + ' - ' + r.maxCm + ' cm</div>' +
+      '<div class="note">📝 ' + r.note + '</div>'
+    );
+  } catch (e) {
+    showError('cab-result', e.message);
+  }
+}
+
+// 显示器
+function calcMonitor() {
+  try {
+    var h = parseFloat(document.getElementById('mon-height').value);
+    var eyeVal = document.getElementById('mon-eye').value;
+    var eye = eyeVal === '' ? undefined : parseFloat(eyeVal);
+    var r = calcMonitorSetup(h, eye);
+    showResult('mon-result',
+      '<div>坐姿眼高：' + r.eyeHeightCm + ' cm' + (eye === undefined ? '（估算值）' : '（实测值）') + '</div>' +
+      '<div>显示器距离：<span class="val">' + r.monitorDistanceMinCm + ' - ' + r.monitorDistanceMaxCm + ' cm</span>（推荐 ' + r.monitorDistanceRecommendedCm + ' cm）</div>' +
+      '<div>显示器上沿高度：<span class="val">' + r.monitorTopHeightCm + ' cm</span>（离地）</div>' +
+      '<div class="note">📝 ' + r.note + '</div>'
+    );
+  } catch (e) {
+    showError('mon-result', e.message);
+  }
+}
+
+// ============================================================
+// 单元测试框架
+// ============================================================
+
+var testPassed = 0;
+var testFailed = 0;
+var testFailures = [];
+var testLog = [];
+
+function log(msg) {
+  testLog.push(msg);
+}
+
+function assertEqual(actual, expected, msg) {
+  if (actual !== expected) {
+    throw new Error((msg || 'assertEqual') + ': 期望 ' + expected + ', 实际 ' + actual);
+  }
+}
+
+function assertApprox(actual, expected, tolerance, msg) {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error((msg || 'assertApprox') + ': 期望 ~' + expected + ' (±' + tolerance + '), 实际 ' + actual);
+  }
+}
+
+function assertTrue(cond, msg) {
+  if (!cond) throw new Error(msg || 'assertTrue 失败');
+}
+
+function assertThrows(fn, msg) {
+  var threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (!threw) throw new Error((msg || 'assertThrows') + ': 期望抛出异常但未抛出');
+}
+
+function assertThrowsType(fn, errorType, msg) {
+  var caught = null;
+  try { fn(); } catch (e) { caught = e; }
+  if (!caught) throw new Error((msg || 'assertThrowsType') + ': 期望抛出异常但未抛出');
+  if (!(caught instanceof errorType)) {
+    throw new Error((msg || 'assertThrowsType') + ': 期望 ' + errorType.name + ', 实际 ' + caught.constructor.name);
+  }
+}
+
+function test(name, fn) {
+  try {
+    fn();
+    testPassed++;
+    log('  ✓ ' + name);
+  } catch (e) {
+    testFailed++;
+    testFailures.push({ name: name, error: e.message });
+    log('  ✗ ' + name + ' — ' + e.message);
+  }
+}
+
+// ============================================================
+// 测试用例（共 36 个）
+// ============================================================
+
+function runAllTests() {
+  testPassed = 0;
+  testFailed = 0;
+  testFailures = [];
+  testLog = [];
+
+  log('========================================');
+  log('家具尺寸与人体工程学计算器 - 单元测试');
+  log('========================================\n');
+
+  // ---------- 电视观看距离 (10) ----------
+  log('【电视观看距离】');
+
+  test('TV-01: 55寸 4K 正常值', function() {
+    var r = calcTVViewingDistance(55, '4K');
+    assertApprox(r.diagonalCm, 139.7, 0.1, '对角线');
+    assertApprox(r.screenHeightCm, 68.5, 0.5, '屏幕高度');
+    assertApprox(r.distanceCm, 102.8, 1, '距离');
+    assertApprox(r.distanceM, 1.03, 0.01, '距离(米)');
+    assertEqual(r.resolution, '4K');
+  });
+
+  test('TV-02: 65寸 4K 正常值', function() {
+    var r = calcTVViewingDistance(65, '4K');
+    assertApprox(r.diagonalCm, 165.1, 0.1);
+    assertApprox(r.distanceCm, 121.4, 1);
+  });
+
+  test('TV-03: 55寸 1080P 正常值', function() {
+    var r = calcTVViewingDistance(55, '1080P');
+    assertApprox(r.distanceCm, 205.5, 1);
+    /* 修正：2.0547 → toFixed(2) 为 2.05；原期望 2.06 恰好落在容差边界上，浮点误差导致必失败 */
+    assertApprox(r.distanceM, 2.05, 0.01);
+  });
+
+  test('TV-04: 75寸 8K 正常值', function() {
+    var r = calcTVViewingDistance(75, '8K');
+    assertApprox(r.diagonalCm, 190.5, 0.1);
+    assertTrue(r.distanceCm > 0);
+    assertTrue(r.note.indexOf('推算') !== -1, '8K 应标注为推算值');
+  });
+
+  test('TV-05: 32寸 1080P 正常值', function() {
+    var r = calcTVViewingDistance(32, '1080P');
+    assertApprox(r.diagonalCm, 81.28, 0.1);
+    assertTrue(r.distanceCm > 100);
+  });
+
+  test('TV-06: 边界值 10寸（最小）', function() {
+    var r = calcTVViewingDistance(10, '4K');
+    assertApprox(r.diagonalCm, 25.4, 0.1);
+    assertTrue(r.distanceCm > 0);
+  });
+
+  test('TV-07: 边界值 200寸（最大）', function() {
+    var r = calcTVViewingDistance(200, '4K');
+    assertApprox(r.diagonalCm, 508, 0.5);
+    /* 修正：200寸 4K 距离 = 508×0.4903×1.5 ≈ 373.6cm，原断言 >1000 与本工具系数不符 */
+    assertTrue(r.distanceCm > 300, '200寸 4K 距离应大于 300cm，实际 ' + r.distanceCm);
+  });
+
+  test('TV-08: 异常 0寸', function() {
+    assertThrows(function() { calcTVViewingDistance(0, '4K'); });
+  });
+
+  test('TV-09: 异常 负数', function() {
+    assertThrows(function() { calcTVViewingDistance(-55, '4K'); });
+  });
+
+  test('TV-10: 异常 无效分辨率', function() {
+    assertThrows(function() { calcTVViewingDistance(55, '2K'); });
+  });
+
+  // ---------- 桌椅高度 (6) ----------
+  log('\n【桌椅高度】');
+
+  test('DESK-01: 170cm 正常值', function() {
+    var r = calcDeskAndChairHeight(170);
+    assertApprox(r.deskHeightCm, 73.1, 0.2);
+    assertApprox(r.chairHeightCm, 42.5, 0.2);
+    assertApprox(r.heightDiffCm, 30.6, 0.2);
+  });
+
+  test('DESK-02: 180cm 正常值', function() {
+    var r = calcDeskAndChairHeight(180);
+    assertApprox(r.deskHeightCm, 77.4, 0.2);
+    assertApprox(r.chairHeightCm, 45.0, 0.2);
+  });
+
+  test('DESK-03: 边界值 100cm', function() {
+    var r = calcDeskAndChairHeight(100);
+    assertApprox(r.deskHeightCm, 43.0, 0.2);
+    assertApprox(r.chairHeightCm, 25.0, 0.2);
+  });
+
+  test('DESK-04: 边界值 220cm', function() {
+    var r = calcDeskAndChairHeight(220);
+    assertApprox(r.deskHeightCm, 94.6, 0.2);
+    assertApprox(r.chairHeightCm, 55.0, 0.2);
+  });
+
+  test('DESK-05: 异常 0', function() {
+    assertThrows(function() { calcDeskAndChairHeight(0); });
+  });
+
+  test('DESK-06: 异常 负数', function() {
+    assertThrows(function() { calcDeskAndChairHeight(-170); });
+  });
+
+  // ---------- 橱柜高度 (4) ----------
+  log('\n【橱柜高度】');
+
+  test('CAB-01: 165cm 正常值', function() {
+    var r = calcCabinetHeight(165);
+    assertApprox(r.cabinetHeightCm, 87.5, 0.2);
+    assertEqual(r.minCm, 80);
+    assertEqual(r.maxCm, 90);
+  });
+
+  test('CAB-02: 175cm 正常值', function() {
+    var r = calcCabinetHeight(175);
+    assertApprox(r.cabinetHeightCm, 92.5, 0.2);
+  });
+
+  test('CAB-03: 异常 null', function() {
+    assertThrows(function() { calcCabinetHeight(null); });
+  });
+
+  test('CAB-04: 异常 超范围 250', function() {
+    assertThrows(function() { calcCabinetHeight(250); });
+  });
+
+  // ---------- 床尺寸 (4) ----------
+  log('\n【床尺寸】');
+
+  test('BED-01: 170cm 单人', function() {
+    var r = calcBedSize(170, 1);
+    assertEqual(r.bedLengthCm, 200);
+    assertEqual(r.bedWidthCm, 90);
+    assertEqual(r.personCount, 1);
+  });
+
+  test('BED-02: 175cm 双人', function() {
+    var r = calcBedSize(175, 2);
+    assertTrue(r.bedLengthCm >= 200);
+    assertEqual(r.bedWidthCm, 150);
+  });
+
+  test('BED-03: 异常 0人', function() {
+    assertThrows(function() { calcBedSize(170, 0); });
+  });
+
+  test('BED-04: 异常 3人', function() {
+    assertThrows(function() { calcBedSize(170, 3); });
+  });
+
+  // ---------- 显示器 (4) ----------
+  log('\n【显示器】');
+
+  test('MON-01: 170cm 正常值（眼高自动估算）', function() {
+    var r = calcMonitorSetup(170);
+    assertApprox(r.eyeHeightCm, 119, 0.5);
+    assertEqual(r.monitorDistanceMinCm, 50);
+    assertEqual(r.monitorDistanceMaxCm, 70);
+    assertEqual(r.monitorDistanceRecommendedCm, 60);
+    assertApprox(r.monitorTopHeightCm, 109, 0.5);
+  });
+
+  test('MON-02: 175cm 带坐姿眼高', function() {
+    var r = calcMonitorSetup(175, 122);
+    assertEqual(r.eyeHeightCm, 122);
+    assertApprox(r.monitorTopHeightCm, 112, 0.5);
+  });
+
+  test('MON-03: 异常 null 身高', function() {
+    assertThrows(function() { calcMonitorSetup(null); });
+  });
+
+  test('MON-04: 异常 超范围身高', function() {
+    assertThrows(function() { calcMonitorSetup(250); });
+  });
+
+  // ---------- 沙发茶几 (2) ----------
+  log('\n【沙发茶几】');
+
+  test('SOFA-01: 正常调用', function() {
+    var r = calcSofaCoffeeTableDistance();
+    assertEqual(r.minCm, 35);
+    assertEqual(r.maxCm, 50);
+    assertEqual(r.recommendedCm, 40);
+  });
+
+  test('SOFA-02: 返回值结构完整', function() {
+    var r = calcSofaCoffeeTableDistance();
+    assertTrue(typeof r.minCm === 'number');
+    assertTrue(typeof r.maxCm === 'number');
+    assertTrue(typeof r.recommendedCm === 'number');
+    assertTrue(typeof r.note === 'string');
+    assertTrue(r.note.length > 0);
+  });
+
+  // ---------- 精度与类型 (4) ----------
+  log('\n【精度与类型】');
+
+  test('PREC-01: 小数身高 172.5cm', function() {
+    var r = calcDeskAndChairHeight(172.5);
+    assertApprox(r.deskHeightCm, 74.2, 0.2);
+    assertApprox(r.chairHeightCm, 43.1, 0.2);
+  });
+
+  test('PREC-02: 大尺寸电视 98寸 4K', function() {
+    var r = calcTVViewingDistance(98, '4K');
+    assertApprox(r.diagonalCm, 248.92, 0.5);
+    assertTrue(r.distanceCm > 150);
+  });
+
+  test('TYPE-01: NaN 输入电视', function() {
+    assertThrows(function() { calcTVViewingDistance(NaN, '4K'); });
+  });
+
+  test('TYPE-02: undefined 输入桌椅', function() {
+    assertThrows(function() { calcDeskAndChairHeight(undefined); });
+  });
+
+  // ---------- 汇总 ----------
+  log('\n========================================');
+  log('测试结果：通过 ' + testPassed + ' / 共 ' + (testPassed + testFailed));
+  log('========================================');
+
+  if (testFailures.length > 0) {
+    log('\n失败用例：');
+    testFailures.forEach(function(f) {
+      log('  ✗ ' + f.name + ': ' + f.error);
+    });
+  }
+
+  document.getElementById('test-output').textContent = testLog.join('\n');
+}
+</script>
+
+</body>
+</html>

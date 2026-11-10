@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎲 占星骰子</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0a0814; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e0d8f0;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#b0a0ff; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#7a7299; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#1e1838,#131024); border:1px solid #3a3060;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#9a8fd0; margin-bottom:10px; border-left:3px solid #9a8fd0; padding-left:8px; }
+  button.go { width:100%; padding:14px; font-size:11px; font-weight:700; color:#131024;
+    background:linear-gradient(160deg,#b0a0ff,#7060c0); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:2px; }
+  button.go:active { transform:scale(.98); }
+  .dice { display:flex; justify-content:center; gap:16px; margin:18px 0; }
+  .die { width:88px; height:88px; border-radius:14px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; border:2px solid #5a4a9a;
+    background:linear-gradient(160deg,#2a2050,#181030); box-shadow:0 4px 16px rgba(90,60,160,.3);
+    transition:transform .3s; }
+  .die.rolling { animation:roll .5s linear infinite; }
+  @keyframes roll { to { transform:rotate(360deg) scale(1.05); } }
+  .die .dg { font-size:14px; }
+  .die .dn { font-size:12px; color:#c0b0ff; margin-top:2px; text-align:center; padding:0 2px; }
+  .die .dtype { font-size:9px; color:#7a7299; margin-top:1px; }
+  .sect { color:#9a8fd0; font-size:14px; font-weight:700; margin:14px 0 8px; }
+  .interp { background:#131024; border:1px solid #3a3060; border-radius:10px; padding:12px 14px;
+    font-size:13px; line-height:1.8; color:#c8c0e0; }
+  .interp b { color:#b0a0ff; }
+  .interp ul { margin:0 0 8px; padding-left:18px; }
+  .interp li { margin-bottom:5px; color:#b0a8d0; }
+  .interp .disclaim { color:#ffb3c1; background:#2a0f1a; border:1px solid #5a2a3a; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-bottom:8px; }
+  .interp .note { color:#7a7299; font-size:11px; margin-top:6px; }
+  .formula { text-align:center; font-size:13px; color:#c0b0ff; margin:6px 0; }
+  .hint { text-align:center; color:#4a4266; font-size:11px; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:#2e2850; font-size:10px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🎲 占 星 骰 子</h1>
+  <div class="sub">十二星座 × 十大行星 × 十二宫位<br>三骰齐掷 · 得一句话指引</div>
+
+  <div class="card">
+    <h3>掷骰</h3>
+    <button class="go" id="roll">掷 骰 子</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">占星骰子是现代占星衍生玩法，属娱乐参考 🐳<br>非科学预测，请勿据此做重大决定</div>
+  <div class="ver">v1.0.0-占星骰子 20261015</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 【数据来源】黄道十二宫（西方占星通行顺序）；宫位关键字为通行占星体系归纳
+  //   完整说明见 THIRD-PARTY-NOTICES.md「三之二」
+  var SIGNS = ['白羊','金牛','双子','巨蟹','狮子','处女','天秤','天蝎','射手','摩羯','水瓶','双鱼'];
+  var SIGN_GLYPH = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+  var SIGN_KW = {'白羊':'冲劲与开创','金牛':'稳定与务实','双子':'沟通与灵活','巨蟹':'情感与守护',
+    '狮子':'自信与展现','处女':'细致与分析','天秤':'平衡与关系','天蝎':'深度与蜕变',
+    '射手':'拓展与信念','摩羯':'责任与坚持','水瓶':'创新与独立','双鱼':'共感与想象'};
+
+  var PLANETS = ['太阳','月亮','水星','金星','火星','木星','土星','天王','海王','冥王'];
+  var PLANET_GLYPH = {'太阳':'☉','月亮':'☽','水星':'☿','金星':'♀','火星':'♂','木星':'♃','土星':'♄','天王':'♅','海王':'♆','冥王':'♇'};
+  var PLANET_KW = {'太阳':'自我与核心','月亮':'情感与需求','水星':'思维与表达','金星':'爱与价值',
+    '火星':'行动与欲望','木星':'扩张与机遇','土星':'结构与责任','天王':'变革与突破',
+    '海王':'梦想与直觉','冥王':'转化与力量'};
+
+  var HOUSES = ['一宫','二宫','三宫','四宫','五宫','六宫','七宫','八宫','九宫','十宫','十一宫','十二宫'];
+  var HOUSE_KW = {'一宫':'自我与形象','二宫':'价值与财务','三宫':'沟通与学习','四宫':'家庭与根基',
+    '五宫':'创造与恋爱','六宫':'工作与健康','七宫':'合作与伴侣','八宫':'共享与转变',
+    '九宫':'远行与信念','十宫':'事业与名声','十一宫':'社交与理想','十二宫':'潜意识与隐秘'};
+
+  // 2026-10-16 改用真随机源 crypto.getRandomValues（操作系统熵池），老浏览器回退 Math.random
+  // ⚠️ 只改本页随机源，不动其他逻辑！
+  function secureRand(){
+    if(window.crypto && window.crypto.getRandomValues){
+      var a=new Uint32Array(1); window.crypto.getRandomValues(a);
+      return a[0]/4294967296;
+    }
+    return Math.random();
+  }
+  function pick(arr){ return arr[Math.floor(secureRand()*arr.length)]; }
+  // 2026-10-16 趣味彩蛋：会话内连10次一模一样 → 弹窗（纯内存，不存储）
+  // ⚠️ 只改本页展示逻辑，不动其他逻辑！
+  var _eggStreak={sig:'',n:0};
+  function streakCheck(sig){
+    if(_eggStreak.sig===sig){ _eggStreak.n++; } else { _eggStreak.sig=sig; _eggStreak.n=1; }
+    return _eggStreak.n===10 ? '你的运气过于奇特' : '';
+  }
+  function showEgg(msg){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+      mask.innerHTML='<div style="background:#20203a;border:1px solid #5a5a9a;border-radius:14px;padding:26px 30px;text-align:center;max-width:80%"><div style="font-size:12px;font-weight:700;color:#b0b0f0;margin-bottom:10px">'+msg+'</div><div style="font-size:13px;color:#a0a0c0;margin-bottom:16px">连掷 10 次一模一样的骰，天意难测啊 🌀</div><div style="font-size:12px;color:#8080a0">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 400);
+  }
+
+  function roll(){
+    var res=document.getElementById('result');
+    // 动画
+    res.innerHTML='<div class="card"><div class="dice">'+
+      '<div class="die rolling"><div class="dg">🎲</div><div class="dn">…</div></div>'+
+      '<div class="die rolling"><div class="dg">🎲</div><div class="dn">…</div></div>'+
+      '<div class="die rolling"><div class="dg">🎲</div><div class="dn">…</div></div>'+
+      '</div></div>';
+
+    setTimeout(function(){
+      var s=Math.floor(secureRand()*12), p=Math.floor(secureRand()*10), h=Math.floor(secureRand()*12);
+      var sign=SIGNS[s], planet=PLANETS[p], house=HOUSES[h];
+
+      var out='<div class="card"><h3>掷骰结果</h3><div class="dice">';
+      out+='<div class="die"><div class="dg">'+SIGN_GLYPH[s]+'</div><div class="dn">'+sign+'</div><div class="dtype">星座</div></div>';
+      out+='<div class="die"><div class="dg">'+PLANET_GLYPH[planet]+'</div><div class="dn">'+planet+'</div><div class="dtype">行星</div></div>';
+      out+='<div class="die"><div class="dg">'+house+'</div><div class="dn">领域</div><div class="dtype">宫位</div></div>';
+      out+='</div></div>';
+
+      // 解读
+      out+='<div class="sect">📖 解读</div><div class="interp">';
+      out+='<div class="disclaim">⚠️ 占星骰子属现代占星衍生玩法，以下解读为组合式参考，非科学预测，仅供娱乐。</div>';
+      out+='<div class="formula">'+sign+' × '+planet+' × '+house+'</div>';
+      out+='<ul>';
+      out+='<li><b>'+planet+'（'+PLANET_KW[planet]+'）</b>——代表你此刻的关注焦点或驱动力。</li>';
+      out+='<li><b>'+sign+'（'+SIGN_KW[sign]+'）</b>——代表这件事的表现方式或风格。</li>';
+      out+='<li><b>'+house+'（'+HOUSE_KW[house]+'）</b>——代表事情落在哪个生活领域。</li>';
+      out+='</ul>';
+      out+='<p>串起来：关于「<b>'+HOUSE_KW[house]+'</b>」，你正带着「<b>'+PLANET_KW[planet]+'</b>」的能量，用「<b>'+SIGN_KW[sign]+'</b>」的方式去经历。</p>';
+      out+='<p class="note">占星骰子解读较随机，宜当思考的引子、别当断言；同一问题多掷几次意义会发散。</p>';
+      out+='</div>';
+
+      // 2026-10-16 趣味彩蛋：连10次一模一样 → 弹窗
+      var _sig=sign+'|'+planet+'|'+house;
+      var blow=streakCheck(_sig);
+      if(blow) showEgg(blow);
+
+      res.innerHTML=out;
+    }, 650);
+  }
+
+  document.getElementById('roll').addEventListener('click',roll);
+  roll();
+})();
+</script>
+</body>
+</html>

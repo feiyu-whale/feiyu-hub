@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轴扭矩与功率计算工具</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 22px;
+  text-align: center;
+  margin-bottom: 6px;
+  color: #1a1a2e;
+}
+.subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.formula-box {
+  background: #f8f9fb;
+  border: 1px solid #e2e6ea;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.8;
+}
+.formula-box .formula {
+  font-family: "Times New Roman", serif;
+  font-size: 16px;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+.formula-box .note {
+  font-size: 13px;
+  color: #777;
+}
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 4px;
+}
+.input-group {
+  margin-bottom: 12px;
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+input[type="number"], select {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #333;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+input[type="number"]:focus, select:focus {
+  border-color: #4361ee;
+}
+.unit {
+  font-size: 13px;
+  color: #888;
+  white-space: nowrap;
+  min-width: 40px;
+}
+.btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #4361ee;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 6px;
+}
+.btn:hover {
+  background: #3a56d4;
+}
+.btn:active {
+  background: #2f47b3;
+}
+.result-area {
+  margin-top: 16px;
+  display: none;
+}
+.result-area.show {
+  display: block;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #eef1ff;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.result-label {
+  font-size: 13px;
+  color: #555;
+}
+.result-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4361ee;
+}
+.result-value .result-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: #888;
+  margin-left: 2px;
+}
+.ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.ref-table th, .ref-table td {
+  border: 1px solid #e2e6ea;
+  padding: 8px 10px;
+  text-align: center;
+}
+.ref-table th {
+  background: #f0f2f5;
+  font-weight: 600;
+  color: #444;
+}
+.ref-table td {
+  color: #555;
+}
+.source-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.source-section h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #1a1a2e;
+}
+.source-section ul {
+  list-style: none;
+  padding: 0;
+}
+.source-section li {
+  font-size: 13px;
+  color: #555;
+  padding: 4px 0;
+  padding-left: 18px;
+  position: relative;
+  line-height: 1.7;
+}
+.source-section li::before {
+  content: "📖";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  font-size: 12px;
+}
+.warn {
+  font-size: 12px;
+  color: #b5850b;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+.version {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #aaa;
+  z-index: 999;
+}
+.error-msg {
+  color: #d32f2f;
+  font-size: 13px;
+  margin-top: 8px;
+  display: none;
+}
+.error-msg.show {
+  display: block;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚙️ 轴扭矩与功率计算</h1>
+  <p class="subtitle">基于《机械设计》教科书经典公式</p>
+
+  <!-- 扭矩计算 -->
+  <div class="card">
+    <div class="card-title">🔧 扭矩计算</div>
+    <div class="formula-box">
+      <div class="formula">T = 9550 × P / n</div>
+      <div class="note">T — 扭矩（N·m）；P — 功率（kW）；n — 转速（r/min）</div>
+    </div>
+    <div class="input-group">
+      <label for="power">传递功率 P</label>
+      <div class="input-row">
+        <input type="number" id="power" placeholder="例如：7.5" step="any" min="0">
+        <span class="unit">kW</span>
+      </div>
+    </div>
+    <div class="input-group">
+      <label for="speed">转速 n</label>
+      <div class="input-row">
+        <input type="number" id="speed" placeholder="例如：960" step="any" min="0">
+        <span class="unit">r/min</span>
+      </div>
+    </div>
+    <button class="btn" onclick="calcTorque()">计算扭矩</button>
+    <div class="error-msg" id="torqueError"></div>
+    <div class="result-area" id="torqueResult">
+      <div class="result-item">
+        <span class="result-label">扭矩 T</span>
+        <span class="result-value" id="torqueValue">—<span class="result-unit">N·m</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 轴径估算 -->
+  <div class="card">
+    <div class="card-title">📐 轴径估算（按扭转强度）</div>
+    <div class="formula-box">
+      <div class="formula">d ≥ ( 16T / (π·[τ]) )<sup>1/3</sup></div>
+      <div class="note">d — 轴的最小直径（mm）；T — 扭矩（N·mm）；[τ] — 许用扭转切应力（MPa）</div>
+      <div class="note" style="margin-top:4px;">注：公式中 T 需换算为 N·mm（即 T(N·m) × 1000）</div>
+    </div>
+    <div class="input-group">
+      <label for="torque_input">扭矩 T（可直接输入，或从上方计算结果填入）</label>
+      <div class="input-row">
+        <input type="number" id="torque_input" placeholder="例如：74.6" step="any" min="0">
+        <span class="unit">N·m</span>
+      </div>
+    </div>
+    <div class="input-group">
+      <label for="tau">许用扭转切应力 [τ]</label>
+      <div class="input-row">
+        <input type="number" id="tau" placeholder="例如：30" step="any" min="0">
+        <span class="unit">MPa</span>
+      </div>
+    </div>
+    <button class="btn" onclick="calcDiameter()">计算最小轴径</button>
+    <div class="error-msg" id="diameterError"></div>
+    <div class="result-area" id="diameterResult">
+      <div class="result-item">
+        <span class="result-label">最小轴径 d</span>
+        <span class="result-value" id="diameterValue">—<span class="result-unit">mm</span></span>
+      </div>
+    </div>
+    <div class="warn">⚠️ 此公式仅按纯扭转强度估算轴的最小直径，未考虑弯矩、键槽削弱、疲劳等因素。实际设计中需按当量弯矩法或安全系数法进一步校核。</div>
+  </div>
+
+  <!-- 参考值 -->
+  <div class="card">
+    <div class="card-title">📋 常用许用扭转切应力参考值</div>
+    <p style="font-size:13px;color:#666;margin-bottom:8px;">以下为《机械设计》教科书中按扭转强度估算轴径时常用的 [τ] 参考范围：</p>
+    <table class="ref-table">
+      <thead>
+        <tr>
+          <th>轴的材料</th>
+          <th>热处理</th>
+          <th>[τ]（MPa）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Q235、20</td><td>—</td><td>12 ~ 20</td></tr>
+        <tr><td>35</td><td>正火</td><td>16 ~ 25</td></tr>
+        <tr><td>45</td><td>正火</td><td>20 ~ 30</td></tr>
+        <tr><td>45</td><td>调质</td><td>25 ~ 45</td></tr>
+        <tr><td>40Cr</td><td>调质</td><td>35 ~ 55</td></tr>
+        <tr><td>35SiMn、38SiMnMo</td><td>调质</td><td>30 ~ 50</td></tr>
+        <tr><td>1Cr18Ni9Ti</td><td>—</td><td>15 ~ 25</td></tr>
+      </tbody>
+    </table>
+    <div class="warn">⚠️ 以上数据摘自《机械设计》教材中"按扭转强度估算轴的最小直径"相关表格，具体表值需查标准原文确认。实际取值应结合工况、安全系数等综合确定。</div>
+  </div>
+
+  <!-- 一键联动计算 -->
+  <div class="card">
+    <div class="card-title">🔗 一键联动计算</div>
+    <p style="font-size:13px;color:#666;margin-bottom:12px;">输入功率、转速和许用切应力，一步完成扭矩计算和轴径估算。</p>
+    <div class="input-group">
+      <label for="q_power">传递功率 P</label>
+      <div class="input-row">
+        <input type="number" id="q_power" placeholder="例如：7.5" step="any" min="0">
+        <span class="unit">kW</span>
+      </div>
+    </div>
+    <div class="input-group">
+      <label for="q_speed">转速 n</label>
+      <div class="input-row">
+        <input type="number" id="q_speed" placeholder="例如：960" step="any" min="0">
+        <span class="unit">r/min</span>
+      </div>
+    </div>
+    <div class="input-group">
+      <label for="q_tau">许用扭转切应力 [τ]</label>
+      <div class="input-row">
+        <input type="number" id="q_tau" placeholder="例如：30" step="any" min="0">
+        <span class="unit">MPa</span>
+      </div>
+    </div>
+    <button class="btn" onclick="calcAll()">一键计算</button>
+    <div class="error-msg" id="allError"></div>
+    <div class="result-area" id="allResult">
+      <div class="result-item">
+        <span class="result-label">扭矩 T</span>
+        <span class="result-value" id="allTorque">—<span class="result-unit">N·m</span></span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">最小轴径 d</span>
+        <span class="result-value" id="allDiameter">—<span class="result-unit">mm</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据来源 -->
+  <div class="source-section">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li>公式 T = 9550P/n 及轴径估算公式 d ≥ (16T/(π[τ]))^(1/3) 均出自《机械设计》（濮良贵、陈国定、吴立伟 编，高等教育出版社），第10版第15章"轴"。</li>
+      <li>系数 9550 的推导：T = P/(ω) = P/(2πn/60) = 60P/(2πn) × 10³ ≈ 9549.3P/n，工程上取 9550。</li>
+      <li>许用扭转切应力 [τ] 参考值出自上述教材中"按扭转强度条件估算轴的最小直径"相关表格（表15-3或相近编号，具体表号以教材版本为准）。</li>
+      <li>轴径估算公式的力学基础：实心圆轴扭转切应力 τ = T/W<sub>p</sub> = T/(πd³/16) = 16T/(πd³)，令 τ ≤ [τ] 即得 d ≥ (16T/(π[τ]))^(1/3)。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="version">v1.0.0-轴扭矩功率计算 20261021</div>
+
+<script>
+function showError(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideError(id) {
+  var el = document.getElementById(id);
+  el.textContent = '';
+  el.classList.remove('show');
+}
+function showResult(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+function calcTorque() {
+  hideError('torqueError');
+  var p = parseFloat(document.getElementById('power').value);
+  var n = parseFloat(document.getElementById('speed').value);
+  if (isNaN(p) || isNaN(n) || p <= 0 || n <= 0) {
+    showError('torqueError', '请输入大于零的功率和转速值。');
+    document.getElementById('torqueResult').classList.remove('show');
+    return;
+  }
+  var T = 9550 * p / n;
+  document.getElementById('torqueValue').innerHTML = T.toFixed(2) + '<span class="result-unit"> N·m</span>';
+  showResult('torqueResult');
+  // 自动填入轴径估算的扭矩输入框
+  document.getElementById('torque_input').value = T.toFixed(4);
+}
+
+function calcDiameter() {
+  hideError('diameterError');
+  var T_Nm = parseFloat(document.getElementById('torque_input').value);
+  var tau = parseFloat(document.getElementById('tau').value);
+  if (isNaN(T_Nm) || isNaN(tau) || T_Nm <= 0 || tau <= 0) {
+    showError('diameterError', '请输入大于零的扭矩和许用切应力值。');
+    document.getElementById('diameterResult').classList.remove('show');
+    return;
+  }
+  // T 换算为 N·mm
+  var T_Nmm = T_Nm * 1000;
+  var d = Math.pow(16 * T_Nmm / (Math.PI * tau), 1/3);
+  document.getElementById('diameterValue').innerHTML = d.toFixed(2) + '<span class="result-unit"> mm</span>';
+  showResult('diameterResult');
+}
+
+function calcAll() {
+  hideError('allError');
+  var p = parseFloat(document.getElementById('q_power').value);
+  var n = parseFloat(document.getElementById('q_speed').value);
+  var tau = parseFloat(document.getElementById('q_tau').value);
+  if (isNaN(p) || isNaN(n) || isNaN(tau) || p <= 0 || n <= 0 || tau <= 0) {
+    showError('allError', '请输入大于零的功率、转速和许用切应力值。');
+    document.getElementById('allResult').classList.remove('show');
+    return;
+  }
+  var T = 9550 * p / n;
+  var T_Nmm = T * 1000;
+  var d = Math.pow(16 * T_Nmm / (Math.PI * tau), 1/3);
+  document.getElementById('allTorque').innerHTML = T.toFixed(2) + '<span class="result-unit"> N·m</span>';
+  document.getElementById('allDiameter').innerHTML = d.toFixed(2) + '<span class="result-unit"> mm</span>';
+  showResult('allResult');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安全系数与许用应力计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 26px;
+    margin-bottom: 8px;
+    color: #1a3a5c;
+  }
+  .subtitle {
+    color: #6b7a8a;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #e1e8ed;
+    margin-bottom: 24px;
+    gap: 4px;
+  }
+  .tab {
+    padding: 10px 22px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #6b7a8a;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #1a3a5c; }
+  .tab.active {
+    color: #1a3a5c;
+    border-bottom-color: #2e7d5b;
+    font-weight: 600;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: #1a3a5c;
+    border-left: 4px solid #2e7d5b;
+    padding-left: 10px;
+  }
+  .card h3 {
+    font-size: 15px;
+    margin: 16px 0 8px;
+    color: #34495e;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .form-group { display: flex; flex-direction: column; }
+  .form-group label {
+    font-size: 13px;
+    color: #4a5a6a;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .form-group input, .form-group select {
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #2e7d5b;
+  }
+  .form-group .hint {
+    font-size: 12px;
+    color: #8a96a3;
+    margin-top: 4px;
+  }
+  .btn {
+    padding: 10px 24px;
+    background: #2e7d5b;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #245f46; }
+  .btn-secondary {
+    background: #6b7a8a;
+  }
+  .btn-secondary:hover { background: #4a5a6a; }
+  .result-box {
+    background: #f0f7f4;
+    border: 1px solid #c8e0d4;
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #d0e0d8;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-label { color: #4a5a6a; font-size: 14px; }
+  .result-value { color: #1a3a5c; font-weight: 600; font-size: 15px; }
+  .result-value.highlight { color: #c0392b; font-size: 18px; }
+  .warning {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #7a5a00;
+    border-radius: 4px;
+  }
+  .error-msg {
+    color: #c0392b;
+    font-size: 13px;
+    margin-top: 8px;
+    padding: 8px;
+    background: #fdecea;
+    border-radius: 4px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  .test-output {
+    background: #1e2733;
+    color: #d4dce4;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .test-pass { color: #7ee787; }
+  .test-fail { color: #ff7b72; }
+  .test-summary {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #f0f7f4;
+    border-radius: 5px;
+  }
+  .doc-content {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #2c3e50;
+  }
+  .doc-content h2 {
+    font-size: 20px;
+    margin: 24px 0 12px;
+    color: #1a3a5c;
+    border-left: 4px solid #2e7d5b;
+    padding-left: 10px;
+  }
+  .doc-content h3 {
+    font-size: 16px;
+    margin: 18px 0 10px;
+    color: #34495e;
+  }
+  .doc-content p { margin-bottom: 10px; }
+  .doc-content ul, .doc-content ol {
+    margin: 8px 0 12px 24px;
+  }
+  .doc-content li { margin-bottom: 4px; }
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #d0d7de;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .doc-content th {
+    background: #f0f4f8;
+    font-weight: 600;
+    color: #1a3a5c;
+  }
+  .doc-content code {
+    background: #f0f4f8;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c0392b;
+  }
+  .scenario {
+    background: #f8fafc;
+    border: 1px solid #e1e8ed;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 12px 0;
+  }
+  .scenario-title {
+    font-weight: 600;
+    color: #1a3a5c;
+    margin-bottom: 6px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #a0aab4;
+    font-family: monospace;
+  }
+  .radio-group {
+    display: flex;
+    gap: 16px;
+    margin: 8px 0;
+  }
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  @media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+    .container { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>安全系数与许用应力计算工具</h1>
+  <div class="subtitle">基于材料力学原理，计算常用工程材料的许用应力</div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="tool">计算工具</button>
+    <button class="tab" data-tab="test">单元测试</button>
+    <button class="tab" data-tab="doc">使用说明书</button>
+  </div>
+
+  <!-- 计算工具 -->
+  <div class="tab-content active" id="tool">
+    <div class="card">
+      <h2>材料选择</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>材料类型</label>
+          <div class="radio-group">
+            <label><input type="radio" name="matMode" value="preset" checked> 预设材料库</label>
+            <label><input type="radio" name="matMode" value="custom"> 自定义输入</label>
+          </div>
+        </div>
+        <div class="form-group" id="presetGroup">
+          <label>选择材料</label>
+          <select id="materialSelect"></select>
+          <div class="hint" id="materialHint"></div>
+        </div>
+      </div>
+      <div id="customGroup" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label>屈服强度 σ<sub>s</sub> (MPa)</label>
+            <input type="number" id="customYield" step="0.1" placeholder="塑性材料必填，脆性材料可填 0">
+          </div>
+          <div class="form-group">
+            <label>抗拉强度 σ<sub>b</sub> (MPa)</label>
+            <input type="number" id="customTensile" step="0.1" placeholder="必填，必须 > 0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>材料类型</label>
+          <div class="radio-group">
+            <label><input type="radio" name="matType" value="ductile" checked> 塑性材料（以屈服强度为基准）</label>
+            <label><input type="radio" name="matType" value="brittle"> 脆性材料（以抗拉强度为基准）</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>安全系数</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>基于屈服强度的安全系数 n<sub>s</sub></label>
+          <input type="number" id="sfYield" value="1.5" step="0.01" min="1">
+          <div class="hint">塑性材料推荐 1.2 ~ 1.5（一般），1.5 ~ 2.5（重要）</div>
+        </div>
+        <div class="form-group">
+          <label>基于抗拉强度的安全系数 n<sub>b</sub></label>
+          <input type="number" id="sfTensile" value="2.5" step="0.01" min="1">
+          <div class="hint">脆性材料推荐 2.0 ~ 3.5；塑性材料通常 2.0 ~ 3.0</div>
+        </div>
+      </div>
+      <div class="warning">
+        提示：安全系数需根据载荷性质（静/动/冲击）、材料均匀性、计算精度、工况重要性等综合确定。本工具给出的推荐值仅供参考，实际工程应依据相关设计规范。
+      </div>
+      <button class="btn" id="calcBtn">计算许用应力</button>
+      <button class="btn btn-secondary" id="resetBtn">重置</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <h2>计算结果</h2>
+      <div class="result-box">
+        <div class="result-item">
+          <span class="result-label">材料</span>
+          <span class="result-value" id="resMaterial">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">屈服强度 σ<sub>s</sub></span>
+          <span class="result-value" id="resYield">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">抗拉强度 σ<sub>b</sub></span>
+          <span class="result-value" id="resTensile">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">基于屈服的许用应力 [σ]<sub>s</sub> = σ<sub>s</sub> / n<sub>s</sub></span>
+          <span class="result-value" id="resAllowYield">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">基于抗拉的许用应力 [σ]<sub>b</sub> = σ<sub>b</sub> / n<sub>b</sub></span>
+          <span class="result-value" id="resAllowTensile">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">最终许用应力 [σ]（取较小值）</span>
+          <span class="result-value highlight" id="resFinal">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">计算基准</span>
+          <span class="result-value" id="resBasis">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 单元测试 -->
+  <div class="tab-content" id="test">
+    <div class="card">
+      <h2>单元测试</h2>
+      <p style="color:#6b7a8a; font-size:14px; margin-bottom:12px;">
+        纯 JS 实现，覆盖正常值、边界值、异常输入、精度问题等场景。点击按钮运行全部用例。
+      </p>
+      <button class="btn" id="runTestBtn">运行全部测试</button>
+      <div id="testSummary" class="test-summary" style="display:none; margin-top:16px;"></div>
+      <div class="test-output" id="testOutput" style="margin-top:12px; display:none;"></div>
+    </div>
+  </div>
+
+  <!-- 使用说明书 -->
+  <div class="tab-content" id="doc">
+    <div class="card doc-content">
+      <h2>一、工具简介</h2>
+      <p>本工具用于计算工程材料的<strong>许用应力</strong>（Allowable Stress），是机械设计与结构设计中的基础计算环节。许用应力是材料在正常工作条件下允许承受的最大应力值，是强度校核、截面设计、载荷确定的核心依据。</p>
+      <p>在工程设计中，材料实际承受的应力必须小于许用应力，即满足强度条件：<code>σ ≤ [σ]</code>。许用应力由材料的极限应力除以安全系数得到：</p>
+      <ul>
+        <li>塑性材料（如低碳钢、铝合金、铜合金）：以<strong>屈服强度 σ<sub>s</sub></strong> 为极限应力，<code>[σ] = σ<sub>s</sub> / n<sub>s</sub></code></li>
+        <li>脆性材料（如灰铸铁、陶瓷）：以<strong>抗拉强度 σ<sub>b</sub></strong> 为极限应力，<code>[σ] = σ<sub>b</sub> / n<sub>b</sub></code></li>
+      </ul>
+      <p>本工具内置了常用工程材料的力学性能数据库（来源于现行国家标准），并支持自定义材料输入，可快速完成许用应力计算，辅助工程师进行初步方案设计与强度校核。</p>
+
+      <h2>二、参数详细说明</h2>
+      <h3>2.1 屈服强度 σ<sub>s</sub>（单位：MPa）</h3>
+      <p>材料开始发生明显塑性变形时的应力值。对于有明显屈服平台的材料（如低碳钢），取屈服平台下限；对于无明显屈服点的材料（如铝合金、高强钢、调质钢），通常取规定塑性延伸强度 R<sub>p0.2</sub>（产生 0.2% 塑性应变时的应力）作为屈服强度。</p>
+      <ul>
+        <li><strong>取值范围：</strong>≥ 0 MPa。脆性材料无屈服现象，可填 0。</li>
+        <li><strong>数据来源：</strong>材料质保书、国标力学性能表、权威材料手册。</li>
+        <li><strong>注意事项：</strong>同一材料因热处理状态、试样尺寸、厚度不同，屈服强度会有差异。本工具材料库中的数值为国标规定的下限值或典型值，实际应以质保书为准。</li>
+      </ul>
+
+      <h3>2.2 抗拉强度 σ<sub>b</sub>（单位：MPa）</h3>
+      <p>材料在拉伸试验中能承受的最大工程应力，又称强度极限。对应拉伸曲线上的最高点。</p>
+      <ul>
+        <li><strong>取值范围：</strong>&gt; 0 MPa，必须为正数。</li>
+        <li><strong>与屈服强度的关系：</strong>塑性材料通常 σ<sub>b</sub> &gt; σ<sub>s</sub>；脆性材料 σ<sub>b</sub> 即为其断裂强度。</li>
+      </ul>
+
+      <h3>2.3 安全系数 n</h3>
+      <p>极限应力与许用应力的比值，反映设计中的安全裕度。安全系数越大，设计越保守，但材料利用率越低。</p>
+      <ul>
+        <li><strong>取值范围：</strong>1 &lt; n ≤ 100（工程上不允许 n ≤ 1，否则失去安全裕度意义；<strong>上限为 100</strong>，超过会报错，这是工具的输入限制而非工程规定）。</li>
+        <li><strong>基于屈服的安全系数 n<sub>s</sub>：</strong>塑性材料一般取 1.2 ~ 1.5；重要零件、动载荷、冲击载荷取 1.5 ~ 2.5。</li>
+        <li><strong>基于抗拉的安全系数 n<sub>b</sub>：</strong>脆性材料一般取 2.0 ~ 3.5；塑性材料校核时取 2.0 ~ 3.0。</li>
+        <li><strong>影响因素：</strong>载荷性质（静/动/冲击/交变）、材料均匀性、计算模型精度、失效后果严重性、制造工艺水平、使用环境（温度、腐蚀）等。</li>
+      </ul>
+
+      <h3>2.4 许用应力 [σ]（单位：MPa）</h3>
+      <p>计算结果，表示材料允许承受的最大工作应力。当同时给出基于屈服和基于抗拉的两个许用应力时，<strong>取较小值</strong>作为最终许用应力，以保证两种失效模式均安全。</p>
+
+      <h2>三、实际使用场景</h2>
+
+      <div class="scenario">
+        <div class="scenario-title">场景 1：Q235B 钢制拉杆的许用应力确定</div>
+        <p><strong>工况：</strong>某厂房吊杆采用 Q235B 圆钢，承受静拉伸载荷，一般重要性。</p>
+        <p><strong>输入：</strong>材料选择"Q235B 碳素结构钢"（自动填入 σ<sub>s</sub>=235 MPa，σ<sub>b</sub>=370 MPa）；n<sub>s</sub>=1.5，n<sub>b</sub>=2.5。</p>
+        <p><strong>结果：</strong>[σ]<sub>s</sub> = 235 / 1.5 ≈ 156.7 MPa；[σ]<sub>b</sub> = 370 / 2.5 = 148.0 MPa；最终许用应力 [σ] = 148.0 MPa（基于抗拉强度控制）。</p>
+        <p><strong>应用：</strong>根据 [σ] 和实际拉力 F，可计算所需截面积 A ≥ F / [σ]。</p>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">场景 2：45 钢正火轴的设计</div>
+        <p><strong>工况：</strong>某传动轴采用 45 钢正火处理，承受弯扭组合载荷，中等重要性。</p>
+        <p><strong>输入：</strong>材料选择"45 钢（正火）"（σ<sub>s</sub>=355 MPa，σ<sub>b</sub>=600 MPa）；n<sub>s</sub>=1.5，n<sub>b</sub>=2.5。</p>
+        <p><strong>结果：</strong>[σ]<sub>s</sub> = 355 / 1.5 ≈ 236.7 MPa；[σ]<sub>b</sub> = 600 / 2.5 = 240.0 MPa；最终许用应力 [σ] = 236.7 MPa（基于屈服强度控制）。</p>
+        <p><strong>应用：</strong>用于轴的弯扭合成强度校核，按第三或第四强度理论计算相当应力并比较。</p>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">场景 3：HT250 灰铸铁机座的许用应力</div>
+        <p><strong>工况：</strong>机床床身采用 HT250 灰铸铁，承受静载，脆性材料。</p>
+        <p><strong>输入：</strong>材料选择"HT250 灰铸铁"（σ<sub>s</sub>=0，σ<sub>b</sub>=250 MPa，脆性）；n<sub>b</sub>=3.0。</p>
+        <p><strong>结果：</strong>脆性材料以抗拉强度为基准，[σ] = 250 / 3.0 ≈ 83.3 MPa。</p>
+        <p><strong>应用：</strong>用于机座、箱体等铸件的强度校核。注意灰铸铁抗压强度远高于抗拉，受压工况许用应力可大幅提高（需查专门标准）。</p>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">场景 4：6061-T6 铝合金轻量化结构</div>
+        <p><strong>工况：</strong>无人机机架采用 6061-T6 铝合金型材，承受静载与轻度动载。</p>
+        <p><strong>输入：</strong>材料选择"6061-T6 铝合金"（σ<sub>s</sub>=240 MPa，σ<sub>b</sub>=290 MPa）；n<sub>s</sub>=1.5，n<sub>b</sub>=2.5。</p>
+        <p><strong>结果：</strong>[σ]<sub>s</sub> = 240 / 1.5 = 160.0 MPa；[σ]<sub>b</sub> = 290 / 2.5 = 116.0 MPa；最终 [σ] = 116.0 MPa（基于抗拉强度控制）。</p>
+        <p><strong>应用：</strong>用于轻量化结构的截面设计与强度校核。注意铝合金无明显屈服平台，σ<sub>s</sub> 实为 R<sub>p0.2</sub>。</p>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">场景 5：304 不锈钢化工容器受压元件</div>
+        <p><strong>工况：</strong>化工容器受压元件采用 06Cr19Ni10（304）不锈钢，常温工况。</p>
+        <p><strong>输入：</strong>材料选择"06Cr19Ni10 (304) 不锈钢"（σ<sub>s</sub>=205 MPa，σ<sub>b</sub>=515 MPa）；按 GB/T 150 压力容器规范，n<sub>s</sub>=1.5，n<sub>b</sub>=2.7。</p>
+        <p><strong>结果：</strong>[σ]<sub>s</sub> = 205 / 1.5 ≈ 136.7 MPa；[σ]<sub>b</sub> = 515 / 2.7 ≈ 190.7 MPa；最终 [σ] = 136.7 MPa（基于屈服强度控制）。</p>
+        <p><strong>应用：</strong>用于压力容器壁厚计算。注意：GB/T 150 中许用应力还受温度影响，高温下需查标准中的温度折减表，本工具仅适用于常温近似估算。</p>
+      </div>
+
+      <h2>四、常见错误与排查</h2>
+      <ul>
+        <li><strong>错误 1：安全系数输入 ≤ 1 或 &gt; 100。</strong>提示"安全系数必须大于 1"或超范围。工程上安全系数必须大于 1，否则失去安全裕度意义；本工具另设上限 100，用于拦截误输入（比如手滑多打一位），工程上不会用到这么大的安全系数。</li>
+        <li><strong>错误 2：抗拉强度输入 0 或负数。</strong>提示"抗拉强度必须大于 0"。抗拉强度是材料的基本力学性能，必须为正。</li>
+        <li><strong>错误 3：脆性材料误填屈服强度。</strong>灰铸铁、陶瓷等脆性材料无明显屈服现象，屈服强度应填 0，工具会自动按抗拉强度计算。</li>
+        <li><strong>错误 4：材料数据与实物不符。</strong>本工具材料库中的数值为国标下限或典型值，实际材料因批次、热处理、厚度不同会有差异，应以材料质保书为准。</li>
+        <li><strong>错误 5：忽视温度影响。</strong>高温下材料强度显著下降，本工具仅适用于常温（约 20°C）近似计算，高温工况需查相关标准中的温度折减系数。</li>
+        <li><strong>错误 6：忽视应力集中与疲劳。</strong>本工具计算的是静强度许用应力，对于交变载荷、应力集中严重的零件，应按疲劳强度另行校核。</li>
+      </ul>
+
+      <h2>五、数据来源与标准依据</h2>
+      <p>本工具材料库数据主要来源于以下现行国家标准（以标准发布时规定的力学性能为准）：</p>
+      <table>
+        <tr><th>材料</th><th>标准号</th><th>主要性能指标</th></tr>
+        <tr><td>Q235 碳素结构钢</td><td>GB/T 700-2006</td><td>屈服强度下限、抗拉强度范围</td></tr>
+        <tr><td>Q355 低合金高强度结构钢</td><td>GB/T 1591-2018</td><td>屈服强度下限、抗拉强度范围</td></tr>
+        <tr><td>优质碳素结构钢（20、45 等）</td><td>GB/T 699-2015</td><td>不同热处理状态下的力学性能</td></tr>
+        <tr><td>合金结构钢（40Cr 等）</td><td>GB/T 3077-2015</td><td>调质态力学性能</td></tr>
+        <tr><td>灰铸铁（HT 系列）</td><td>GB/T 9439-2010</td><td>抗拉强度（单铸试样）</td></tr>
+        <tr><td>球墨铸铁（QT 系列）</td><td>GB/T 1348-2009</td><td>屈服强度、抗拉强度、延伸率</td></tr>
+        <tr><td>变形铝及铝合金（6061 等）</td><td>GB/T 3190-2020</td><td>R<sub>p0.2</sub>、R<sub>m</sub></td></tr>
+        <tr><td>不锈钢棒（304、316 等）</td><td>GB/T 1220-2007</td><td>室温力学性能</td></tr>
+        <tr><td>加工铜及铜合金</td><td>GB/T 5231-2012</td><td>不同状态下的力学性能</td></tr>
+        <tr><td>碳素工具钢（T8、T10 等）</td><td>GB/T 1298-2008</td><td>退火态硬度、抗拉强度参考</td></tr>
+      </table>
+      <p>安全系数的推荐范围参考了机械设计教材（如濮良贵《机械设计》）及行业通用做法；压力容器相关安全系数参考 GB/T 150.1~150.4-2011《压力容器》；钢结构分项系数参考 GB 50017-2017《钢结构设计标准》。</p>
+      <p><strong>重要提示：</strong>具体工程设计应以现行有效版本的正式标准原文为准，本工具中的推荐值仅作学习、初步估算参考，不能替代正式设计计算。</p>
+
+      <h2>六、局限性说明</h2>
+      <p>本工具为辅助计算工具，存在以下局限性，使用者应充分了解：</p>
+      <ol>
+        <li><strong>仅适用于常温静强度近似计算。</strong>高温、低温、交变载荷、冲击载荷、腐蚀环境等工况下的许用应力需按专门标准确定，本工具不适用。</li>
+        <li><strong>材料数据为典型值或下限值。</strong>实际材料因批次、规格、热处理、制造工艺不同会有差异，正式设计必须以材料质保书或复验报告为准。</li>
+        <li><strong>未考虑应力集中、尺寸效应、表面状态等因素。</strong>这些因素会显著影响零件的实际承载能力，需在设计中另行考虑。</li>
+        <li><strong>未涵盖所有工程材料。</strong>材料库仅收录常用材料，特殊材料、进口材料、新型材料需用户自行输入力学性能。</li>
+        <li><strong>未进行疲劳、稳定性、刚度等校核。</strong>许用应力仅用于静强度校核，完整设计还需考虑疲劳寿命、压杆稳定、变形限制等。</li>
+        <li><strong>不替代正式设计规范。</strong>压力容器、锅炉、起重机械、桥梁、建筑等特种设备与重要结构有专门的设计规范（如 GB/T 150、GB 50017、GB 50010 等），必须按相应规范执行。</li>
+        <li><strong>计算结果仅供参考。</strong>本工具不对计算结果的正确性与工程适用性承担责任，正式工程设计应由具备相应资质的工程师完成并校核。</li>
+      </ol>
+
+      <h2>七、附录：许用应力计算公式汇总</h2>
+      <ul>
+        <li>塑性材料（基于屈服）：<code>[σ] = σ<sub>s</sub> / n<sub>s</sub></code></li>
+        <li>脆性材料（基于抗拉）：<code>[σ] = σ<sub>b</sub> / n<sub>b</sub></code></li>
+        <li>塑性材料同时校核两种失效模式时：<code>[σ] = min(σ<sub>s</sub>/n<sub>s</sub>, σ<sub>b</sub>/n<sub>b</sub>)</code></li>
+        <li>许用切应力（近似）：<code>[τ] ≈ (0.5 ~ 0.6) [σ]</code>（塑性材料）</li>
+        <li>许用挤压应力（近似）：<code>[σ<sub>bs</sub>] ≈ (1.5 ~ 2.5) [σ]</code>（钢对钢）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="version">v2.1.1-补文档披露与材料名 20261026</div>
+
+<script>
+/* =========================================================
+ * 第一部分：核心算法（纯函数，完整 JSDoc）
+ * ========================================================= */
+
+/**
+ * 材料数据库。数据来源于现行国家标准，为典型值或下限值。
+ * 实际工程应以材料质保书为准。
+ * @type {Object.<string, {name:string, yieldStrength:number, tensileStrength:number, type:string, standard:string, note:string}>}
+ */
+const MATERIAL_DATABASE = {
+  'Q235B': {
+    name: 'Q235B 碳素结构钢',
+    yieldStrength: 235,
+    tensileStrength: 370,
+    type: 'ductile',
+    standard: 'GB/T 700-2006',
+    note: '厚度 ≤ 16mm 时屈服强度下限；抗拉强度取下限定值'
+  },
+  'Q355B': {
+    name: 'Q355B 低合金高强度结构钢',
+    yieldStrength: 355,
+    tensileStrength: 470,
+    type: 'ductile',
+    standard: 'GB/T 1591-2018',
+    note: '厚度 ≤ 16mm 时屈服强度下限'
+  },
+  '20': {
+    name: '20 钢 优质碳素结构钢',
+    yieldStrength: 245,
+    tensileStrength: 410,
+    type: 'ductile',
+    standard: 'GB/T 699-2015',
+    note: '正火或热轧态，试样毛坯尺寸 25mm'
+  },
+  '45': {
+    name: '45 钢 优质碳素结构钢（正火）',
+    yieldStrength: 355,
+    tensileStrength: 600,
+    type: 'ductile',
+    standard: 'GB/T 699-2015',
+    note: '正火态推荐值；调质态性能更高，需查标准原文'
+  },
+  '40Cr': {
+    name: '40Cr 合金结构钢（调质）',
+    yieldStrength: 785,
+    tensileStrength: 980,
+    type: 'ductile',
+    standard: 'GB/T 3077-2015',
+    note: '调质态，试样毛坯尺寸 25mm'
+  },
+  'HT200': {
+    name: 'HT200 灰铸铁',
+    yieldStrength: 0,
+    tensileStrength: 200,
+    type: 'brittle',
+    standard: 'GB/T 9439-2010',
+    note: '单铸试样抗拉强度；灰铸铁无明显屈服点'
+  },
+  'HT250': {
+    name: 'HT250 灰铸铁',
+    yieldStrength: 0,
+    tensileStrength: 250,
+    type: 'brittle',
+    standard: 'GB/T 9439-2010',
+    note: '单铸试样抗拉强度'
+  },
+  'HT300': {
+    name: 'HT300 灰铸铁',
+    yieldStrength: 0,
+    tensileStrength: 300,
+    type: 'brittle',
+    standard: 'GB/T 9439-2010',
+    note: '单铸试样抗拉强度'
+  },
+  'QT500-7': {
+    name: 'QT500-7 球墨铸铁',
+    yieldStrength: 320,
+    tensileStrength: 500,
+    type: 'ductile',
+    standard: 'GB/T 1348-2009',
+    note: '球墨铸铁具有明显屈服现象'
+  },
+  'T2': {
+    name: 'T2 紫铜（软态）',
+    yieldStrength: 60,
+    tensileStrength: 200,
+    type: 'ductile',
+    standard: 'GB/T 5231-2012',
+    note: '软态（M）力学性能参考值；需查标准原文确认'
+  },
+  'H62': {
+    name: 'H62 黄铜（硬态）',
+    yieldStrength: 300,
+    tensileStrength: 390,
+    type: 'ductile',
+    standard: 'GB/T 5231-2012',
+    note: '硬态（Y）参考值；需查标准原文确认'
+  },
+  '6061-T6': {
+    name: '6061-T6 铝合金',
+    yieldStrength: 240,
+    tensileStrength: 290,
+    type: 'ductile',
+    standard: 'GB/T 3190-2020',
+    note: 'T6 时效处理态；σs 实为 Rp0.2'
+  },
+  '304': {
+    name: '06Cr19Ni10 (304) 不锈钢',
+    yieldStrength: 205,
+    tensileStrength: 515,
+    type: 'ductile',
+    standard: 'GB/T 1220-2007',
+    note: '室温固溶态力学性能'
+  },
+  '316': {
+    name: '06Cr17Ni12Mo2 (316) 不锈钢',
+    yieldStrength: 170,
+    tensileStrength: 485,
+    type: 'ductile',
+    standard: 'GB/T 1220-2007',
+    note: '室温固溶态力学性能'
+  }
+};
+
+/**
+ * 校验输入值是否为有效数字且在指定范围内
+ * @param {*} value - 待校验的值
+ * @param {number} min - 最小值（含）
+ * @param {number} max - 最大值（含）；Infinity 表示无上限
+ * @param {string} name - 参数名称，用于错误提示
+ * @returns {number} 校验通过后的数值
+ * @throws {Error} 当值不是有效数字或超出范围时抛出
+ * @example
+ * validateInput(235, 0, Infinity, '屈服强度'); // 返回 235
+ * validateInput(-1, 0, Infinity, '屈服强度'); // 抛出 Error
+ */
+function validateInput(value, min, max, name) {
+  if (value === null || value === undefined) {
+    throw new Error(name + ' 不能为 null 或 undefined');
+  }
+  if (typeof value !== 'number') {
+    throw new Error(name + ' 必须是数字类型');
+  }
+  if (Number.isNaN(value)) {
+    throw new Error(name + ' 不能为 NaN');
+  }
+  if (!Number.isFinite(value)) {
+    throw new Error(name + ' 必须为有限数值');
+  }
+  if (value < min) {
+    throw new Error(name + ' 不能小于 ' + min);
+  }
+  if (value > max) {
+    throw new Error(name + ' 不能大于 ' + max);
+  }
+  return value;
+}
+
+/**
+ * 基于屈服强度计算许用应力（适用于塑性材料）
+ * 公式：[σ] = σs / ns
+ * @param {number} yieldStrength - 屈服强度，单位 MPa，必须 ≥ 0
+ * @param {number} safetyFactor - 安全系数 ns，必须 > 1
+ * @returns {number} 许用应力，单位 MPa
+ * @throws {Error} 参数类型错误、超范围或安全系数 ≤ 1 时抛出
+ * @example
+ * calculateAllowableStressByYield(235, 1.5); // 返回 156.666...
+ * calculateAllowableStressByYield(355, 1.5); // 返回 236.666...
+ */
+function calculateAllowableStressByYield(yieldStrength, safetyFactor) {
+  validateInput(yieldStrength, 0, Infinity, '屈服强度');
+  validateInput(safetyFactor, 1.0000001, 100, '安全系数');
+  if (safetyFactor <= 1) {
+    throw new Error('安全系数必须大于 1');
+  }
+  return yieldStrength / safetyFactor;
+}
+
+/**
+ * 基于抗拉强度计算许用应力（适用于脆性材料或塑性材料的辅助校核）
+ * 公式：[σ] = σb / nb
+ * @param {number} tensileStrength - 抗拉强度，单位 MPa，必须 > 0
+ * @param {number} safetyFactor - 安全系数 nb，必须 > 1
+ * @returns {number} 许用应力，单位 MPa
+ * @throws {Error} 参数类型错误、超范围或安全系数 ≤ 1 时抛出
+ * @example
+ * calculateAllowableStressByTensile(370, 2.5); // 返回 148
+ * calculateAllowableStressByTensile(250, 3.0); // 返回 83.333...
+ */
+function calculateAllowableStressByTensile(tensileStrength, safetyFactor) {
+  validateInput(tensileStrength, 0.0000001, Infinity, '抗拉强度');
+  validateInput(safetyFactor, 1.0000001, 100, '安全系数');
+  if (safetyFactor <= 1) {
+    throw new Error('安全系数必须大于 1');
+  }
+  return tensileStrength / safetyFactor;
+}
+
+/**
+ * 综合计算许用应力：根据材料类型选择计算基准，并同时给出两种校核结果
+ * 塑性材料：以屈服强度为主，抗拉强度为辅，取两者较小值
+ * 脆性材料：仅以抗拉强度为基准
+ * @param {number} yieldStrength - 屈服强度，单位 MPa，≥ 0
+ * @param {number} tensileStrength - 抗拉强度，单位 MPa，> 0
+ * @param {number} safetyFactorYield - 基于屈服的安全系数 ns，> 1
+ * @param {number} safetyFactorTensile - 基于抗拉的安全系数 nb，> 1
+ * @param {boolean} isDuctile - 是否为塑性材料
+ * @returns {{allowByYield:number|null, allowByTensile:number, finalAllowable:number, basis:string}}
+ *   allowByYield: 基于屈服的许用应力（脆性材料为 null）
+ *   allowByTensile: 基于抗拉的许用应力
+ *   finalAllowable: 最终许用应力（取较小值）
+ *   basis: 计算基准说明
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * calculateAllowableStress(235, 370, 1.5, 2.5, true);
+ * // {allowByYield: 156.67, allowByTensile: 148, finalAllowable: 148, basis: '基于抗拉强度控制'}
+ */
+function calculateAllowableStress(yieldStrength, tensileStrength, safetyFactorYield, safetyFactorTensile, isDuctile) {
+  // 2026-10-21 修：安全系数原用裸比较，NaN/undefined 会绕过校验
+  validateInput(yieldStrength, 0, Infinity, '屈服强度');
+  validateInput(tensileStrength, 0.0000001, Infinity, '抗拉强度');
+  validateInput(safetyFactorYield, 1.0000001, 100, '基于屈服的安全系数');
+  validateInput(safetyFactorTensile, 1.0000001, 100, '基于抗拉的安全系数');
+  if (typeof isDuctile !== 'boolean') throw new Error('isDuctile 必须是布尔值');
+
+  var allowByYield = null;
+  var allowByTensile = tensileStrength / safetyFactorTensile;
+  var finalAllowable;
+  var basis;
+
+  if (isDuctile && yieldStrength > 0) {
+    allowByYield = yieldStrength / safetyFactorYield;
+    if (allowByYield <= allowByTensile) {
+      finalAllowable = allowByYield;
+      basis = '基于屈服强度控制';
+    } else {
+      finalAllowable = allowByTensile;
+      basis = '基于抗拉强度控制';
+    }
+  } else if (isDuctile) {
+    // 2026-10-21 修：塑性材料但屈服强度缺失，不能标成脆性材料
+    finalAllowable = allowByTensile;
+    basis = '塑性材料（未提供屈服强度），基于抗拉强度控制';
+  } else {
+    finalAllowable = allowByTensile;
+    basis = '脆性材料，基于抗拉强度';
+  }
+
+  return {
+    allowByYield: allowByYield,
+    allowByTensile: allowByTensile,
+    finalAllowable: finalAllowable,
+    basis: basis
+  };
+}
+
+/**
+ * 根据材料名称获取材料数据
+ * @param {string} materialName - 材料代号（如 'Q235B'、'45'、'HT200'）
+ * @returns {{name:string, yieldStrength:number, tensileStrength:number, type:string, standard:string, note:string}|null}
+ *   找到返回材料对象，未找到返回 null
+ * @throws {Error} 参数不是字符串时抛出
+ * @example
+ * getMaterialData('Q235B'); // 返回 Q235B 材料对象
+ * getMaterialData('NOT_EXIST'); // 返回 null
+ */
+function getMaterialData(materialName) {
+  if (typeof materialName !== 'string') {
+    throw new Error('材料名称必须是字符串');
+  }
+  if (materialName.trim() === '') {
+    throw new Error('材料名称不能为空');
+  }
+  return MATERIAL_DATABASE[materialName] || null;
+}
+
+/**
+ * 根据材料类型与应用场景推荐安全系数范围
+ * 推荐值来源于机械设计教材与行业通用做法，仅供参考
+ * @param {string} materialType - 材料类型：'ductile'（塑性）或 'brittle'（脆性）
+ * @param {string} application - 应用场景：'general'（一般）、'important'（重要）、'pressure_vessel'（压力容器）
+ * @returns {{nsMin:number, nsMax:number, nbMin:number, nbMax:number, note:string}}
+ *   nsMin/nsMax: 基于屈服的安全系数推荐范围
+ *   nbMin/nbMax: 基于抗拉的安全系数推荐范围
+ *   note: 说明
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * recommendSafetyFactor('ductile', 'general');
+ * // {nsMin:1.2, nsMax:1.5, nbMin:2.0, nbMax:3.0, note:'...'}
+ */
+function recommendSafetyFactor(materialType, application) {
+  if (materialType !== 'ductile' && materialType !== 'brittle') {
+    throw new Error('材料类型必须是 ductile 或 brittle');
+  }
+  if (['general', 'important', 'pressure_vessel'].indexOf(application) === -1) {
+    throw new Error('应用场景必须是 general、important 或 pressure_vessel');
+  }
+
+  if (materialType === 'ductile') {
+    if (application === 'general') {
+      return { nsMin: 1.2, nsMax: 1.5, nbMin: 2.0, nbMax: 3.0, note: '一般机械零件，静载荷' };
+    } else if (application === 'important') {
+      return { nsMin: 1.5, nsMax: 2.5, nbMin: 2.5, nbMax: 3.5, note: '重要零件，动载荷或计算精度较低' };
+    } else {
+      return { nsMin: 1.5, nsMax: 1.5, nbMin: 2.7, nbMax: 2.7, note: '按 GB/T 150 压力容器规范常温近似值' };
+    }
+  } else {
+    if (application === 'general') {
+      return { nsMin: 0, nsMax: 0, nbMin: 2.0, nbMax: 3.0, note: '脆性材料一般以抗拉强度为基准' };
+    } else if (application === 'important') {
+      return { nsMin: 0, nsMax: 0, nbMin: 3.0, nbMax: 4.0, note: '脆性材料重要零件，材质不均匀' };
+    } else {
+      return { nsMin: 0, nsMax: 0, nbMin: 3.0, nbMax: 4.0, note: '脆性材料压力容器参考值，需查标准原文' };
+    }
+  }
+}
+
+/**
+ * 将数值四舍五入到指定小数位
+ * @param {number} value - 待处理的数值
+ * @param {number} digits - 小数位数，0 ~ 10
+ * @returns {number} 四舍五入后的数值
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * roundTo(156.6666, 2); // 156.67
+ * roundTo(83.3333, 1); // 83.3
+ */
+function roundTo(value, digits) {
+  validateInput(value, -Infinity, Infinity, '数值');
+  validateInput(digits, 0, 10, '小数位数');
+  if (!Number.isInteger(digits)) {
+    throw new Error('小数位数必须是整数');
+  }
+  var factor = Math.pow(10, digits);
+  return Math.round(value * factor) / factor;
+}
+
+/* =========================================================
+ * 第二部分：单元测试（纯 JS，≥ 30 个用例）
+ * ========================================================= */
+
+var testPassed = 0;
+var testFailed = 0;
+var testLog = [];
+
+/**
+ * 断言相等（数值比较使用容差）
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} desc - 用例描述
+ * @param {number} [tolerance=1e-6] - 数值比较容差
+ */
+function assertEqual(actual, expected, desc, tolerance) {
+  tolerance = tolerance === undefined ? 1e-6 : tolerance;
+  var pass = false;
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    pass = Math.abs(actual - expected) < tolerance;
+  } else {
+    pass = actual === expected;
+  }
+  if (pass) {
+    testPassed++;
+    testLog.push('[PASS] ' + desc);
+  } else {
+    testFailed++;
+    testLog.push('[FAIL] ' + desc + ' | 期望: ' + expected + ' | 实际: ' + actual);
+  }
+}
+
+/**
+ * 断言抛出异常
+ * @param {Function} fn - 待测函数
+ * @param {string} desc - 用例描述
+ */
+function assertThrows(fn, desc) {
+  try {
+    fn();
+    testFailed++;
+    testLog.push('[FAIL] ' + desc + ' | 期望抛出异常但未抛出');
+  } catch (e) {
+    testPassed++;
+    testLog.push('[PASS] ' + desc + ' | 抛出: ' + e.message);
+  }
+}
+
+/**
+ * 运行全部测试用例
+ * @returns {{passed:number, failed:number, total:number, log:string[]}}
+ */
+function runAllTests() {
+  testPassed = 0;
+  testFailed = 0;
+  testLog = [];
+
+  // ---- calculateAllowableStressByYield 正常值 ----
+  assertEqual(
+    calculateAllowableStressByYield(235, 1.5),
+    235 / 1.5,
+    '基于屈服: Q235 ns=1.5 → 156.667'
+  );
+  assertEqual(
+    calculateAllowableStressByYield(355, 1.5),
+    355 / 1.5,
+    '基于屈服: Q355 ns=1.5 → 236.667'
+  );
+  assertEqual(
+    calculateAllowableStressByYield(785, 1.2),
+    785 / 1.2,
+    '基于屈服: 40Cr ns=1.2 → 654.167'
+  );
+  assertEqual(
+    calculateAllowableStressByYield(100, 2.0),
+    50,
+    '基于屈服: σs=100 ns=2.0 → 50'
+  );
+
+  // ---- calculateAllowableStressByYield 边界值 ----
+  assertEqual(
+    calculateAllowableStressByYield(0, 1.5),
+    0,
+    '基于屈服: σs=0 边界 → 0'
+  );
+  assertEqual(
+    calculateAllowableStressByYield(2000, 1.01),
+    2000 / 1.01,
+    '基于屈服: 大值 σs=2000 ns=1.01'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(-100, 1.5); },
+    '基于屈服: σs 负数应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, 1); },
+    '基于屈服: ns=1 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, 0.5); },
+    '基于屈服: ns<1 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, 0); },
+    '基于屈服: ns=0 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, -1); },
+    '基于屈服: ns 负数应抛错'
+  );
+
+  // ---- calculateAllowableStressByYield 异常输入 ----
+  assertThrows(
+    function () { calculateAllowableStressByYield(null, 1.5); },
+    '基于屈服: σs=null 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(undefined, 1.5); },
+    '基于屈服: σs=undefined 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(NaN, 1.5); },
+    '基于屈服: σs=NaN 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield('235', 1.5); },
+    '基于屈服: σs=字符串应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, null); },
+    '基于屈服: ns=null 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, NaN); },
+    '基于屈服: ns=NaN 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByYield(235, Infinity); },
+    '基于屈服: ns=Infinity 应抛错'
+  );
+
+  // ---- calculateAllowableStressByTensile 正常值 ----
+  assertEqual(
+    calculateAllowableStressByTensile(370, 2.5),
+    148,
+    '基于抗拉: Q235 nb=2.5 → 148'
+  );
+  assertEqual(
+    calculateAllowableStressByTensile(250, 3.0),
+    250 / 3,
+    '基于抗拉: HT250 nb=3.0 → 83.333'
+  );
+  assertEqual(
+    calculateAllowableStressByTensile(515, 2.7),
+    515 / 2.7,
+    '基于抗拉: 304 nb=2.7 → 190.74'
+  );
+
+  // ---- calculateAllowableStressByTensile 边界与异常 ----
+  assertThrows(
+    function () { calculateAllowableStressByTensile(0, 2.5); },
+    '基于抗拉: σb=0 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByTensile(-100, 2.5); },
+    '基于抗拉: σb 负数应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByTensile(370, 1); },
+    '基于抗拉: nb=1 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByTensile(null, 2.5); },
+    '基于抗拉: σb=null 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStressByTensile(NaN, 2.5); },
+    '基于抗拉: σb=NaN 应抛错'
+  );
+
+  // ---- calculateAllowableStress 综合 ----
+  var r1 = calculateAllowableStress(235, 370, 1.5, 2.5, true);
+  assertEqual(r1.allowByYield, 235 / 1.5, '综合: Q235 塑性 allowByYield');
+  assertEqual(r1.allowByTensile, 148, '综合: Q235 塑性 allowByTensile');
+  assertEqual(r1.finalAllowable, 148, '综合: Q235 塑性 finalAllowable (抗拉控制)');
+  assertEqual(r1.basis, '基于抗拉强度控制', '综合: Q235 塑性 basis');
+
+  var r2 = calculateAllowableStress(355, 600, 1.5, 2.5, true);
+  assertEqual(r2.finalAllowable, 355 / 1.5, '综合: 45钢 塑性 finalAllowable (屈服控制)');
+  assertEqual(r2.basis, '基于屈服强度控制', '综合: 45钢 塑性 basis');
+
+  var r3 = calculateAllowableStress(0, 250, 1.5, 3.0, false);
+  assertEqual(r3.allowByYield, null, '综合: HT250 脆性 allowByYield=null');
+  assertEqual(r3.finalAllowable, 250 / 3, '综合: HT250 脆性 finalAllowable');
+  assertEqual(r3.basis, '脆性材料，基于抗拉强度', '综合: HT250 脆性 basis');
+
+  assertThrows(
+    function () { calculateAllowableStress(235, 370, 1, 2.5, true); },
+    '综合: ns=1 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStress(235, 370, 1.5, 1, true); },
+    '综合: nb=1 应抛错'
+  );
+  assertThrows(
+    function () { calculateAllowableStress(235, 370, 1.5, 2.5, 'yes'); },
+    '综合: isDuctile 非布尔应抛错'
+  );
+
+  // ---- getMaterialData ----
+  var m1 = getMaterialData('Q235B');
+  assertEqual(m1.name, 'Q235B 碳素结构钢', '材料库: Q235B 名称');
+  assertEqual(m1.yieldStrength, 235, '材料库: Q235B σs');
+  assertEqual(getMaterialData('NOT_EXIST'), null, '材料库: 不存在返回 null');
+  assertThrows(
+    function () { getMaterialData(null); },
+    '材料库: null 应抛错'
+  );
+  assertThrows(
+    function () { getMaterialData(''); },
+    '材料库: 空字符串应抛错'
+  );
+  assertThrows(
+    function () { getMaterialData(123); },
+    '材料库: 数字应抛错'
+  );
+
+  // ---- recommendSafetyFactor ----
+  var rec1 = recommendSafetyFactor('ductile', 'general');
+  assertEqual(rec1.nsMin, 1.2, '推荐系数: 塑性一般 nsMin');
+  assertEqual(rec1.nsMax, 1.5, '推荐系数: 塑性一般 nsMax');
+  var rec2 = recommendSafetyFactor('brittle', 'important');
+  assertEqual(rec2.nbMin, 3.0, '推荐系数: 脆性重要 nbMin');
+  assertThrows(
+    function () { recommendSafetyFactor('wood', 'general'); },
+    '推荐系数: 非法材料类型应抛错'
+  );
+  assertThrows(
+    function () { recommendSafetyFactor('ductile', 'aerospace'); },
+    '推荐系数: 非法应用场景应抛错'
+  );
+
+  // ---- roundTo 精度 ----
+  assertEqual(roundTo(156.6666, 2), 156.67, '四舍五入: 156.6666 → 156.67');
+  assertEqual(roundTo(83.3333, 1), 83.3, '四舍五入: 83.3333 → 83.3');
+  assertEqual(roundTo(100 / 3, 4), 33.3333, '四舍五入: 100/3 → 33.3333');
+  assertEqual(roundTo(0.1 + 0.2, 10), 0.3, '四舍五入: 0.1+0.2 浮点误差修正');
+  assertThrows(
+    function () { roundTo(NaN, 2); },
+    '四舍五入: NaN 应抛错'
+  );
+  assertThrows(
+    function () { roundTo(100, 1.5); },
+    '四舍五入: 非整数小数位应抛错'
+  );
+
+  // ---- validateInput ----
+  assertEqual(validateInput(100, 0, 1000, '测试'), 100, '校验: 正常值通过');
+  assertThrows(
+    function () { validateInput(null, 0, 1000, '测试'); },
+    '校验: null 应抛错'
+  );
+  assertThrows(
+    function () { validateInput(undefined, 0, 1000, '测试'); },
+    '校验: undefined 应抛错'
+  );
+  assertThrows(
+    function () { validateInput(NaN, 0, 1000, '测试'); },
+    '校验: NaN 应抛错'
+  );
+  assertThrows(
+    function () { validateInput('100', 0, 1000, '测试'); },
+    '校验: 字符串应抛错'
+  );
+  assertThrows(
+    function () { validateInput(-1, 0, 1000, '测试'); },
+    '校验: 小于最小值应抛错'
+  );
+  assertThrows(
+    function () { validateInput(1001, 0, 1000, '测试'); },
+    '校验: 大于最大值应抛错'
+  );
+  assertThrows(
+    function () { validateInput(Infinity, 0, 1000, '测试'); },
+    '校验: Infinity 应抛错'
+  );
+
+  return {
+    passed: testPassed,
+    failed: testFailed,
+    total: testPassed + testFailed,
+    log: testLog
+  };
+}
+
+/* =========================================================
+ * 第三部分：UI 交互逻辑
+ * ========================================================= */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 初始化材料下拉
+(function initMaterialSelect() {
+  var sel = document.getElementById('materialSelect');
+  Object.keys(MATERIAL_DATABASE).forEach(function (key) {
+    var opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = MATERIAL_DATABASE[key].name + ' (' + key + ')';
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', updateMaterialHint);
+  updateMaterialHint();
+})();
+
+function updateMaterialHint() {
+  var key = document.getElementById('materialSelect').value;
+  var m = MATERIAL_DATABASE[key];
+  var hint = document.getElementById('materialHint');
+  if (m) {
+    hint.textContent = 'σs=' + m.yieldStrength + ' MPa，σb=' + m.tensileStrength + ' MPa，' + m.type + ' | 来源: ' + m.standard + '。' + m.note;
+  }
+}
+
+// 材料模式切换
+document.querySelectorAll('input[name="matMode"]').forEach(function (r) {
+  r.addEventListener('change', function () {
+    var isPreset = r.value === 'preset' && r.checked;
+    document.getElementById('presetGroup').style.display = isPreset ? '' : 'none';
+    document.getElementById('customGroup').style.display = isPreset ? 'none' : '';
+  });
+});
+
+// 计算按钮
+document.getElementById('calcBtn').addEventListener('click', function () {
+  var errBox = document.getElementById('errorMsg');
+  errBox.classList.remove('show');
+  errBox.textContent = '';
+  document.getElementById('resultCard').style.display = 'none';
+
+  try {
+    var mode = document.querySelector('input[name="matMode"]:checked').value;
+    var ys, ts, isDuctile, matName;
+
+    if (mode === 'preset') {
+      var key = document.getElementById('materialSelect').value;
+      var m = MATERIAL_DATABASE[key];
+      ys = m.yieldStrength;
+      ts = m.tensileStrength;
+      isDuctile = m.type === 'ductile';
+      matName = m.name;
+    } else {
+      var ysInput = document.getElementById('customYield').value;
+      var tsInput = document.getElementById('customTensile').value;
+      if (ysInput === '' || ysInput === null) {
+        throw new Error('请输入屈服强度（脆性材料可填 0）');
+      }
+      if (tsInput === '' || tsInput === null) {
+        throw new Error('请输入抗拉强度');
+      }
+      ys = parseFloat(ysInput);
+      ts = parseFloat(tsInput);
+      if (isNaN(ys)) throw new Error('屈服强度必须是有效数字');
+      if (isNaN(ts)) throw new Error('抗拉强度必须是有效数字');
+      isDuctile = document.querySelector('input[name="matType"]:checked').value === 'ductile';
+      matName = '自定义材料';
+    }
+
+    var ns = parseFloat(document.getElementById('sfYield').value);
+    var nb = parseFloat(document.getElementById('sfTensile').value);
+    if (isNaN(ns)) throw new Error('基于屈服的安全系数必须是有效数字');
+    if (isNaN(nb)) throw new Error('基于抗拉的安全系数必须是有效数字');
+
+    var result = calculateAllowableStress(ys, ts, ns, nb, isDuctile);
+
+    document.getElementById('resMaterial').textContent = matName;
+    document.getElementById('resYield').textContent = ys + ' MPa';
+    document.getElementById('resTensile').textContent = ts + ' MPa';
+    document.getElementById('resAllowYield').textContent = result.allowByYield === null ? 'N/A（脆性材料）' : roundTo(result.allowByYield, 2) + ' MPa';
+    document.getElementById('resAllowTensile').textContent = roundTo(result.allowByTensile, 2) + ' MPa';
+    document.getElementById('resFinal').textContent = roundTo(result.finalAllowable, 2) + ' MPa';
+    document.getElementById('resBasis').textContent = result.basis;
+    document.getElementById('resultCard').style.display = '';
+  } catch (e) {
+    errBox.textContent = '计算错误：' + e.message;
+    errBox.classList.add('show');
+  }
+});
+
+// 重置按钮
+document.getElementById('resetBtn').addEventListener('click', function () {
+  document.getElementById('sfYield').value = 1.5;
+  document.getElementById('sfTensile').value = 2.5;
+  document.getElementById('customYield').value = '';
+  document.getElementById('customTensile').value = '';
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('errorMsg').classList.remove('show');
+});
+
+// 运行测试按钮
+document.getElementById('runTestBtn').addEventListener('click', function () {
+  var result = runAllTests();
+  var summary = document.getElementById('testSummary');
+  var output = document.getElementById('testOutput');
+  summary.style.display = '';
+  output.style.display = '';
+  summary.textContent = '通过 ' + result.passed + ' / 共 ' + result.total + '（失败 ' + result.failed + '）';
+  summary.style.background = result.failed === 0 ? '#f0f7f4' : '#fdecea';
+  summary.style.color = result.failed === 0 ? '#1a5c3a' : '#8a1a1a';
+  output.textContent = result.log.join('\n');
+  // 同时输出到控制台
+  console.log('===== 单元测试结果 =====');
+  console.log('通过 ' + result.passed + ' / 共 ' + result.total);
+  result.log.forEach(function (line) { console.log(line); });
+});
+</script>
+</body>
+</html>

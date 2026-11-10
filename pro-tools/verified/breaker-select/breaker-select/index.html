@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>断路器与导线配合校核工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-light: #64748b;
+  --radius: 10px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 16px;
+  min-height: 100vh;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 22px;
+  text-align: center;
+  margin-bottom: 6px;
+  color: var(--primary-dark);
+}
+.subtitle {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border: 1px solid var(--border);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: var(--text);
+}
+.form-group .hint {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: normal;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fff;
+}
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn:hover { background: var(--primary-dark); }
+.btn:active { transform: scale(0.98); }
+.result-section {
+  display: none;
+}
+.result-section.show {
+  display: block;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.result-item:last-child { border-bottom: none; }
+.result-label { color: var(--text-light); }
+.result-value {
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+.result-value.highlight {
+  color: var(--primary);
+  font-size: 16px;
+}
+.check-pass {
+  color: var(--success);
+  font-weight: 600;
+}
+.check-fail {
+  color: var(--danger);
+  font-weight: 600;
+}
+.check-warn {
+  color: var(--warning);
+  font-weight: 600;
+}
+.formula-box {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.8;
+  border-left: 3px solid var(--primary);
+}
+.formula-box code {
+  font-family: "Courier New", monospace;
+  background: #e2e8f0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.note-box {
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #92400e;
+}
+.note-box strong { color: #78350f; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 10px 0;
+}
+table th, table td {
+  padding: 8px 6px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  font-size: 12px;
+}
+table tr.recommended {
+  background: #eff6ff;
+  font-weight: 600;
+}
+table tr.too-small {
+  color: #999;
+}
+.source-section {
+  font-size: 13px;
+  color: var(--text-light);
+  line-height: 1.8;
+}
+.source-section h3 {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.source-section ul {
+  padding-left: 20px;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 10px;
+  font-size: 11px;
+  color: #94a3b8;
+  z-index: 100;
+}
+.step-list {
+  font-size: 13px;
+  line-height: 2;
+  padding-left: 18px;
+}
+.step-list li { margin-bottom: 2px; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-blue { background: #dbeafe; color: #1d4ed8; }
+.badge-green { background: #dcfce7; color: #166534; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.badge-yellow { background: #fef9c3; color: #854d0e; }
+@media (max-width: 640px) {
+  body { padding: 10px; font-size: 14px; }
+  .card { padding: 16px; }
+  h1 { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚡ 断路器与导线配合校核</h1>
+  <p class="subtitle">依据 GB 50054 / GB/T 10963 / GB/T 16895.15</p>
+
+  <!-- 输入区 -->
+  <div class="card">
+    <div class="card-title">📝 参数输入</div>
+    <div class="form-group">
+      <label>负载功率 P <span class="hint">(kW)</span></label>
+      <input type="number" id="inputPower" value="15" min="0" step="0.1" placeholder="请输入负载功率">
+    </div>
+    <div class="form-group">
+      <label>线电压 U <span class="hint">(V)</span></label>
+      <select id="inputVoltage">
+        <option value="380" selected>380 V（三相）</option>
+        <option value="660">660 V（三相）</option>
+        <option value="220">220 V（单相）</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>功率因数 cosφ</label>
+      <input type="number" id="inputPF" value="0.85" min="0.1" max="1" step="0.01">
+    </div>
+    <div class="form-group">
+      <label>敷设方式 <span class="hint">(影响载流量)</span></label>
+      <select id="installMethod">
+        <option value="B1" selected>B1 — 绝缘导线穿管敷设在墙上</option>
+        <option value="B2">B2 — 多芯电缆穿管敷设在墙上</option>
+        <option value="C">C — 明敷在墙上（夹/钉）</option>
+        <option value="E">E — 明敷在支架/托盘上</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>环境温度 <span class="hint">(°C，30°C 为基准)</span></label>
+      <input type="number" id="inputTemp" value="30" min="-5" max="80" step="1">
+    </div>
+    <button class="btn" id="btnCalc" onclick="calculate()">🔍 计算并校核</button>
+  </div>
+
+  <!-- 计算结果 -->
+  <div class="card result-section" id="resultSection">
+    <div class="card-title">📊 计算结果</div>
+    <div class="formula-box" id="formulaDisplay"></div>
+    <div class="result-item">
+      <span class="result-label">计算电流 I<sub>js</sub></span>
+      <span class="result-value highlight" id="resCurrent">—</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">推荐断路器额定电流 I<sub>n</sub></span>
+      <span class="result-value highlight" id="resBreaker">—</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">推荐导线截面积</span>
+      <span class="result-value highlight" id="resConductor">—</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">导线允许载流量 I<sub>z</sub></span>
+      <span class="result-value" id="resAmpacity">—</span>
+    </div>
+  </div>
+
+  <!-- 校核结论 -->
+  <div class="card result-section" id="checkSection">
+    <div class="card-title">✅ 校核结论</div>
+    <div id="checkResults"></div>
+  </div>
+
+  <!-- 导线载流量参考表 -->
+  <div class="card result-section" id="tableSection">
+    <div class="card-title">📋 导线载流量参考表</div>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:8px;">铜芯 PVC 绝缘导线/电缆，当前参数下的修正载流量：</p>
+    <div style="overflow-x:auto;">
+      <table id="ampTable"></table>
+    </div>
+    <div class="note-box">
+      <strong>⚠️ 注意：</strong>表中数据基于 GB/T 16895.15（等同采用 IEC 60364-5-52）附录 B 的参考值，经温度修正系数换算。实际工程中还需考虑并列敷设修正、谐波修正、电压降校验等因素，具体表值及修正系数请查标准原文。
+    </div>
+  </div>
+
+  <!-- 计算说明 -->
+  <div class="card">
+    <div class="card-title">📖 计算原理</div>
+    <div class="formula-box">
+      <strong>三相计算电流：</strong><br>
+      <code>I<sub>js</sub> = P / (√3 × U × cosφ)</code><br><br>
+      <strong>单相计算电流：</strong><br>
+      <code>I<sub>js</sub> = P / (U × cosφ)</code><br><br>
+      <strong>断路器选择原则（GB 50054）：</strong><br>
+      <code>I<sub>n</sub> ≥ I<sub>js</sub></code>，取 IEC 标准额定值系列中 ≥ I<sub>js</sub> 的最小值<br><br>
+      <strong>导线载流量校核（GB 50054 §6.3.3）：</strong><br>
+      <code>I<sub>z</sub> ≥ I<sub>n</sub></code><br>
+      即导线允许载流量应不小于断路器额定电流<br><br>
+      <strong>温度修正系数：</strong><br>
+      <code>k<sub>t</sub> = √((θ<sub>max</sub> − θ<sub>a</sub>) / (θ<sub>max</sub> − 30))</code><br>
+      其中 θ<sub>max</sub>=70°C（PVC绝缘），θ<sub>a</sub> 为实际环境温度
+    </div>
+    <div style="margin-top:10px;">
+      <strong style="font-size:14px;">选择步骤：</strong>
+      <ol class="step-list">
+        <li>由负载功率计算计算电流 I<sub>js</sub></li>
+        <li>选取 IEC 标准额定电流系列（6/10/16/20/25/32/40/50/63/80/100A）中 ≥ I<sub>js</sub> 的最小值作为断路器 I<sub>n</sub></li>
+        <li>查导线载流量表，选取 I<sub>z</sub> ≥ I<sub>n</sub> 的最小截面积</li>
+        <li>校核 I<sub>z</sub> ≥ I<sub>n</sub> 是否满足</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 数据来源 -->
+  <div class="card">
+    <div class="source-section">
+      <h3>📚 数据来源</h3>
+      <ul>
+        <li><strong>GB 50054-2011</strong>《低压配电设计规范》— 导线选择与保护配合要求（§6.3）</li>
+        <li><strong>GB/T 10963.1-2005</strong>《电气附件 家用及类似场所用过电流保护断路器》— 断路器额定值标准系列</li>
+        <li><strong>GB/T 16895.15-2002</strong>《建筑物电气装置 第5部分：电气设备的选择和安装 第523节：载流量》（等同采用 IEC 60364-5-52）— 导线载流量参考表</li>
+        <li><strong>IEC 60898-1</strong> — 断路器额定电流标准系列：6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100 A</li>
+        <li>温度修正系数公式依据 GB/T 16895.15 中给出的修正方法</li>
+      </ul>
+      <div class="note-box" style="margin-top:12px;">
+        <strong>免责声明：</strong>本工具仅供学习参考和初步估算。实际工程设计须由注册电气工程师依据完整标准及现场条件进行详细计算和校验，包括但不限于：短路校验、电压降校验、接地故障保护校验、并列敷设修正等。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="version-tag">v1.0.0-断路器导线配合校核 20261021</div>
+
+<script>
+// IEC 标准断路器额定电流系列 (A)
+const BREAKER_RATINGS = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125];
+
+// 导线截面积 (mm²)
+const CONDUCTOR_SIZES = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240];
+
+// 基准载流量 (A)，30°C 环境温度，PVC 绝缘铜导体
+// 数据来源：GB/T 16895.15 / IEC 60364-5-52 附录B 参考值
+// 不同敷设方式对应不同表格
+const AMPACITY_DATA = {
+  // 敷设方式 B1: 绝缘导线穿管在墙上 (参考 IEC Table B.52.1, 2 loaded conductors for single-phase, 3 for three-phase)
+  // 此处给出三芯电缆/三根导线穿管的参考值
+  B1: {
+    label: "B1 - 绝缘导线穿管敷设在墙上",
+    // 截面积: [2芯载流量, 3芯载流量]
+    data: {
+      1.5:  [17.5, 15.5],
+      2.5:  [24,   21],
+      4:    [32,   28],
+      6:    [41,   36],
+      10:   [57,   50],
+      16:   [76,   68],
+      25:   [101,  89],
+      35:   [125,  110],
+      50:   [153,  134],
+      70:   [196,  171],
+      95:   [238,  207],
+      120:  [276,  239],
+      150:  [316,  270],
+      185:  [361,  310],
+      240:  [426,  364]
+    }
+  },
+  B2: {
+    label: "B2 - 多芯电缆穿管敷设在墙上",
+    data: {
+      1.5:  [17.5, 15],
+      2.5:  [24,   19.5],
+      4:    [32,   26],
+      6:    [41,   33],
+      10:   [57,   46],
+      16:   [76,   61],
+      25:   [101,  80],
+      35:   [125,  99],
+      50:   [153,  118],
+      70:   [196,  151],
+      95:   [238,  182],
+      120:  [276,  210],
+      150:  [316,  238],
+      185:  [361,  269],
+      240:  [426,  312]
+    }
+  },
+  C: {
+    label: "C - 明敷在墙上（夹/钉固定）",
+    data: {
+      1.5:  [22,   18.5],
+      2.5:  [30,   25],
+      4:    [40,   34],
+      6:    [51,   43],
+      10:   [70,   60],
+      16:   [94,   80],
+      25:   [119,  101],
+      35:   [148,  126],
+      50:   [180,  153],
+      70:   [232,  196],
+      95:   [282,  238],
+      120:  [328,  276],
+      150:  [377,  316],
+      185:  [433,  361],
+      240:  [512,  424]
+    }
+  },
+  E: {
+    label: "E - 明敷在支架/托盘/线槽上",
+    data: {
+      1.5:  [22,   19.5],
+      2.5:  [30,   26],
+      4:    [40,   35],
+      6:    [51,   45],
+      10:   [70,   61],
+      16:   [94,   82],
+      25:   [119,  104],
+      35:   [148,  128],
+      50:   [180,  155],
+      70:   [232,  199],
+      95:   [282,  242],
+      120:  [328,  281],
+      150:  [377,  322],
+      185:  [433,  370],
+      240:  [512,  436]
+    }
+  }
+};
+
+function calculate() {
+  const P = parseFloat(document.getElementById('inputPower').value);
+  const U = parseFloat(document.getElementById('inputVoltage').value);
+  const cosPhi = parseFloat(document.getElementById('inputPF').value);
+  const method = document.getElementById('installMethod').value;
+  const tempA = parseFloat(document.getElementById('inputTemp').value);
+
+  // 输入校验
+  if (isNaN(P) || P <= 0) {
+    alert('请输入有效的负载功率（>0）');
+    return;
+  }
+  if (isNaN(cosPhi) || cosPhi <= 0 || cosPhi > 1) {
+    alert('请输入有效的功率因数（0~1之间）');
+    return;
+  }
+  if (isNaN(tempA)) {
+    alert('请输入有效的环境温度');
+    return;
+  }
+
+  // 计算电流
+  let Ijs;
+  let formulaText;
+  const Pw = P * 1000; // 转换为 W
+
+  if (U === 220) {
+    // 单相
+    Ijs = Pw / (U * cosPhi);
+    formulaText = `<strong>计算过程：</strong><br>` +
+      `I<sub>js</sub> = P / (U × cosφ)<br>` +
+      `I<sub>js</sub> = ${P}×1000 / (${U} × ${cosPhi})<br>` +
+      `I<sub>js</sub> = <strong>${Ijs.toFixed(2)} A</strong>`;
+  } else {
+    // 三相
+    Ijs = Pw / (Math.sqrt(3) * U * cosPhi);
+    formulaText = `<strong>计算过程：</strong><br>` +
+      `I<sub>js</sub> = P / (√3 × U × cosφ)<br>` +
+      `I<sub>js</sub> = ${P}×1000 / (√3 × ${U} × ${cosPhi})<br>` +
+      `I<sub>js</sub> = <strong>${Ijs.toFixed(2)} A</strong>`;
+  }
+
+  // 选择断路器额定电流
+  let In = null;
+  for (let i = 0; i < BREAKER_RATINGS.length; i++) {
+    if (BREAKER_RATINGS[i] >= Ijs) {
+      In = BREAKER_RATINGS[i];
+      break;
+    }
+  }
+  if (In === null) {
+    In = BREAKER_RATINGS[BREAKER_RATINGS.length - 1];
+  }
+
+  // 温度修正系数
+  // k_t = sqrt((70 - theta_a) / (70 - 30))
+  const thetaMax = 70; // PVC 绝缘最高允许温度
+  let kt;
+  if (tempA >= thetaMax) {
+    kt = 0;
+  } else {
+    kt = Math.sqrt((thetaMax - tempA) / (thetaMax - 30));
+  }
+
+  // 获取载流量数据
+  const ampData = AMPACITY_DATA[method].data;
+  // 三相用3芯载流量(index 1)，单相用2芯(index 0)
+  const colIdx = (U === 220) ? 0 : 1;
+
+  // 选择导线截面积：Iz(修正后) >= In
+  let selectedSize = null;
+  let selectedIz = null;
+  let selectedIzBase = null;
+
+  for (let i = 0; i < CONDUCTOR_SIZES.length; i++) {
+    const size = CONDUCTOR_SIZES[i];
+    if (ampData[size]) {
+      const izBase = ampData[size][colIdx];
+      const izCorrected = izBase * kt;
+      if (izCorrected >= In) {
+        selectedSize = size;
+        selectedIz = izCorrected;
+        selectedIzBase = izBase;
+        break;
+      }
+    }
+  }
+
+  // 显示结果
+  document.getElementById('formulaDisplay').innerHTML = formulaText +
+    (tempA !== 30 ? `<br><br><strong>温度修正：</strong> k<sub>t</sub> = √((70−${tempA})/(70−30)) = ${kt.toFixed(4)}` : '');
+
+  document.getElementById('resCurrent').textContent = Ijs.toFixed(2) + ' A';
+  document.getElementById('resBreaker').innerHTML = In + ' A <span class="badge badge-blue">IEC标准系列</span>';
+
+  if (selectedSize !== null) {
+    document.getElementById('resConductor').innerHTML = selectedSize + ' mm² <span class="badge badge-green">满足要求</span>';
+    document.getElementById('resAmpacity').textContent = selectedIz.toFixed(1) + ' A' +
+      (tempA !== 30 ? ` (基准${selectedIzBase}A × ${kt.toFixed(3)})` : '');
+  } else {
+    document.getElementById('resConductor').innerHTML = '<span class="badge badge-red">超出范围</span>';
+    document.getElementById('resAmpacity').textContent = '—';
+  }
+
+  // 校核结论
+  let checkHTML = '';
+
+  // 校核1: In >= Ijs
+  if (In >= Ijs) {
+    checkHTML += `<div class="result-item">
+      <span class="result-label">I<sub>n</sub> ≥ I<sub>js</sub> (${In}A ≥ ${Ijs.toFixed(2)}A)</span>
+      <span class="check-pass">✅ 满足</span>
+    </div>`;
+  } else {
+    checkHTML += `<div class="result-item">
+      <span class="result-label">I<sub>n</sub> ≥ I<sub>js</sub></span>
+      <span class="check-fail">❌ 不满足</span>
+    </div>`;
+  }
+
+  // 校核2: Iz >= In
+  if (selectedSize !== null && selectedIz >= In) {
+    checkHTML += `<div class="result-item">
+      <span class="result-label">I<sub>z</sub> ≥ I<sub>n</sub> (${selectedIz.toFixed(1)}A ≥ ${In}A)</span>
+      <span class="check-pass">✅ 满足</span>
+    </div>`;
+  } else if (selectedSize === null) {
+    checkHTML += `<div class="result-item">
+      <span class="result-label">I<sub>z</sub> ≥ I<sub>n</sub></span>
+      <span class="check-fail">❌ 超出导线载流量范围，请选择更大截面或降低负载</span>
+    </div>`;
+  } else {
+    checkHTML += `<div class="result-item">
+      <span class="result-label">I<sub>z</sub> ≥ I<sub>n</sub></span>
+      <span class="check-fail">❌ 不满足</span>
+    </div>`;
+  }
+
+  // 校核3: 余量提示
+  if (selectedSize !== null) {
+    const margin = ((selectedIz - In) / In * 100).toFixed(1);
+    if (parseFloat(margin) < 10) {
+      checkHTML += `<div class="result-item">
+        <span class="result-label">载流量余量</span>
+        <span class="check-warn">⚠️ ${margin}%（偏小，建议选大一规格）</span>
+      </div>`;
+    } else {
+      checkHTML += `<div class="result-item">
+        <span class="result-label">载流量余量</span>
+        <span class="check-pass">✅ ${margin}%</span>
+      </div>`;
+    }
+  }
+
+  // 额外提示
+  if (Ijs > 100) {
+    checkHTML += `<div class="note-box" style="margin-top:10px;">
+      <strong>💡 提示：</strong>计算电流超过 100A，可能需要选用框架断路器（ACB）或带互感器的塑壳断路器（MCCB），本工具标准系列仅覆盖到 100A。
+    </div>`;
+  }
+
+  document.getElementById('checkResults').innerHTML = checkHTML;
+
+  // 生成载流量参考表
+  let tableHTML = `<thead><tr>
+    <th>截面积<br>(mm²)</th>
+    <th>基准载流量<br>(A)</th>
+    <th>修正后载流量<br>(A)</th>
+    <th>是否满足<br>I<sub>z</sub>≥${In}A</th>
+  </tr></thead><tbody>`;
+
+  for (let i = 0; i < CONDUCTOR_SIZES.length; i++) {
+    const size = CONDUCTOR_SIZES[i];
+    if (!ampData[size]) continue;
+    const izBase = ampData[size][colIdx];
+    const izCorrected = izBase * kt;
+    const pass = izCorrected >= In;
+    const isRecommended = (size === selectedSize);
+
+    let rowClass = '';
+    if (isRecommended) rowClass = 'recommended';
+    else if (!pass) rowClass = 'too-small';
+
+    tableHTML += `<tr class="${rowClass}">
+      <td>${size}</td>
+      <td>${izBase}</td>
+      <td>${izCorrected.toFixed(1)}</td>
+      <td>${pass ? '<span class="check-pass">✅</span>' : '<span class="check-fail">❌</span>'}${isRecommended ? ' ⭐' : ''}</td>
+    </tr>`;
+  }
+  tableHTML += '</tbody>';
+  document.getElementById('ampTable').innerHTML = tableHTML;
+
+  // 显示结果区域
+  document.getElementById('resultSection').classList.add('show');
+  document.getElementById('checkSection').classList.add('show');
+  document.getElementById('tableSection').classList.add('show');
+
+  // 滚动到结果
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// 页面加载时自动计算一次
+window.addEventListener('DOMContentLoaded', function() {
+  calculate();
+});
+</script>
+</body>
+</html>

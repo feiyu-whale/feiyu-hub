@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网页端本地 AI 推理 Demo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(160deg, #0a1628 0%, #0d2137 100%);
+  color: #d8e6f5; min-height: 100vh; padding: 14px; line-height: 1.6;
+}
+.wrap { max-width: 900px; margin: 0 auto; }
+h1 { font-size: 18px; color: #7dd3fc; margin-bottom: 4px; }
+.sub { font-size: 12px; color: #6b8299; margin-bottom: 14px; }
+.card {
+  background: rgba(15, 32, 51, 0.85); border: 1px solid #1e3a5f;
+  border-radius: 10px; padding: 14px; margin-bottom: 12px;
+}
+.env { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; font-size: 12px; }
+.env div { background: #0d2137; padding: 7px 9px; border-radius: 6px; border: 1px solid #1a3050; }
+.env b { color: #7dd3fc; display: block; font-size: 11px; font-weight: 500; margin-bottom: 2px; }
+.ok { color: #4ade80; } .bad { color: #f87171; } .warn { color: #fbbf24; }
+button {
+  background: #1d4ed8; color: #fff; border: 0; padding: 9px 18px;
+  border-radius: 7px; font-size: 13px; cursor: pointer; font-weight: 500;
+}
+button:hover:not(:disabled) { background: #2563eb; }
+button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+.bar { height: 6px; background: #1a3050; border-radius: 3px; overflow: hidden; margin: 9px 0 5px; }
+.bar > div { height: 100%; width: 0; background: linear-gradient(90deg, #3b82f6, #22d3ee); transition: width .25s; }
+.status { font-size: 12px; color: #7dd3fc; min-height: 18px; }
+textarea {
+  width: 100%; background: #0d2137; border: 1px solid #1a3050; color: #d8e6f5;
+  border-radius: 7px; padding: 9px; font-size: 13px; font-family: inherit; resize: vertical;
+}
+#out {
+  background: #0a1a2e; border: 1px solid #1a3050; border-radius: 7px;
+  padding: 10px; min-height: 100px; font-size: 13px; white-space: pre-wrap;
+  word-break: break-word; max-height: 340px; overflow-y: auto;
+}
+.meta { font-size: 11px; color: #6b8299; margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+.version { position: fixed; bottom: 6px; right: 9px; font-size: 10px; color: #3f5771; }
+label { font-size: 12px; color: #8ba8c4; display: block; margin: 8px 0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐳 网页端本地 AI 推理 Demo</h1>
+  <div class="sub">模型跑在你自己的浏览器里，不连服务器，不花 API 费用</div>
+<div style="font-size:11px;color:#fbbf24;margin-bottom:10px">注：页面中的模型体积、库版本、采样参数（temperature=0.7、max_new_tokens=120）及 dtype 映射均为经验估算值，未经标准或文献核对，仅供参考。</div>
+
+  <div class="card">
+    <div class="env" id="env">
+      <div><b>WebGPU</b><span id="e-gpu">检测中…</span></div>
+      <div><b>CPU 核心</b><span id="e-cpu">-</span></div>
+      <div><b>内存</b><span id="e-mem">-</span></div>
+      <div><b>运行后端</b><span id="e-backend">-</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>选择模型</label>
+    <select id="model" style="width:100%;background:#0d2137;border:1px solid #1a3050;color:#d8e6f5;border-radius:7px;padding:9px;font-size:13px;">
+      <option value="onnx-community/Qwen2.5-0.5B-Instruct" data-size="460">Qwen2.5-0.5B-Instruct（中文，约 460MB）</option>
+      <option value="Xenova/distilgpt2" data-size="80">distilgpt2（英文，约 80MB，快但只会续写）</option>
+    </select>
+    <div style="margin-top:10px">
+      <button id="run2" disabled>准备中…</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>输入</label>
+    <textarea id="inp" rows="3" placeholder="加载完成后在这里输入…">用一句话介绍你自己</textarea>
+    <div style="margin-top:9px">
+      <button id="run" disabled>生成</button>
+      <label>温度 temperature（0.1–2.0）</label>
+      <input id="temp" type="number" step="0.1" min="0.1" max="2" value="0.7" style="width:100%;background:#0d2137;border:1px solid #1a3050;color:#d8e6f5;border-radius:7px;padding:7px;font-size:13px;">
+      <label>最大生成长度 max_new_tokens（1–512）</label>
+      <input id="maxtok" type="number" step="1" min="1" max="512" value="120" style="width:100%;background:#0d2137;border:1px solid #1a3050;color:#d8e6f5;border-radius:7px;padding:7px;font-size:13px;">
+    </div>
+    <label style="margin-top:12px">输出</label>
+    <div id="out">（等待生成）</div>
+    <div class="meta">
+      <span id="m-speed">速度: -</span>
+      <span id="m-tokens">token: -</span>
+      <span id="m-time">耗时: -</span>
+    </div>
+  </div>
+</div>
+<div id="status" class="status" style="display:none"></div>
+<div id="bar" class="bar" style="display:none"><div id="bar-fill"></div></div>
+<div class="version">v1.1.2-静默预载-修审查问题 20261108</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+
+let pipe = null, ready = false, booting = null, currentModel = null;
+const LIB_CDNS = [
+  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2',
+  'https://unpkg.com/@huggingface/transformers@3.0.2',
+  'https://registry.npmmirror.com/@huggingface/transformers/3.0.2/files/dist/transformers.min.js'
+];
+let _lib = null;
+
+async function getLib() {
+  if (_lib) return _lib;
+  for (const url of LIB_CDNS) {
+    try { _lib = await import(url); return _lib; } catch (e) {}
+  }
+  throw new Error('lib load failed');
+}
+
+function setBtn(txt, enabled) {
+  const b = $('run2');
+  b.textContent = txt;
+  b.disabled = !enabled;
+}
+
+// 静默预载：页面一打开就在后台跑，不提示、不显示进度
+async function boot() {
+  if (booting) return booting;
+  booting = (async () => {
+    try {
+      const { pipeline, env } = await getLib();
+      env.allowLocalModels = false;
+      env.remoteHost = 'https://hf-mirror.com';
+
+      const modelId = $('model').value;
+      currentModel = modelId;
+      const hasGpu = !!navigator.gpu;
+      const device = hasGpu ? 'webgpu' : 'wasm';
+      $('e-backend').textContent = device.toUpperCase();
+      if (device === 'wasm') $('e-backend').textContent = 'WASM（低内存设备上 q8 量化可能内存不足，加载失败请换用 WebGPU 浏览器）';
+
+      pipe = await pipeline('text-generation', modelId, {
+        device,
+        dtype: device === 'webgpu' ? 'q4f16' : 'q8', // 固定为该映射，无来源，见页面顶部说明
+        progress_callback: (p) => {
+          if (p && p.status === 'progress' && p.file && typeof p.progress === 'number') {
+            $('status').style.display = '';
+            $('status').textContent = '正在下载模型 ' + (p.file.split('/').pop()) + '：' + p.progress.toFixed(1) + '%';
+            $('bar').style.display = '';
+            $('bar-fill').style.width = Math.min(100, p.progress) + '%';
+          } else if (p && p.status === 'done') {
+            $('status').style.display = '';
+            $('status').textContent = '模型文件下载完成，正在初始化…';
+          }
+        }
+      });
+      ready = true;
+      $('status').style.display = 'none';
+      $('status').textContent = '';
+      $('bar').style.display = 'none';
+      $('bar-fill').style.width = '0';
+      $('run').disabled = false;
+      setBtn('生成', true);
+    } catch (e) {
+      console.error(e);
+      $('status').style.display = '';
+      $('status').textContent = '模型加载失败，请点击「重试」按钮。';
+      setBtn('重试', true);
+      $('run2').dataset.retry = '1';
+      $('bar').style.display = 'none';
+      $('bar-fill').style.width = '0';
+    }
+  })();
+  return booting;
+}
+
+// 环境检测（保持可见，这几个格子有用）
+(async () => {
+  const gpuEl = $('e-gpu');
+  if (navigator.gpu) {
+    try {
+      const a = await navigator.gpu.requestAdapter();
+      gpuEl.textContent = a ? '可用 ✓' : '无适配器';
+      gpuEl.className = a ? 'ok' : 'warn';
+    } catch (e) { gpuEl.textContent = '异常'; gpuEl.className = 'bad'; }
+  } else {
+    gpuEl.textContent = '不支持 ✗'; gpuEl.className = 'bad';
+  }
+  $('e-cpu').textContent = (navigator.hardwareConcurrency || '?') + ' 核';
+  $('e-mem').textContent = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '未知';
+})();
+
+// 页面加载即开跑，不等用户点
+setBtn('准备中…', false);
+$('run').onclick = () => { if (ready) generate(); };
+$('run2').onclick = () => {
+  if ($('run2').dataset.retry) {
+    delete $('run2').dataset.retry;
+    booting = null; ready = false; setBtn('准备中…', false); boot();
+  } else {
+    generate();
+  }
+};
+boot();
+
+// 换模型 = 重新静默预载
+$('model').onchange = () => {
+  if (currentModel === $('model').value) return;
+  ready = false; pipe = null; booting = null;
+  setBtn('准备中…', false);
+  boot();
+};
+
+async function generate() {
+  if (!ready || !pipe) return;
+  if (!$('inp').value.trim()) {
+    $('out').textContent = '提示：请输入内容后再生成。';
+    return;
+  }
+  $('run2').disabled = true;
+  $('run').disabled = true;
+  $('out').textContent = '';
+  $('m-speed').textContent = '速度: -';
+  $('m-tokens').textContent = 'token: -';
+  $('m-time').textContent = '耗时: -';
+
+  const prompt = $('inp').value;
+  const temperature = parseFloat($('temp').value);
+  const maxNew = parseInt($('maxtok').value, 10);
+  if (!(temperature > 0 && temperature <= 2) || !(maxNew >= 1 && maxNew <= 512)) {
+    $('out').textContent = '提示：参数无效。temperature 需在 0.1–2.0，max_new_tokens 需为 1–512 的整数。';
+    $('run2').disabled = false;
+    $('run').disabled = false;
+    return;
+  }
+  const t0 = performance.now();
+  let count = 0;
+
+  try {
+    const { TextStreamer } = await getLib();
+    const streamer = new TextStreamer(pipe.tokenizer, {
+      skip_prompt: true,
+      callback_function: (txt) => {
+        $('out').textContent += txt;
+        count++;
+        const sec = (performance.now() - t0) / 1000;
+        if (sec > 0.3) $('m-speed').textContent = '速度: ' + (count / sec).toFixed(1) + ' 段/s（含首 token 前耗时，为保守估计）';
+        $('out').scrollTop = $('out').scrollHeight;
+      }
+    });
+    await pipe(prompt, { max_new_tokens: maxNew, do_sample: true, temperature, streamer });
+    const sec = (performance.now() - t0) / 1000;
+    $('m-time').textContent = '耗时: ' + sec.toFixed(2) + ' s';
+    $('m-tokens').textContent = '段: ' + count + '（按流式回调次数计，非精确 token 数）';
+    if (count > 0 && sec > 0) $('m-speed').textContent = '速度: ' + (count / sec).toFixed(1) + ' 段/s';
+    else $('m-speed').textContent = '速度: -';
+  } catch (e) {
+    $('out').textContent = '生成失败：' + (e.message || e);
+  } finally {
+    $('run2').disabled = false;
+    $('run').disabled = false;
+  }
+}
+
+// 点击处理已统一放在上方：#run 仅触发生成，#run2 含重试分流
+</script>
+</body>
+</html>

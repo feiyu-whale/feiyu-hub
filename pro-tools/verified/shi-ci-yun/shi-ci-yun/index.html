@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>诗韵与词韵 · 平水韵106部 / 词林正韵19部</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f1e8;color:#3a2e1f;font-size:15px;line-height:1.6;padding:12px}
+.wrap{max-width:640px;margin:0 auto;padding-bottom:60px}
+header{text-align:center;padding:16px 8px;border-bottom:2px solid #8b6f47;margin-bottom:16px}
+header h1{font-size:22px;color:#5c3a1e;letter-spacing:2px}
+header p{font-size:13px;color:#7a5c3a;margin-top:4px}
+.tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.tab{flex:1;min-width:90px;padding:10px 6px;background:#e8dcc4;border:1px solid #b89a6e;border-radius:6px 6px 0 0;text-align:center;font-size:14px;cursor:pointer;color:#5c3a1e}
+.tab.active{background:#8b6f47;color:#fff;font-weight:bold}
+.panel{display:none;background:#fffaf0;border:1px solid #b89a6e;border-radius:0 0 6px 6px;padding:12px}
+.panel.active{display:block}
+.search{width:100%;padding:10px;font-size:15px;border:1px solid #b89a6e;border-radius:4px;background:#fff;margin-bottom:10px}
+.btn{display:inline-block;padding:8px 14px;background:#8b6f47;color:#fff;border:none;border-radius:4px;font-size:14px;cursor:pointer;margin:2px}
+.btn:hover{background:#6b4f27}
+.btn-sm{padding:4px 8px;font-size:13px;background:#c9a97a;color:#3a2e1f}
+.btn-sm:hover{background:#b89a6e}
+.result{margin-top:10px;padding:10px;background:#fff;border:1px solid #d4b88c;border-radius:4px;min-height:40px;font-size:14px}
+.result .label{color:#8b6f47;font-weight:bold;margin-bottom:4px}
+.result .chars{font-size:16px;line-height:1.8;letter-spacing:1px;word-break:break-all}
+.rhyme-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:8px}
+.rhyme-item{padding:8px;background:#f5e8d0;border:1px solid #d4b88c;border-radius:4px;text-align:center;cursor:pointer;font-size:13px}
+.rhyme-item:hover{background:#e8d4b0}
+.rhyme-item.selected{background:#8b6f47;color:#fff}
+.group-title{font-size:15px;font-weight:bold;color:#5c3a1e;margin:12px 0 6px;padding:4px 8px;background:#e8dcc4;border-left:4px solid #8b6f47}
+.cilin-item{padding:10px;margin:6px 0;background:#f5e8d0;border:1px solid #d4b88c;border-radius:4px}
+.cilin-item .num{display:inline-block;width:28px;height:28px;line-height:28px;text-align:center;background:#8b6f47;color:#fff;border-radius:50%;margin-right:6px;font-weight:bold}
+.cilin-item .map{font-size:13px;color:#5c3a1e;margin-top:4px;line-height:1.6}
+.source{margin-top:24px;padding:12px;background:#fff;border:1px solid #b89a6e;border-radius:4px;font-size:13px;color:#5c3a1e;line-height:1.8}
+.source h3{font-size:15px;margin-bottom:6px;color:#5c3a1e}
+.source ul{padding-left:20px}
+.version{position:fixed;right:8px;bottom:8px;font-size:11px;color:#8b6f47;background:rgba(255,250,240,0.9);padding:2px 6px;border-radius:3px}
+.note{font-size:12px;color:#8b6f47;margin-top:6px;font-style:italic}
+.highlight{background:#ffeaa7;padding:0 2px;border-radius:2px}
+@media(max-width:480px){
+body{font-size:14px;padding:8px}
+header h1{font-size:19px}
+.rhyme-list{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>📜 诗韵与词韵</h1>
+<p>平水韵106韵部 · 词林正韵19部 查询工具</p>
+</header>
+
+<div class="tabs">
+<div class="tab active" data-tab="bychar">🔍 按字查韵</div>
+<div class="tab" data-tab="byrhyme">📖 按韵查字</div>
+<div class="tab" data-tab="cilin">📚 词林正韵</div>
+</div>
+
+<div class="panel active" id="panel-bychr">
+<input type="text" class="search" id="charInput" placeholder="输入汉字（可多字，如"明月"），查询其平水韵韵部">
+<button class="btn" onclick="queryChar()">查询</button>
+<div class="result" id="charResult">
+<div class="label">查询结果</div>
+<div class="chars">请输入汉字后点击查询</div>
+</div>
+<div class="note">注：平水韵为近体诗用韵标准，分平上去入四声，共106韵部。</div>
+</div>
+
+<div class="panel" id="panel-byrhyme">
+<div class="group-title">上平声（15韵）</div>
+<div class="rhyme-list" id="list-pingshang"></div>
+<div class="group-title">下平声（15韵）</div>
+<div class="rhyme-list" id="list-pingxia"></div>
+<div class="group-title">上声（29韵）</div>
+<div class="rhyme-list" id="list-shang"></div>
+<div class="group-title">去声（30韵）</div>
+<div class="rhyme-list" id="list-qu"></div>
+<div class="group-title">入声（17韵）</div>
+<div class="rhyme-list" id="list-ru"></div>
+<div class="result" id="rhymeResult" style="margin-top:12px">
+<div class="label">韵部内容</div>
+<div class="chars">点击上方韵部查看该部所含汉字</div>
+</div>
+<div class="note">注：每部所列为本部常用字，完整字表请查阅《平水韵》原文。</div>
+</div>
+
+<div class="panel" id="panel-cilin">
+<p style="font-size:14px;margin-bottom:10px">《词林正韵》清·戈载编，分19部，为词体用韵标准。每部统摄平水韵若干韵部（平上去入通押）。</p>
+<div id="cilinList"></div>
+<div class="note">注：词韵每部包含平、上、去（或入）若干韵部，可通押。</div>
+</div>
+
+<div class="source">
+<h3>📖 数据来源</h3>
+<ul>
+<li>《平水韵》：南宋·刘渊《壬子新刊礼部韵略》所并106韵，为后世近体诗用韵通行标准。韵部名称及分合据清代通行本《佩文韵府》所录106部分类。</li>
+<li>《词林正韵》：清·戈载编，分19部，为词体用韵之权威标准。</li>
+<li>各韵部所含字据《佩文韵府》《广韵》《集韵》等韵书通行本收录，本工具仅列常用字，完整字表请查阅原书。</li>
+<li>参考：王力《汉语诗律学》、郭锡良《汉字古音手册》。</li>
+</ul>
+</div>
+</div>
+
+<div class="version">v1.0.0-诗韵查询 20261021</div>
+
+<script>
+// 平水韵106韵部数据（常用字）
+const pingshang = {
+"一东":"东同铜桐筒童僮瞳中衷忠虫冲终崇嵩菘戎绒弓躬宫穹融雄熊穷冯风枫丰充隆空公功工攻蒙笼聋珑洪红鸿虹丛翁聪通蓬烘潼胧砻峒螽梦",
+"二冬":"冬农宗钟钟舂松冲容蓉庸封胸雍浓重从逢缝踪茸峰锋烽蜂逢",
+"三江":"江扛窗邦缸降双庞撞幢桩淙",
+"四支":"支枝移为垂吹陂碑奇宜仪皮儿离施知驰池规危夷师姿迟龟眉悲之芝时诗棋旗辞词期祠基疑姬丝司葵医帷思滋持随痴维卮墀糜脂雌披嬉尸狸炊篱兹差骑隋而髭罴治饴沂其麒歧曦窥",
+"五微":"微薇晖辉韦围帏违霏菲飞妃非扉肥腓归机几岂希稀衣依矶饥",
+"六鱼":"鱼渔初书舒居裾车渠余予誉舆如储狙徐除闾锄疏蔬梳储嘘",
+"七虞":"虞愚娱隅区驱朱珠株蛛殊儒濡襦须需诛厨躇蜺无芜巫于盂臾俞逾",
+"八齐":"齐黎犁梨妻萋凄堤低题提蹄啼鸡稽迷泥溪西栖犀嘶撕",
+"九佳":"佳街鞋牌柴钗差涯教阶偕谐怀排牌",
+"十灰":"灰恢魁隈回徊梅媒煤雷催摧堆杯枚",
+"十一真":"真因茵辛新薪晨辰臣人仁神亲申身宾滨槟缤邻鳞麟珍瞋尘陈春津秦频银垠筠",
+"十二文":"文闻纹蚊云分云氛纷焚勋君军均斤芹殷",
+"十三元":"元原源园猿辕坦烦繁蕃樊翻萱喧冤言轩藩魂浑温孙门尊存蹲敦墩吞屯豚",
+"十四寒":"寒韩翰丹单安鞍难餐坛滩檀弹竿干肝冠观欢宽盘磐看刊丸桓纨端湍酸团抟攒官瘅",
+"十五删":"删潸关弯还环鳏班斑颁斑蛮颜奸攀顽山闲艰间悭"
+};
+const pingxia = {
+"一先":"先前千阡笺天坚肩贤弦烟燕莲怜田填钿年颠巅牵妍眠渊涓捐娟边编悬泉全仙鲜钱煎然延筵禅蝉缠连廛",
+"二萧":"萧箫挑貂刁凋雕迢条跳苕调枭浇聊辽寥撩寮僚尧宵消绡超潮嘲桥娇焦蕉椒烧遥姚辽谣瑶韶招飘",
+"三肴":"肴巢交郊茅嘲钞抄胶爻苞梢蛟庖匏坳敲",
+"四豪":"豪毫操髦绦刀萄猱褒高糟糕韬曹遭陶骚搔缫袍牢",
+"五歌":"歌多罗河戈阿和波科柯陀娥蛾鹅萝荷过磨螺禾窠哥娑驼",
+"六麻":"麻花霞家茶华沙车牙蛇瓜斜邪芽嘉瑕纱鸦些叉葩枒楂赊",
+"七阳":"阳扬杨香乡光昌堂章张王房芳长塘妆常凉霜藏场央泱鸯秧嫱床方浆觞梁娘庄黄仓皇装忘襄湘相箱创勷",
+"八庚":"庚更羹盲鸣晴明英京惊平声轻名倾宏黉",
+"九青":"青经泾形刑型陉亭庭廷霆蜓停丁馨星腥醒灵龄铃苓伶零领翎",
+"十蒸":"蒸承丞惩澄陵凌绫菱冰膺鹰应蝇乘升胜兴凭仍",
+"十一尤":"尤邮优忧流留旒榴硫刘由油游猷悠攸牛修羞秋周州洲舟酬仇柔俦畴筹稠丘抽瘳遒收鸠搜泅休囚求裘",
+"十二侵":"侵寻浔林霖临针箴斟沈音阴淫岑涔禽擒",
+"十三覃":"覃潭谭谈南男楠庵含涵酣蓝谙簪参骖",
+"十四盐":"盐檐廉帘嫌严占髯谦签奁淹尖纤歼恬瞻蟾",
+"十五咸":"咸缄衔岩帆凡杉芟谗"
+};
+const shangsheng = {
+"一董":"董动孔总笼汞桶捅蓊",
+"二肿":"肿种踵宠陇垄拥壅冗重冢奉捧勇涌踊俑甬恿",
+"三讲":"讲港棒蚌项",
+"四纸":"纸只咫是枳砥靡髓彼毁委诡傀累妓绮此蕊尔迩",
+"五尾":"尾鬼苇卉几伟斐菲岂",
+"六语":"语圉御吕侣旅杼伫与予渚煮汝茹暑鼠黍渚贮褚",
+"七麌":"麌雨羽禹宇舞父府腑虎弩圃土组主拄",
+"八荠":"荠礼体米启陛洗抵底棣",
+"九蟹":"蟹解骇买洒楷摆拐",
+"十贿":"贿悔罪采在宰载海改待乃",
+"十一轸":"轸敏允引尽隼准盾忍紧泯",
+"十二吻":"吻粉蕴愤隐谨近",
+"十三阮":"阮远本晚苑返反阪损饭偃衮稳蹇婉琬",
+"十四旱":"旱暖管满短馆缓盥碗懒伞卵散伴断纂",
+"十五潸":"潸眼板产限柬拣板",
+"十六铣":"铣浅典选转扁犬畎免卷辇展蹇翦",
+"十七筱":"筱小表鸟了晓少扰绕绍杳窈袅",
+"十八巧":"巧饱卯狡爪挠拗",
+"十九皓":"皓宝早老草道稻造讨考袄缟好浩",
+"二十哿":"哿火舸柁我荷可坷",
+"二十一马":"马下者野雅瓦寡社写舍夏假",
+"二十二养":"养痒象像上仰朗奖桨敞氅颡强",
+"二十三梗":"梗影景井岭领境警请饼永骋逞颖颍整",
+"二十四迥":"迥炯茗挺艇梃醒",
+"二十五有":"有酒首手口母后柳友妇斗狗久厚首叟守右否受牖偶走",
+"二十六寝":"寝锦品饮审枕稔沈凛",
+"二十七感":"感揽胆淡坎惨敢颔",
+"二十八俭":"俭琰染点簟贬检敛",
+"二十九豏":"豏槛范犯"
+};
+const qusheng = {
+"一送":"送梦凤洞众弄冻痛仲恸",
+"二宋":"宋用颂诵讼纵",
+"三绛":"绛降巷",
+"四寘":"寘置意地志思泪吏赐字义利器位议至翠备媚记弃事饵",
+"五未":"未味气贵沸慰尉谓",
+"六御":"御处虑誉去署据驭助庶绪序御",
+"七遇":"遇树路露务雾赋布步固素具数怒务",
+"八霁":"霁制势世弊艺卫惠弟闭祭替际",
+"九泰":"泰带外大会最贝害奈蔼",
+"十卦":"卦挂画懈隘卖",
+"十一队":"队内辈佩退碎背秽对废悔",
+"十二震":"震信印进润阵镇刃顺慎鬓晋骏闰",
+"十三问":"问闻运晕训奋郡分",
+"十四愿":"愿万饭献建健宪曼贩",
+"十五翰":"翰瀚岸汉难断乱叹观散畔换算腕",
+"十六谏":"谏雁患涧间宦晏慢盼",
+"十七霰":"霰殿面县变箭线战缮膳",
+"十八啸":"啸笑照庙妙窍诏叫要",
+"十九效":"效教貌校孝闹豹爆",
+"二十号":"号帽报导盗操噪灶奥告",
+"二十一箇":"箇个贺佐大饿过那",
+"二十二禡":"禡驾夜下谢榭罢夏暇借",
+"二十三漾":"漾望相将量唱让样酿向仗行尚",
+"二十四敬":"敬命政令镜正病姓圣咏",
+"二十五径":"径定听胜磬应乘佞",
+"二十六宥":"宥候就授秀绣右囿豆漏陋富寇",
+"二十七沁":"沁饮禁任荫",
+"二十八勘":"勘暗滥啖担憾",
+"二十九艳":"艳念验赡占",
+"三十陷":"陷鉴监泛梵"
+};
+const rusheng = {
+"一屋":"屋木竹目服福禄谷熟肉族鹿腹陆牧逐屋轴缩肃六",
+"二沃":"沃俗玉足曲粟烛属录辱狱绿",
+"三觉":"觉角捉剥琢卓桌倬",
+"四质":"质日笔出室实疾术一乙壹吉秩密八毕匹",
+"五物":"物物拂郁佛弗",
+"六月":"月骨发阙越谒没伐罚卒竭窟笏",
+"七曷":"曷达末阔活钵脱夺褐割沫拔葛渴拨豁",
+"八黠":"黠札拔猾",
+"九屑":"屑节雪绝列烈结穴说血舌洁别缺裂热决铁灭折拙切悦辙诀",
+"十药":"药薄恶略作乐落阁鹤爵弱约脚雀幕洛壑索博",
+"十一陌":"陌石客白泽伯迹宅席策碧柏麦脉额",
+"十二锡":"锡壁历击绩笛敌滴觅寂系隔溺",
+"十三职":"职国德食蚀色力翼墨极息直得北黑侧饰贼刻则塞式轼",
+"十四缉":"缉辑立集邑急入泣湿习给十拾袭及级涩",
+"十五合":"合塔答纳阁",
+"十六叶":"叶帖接妾猎涉蝶叠谍",
+"十七洽":"洽恰狭峡侠甲押鸭"
+};
+
+// 合并所有韵部
+const allRhymes = {};
+const rhymeMeta = {}; // 记录每个韵部属于哪个声调
+function addGroup(group, obj, tone){
+for(let k in obj){
+allRhymes[k] = obj[k];
+rhymeMeta[k] = {tone:tone, group:group};
+}
+}
+addGroup("上平",pingshang,"平");
+addGroup("下平",pingxia,"平");
+addGroup("上声",shangsheng,"仄");
+addGroup("去声",qusheng,"仄");
+addGroup("入声",rusheng,"仄");
+
+// 构建字->韵部索引
+const charIndex = {};
+for(let rn in allRhymes){
+const chars = allRhymes[rn];
+for(let i=0;i<chars.length;i++){
+const c = chars[i];
+if(!charIndex[c]) charIndex[c] = [];
+if(charIndex[c].indexOf(rn)===-1) charIndex[c].push(rn);
+}
+}
+
+// 词林正韵19部
+const cilin = [
+{num:1,name:"第一部",rhymes:["一东","二冬","一董","二肿","一送","二宋"],desc:"东冬董肿送宋"},
+{num:2,name:"第二部",rhymes:["三江","三讲","三绛"],desc:"江讲绛"},
+{num:3,name:"第三部",rhymes:["四支","五微","八齐","十灰","四纸","五尾","八荠","十贿","四寘","五未","八霁","九泰","十卦","十一队"],desc:"支微齐灰 / 纸尾荠贿 / 寘未霁泰卦队"},
+{num:4,name:"第四部",rhymes:["六鱼","七虞","六语","七麌","六御","七遇"],desc:"鱼虞 / 语麌 / 御遇"},
+{num:5,name:"第五部",rhymes:["九佳","九蟹","九泰(半)","十卦(半)"],desc:"佳 / 蟹 / 泰卦(半)"},
+{num:6,name:"第六部",rhymes:["十一真","十二文","十三元","十四寒","十五删","一先","十一轸","十二吻","十三阮","十四旱","十五潸","十六铣","十二震","十三问","十四愿","十五翰","十六谏","十七霰"],desc:"真文元寒删先 / 轸吻阮旱潸铣 / 震问愿翰谏霰"},
+{num:7,name:"第七部",rhymes:["二萧","三肴","四豪","十七筱","十八巧","十九皓","十八啸","十九效","二十号"],desc:"萧肴豪 / 筱巧皓 / 啸效号"},
+{num:8,name:"第八部",rhymes:["五歌","二十哿","二十一箇"],desc:"歌 / 哿 / 箇"},
+{num:9,name:"第九部",rhymes:["六麻","二十一马","二十二禡"],desc:"麻 / 马 / 禡"},
+{num:10,name:"第十部",rhymes:["七阳","二十二养","二十三漾"],desc:"阳 / 养 / 漾"},
+{num:11,name:"第十一部",rhymes:["八庚","九青","十蒸","二十三梗","二十四迥","二十四敬","二十五径"],desc:"庚青蒸 / 梗迥 / 敬径"},
+{num:12,name:"第十二部",rhymes:["十一尤","二十五有","二十六宥"],desc:"尤 / 有 / 宥"},
+{num:13,name:"第十三部",rhymes:["十二侵","二十六寝","二十七沁"],desc:"侵 / 寝 / 沁"},
+{num:14,name:"第十四部",rhymes:["十三覃","十四盐","十五咸","二十七感","二十八俭","二十九豏","二十八勘","二十九艳","三十陷"],desc:"覃盐咸 / 感俭豏 / 勘艳陷"},
+{num:15,name:"第十五部",rhymes:["一屋","二沃"],desc:"屋沃（入声）"},
+{num:16,name:"第十六部",rhymes:["三觉"],desc:"觉（入声）"},
+{num:17,name:"第十七部",rhymes:["四质","五物","六月","七曷","八黠","九屑"],desc:"质物月曷黠屑（入声）"},
+{num:18,name:"第十八部",rhymes:["十药","十一陌","十二锡","十三职"],desc:"药陌锡职（入声）"},
+{num:19,name:"第十九部",rhymes:["十四缉","十五合","十六叶","十七洽"],desc:"缉合叶洽（入声）"}
+];
+
+// 渲染韵部列表
+function renderRhymeList(containerId, obj){
+const c = document.getElementById(containerId);
+let html = "";
+for(let k in obj){
+html += '<div class="rhyme-item" data-rhyme="'+k+'" onclick="showRhyme(this,\''+k+'\')">'+k+'</div>';
+}
+c.innerHTML = html;
+}
+renderRhymeList("list-pingshang",pingshang);
+renderRhymeList("list-pingxia",pingxia);
+renderRhymeList("list-shang",shangsheng);
+renderRhymeList("list-qu",qusheng);
+renderRhymeList("list-ru",rusheng);
+
+function showRhyme(el, name){
+document.querySelectorAll(".rhyme-item").forEach(e=>e.classList.remove("selected"));
+el.classList.add("selected");
+const chars = allRhymes[name];
+const meta = rhymeMeta[name];
+document.getElementById("rhymeResult").innerHTML = 
+'<div class="label">'+name+'（'+meta.group+'声 · '+meta.tone+'声)</div>'+
+'<div class="chars">'+chars+'</div>'+
+'<div class="note">共 '+chars.length+' 字（常用字，完整字表请查《平水韵》原文）</div>';
+}
+
+// 按字查韵
+function queryChar(){
+const input = document.getElementById("charInput").value.trim();
+if(!input){
+document.getElementById("charResult").innerHTML = '<div class="label">查询结果</div><div class="chars">请输入汉字</div>';
+return;
+}
+let html = '<div class="label">查询结果</div>';
+let found = false;
+for(let i=0;i<input.length;i++){
+const c = input[i];
+if(/[\u4e00-\u9fa5]/.test(c)){
+const rhyms = charIndex[c];
+if(rhyms && rhyms.length>0){
+found = true;
+const details = rhyms.map(r=>{
+const m = rhymeMeta[r];
+return '<span class="highlight">'+r+'</span>（'+m.group+'·'+m.tone+'）';
+}).join('、');
+html += '<div style="margin:6px 0"><b>「'+c+'」</b>：'+details+'</div>';
+} else {
+html += '<div style="margin:6px 0"><b>「'+c+'」</b>：<span style="color:#c00">未收录（非常用字或需查原书）</span></div>';
+}
+}
+}
+if(!found) html += '<div class="note">未找到匹配结果，请检查输入</div>';
+html += '<div class="note">注：一字可能归入多个韵部（异读），本工具列出所有可能。</div>';
+document.getElementById("charResult").innerHTML = html;
+}
+
+// 渲染词林正韵
+function renderCilin(){
+let html = "";
+cilin.forEach(item=>{
+html += '<div class="cilin-item">';
+html += '<div><span class="num">'+item.num+'</span><b>'+item.name+'</b></div>';
+html += '<div class="map">统摄平水韵：'+item.desc+'</div>';
+html += '<div class="map" style="font-size:12px;color:#7a5c3a">包含韵部：'+item.rhymes.join('、')+'</div>';
+html += '</div>';
+});
+document.getElementById("cilinList").innerHTML = html;
+}
+renderCilin();
+
+// Tab切换
+document.querySelectorAll(".tab").forEach(t=>{
+t.addEventListener("click",function(){
+document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+this.classList.add("active");
+const tab = this.dataset.tab;
+const panelId = tab==="bychar"?"panel-bychr":(tab==="byrhyme"?"panel-byrhyme":"panel-cilin");
+document.getElementById(panelId).classList.add("active");
+});
+});
+
+// 回车查询
+document.getElementById("charInput").addEventListener("keydown",function(e){
+if(e.key==="Enter") queryChar();
+});
+</script>
+</body>
+</html>

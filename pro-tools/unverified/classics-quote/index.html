@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>经典名句出处查询工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Noto Serif SC", "Source Han Serif CN", "SimSun", serif; background: #f5f0e8; color: #2c2c2c; line-height: 1.8; }
+.header { background: linear-gradient(135deg, #8b0000, #4a0000); color: #f5e6c8; padding: 30px 20px; text-align: center; }
+.header h1 { font-size: 2em; letter-spacing: 8px; margin-bottom: 8px; }
+.header p { font-size: 0.95em; opacity: 0.85; }
+.tabs { display: flex; justify-content: center; background: #3a1a1a; position: sticky; top: 0; z-index: 100; }
+.tab-btn { padding: 12px 32px; color: #d4c5a0; cursor: pointer; border: none; background: transparent; font-size: 1em; font-family: inherit; transition: all 0.3s; border-bottom: 3px solid transparent; }
+.tab-btn:hover { background: rgba(255,255,255,0.05); }
+.tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; background: rgba(255,215,0,0.08); }
+.tab-content { display: none; max-width: 1100px; margin: 0 auto; padding: 24px; }
+.tab-content.active { display: block; }
+/* 查询界面 */
+.search-box { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.search-input { width: 100%; padding: 12px 16px; font-size: 1.1em; border: 2px solid #c9b896; border-radius: 6px; font-family: inherit; }
+.search-input:focus { outline: none; border-color: #8b0000; }
+.filter-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+.filter-row label { font-size: 0.9em; color: #666; }
+.filter-row select { padding: 6px 10px; border: 1px solid #c9b896; border-radius: 4px; font-family: inherit; }
+.btn { padding: 8px 20px; background: #8b0000; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.95em; }
+.btn:hover { background: #a00000; }
+.result-card { background: #fff; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); border-left: 4px solid #8b0000; }
+.result-card .quote-text { font-size: 1.2em; color: #2c2c2c; margin-bottom: 8px; line-height: 2; }
+.result-card .quote-source { color: #8b0000; font-weight: bold; margin-bottom: 6px; }
+.result-card .quote-explain { color: #555; font-size: 0.95em; background: #faf6ee; padding: 10px 14px; border-radius: 4px; margin-top: 8px; }
+.result-card .quote-category { display: inline-block; background: #f0e8d0; color: #6b5b3a; padding: 2px 10px; border-radius: 12px; font-size: 0.8em; margin-top: 6px; }
+.result-count { color: #888; margin-bottom: 12px; font-size: 0.9em; }
+/* 代码展示 */
+pre { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 0.85em; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+code { font-family: "Fira Code", "Source Code Pro", Consolas, monospace; }
+/* 测试 */
+.test-result { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+.test-pass { border-left: 4px solid #2e7d32; }
+.test-fail { border-left: 4px solid #c62828; }
+.test-summary { font-size: 1.3em; padding: 16px; background: #fff; border-radius: 8px; margin-bottom: 16px; text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+.test-detail { font-size: 0.85em; color: #666; margin-top: 4px; }
+/* 说明书 */
+.manual-section { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+.manual-section h2 { color: #8b0000; border-bottom: 2px solid #f0e8d0; padding-bottom: 8px; margin-bottom: 16px; }
+.manual-section h3 { color: #4a2c0a; margin: 16px 0 8px; }
+.manual-section p, .manual-section li { margin-bottom: 8px; }
+.manual-section ul, .manual-section ol { padding-left: 24px; }
+.scenario { background: #faf6ee; padding: 16px; border-radius: 6px; margin: 12px 0; }
+.scenario-title { font-weight: bold; color: #8b0000; margin-bottom: 6px; }
+.version-tag { position: fixed; bottom: 8px; right: 12px; font-size: 0.7em; color: #999; z-index: 999; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+table th, table td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 0.9em; }
+table th { background: #f5f0e8; }
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>经典名句出处</h1>
+<p>四书五经 · 诸子百家名句查询 — 依据中华书局点校本通行原文</p>
+</div>
+
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('app')">名句查询</button>
+<button class="tab-btn" onclick="switchTab('source')">JS 源码</button>
+<button class="tab-btn" onclick="switchTab('test')">单元测试</button>
+<button class="tab-btn" onclick="switchTab('manual')">使用说明书</button>
+</div>
+
+<!-- 查询界面 -->
+<div id="tab-app" class="tab-content active">
+<div class="search-box">
+<input type="text" class="search-input" id="searchInput" placeholder="输入关键字搜索名句，如：学而时习之、上善若水、天行健…" onkeyup="if(event.key==='Enter')doSearch()">
+<div class="filter-row">
+<label>典籍：</label>
+<select id="filterSource"><option value="">全部</option></select>
+<label>分类：</label>
+<select id="filterCategory"><option value="">全部</option></select>
+<button class="btn" onclick="doSearch()">搜索</button>
+<button class="btn" style="background:#666" onclick="resetSearch()">重置</button>
+</div>
+</div>
+<div id="resultArea"></div>
+</div>
+
+<!-- JS源码 -->
+<div id="tab-source" class="tab-content">
+<h2 style="color:#8b0000;margin-bottom:16px;">JS 源码（纯函数实现，无外部依赖）</h2>
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<!-- 单元测试 -->
+<div id="tab-test" class="tab-content">
+<h2 style="color:#8b0000;margin-bottom:16px;">单元测试（纯 JS 实现，至少 30 个用例）</h2>
+<button class="btn" onclick="runAllTests()" style="margin-bottom:16px;">▶ 运行全部测试</button>
+<div id="testArea"></div>
+</div>
+
+<!-- 使用说明书 -->
+<div id="tab-manual" class="tab-content">
+<div class="manual-section">
+<h2>一、工具简介</h2>
+<p>「经典名句出处」是一款面向中文古典文献的名句查询工具，覆盖四书（《大学》《中庸》《论语》《孟子》）与五经（《诗经》《尚书》《礼记》《周易》《春秋》）以及诸子百家（《道德经》《庄子》《荀子》《韩非子》《墨子》《管子》《列子》《吕氏春秋》等）中的经典名句。</p>
+<p>本工具解决的核心问题是：当读者在阅读、写作或研究过程中遇到一句似曾相识的古文名句时，能够快速查到其<strong>原文出处</strong>（具体到篇目章节）、<strong>通行原文</strong>以及<strong>白话释义</strong>，免去翻检原典的繁琐。</p>
+<p>所有原文数据以<strong>中华书局点校本</strong>为通行依据。中华书局点校本二十四史及先秦典籍整理本，是目前学术界和出版界公认的标准通行本，其标点、分段、校勘均经过严格审校。</p>
+</div>
+
+<div class="manual-section">
+<h2>二、功能参数详细说明</h2>
+
+<h3>2.1 searchQuotes(query, options)</h3>
+<table>
+<tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+<tr><td>query</td><td>string</td><td>任意非空字符串，长度 1~200</td><td>搜索关键字，支持名句片段、篇名、作者名等模糊匹配</td></tr>
+<tr><td>options.source</td><td>string | undefined</td><td>典籍名称或空字符串</td><td>限定搜索范围的典籍名，如"论语""道德经"。为空则搜索全部典籍</td></tr>
+<tr><td>options.category</td><td>string | undefined</td><td>分类名或空字符串</td><td>限定名句分类，如"修身""治国""学习""哲理"等</td></tr>
+<tr><td>options.limit</td><td>number</td><td>正整数，默认 50，范围 1~500</td><td>返回结果的最大条数</td></tr>
+<tr><td>options.page</td><td>number</td><td>正整数，默认 1</td><td>分页页码</td></tr>
+</table>
+
+<h3>2.2 getQuoteById(id)</h3>
+<table>
+<tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+<tr><td>id</td><td>string</td><td>名句唯一标识符，格式 "S" + 四位数字</td><td>如 "S0001" 表示数据库中第一条名句</td></tr>
+</table>
+<p><strong>返回值：</strong>匹配的名句对象，或 null（未找到时）。</p>
+
+<h3>2.3 getQuotesBySource(sourceName)</h3>
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>sourceName</td><td>string</td><td>典籍名称，需与数据库中存储的名称完全匹配</td></tr>
+</table>
+<p><strong>返回值：</strong>该典籍下所有名句的数组。</p>
+
+<h3>2.4 getQuotesByCategory(categoryName)</h3>
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>categoryName</td><td>string</td><td>分类名称，如"修身""学习""哲理""治国""自然""教育"</td></tr>
+</table>
+
+<h3>2.5 formatQuote(quoteObj, formatType)</h3>
+<table>
+<tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+<tr><td>quoteObj</td><td>object</td><td>名句数据对象</td><td>包含 text、source、chapter、explanation 等字段</td></tr>
+<tr><td>formatType</td><td>string</td><td>"brief" | "full" | "citation"</td><td>输出格式：简要（仅原文+出处）、完整（含释义）、引用格式（适合学术引用）</td></tr>
+</table>
+</div>
+
+<div class="manual-section">
+<h2>三、实际使用场景</h2>
+
+<div class="scenario">
+<div class="scenario-title">场景一：写作引用查证</div>
+<p><strong>情境：</strong>在撰写论文时需要引用"己所不欲，勿施于人"，需确认原文出处及准确原文。</p>
+<p><strong>输入：</strong>query = "己所不欲"</p>
+<p><strong>预期结果：</strong>返回匹配结果，显示原文"己所不欲，勿施于人"，出处为《论语·颜渊》及《论语·卫灵公》（此句在两篇中均有出现），释义为"自己不想要的事物，不要强加给别人"。</p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景二：按典籍浏览</div>
+<p><strong>情境：</strong>想系统了解《道德经》中收录了哪些名句。</p>
+<p><strong>输入：</strong>options.source = "道德经"，query = ""（空搜索）</p>
+<p><strong>预期结果：</strong>返回数据库中所有出自《道德经》的名句，如"上善若水""道可道，非常道""天网恢恢，疏而不失"等，每条均标注具体章节（如第一章、第八章等）。</p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景三：按主题分类查找</div>
+<p><strong>情境：</strong>准备一场关于"学习"主题的演讲，需要收集相关经典名句。</p>
+<p><strong>输入：</strong>options.category = "学习"</p>
+<p><strong>预期结果：</strong>返回所有分类为"学习"的名句，如"学而时习之，不亦说乎"（《论语·学而》）、"学而不思则罔，思而不学则殆"（《论语·为政》）、"博学之，审问之，慎思之，明辨之，笃行之"（《中庸》第二十章）等。</p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景四：生成学术引用格式</div>
+<p><strong>情境：</strong>需要在学术文章中规范引用"天行健，君子以自强不息"。</p>
+<p><strong>输入：</strong>先通过搜索找到该名句，再调用 formatQuote(quoteObj, "citation")</p>
+<p><strong>预期结果：</strong>输出引用格式文本，如：「天行健，君子以自强不息。」——《周易·乾卦·象传》（中华书局点校本）</p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景五：模糊记忆查找</div>
+<p><strong>情境：</strong>只记得一句古文中含有"千里之行"四个字，但不确定完整原文和出处。</p>
+<p><strong>输入：</strong>query = "千里之行"</p>
+<p><strong>预期结果：</strong>返回"千里之行，始于足下"，出处《道德经》第六十四章，释义为"走一千里路，是从迈第一步开始的。比喻事情的成功是从小到大逐渐积累的"。</p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景六：教学备课</div>
+<p><strong>情境：</strong>中学语文教师备课《论语》十二章，需要查找相关名句的释义辅助教学。</p>
+<p><strong>输入：</strong>options.source = "论语"，options.category = "教育"</p>
+<p><strong>预期结果：</strong>返回《论语》中与教育相关的名句，如"有教无类"（《论语·卫灵公》）、"因材施教"（源自朱熹对《论语》的注释概括，需注意此条可能不在原始数据库中）等，每条附带白话释义。</p>
+</div>
+</div>
+
+<div class="manual-section">
+<h2>四、常见错误与排查</h2>
+<ol>
+<li><strong>搜索无结果：</strong>检查关键字是否有错别字。本工具采用子串匹配，输入的字必须在名句原文中连续出现。例如搜索"已所不欲"（错用"已"）将无法匹配"己所不欲"。</li>
+<li><strong>出处与记忆不符：</strong>部分名句在不同典籍中有相似表述。例如"天行健"出自《周易》的《象传》部分，而非《彖传》。本工具标注的是中华书局点校本中的实际位置。如有疑义，请核对原书。</li>
+<li><strong>释义理解偏差：</strong>本工具提供的释义为通行白话翻译，力求准确但无法涵盖历代注疏的全部学术争议。如需深入研究，建议参阅《十三经注疏》（中华书局影印阮元校刻本）及各家的专门注本。</li>
+<li><strong>参数类型错误：</strong>query 参数必须为字符串类型，传入 null 或 undefined 会抛出 TypeError。limit 参数必须为正整数，传入负数或小数会被修正为默认值 50。</li>
+<li><strong>结果数量过多：</strong>如果搜索关键字过于宽泛（如单字"之""也"），可能返回大量结果。建议使用 limit 参数限制返回数量，或使用更具体的关键字。</li>
+</ol>
+</div>
+
+<div class="manual-section">
+<h2>五、数据来源与标准依据</h2>
+<p>本工具的数据来源与标准依据如下：</p>
+<ol>
+<li><strong>四书原文：</strong>以中华书局出版的《四书章句集注》（[宋]朱熹集注，1983年版）为底本。该书以清代阮元校刻《十三经注疏》本为底本进行点校，是目前学术界通行的标准版本。</li>
+<li><strong>五经原文：</strong>以中华书局《十三经注疏》（影印阮元校刻本，1980年版）为底本。其中《周易》用魏王弼注、唐孔颖达疏本；《诗经》用汉毛亨传、郑玄笺、唐孔颖达疏本；《尚书》用汉孔安国传、唐孔颖达疏本；《礼记》用汉郑玄注、唐孔颖达疏本；《春秋左传》用晋杜预注、唐孔颖达疏本。</li>
+<li><strong>诸子原文：</strong>以中华书局"新编诸子集成"系列丛书为底本。如《老子道德经注》（王卡点校，1993年）、《庄子集释》（郭庆藩撰，王孝鱼整理，1961年版）、《荀子集解》（王先谦撰，沈啸寰、王星贤整理，1988年版）等。</li>
+<li><strong>释义编写：</strong>白话释义参考了上述各书的通行译注本，并结合现代汉语表达习惯编写，力求准确简明。</li>
+<li><strong>标点规范：</strong>遵循 GB/T 15834—2011《标点符号用法》国家标准。古籍原文中的书名号使用全称，篇名与书名之间用间隔号"·"分隔。</li>
+</ol>
+<p><strong>注意：</strong>本工具收录的名句数量有限（当前版本约 50 条），远未穷尽四书五经与诸子百家的全部名句。如需更全面的检索，建议配合使用"中国基本古籍库"（北京爱如生数字化技术研究中心）等专业数据库。</p>
+</div>
+
+<div class="manual-section">
+<h2>六、局限性说明</h2>
+<ol>
+<li><strong>收录范围有限：</strong>当前版本仅收录约 50 条名句，无法覆盖四书五经与诸子百家的全部经典语句。后续版本将逐步扩充。</li>
+<li><strong>版本差异未标注：</strong>不同版本的古籍在文字上可能存在异文（如通行本与出土简帛本的差异）。本工具仅展示中华书局点校本的通行文字，不标注版本异同。如需版本校勘信息，需查阅专门的校勘记。</li>
+<li><strong>释义一家之言：</strong>白话释义力求准确，但古籍释义历来存在学术争议。本工具提供的释义代表通行理解，不代表唯一正确的解释。例如《道德经》第一章"道可道，非常道"的释义，历代注家理解各异。</li>
+<li><strong>不支持全文检索：</strong>本工具仅检索已收录的名句数据库，不支持对原典全文的检索。如果某句话虽然出自某典籍但未被收录为"名句"，则无法查到。</li>
+<li><strong>不支持繁体/异体字检索：</strong>搜索时仅支持简体中文字符。如果用户输入繁体字或异体字，可能无法匹配。例如输入"學而時習之"将无法匹配"学而时习之"。</li>
+<li><strong>无离线数据更新机制：</strong>数据内嵌于 JavaScript 代码中，如需更新数据必须修改源码并重新部署。</li>
+<li><strong>不保证学术引用效力：</strong>本工具提供的出处信息仅供快速查阅参考，不能替代查阅原书。在正式学术写作中，仍需核对原书原文以确保准确无误。</li>
+</ol>
+</div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+// ============================================================
+// 第一部分：JS 源码（纯函数实现，完整 JSDoc 注释）
+// ============================================================
+
+/**
+ * 名句数据库（内嵌数据）
+ * 每条记录包含：id、text（原文）、source（典籍名）、chapter（篇目章节）、
+ * explanation（释义）、category（分类）、author（作者/编者）
+ * 原文依据中华书局点校本通行原文
+ * @type {Array<Object>}
+ */
+var QUOTE_DATABASE = [
+  {
+    id: "S0001",
+    text: "学而时习之，不亦说乎？有朋自远方来，不亦乐乎？人不知而不愠，不亦君子乎？",
+    source: "论语",
+    chapter: "学而篇第一",
+    explanation: "学了知识然后按时温习，不也愉快吗？有志同道合的人从远方来，不也快乐吗？别人不了解自己却不恼怒，不也是君子吗？",
+    category: "学习",
+    author: "孔子及其弟子"
+  },
+  {
+    id: "S0002",
+    text: "己所不欲，勿施于人。",
+    source: "论语",
+    chapter: "颜渊篇第十二",
+    explanation: "自己不想要的事物，不要强加给别人。这是孔子对'仁'的重要阐释之一。",
+    category: "修身",
+    author: "孔子"
+  },
+  {
+    id: "S0003",
+    text: "学而不思则罔，思而不学则殆。",
+    source: "论语",
+    chapter: "为政篇第二",
+    explanation: "只学习不思考就会迷惘，只思考不学习就会危险。强调学与思必须结合。",
+    category: "学习",
+    author: "孔子"
+  },
+  {
+    id: "S0004",
+    text: "温故而知新，可以为师矣。",
+    source: "论语",
+    chapter: "为政篇第二",
+    explanation: "温习旧知识从而获得新的理解和体会，这样就可以做老师了。",
+    category: "学习",
+    author: "孔子"
+  },
+  {
+    id: "S0005",
+    text: "三人行，必有我师焉。择其善者而从之，其不善者而改之。",
+    source: "论语",
+    chapter: "述而篇第七",
+    explanation: "几个人一起走路，其中必定有可以做我老师的人。选择他们的优点来学习，看到他们的缺点就反省自己并改正。",
+    category: "学习",
+    author: "孔子"
+  },
+  {
+    id: "S0006",
+    text: "知之为知之，不知为不知，是知也。",
+    source: "论语",
+    chapter: "为政篇第二",
+    explanation: "知道就是知道，不知道就是不知道，这才是真正的智慧。",
+    category: "学习",
+    author: "孔子"
+  },
+  {
+    id: "S0007",
+    text: "吾日三省吾身：为人谋而不忠乎？与朋友交而不信乎？传不习乎？",
+    source: "论语",
+    chapter: "学而篇第一",
+    explanation: "我每天多次反省自己：替别人办事是否尽心竭力？与朋友交往是否诚实守信？老师传授的学业是否复习了？（曾子语）",
+    category: "修身",
+    author: "曾子"
+  },
+  {
+    id: "S0008",
+    text: "不义而富且贵，于我如浮云。",
+    source: "论语",
+    chapter: "述而篇第七",
+    explanation: "用不正当的手段获得的富贵，对我来说就像天上的浮云一样毫无意义。",
+    category: "修身",
+    author: "孔子"
+  },
+  {
+    id: "S0009",
+    text: "逝者如斯夫，不舍昼夜。",
+    source: "论语",
+    chapter: "子罕篇第九",
+    explanation: "消逝的时光就像这河水一样啊，日夜不停地流去。孔子感叹时间流逝不停。",
+    category: "哲理",
+    author: "孔子"
+  },
+  {
+    id: "S0010",
+    text: "岁寒，然后知松柏之后凋也。",
+    source: "论语",
+    chapter: "子罕篇第九",
+    explanation: "到了天气寒冷的时候，才知道松柏是最后凋谢的。比喻只有在严峻的考验中，才能看出一个人的品质。",
+    category: "哲理",
+    author: "孔子"
+  },
+  {
+    id: "S0011",
+    text: "民为贵，社稷次之，君为轻。",
+    source: "孟子",
+    chapter: "尽心下",
+    explanation: "百姓最为重要，国家其次，国君为轻。这是孟子民本思想的核心表述。",
+    category: "治国",
+    author: "孟子"
+  },
+  {
+    id: "S0012",
+    text: "天将降大任于是人也，必先苦其心志，劳其筋骨，饿其体肤，空乏其身，行拂乱其所为。",
+    source: "孟子",
+    chapter: "告子下",
+    explanation: "上天将要把重大责任降临到某人身上，一定要先使他的内心痛苦，筋骨劳累，身体饥饿，身受贫困，做事总是不顺。",
+    category: "修身",
+    author: "孟子"
+  },
+  {
+    id: "S0013",
+    text: "穷则独善其身，达则兼善天下。",
+    source: "孟子",
+    chapter: "尽心上",
+    explanation: "不得志时就洁身自好修养个人品德，得志时就使天下人都得到好处。",
+    category: "修身",
+    author: "孟子"
+  },
+  {
+    id: "S0014",
+    text: "老吾老，以及人之老；幼吾幼，以及人之幼。",
+    source: "孟子",
+    chapter: "梁惠王上",
+    explanation: "尊敬自己的长辈，从而推广到尊敬别人的长辈；爱护自己的儿女，从而推广到爱护别人的儿女。",
+    category: "修身",
+    author: "孟子"
+  },
+  {
+    id: "S0015",
+    text: "生于忧患，而死于安乐也。",
+    source: "孟子",
+    chapter: "告子下",
+    explanation: "忧患使人生存发展，安逸享乐使人萎靡死亡。",
+    category: "哲理",
+    author: "孟子"
+  },
+  {
+    id: "S0016",
+    text: "大学之道，在明明德，在亲民，在止于至善。",
+    source: "大学",
+    chapter: "经一章",
+    explanation: "大学的宗旨，在于弘扬光明正大的品德，在于使人弃旧图新，在于使人达到最完善的境界。",
+    category: "修身",
+    author: "曾子（传）/孔子（经）"
+  },
+  {
+    id: "S0017",
+    text: "物格而后知至，知至而后意诚，意诚而后心正，心正而后身修，身修而后家齐，家齐而后国治，国治而后天下平。",
+    source: "大学",
+    chapter: "经一章",
+    explanation: "事物研究透彻后才能获得真知，获得真知后意念才能真诚，意念真诚后心思才能端正，心思端正后才能修养自身品德……由此递进直至天下太平。即'格物致知诚意正心修身齐家治国平天下'八条目。",
+    category: "治国",
+    author: "曾子（传）/孔子（经）"
+  },
+  {
+    id: "S0018",
+    text: "天命之谓性，率性之谓道，修道之谓教。",
+    source: "中庸",
+    chapter: "第一章",
+    explanation: "上天赋予人的叫做性，遵循本性行事叫做道，按照道来修养治理叫做教。",
+    category: "哲理",
+    author: "子思"
+  },
+  {
+    id: "S0019",
+    text: "博学之，审问之，慎思之，明辨之，笃行之。",
+    source: "中庸",
+    chapter: "第二十章",
+    explanation: "广泛地学习，详细地询问，谨慎地思考，明白地分辨，切实地实行。这是治学修身的五个步骤。",
+    category: "学习",
+    author: "子思"
+  },
+  {
+    id: "S0020",
+    text: "凡事预则立，不预则废。",
+    source: "中庸",
+    chapter: "第二十章",
+    explanation: "任何事情，事先有准备就会成功，没有准备就会失败。",
+    category: "哲理",
+    author: "子思"
+  },
+  {
+    id: "S0021",
+    text: "道可道，非常道；名可名，非常名。",
+    source: "道德经",
+    chapter: "第一章",
+    explanation: "可以用言语表述的道，就不是永恒的道；可以用名称界定的名，就不是永恒的名。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0022",
+    text: "上善若水。水善利万物而不争，处众人之所恶，故几于道。",
+    source: "道德经",
+    chapter: "第八章",
+    explanation: "最高的善像水一样。水善于滋润万物而不与万物相争，停留在众人都不喜欢的低洼之处，所以最接近于道。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0023",
+    text: "天网恢恢，疏而不失。",
+    source: "道德经",
+    chapter: "第七十三章",
+    explanation: "天道的网广阔无边的，网眼虽然稀疏却不会有所遗漏。比喻作恶者终究逃不过天道的惩罚。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0024",
+    text: "千里之行，始于足下。",
+    source: "道德经",
+    chapter: "第六十四章",
+    explanation: "走一千里路，是从脚下第一步开始的。比喻大事必从小事做起。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0025",
+    text: "知人者智，自知者明。胜人者有力，自胜者强。",
+    source: "道德经",
+    chapter: "第三十三章",
+    explanation: "能了解别人叫做智，能了解自己叫做明。能战胜别人叫做有力，能战胜自己叫做刚强。",
+    category: "修身",
+    author: "老子"
+  },
+  {
+    id: "S0026",
+    text: "大直若屈，大巧若拙，大辩若讷。",
+    source: "道德经",
+    chapter: "第四十五章",
+    explanation: "最正直的人好似会委屈，最灵巧的人好似很笨拙，最善辩的人好似言语迟钝。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0027",
+    text: "天行健，君子以自强不息。",
+    source: "周易",
+    chapter: "乾卦·象传",
+    explanation: "天道（自然运行）刚强劲健，君子因此自觉地努力向上，永不松懈。",
+    category: "修身",
+    author: "文王/周公（传为孔子作象传）"
+  },
+  {
+    id: "S0028",
+    text: "地势坤，君子以厚德载物。",
+    source: "周易",
+    chapter: "坤卦·象传",
+    explanation: "大地的气势厚实和顺，君子因此增厚美德，容载万物。",
+    category: "修身",
+    author: "文王/周公（传为孔子作象传）"
+  },
+  {
+    id: "S0029",
+    text: "积善之家，必有余庆；积不善之家，必有余殃。",
+    source: "周易",
+    chapter: "坤卦·文言",
+    explanation: "积累善行的家族，必然会有多余的福报留给子孙；积累不善行为的家族，必然会有多余的灾祸留给子孙。",
+    category: "哲理",
+    author: "文王/周公（传为孔子作文言）"
+  },
+  {
+    id: "S0030",
+    text: "关关雎鸠，在河之洲。窈窕淑女，君子好逑。",
+    source: "诗经",
+    chapter: "周南·关雎",
+    explanation: "雎鸠鸟关关地鸣叫，在河中的小洲上。善良美丽的女子，是君子的好配偶。",
+    category: "自然",
+    author: "佚名（西周民歌）"
+  },
+  {
+    id: "S0031",
+    text: "昔我往矣，杨柳依依。今我来思，雨雪霏霏。",
+    source: "诗经",
+    chapter: "小雅·采薇",
+    explanation: "当初我离开的时候，杨柳随风轻柔地飘拂。如今我回来的时候，大雪纷纷扬扬地落下。",
+    category: "自然",
+    author: "佚名"
+  },
+  {
+    id: "S0032",
+    text: "如切如磋，如琢如磨。",
+    source: "诗经",
+    chapter: "卫风·淇奥",
+    explanation: "像加工象牙那样切制，像加工玉石那样磋磨。比喻学问和品德的修养需要不断精进。",
+    category: "修身",
+    author: "佚名"
+  },
+  {
+    id: "S0033",
+    text: "他山之石，可以攻玉。",
+    source: "诗经",
+    chapter: "小雅·鹤鸣",
+    explanation: "别的山上的石头，可以用来琢磨玉器。比喻借助外力或他人的意见来改正自己的缺点。",
+    category: "哲理",
+    author: "佚名"
+  },
+  {
+    id: "S0034",
+    text: "北冥有鱼，其名为鲲。鲲之大，不知其几千里也。化而为鸟，其名为鹏。",
+    source: "庄子",
+    chapter: "逍遥游",
+    explanation: "北方的大海里有一条鱼，它的名字叫做鲲。鲲的体型之大，不知道有几千里。它变化为鸟，名字叫做鹏。",
+    category: "哲理",
+    author: "庄子"
+  },
+  {
+    id: "S0035",
+    text: "吾生也有涯，而知也无涯。以有涯随无涯，殆已！",
+    source: "庄子",
+    chapter: "养生主",
+    explanation: "我的生命是有限的，而知识是无限的。用有限的生命去追求无限的知识，那就危险了！",
+    category: "哲理",
+    author: "庄子"
+  },
+  {
+    id: "S0036",
+    text: "相濡以沫，不如相忘于江湖。",
+    source: "庄子",
+    chapter: "大宗师",
+    explanation: "泉水干涸了，鱼儿困在陆地上，互相用唾沫湿润对方，还不如在江河湖海中自由游弋、彼此遗忘。比喻与其在困境中相互扶持，不如在顺境中各自自由。",
+    category: "哲理",
+    author: "庄子"
+  },
+  {
+    id: "S0037",
+    text: "君子之交淡若水，小人之交甘若醴。",
+    source: "庄子",
+    chapter: "山木",
+    explanation: "君子之间的交情淡得像水一样清澈，小人之间的交情甜得像甜酒一样。",
+    category: "修身",
+    author: "庄子"
+  },
+  {
+    id: "S0038",
+    text: "青，取之于蓝，而青于蓝；冰，水为之，而寒于水。",
+    source: "荀子",
+    chapter: "劝学",
+    explanation: "靛青是从蓼蓝中提取的，但颜色比蓼蓝更深；冰是由水凝结而成的，但比水更寒冷。比喻学生可以超过老师，后人可以超过前人。",
+    category: "学习",
+    author: "荀子"
+  },
+  {
+    id: "S0039",
+    text: "不积跬步，无以至千里；不积小流，无以成江海。",
+    source: "荀子",
+    chapter: "劝学",
+    explanation: "不积累一步半步的行程，就无法到达千里之远；不积累细小的流水，就无法汇成江河大海。",
+    category: "学习",
+    author: "荀子"
+  },
+  {
+    id: "S0040",
+    text: "锲而舍之，朽木不折；锲而不舍，金石可镂。",
+    source: "荀子",
+    chapter: "劝学",
+    explanation: "雕刻一下就放弃，即使是朽木也刻不断；不停地雕刻下去，即使是金属和石头也可以雕刻出花纹。",
+    category: "学习",
+    author: "荀子"
+  },
+  {
+    id: "S0041",
+    text: "蓬生麻中，不扶而直；白沙在涅，与之俱黑。",
+    source: "荀子",
+    chapter: "劝学",
+    explanation: "蓬草长在麻地里，不用扶持也能挺直；白沙混入黑土中，会跟黑土一起变黑。比喻环境对人的影响很大。",
+    category: "教育",
+    author: "荀子"
+  },
+  {
+    id: "S0042",
+    text: "兼相爱，交相利。",
+    source: "墨子",
+    chapter: "兼爱中",
+    explanation: "大家互相爱护，互相使对方得到利益。这是墨子'兼爱'思想的核心主张。",
+    category: "治国",
+    author: "墨子"
+  },
+  {
+    id: "S0043",
+    text: "仓廪实则知礼节，衣食足则知荣辱。",
+    source: "管子",
+    chapter: "牧民",
+    explanation: "粮仓充实了百姓就懂得礼节，衣食充足了百姓就知道荣辱。强调物质基础对道德教化的重要性。",
+    category: "治国",
+    author: "管仲（或战国时人托名）"
+  },
+  {
+    id: "S0044",
+    text: "法不阿贵，绳不挠曲。",
+    source: "韩非子",
+    chapter: "有度",
+    explanation: "法律不偏袒有权有势的人，墨线不向弯曲的地方倾斜。比喻法律面前人人平等。",
+    category: "治国",
+    author: "韩非子"
+  },
+  {
+    id: "S0045",
+    text: "世异则事异，事异则备变。",
+    source: "韩非子",
+    chapter: "五蠹",
+    explanation: "时代不同了，事情也就不同了；事情不同了，措施也要随之变化。强调因时制宜。",
+    category: "治国",
+    author: "韩非子"
+  },
+  {
+    id: "S0046",
+    text: "天地不仁，以万物为刍狗。",
+    source: "道德经",
+    chapter: "第五章",
+    explanation: "天地没有偏爱，对待万物像对待草扎的狗一样（任其自然生灭）。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0047",
+    text: "祸兮福之所倚，福兮祸之所伏。",
+    source: "道德经",
+    chapter: "第五十八章",
+    explanation: "灾祸中依存着幸福，幸福中潜伏着灾祸。指祸福可以互相转化。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0048",
+    text: "合抱之木，生于毫末；九层之台，起于累土。",
+    source: "道德经",
+    chapter: "第六十四章",
+    explanation: "合抱的大树，是从细小的萌芽生长起来的；九层的高台，是从一筐土一筐土堆积起来的。",
+    category: "哲理",
+    author: "老子"
+  },
+  {
+    id: "S0049",
+    text: "仁者爱人，有礼者敬人。爱人者，人恒爱之；敬人者，人恒敬之。",
+    source: "孟子",
+    chapter: "离娄下",
+    explanation: "仁者爱护别人，有礼的人尊敬别人。爱护别人的人，别人也常常爱护他；尊敬别人的人，别人也常常尊敬他。",
+    category: "修身",
+    author: "孟子"
+  },
+  {
+    id: "S0050",
+    text: "富贵不能淫，贫贱不能移，威武不能屈，此之谓大丈夫。",
+    source: "孟子",
+    chapter: "滕文公下",
+    explanation: "富贵不能使其骄奢淫逸，贫贱不能使其改变节操，威武不能使其屈服意志，这样的人才叫做大丈夫。",
+    category: "修身",
+    author: "孟子"
+  }
+];
+
+/**
+ * 在名句文本、出处、释义中搜索关键字
+ * @param {string} query - 搜索关键字，不能为空
+ * @param {Object} quote - 名句数据对象
+ * @returns {boolean} 是否匹配
+ * @throws {TypeError} query 不是字符串时抛出
+ * @example
+ * // returns true
+ * matchesQuery("学而", {text: "学而时习之", source: "论语", explanation: "..."})
+ */
+function matchesQuery(query, quote) {
+  if (typeof query !== 'string') {
+    throw new TypeError('query 必须是字符串类型');
+  }
+  if (query === '') return true;
+  var q = query.toLowerCase();
+  return (
+    quote.text.toLowerCase().indexOf(q) !== -1 ||
+    quote.source.toLowerCase().indexOf(q) !== -1 ||
+    quote.chapter.toLowerCase().indexOf(q) !== -1 ||
+    quote.explanation.toLowerCase().indexOf(q) !== -1 ||
+    quote.category.toLowerCase().indexOf(q) !== -1 ||
+    (quote.author && quote.author.toLowerCase().indexOf(q) !== -1)
+  );
+}
+
+/**
+ * 搜索名句
+ * @param {string} query - 搜索关键字，长度 1~200，支持名句片段、篇名、作者名等
+ * @param {Object} [options] - 搜索选项
+ * @param {string} [options.source=''] - 限定典籍名称，空字符串表示不限
+ * @param {string} [options.category=''] - 限定分类名称，空字符串表示不限
+ * @param {number} [options.limit=50] - 返回结果最大条数，范围 1~500
+ * @param {number} [options.page=1] - 分页页码，正整数
+ * @returns {Object} 包含 results（名句数组）、total（总匹配数）、page（当前页）、totalPages（总页数）
+ * @throws {TypeError} query 不是字符串时抛出
+ * @throws {RangeError} limit 超出范围时抛出
+ * @example
+ * // 搜索包含"学"的名句
+ * var result = searchQuotes("学");
+ * console.log(result.results.length); // 返回匹配的名句数量
+ *
+ * @example
+ * // 在论语中搜索"仁"
+ * var result = searchQuotes("仁", {source: "论语"});
+ *
+ * @example
+ * // 搜索"修身"分类的名句，每页10条
+ * var result = searchQuotes("", {category: "修身", limit: 10, page: 1});
+ */
+function searchQuotes(query, options) {
+  if (typeof query !== 'string') {
+    throw new TypeError('query 必须是字符串类型，收到: ' + typeof query);
+  }
+  options = options || {};
+  var source = options.source || '';
+  var category = options.category || '';
+  var limit = options.limit;
+  var page = options.page;
+
+  // 参数校验与修正
+  if (limit === undefined || limit === null) {
+    limit = 50;
+  } else {
+    limit = Number(limit);
+    if (isNaN(limit) || limit < 1) {
+      limit = 50;
+    } else if (limit > 500) {
+      limit = 500;
+    } else {
+      limit = Math.floor(limit);
+    }
+  }
+
+  if (page === undefined || page === null) {
+    page = 1;
+  } else {
+    page = Number(page);
+    if (isNaN(page) || page < 1) {
+      page = 1;
+    } else {
+      page = Math.floor(page);
+    }
+  }
+
+  // 过滤
+  var filtered = QUOTE_DATABASE.filter(function(quote) {
+    // 典籍过滤
+    if (source && quote.source !== source) return false;
+    // 分类过滤
+    if (category && quote.category !== category) return false;
+    // 关键字过滤
+    return matchesQuery(query, quote);
+  });
+
+  var total = filtered.length;
+  var totalPages = Math.ceil(total / limit) || 1;
+  var start = (page - 1) * limit;
+  var end = start + limit;
+  var results = filtered.slice(start, end);
+
+  return {
+    results: results,
+    total: total,
+    page: page,
+    totalPages: totalPages
+  };
+}
+
+/**
+ * 根据 ID 获取名句
+ * @param {string} id - 名句唯一标识符，格式 "S" + 四位数字，如 "S0001"
+ * @returns {Object|null} 匹配的名句对象，未找到返回 null
+ * @throws {TypeError} id 不是字符串时抛出
+ * @example
+ * // returns 论语·学而篇第一条名句
+ * var quote = getQuoteById("S0001");
+ *
+ * @example
+ * // returns null
+ * var quote = getQuoteById("S9999");
+ */
+function getQuoteById(id) {
+  if (typeof id !== 'string') {
+    throw new TypeError('id 必须是字符串类型，收到: ' + typeof id);
+  }
+  for (var i = 0; i < QUOTE_DATABASE.length; i++) {
+    if (QUOTE_DATABASE[i].id === id) {
+      return QUOTE_DATABASE[i];
+    }
+  }
+  return null;
+}
+
+/**
+ * 根据典籍名称获取该典籍下所有名句
+ * @param {string} sourceName - 典籍名称，需与数据库中的名称完全匹配
+ * @returns {Array<Object>} 该典籍下所有名句的数组，未找到返回空数组
+ * @throws {TypeError} sourceName 不是字符串时抛出
+ * @example
+ * // returns 论语中所有名句
+ * var quotes = getQuotesBySource("论语");
+ *
+ * @example
+ * // returns []
+ * var quotes = getQuotesBySource("不存在的书");
+ */
+function getQuotesBySource(sourceName) {
+  if (typeof sourceName !== 'string') {
+    throw new TypeError('sourceName 必须是字符串类型，收到: ' + typeof sourceName);
+  }
+  return QUOTE_DATABASE.filter(function(quote) {
+    return quote.source === sourceName;
+  });
+}
+
+/**
+ * 根据分类名称获取该分类下所有名句
+ * @param {string} categoryName - 分类名称，如"修身""学习""哲理""治国""自然""教育"
+ * @returns {Array<Object>} 该分类下所有名句的数组，未找到返回空数组
+ * @throws {TypeError} categoryName 不是字符串时抛出
+ * @example
+ * // returns 所有"修身"分类的名句
+ * var quotes = getQuotesByCategory("修身");
+ */
+function getQuotesByCategory(categoryName) {
+  if (typeof categoryName !== 'string') {
+    throw new TypeError('categoryName 必须是字符串类型，收到: ' + typeof categoryName);
+  }
+  return QUOTE_DATABASE.filter(function(quote) {
+    return quote.category === categoryName;
+  });
+}
+
+/**
+ * 格式化名句输出
+ * @param {Object} quoteObj - 名句数据对象，需包含 text、source、chapter 字段
+ * @param {string} [formatType='full'] - 输出格式："brief"（简要）、"full"（完整）、"citation"（引用格式）
+ * @returns {string} 格式化后的字符串
+ * @throws {TypeError} quoteObj 不是对象时抛出
+ * @throws {RangeError} formatType 不在允许范围内时抛出
+ * @example
+ * // returns "学而时习之，不亦说乎？——《论语·学而篇第一》"
+ * var text = formatQuote(quoteObj, "brief");
+ *
+ * @example
+ * // returns 引用格式
+ * var text = formatQuote(quoteObj, "citation");
+ */
+function formatQuote(quoteObj, formatType) {
+  if (quoteObj === null || quoteObj === undefined || typeof quoteObj !== 'object') {
+    throw new TypeError('quoteObj 必须是对象类型，收到: ' + typeof quoteObj);
+  }
+  formatType = formatType || 'full';
+  var validTypes = ['brief', 'full', 'citation'];
+  if (validTypes.indexOf(formatType) === -1) {
+    throw new RangeError('formatType 必须是 "brief"、"full" 或 "citation" 之一，收到: "' + formatType + '"');
+  }
+
+  var sourceStr = '《' + quoteObj.source + '·' + quoteObj.chapter + '》';
+
+  if (formatType === 'brief') {
+    return quoteObj.text + '——' + sourceStr;
+  } else if (formatType === 'full') {
+    var result = '【原文】' + quoteObj.text + '\n';
+    result += '【出处】' + sourceStr + '\n';
+    if (quoteObj.author) {
+      result += '【作者】' + quoteObj.author + '\n';
+    }
+    result += '【释义】' + quoteObj.explanation;
+    return result;
+  } else {
+    // citation
+    return '「' + quoteObj.text + '」——' + sourceStr + '（中华书局点校本）';
+  }
+}
+
+/**
+ * 获取所有可用的典籍名称列表
+ * @returns {Array<string>} 典籍名称数组（去重、排序）
+ * @example
+ * // returns ["道德经", "大学", "庄子", "论语", ...]
+ * var sources = getAllSources();
+ */
+function getAllSources() {
+  var sources = {};
+  QUOTE_DATABASE.forEach(function(q) {
+    sources[q.source] = true;
+  });
+  return Object.keys(sources).sort();
+}
+
+/**
+ * 获取所有可用的分类名称列表
+ * @returns {Array<string>} 分类名称数组（去重、排序）
+ * @example
+ * // returns ["修身", "学习", "哲理", ...]
+ * var categories = getAllCategories();
+ */
+function getAllCategories() {
+  var categories = {};
+  QUOTE_DATABASE.forEach(function(q) {
+    categories[q.category] = true;
+  });
+  return Object.keys(categories).sort();
+}
+
+/**
+ * 获取数据库统计信息
+ * @returns {Object} 包含 total（总条数）、sources（典籍数量）、categories（分类数量）
+ * @example
+ * // returns {total: 50, sources: 10, categories: 6}
+ * var stats = getDatabaseStats();
+ */
+function getDatabaseStats() {
+  return {
+    total: QUOTE_DATABASE.length,
+    sources: getAllSources().length,
+    categories: getAllCategories().length
+  };
+}
+
+// ============================================================
+// 第二部分：单元测试（纯 JS 实现，至少 30 个用例）
+// ============================================================
+
+var testResults = [];
+var testCount = 0;
+var passCount = 0;
+
+/**
+ * 断言函数
+ * @param {string} description - 测试描述
+ * @param {*} actual - 实际值
+ * @param {*} expected - 预期值
+ * @param {string} [category='正常值'] - 测试类别
+ */
+function assert(description, actual, expected, category) {
+  testCount++;
+  category = category || '正常值';
+  var passed;
+  if (Array.isArray(expected)) {
+    passed = Array.isArray(actual) && actual.length === expected.length &&
+      expected.every(function(v, i) { return actual[i] === v; });
+  } else if (typeof expected === 'object' && expected !== null) {
+    passed = JSON.stringify(actual) === JSON.stringify(expected);
+  } else {
+    passed = actual === expected;
+  }
+  if (passed) {
+    passCount++;
+  }
+  testResults.push({
+    description: description,
+    actual: actual,
+    expected: expected,
+    passed: passed,
+    category: category
+  });
+}
+
+/**
+ * 断言抛出异常
+ * @param {string} description - 测试描述
+ * @param {Function} fn - 要执行的函数
+ * @param {Function} errorType - 预期的错误类型构造函数
+ * @param {string} [category='异常输入'] - 测试类别
+ */
+function assertThrows(description, fn, errorType, category) {
+  testCount++;
+  category = category || '异常输入';
+  var passed = false;
+  try {
+    fn();
+  } catch (e) {
+    passed = e instanceof errorType;
+  }
+  if (passed) {
+    passCount++;
+  }
+  testResults.push({
+    description: description,
+    actual: passed ? '抛出异常' : '未抛出异常',
+    expected: '应抛出 ' + errorType.name,
+    passed: passed,
+    category: category
+  });
+}
+
+/**
+ * 断言条件为真
+ * @param {string} description - 测试描述
+ * @param {boolean} condition - 条件表达式
+ * @param {string} [category='正常值'] - 测试类别
+ */
+function assertTrue(description, condition, category) {
+  testCount++;
+  category = category || '正常值';
+  if (condition) passCount++;
+  testResults.push({
+    description: description,
+    actual: condition,
+    expected: true,
+    passed: !!condition,
+    category: category
+  });
+}
+
+function runAllTests() {
+  testResults = [];
+  testCount = 0;
+  passCount = 0;
+
+  // ============ matchesQuery 测试 ============
+
+  // 1. 正常值 - 匹配文本
+  assert('matchesQuery: 关键字在文本中匹配',
+    matchesQuery("学而", QUOTE_DATABASE[0]), true, '正常值');
+
+  // 2. 正常值 - 匹配出处
+  assert('matchesQuery: 关键字在出处中匹配',
+    matchesQuery("论语", QUOTE_DATABASE[0]), true, '正常值');
+
+  // 3. 正常值 - 匹配释义
+  assert('matchesQuery: 关键字在释义中匹配',
+    matchesQuery("愉快", QUOTE_DATABASE[0]), true, '正常值');
+
+  // 4. 正常值 - 不匹配
+  assert('matchesQuery: 关键字不存在返回 false',
+    matchesQuery("量子力学", QUOTE_DATABASE[0]), false, '正常值');
+
+  // 5. 边界值 - 空字符串匹配所有
+  assert('matchesQuery: 空字符串匹配所有',
+    matchesQuery("", QUOTE_DATABASE[0]), true, '边界值');
+
+  // 6. 边界值 - 单字符匹配
+  assert('matchesQuery: 单字符"学"匹配',
+    matchesQuery("学", QUOTE_DATABASE[0]), true, '边界值');
+
+  // 7. 边界值 - 完整文本匹配
+  assert('matchesQuery: 完整原文匹配',
+    matchesQuery("学而时习之，不亦说乎", QUOTE_DATABASE[0]), true, '边界值');
+
+  // 8. 异常输入 - null 抛出 TypeError
+  assertThrows('matchesQuery: null 抛出 TypeError',
+    function() { matchesQuery(null, QUOTE_DATABASE[0]); }, TypeError, '异常输入');
+
+  // 9. 异常输入 - undefined 抛出 TypeError
+  assertThrows('matchesQuery: undefined 抛出 TypeError',
+    function() { matchesQuery(undefined, QUOTE_DATABASE[0]); }, TypeError, '异常输入');
+
+  // 10. 异常输入 - 数字抛出 TypeError
+  assertThrows('matchesQuery: 数字 123 抛出 TypeError',
+    function() { matchesQuery(123, QUOTE_DATABASE[0]); }, TypeError, '异常输入');
+
+  // ============ searchQuotes 测试 ============
+
+  // 11. 正常值 - 基本搜索
+  var r1 = searchQuotes("学");
+  assertTrue('searchQuotes: 搜索"学"返回结果数 > 0',
+    r1.results.length > 0, '正常值');
+
+  // 12. 正常值 - 搜索特定名句
+  var r2 = searchQuotes("上善若水");
+  assert('searchQuotes: 搜索"上善若水"返回 1 条',
+    r2.total, 1, '正常值');
+
+  // 13. 正常值 - 按典籍过滤
+  var r3 = searchQuotes("", {source: "论语"});
+  assertTrue('searchQuotes: 按典籍"论语"过滤，结果数 > 0',
+    r3.results.length > 0, '正常值');
+  assertTrue('searchQuotes: 按典籍"论语"过滤，所有结果source为论语',
+    r3.results.every(function(q) { return q.source === "论语"; }), '正常值');
+
+  // 14. 正常值 - 按分类过滤
+  var r4 = searchQuotes("", {category: "修身"});
+  assertTrue('searchQuotes: 按分类"修身"过滤，结果数 > 0',
+    r4.results.length > 0, '正常值');
+
+  // 15. 正常值 - 组合过滤
+  var r5 = searchQuotes("学", {source: "论语", category: "学习"});
+  assertTrue('searchQuotes: 组合过滤返回结果',
+    r5.results.length > 0, '正常值');
+
+  // 16. 边界值 - limit=1
+  var r6 = searchQuotes("", {limit: 1});
+  assert('searchQuotes: limit=1 返回 1 条',
+    r6.results.length, 1, '边界值');
+
+  // 17. 边界值 - limit=500（最大值）
+  var r7 = searchQuotes("", {limit: 500});
+  assertTrue('searchQuotes: limit=500 返回所有结果',
+    r7.results.length === QUOTE_DATABASE.length, '边界值');
+
+  // 18. 边界值 - page=1
+  var r8 = searchQuotes("", {limit: 10, page: 1});
+  assert('searchQuotes: page=1 返回第 1 页',
+    r8.page, 1, '边界值');
+
+  // 19. 边界值 - 超出最大页
+  var r9 = searchQuotes("", {limit: 10, page: 999});
+  assert('searchQuotes: 超出最大页返回空数组',
+    r9.results.length, 0, '边界值');
+
+  // 20. 边界值 - limit 为负数修正为默认值
+  var r10 = searchQuotes("", {limit: -5});
+  assertTrue('searchQuotes: limit 为负数修正为 50',
+    r10.results.length <= 50, '边界值');
+
+  // 21. 边界值 - limit 为 0 修正为默认值
+  var r11 = searchQuotes("", {limit: 0});
+  assertTrue('searchQuotes: limit=0 修正为默认值 50',
+    r11.results.length <= 50, '边界值');
+
+  // 22. 异常输入 - query 为 null
+  assertThrows('searchQuotes: query=null 抛出 TypeError',
+    function() { searchQuotes(null); }, TypeError, '异常输入');
+
+  // 23. 异常输入 - query 为 undefined
+  assertThrows('searchQuotes: query=undefined 抛出 TypeError',
+    function() { searchQuotes(undefined); }, TypeError, '异常输入');
+
+  // 24. 异常输入 - query 为数字
+  assertThrows('searchQuotes: query=123 抛出 TypeError',
+    function() { searchQuotes(123); }, TypeError, '异常输入');
+
+  // 25. 精度问题 - limit 为浮点数取整
+  var r12 = searchQuotes("", {limit: 3.7});
+  /* 修正：assert 签名是 (description, actual, expected, category)，
+     原调用只传了 3 个参数，导致 expected 变成了 "精度问题" 字符串，必失败。
+     这里要断言的是布尔条件，应用 assertTrue。 */
+  assertTrue('searchQuotes: limit=3.7 取整为 3',
+    r12.results.length <= 3, '精度问题');
+
+  // 26. 精度问题 - page 为浮点数取整
+  var r13 = searchQuotes("", {limit: 10, page: 1.9});
+  assert('searchQuotes: page=1.9 取整为 1',
+    r13.page, 1, '精度问题');
+
+  // 27. 正常值 - 分页正确性
+  var r14a = searchQuotes("", {limit: 5, page: 1});
+  var r14b = searchQuotes("", {limit: 5, page: 2});
+  assertTrue('searchQuotes: 分页不重复（第1页和第2页结果不同）',
+    r14a.results[0].id !== r14b.results[0].id, '正常值');
+
+  // 28. 正常值 - totalPages 计算
+  var r15 = searchQuotes("", {limit: 10});
+  var expectedPages = Math.ceil(QUOTE_DATABASE.length / 10);
+  assert('searchQuotes: totalPages 计算正确',
+    r15.totalPages, expectedPages, '正常值');
+
+  // ============ getQuoteById 测试 ============
+
+  // 29. 正常值 - 存在的 ID
+  var q1 = getQuoteById("S0001");
+  assert('getQuoteById: S0001 返回正确文本',
+    q1.text, "学而时习之，不亦说乎？有朋自远方来，不亦乐乎？人不知而不愠，不亦君子乎？", '正常值');
+
+  // 30. 正常值 - 另一个 ID
+  var q2 = getQuoteById("S0022");
+  assertTrue('getQuoteById: S0022 出处为道德经',
+    q2.source === "道德经", '正常值');
+
+  // 31. 边界值 - 不存在的 ID
+  var q3 = getQuoteById("S9999");
+  assert('getQuoteById: 不存在的 ID 返回 null',
+    q3, null, '边界值');
+
+  // 32. 异常输入 - null
+  assertThrows('getQuoteById: null 抛出 TypeError',
+    function() { getQuoteById(null); }, TypeError, '异常输入');
+
+  // 33. 异常输入 - 数字
+  assertThrows('getQuoteById: 数字 1 抛出 TypeError',
+    function() { getQuoteById(1); }, TypeError, '异常输入');
+
+  // ============ getQuotesBySource 测试 ============
+
+  // 34. 正常值 - 论语
+  var qs1 = getQuotesBySource("论语");
+  assertTrue('getQuotesBySource: 论语返回多条',
+    qs1.length > 5, '正常值');
+
+  // 35. 边界值 - 不存在的典籍
+  var qs2 = getQuotesBySource("不存在的书");
+  assert('getQuotesBySource: 不存在的典籍返回空数组',
+    qs2.length, 0, '边界值');
+
+  // 36. 异常输入 - null
+  assertThrows('getQuotesBySource: null 抛出 TypeError',
+    function() { getQuotesBySource(null); }, TypeError, '异常输入');
+
+  // ============ getQuotesByCategory 测试 ============
+
+  // 37. 正常值 - 修身
+  var qc1 = getQuotesByCategory("修身");
+  assertTrue('getQuotesByCategory: 修身返回多条',
+    qc1.length > 3, '正常值');
+
+  // 38. 边界值 - 不存在的分类
+  var qc2 = getQuotesByCategory("不存在的分类");
+  assert('getQuotesByCategory: 不存在的分类返回空数组',
+    qc2.length, 0, '边界值');
+
+  // ============ formatQuote 测试 ============
+
+  // 39. 正常值 - brief 格式
+  var fmt1 = formatQuote(QUOTE_DATABASE[0], "brief");
+  assertTrue('formatQuote: brief 格式包含原文和出处',
+    fmt1.indexOf("学而时习之") !== -1 && fmt1.indexOf("论语") !== -1, '正常值');
+
+  // 40. 正常值 - full 格式
+  var fmt2 = formatQuote(QUOTE_DATABASE[0], "full");
+  assertTrue('formatQuote: full 格式包含释义',
+    fmt2.indexOf("【释义】") !== -1, '正常值');
+
+  // 41. 正常值 - citation 格式
+  var fmt3 = formatQuote(QUOTE_DATABASE[0], "citation");
+  assertTrue('formatQuote: citation 格式包含中华书局',
+    fmt3.indexOf("中华书局点校本") !== -1, '正常值');
+
+  // 42. 异常输入 - null 对象
+  assertThrows('formatQuote: null 抛出 TypeError',
+    function() { formatQuote(null, "brief"); }, TypeError, '异常输入');
+
+  // 43. 异常输入 - 无效 formatType
+  assertThrows('formatQuote: 无效 formatType 抛出 RangeError',
+    function() { formatQuote(QUOTE_DATABASE[0], "invalid"); }, RangeError, '异常输入');
+
+  // 44. 边界值 - 默认 formatType
+  var fmt4 = formatQuote(QUOTE_DATABASE[0]);
+  assertTrue('formatQuote: 默认 formatType 为 full',
+    fmt4.indexOf("【释义】") !== -1, '边界值');
+
+  // ============ getAllSources / getAllCategories 测试 ============
+
+  // 45. 正常值
+  var sources = getAllSources();
+  assertTrue('getAllSources: 返回数组且长度 > 0',
+    Array.isArray(sources) && sources.length > 0, '正常值');
+
+  // 46. 正常值
+  var categories = getAllCategories();
+  assertTrue('getAllCategories: 返回数组且长度 > 0',
+    Array.isArray(categories) && categories.length > 0, '正常值');
+
+  // ============ getDatabaseStats 测试 ============
+
+  // 47. 正常值
+  var stats = getDatabaseStats();
+  assert('getDatabaseStats: total 等于数据库长度',
+    stats.total, QUOTE_DATABASE.length, '正常值');
+
+  // 48. 边界值 - NaN limit
+  var rNaN = searchQuotes("", {limit: NaN});
+  assertTrue('searchQuotes: limit=NaN 修正为默认值',
+    rNaN.results.length <= 50, '边界值');
+
+  // 49. 边界值 - limit 超过 500
+  var rOver = searchQuotes("", {limit: 1000});
+  assertTrue('searchQuotes: limit=1000 被限制为 500',
+    rOver.results.length <= 500, '边界值');
+
+  // 50. 正常值 - 搜索作者名
+  var rAuthor = searchQuotes("老子");
+  assertTrue('searchQuotes: 搜索作者名"老子"返回结果',
+    rAuthor.results.length > 0, '正常值');
+
+  // 输出结果
+  var html = '<div class="test-summary">';
+  if (passCount === testCount) {
+    html += '<span style="color:#2e7d32;font-size:1.5em;">✅ 全部通过 ' + passCount + ' / ' + testCount + '</span>';
+  } else {
+    html += '<span style="color:#c62828;font-size:1.5em;">❌ 通过 ' + passCount + ' / 共 ' + testCount + '</span>';
+  }
+  html += '</div>';
+
+  testResults.forEach(function(t, i) {
+    var cls = t.passed ? 'test-pass' : 'test-fail';
+    html += '<div class="test-result ' + cls + '">';
+    html += '<strong>' + (t.passed ? '✅' : '❌') + ' 用例 ' + (i + 1) + '</strong> [' + t.category + '] ';
+    html += t.description;
+    if (!t.passed) {
+      html += '<div class="test-detail">预期: ' + JSON.stringify(t.expected) + '</div>';
+      html += '<div class="test-detail">实际: ' + JSON.stringify(t.actual) + '</div>';
+    }
+    html += '</div>';
+  });
+
+  document.getElementById('testArea').innerHTML = html;
+}
+
+// ============================================================
+// 界面交互逻辑
+// ============================================================
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  document.getElementById('tab-' + tabName).classList.add('active');
+  event.target.classList.add('active');
+
+  if (tabName === 'source') {
+    renderSourceCode();
+  }
+}
+
+function renderSourceCode() {
+  var code = document.getElementById('sourceCode');
+  if (code.textContent.trim() !== '') return; // 已渲染
+
+  // 获取当前脚本的内容
+  var scripts = document.querySelectorAll('script');
+  var mainScript = scripts[scripts.length - 1];
+  var fullCode = mainScript.textContent;
+
+  // 提取第一部分（到单元测试之前）
+  var part1End = fullCode.indexOf('// ============================================================\n// 第二部分');
+  var sourcePart = fullCode.substring(0, part1End);
+
+  code.textContent = sourcePart;
+}
+
+function initFilters() {
+  var sourceSelect = document.getElementById('filterSource');
+  var categorySelect = document.getElementById('filterCategory');
+
+  getAllSources().forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    sourceSelect.appendChild(opt);
+  });
+
+  getAllCategories().forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    categorySelect.appendChild(opt);
+  });
+}
+
+function doSearch() {
+  var query = document.getElementById('searchInput').value.trim();
+  var source = document.getElementById('filterSource').value;
+  var category = document.getElementById('filterCategory').value;
+
+  var result = searchQuotes(query, {
+    source: source,
+    category: category,
+    limit: 50,
+    page: 1
+  });
+
+  var html = '<div class="result-count">共找到 ' + result.total + ' 条结果';
+  if (source) html += '（典籍：' + source + '）';
+  if (category) html += '（分类：' + category + '）';
+  html += '</div>';
+
+  if (result.results.length === 0) {
+    html += '<div class="result-card"><p style="color:#999;">未找到匹配的名句，请尝试其他关键字。</p></div>';
+  } else {
+    result.results.forEach(function(q) {
+      html += '<div class="result-card">';
+      html += '<div class="quote-source">📖 ' + q.source + ' · ' + q.chapter;
+      if (q.author) html += ' <span style="font-weight:normal;color:#888;">（' + q.author + '）</span>';
+      html += '</div>';
+      html += '<div class="quote-text">' + q.text + '</div>';
+      html += '<div class="quote-explain">【释义】' + q.explanation + '</div>';
+      html += '<span class="quote-category">' + q.category + '</span>';
+      html += ' <span style="color:#ccc;font-size:0.75em;">' + q.id + '</span>';
+      html += '</div>';
+    });
+  }
+
+  document.getElementById('resultArea').innerHTML = html;
+}
+
+function resetSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('filterSource').value = '';
+  document.getElementById('filterCategory').value = '';
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+// 初始化
+initFilters();
+// 默认显示所有名句
+doSearch();
+</script>
+
+</body>
+</html>

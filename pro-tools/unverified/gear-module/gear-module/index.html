@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>标准直齿圆柱齿轮计算工具</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px;
+  padding-bottom: 40px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 20px;
+  text-align: center;
+  padding: 16px 0 8px;
+  color: #16213e;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form-group {
+  margin-bottom: 12px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #333;
+}
+.form-group .hint {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+input[type="number"], select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fafafa;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: #4361ee;
+  background: #fff;
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23666' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.row {
+  display: flex;
+  gap: 10px;
+}
+.row .form-group {
+  flex: 1;
+}
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: #4361ee;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 4px;
+}
+.btn:active {
+  background: #3a56d4;
+}
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.result-table th, .result-table td {
+  padding: 8px 6px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+.result-table th {
+  color: #666;
+  font-weight: 600;
+  width: 45%;
+}
+.result-table td {
+  font-weight: 700;
+  color: #1a1a2e;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.result-table tr:last-child th,
+.result-table tr:last-child td {
+  border-bottom: none;
+}
+.result-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4361ee;
+  margin: 12px 0 6px;
+  padding: 4px 0;
+  border-bottom: 1px dashed #4361ee;
+}
+.result-section-title:first-child {
+  margin-top: 0;
+}
+.gear-svg-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+}
+.gear-svg-wrap svg {
+  max-width: 100%;
+  height: auto;
+}
+.formula-box {
+  background: #f8f9ff;
+  border: 1px solid #e0e4ff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  line-height: 1.8;
+}
+.formula-box code {
+  font-family: "Courier New", monospace;
+  background: #eef0ff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+.source-section {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.8;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #aaa;
+  z-index: 999;
+}
+.error-msg {
+  color: #e63946;
+  font-size: 13px;
+  margin-top: 8px;
+  display: none;
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4361ee;
+}
+.toggle-row label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.hidden {
+  display: none;
+}
+@media (max-width: 400px) {
+  body { padding: 8px; padding-bottom: 36px; }
+  .card { padding: 12px; }
+  h1 { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚙️ 标准直齿圆柱齿轮计算</h1>
+  <p class="subtitle">依据 GB/T 1356 标准基本齿条齿廓</p>
+
+  <div class="card">
+    <div class="card-title">📐 参数输入</div>
+
+    <div class="form-group">
+      <label for="module">模数 m（mm）</label>
+      <div class="hint">优先选用第一系列标准值（GB/T 1357）</div>
+      <select id="module">
+        <option value="">-- 选择标准模数 --</option>
+        <option value="0.1">0.1</option>
+        <option value="0.12">0.12</option>
+        <option value="0.15">0.15</option>
+        <option value="0.2">0.2</option>
+        <option value="0.25">0.25</option>
+        <option value="0.3">0.3</option>
+        <option value="0.4">0.4</option>
+        <option value="0.5">0.5</option>
+        <option value="0.6">0.6</option>
+        <option value="0.8">0.8</option>
+        <option value="1">1</option>
+        <option value="1.25">1.25</option>
+        <option value="1.5">1.5</option>
+        <option value="2">2</option>
+        <option value="2.5">2.5</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="8">8</option>
+        <option value="10">10</option>
+        <option value="12">12</option>
+        <option value="16">16</option>
+        <option value="20">20</option>
+        <option value="25">25</option>
+        <option value="32">32</option>
+        <option value="40">40</option>
+        <option value="50">50</option>
+        <option value="custom">自定义…</option>
+      </select>
+    </div>
+
+    <div class="form-group hidden" id="customModuleGroup">
+      <label for="moduleCustom">自定义模数（mm）</label>
+      <input type="number" id="moduleCustom" min="0.05" step="0.01" placeholder="输入自定义模数">
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label for="z1">齿轮1 齿数 z₁</label>
+        <input type="number" id="z1" min="4" step="1" placeholder="如 20" value="20">
+      </div>
+      <div class="form-group">
+        <label for="z2">齿轮2 齿数 z₂</label>
+        <div class="hint">留空则不计算中心距</div>
+        <input type="number" id="z2" min="4" step="1" placeholder="如 40">
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="showDrawing" checked>
+      <label for="showDrawing">显示齿轮示意图</label>
+    </div>
+
+    <button class="btn" id="calcBtn">🔧 计算</button>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <div class="card-title">📊 计算结果</div>
+
+    <div class="gear-svg-wrap hidden" id="gearSvgWrap"></div>
+
+    <div class="result-section-title">齿轮 1 基本尺寸</div>
+    <table class="result-table" id="resultTable1">
+      <tbody></tbody>
+    </table>
+
+    <div id="gear2Section" class="hidden">
+      <div class="result-section-title">齿轮 2 基本尺寸</div>
+      <table class="result-table" id="resultTable2">
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div id="centerSection" class="hidden">
+      <div class="result-section-title">啮合参数</div>
+      <table class="result-table" id="resultTableCenter">
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📖 公式说明</div>
+    <div class="formula-box">
+      <div>分度圆直径：<code>d = m · z</code></div>
+      <div>齿顶圆直径：<code>d<sub>a</sub> = m · (z + 2)</code></div>
+      <div>齿根圆直径：<code>d<sub>f</sub> = m · (z − 2.5)</code></div>
+      <div>基圆直径：<code>d<sub>b</sub> = d · cos α = m · z · cos 20°</code></div>
+      <div>齿顶高：<code>h<sub>a</sub> = h<sub>a</sub>* · m = m</code></div>
+      <div>齿根高：<code>h<sub>f</sub> = (h<sub>a</sub>* + c*) · m = 1.25 m</code></div>
+      <div>全齿高：<code>h = h<sub>a</sub> + h<sub>f</sub> = 2.25 m</code></div>
+      <div>齿距：<code>p = π · m</code></div>
+      <div>分度圆齿厚 / 齿槽宽：<code>s = e = π · m / 2</code></div>
+      <div>标准中心距：<code>a = m · (z₁ + z₂) / 2</code></div>
+    </div>
+    <div class="formula-box" style="font-size:12px; color:#666;">
+      其中：h<sub>a</sub>* = 1（齿顶高系数），c* = 0.25（顶隙系数），α = 20°（分度圆压力角），均为 GB/T 1356 规定的标准值。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📚 数据来源</div>
+    <div class="source-section">
+      <ol>
+        <li><strong>GB/T 1356-2001</strong>《通用机械和重型机械用圆柱齿轮 标准基本齿条齿廓》——规定了标准基本齿条齿廓参数：齿顶高系数 h<sub>a</sub>* = 1，顶隙系数 c* = 0.25，分度圆压力角 α = 20°。</li>
+        <li><strong>GB/T 1357-2008</strong>《通用机械和重型机械用圆柱齿轮 模数》——规定了渐开线圆柱齿轮的标准模数系列（本工具采用第一系列优先值）。</li>
+        <li><strong>GB/T 10095.1-2008</strong>《圆柱齿轮 精度制 第1部分：轮齿同侧齿面偏差的定义和允许值》——齿轮精度相关标准参考。</li>
+        <li>公式推导依据上述标准中标准齿条齿廓几何关系，为标准直齿圆柱齿轮（无变位、无侧隙啮合）的基本尺寸计算公式。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-标准直齿圆柱齿轮计算 20261021</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var moduleSelect = document.getElementById('module');
+  var moduleCustomGroup = document.getElementById('customModuleGroup');
+  var moduleCustomInput = document.getElementById('moduleCustom');
+  var z1Input = document.getElementById('z1');
+  var z2Input = document.getElementById('z2');
+  var calcBtn = document.getElementById('calcBtn');
+  var errorMsg = document.getElementById('errorMsg');
+  var resultCard = document.getElementById('resultCard');
+  var showDrawing = document.getElementById('showDrawing');
+  var gearSvgWrap = document.getElementById('gearSvgWrap');
+
+  moduleSelect.addEventListener('change', function() {
+    if (this.value === 'custom') {
+      moduleCustomGroup.classList.remove('hidden');
+      moduleCustomInput.focus();
+    } else {
+      moduleCustomGroup.classList.add('hidden');
+    }
+  });
+
+  calcBtn.addEventListener('click', calculate);
+
+  function getModule() {
+    if (moduleSelect.value === 'custom') {
+      return parseFloat(moduleCustomInput.value);
+    }
+    return parseFloat(moduleSelect.value);
+  }
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+    resultCard.classList.add('hidden');
+  }
+
+  function hideError() {
+    errorMsg.style.display = 'none';
+  }
+
+  function fmt(val, decimals) {
+    if (decimals === undefined) decimals = 4;
+    if (isNaN(val) || !isFinite(val)) return '—';
+    return val.toFixed(decimals).replace(/\.?0+$/, '') || '0';
+  }
+
+  function calculate() {
+    hideError();
+
+    var m = getModule();
+    var z1 = parseInt(z1Input.value, 10);
+    var z2Val = z2Input.value.trim();
+    var z2 = z2Val === '' ? NaN : parseInt(z2Val, 10);
+
+    if (isNaN(m) || m <= 0) {
+      showError('请输入有效的模数（大于 0）');
+      return;
+    }
+    if (isNaN(z1) || z1 < 4) {
+      showError('齿轮1 齿数应不小于 4');
+      return;
+    }
+    if (!isNaN(z2) && z2 < 4) {
+      showError('齿轮2 齿数应不小于 4');
+      return;
+    }
+
+    var alpha = 20 * Math.PI / 180;
+    var ha_star = 1;
+    var c_star = 0.25;
+
+    // Gear 1
+    var d1 = m * z1;
+    var da1 = m * (z1 + 2);
+    var df1 = m * (z1 - 2.5);
+    var db1 = d1 * Math.cos(alpha);
+    var ha1 = ha_star * m;
+    var hf1 = (ha_star + c_star) * m;
+    var h1 = ha1 + hf1;
+    var p = Math.PI * m;
+    var s = p / 2;
+
+    var tbody1 = document.querySelector('#resultTable1 tbody');
+    tbody1.innerHTML = '';
+    var rows1 = [
+      ['分度圆直径 d₁', fmt(d1) + ' mm'],
+      ['齿顶圆直径 dₐ₁', fmt(da1) + ' mm'],
+      ['齿根圆直径 d_f₁', fmt(df1) + ' mm'],
+      ['基圆直径 d_b₁', fmt(db1) + ' mm'],
+      ['齿顶高 hₐ', fmt(ha1) + ' mm'],
+      ['齿根高 h_f', fmt(hf1) + ' mm'],
+      ['全齿高 h', fmt(h1) + ' mm'],
+      ['齿距 p', fmt(p) + ' mm'],
+      ['分度圆齿厚 s', fmt(s) + ' mm'],
+      ['分度圆齿槽宽 e', fmt(s) + ' mm']
+    ];
+    for (var i = 0; i < rows1.length; i++) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<th>' + rows1[i][0] + '</th><td>' + rows1[i][1] + '</td>';
+      tbody1.appendChild(tr);
+    }
+
+    var gear2Section = document.getElementById('gear2Section');
+    var centerSection = document.getElementById('centerSection');
+
+    if (!isNaN(z2)) {
+      var d2 = m * z2;
+      var da2 = m * (z2 + 2);
+      var df2 = m * (z2 - 2.5);
+      var db2 = d2 * Math.cos(alpha);
+      var a = m * (z1 + z2) / 2;
+      var i_ratio = z2 / z1;
+
+      var tbody2 = document.querySelector('#resultTable2 tbody');
+      tbody2.innerHTML = '';
+      var rows2 = [
+        ['分度圆直径 d₂', fmt(d2) + ' mm'],
+        ['齿顶圆直径 dₐ₂', fmt(da2) + ' mm'],
+        ['齿根圆直径 d_f₂', fmt(df2) + ' mm'],
+        ['基圆直径 d_b₂', fmt(db2) + ' mm']
+      ];
+      for (var j = 0; j < rows2.length; j++) {
+        var tr2 = document.createElement('tr');
+        tr2.innerHTML = '<th>' + rows2[j][0] + '</th><td>' + rows2[j][1] + '</td>';
+        tbody2.appendChild(tr2);
+      }
+
+      var tbodyC = document.querySelector('#resultTableCenter tbody');
+      tbodyC.innerHTML = '';
+      var rowsC = [
+        ['标准中心距 a', fmt(a) + ' mm'],
+        ['传动比 i', fmt(i_ratio, 4)],
+        ['齿数和', (z1 + z2).toString()]
+      ];
+      for (var k = 0; k < rowsC.length; k++) {
+        var trC = document.createElement('tr');
+        trC.innerHTML = '<th>' + rowsC[k][0] + '</th><td>' + rowsC[k][1] + '</td>';
+        tbodyC.appendChild(trC);
+      }
+
+      gear2Section.classList.remove('hidden');
+      centerSection.classList.remove('hidden');
+
+      if (showDrawing.checked) {
+        drawGears(m, z1, z2, d1, da1, df1, d2, da2, df2, a);
+      } else {
+        gearSvgWrap.classList.add('hidden');
+      }
+    } else {
+      gear2Section.classList.add('hidden');
+      centerSection.classList.add('hidden');
+
+      if (showDrawing.checked) {
+        drawSingleGear(m, z1, d1, da1, df1);
+      } else {
+        gearSvgWrap.classList.add('hidden');
+      }
+    }
+
+    resultCard.classList.remove('hidden');
+  }
+
+  function drawSingleGear(m, z, d, da, df) {
+    gearSvgWrap.classList.remove('hidden');
+    var scale = 200 / da;
+    if (scale > 3) scale = 3;
+    var cx = 130, cy = 130;
+    var svgW = 260, svgH = 260;
+
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + svgW + '" height="' + svgH + '" viewBox="0 0 ' + svgW + ' ' + svgH + '">';
+
+    // Addendum circle
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (da / 2 * scale) + '" fill="none" stroke="#4361ee" stroke-width="1.5"/>';
+    // Pitch circle
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (d / 2 * scale) + '" fill="none" stroke="#e63946" stroke-width="1" stroke-dasharray="4,3"/>';
+    // Dedendum circle
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (df / 2 * scale) + '" fill="none" stroke="#888" stroke-width="1" stroke-dasharray="2,2"/>';
+
+    // Draw simplified tooth profile
+    var toothAngle = 2 * Math.PI / z;
+    var r_tip = da / 2 * scale;
+    var r_root = df / 2 * scale;
+    var toothWidthAngle = toothAngle * 0.35;
+
+    var path = '';
+    for (var i = 0; i < z; i++) {
+      var angle = i * toothAngle;
+      var a1 = angle - toothWidthAngle / 2;
+      var a2 = angle + toothWidthAngle / 2;
+      var a3 = angle + toothAngle / 2 - toothWidthAngle * 0.15;
+      var a4 = angle + toothAngle / 2 + toothWidthAngle * 0.15;
+
+      var x1 = cx + r_root * Math.cos(a1);
+      var y1 = cy + r_root * Math.sin(a1);
+      var x2 = cx + r_tip * Math.cos(angle - toothWidthAngle * 0.3);
+      var y2 = cy + r_tip * Math.sin(angle - toothWidthAngle * 0.3);
+      var x3 = cx + r_tip * Math.cos(angle + toothWidthAngle * 0.3);
+      var y3 = cy + r_tip * Math.sin(angle + toothWidthAngle * 0.3);
+      var x4 = cx + r_root * Math.cos(a4);
+      var y4 = cy + r_root * Math.sin(a4);
+
+      if (i === 0) {
+        path += 'M' + x1.toFixed(2) + ',' + y1.toFixed(2);
+      }
+      path += ' L' + x2.toFixed(2) + ',' + y2.toFixed(2);
+      path += ' L' + x3.toFixed(2) + ',' + y3.toFixed(2);
+      path += ' L' + x4.toFixed(2) + ',' + y4.toFixed(2);
+    }
+    path += ' Z';
+    svg += '<path d="' + path + '" fill="rgba(67,97,238,0.1)" stroke="#4361ee" stroke-width="0.8"/>';
+
+    // Center dot
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="2" fill="#333"/>';
+
+    // Legend
+    svg += '<line x1="10" y1="' + (svgH - 30) + '" x2="30" y2="' + (svgH - 30) + '" stroke="#4361ee" stroke-width="1.5"/>';
+    svg += '<text x="34" y="' + (svgH - 26) + '" font-size="10" fill="#4361ee">齿顶圆 dₐ</text>';
+    svg += '<line x1="10" y1="' + (svgH - 16) + '" x2="30" y2="' + (svgH - 16) + '" stroke="#e63946" stroke-width="1" stroke-dasharray="4,3"/>';
+    svg += '<text x="34" y="' + (svgH - 12) + '" font-size="10" fill="#e63946">分度圆 d</text>';
+
+    svg += '</svg>';
+    gearSvgWrap.innerHTML = svg;
+  }
+
+  function drawGears(m, z1, z2, d1, da1, df1, d2, da2, df2, a) {
+    gearSvgWrap.classList.remove('hidden');
+    var maxDim = da1 + da2 + a;
+    var svgW = 320, svgH = 200;
+    var scale = Math.min(svgW * 0.9 / (da1 + da2), svgH * 0.85 / Math.max(da1, da2));
+    if (scale > 2) scale = 2;
+
+    var cx1 = svgW / 2 - a / 2 * scale;
+    var cy = svgH / 2;
+    var cx2 = svgW / 2 + a / 2 * scale;
+
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + svgW + '" height="' + svgH + '" viewBox="0 0 ' + svgW + ' ' + svgH + '">';
+
+    // Gear 1
+    svg += '<circle cx="' + cx1 + '" cy="' + cy + '" r="' + (da1 / 2 * scale) + '" fill="none" stroke="#4361ee" stroke-width="1.2"/>';
+    svg += '<circle cx="' + cx1 + '" cy="' + cy + '" r="' + (d1 / 2 * scale) + '" fill="none" stroke="#e63946" stroke-width="0.8" stroke-dasharray="3,2"/>';
+
+    // Gear 2
+    svg += '<circle cx="' + cx2 + '" cy="' + cy + '" r="' + (da2 / 2 * scale) + '" fill="none" stroke="#2a9d8f" stroke-width="1.2"/>';
+    svg += '<circle cx="' + cx2 + '" cy="' + cy + '" r="' + (d2 / 2 * scale) + '" fill="none" stroke="#e9c46a" stroke-width="0.8" stroke-dasharray="3,2"/>';
+
+    // Center line
+    svg += '<line x1="' + cx1 + '" y1="' + cy + '" x2="' + cx2 + '" y2="' + cy + '" stroke="#999" stroke-width="0.5" stroke-dasharray="2,2"/>';
+
+    // Centers
+    svg += '<circle cx="' + cx1 + '" cy="' + cy + '" r="2" fill="#333"/>';
+    svg += '<circle cx="' + cx2 + '" cy="' + cy + '" r="2" fill="#333"/>';
+
+    // Labels
+    svg += '<text x="' + cx1 + '" y="' + (cy - da1 / 2 * scale - 5) + '" font-size="10" fill="#4361ee" text-anchor="middle">z₁=' + z1 + '</text>';
+    svg += '<text x="' + cx2 + '" y="' + (cy - da2 / 2 * scale - 5) + '" font-size="10" fill="#2a9d8f" text-anchor="middle">z₂=' + z2 + '</text>';
+
+    // Center distance dimension
+    var dimY = cy + Math.max(da1, da2) / 2 * scale + 16;
+    svg += '<line x1="' + cx1 + '" y1="' + dimY + '" x2="' + cx2 + '" y2="' + dimY + '" stroke="#666" stroke-width="0.8"/>';
+    svg += '<line x1="' + cx1 + '" y1="' + (dimY - 4) + '" x2="' + cx1 + '" y2="' + (dimY + 4) + '" stroke="#666" stroke-width="0.8"/>';
+    svg += '<line x1="' + cx2 + '" y1="' + (dimY - 4) + '" x2="' + cx2 + '" y2="' + (dimY + 4) + '" stroke="#666" stroke-width="0.8"/>';
+    svg += '<text x="' + ((cx1 + cx2) / 2) + '" y="' + (dimY - 4) + '" font-size="9" fill="#666" text-anchor="middle">a=' + fmt(a) + 'mm</text>';
+
+    svg += '</svg>';
+    gearSvgWrap.innerHTML = svg;
+  }
+
+  // Auto-calculate on load if values present
+  if (moduleSelect.value && z1Input.value) {
+    calculate();
+  }
+})();
+</script>
+</body>
+</html>

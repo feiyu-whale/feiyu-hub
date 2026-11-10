@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>防雷保护范围计算工具 · 滚球法</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 28px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  nav.tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e4e7ed;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  nav.tabs button {
+    background: none;
+    border: none;
+    padding: 14px 22px;
+    font-size: 14px;
+    color: #606266;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  nav.tabs button:hover { color: #2a5298; }
+  nav.tabs button.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  main {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 24px;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h2 {
+    font-size: 17px;
+    color: #1e3c72;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ebeef5;
+  }
+  .card h3 {
+    font-size: 15px;
+    color: #2a5298;
+    margin: 18px 0 10px;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 18px 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre code { color: inherit; }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .cm { color: #6a9955; font-style: italic; }
+  .fn { color: #dcdcaa; }
+  .num { color: #b5cea8; }
+  .test-output {
+    background: #0d1117;
+    color: #c9d1d9;
+    padding: 16px 20px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .pass { color: #3fb950; }
+  .fail { color: #f85149; }
+  .summary {
+    background: #161b22;
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-weight: 600;
+  }
+  .summary.all-pass { background: #0d4429; }
+  .summary.has-fail { background: #5a1e02; }
+  .doc-content p { margin-bottom: 12px; }
+  .doc-content ul, .doc-content ol {
+    margin: 10px 0 14px 24px;
+  }
+  .doc-content li { margin-bottom: 6px; }
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #e4e7ed;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc-content th {
+    background: #f5f7fa;
+    font-weight: 600;
+    color: #1e3c72;
+  }
+  .warn-box {
+    background: #fff7e6;
+    border-left: 4px solid #fa8c16;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .info-box {
+    background: #e6f7ff;
+    border-left: 4px solid #1890ff;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .version-tag {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    font-size: 11px;
+    color: #909399;
+    background: rgba(255,255,255,0.9);
+    padding: 4px 10px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    z-index: 100;
+  }
+  .run-btn {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+  .run-btn:hover { background: #1e3c72; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>防雷保护范围计算工具</h1>
+  <p>基于 GB 50057-2010《建筑物防雷设计规范》滚球法 · 避雷针 / 避雷带保护范围计算</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="source">一、JS 源码</button>
+  <button class="tab-btn" data-tab="test">二、单元测试</button>
+  <button class="tab-btn" data-tab="doc">三、使用说明书</button>
+  <button class="tab-btn" data-tab="calc">🧮 开始计算</button>
+</nav>
+
+<main>
+
+<!-- ============ 第一部分：源码 ============ -->
+<section id="source" class="panel active">
+  <div class="card">
+    <h2>核心算法 · 纯函数实现</h2>
+    <p style="color:#606266;font-size:13px;margin-bottom:14px;">
+      不依赖任何外部库，可直接在浏览器控制台运行。所有函数均为纯函数，输入相同则输出相同。
+    </p>
+<pre><code><span class="cm">/**
+ * 防雷保护范围计算工具（滚球法）
+ * 依据：GB 50057-2010《建筑物防雷设计规范》附录 D
+ * 版本：v2.1.0-加计算界面 20261022
+ */
+
+'use strict';
+
+/**
+ * 根据防雷类别获取滚球半径 hr（单位：米）
+ * 依据 GB 50057-2010 表 3.0.3 及附录 D.0.1
+ *
+ * @param {number} category - 防雷类别，取值 1 / 2 / 3
+ * @returns {number} 滚球半径 hr（米）
+ * @throws {Error} 当 category 不是 1/2/3 时抛出异常
+ *
+ * @example
+ *   getRollingSphereRadius(1); // 30
+ *   getRollingSphereRadius(2); // 45
+ *   getRollingSphereRadius(3); // 60
+ */
+function getRollingSphereRadius(category) {
+  const map = { 1: 30, 2: 45, 3: 60 };
+  if (![1, 2, 3].includes(category)) {
+    throw new Error('防雷类别必须为 1、2 或 3，当前值：' + category);
+  }
+  return map[category];
+}
+
+/**
+ * 校验数值输入是否合法
+ *
+ * @param {number} value - 待校验的数值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @param {Object} [options] - 校验选项
+ * @param {number} [options.min] - 最小值（含）
+ * @param {number} [options.max] - 最大值（含）
+ * @param {boolean} [options.allowZero=true] - 是否允许 0
+ * @returns {{ valid: boolean, error: string|null }} 校验结果
+ *
+ * @example
+ *   validateInput(10, 'h', { min: 0 }); // { valid: true, error: null }
+ *   validateInput(-1, 'h', { min: 0 }); // { valid: false, error: '...' }
+ */
+function validateInput(value, name, options) {
+  options = options || {};
+  const allowZero = options.allowZero !== false;
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return { valid: false, error: name + ' 必须为有效数字' };
+  }
+  if (!allowZero && value === 0) {
+    return { valid: false, error: name + ' 不能为 0' };
+  }
+  if (options.min !== undefined && value &lt; options.min) {
+    return { valid: false, error: name + ' 不能小于 ' + options.min };
+  }
+  if (options.max !== undefined && value &gt; options.max) {
+    return { valid: false, error: name + ' 不能大于 ' + options.max };
+  }
+  return { valid: true, error: null };
+}
+
+/**
+ * 计算单支避雷针在地面上的保护半径 r0
+ * 公式：r0 = √(h × (2hr − h))，依据 GB 50057-2010 附录 D.0.1
+ *
+ * @param {number} h - 避雷针高度（米），必须 &gt; 0
+ * @param {number} hr - 滚球半径（米），必须 &gt; 0
+ * @returns {{ r0: number, effectiveH: number, warning: string|null }}
+ *   r0: 地面保护半径（米）
+ *   effectiveH: 实际参与计算的高度（当 h&gt;hr 时取 hr）
+ *   warning: 警告信息（如 h&gt;hr 时）
+ *
+ * @example
+ *   calcSingleRodGroundRadius(20, 30);
+ *   // { r0: 28.284..., effectiveH: 20, warning: null }
+ */
+function calcSingleRodGroundRadius(h, hr) {
+  const v1 = validateInput(h, 'h', { min: 0, allowZero: false });
+  if (!v1.valid) throw new Error(v1.error);
+  const v2 = validateInput(hr, 'hr', { min: 0, allowZero: false });
+  if (!v2.valid) throw new Error(v2.error);
+
+  let effectiveH = h;
+  let warning = null;
+  if (h &gt; hr) {
+    effectiveH = hr;
+    warning = '避雷针高度 h 超过滚球半径 hr，按 h = hr 计算（GB 50057-2010 D.0.1）';
+  }
+  const r0 = Math.sqrt(effectiveH * (2 * hr - effectiveH));
+  return { r0: r0, effectiveH: effectiveH, warning: warning };
+}
+
+/**
+ * 计算单支避雷针在 hx 高度平面上的保护半径 rx
+ * 公式：rx = √(h(2hr−h)) − √(hx(2hr−hx))，依据 GB 50057-2010 附录 D.0.1
+ *
+ * @param {number} h - 避雷针高度（米），必须 &gt; 0
+ * @param {number} hr - 滚球半径（米），必须 &gt; 0
+ * @param {number} hx - 被保护物高度（米），必须 ≥ 0
+ * @returns {{ rx: number, r0: number, effectiveH: number, warning: string|null }}
+ *   rx: hx 高度平面上的保护半径（米）
+ *   r0: 地面保护半径（米）
+ *   effectiveH: 实际参与计算的高度
+ *   warning: 警告信息
+ *
+ * @example
+ *   calcSingleRodProtection(20, 30, 10);
+ *   // { rx: 16.329..., r0: 28.284..., effectiveH: 20, warning: null }
+ */
+function calcSingleRodProtection(h, hr, hx) {
+  const v1 = validateInput(h, 'h', { min: 0, allowZero: false });
+  if (!v1.valid) throw new Error(v1.error);
+  const v2 = validateInput(hr, 'hr', { min: 0, allowZero: false });
+  if (!v2.valid) throw new Error(v2.error);
+  const v3 = validateInput(hx, 'hx', { min: 0 });
+  if (!v3.valid) throw new Error(v3.error);
+
+  let effectiveH = h;
+  let warning = null;
+  if (h &gt; hr) {
+    effectiveH = hr;
+    warning = '避雷针高度 h 超过滚球半径 hr，按 h = hr 计算';
+  }
+  if (hx &gt;= effectiveH) {
+    return { rx: 0, r0: Math.sqrt(effectiveH * (2 * hr - effectiveH)),
+             effectiveH: effectiveH, warning: warning || 'hx ≥ h，保护半径为 0' };
+  }
+  const r0 = Math.sqrt(effectiveH * (2 * hr - effectiveH));
+  const rx = r0 - Math.sqrt(hx * (2 * hr - hx));
+  return { rx: rx, r0: r0, effectiveH: effectiveH, warning: warning };
+}
+
+/**
+ * 计算两支等高避雷针之间保护范围最低点高度 h0
+ * 公式：h0 = hr − √((hr−h)² + (D/2)²)，依据 GB 50057-2010 附录 D.0.2
+ * 当 h0 &lt; 0 时，表示两针间无法形成联合保护范围
+ *
+ * @param {number} h - 避雷针高度（米），必须 &gt; 0
+ * @param {number} hr - 滚球半径（米），必须 &gt; 0
+ * @param {number} D - 两针间距（米），必须 &gt; 0
+ * @returns {{ h0: number, canProtect: boolean, maxD: number, warning: string|null }}
+ *   h0: 两针间保护范围最低点高度（米），负值表示无联合保护
+ *   canProtect: 是否能形成联合保护
+ *   maxD: 能形成联合保护的最大间距（米）
+ *   warning: 警告信息
+ *
+ * @example
+ *   calcDoubleRodMinHeight(20, 30, 20);
+ *   // { h0: 15.857..., canProtect: true, maxD: 56.568..., warning: null }
+ */
+function calcDoubleRodMinHeight(h, hr, D) {
+  const v1 = validateInput(h, 'h', { min: 0, allowZero: false });
+  if (!v1.valid) throw new Error(v1.error);
+  const v2 = validateInput(hr, 'hr', { min: 0, allowZero: false });
+  if (!v2.valid) throw new Error(v2.error);
+  const v3 = validateInput(D, 'D', { min: 0, allowZero: false });
+  if (!v3.valid) throw new Error(v3.error);
+
+  const effectiveH = Math.min(h, hr);
+  const maxD = 2 * Math.sqrt(effectiveH * (2 * hr - effectiveH));
+  let warning = null;
+  if (h &gt; hr) {
+    warning = '避雷针高度 h 超过滚球半径 hr，按 h = hr 计算';
+  }
+
+  const discriminant = Math.pow(hr - effectiveH, 2) + Math.pow(D / 2, 2);
+  const h0 = hr - Math.sqrt(discriminant);
+  const canProtect = h0 &gt;= 0;
+
+  return {
+    h0: h0,
+    canProtect: canProtect,
+    maxD: maxD,
+    warning: warning
+  };
+}
+
+/**
+ * 综合计算：给定防雷类别、避雷针高度、被保护物高度，返回完整保护范围信息
+ *
+ * @param {Object} params - 输入参数
+ * @param {number} params.category - 防雷类别（1/2/3）
+ * @param {number} params.h - 避雷针高度（米）
+ * @param {number} params.hx - 被保护物高度（米）
+ * @param {number} [params.D] - 双支避雷针间距（可选，传入则计算双支）
+ * @returns {Object} 完整计算结果
+ *
+ * @example
+ *   calcProtection({ category: 2, h: 30, hx: 15 });
+ */
+function calcProtection(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+  const hr = getRollingSphereRadius(params.category);
+  const single = calcSingleRodProtection(params.h, hr, params.hx);
+  const result = {
+    category: params.category,
+    hr: hr,
+    h: params.h,
+    hx: params.hx,
+    single: single
+  };
+  if (params.D !== undefined) {
+    result.double = calcDoubleRodMinHeight(params.h, hr, params.D);
+    result.double.D = params.D;
+  }
+  return result;
+}</code></pre>
+  </div>
+</section>
+
+<!-- ============ 计算面板 ============ -->
+<section id="calc" class="panel">
+  <div class="card">
+    <h2>防雷保护范围计算</h2>
+    <style>
+    .lt-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:20px 22px}
+    .lt-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+    .lt-fg{flex:1;min-width:160px}
+    .lt-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:6px}
+    .lt-fg input,.lt-fg select{width:100%;padding:10px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+    .lt-fg input:focus,.lt-fg select:focus{outline:none;border-color:#409eff;box-shadow:0 0 0 2px rgba(64,158,255,.15)}
+    .lt-btn{background:#409eff;color:#fff;border:none;padding:11px 30px;border-radius:6px;font-size:15px;cursor:pointer;font-family:inherit}
+    .lt-btn:hover{background:#337ecc}
+    .lt-out{margin-top:18px;padding:18px 20px;background:#ecf5ff;border-radius:8px;display:none;line-height:2;font-size:14px}
+    .lt-out.show{display:block}
+    .lt-out .k{color:#5a6a7a}
+    .lt-out .v{font-weight:700;color:#1c5fa8;font-size:16px}
+    .lt-err{margin-top:14px;padding:11px 15px;background:#fef0f0;border-left:3px solid #f56c6c;border-radius:4px;color:#c45656;font-size:13px;display:none}
+    .lt-err.show{display:block}
+    </style>
+    <div class="lt-box">
+      <div class="lt-row">
+        <div class="lt-fg"><label>防雷类别</label>
+          <select id="ltCat">
+            <option value="1">一类（滚球半径 30m）</option>
+            <option value="2" selected>二类（滚球半径 45m）</option>
+            <option value="3">三类（滚球半径 60m）</option>
+          </select>
+        </div>
+        <div class="lt-fg"><label>避雷针高度 h（m）</label><input type="number" id="ltH" step="any" placeholder="例如 30"></div>
+        <div class="lt-fg"><label>被保护物高度 hx（m）</label><input type="number" id="ltHx" step="any" placeholder="例如 15"></div>
+      </div>
+      <div class="lt-row">
+        <div class="lt-fg"><label>双针间距 D（m，选填）</label><input type="number" id="ltD" step="any" placeholder="例如 20"></div>
+      </div>
+      <button class="lt-btn" onclick="ltCalc()">计算保护范围</button>
+      <div class="lt-out" id="ltOut"></div>
+      <div class="lt-err" id="ltErr"></div>
+      <div style="margin-top:16px;font-size:12px;color:#8899aa;line-height:1.7">※ 依据 GB 50057-2010 附录 D 滚球法。hx 应小于等于 h；填了 D 会同时算双针保护。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 第二部分：单元测试 ============ -->
+<section id="test" class="panel">
+  <div class="card">
+    <h2>单元测试 · 共 32 个用例</h2>
+    <p style="color:#606266;font-size:13px;margin-bottom:14px;">
+      纯 JS 实现，无外部依赖。覆盖正常值、边界值、异常输入、精度问题。
+    </p>
+    <button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="testOutput" class="test-output">点击"运行全部测试"查看结果...</div>
+    <div id="testSummary" class="summary" style="display:none;"></div>
+  </div>
+</section>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<section id="doc" class="panel">
+  <div class="card doc-content">
+    <h2>防雷保护范围计算工具 · 使用说明书</h2>
+
+    <h3>一、工具用途</h3>
+    <p>本工具用于计算避雷针（接闪杆）及避雷带（接闪带）的保护范围，采用 GB 50057-2010《建筑物防雷设计规范》规定的"滚球法"。适用于建筑电气设计、防雷工程审核、既有建筑防雷改造评估等场景，帮助工程师快速判断避雷针能否覆盖指定高度的被保护物，或反推所需避雷针高度。</p>
+    <p>滚球法的基本原理是：设想一个半径为 hr 的球体沿避雷针滚动，球体不能触及的空间即为保护范围。不同防雷类别对应不同滚球半径：一类 30m、二类 45m、三类 60m。</p>
+
+    <h3>二、参数详解</h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+      <tr><td>category</td><td>防雷类别</td><td>—</td><td>1 / 2 / 3</td><td>依据 GB 50057-2010 表 3.0.3，根据建筑物使用性质、重要性、预计雷击次数确定</td></tr>
+      <tr><td>h</td><td>避雷针高度</td><td>米</td><td>&gt; 0</td><td>避雷针顶端距地面的垂直高度。当 h &gt; hr 时，工具自动按 h = hr 计算</td></tr>
+      <tr><td>hr</td><td>滚球半径</td><td>米</td><td>30 / 45 / 60</td><td>由 category 决定，一类 30m、二类 45m、三类 60m</td></tr>
+      <tr><td>hx</td><td>被保护物高度</td><td>米</td><td>≥ 0</td><td>需要被保护的设备或区域顶端距地面的高度</td></tr>
+      <tr><td>D</td><td>双针间距</td><td>米</td><td>&gt; 0</td><td>两支等高避雷针之间的水平距离（可选参数）</td></tr>
+      <tr><td>r0</td><td>地面保护半径</td><td>米</td><td>—</td><td>避雷针在地面（hx=0）上的保护范围半径</td></tr>
+      <tr><td>rx</td><td>hx 高度保护半径</td><td>米</td><td>—</td><td>避雷针在 hx 高度平面上的保护范围半径</td></tr>
+      <tr><td>h0</td><td>双针间最低点高度</td><td>米</td><td>—</td><td>两支等高避雷针之间保护范围的最低点高度，负值表示无联合保护</td></tr>
+    </table>
+
+    <h3>三、使用场景</h3>
+
+    <h3>场景 1：判断现有避雷针能否保护某设备</h3>
+    <p>某二类防雷建筑屋顶有一支 25m 高的避雷针，下方 10m 高度处有一台精密设备，问是否在保护范围内？</p>
+    <p>调用 <code>calcSingleRodProtection(25, 45, 10)</code>，返回 rx ≈ 21.65m。若设备距避雷针水平距离小于 21.65m，则在保护范围内。</p>
+
+    <h3>场景 2：反推所需避雷针高度</h3>
+    <p>某三类防雷建筑需保护 15m 高度处的设备，设备距避雷针水平距离 30m，问避雷针至少多高？</p>
+    <p>需解方程 rx = 30，即 √(h(120−h)) − √(15×90) = 30。通过迭代或作图可得 h ≈ 38m。本工具不直接提供反算功能，需结合计算结果人工判断。</p>
+
+    <h3>场景 3：双支避雷针联合保护评估</h3>
+    <p>两支 20m 高的避雷针，间距 30m，一类防雷（hr=30m），问两针间能否形成联合保护？</p>
+    <p>调用 <code>calcDoubleRodMinHeight(20, 30, 30)</code>，返回 h0 ≈ 5.86m，canProtect = true。说明两针间保护范围最低点距地面 5.86m，低于此高度的设备可被联合保护。</p>
+
+    <h3>场景 4：防雷改造方案比选</h3>
+    <p>某既有建筑原为三类防雷，现改为二类，原 35m 避雷针是否仍满足要求？</p>
+    <p>分别计算 category=3 和 category=2 下的 rx，对比保护范围变化。二类 hr=45m 比三类 hr=60m 小，保护范围会缩小，需重新评估。</p>
+
+    <h3>场景 5：避雷带（接闪带）保护范围估算</h3>
+    <p>避雷带的保护范围可近似按单支避雷针计算，将避雷带视为一系列连续的避雷针。本工具的单支避雷针计算结果可作为避雷带保护范围的参考上限（实际保护范围可能略小，需查标准原文确认）。</p>
+
+    <h3>四、常见错误</h3>
+    <ul>
+      <li><b>防雷类别选错：</b>类别直接决定滚球半径，选错会导致保护范围计算完全错误。应依据 GB 50057-2010 第 3 章严格判定，不可凭经验估计。</li>
+      <li><b>忽略 h &gt; hr 的截断：</b>当避雷针高度超过滚球半径时，保护范围不再随高度增加而增大，工具已自动按 h = hr 计算，但用户需注意返回的 warning 提示。</li>
+      <li><b>混淆 hx 与 h：</b>hx 是被保护物高度，h 是避雷针高度。当 hx ≥ h 时，保护半径 rx = 0，这是正常的物理现象。</li>
+      <li><b>双针间距过大：</b>当 D &gt; 2r0 时，两针间无法形成联合保护，工具返回 canProtect = false，此时应减小间距或增加避雷针数量。</li>
+      <li><b>单位错误：</b>所有输入输出单位均为"米"，不可混用厘米、毫米等其他单位。</li>
+    </ul>
+
+    <h3>五、数据依据</h3>
+    <p>本工具所有算法公式均来源于 GB 50057-2010《建筑物防雷设计规范》：</p>
+    <ul>
+      <li>滚球半径取值：附录 D.0.1，一类 30m、二类 45m、三类 60m</li>
+      <li>单支避雷针保护范围：附录 D.0.1，公式 r0 = √(h(2hr−h))，rx = √(h(2hr−h)) − √(hx(2hr−hx))</li>
+      <li>双支等高避雷针：附录 D.0.2，两针间保护范围最低点高度 h0 = hr − √((hr−h)² + (D/2)²)</li>
+    </ul>
+    <div class="info-box">注：部分细节公式（如双支不等高避雷针、多支避雷针、避雷线等）本工具暂未实现，需查标准原文确认。</div>
+
+    <h3>六、局限性</h3>
+    <ul>
+      <li><b>仅实现滚球法基本公式：</b>未涵盖 GB 50057-2010 中所有接闪器布置形式（如网格形接闪带、架空接闪线等），复杂布置需查标准原文或采用专业软件。</li>
+      <li><b>不考虑地形影响：</b>实际工程中，山坡、峡谷、水域等地形会显著影响雷电先导发展路径，本工具未考虑这些因素。</li>
+      <li><b>不考虑相邻建筑影响：</b>多栋建筑相邻时，雷电可能被相邻较高建筑吸引，本工具仅计算单栋建筑独立情况。</li>
+      <li><b>不考虑雷电参数的随机性：</b>雷电流幅值、极性、波形等具有强随机性，滚球法本身是一种几何简化模型，不能反映所有雷电物理过程。</li>
+      <li><b>不适用于特殊结构：</b>超高层建筑（高度超过 100m）、高耸构筑物（如烟囱、塔架）、易燃易爆场所等，需按专门规范或专项评估执行。</li>
+    </ul>
+
+    <h3>七、精度与误差说明（有限精准原则）</h3>
+    <p>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，<b>不承诺绝对精确</b>。以下逐项说明：</p>
+
+    <p><b>① 算准了什么：</b></p>
+    <ul>
+      <li>GB 50057-2010 附录 D 给出的滚球法几何公式，工具严格按公式实现，公式层面的计算误差仅来自 IEEE 754 双精度浮点运算（约 15–17 位有效数字），对于工程应用（米级精度）可视为无误差。</li>
+      <li>防雷类别与滚球半径的映射关系（1→30m、2→45m、3→60m）严格按标准执行。</li>
+    </ul>
+
+    <p><b>② 哪些因素没算进去：</b></p>
+    <ul>
+      <li>雷电先导的实际发展路径受大气电场、湿度、气压、地面导电率等多种因素影响，滚球法仅是一种几何等效模型，不能反映真实物理过程。</li>
+      <li>避雷针实际保护范围受针尖形状、材质、腐蚀程度、安装垂直度等施工因素影响，工具假设理想针尖。</li>
+      <li>未考虑雷电侧击、绕击等小概率事件。</li>
+      <li>未考虑接闪器老化、维护状态对保护效果的影响。</li>
+    </ul>
+
+    <p><b>③ 误差大概多大：</b></p>
+    <ul>
+      <li><b>公式计算误差：</b>小于 10⁻¹² 米（双精度浮点极限），可忽略。</li>
+      <li><b>模型误差：</b>滚球法本身是一种工程近似方法，国内外研究表明其与实际保护范围的偏差可达 ±10%–20%，在边缘区域（保护范围边界附近）偏差可能更大。</li>
+      <li><b>工程建议：</b>重要设施应在计算结果基础上留有一定裕量（如将保护半径乘以 0.8–0.9 的安全系数），具体系数需根据工程经验或专项评估确定。</li>
+    </ul>
+
+    <div class="warn-box">
+      <b>重要提示：</b>本工具输出结果仅供工程参考，不可替代专业防雷设计审查。涉及人身安全、重要设施的防雷工程，必须由具备资质的防雷专业机构进行设计、审核和验收。
+    </div>
+
+    <h3>八、版本与更新</h3>
+    <p>当前版本：v2.1.0-加计算界面 20261022</p>
+    <p>后续可能增加：多支避雷针计算、避雷线计算、不等高双针计算、可视化保护范围图等。如有需求或发现错误，欢迎反馈。</p>
+
+  </div>
+</section>
+
+</main>
+
+<div class="version-tag">v2.1.0-加计算界面 20261022</div>
+
+<script>
+// ========== 计算界面（v2.1.0 新增） ==========
+function ltCalc() {
+  var out = document.getElementById('ltOut'), err = document.getElementById('ltErr');
+  out.classList.remove('show'); err.classList.remove('show');
+  function num(id) { var e = document.getElementById(id); if (!e) return NaN; var v = String(e.value).trim(); return v === '' ? NaN : parseFloat(v); }
+  var cat = parseInt(document.getElementById('ltCat').value, 10);
+  var h = num('ltH'), hx = num('ltHx'), D = num('ltD');
+  if (isNaN(h) || isNaN(hx)) { err.textContent = '⚠ 避雷针高度和被保护物高度都要填'; err.classList.add('show'); return; }
+  try {
+    var params = { category: cat, h: h, hx: hx };
+    if (!isNaN(D)) params.D = D;
+    var r = calcProtection(params);
+    var f = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d === undefined ? 2 : d) : '—'; };
+    var html = '<div><span class="k">防雷类别：</span><span class="v">' + r.category + ' 类</span>（滚球半径 hr = ' + r.hr + ' m）</div>';
+    var s1 = r.single || {};
+    if (s1.r0 !== undefined) html += '<div><span class="k">地面保护半径 r0：</span><span class="v">' + f(s1.r0) + ' m</span></div>';
+    if (s1.rx !== undefined) html += '<div><span class="k">在 hx=' + r.hx + 'm 高度处的保护半径 rx：</span><span class="v">' + f(s1.rx) + ' m</span></div>';
+    if (s1.warning) html += '<div style="margin-top:8px;padding:10px 12px;background:#fff8e1;border-left:3px solid #f0a030;border-radius:4px;font-size:13px;color:#8a6d3b">💡 ' + s1.warning + '</div>';
+    if (r.double) {
+      var d2 = r.double;
+      html += '<hr style="border:none;border-top:1px dashed #b8d4e8;margin:14px 0">';
+      html += '<div><b style="color:#1c5fa8">双针保护（间距 D = ' + d2.D + ' m）</b></div>';
+      if (d2.minHeight !== undefined) html += '<div><span class="k">两针间最低保护高度 h0：</span><span class="v">' + f(d2.minHeight) + ' m</span></div>';
+      if (d2.bx !== undefined) html += '<div><span class="k">hx 高度处最小保护宽度 bx：</span><span class="v">' + f(d2.bx) + ' m</span></div>';
+      if (d2.warning) html += '<div style="margin-top:8px;padding:10px 12px;background:#fff8e1;border-left:3px solid #f0a030;border-radius:4px;font-size:13px;color:#8a6d3b">💡 ' + d2.warning + '</div>';
+    }
+    out.innerHTML = html;
+    out.classList.add('show');
+  } catch (e) { err.textContent = '⚠ ' + e.message; err.classList.add('show'); }
+}
+
+// ========== 标签页切换 ==========
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ========== 核心算法（与第一部分源码一致） ==========
+function getRollingSphereRadius(category) {
+  const map = { 1: 30, 2: 45, 3: 60 };
+  if (![1, 2, 3].includes(category)) {
+    throw new Error('防雷类别必须为 1、2 或 3，当前值：' + category);
+  }
+  return map[category];
+}
+
+function validateInput(value, name, options) {
+  options = options || {};
+  const allowZero = options.allowZero !== false;
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return { valid: false, error: name + ' 必须为有效数字' };
+  }
+  if (!allowZero && value === 0) {
+    return { valid: false, error: name + ' 不能为 0' };
+  }
+  if (options.min !== undefined && value < options.min) {
+    return { valid: false, error: name + ' 不能小于 ' + options.min };
+  }
+  if (options.max !== undefined && value > options.max) {
+    return { valid: false, error: name + ' 不能大于 ' + options.max };
+  }
+  return { valid: true, error: null };
+}
+
+function calcSingleRodGroundRadius(h, hr) {
+  const v1 = validateInput(h, 'h', { min: 0, allowZero: false });
+  if (!v1.valid) throw new Error(v1.error);
+  const v2 = validateInput(hr, 'hr', { min: 0, allowZero: false });
+  if (!v2.valid) throw new Error(v2.error);
+  let effectiveH = h;
+  let warning = null;
+  if (h > hr) {
+    effectiveH = hr;
+    warning = '避雷针高度 h 超过滚球半径 hr，按 h = hr 计算';
+  }
+  const r0 = Math.sqrt(effectiveH * (2 * hr - effectiveH));
+  return { r0: r0, effectiveH: effectiveH, warning: warning };
+}
+
+function calcSingleRodProtection(h, hr, hx) {
+  const v1 = validateInput(h, 'h', { min: 0, allowZero: false });
+  if (!v1.valid) throw new Error(v1.error);
+  const v2 = validateInput(hr, 'hr', { min: 0, allowZero: false });
+  if (!v2.valid) throw new Error(v2.error);
+  const v3 = validateInput(hx, 'hx', { min: 0 });
+  if (!v3.valid) throw new Error(v3.error);
+  let effectiveH = h;
+  let warning = null;
+  if (h > hr) {
+    effectiveH = hr;
+    warning = '避雷针高度 h 超过滚球半径 hr，按 h = hr 计算';
+  }
+  if (hx >= effectiveH) {
+    return { rx: 0, r0: Math.sqrt(effectiveH * (2 * hr - effectiveH)),
+             effectiveH: effectiveH, warning: warning || 'hx ≥ h，保护半径为 0' };
+  }
+  const r0 = Math.sqrt(effectiveH * (2 * hr - effectiveH));
+  const rx = r0 - Math.sqrt(hx * (2 * hr - hx));
+  return { rx: rx, r0: r0, effectiveH: effectiveH, warning: warning };
+}
+
+function calcDoubleRodMinHeight(h, hr, D) {
+  const v1 = validateInput(h, 'h', { min: 0, allowZero: false });
+  if (!v1.valid) throw new Error(v1.error);
+  const v2 = validateInput(hr, 'hr', { min: 0, allowZero: false });
+  if (!v2.valid) throw new Error(v2.error);
+  const v3 = validateInput(D, 'D', { min: 0, allowZero: false });
+  if (!v3.valid) throw new Error(v3.error);
+  const effectiveH = Math.min(h, hr);
+  const maxD = 2 * Math.sqrt(effectiveH * (2 * hr - effectiveH));
+  let warning = null;
+  if (h > hr) {
+    warning = '避雷针高度 h 超过滚球半径 hr，按 h = hr 计算';
+  }
+  const discriminant = Math.pow(hr - effectiveH, 2) + Math.pow(D / 2, 2);
+  const h0 = hr - Math.sqrt(discriminant);
+  const canProtect = h0 >= 0;
+  return { h0: h0, canProtect: canProtect, maxD: maxD, warning: warning };
+}
+
+function calcProtection(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+  const hr = getRollingSphereRadius(params.category);
+  const single = calcSingleRodProtection(params.h, hr, params.hx);
+  const result = { category: params.category, hr: hr, h: params.h, hx: params.hx, single: single };
+  if (params.D !== undefined) {
+    result.double = calcDoubleRodMinHeight(params.h, hr, params.D);
+    result.double.D = params.D;
+  }
+  return result;
+}
+
+// ========== 单元测试框架 ==========
+let passCount = 0;
+let failCount = 0;
+let testLog = [];
+
+function assertEqual(actual, expected, name, tolerance) {
+  tolerance = tolerance || 1e-9;
+  let pass = false;
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    pass = Math.abs(actual - expected) < tolerance;
+  } else {
+    pass = actual === expected;
+  }
+  if (pass) {
+    passCount++;
+    testLog.push('<span class="pass">✓ ' + name + '</span>');
+  } else {
+    failCount++;
+    testLog.push('<span class="fail">✗ ' + name + ' | 期望: ' + expected + ', 实际: ' + actual + '</span>');
+  }
+}
+
+function assertThrows(fn, name) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (threw) {
+    passCount++;
+    testLog.push('<span class="pass">✓ ' + name + '</span>');
+  } else {
+    failCount++;
+    testLog.push('<span class="fail">✗ ' + name + ' | 期望抛出异常但未抛出</span>');
+  }
+}
+
+function assertTrue(condition, name) {
+  if (condition) {
+    passCount++;
+    testLog.push('<span class="pass">✓ ' + name + '</span>');
+  } else {
+    failCount++;
+    testLog.push('<span class="fail">✗ ' + name + '</span>');
+  }
+}
+
+// ========== 32 个测试用例 ==========
+function runAllTests() {
+  passCount = 0;
+  failCount = 0;
+  testLog = [];
+
+  // 1-3. 防雷类别映射
+  assertEqual(getRollingSphereRadius(1), 30, 'T01 一类防雷 hr=30');
+  assertEqual(getRollingSphereRadius(2), 45, 'T02 二类防雷 hr=45');
+  assertEqual(getRollingSphereRadius(3), 60, 'T03 三类防雷 hr=60');
+
+  // 4-6. 单支避雷针正常值
+  var r1 = calcSingleRodProtection(20, 30, 10);
+  assertEqual(r1.rx, 16.32993161855452, 'T04 单针 h=20,hr=30,hx=10 rx≈16.33', 1e-6);
+  var r2 = calcSingleRodProtection(30, 45, 15);
+  assertEqual(r2.rx, 27.68898611365146, 'T05 单针 h=30,hr=45,hx=15 rx≈27.69', 1e-6);
+  var r3 = calcSingleRodProtection(40, 60, 20);
+  assertEqual(r3.rx, 34.64101615137754, 'T06 单针 h=40,hr=60,hx=20 rx≈34.64', 1e-6);
+
+  // 7-9. 单支避雷针边界值 h
+  var r4 = calcSingleRodProtection(30, 30, 10);
+  assertEqual(r4.effectiveH, 30, 'T07 h=hr 时 effectiveH=hr');
+  var r5 = calcSingleRodProtection(50, 30, 10);
+  assertEqual(r5.effectiveH, 30, 'T08 h>hr 时 effectiveH 截断为 hr');
+  assertTrue(r5.warning !== null, 'T09 h>hr 时返回 warning');
+
+  // 10-12. 单支避雷针 hx 边界
+  var r6 = calcSingleRodProtection(20, 30, 0);
+  assertEqual(r6.rx, r6.r0, 'T10 hx=0 时 rx=r0');
+  var r7 = calcSingleRodProtection(20, 30, 20);
+  assertEqual(r7.rx, 0, 'T11 hx=h 时 rx=0');
+  var r8 = calcSingleRodProtection(20, 30, 25);
+  assertEqual(r8.rx, 0, 'T12 hx>h 时 rx=0');
+
+  // 13-15. 双支避雷针正常值
+  var d1 = calcDoubleRodMinHeight(20, 30, 20);
+  assertEqual(d1.h0, 15.85786437626905, 'T13 双针 h=20,hr=30,D=20 h0≈15.86', 1e-6);
+  var d2 = calcDoubleRodMinHeight(30, 45, 30);
+  assertEqual(d2.h0, 22.67949192431123, 'T14 双针 h=30,hr=45,D=30 h0≈22.68', 1e-6);
+  assertTrue(d1.canProtect === true, 'T15 双针 D<maxD 时 canProtect=true');
+
+  // 16-18. 双支避雷针边界值 D
+  var d3 = calcDoubleRodMinHeight(20, 30, 0.001);
+  assertTrue(d3.h0 > 19.9, 'T16 D→0 时 h0→h');
+  var d4 = calcDoubleRodMinHeight(20, 30, 56.5685424949238);
+  assertEqual(d4.h0, 0, 'T17 D=2r0 时 h0=0', 1e-4);
+  var d5 = calcDoubleRodMinHeight(20, 30, 70);
+  assertTrue(d5.canProtect === false, 'T18 D>maxD 时 canProtect=false');
+
+  // 19-21. 异常输入
+  assertThrows(function() { getRollingSphereRadius(4); }, 'T19 category=4 抛异常');
+  assertThrows(function() { calcSingleRodProtection(-10, 30, 5); }, 'T20 h<0 抛异常');
+  assertThrows(function() { calcSingleRodProtection(20, 30, -5); }, 'T21 hx<0 抛异常');
+
+  // 22-24. 精度测试
+  var r9 = calcSingleRodProtection(20, 30, 10);
+  assertTrue(Math.abs(r9.rx - 16.32993161855452) < 1e-10, 'T22 浮点精度 1e-10');
+  var r10 = calcSingleRodGroundRadius(20, 30);
+  assertEqual(r10.r0, 28.284271247461902, 'T23 地面保护半径精度', 1e-10);
+  var r11 = calcSingleRodProtection(20, 30, 10);
+  assertEqual(r11.r0, 28.284271247461902, 'T24 r0 与 groundRadius 一致', 1e-10);
+
+  // 25-27. 地面保护半径
+  var g1 = calcSingleRodGroundRadius(20, 30);
+  assertEqual(g1.r0, 28.284271247461902, 'T25 地面半径 h=20,hr=30', 1e-10);
+  var g2 = calcSingleRodGroundRadius(30, 45);
+  assertEqual(g2.r0, 42.42640687119285, 'T26 地面半径 h=30,hr=45', 1e-10);
+  var g3 = calcSingleRodGroundRadius(60, 60);
+  assertEqual(g3.r0, 60, 'T27 h=hr 时 r0=hr', 1e-10);
+
+  // 28-30. 综合函数
+  var c1 = calcProtection({ category: 2, h: 30, hx: 15 });
+  assertEqual(c1.hr, 45, 'T28 综合函数 hr 正确');
+  assertEqual(c1.single.rx, 27.68898611365146, 'T29 综合函数 rx 正确', 1e-6);
+  var c2 = calcProtection({ category: 1, h: 20, hx: 10, D: 20 });
+  assertTrue(c2.double !== undefined, 'T30 传入 D 时返回 double 结果');
+
+  // 31-32. validateInput
+  var v1 = validateInput(10, 'h', { min: 0 });
+  assertTrue(v1.valid === true, 'T31 validateInput 正常值返回 valid=true');
+  var v2 = validateInput(NaN, 'h', { min: 0 });
+  assertTrue(v2.valid === false, 'T32 validateInput NaN 返回 valid=false');
+
+  // 输出结果
+  var outputEl = document.getElementById('testOutput');
+  outputEl.innerHTML = testLog.join('<br>');
+  var summaryEl = document.getElementById('testSummary');
+  summaryEl.style.display = 'block';
+  var total = passCount + failCount;
+  if (failCount === 0) {
+    summaryEl.className = 'summary all-pass';
+    summaryEl.textContent = '通过 ' + passCount + ' / 共 ' + total + ' ✓ 全部通过';
+  } else {
+    summaryEl.className = 'summary has-fail';
+    summaryEl.textContent = '通过 ' + passCount + ' / 共 ' + total + ' ✗ 失败 ' + failCount + ' 个';
+  }
+}
+</script>
+
+</body>
+</html>

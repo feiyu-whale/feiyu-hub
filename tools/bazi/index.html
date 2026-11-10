@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🧮 八字排盘</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0d0a06; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e8d8b8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#e0b060; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#8a7650; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#231a10,#171008); border:1px solid #4a3820;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#c09a50; margin-bottom:10px; border-left:3px solid #c09a50; padding-left:8px; }
+  input, select { width:100%; background:#1a1208; border:1px solid #4a3820; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#e8d8b8; outline:none; font-family:inherit; }
+  input:focus, select:focus { border-color:#c09a50; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .lbl { font-size:11px; color:#8a7650; margin-bottom:4px; display:block; }
+  button.go { width:100%; padding:13px; font-size:11px; font-weight:700; color:#1a1208;
+    background:linear-gradient(160deg,#e0b060,#b08030); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px; }
+  button.go:active { transform:scale(.98); }
+  /* 城市搜索 */
+  .cityrow { position:relative; }
+  .citydrop { position:absolute; left:0; right:0; top:100%; z-index:50; max-height:200px; overflow-y:auto;
+    background:#1a1208; border:1px solid #4a3820; border-radius:9px; margin-top:2px; display:none; }
+  .citydrop.show { display:block; }
+  .citydrop .ci { padding:8px 12px; font-size:14px; color:#e8d8b8; cursor:pointer; border-bottom:1px solid #2a1e12; }
+  .citydrop .ci:hover { background:#2a1e12; }
+  .citydrop .ci .cp { color:#8a7650; font-size:11px; margin-left:6px; }
+  .citydrop .cempty { padding:9px 12px; font-size:13px; color:#8a7650; }
+  #result { margin-top:16px; }
+  /* 四柱表 */
+  .pillar-tbl { display:grid; grid-template-columns:auto 1fr 1fr 1fr 1fr; gap:5px; font-size:14px; }
+  .pillar-tbl .hdr { color:#a08a58; font-size:12px; text-align:center; }
+  .pillar-tbl .rk { color:#8a7650; font-size:12px; display:flex; align-items:center; }
+  .pillar-tbl .cell { background:#1a1208; border:1px solid #3a2c18; border-radius:8px; padding:7px 4px;
+    text-align:center; color:#e8d8b8; }
+  .pillar-tbl .cell .big { font-size:11px; font-weight:800; color:#e0b060; }
+  .pillar-tbl .cell .sm { font-size:11px; color:#a08a58; margin-top:2px; }
+  /* 通用行 */
+  .row { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px dashed #33261a; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#a08a58; } .row .v { color:#e8d8b8; text-align:right; max-width:64%; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; padding:3px 10px; border-radius:20px; background:#2a1e12; color:#d8c090; border:1px solid #4a3820; }
+  .wy { display:flex; gap:6px; }
+  .wy .w { flex:1; text-align:center; background:#1a1208; border:1px solid #3a2c18; border-radius:8px; padding:7px 2px; }
+  .wy .w .n { font-size:16px; font-weight:800; }
+  .wy .w .t { font-size:11px; color:#8a7650; }
+  .wy .w0 .n { color:#7fd6a0; } .wy .w1 .n { color:#e0b060; }
+  .wy .w2 .n { color:#8fb3cf; } .wy .w3 .n { color:#e08080; } .wy .w4 .n { color:#c090d0; }
+  .sect { color:#c09a50; font-size:14px; font-weight:700; margin:16px 0 8px; }
+  .interp { background:#1a1208; border:1px solid #4a3820; border-radius:10px; padding:12px 14px;
+    font-size:13px; line-height:1.8; color:#d8c090; }
+  .interp b { color:#e0b060; }
+  .interp ul { margin:0 0 8px; padding-left:18px; }
+  .interp li { margin-bottom:5px; color:#c0a878; }
+  .interp .disclaim { color:#ffb3c1; background:#2a0f1a; border:1px solid #5a2a3a; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-bottom:8px; }
+  .interp .note { color:#8a7650; font-size:11px; margin-top:6px; }
+  .dy-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .dy-table th, .dy-table td { padding:6px 4px; text-align:center; border-bottom:1px solid #2a1e12; }
+  .dy-table th { color:#a08a58; font-size:11px; font-weight:normal; }
+  .dy-table td { color:#d8c090; }
+  .dy-table tr.cur td { color:#e0b060; font-weight:700; }
+  .hint { text-align:center; color:#5a4a30; font-size:11px; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:#3a2e1e; font-size:10px; margin-top:8px; }
+  .err { color:#ff8fa3; text-align:center; font-size:14px; padding:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🧮 八 字 排 盘</h1>
+  <div class="sub">四柱 · 十神 · 藏干 · 五行 · 大运 · 流年 · 神煞<br>纯本地计算 · 数据不出本机</div>
+
+  <div class="card">
+    <div class="line">
+      <div><span class="lbl">出生日期</span><input type="date" id="date"></div>
+      <div><span class="lbl">时间（当地）</span><input type="time" id="time" value="12:00"></div>
+    </div>
+    <div class="line">
+      <div><span class="lbl">性别（大运分男女）</span>
+        <select id="gender"><option value="1">男</option><option value="0">女</option></select>
+      </div>
+      <div><span class="lbl">时区（相对 UTC 小时）</span><input type="number" id="tz" value="8" step="0.5"></div>
+    </div>
+    <div class="cityrow" style="margin-bottom:9px">
+      <span class="lbl">出生地（选填，用于真太阳时参考）</span>
+      <input type="text" id="citySearch" placeholder="输入城市名，如 北京" autocomplete="off" style="font-family:inherit">
+      <div class="citydrop" id="cityDrop"></div>
+    </div>
+    <button class="go" id="calc">起 盘</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">四柱由 lunar-javascript（MIT）计算 · 传统文化参考 🐳<br>八字属传统命理文化，非科学结论，仅供娱乐参考</div>
+  <div class="ver">v2-补城市数据 20261016</div>
+</div>
+
+<script src="lib/lunar.js"></script>
+<script>
+(function(){
+  'use strict';
+  if(typeof Solar==='undefined'){ document.getElementById('result').innerHTML='<div class="err">库加载失败</div>'; return; }
+
+  var WU_XING_COLOR = {'金':'w1','木':'w0','水':'w2','火':'w3','土':'w4'};
+  var GAN_WX = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
+  var ZHI_WX = {'子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'};
+  // 神煞简表（桃花/驿马/贵人）按日支或年支
+  var TAOHUA = {'申':'酉','子':'酉','辰':'酉','寅':'卯','午':'卯','戌':'卯','亥':'子','卯':'子','未':'子','巳':'午','酉':'午','丑':'午'};
+  var YIMA = {'申':'寅','子':'寅','辰':'寅','寅':'申','午':'申','戌':'申','亥':'巳','卯':'巳','未':'巳','巳':'亥','酉':'亥','丑':'亥'};
+
+  function toInput(){
+    var d=document.getElementById('date').value, t=document.getElementById('time').value;
+    var tz=parseFloat(document.getElementById('tz').value);
+    if(!d||!t) return null;
+    var dp=d.split('-').map(Number), tp=t.split(':').map(Number);
+    return {y:dp[0],mo:dp[1],da:dp[2],h:tp[0],mi:tp[1],tz:isNaN(tz)?0:tz,gender:document.getElementById('gender').value};
+  }
+
+  function calc(){
+    var res=document.getElementById('result');
+    var inp=toInput();
+    if(!inp){ res.innerHTML='<div class="err">日期时间要填</div>'; return; }
+    var solar, lunar, ec;
+    try{
+      solar=Solar.fromYmdHms(inp.y,inp.mo,inp.da,inp.h,Number(inp.mi)||0,0);
+      lunar=solar.getLunar();
+      ec=lunar.getEightChar();
+    }catch(e){ res.innerHTML='<div class="err">排盘失败：'+(e.message||e)+'</div>'; return; }
+
+    var h='';
+    // 基本信息
+    h += '<div class="card"><div class="dateinfo">';
+    h += '<div style="text-align:center;font-size:15px;color:#e0b060">'+inp.y+'年'+inp.mo+'月'+inp.da+'日 '+String(inp.h).padStart(2,'0')+':'+String(inp.mi).padStart(2,'0')+'</div>';
+    h += '<div style="text-align:center;font-size:12px;color:#8a7650;margin-top:4px">农历 '+lunar.getYearInChinese()+'年'+lunar.getMonthInChinese()+'月'+lunar.getDayInChinese()+' · 生肖'+lunar.getYearShengXiao()+' · '+(inp.gender==='1'?'男':'女')+'命</div>';
+    h += '</div></div>';
+
+    // 四柱表
+    var pillars=[
+      {n:'年柱',gz:ec.getYear(),ss:ec.getYearShiShenGan(),zhiSS:ec.getYearShiShenZhi(),ny:ec.getYearNaYin(),ds:ec.getYearDiShi()},
+      {n:'月柱',gz:ec.getMonth(),ss:ec.getMonthShiShenGan(),zhiSS:ec.getMonthShiShenZhi(),ny:ec.getMonthNaYin(),ds:ec.getMonthDiShi()},
+      {n:'日柱',gz:ec.getDay(),ss:'日主',zhiSS:ec.getDayShiShenZhi(),ny:ec.getDayNaYin(),ds:ec.getDayDiShi()},
+      {n:'时柱',gz:ec.getTime(),ss:ec.getTimeShiShenGan(),zhiSS:ec.getTimeShiShenZhi(),ny:ec.getTimeNaYin(),ds:ec.getTimeDiShi()}
+    ];
+    h += '<div class="card"><h3>四柱（八字）</h3><div class="pillar-tbl">';
+    h += '<div></div>'+pillars.map(function(p){return '<div class="hdr">'+p.n+'</div>';}).join('');
+    h += '<div class="rk">天干</div>'+pillars.map(function(p){return '<div class="cell"><div class="big">'+(p.gz?p.gz[0]:'')+'</div><div class="sm">'+GAN_WX[p.gz?p.gz[0]:'']||''+'</div></div>';}).join('');
+    h += '<div class="rk">十神</div>'+pillars.map(function(p){return '<div class="cell"><div class="sm" style="color:#8fb3cf">'+p.ss+'</div></div>';}).join('');
+    h += '<div class="rk">地支</div>'+pillars.map(function(p){return '<div class="cell"><div class="big">'+(p.gz?p.gz[1]:'')+'</div><div class="sm">'+(ZHI_WX[p.gz?p.gz[1]:'']||'')+'</div></div>';}).join('');
+    h += '<div class="rk">藏干</div>'+pillars.map(function(p){return '<div class="cell"><div class="sm">'+(p.zhiSS||[]).join('<br>')+'</div></div>';}).join('');
+    h += '<div class="rk">纳音</div>'+pillars.map(function(p){return '<div class="cell"><div class="sm">'+(p.ny||'')+'</div></div>';}).join('');
+    h += '<div class="rk">地势</div>'+pillars.map(function(p){return '<div class="cell"><div class="sm">'+(p.ds||'')+'</div></div>';}).join('');
+    h += '</div></div>';
+
+    // 五行统计
+    var count={'金':0,'木':0,'水':0,'火':0,'土':0};
+    pillars.forEach(function(p){
+      if(!p.gz) return;
+      if(GAN_WX[p.gz[0]]) count[GAN_WX[p.gz[0]]]++;
+      if(ZHI_WX[p.gz[1]]) count[ZHI_WX[p.gz[1]]]++;
+    });
+    h += '<div class="card"><h3>五行分布（本气）</h3><div class="wy">';
+    ['金','木','水','火','土'].forEach(function(wx){
+      h += '<div class="w '+WU_XING_COLOR[wx]+'"><div class="n">'+count[wx]+'</div><div class="t">'+wx+'</div></div>';
+    });
+    h += '</div></div>';
+
+    // 神煞
+    var dayZhi=ec.getDayZhi(), yearZhi=ec.getYearZhi();
+    var th=TAOHUA[dayZhi], ym=YIMA[dayZhi];
+    var shensha=[];
+    shensha.push('空亡：'+ec.getDayXunKong()+'（日柱旬空）');
+    if(th) shensha.push('桃花：'+th+'（日支'+dayZhi+'对应）');
+    if(ym) shensha.push('驿马：'+ym+'（日支'+dayZhi+'对应）');
+    h += '<div class="card"><h3>神煞</h3><div class="chips">'+shensha.map(function(s){return '<span class="chip">'+s+'</span>';}).join('')+'</div></div>';
+
+    // 起运 + 大运
+    var yun=null, dyun=[];
+    try{
+      yun=ec.getYun(parseInt(inp.gender,10), 2); // 2=按天算起运
+      dyun=yun.getDaYun();
+    }catch(e){}
+    if(yun){
+      h += '<div class="card"><h3>起运 · 大运</h3>';
+      h += '<div class="row"><span class="k">起运时间</span><span class="v">'+yun.getStartYear()+' 岁 '+yun.getStartMonth()+' 个月</span></div>';
+      h += '<div class="row"><span class="k">起运日期</span><span class="v">约 '+(yun.getStartSolar? yun.getStartSolar().toYmd():'—')+'</span></div>';
+      // 大运表
+      h += '<table class="dy-table" style="margin-top:10px"><tr><th>大运</th><th>起始年龄</th><th>起始年份</th></tr>';
+      dyun.forEach(function(d){
+        if(!d.getGanZhi()) return; // 起运前那段
+        h += '<tr><td>'+d.getGanZhi()+'</td><td>'+d.getStartAge()+'~'+d.getEndAge()+'岁</td><td>'+d.getStartYear()+'年</td></tr>';
+      });
+      h += '</table></div>';
+    }
+
+    // 解读
+    h += '<div class="sect">📖 解读</div>';
+    h += '<div class="interp">';
+    h += '<div class="disclaim">⚠️ 八字属传统命理文化，以下解读为传统说法，非科学结论，仅供娱乐参考。</div>';
+    var dayGan=ec.getDayGan();
+    h += '<p><b>日主（你本人）：'+dayGan+'</b>，五行属 <b>'+GAN_WX[dayGan]+'</b>。传统上以日干代表命主本人。</p>';
+    h += '<ul>';
+    h += '<li><b>四柱</b>：年柱'+ec.getYear()+'、月柱'+ec.getMonth()+'、日柱'+ec.getDay()+'、时柱'+ec.getTime()+'——由出生年月日时的天干地支组成，共八个字，故称“八字”。</li>';
+    h += '<li><b>十神</b>：以日干为中心，其他干支与日主的生克关系命名（正官/偏财/食神等）。你的年干为'+ec.getYearShiShenGan()+'、月干为'+ec.getMonthShiShenGan()+'、时干为'+ec.getTimeShiShenGan()+'。</li>';
+    h += '<li><b>五行</b>：本气统计为 '+['金','木','水','火','土'].map(function(wx){return wx+count[wx];}).join('、')+'。传统上讲究五行平衡，某一行过旺或缺失会被解读为性格/运势的偏向。</li>';
+    h += '<li><b>起运</b>：'+(yun?('约 '+yun.getStartYear()+' 岁 '+yun.getStartMonth()+' 个月起运，此后每十年换一步大运'):'—')+'。大运代表人生不同阶段的运势走向。</li>';
+    h += '<li><b>神煞</b>：如桃花（主异性缘、人际）、驿马（主变动、出行）、空亡（主虚耗、空忙）等，属传统附加参考。</li>';
+    h += '</ul>';
+    h += '<p class="note">八字是东亚传统命理体系，流派众多、解读不一；请当文化消遣看，勿据此做重大决定。</p>';
+    h += '</div>';
+
+    res.innerHTML=h;
+  }
+
+  // 城市搜索（填经纬度供参考，八字本身主要用时间）
+  var CITIES=[], sel=null;
+  fetch('data/cities.json').then(function(r){return r.json();}).then(function(list){
+    CITIES=list.filter(function(c){return c.lat&&c.lng;}).map(function(c){
+      var name=c.area||c.city||c.province;
+      return {name:name, city:c.city, province:c.province, lat:parseFloat(c.lat), lng:parseFloat(c.lng),
+        label:(c.area? c.city+' · '+c.area : name)+(c.province&&c.province!==name?'（'+c.province+'）':'')};
+    });
+  }).catch(function(){});
+  var sEl=document.getElementById('citySearch'), dEl=document.getElementById('cityDrop');
+  function doSearch(){
+    var q=sEl.value.trim();
+    if(!q){ dEl.classList.remove('show'); dEl.innerHTML=''; return; }
+    var res=CITIES.filter(function(c){ return (c.name&&c.name.indexOf(q)>=0)||(c.city&&c.city.indexOf(q)>=0)||(c.province&&c.province.indexOf(q)>=0); });
+    res.sort(function(a,b){ var ea=a.name===q?0:1,eb=b.name===q?0:1; return ea!==eb?ea-eb:(a.area?1:0)-(b.area?1:0); });
+    var top=res.slice(0,30);
+    if(!top.length){ dEl.innerHTML='<div class="cempty">没找到</div>'; dEl.classList.add('show'); return; }
+    dEl.innerHTML=top.map(function(c,i){ return '<div class="ci" data-i="'+i+'">'+c.name+'<span class="cp">'+(c.area? c.city+' · '+c.province : c.province)+'</span></div>'; }).join('');
+    dEl.classList.add('show');
+    Array.prototype.forEach.call(dEl.querySelectorAll('.ci'),function(el){
+      el.addEventListener('click',function(){ var c=top[parseInt(el.getAttribute('data-i'))]; sEl.value=c.name; dEl.classList.remove('show'); });
+    });
+  }
+  sEl.addEventListener('input',doSearch);
+  sEl.addEventListener('focus',function(){ if(sEl.value) doSearch(); });
+  document.addEventListener('click',function(e){ if(!sEl.contains(e.target)&&!dEl.contains(e.target)) dEl.classList.remove('show'); });
+
+  document.getElementById('calc').addEventListener('click',calc);
+
+  // 默认今天
+  var now=new Date(), pad=function(n){return String(n).padStart(2,'0');};
+  document.getElementById('date').value=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  calc();
+})();
+</script>
+</body>
+</html>

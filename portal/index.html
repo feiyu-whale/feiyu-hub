@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌀 星界通路</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; min-height: 100vh;
+    background: #05040a;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #e8dcc8; overflow: hidden;
+  }
+  /* 黑金背景 */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(60% 40% at 50% 42%, rgba(201,169,97,.16) 0%, transparent 62%),
+      radial-gradient(90% 70% at 50% 100%, rgba(120,90,30,.12) 0%, transparent 70%),
+      #05040a;
+  }
+  /* 星屑 */
+  .stars { position: fixed; inset: 0; pointer-events: none; opacity: .5; }
+  .stars i {
+    position: absolute; width: 2px; height: 2px; border-radius: 50%;
+    background: #ffd86a; animation: twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle { 0%,100% { opacity: .15; } 50% { opacity: .85; } }
+
+  .wrap {
+    position: relative; z-index: 2;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px 20px;
+  }
+  .back {
+    position: fixed; left: 14px; top: 14px; z-index: 10;
+    text-decoration: none; color: #8a7f68; font-size: 11px;
+    padding: 7px 13px; border: 1px solid #3a3020; border-radius: 20px;
+    background: rgba(10,8,4,.7); transition: .2s;
+  }
+  .back:active { background: #1a1408; color: #c9a961; }
+
+  .title {
+    font-size: 19px; font-weight: 900; letter-spacing: 8px;
+    color: #ffd86a; text-shadow: 0 0 22px rgba(255,216,106,.55);
+    margin-bottom: 6px; text-indent: 8px;
+  }
+  .subtitle {
+    font-size: 11px; color: #6b5f4a; letter-spacing: 2px;
+    margin-bottom: 38px;
+  }
+
+  /* 悬浮棋盘 */
+  .board {
+    position: relative; width: 132px; height: 132px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-bottom: 34px;
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  .halo {
+    position: absolute; inset: -18px; border-radius: 50%;
+    border: 1px solid rgba(255,216,106,.35);
+    box-shadow: 0 0 30px rgba(255,216,106,.28), inset 0 0 30px rgba(255,216,106,.14);
+    animation: haloBreath 3.2s ease-in-out infinite;
+  }
+  @keyframes haloBreath {
+    0%,100% { transform: scale(.94); opacity: .5; }
+    50% { transform: scale(1.06); opacity: 1; }
+  }
+  .halo2 {
+    position: absolute; inset: -42px; border-radius: 50%;
+    border: 1px dashed rgba(201,169,97,.18);
+    animation: spin 26s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .board-core {
+    position: relative; width: 104px; height: 104px; border-radius: 22px;
+    background: radial-gradient(circle at 32% 26%, #3a2a12 0%, #17120a 60%, #0a0806 100%);
+    border: 2px solid #c9a961;
+    box-shadow: 0 0 0 3px rgba(201,169,97,.12), inset 0 0 24px rgba(201,169,97,.2);
+    display: flex; align-items: center; justify-content: center;
+    transition: .3s ease;
+  }
+  .board:hover .board-core {
+    transform: scale(1.07);
+    box-shadow: 0 0 0 6px rgba(255,216,106,.2), 0 0 46px rgba(255,216,106,.85), inset 0 0 30px rgba(255,216,106,.4);
+    border-color: #ffd86a;
+  }
+  .board-core svg { width: 56px; height: 56px; filter: drop-shadow(0 0 8px rgba(255,216,106,.8)); }
+
+  /* 多游戏选择区 */
+  .games {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    margin-top: 6px; margin-bottom: 10px; max-width: 520px;
+  }
+  .game-card {
+    width: 150px; padding: 12px 10px; border-radius: 12px; cursor: pointer; text-align: center;
+    background: linear-gradient(160deg, rgba(45,33,14,.9), rgba(14,11,6,.92));
+    border: 1px solid #4a3d22; transition: .2s ease;
+    box-shadow: 0 3px 14px rgba(0,0,0,.45);
+  }
+  .game-card:hover, .game-card.active {
+    border-color: #c9a961; transform: translateY(-3px);
+    box-shadow: 0 0 0 2px rgba(201,169,97,.18), 0 6px 22px rgba(201,169,97,.32);
+  }
+  .game-card .g-icon { font-size: 22px; display: block; margin-bottom: 5px; }
+  .game-card .g-name { font-size: 12px; font-weight: 700; color: #ffd86a; display: block; }
+  .game-card .g-desc { font-size: 9.5px; color: #6b5f4a; margin-top: 3px; display: block; }
+  .game-card.soon { opacity: .42; cursor: not-allowed; }
+  .game-card.soon:hover { border-color: #4a3d22; transform: none; box-shadow: 0 3px 14px rgba(0,0,0,.45); }
+
+  .tip {
+    min-height: 46px; text-align: center; font-size: 12.5px;
+    color: #ffd86a; line-height: 1.8; letter-spacing: .5px;
+    opacity: 0; transform: translateY(6px); transition: .3s ease;
+  }
+  .tip.show { opacity: 1; transform: translateY(0); }
+  .tip .small { display: block; font-size: 10.5px; color: #6b5f4a; margin-top: 4px; letter-spacing: 1px; }
+
+  .foot {
+    position: fixed; bottom: 14px; left: 0; right: 0; z-index: 2; padding: 0 16px;
+    text-align: center; color: #3a3328; font-size: 9.5px; line-height: 1.85;
+  }
+  .foot-link { color: #8a7a52; text-decoration: underline; text-underline-offset: 2px; }
+  .foot-link:active { color: #ffd86a; }
+
+  /* 跳跃遮罩 */
+  #mask {
+    position: fixed; inset: 0; z-index: 9100; background: #000; opacity: 0;
+    pointer-events: none; transition: opacity .35s ease;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+  }
+  #mask.on { opacity: 1; pointer-events: auto; }
+  #mask .jump-icon { font-size: 46px; margin-bottom: 16px; animation: jumpPulse 1s ease-in-out infinite; }
+  @keyframes jumpPulse { 0%,100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.16); opacity: 1; } }
+  #mask .jump-title { color: #ffd86a; font-size: 15px; font-weight: 800; letter-spacing: 4px; margin-bottom: 8px; }
+  #mask .jump-sub { color: #9a8f78; font-size: 11px; margin-bottom: 18px; letter-spacing: 1px; min-height: 16px; }
+  #mask .bar { width: 200px; height: 4px; border-radius: 3px; background: rgba(201,169,97,.16); overflow: hidden; }
+  #mask .bar i { display: block; height: 100%; width: 0; border-radius: 3px;
+    background: linear-gradient(90deg, #c9a961, #ffd86a); box-shadow: 0 0 10px #ffd86a99; transition: width .1s linear; }
+  #mask .hint { color: #6b5f4a; font-size: 10px; margin-top: 18px; letter-spacing: .5px; }
+</style>
+</head>
+<body>
+<a class="back" href="../">← 回游戏厅</a>
+
+<div class="stars" id="stars"></div>
+
+<div class="wrap">
+  <div class="title">星界通路</div>
+  <div class="subtitle">STELLAR GATEWAY</div>
+
+  <div class="board" id="board">
+    <div class="halo"></div>
+    <div class="halo2"></div>
+    <div class="board-core">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="5" width="38" height="38" rx="8" stroke="#ffd86a" stroke-width="2" opacity=".6"/>
+        <rect x="13" y="13" width="22" height="22" rx="4" stroke="#ffd86a" stroke-width="1.4" opacity=".4"/>
+        <path d="M24 6v6M24 36v6M6 24h6M36 24h6" stroke="#ffd86a" stroke-width="1.8" stroke-linecap="round" opacity=".85"/>
+        <circle cx="24" cy="24" r="5" fill="#ffd86a"/>
+        <circle cx="24" cy="24" r="9.5" stroke="#ffd86a" stroke-width="1.1" opacity=".55"/>
+        <circle cx="24" cy="24" r="14" stroke="#ffd86a" stroke-width=".8" opacity=".25"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tip" id="tip"></div>
+
+  <div class="games" id="games"></div>
+</div>
+
+<div class="foot">
+  本站仅提供官方游戏页面的外部导航链接，所有游戏内容、服务及版权均归各官方厂商所有。<br>
+  如果您是版权方，认为本站链接侵犯了您的权益，请前往
+  <a href="https://github.com/feiyu-whale/feiyu-calendar-toolkit/issues" target="_blank" rel="noopener" class="foot-link">本项目的 GitHub 仓库</a>
+  提交 Issue 或联系开发者，我们将在核实后 24 小时内立即移除。<br>
+  🐳 大肥鱼出品 · 星界通路只是一个跳转入口<br>
+  <span style="color:#241f18">v9-金铲铲标电脑端 20261019</span>
+</div>
+
+<div id="mask">
+  <div class="jump-icon">🌀</div>
+  <div class="jump-title">空 间 跳 跃</div>
+  <div class="jump-sub" id="jump-sub">正在解析星界坐标…</div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="hint" id="jump-hint">即将跳转到腾讯官方云游戏</div>
+</div>
+
+<script>
+(function () {
+  /* 2026-10-19 v4：全部改成手机版（cloudgame）地址，手机点击直接进手机页 */
+  var GAMES = [
+    { id: 'jcc',  name: '金铲铲之战', icon: '⚔️', desc: '💻 仅电脑端 · 官方云游戏',
+      url: 'https://gamer.qq.com/v2/game/95521', tip: '检测到云顶星界坐标', pcOnly: true },
+    { id: 'wzry', name: '王者荣耀', icon: '👑', desc: '5v5 竞技 · 官方云游戏',
+      url: 'https://m.gamer.qq.com/v2/game/98255', tip: '检测到王者星界坐标' },
+    { id: 'hpjy', name: '和平精英', icon: '🎯', desc: '战术竞技 · 官方云游戏',
+      url: 'https://gamer.qq.com/v2/cloudgame/game/95218', tip: '检测到精英星界坐标' },
+    { id: 'lolm', name: '英雄联盟手游', icon: '🗡️', desc: '策略对战 · 官方云游戏',
+      url: 'https://m.gamer.qq.com/v2/xfgame/98353', tip: '检测到联盟星界坐标' },
+    { id: 'cod',  name: '使命召唤手游', icon: '🔫', desc: '射击对抗 · 官方云游戏',
+      url: 'https://m.gamer.qq.com/v2/game/ymec6numi2hivcu4?channel_tag=mcgame0Fgamelist1', tip: '检测到使命星界坐标' }
+  ];
+  var current = GAMES[0];
+
+  /* 星屑 */
+  var stars = document.getElementById('stars');
+  for (var i = 0; i < 46; i++) {
+    var s = document.createElement('i');
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.animationDelay = (Math.random() * 3).toFixed(2) + 's';
+    s.style.opacity = (0.2 + Math.random() * 0.6).toFixed(2);
+    stars.appendChild(s);
+  }
+
+  var board = document.getElementById('board');
+  var tip = document.getElementById('tip');
+  var mask = document.getElementById('mask');
+  var bar = document.getElementById('bar');
+  var sub = document.getElementById('jump-sub');
+  var gamesEl = document.getElementById('games');
+  var running = false;
+  var showTimer = null;
+
+  /* 渲染游戏选择卡片 */
+  GAMES.forEach(function (g) {
+    var el = document.createElement('div');
+    el.className = 'game-card' + (g.id === current.id ? ' active' : '');
+    el.innerHTML = '<span class="g-icon">' + g.icon + '</span>' +
+                   '<span class="g-name">' + g.name + '</span>' +
+                   '<span class="g-desc">' + g.desc + '</span>';
+    el.addEventListener('click', function () {
+      current = g;
+      Array.prototype.forEach.call(gamesEl.children, function (c) { c.classList.remove('active'); });
+      el.classList.add('active');
+      showTip();
+    });
+    gamesEl.appendChild(el);
+  });
+
+  function showTip() {
+    tip.innerHTML = current.tip + '<span class="small">是否跳转到「' + current.name + '」官方云游戏？</span>';
+    tip.classList.add('show');
+    clearTimeout(showTimer);
+    showTimer = setTimeout(function () { tip.classList.remove('show'); }, 4500);
+  }
+  function hideTip() { clearTimeout(showTimer); tip.classList.remove('show'); }
+
+  board.addEventListener('mouseenter', showTip);
+  board.addEventListener('mouseleave', hideTip);
+  board.addEventListener('click', jump);
+
+  /* 关键修复：点击瞬间同步开窗，再播动画（否则被当弹窗拦截） */
+  function jump() {
+    if (running) return;
+
+    /* 手机端打开仅电脑端的游戏 → 直接提示，不白跑一趨 404 */
+    if (current.pcOnly && window.matchMedia && window.matchMedia('(hover: none)').matches) {
+      tip.innerHTML = '「' + current.name + '」尚未开放手机云游戏<span class="small">请用电脑访问 gamer.qq.com</span>';
+      tip.classList.add('show');
+      clearTimeout(showTimer);
+      showTimer = setTimeout(function () { tip.classList.remove('show'); }, 5200);
+      return;
+    }
+
+    running = true;
+    hideTip();
+
+    var w = window.open(current.url, '_blank');
+    if (!w) {
+      // 新窗口被拦 → 改用当前页跳转
+      location.href = current.url;
+      return;
+    }
+
+    mask.classList.add('on');
+    bar.style.width = '0';
+    var p = 0;
+    var stages = ['正在解析星界坐标…', '正在构建虫洞…', '同步星界…', '跃迁就绪…'];
+    var t = setInterval(function () {
+      p += Math.random() * 9 + 4;
+      if (p > 100) p = 100;
+      bar.style.width = p + '%';
+      sub.textContent = stages[Math.min(stages.length - 1, Math.floor(p / 26))];
+      if (p >= 100) {
+        clearInterval(t);
+        setTimeout(function () {
+          mask.classList.remove('on');
+          running = false;
+          bar.style.width = '0';
+        }, 400);
+      }
+    }, 115);
+  }
+})();
+</script>
+</body>
+</html>

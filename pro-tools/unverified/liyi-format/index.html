@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公文格式助手 · GB/T 9704-2012</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+    background: #f3f4f6;
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px 14px 80px;
+  }
+  header {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    color: #fff;
+    padding: 20px 16px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(185,28,28,0.15);
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  header p {
+    font-size: 13px;
+    opacity: 0.92;
+    margin-top: 6px;
+  }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 6px;
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab.active {
+    background: #b91c1c;
+    color: #fff;
+    font-weight: 600;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h3 {
+    font-size: 15px;
+    color: #b91c1c;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card p, .card li {
+    font-size: 13.5px;
+    color: #374151;
+    line-height: 1.75;
+  }
+  .card ul { padding-left: 18px; }
+  .card li { margin-bottom: 4px; }
+  .tag {
+    display: inline-block;
+    background: #fef2f2;
+    color: #b91c1c;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-right: 4px;
+    font-weight: 600;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 9px 8px;
+    text-align: center;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  th {
+    background: #fef2f2;
+    color: #b91c1c;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .a4-wrap {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .a4 {
+    width: 100%;
+    aspect-ratio: 210 / 297;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    position: relative;
+    font-size: 11px;
+    color: #374151;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .a4 .margin-top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 12.45%;
+    background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 4px, #fff 4px, #fff 8px);
+    border-bottom: 1px dashed #b91c1c;
+  }
+  .a4 .margin-bottom {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 11.78%;
+    background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 4px, #fff 4px, #fff 8px);
+    border-top: 1px dashed #b91c1c;
+  }
+  .a4 .margin-left {
+    position: absolute;
+    top: 12.45%; bottom: 11.78%; left: 0;
+    width: 13.33%;
+    background: repeating-linear-gradient(-45deg, #fef2f2, #fef2f2 4px, #fff 4px, #fff 8px);
+    border-right: 1px dashed #b91c1c;
+  }
+  .a4 .margin-right {
+    position: absolute;
+    top: 12.45%; bottom: 11.78%; right: 0;
+    width: 12.38%;
+    background: repeating-linear-gradient(-45deg, #fef2f2, #fef2f2 4px, #fff 4px, #fff 8px);
+    border-left: 1px dashed #b91c1c;
+  }
+  .a4 .content-area {
+    position: absolute;
+    top: 12.45%;
+    bottom: 11.78%;
+    left: 13.33%;
+    right: 12.38%;
+    padding: 4% 3%;
+    display: flex;
+    flex-direction: column;
+  }
+  .a4 .title-demo {
+    text-align: center;
+    font-size: 1.6em;
+    font-weight: bold;
+    color: #111;
+    margin-bottom: 6%;
+    letter-spacing: 1px;
+  }
+  .a4 .recv-demo {
+    font-size: 1em;
+    margin-bottom: 4%;
+  }
+  .a4 .body-demo {
+    font-size: 0.95em;
+    line-height: 1.9;
+    flex: 1;
+    text-indent: 2em;
+  }
+  .a4 .sign-demo {
+    text-align: right;
+    font-size: 0.9em;
+    margin-top: 4%;
+    padding-right: 8%;
+  }
+  .a4 .page-no {
+    position: absolute;
+    bottom: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85em;
+    color: #374151;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .legend span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .legend i {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 2px, #fff 2px, #fff 4px);
+    border: 1px dashed #b91c1c;
+  }
+  .form-group {
+    margin-bottom: 12px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: #111;
+  }
+  .form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+    line-height: 1.6;
+  }
+  .form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: #b91c1c;
+    box-shadow: 0 0 0 2px rgba(185,28,28,0.1);
+  }
+  .btn {
+    background: #b91c1c;
+    color: #fff;
+    border: none;
+    padding: 11px 18px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 6px;
+  }
+  .btn:active { background: #991b1b; }
+  .btn-secondary {
+    background: #fff;
+    color: #b91c1c;
+    border: 1px solid #b91c1c;
+  }
+  .preview {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px 16px;
+    margin-top: 14px;
+    min-height: 200px;
+    font-family: "FangSong", "仿宋", "仿宋_GB2312", serif;
+  }
+  .preview .p-title {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #111;
+    margin-bottom: 18px;
+    line-height: 1.4;
+    letter-spacing: 1px;
+  }
+  .preview .p-recv {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .preview .p-body {
+    font-size: 16px;
+    line-height: 28px;
+    text-indent: 2em;
+    margin-bottom: 16px;
+    color: #111;
+  }
+  .preview .p-attach {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .preview .p-sign {
+    text-align: right;
+    font-size: 16px;
+    padding-right: 32px;
+    margin-top: 24px;
+    line-height: 2;
+  }
+  .preview .p-seal {
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    border: 2px solid #b91c1c;
+    border-radius: 50%;
+    color: #b91c1c;
+    font-size: 10px;
+    line-height: 56px;
+    text-align: center;
+    margin-right: 8px;
+    vertical-align: middle;
+    opacity: 0.7;
+  }
+  .source {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    font-size: 12.5px;
+    color: #6b7280;
+    line-height: 1.75;
+  }
+  .source h4 {
+    color: #374151;
+    font-size: 13.5px;
+    margin-bottom: 6px;
+  }
+  .ver {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: rgba(255,255,255,0.85);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .note {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: #78350f;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .kv {
+    background: #f9fafb;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .kv b { color: #b91c1c; display: block; font-size: 12px; margin-bottom: 2px; }
+  @media (max-width: 380px) {
+    .tab { font-size: 12px; padding: 9px 4px; }
+    header h1 { font-size: 18px; }
+  }
+  .p-head {
+    font-size: 16px;
+    color: #b91c1c;
+    margin-bottom: 12px;
+  }
+  .p-head span {
+    margin-right: 16px;
+  }
+  .ver {
+    max-width: 90vw;
+    white-space: normal;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📜 公文格式助手</h1>
+    <p>依据 GB/T 9704-2012《党政机关公文格式》</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="spec">📋 格式说明</div>
+    <div class="tab" data-tab="font">🔤 字号</div>
+    <div class="tab" data-tab="layout">📐 布局</div>
+    <div class="tab" data-tab="gen">✍️ 生成</div>
+  </div>
+
+  <!-- 格式说明 -->
+  <div class="panel active" id="panel-spec">
+    <div class="card">
+      <h3>📌 标题</h3>
+      <p>用 <span class="tag">2号</span> <b>小标宋体</b>，<b>居中排布</b>。</p>
+      <p>回行时做到词意完整、排列对称、长短适宜、间距恰当，标题排列应当使用梯形或菱形，不应排成上下等长的长方形或沙漏形。</p>
+    </div>
+    <div class="card">
+      <h3>📨 主送机关</h3>
+      <p>用 <span class="tag">3号</span> <b>仿宋体</b>，<b>顶格</b>编排，机关名称后加<b>全角冒号</b>。</p>
+      <p>回行时仍顶格，最后一个机关名称后标全角冒号。</p>
+    </div>
+    <div class="card">
+      <h3>📝 正文</h3>
+      <p>用 <span class="tag">3号</span> <b>仿宋体</b>（标准指定仿宋_GB2312），每个自然段左空二字，回行顶格。</p>
+      <p>文中结构层次序数依次可用"一、""（一）""1.""（1）"标注；一般第一层用<b>黑体</b>、第二层用<b>楷体</b>、第三层和第四层用<b>仿宋体</b>。</p>
+    </div>
+    <div class="card">
+      <h3>📎 附件说明</h3>
+      <p>如有附件，在正文下<b>空一行</b>左空二字编排"附件"二字，后标<b>全角冒号</b>和附件名称。</p>
+      <p>如有多个附件，使用阿拉伯数字标注序号（如"附件：1. XXXXX"）；附件名称后不加标点。生成器支持用换行、顿号或逗号分隔多个附件名称，将自动编号。</p>
+    </div>
+    <div class="card">
+      <h3>🏛️ 发文机关署名</h3>
+      <p>署发文机关<b>全称</b>或<b>规范化简称</b>，位于成文日期之上，以成文日期为准居中编排。</p>
+    </div>
+    <div class="card">
+      <h3>📅 成文日期</h3>
+      <p>用<b>阿拉伯数字</b>将年、月、日标全，年份应标全称，月、日不编虚位（即 1 不编为 01）。</p>
+      <p>右空<b>四字</b>编排。</p>
+      <p class="note">💡 2012 版标准将原"汉字数字"改为阿拉伯数字，与 GB/T 15835《出版物上数字用法》一致。</p>
+    </div>
+    <div class="card">
+      <h3>🔴 印章</h3>
+      <p>公文中有发文机关署名的，应当加盖发文机关印章，并与署名机关相符。</p>
+      <p>印章用红色，不得出现空白印章。单一机关行文时，一般在成文日期之上、以成文日期为准居中编排发文机关署名，印章端正、居中下压发文机关署名和成文日期，使发文机关署名和成文日期居印章中心偏下位置。</p>
+    </div>
+    <div class="card">
+      <h3>🔢 页码</h3>
+      <p>用 <span class="tag">4号</span> <b>半角宋体</b>阿拉伯数字，编排于公文页脚，左右各放一条<b>一字线</b>（如 — 1 — ）。</p>
+      <p>单页码居右，双页码居左（或统一居中，依具体机关规定）。公文页码之外不加虚线。</p>
+    </div>
+  </div>
+
+  <!-- 字号对照 -->
+  <div class="panel" id="panel-font">
+    <div class="card">
+      <h3>🔤 公文常用字号对照</h3>
+      <p style="margin-bottom:8px;">依据 GB/T 9704-2012 要求：</p>
+      <p class="note" style="font-weight:600;">⚠️ 醒目提示：下表字号-磅值对照为本工具的经验估算值，未经任何标准核对、无可靠来源出处，不能作为权威依据使用。请以实际排版软件或标准原文核对为准。</p>
+      <table>
+        <thead>
+          <tr><th>字号</th><th>磅值(pt)</th><th>公文用途</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>小初</td><td>36</td><td>—</td></tr>
+          <tr><td><b>一号</b></td><td>26</td><td>—</td></tr>
+          <tr><td><b>二号</b></td><td>22</td><td>★ 公文标题</td></tr>
+          <tr><td>小二号</td><td>18</td><td>—</td></tr>
+          <tr><td><b>三号</b></td><td>16</td><td>★ 正文/主送</td></tr>
+          <tr><td>小三号</td><td>15</td><td>—</td></tr>
+          <tr><td><b>四号</b></td><td>14</td><td>★ 页码</td></tr>
+          <tr><td>小四号</td><td>12</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>🖋️ 公文常用字体</h3>
+      <table>
+        <thead>
+          <tr><th>字体</th><th>用途</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>方正小标宋简体</td><td>公文标题</td></tr>
+          <tr><td>仿宋_GB2312</td><td>正文、主送机关</td></tr>
+          <tr><td>黑体</td><td>一级标题（一、）</td></tr>
+          <tr><td>楷体_GB2312</td><td>二级标题（（一））</td></tr>
+          <tr><td>宋体（半角）</td><td>页码数字</td></tr>
+        </tbody>
+      </table>
+      <p class="note">💡 实际排版中，若无方正小标宋，可用其他小标宋体替代；仿宋_GB2312 在部分新系统中可由"仿宋"替代，但严格场合应使用 GB2312 版本。</p>
+    </div>
+    <div class="card">
+      <h3>📏 版面参数</h3>
+      <div class="grid2">
+        <div class="kv"><b>纸张</b>A4 (210×297mm)</div>
+        <div class="kv"><b>上页边距</b>37mm ±1mm</div>
+        <div class="kv"><b>下页边距</b>35mm ±1mm</div>
+        <div class="kv"><b>左页边距</b>28mm ±1mm</div>
+        <div class="kv"><b>右页边距</b>26mm ±1mm</div>
+        <div class="kv"><b>每页行数</b>22 行</div>
+        <div class="kv"><b>每行字数</b>28 字</div>
+        <div class="kv"><b>行距</b>28.95pt</div>
+      </div>
+      <p class="note">💡 行距 28.95pt 由"每页 22 行"推算得出（版心高度 ÷ 22），具体数值以标准原文为准。</p>
+    </div>
+  </div>
+
+  <!-- 布局示意 -->
+  <div class="panel" id="panel-layout">
+    <div class="a4-wrap">
+      <h3 style="font-size:15px;color:#b91c1c;margin-bottom:10px;">📐 A4 版面布局示意</h3>
+      <div class="a4">
+        <div class="margin-top"></div>
+        <div class="margin-bottom"></div>
+        <div class="margin-left"></div>
+        <div class="margin-right"></div>
+        <div class="content-area">
+          <div class="title-demo">关于××××的通知</div>
+          <div class="recv-demo">×××：</div>
+          <div class="body-demo">
+            根据……，现将有关事项通知如下：<br>
+            一、……<br>
+            二、……<br>
+            特此通知。
+          </div>
+          <div class="sign-demo">
+            ××××（机关署名）<br>
+            2026年10月21日
+          </div>
+        </div>
+        <div class="page-no">— 1 —</div>
+      </div>
+      <div class="legend">
+        <span><i></i>页边距区域</span>
+        <span>上37 / 下35 / 左28 / 右26 (mm)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生成示例 -->
+  <div class="panel" id="panel-gen">
+    <div class="card">
+      <h3>✍️ 公文示例生成</h3>
+      <div class="form-group">
+        <label>密级和保密期限（可留空，如：秘密★1年）</label>
+        <input type="text" id="f-secret" value="">
+      </div>
+      <div class="form-group">
+        <label>发文字号（可留空，如：×办发〔2026〕5号）</label>
+        <input type="text" id="f-docnum" value="">
+      </div>
+      <div class="form-group">
+        <label>签发人（上行文必填，可留空）</label>
+        <input type="text" id="f-issuer" value="">
+      </div>
+      <div class="form-group">
+        <label>标题</label>
+        <input type="text" id="f-title" value="关于做好2026年度工作总结的通知">
+      </div>
+      <div class="form-group">
+        <label>主送机关</label>
+        <input type="text" id="f-recv" value="各部门、各单位">
+      </div>
+      <div class="form-group">
+        <label>正文（每段首行自动缩进两字）</label>
+        <textarea id="f-body">根据年度工作安排，现就做好2026年度工作总结有关事项通知如下。
+一、总结内容
+各部门应围绕年度目标任务完成情况、重点工作推进情况、存在问题及改进措施等方面进行总结。
+二、报送要求
+请各部门于2026年12月31日前将书面总结报送办公室。
+特此通知。</textarea>
+      </div>
+      <div class="form-group">
+        <label>附件说明（可留空）</label>
+        <input type="text" id="f-attach" value="2026年度工作总结模板">
+      </div>
+      <div class="form-group">
+        <label>发文机关署名</label>
+        <input type="text" id="f-sign" value="×××办公室">
+      </div>
+      <div class="form-group">
+        <label>成文日期</label>
+        <input type="date" id="f-date" value="2026-10-21">
+      </div>
+      <div id="form-err" style="color:#b91c1c;font-size:13px;margin-top:8px;"></div>
+      <button class="btn" onclick="genDoc()">📄 生成预览</button>
+      <button class="btn btn-secondary" onclick="resetDoc()" style="margin-top:8px;">🔄 重置为示例</button>
+    </div>
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <div class="source">
+    <h4>📚 数据来源</h4>
+    <p>1. <b>GB/T 9704-2012</b>《党政机关公文格式》（中华人民共和国国家质量监督检验检疫总局、中国国家标准化管理委员会 2012-06-29 发布，2012-07-01 实施）。</p>
+    <p>2. 字号-磅值对照表：<b>暂无可靠来源</b>（原标注的 GB/T 14706-1993 系错误标注，该标准并非《印刷字级》）。表中数值为排版经验值，未经标准核对，请谨慎使用。</p>
+    <p>3. <b>GB/T 15835-2011</b>《出版物上数字用法》（成文日期阿拉伯数字用法依据）。</p>
+    <p>4. 《党政机关公文处理工作条例》（中办发〔2012〕14号）。</p>
+    <p style="margin-top:6px;color:#9ca3af;">注：本工具所列参数均引自上述公开标准。具体表值、印章样式细节等请以标准原文为准。</p>
+  </div>
+</div>
+
+<div class="ver">v1.0.2-公文格式助手 20261021-修审查问题 20261108</div>
+
+<script>
+  // Tab 切换
+  const tabs = document.querySelectorAll('.tab');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      panels.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 日期格式化：年 月 日（不编虚位）
+  function fmtDate(dateStr) {
+    if (!dateStr) return '';
+    const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return '<span style="color:#b91c1c;">⚠️ 日期格式无效</span>';
+    return parseInt(m[1], 10) + '年' + parseInt(m[2], 10) + '月' + parseInt(m[3], 10) + '日';
+    // 直接按字符串解析，避免 new Date('YYYY-MM-DD') 按 UTC 解析导致负时区下日期偏移一天
+  }
+
+  // 生成公文
+  function genDoc() {
+    const title = document.getElementById('f-title').value.trim();
+    const recv = document.getElementById('f-recv').value.trim();
+    const body = document.getElementById('f-body').value.trim();
+    const attach = document.getElementById('f-attach').value.trim();
+    const sign = document.getElementById('f-sign').value.trim();
+    const date = document.getElementById('f-date').value;
+    const secret = document.getElementById('f-secret').value.trim();
+    const docnum = document.getElementById('f-docnum').value.trim();
+    const issuer = document.getElementById('f-issuer').value.trim();
+    document.getElementById('form-err').textContent = '';
+
+    if (!title || !body) {
+      document.getElementById('form-err').textContent = '⚠️ 标题和正文为必填项，请填写后再生成预览。';
+      document.getElementById('preview').innerHTML = '<p style="color:#9ca3af;text-align:center;">请填写内容后生成</p>';
+      return;
+    }
+    let html = '';
+    if (secret || docnum || issuer) {
+      html += '<div class="p-head">';
+      if (secret) html += '<span>' + esc(secret) + '</span>';
+      if (issuer) html += '<span>签发人：' + esc(issuer) + '</span>';
+      html += '</div>';
+      if (docnum) html += '<div class="p-head" style="text-align:center;">' + esc(docnum) + '</div>';
+    }
+    if (title) html += '<div class="p-title">' + esc(title) + '</div>';
+    if (recv) html += '<div class="p-recv">' + esc(recv) + '：</div>';
+    if (body) {
+      const paras = body.split(/\n+/).filter(p => p.trim());
+      paras.forEach(p => {
+        html += '<div class="p-body">' + esc(p.trim()) + '</div>';
+      });
+    }
+    if (attach) {
+      const items = attach.split(/[\n、,，]/).map(s => s.trim()).filter(s => s);
+      if (items.length > 1) {
+        html += '<div class="p-attach">附件：' + items.map((s, i) => (i + 1) + '. ' + esc(s)).join('<br>') + '</div>';
+      } else {
+        html += '<div class="p-attach">附件：' + esc(attach) + '</div>';
+      }
+    }
+    if (sign || date) {
+      html += '<div class="p-sign">';
+      if (sign) html += '<span class="p-seal">印章</span>' + esc(sign) + '<br>';
+      if (date) html += fmtDate(date);
+      html += '</div>';
+    }
+    if (!html) html = '<p style="color:#9ca3af;text-align:center;">请填写内容后生成</p>';
+    document.getElementById('preview').innerHTML = html;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function resetDoc() {
+    document.getElementById('f-title').value = '关于做好2026年度工作总结的通知';
+    document.getElementById('f-recv').value = '各部门、各单位';
+    document.getElementById('f-body').value = '根据年度工作安排，现就做好2026年度工作总结有关事项通知如下。\n一、总结内容\n各部门应围绕年度目标任务完成情况、重点工作推进情况、存在问题及改进措施等方面进行总结。\n二、报送要求\n请各部门于2026年12月31日前将书面总结报送办公室。\n特此通知。';
+    document.getElementById('f-attach').value = '2026年度工作总结模板';
+    document.getElementById('f-sign').value = '×××办公室';
+    document.getElementById('f-date').value = '2026-10-21';
+    genDoc();
+  }
+
+  // 初始化预览
+  genDoc();
+</script>
+</body>
+</html>

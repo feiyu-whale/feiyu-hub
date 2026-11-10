@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🀄 繁简转换 · OpenCC</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:13px; color:#c8b3ff; text-align:center; margin-bottom:5px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:11px; margin-bottom:12px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:8px; letter-spacing:1px; display:flex; justify-content:space-between; }
+  .lbl span.cnt { color:#6a5f90; letter-spacing:0; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:10px 11px;
+    color:#e8e0f0; font-size:15px; font-family:inherit; resize:vertical; min-height:150px; line-height:1.75; user-select:text; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .modes { display:flex; gap:6px; margin-bottom:10px; }
+  .mode { flex:1; text-align:center; padding:8px 4px; font-size:13px; border-radius:9px; cursor:pointer;
+    background:#241a3a; border:1px solid #4a3d70; color:#c8b3ff; user-select:none; transition:.15s; }
+  .mode.on { background:linear-gradient(160deg,#5a4a9a,#3a2d70); border-color:#9a7ff0; color:#fff; font-weight:600; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:9px; }
+  .btn { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border:1px solid #7a5fc0;
+    border-radius:9px; padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn.g { background:#241a3a; border-color:#4a3d70; color:#c8b3ff; }
+  .btn:active { transform:scale(.97); }
+  .hint { font-size:11px; color:#6a5f90; margin-top:7px; line-height:1.6; }
+  .foot { text-align:center; color:#3a3358; font-size:10px; margin-top:14px; line-height:1.7; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:8px; }
+  .err { color:#ff8a8a; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>🀄 繁简转换</h1>
+  <div class="sub">简体 ⇄ 繁体 · 基于 OpenCC（离线，不上传）</div>
+
+  <div class="card">
+    <div class="modes">
+      <div class="mode on" data-dir="s2t">简 → 繁</div>
+      <div class="mode" data-dir="t2s">繁 → 简</div>
+    </div>
+    <div class="lbl">输入 <span class="cnt" id="cntIn">0 字</span></div>
+    <textarea id="in" placeholder="粘贴或输入中文，边打边转…"></textarea>
+    <div class="row">
+      <button class="btn g" id="btnCopy">📋 复制结果</button>
+      <button class="btn g" id="btnSwap">⇅ 结果转回输入</button>
+      <button class="btn g" id="btnClr">清空</button>
+    </div>
+    <div class="hint" id="hint">正在加载字库…</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果 <span class="cnt" id="cntOut">0 字</span></div>
+    <textarea id="out" readonly placeholder="转换结果会出现在这里"></textarea>
+  </div>
+
+  <div class="foot">转换引擎：OpenCC（opencc-js 1.4.2）· MIT + Apache-2.0<br>全部在本机浏览器内完成，不上传任何文字</div>
+  <div class="ver">v1.0.0-OpenCC繁简转换 20261020</div>
+</div>
+
+<script src="oc/CJK_Compatibility_Ideographs.js"></script>
+<script src="oc/STCharacters.js"></script>
+<script src="oc/STPhrasesEssential.js"></script>
+<script src="oc/TSCharacters.js"></script>
+<script src="oc/core.js"></script>
+<script>
+// 【fanjian】繁简转换 · OpenCC 离线版。依赖：opencc-js 1.4.2（MIT AND Apache-2.0）。
+// 字典分四份，简→繁 = 精要词组（一字多繁）+ 单字兜底（含生僻字）；繁→简 = 单字表。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var conv = null, dir = 's2t', timer = null;
+
+  function build(){
+    var D = window.OCDICT, F = window.OCConverterFactory;
+    if(!D || !F) throw new Error('字库未加载完整');
+    return {
+      s2t: F([D.STPhrasesEssential, D.STCharacters]),
+      t2s: F([D.TSCharacters])
+    };
+  }
+
+  function run(){
+    if(!conv) return;
+    var src = $('in').value;
+    var out;
+    try { out = conv[dir](src); }
+    catch(e){ $('hint').innerHTML = '<span class="err">转换出错：' + e.message + '</span>'; return; }
+    $('out').value = out;
+    $('cntIn').textContent = src.length + ' 字';
+    $('cntOut').textContent = out.length + ' 字';
+  }
+
+  function schedule(){
+    $('cntIn').textContent = $('in').value.length + ' 字';
+    clearTimeout(timer);
+    timer = setTimeout(run, 90);
+  }
+
+  function setDir(d){
+    dir = d;
+    document.querySelectorAll('.mode').forEach(function(m){
+      m.classList.toggle('on', m.dataset.dir === d);
+    });
+    run();
+  }
+
+  $('in').addEventListener('input', schedule);
+  document.querySelectorAll('.mode').forEach(function(m){
+    m.addEventListener('click', function(){ setDir(m.dataset.dir); });
+  });
+
+  $('btnCopy').addEventListener('click', function(){
+    var t = $('out').value;
+    if(!t){ $('hint').textContent = '还没结果可复制'; return; }
+    var done = function(){ $('hint').textContent = '已复制 ' + t.length + ' 字'; };
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(t).then(done).catch(fallback);
+    } else fallback();
+    function fallback(){
+      var ta = $('out');
+      ta.removeAttribute('readonly'); ta.select();
+      try { document.execCommand('copy'); done(); } catch(e){ $('hint').textContent = '复制失败，请长按手动复制'; }
+      ta.setAttribute('readonly','');
+    }
+  });
+
+  $('btnSwap').addEventListener('click', function(){
+    var o = $('out').value;
+    if(!o){ return; }
+    $('in').value = o;
+    setDir(dir === 's2t' ? 't2s' : 's2t');
+    $('hint').textContent = '已切到反向转换';
+  });
+
+  $('btnClr').addEventListener('click', function(){
+    $('in').value = ''; $('out').value = '';
+    $('cntIn').textContent = $('cntOut').textContent = '0 字';
+    $('hint').textContent = '已清空';
+    $('in').focus();
+  });
+
+  // 大段粘贴：textareas 默认不吃超长内容太快，这里不做限制，交给浏览器
+  window.addEventListener('load', function(){
+    try {
+      conv = build();
+      $('hint').textContent = '字库已就绪 · 支持生僻字 · 简→繁 ' + (window.OCDICT.STPhrasesEssential.split('|').length + window.OCDICT.STCharacters.split('|').length) + ' 条';
+    } catch(e){
+      $('hint').innerHTML = '<span class="err">字库加载失败：' + e.message + '</span>';
+    }
+  });
+})();
+</script>
+</body>
+</html>

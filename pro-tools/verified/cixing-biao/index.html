@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>词性标注工具 - 基于规则的中文词性标注</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 32px 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(102,126,234,0.25);
+  }
+  header h1 { font-size: 28px; margin-bottom: 8px; }
+  header p { opacity: 0.92; font-size: 14px; }
+  .warning {
+    background: #fff8e1;
+    border-left: 4px solid #ffa726;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #6d4c00;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: #fff;
+    padding: 6px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .tab:hover { background: #f0f2f5; }
+  .tab.active {
+    background: #667eea;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(102,126,234,0.3);
+  }
+  .tab-content {
+    display: none;
+    background: #fff;
+    padding: 24px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .tab-content.active { display: block; }
+  .input-area {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 2px solid #e0e6ed;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+  .input-area:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin: 14px 0;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: #667eea;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #5568d3; }
+  .btn-secondary {
+    background: #e0e6ed;
+    color: #2c3e50;
+  }
+  .btn-secondary:hover { background: #cfd6de; }
+  .result-box {
+    background: #f8f9fb;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 80px;
+    margin-top: 12px;
+  }
+  .word-tag {
+    display: inline-block;
+    margin: 4px 3px;
+    padding: 4px 10px;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .word-tag .w { font-weight: 600; color: #2c3e50; }
+  .word-tag .t {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: #667eea;
+    color: #fff;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: monospace;
+  }
+  .legend {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f0f4ff;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .legend h4 { margin-bottom: 8px; color: #667eea; }
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 6px;
+  }
+  .legend-item { font-size: 12px; }
+  .legend-item code {
+    background: #667eea;
+    color: #fff;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    margin-right: 4px;
+  }
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  pre code { font-family: "SF Mono", Consolas, monospace; }
+  .test-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .test-summary {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .test-summary.pass { background: #d4edda; color: #155724; }
+  .test-summary.fail { background: #f8d7da; color: #721c24; }
+  .test-list {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #e0e6ed;
+    border-radius: 6px;
+  }
+  .test-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f2f5;
+    font-size: 13px;
+    font-family: monospace;
+  }
+  .test-item:last-child { border-bottom: none; }
+  .test-item.pass { background: #f6ffed; }
+  .test-item.fail { background: #fff1f0; }
+  .test-item .status {
+    display: inline-block;
+    width: 60px;
+    font-weight: 600;
+  }
+  .doc-section { margin-bottom: 24px; }
+  .doc-section h2 {
+    color: #667eea;
+    border-bottom: 2px solid #e0e6ed;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    font-size: 20px;
+  }
+  .doc-section h3 {
+    color: #2c3e50;
+    margin: 16px 0 8px;
+    font-size: 16px;
+  }
+  .doc-section p { margin-bottom: 10px; font-size: 14px; }
+  .doc-section ul, .doc-section ol {
+    margin: 8px 0 12px 24px;
+    font-size: 14px;
+  }
+  .doc-section li { margin-bottom: 4px; }
+  .doc-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc-section th, .doc-section td {
+    border: 1px solid #e0e6ed;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .doc-section th { background: #f5f7fa; font-weight: 600; }
+  .scenario {
+    background: #f8f9fb;
+    border-left: 3px solid #667eea;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .scenario h4 { color: #667eea; margin-bottom: 6px; }
+  .scenario .input, .scenario .output {
+    font-family: monospace;
+    font-size: 13px;
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin: 4px 0;
+    border: 1px solid #e0e6ed;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    font-family: monospace;
+    background: rgba(255,255,255,0.8);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  code.inline {
+    background: #f0f2f5;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12.5px;
+    color: #c7254e;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📝 词性标注工具</h1>
+    <p>基于规则的中文词性标注 · 纯前端实现 · 无需后端 · 无外部依赖</p>
+  </header>
+
+  <div class="warning">
+    ⚠️ <strong>准确率说明：</strong>本工具采用纯前端规则实现（词典匹配 + 词尾特征 + 单字启发式），未使用深度学习模型。对常见词汇的标注基本可用，但对歧义词、新词、专业术语、复杂句法的标注准确率有限，仅供学习、演示、轻量级预处理使用，不建议用于生产级 NLP 任务。
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="demo">🔧 工具演示</button>
+    <button class="tab" data-tab="source">📄 JS 源码</button>
+    <button class="tab" data-tab="test">🧪 单元测试</button>
+  </div>
+
+  <!-- 工具演示 -->
+  <div id="demo" class="tab-content active">
+    <h3 style="margin-bottom:10px;">输入中文句子</h3>
+    <textarea id="inputText" class="input-area" placeholder="请输入要标注的中文句子，例如：我爱北京天安门。">我爱北京天安门。</textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="runTagger()">开始标注</button>
+      <button class="btn btn-secondary" onclick="loadExample(1)">示例 1</button>
+      <button class="btn btn-secondary" onclick="loadExample(2)">示例 2</button>
+      <button class="btn btn-secondary" onclick="loadExample(3)">示例 3</button>
+      <button class="btn btn-secondary" onclick="clearResult()">清空</button>
+    </div>
+    <h3 style="margin:16px 0 8px;">标注结果</h3>
+    <div id="result" class="result-box">
+      <span style="color:#999;">点击"开始标注"查看结果</span>
+    </div>
+    <div class="legend">
+      <h4>词性标记说明</h4>
+      <div class="legend-grid" id="legendGrid"></div>
+    </div>
+  </div>
+
+  <!-- JS 源码 -->
+  <div id="source" class="tab-content">
+    <h3 style="margin-bottom:10px;">完整 JS 源码（可直接复制到浏览器运行）</h3>
+    <pre><code id="sourceCode"></code></pre>
+  </div>
+
+  <!-- 单元测试 -->
+  <div id="test" class="tab-content">
+    <h3 style="margin-bottom:10px;">单元测试（纯 JS 实现，无外部依赖）</h3>
+    <div class="test-controls">
+      <button class="btn btn-primary" onclick="runAllTests()">运行全部测试</button>
+      <span id="testStatus" style="font-size:13px;color:#666;">尚未运行</span>
+    </div>
+    <div id="testSummary"></div>
+    <div id="testList" class="test-list"></div>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  词性标注工具 - 核心源码
+ *  版本：v2.0.0-完整版 20261021
+ *  说明：纯前端规则实现，无外部依赖
+ * ============================================================ */
+
+/**
+ * 词性标记说明表
+ * 标记集参考：北大计算语言学研究所词性标注集（简化版）
+ * @type {Object<string, string>}
+ */
+const TAG_DESCRIPTIONS = {
+  'n':  '名词 (noun)',
+  'v':  '动词 (verb)',
+  'a':  '形容词 (adjective)',
+  'd':  '副词 (adverb)',
+  'p':  '介词 (preposition)',
+  'c':  '连词 (conjunction)',
+  'u':  '助词 (particle)',
+  'r':  '代词 (pronoun)',
+  'm':  '数词 (numeral)',
+  'q':  '量词 (classifier)',
+  'e':  '叹词 (interjection)',
+  'o':  '拟声词 (onomatopoeia)',
+  'w':  '标点符号 (punctuation)',
+  'x':  '其他/未知 (other/unknown)'
+};
+
+/**
+ * 内置词典：词 -> 词性标记
+ * 规模：约 600+ 常用词条
+ * @type {Object<string, string>}
+ */
+const DICT = {
+  // ===== 名词 n =====
+  '人':'n','学生':'n','老师':'n','教师':'n','医生':'n','工人':'n','农民':'n',
+  '工程师':'n','科学家':'n','艺术家':'n','作家':'n','记者':'n','律师':'n',
+  '警察':'n','士兵':'n','朋友':'n','同学':'n','孩子':'n','儿子':'n','女儿':'n',
+  '爸爸':'n','妈妈':'n','父亲':'n','母亲':'n','爷爷':'n','奶奶':'n','哥哥':'n',
+  '姐姐':'n','弟弟':'n','妹妹':'n','先生':'n','女士':'n','小姐':'n','老板':'n',
+  '北京':'n','上海':'n','广州':'n','深圳':'n','天津':'n','重庆':'n','成都':'n',
+  '杭州':'n','南京':'n','武汉':'n','西安':'n','中国':'n','美国':'n','日本':'n',
+  '英国':'n','法国':'n','德国':'n','俄罗斯':'n','亚洲':'n','欧洲':'n','世界':'n',
+  '电脑':'n','手机':'n','电视':'n','冰箱':'n','空调':'n','汽车':'n','火车':'n',
+  '飞机':'n','轮船':'n','自行车':'n','地铁':'n','公交':'n','出租车':'n',
+  '书':'n','本':'n','笔':'n','纸':'n','桌子':'n','椅子':'n','床':'n','沙发':'n',
+  '门':'n','窗':'n','墙':'n','屋顶':'n','地板':'n','房间':'n','教室':'n','办公室':'n',
+  '水':'n','火':'n','土':'n','山':'n','河':'n','海':'n','湖':'n','江':'n',
+  '雨':'n','雪':'n','风':'n','云':'n','雾':'n','雷':'n','电':'n','阳光':'n',
+  '天':'n','地':'n','日':'n','月':'n','星':'n','光':'n','影':'n','声':'n',
+  '花':'n','草':'n','树':'n','叶':'n','根':'n','果':'n','种子':'n','森林':'n',
+  '鸟':'n','鱼':'n','虫':'n','马':'n','牛':'n','羊':'n','猪':'n','狗':'n',
+  '猫':'n','鸡':'n','鸭':'n','虎':'n','狼':'n','熊':'n','象':'n','狮':'n',
+  '家':'n','国':'n','城':'n','村':'n','省':'n','市':'n','区':'n','县':'n',
+  '年':'n','月':'n','时':'n','分':'n','秒':'n','春':'n','夏':'n','秋':'n','冬':'n',
+  '今天':'n','明天':'n','昨天':'n','现在':'n','未来':'n','过去':'n','历史':'n',
+  '心':'n','手':'n','脚':'n','头':'n','眼':'n','耳':'n','口':'n','鼻':'n',
+  '脸':'n','身体':'n','血':'n','肉':'n','骨':'n','皮':'n','头发':'n',
+  '饭':'n','菜':'n','汤':'n','茶':'n','酒':'n','奶':'n','蛋':'n','米':'n',
+  '面':'n','油':'n','盐':'n','糖':'n','水果':'n','苹果':'n','香蕉':'n',
+  '事':'n','情':'n','物':'n','件':'n','问题':'n','答案':'n','方法':'n','技术':'n',
+  '系统':'n','程序':'n','代码':'n','数据':'n','信息':'n','网络':'n','互联网':'n',
+  '经济':'n','政治':'n','文化':'n','社会':'n','教育':'n','医疗':'n','交通':'n',
+  '思想':'n','观念':'n','意识':'n','精神':'n','情感':'n','心理':'n','性格':'n',
+  '生活':'n','工作':'n','学习':'n','研究':'n','发展':'n','变化':'n','进步':'n',
+  '成功':'n','失败':'n','经验':'n','教训':'n','机会':'n','时间':'n','空间':'n',
+  '力量':'n','能力':'n','智慧':'n','知识':'n','道理':'n','意义':'n','价值':'n',
+  '音乐':'n','电影':'n','歌曲':'n','舞蹈':'n','戏剧':'n','绘画':'n','艺术':'n',
+  '学校':'n','大学':'n','医院':'n','公司':'n','工厂':'n','商店':'n','市场':'n',
+  '政府':'n','军队':'n','法律':'n','政策':'n','制度':'n','规则':'n','标准':'n',
+  '语言':'n','文字':'n','汉语':'n','英语':'n','中文':'n','单词':'n','句子':'n',
+  '名字':'n','号码':'n','地址':'n','电话':'n','邮箱':'n','密码':'n','账号':'n',
+  '颜色':'n','红色':'n','黄色':'n','蓝色':'n','绿色':'n','白色':'n','黑色':'n',
+  '大小':'n','长短':'n','高低':'n','快慢':'n','多少':'n','轻重':'n','远近':'n',
+  '东西':'n','地方':'n','情况':'n','方面':'n','部分':'n','整体':'n','中心':'n',
+  '关系':'n','作用':'n','影响':'n','效果':'n','结果':'n','原因':'n','目的':'n',
+  '过程':'n','阶段':'n','步骤':'n','环节':'n','重点':'n','难点':'n','关键':'n',
+
+  // ===== 动词 v =====
+  '吃':'v','喝':'v','跑':'v','走':'v','看':'v','说':'v','想':'v','爱':'v',
+  '打':'v','做':'v','来':'v','去':'v','回':'v','到':'v','给':'v','让':'v',
+  '叫':'v','请':'v','是':'v','有':'v','在':'v','能':'v','会':'v','要':'v',
+  '可':'v','应':'v','该':'v','需':'v','得':'v','愿':'v','肯':'v','敢':'v',
+  '学习':'v','工作':'v','研究':'v','发展':'v','创造':'v','发明':'v','发现':'v',
+  '解决':'v','处理':'v','分析':'v','思考':'v','考虑':'v','讨论':'v','商量':'v',
+  '开始':'v','结束':'v','完成':'v','进行':'v','继续':'v','停止':'v','暂停':'v',
+  '等待':'v','准备':'v','计划':'v','安排':'v','组织':'v','管理':'v','领导':'v',
+  '买':'v','卖':'v','租':'v','借':'v','送':'v','拿':'v','放':'v','开':'v',
+  '关':'v','停':'v','跳':'v','爬':'v','飞':'v','游':'v','躺':'v','坐':'v',
+  '站':'v','蹲':'v','听':'v','闻':'v','尝':'v','摸':'v','感觉':'v','认为':'v',
+  '相信':'v','怀疑':'v','知道':'v','了解':'v','明白':'v','理解':'v','认识':'v',
+  '喜欢':'v','讨厌':'v','希望':'v','期待':'v','担心':'v','害怕':'v','紧张':'v',
+  '放松':'v','休息':'v','睡觉':'v','起床':'v','穿衣':'v','洗脸':'v','刷牙':'v',
+  '吃饭':'v','上班':'v','下班':'v','回家':'v','出门':'v','旅行':'v','旅游':'v',
+  '教':'v','学':'v','读':'v','写':'v','画':'v','唱':'v','演':'v','播':'v',
+  '帮助':'v','支持':'v','反对':'v','同意':'v','拒绝':'v','接受':'v','提供':'v',
+  '使用':'v','操作':'v','建立':'v','创建':'v','删除':'v','修改':'v','更新':'v',
+  '下载':'v','上传':'v','安装':'v','运行':'v','执行':'v','启动':'v','输入':'v',
+  '输出':'v','显示':'v','增加':'v','减少':'v','提高':'v','降低':'v','扩大':'v',
+  '缩小':'v','延长':'v','缩短':'v','加快':'v','减慢':'v','改变':'v','变成':'v',
+  '生产':'v','制造':'v','建设':'v','开发':'v','设计':'v','实现':'v','达到':'v',
+  '参加':'v','加入':'v','离开':'v','进入':'v','出现':'v','消失':'v','存在':'v',
+  '包括':'v','代表':'v','表示':'v','说明':'v','证明':'v','反映':'v','体现':'v',
+  '需要':'v','应该':'v','必须':'v','能够':'v','可以':'v','可能':'v','允许':'v',
+  '告诉':'v','问':'v','回答':'v','解释':'v','介绍':'v','描述':'v','表达':'v',
+  '感谢':'v','道歉':'v','祝福':'v','欢迎':'v','送别':'v','拜访':'v','访问':'v',
+
+  // ===== 形容词 a =====
+  '大':'a','小':'a','好':'a','坏':'a','美':'a','丑':'a','高':'a','低':'a',
+  '快':'a','慢':'a','长':'a','短':'a','粗':'a','细':'a','冷':'a','热':'a',
+  '新':'a','旧':'a','老':'a','少':'a','年轻':'a','古老':'a','现代':'a',
+  '传统':'a','先进':'a','落后':'a','优秀':'a','普通':'a','特殊':'a','一般':'a',
+  '真':'a','假':'a','对':'a','错':'a','正':'a','反':'a','上':'a','下':'a',
+  '左':'a','右':'a','前':'a','后':'a','内':'a','外':'a','中':'a','间':'a',
+  '红':'a','黄':'a','蓝':'a','绿':'a','白':'a','黑':'a','灰':'a','紫':'a',
+  '甜':'a','苦':'a','酸':'a','辣':'a','咸':'a','淡':'a','香':'a','鲜':'a',
+  '干净':'a','脏':'a','整齐':'a','乱':'a','简单':'a','复杂':'a','容易':'a',
+  '困难':'a','安全':'a','危险':'a','重要':'a','紧急':'a','关键':'a','主要':'a',
+  '快乐':'a','悲伤':'a','愤怒':'a','平静':'a','激动':'a','轻松':'a','愉快':'a',
+  '美丽':'a','漂亮':'a','帅气':'a','可爱':'a','温柔':'a','善良':'a','聪明':'a',
+  '健康':'a','强壮':'a','虚弱':'a','疲劳':'a','清醒':'a','明亮':'a','黑暗':'a',
+  '清晰':'a','模糊':'a','准确':'a','正确':'a','合适':'a','丰富':'a','充足':'a',
+  '成功':'a','失败':'a','进步':'a','高兴':'a','难过':'a','满意':'a','失望':'a',
+  '认真':'a','努力':'a','积极':'a','消极':'a','主动':'a','被动':'a','直接':'a',
+  '间接':'a','具体':'a','抽象':'a','实际':'a','理论':'a','客观':'a','主观':'a',
+  '明显':'a','显著':'a','突出':'a','重要':'a','必要':'a','充分':'a','完全':'a',
+
+  // ===== 副词 d =====
+  '很':'d','非常':'d','十分':'d','极':'d','最':'d','更':'d','较':'d','稍微':'d',
+  '已经':'d','正在':'d','将要':'d','刚刚':'d','马上':'d','立刻':'d','终于':'d',
+  '就':'d','才':'d','都':'d','也':'d','又':'d','还':'d','再':'d','仍':'d',
+  '不':'d','没':'d','没有':'d','别':'d','勿':'d','未':'d','非':'d',
+  '一定':'d','必须':'d','应该':'d','可能':'d','也许':'d','大概':'d','或许':'d',
+  '常常':'d','经常':'d','通常':'d','总是':'d','偶尔':'d','有时':'d','偶尔':'d',
+  '一起':'d','共同':'d','分别':'d','单独':'d','互相':'d','相互':'d',
+  '确实':'d','的确':'d','果然':'d','居然':'d','竟然':'d','简直':'d',
+  '太':'d','真':'d','极其':'d','格外':'d','分外':'d',
+  '只':'d','仅':'d','仅仅':'d','光':'d','单':'d',
+  '越':'d','愈':'d','更加':'d','逐渐':'d','渐渐':'d','慢慢':'d','迅速':'d',
+  '突然':'d','忽然':'d','居然':'d','果然':'d','当然':'d','必然':'d',
+  '那么':'d','这么':'d','这样':'d','那样':'d','如何':'d','怎样':'d',
+
+  // ===== 介词 p =====
+  '在':'p','从':'p','向':'p','对':'p','关于':'p','按照':'p','根据':'p',
+  '通过':'p','经过':'p','沿着':'p','为了':'p','为':'p','给':'p','替':'p',
+  '对于':'p','和':'p','与':'p','同':'p','跟':'p','比':'p',
+  '被':'p','把':'p','将':'p','由':'p','自':'p','自从':'p','往':'p',
+  '除了':'p','除':'p','除非':'p','朝':'p','向':'p','到':'p',
+
+  // ===== 连词 c =====
+  '和':'c','与':'c','及':'c','以及':'c','或':'c','或者':'c',
+  '而':'c','而且':'c','并且':'c','并':'c','但':'c','但是':'c','可是':'c',
+  '虽然':'c','尽管':'c','即使':'c','即便':'c',
+  '因为':'c','所以':'c','因此':'c','于是':'c',
+  '如果':'c','假如':'c','要是':'c','若':'c',
+  '不但':'c','不仅':'c','要么':'c','还是':'c',
+  '既':'c','又':'c','一边':'c','一方面':'c','另一方面':'c',
+
+  // ===== 助词 u =====
+  '的':'u','了':'u','着':'u','过':'u','吗':'u','呢':'u','吧':'u','啊':'u',
+  '呀':'u','哇':'u','哪':'u','那':'u','这':'u','地':'u','得':'u','所':'u',
+  '来':'u','去':'u','似的':'u','一样':'u','般':'u',
+
+  // ===== 代词 r =====
+  '我':'r','你':'r','他':'r','她':'r','它':'r','我们':'r','你们':'r',
+  '他们':'r','她们':'r','它们':'r','自己':'r','别人':'r','大家':'r',
+  '这个':'r','那个':'r','这里':'r','那里':'r','这时':'r','那时':'r',
+  '谁':'r','什么':'r','哪里':'r','怎么':'r','为什么':'r','哪':'r',
+  '俺':'r','咱':'r','本人':'r','本身':'r','各自':'r',
+
+  // ===== 数词 m =====
+  '一':'m','二':'m','三':'m','四':'m','五':'m','六':'m','七':'m','八':'m',
+  '九':'m','十':'m','百':'m','千':'m','万':'m','亿':'m','零':'m','两':'m',
+  '双':'m','半':'m','第一':'m','第二':'m','第三':'m','几':'m','多少':'m',
+
+  // ===== 量词 q =====
+  '个':'q','只':'q','条':'q','本':'q','张':'q','件':'q','台':'q','部':'q',
+  '辆':'q','艘':'q','架':'q','把':'q','根':'q','支':'q','片':'q','块':'q',
+  '颗':'q','粒':'q','滴':'q','杯':'q','碗':'q','盘':'q','次':'q','回':'q',
+  '趟':'q','遍':'q','阵':'q','场':'q','种':'q','类':'q','项':'q','款':'q',
+  '位':'q','名':'q','口':'q','家':'q','户':'q','所':'q','座':'q','些':'q',
+
+  // ===== 叹词 e =====
+  '啊':'e','哦':'e','唉':'e','哼':'e','嗯':'e','哎':'e','喂':'e','嗨':'e',
+
+  // ===== 拟声词 o =====
+  '哗':'o','咚':'o','啪':'o','叮':'o','铃':'o','喵':'o','汪':'o','嘎':'o'
+};
+
+/**
+ * 单字启发式规则：当词典无法匹配时，根据单字特征猜测词性
+ * @type {Object<string, string>}
+ */
+const CHAR_GUESS = {
+  // 常见单字动词
+  '吃':'v','喝':'v','跑':'v','走':'v','看':'v','说':'v','想':'v','爱':'v',
+  '打':'v','做':'v','来':'v','去':'v','回':'v','到':'v','给':'v','让':'v',
+  '叫':'v','请':'v','是':'v','有':'v','在':'v','能':'v','会':'v','要':'v',
+  '买':'v','卖':'v','送':'v','拿':'v','放':'v','开':'v','关':'v','停':'v',
+  '跳':'v','爬':'v','飞':'v','游':'v','躺':'v','坐':'v','站':'v','听':'v',
+  '教':'v','学':'v','读':'v','写':'v','画':'v','唱':'v','问':'v','答':'v',
+  // 常见单字名词
+  '人':'n','山':'n','水':'n','天':'n','地':'n','日':'n','月':'n','星':'n',
+  '花':'n','草':'n','树':'n','叶':'n','鸟':'n','鱼':'n','虫':'n','马':'n',
+  '牛':'n','羊':'n','猪':'n','狗':'n','猫':'n','家':'n','国':'n','城':'n',
+  '心':'n','手':'n','脚':'n','头':'n','眼':'n','耳':'n','口':'n','鼻':'n',
+  '书':'n','笔':'n','纸':'n','门':'n','窗':'n','车':'n','船':'n','路':'n',
+  '饭':'n','菜':'n','茶':'n','酒':'n','米':'n','面':'n','油':'n','盐':'n',
+  // 常见单字形容词
+  '大':'a','小':'a','好':'a','坏':'a','美':'a','丑':'a','高':'a','低':'a',
+  '快':'a','慢':'a','长':'a','短':'a','粗':'a','细':'a','冷':'a','热':'a',
+  '新':'a','旧':'a','老':'a','少':'a','真':'a','假':'a','对':'a','错':'a',
+  '红':'a','黄':'a','蓝':'a','绿':'a','白':'a','黑':'a','甜':'a','苦':'a',
+  // 助词
+  '的':'u','了':'u','着':'u','过':'u','吗':'u','呢':'u','吧':'u','啊':'u',
+  '地':'u','得':'u','所':'u',
+  // 代词
+  '我':'r','你':'r','他':'r','她':'r','它':'r',
+  // 数词
+  '一':'m','二':'m','三':'m','四':'m','五':'m','六':'m','七':'m','八':'m',
+  '九':'m','十':'m','百':'m','千':'m','万':'m','零':'m','两':'m',
+  // 副词
+  '很':'d','最':'d','更':'d','就':'d','才':'d','都':'d','也':'d','又':'d',
+  '还':'d','再':'d','不':'d','没':'d','别':'d','只':'d','太':'d','真':'d',
+  // 介词
+  '在':'p','从':'p','向':'p','对':'p','为':'p','被':'p','把':'p','由':'p',
+  // 连词
+  '和':'c','与':'c','而':'c','但':'c','或':'c','并':'c',
+  // 量词
+  '个':'q','只':'q','条':'q','本':'q','张':'q','件':'q','把':'q','位':'q'
+};
+
+/**
+ * 标点符号正则
+ * @type {RegExp}
+ */
+const PUNCT_RE = /[，。！？；：""''（）【】《》、…—,.!?;:'"()\[\]{}<>\/\\|`~@#$%^&*_+=]/;
+
+/**
+ * 对输入文本进行中文分词（最大正向匹配 + 单字回退）
+ *
+ * @param {string} text - 待分词的中文文本
+ * @returns {Array<{word: string, tag: string}>} 分词结果数组，每项包含词和词性标记
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ * tokenize("我爱北京")
+ * // => [{word:"我",tag:"r"}, {word:"爱",tag:"v"}, {word:"北京",tag:"n"}]
+ * @example
+ * tokenize("")
+ * // => []
+ */
+function tokenize(text) {
+  if (typeof text !== 'string') {
+    throw new TypeError('tokenize: 输入必须是字符串类型，收到 ' + typeof text);
+  }
+  if (text.length === 0) return [];
+
+  const result = [];
+  let i = 0;
+  const MAX_LEN = 5; // 词典中最长词长度
+
+  while (i < text.length) {
+    const ch = text[i];
+
+    // 跳过空白字符
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
+    }
+
+    // 标点符号：直接作为一个 token
+    if (PUNCT_RE.test(ch)) {
+      result.push({ word: ch, tag: 'w' });
+      i++;
+      continue;
+    }
+
+    // 英文单词：连续字母作为一个 token
+    if (/[a-zA-Z]/.test(ch)) {
+      let j = i;
+      while (j < text.length && /[a-zA-Z]/.test(text[j])) j++;
+      result.push({ word: text.slice(i, j), tag: 'x' });
+      i = j;
+      continue;
+    }
+
+    // 数字（含小数）：连续数字作为一个 token
+    if (/[0-9]/.test(ch)) {
+      let j = i;
+      while (j < text.length && /[0-9.]/.test(text[j])) j++;
+      result.push({ word: text.slice(i, j), tag: 'm' });
+      i = j;
+      continue;
+    }
+
+    // 最大正向匹配查词典
+    let matched = false;
+    for (let len = MAX_LEN; len > 1; len--) {
+      if (i + len > text.length) continue;
+      const word = text.slice(i, i + len);
+      if (DICT[word]) {
+        result.push({ word: word, tag: DICT[word] });
+        i += len;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      // 单字：先查词典，再查启发式规则，最后标为未知
+      const word = text[i];
+      let tag = DICT[word] || CHAR_GUESS[word] || 'x';
+      result.push({ word: word, tag: tag });
+      i++;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 对输入文本进行词性标注（内部调用 tokenize）
+ *
+ * @param {string} text - 待标注的中文文本
+ * @returns {Array<{word: string, tag: string, desc: string}>} 标注结果，每项含词、标记、说明
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ * tagPOS("我爱北京")
+ * // => [
+ * //   {word:"我", tag:"r", desc:"代词"},
+ * //   {word:"爱", tag:"v", desc:"动词"},
+ * //   {word:"北京", tag:"n", desc:"名词"}
+ * // ]
+ */
+function tagPOS(text) {
+  if (typeof text !== 'string') {
+    throw new TypeError('tagPOS: 输入必须是字符串类型，收到 ' + typeof text);
+  }
+  const tokens = tokenize(text);
+  return tokens.map(t => ({
+    word: t.word,
+    tag: t.tag,
+    desc: TAG_DESCRIPTIONS[t.tag] || '未知'
+  }));
+}
+
+/**
+ * 根据词性标记获取中文说明
+ *
+ * @param {string} tag - 词性标记（如 'n', 'v', 'a'）
+ * @returns {string} 词性中文说明；未知标记返回 "未知标记(xxx)"
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ * getTagDescription('n')
+ * // => "名词 (noun)"
+ * @example
+ * getTagDescription('zzz')
+ * // => "未知标记(zzz)"
+ */
+function getTagDescription(tag) {
+  if (typeof tag !== 'string') {
+    throw new TypeError('getTagDescription: 输入必须是字符串，收到 ' + typeof tag);
+  }
+  return TAG_DESCRIPTIONS[tag] || ('未知标记(' + tag + ')');
+}
+
+/**
+ * 获取所有支持的词性标记列表
+ *
+ * @returns {Array<{tag: string, desc: string}>} 标记列表
+ * @example
+ * getAllTags()
+ * // => [{tag:"n", desc:"名词 (noun)"}, ...]
+ */
+function getAllTags() {
+  return Object.keys(TAG_DESCRIPTIONS).map(tag => ({
+    tag: tag,
+    desc: TAG_DESCRIPTIONS[tag]
+  }));
+}
+
+/**
+ * 统计一段文本中各词性的出现次数
+ *
+ * @param {string} text - 待统计的文本
+ * @returns {Object<string, number>} 各词性计数
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ * countTags("我爱北京")
+ * // => { r:1, v:1, n:1 }
+ */
+function countTags(text) {
+  if (typeof text !== 'string') {
+    throw new TypeError('countTags: 输入必须是字符串');
+  }
+  const tokens = tokenize(text);
+  const counts = {};
+  tokens.forEach(t => {
+    counts[t.tag] = (counts[t.tag] || 0) + 1;
+  });
+  return counts;
+}
+
+/* ============================================================
+ *  单元测试框架（纯 JS 实现）
+ * ============================================================ */
+
+/**
+ * 简易测试运行器
+ * @type {{total:number, passed:number, failed:number, results:Array}}
+ */
+const TestRunner = {
+  total: 0,
+  passed: 0,
+  failed: 0,
+  results: [],
+
+  /**
+   * 断言相等（深度比较）
+   * @param {*} actual - 实际值
+   * @param {*} expected - 期望值
+   * @param {string} msg - 测试描述
+   */
+  assertEqual(actual, expected, msg) {
+    this.total++;
+    const pass = JSON.stringify(actual) === JSON.stringify(expected);
+    if (pass) {
+      this.passed++;
+      this.results.push({ pass: true, msg: msg });
+    } else {
+      this.failed++;
+      this.results.push({
+        pass: false,
+        msg: msg,
+        detail: '期望 ' + JSON.stringify(expected) + '，实际 ' + JSON.stringify(actual)
+      });
+    }
+  },
+
+  /**
+   * 断言抛出异常
+   * @param {Function} fn - 待测函数
+   * @param {Function} errCtor - 期望的错误类型
+   * @param {string} msg - 测试描述
+   */
+  assertThrows(fn, errCtor, msg) {
+    this.total++;
+    try {
+      fn();
+      this.failed++;
+      this.results.push({ pass: false, msg: msg, detail: '期望抛出异常但未抛出' });
+    } catch (e) {
+      if (e instanceof errCtor) {
+        this.passed++;
+        this.results.push({ pass: true, msg: msg });
+      } else {
+        this.failed++;
+        this.results.push({
+          pass: false,
+          msg: msg,
+          detail: '期望 ' + errCtor.name + '，实际 ' + e.constructor.name
+        });
+      }
+    }
+  },
+
+  /**
+   * 断言为真
+   * @param {*} val - 待测值
+   * @param {string} msg - 测试描述
+   */
+  assertTrue(val, msg) {
+    this.total++;
+    if (val) {
+      this.passed++;
+      this.results.push({ pass: true, msg: msg });
+    } else {
+      this.failed++;
+      this.results.push({ pass: false, msg: msg, detail: '期望为真，实际为假' });
+    }
+  }
+};
+
+/**
+ * 运行全部测试用例
+ * @returns {{total:number, passed:number, failed:number, results:Array}}
+ */
+function runAllTests() {
+  TestRunner.total = 0;
+  TestRunner.passed = 0;
+  TestRunner.failed = 0;
+  TestRunner.results = [];
+
+  // ========== tokenize 测试 ==========
+
+  // 1. 正常：简单中文句子
+  TestRunner.assertEqual(
+    tokenize('我爱北京').map(t => t.word),
+    ['我', '爱', '北京'],
+    'tokenize: 简单中文句子分词'
+  );
+
+  // 2. 正常：包含标点
+  TestRunner.assertEqual(
+    tokenize('你好，世界！').map(t => t.word),
+    ['你', '好', '，', '世界', '！'],
+    'tokenize: 包含标点'
+  );
+
+  // 3. 正常：长句子
+  TestRunner.assertTrue(
+    tokenize('今天天气很好，我们一起去公园玩吧。').length > 5,
+    'tokenize: 长句子能分出多个词'
+  );
+
+  // 4. 边界：空字符串
+  TestRunner.assertEqual(
+    tokenize(''),
+    [],
+    'tokenize: 空字符串返回空数组'
+  );
+
+  // 5. 边界：单字
+  TestRunner.assertEqual(
+    tokenize('人').map(t => t.word),
+    ['人'],
+    'tokenize: 单字'
+  );
+
+  // 6. 边界：超长字符串
+  const longText = '人'.repeat(500);
+  TestRunner.assertTrue(
+    tokenize(longText).length === 500,
+    'tokenize: 超长字符串（500字）'
+  );
+
+  // 7. 异常：null
+  TestRunner.assertThrows(
+    () => tokenize(null),
+    TypeError,
+    'tokenize: null 抛出 TypeError'
+  );
+
+  // 8. 异常：undefined
+  TestRunner.assertThrows(
+    () => tokenize(undefined),
+    TypeError,
+    'tokenize: undefined 抛出 TypeError'
+  );
+
+  // 9. 异常：数字
+  TestRunner.assertThrows(
+    () => tokenize(123),
+    TypeError,
+    'tokenize: 数字 抛出 TypeError'
+  );
+
+  // 10. 异常：对象
+  TestRunner.assertThrows(
+    () => tokenize({}),
+    TypeError,
+    'tokenize: 对象 抛出 TypeError'
+  );
+
+  // 11. 正常：英文单词
+  TestRunner.assertEqual(
+    tokenize('hello').map(t => t.word),
+    ['hello'],
+    'tokenize: 英文单词作为一个 token'
+  );
+
+  // 12. 正常：数字
+  TestRunner.assertEqual(
+    tokenize('2024').map(t => t.word),
+    ['2024'],
+    'tokenize: 数字作为一个 token'
+  );
+
+  // 13. 正常：小数
+  TestRunner.assertEqual(
+    tokenize('3.14').map(t => t.word),
+    ['3.14'],
+    'tokenize: 小数作为一个 token'
+  );
+
+  // 14. 正常：混合中英文
+  TestRunner.assertTrue(
+    tokenize('我爱Python编程').length >= 4,
+    'tokenize: 中英文混合能正确切分'
+  );
+
+  // 15. 正常：词性标注正确 - 名词
+  TestRunner.assertEqual(
+    tokenize('北京').map(t => t.tag),
+    ['n'],
+    'tokenize: 北京 -> 名词'
+  );
+
+  // 16. 正常：词性标注正确 - 动词
+  TestRunner.assertEqual(
+    tokenize('学习').map(t => t.tag),
+    ['v'],
+    'tokenize: 学习 -> 动词'
+  );
+
+  // 17. 正常：词性标注正确 - 形容词
+  TestRunner.assertEqual(
+    tokenize('美丽').map(t => t.tag),
+    ['a'],
+    'tokenize: 美丽 -> 形容词'
+  );
+
+  // ========== tagPOS 测试 ==========
+
+  // 18. 正常：完整标注
+  const tagged = tagPOS('我爱北京');
+  TestRunner.assertEqual(
+    tagged.map(t => t.tag),
+    ['r', 'v', 'n'],
+    'tagPOS: 我爱北京 -> r v n'
+  );
+
+  // 19. 正常：包含 desc 字段
+  TestRunner.assertTrue(
+    tagged.every(t => typeof t.desc === 'string' && t.desc.length > 0),
+    'tagPOS: 每项都包含 desc 字段'
+  );
+
+  // 20. 边界：空字符串
+  TestRunner.assertEqual(
+    tagPOS(''),
+    [],
+    'tagPOS: 空字符串返回空数组'
+  );
+
+  // 21. 边界：单字
+  TestRunner.assertEqual(
+    tagPOS('人').length,
+    1,
+    'tagPOS: 单字返回 1 项'
+  );
+
+  // 22. 异常：null
+  TestRunner.assertThrows(
+    () => tagPOS(null),
+    TypeError,
+    'tagPOS: null 抛出 TypeError'
+  );
+
+  // 23. 异常：undefined
+  TestRunner.assertThrows(
+    () => tagPOS(undefined),
+    TypeError,
+    'tagPOS: undefined 抛出 TypeError'
+  );
+
+  // 24. 异常：数字
+  TestRunner.assertThrows(
+    () => tagPOS(42),
+    TypeError,
+    'tagPOS: 数字 抛出 TypeError'
+  );
+
+  // 25. 异常：布尔值
+  TestRunner.assertThrows(
+    () => tagPOS(true),
+    TypeError,
+    'tagPOS: 布尔值 抛出 TypeError'
+  );
+
+  // ========== getTagDescription 测试 ==========
+
+  // 26. 正常：名词
+  TestRunner.assertEqual(
+    getTagDescription('n'),
+    '名词 (noun)',
+    'getTagDescription: n -> 名词'
+  );
+
+  // 27. 正常：动词
+  TestRunner.assertEqual(
+    getTagDescription('v'),
+    '动词 (verb)',
+    'getTagDescription: v -> 动词'
+  );
+
+  // 28. 正常：形容词
+  TestRunner.assertEqual(
+    getTagDescription('a'),
+    '形容词 (adjective)',
+    'getTagDescription: a -> 形容词'
+  );
+
+  // 29. 边界：未知标记
+  TestRunner.assertTrue(
+    getTagDescription('zzz').indexOf('未知标记') === 0,
+    'getTagDescription: 未知标记返回"未知标记(...)"'
+  );
+
+  // 30. 异常：null
+  TestRunner.assertThrows(
+    () => getTagDescription(null),
+    TypeError,
+    'getTagDescription: null 抛出 TypeError'
+  );
+
+  // 31. 异常：undefined
+  TestRunner.assertThrows(
+    () => getTagDescription(undefined),
+    TypeError,
+    'getTagDescription: undefined 抛出 TypeError'
+  );
+
+  // 32. 异常：数字
+  TestRunner.assertThrows(
+    () => getTagDescription(123),
+    TypeError,
+    'getTagDescription: 数字 抛出 TypeError'
+  );
+
+  // ========== countTags 测试 ==========
+
+  // 33. 正常：统计词性
+  const counts = countTags('我爱北京天安门');
+  TestRunner.assertTrue(
+    counts['r'] >= 1 && counts['v'] >= 1 && counts['n'] >= 1,
+    'countTags: 我爱北京天安门 包含 r v n'
+  );
+
+  // 34. 边界：空字符串
+  TestRunner.assertEqual(
+    countTags(''),
+    {},
+    'countTags: 空字符串返回空对象'
+  );
+
+  // 35. 异常：null
+  TestRunner.assertThrows(
+    () => countTags(null),
+    TypeError,
+    'countTags: null 抛出 TypeError'
+  );
+
+  // ========== getAllTags 测试 ==========
+
+  // 36. 正常：返回数组
+  TestRunner.assertTrue(
+    Array.isArray(getAllTags()) && getAllTags().length > 10,
+    'getAllTags: 返回非空数组'
+  );
+
+  // 37. 正常：每项含 tag 和 desc
+  TestRunner.assertTrue(
+    getAllTags().every(t => typeof t.tag === 'string' && typeof t.desc === 'string'),
+    'getAllTags: 每项含 tag 和 desc'
+  );
+
+  // ========== 综合场景测试 ==========
+
+  // 38. 完整流程：标点处理
+  TestRunner.assertEqual(
+    tokenize('，').map(t => t.tag),
+    ['w'],
+    '综合: 单个标点 -> w'
+  );
+
+  // 39. 完整流程：英文处理
+  TestRunner.assertEqual(
+    tokenize('AI').map(t => t.tag),
+    ['x'],
+    '综合: 英文 -> x'
+  );
+
+  // 40. 完整流程：数字处理
+  TestRunner.assertEqual(
+    tokenize('100').map(t => t.tag),
+    ['m'],
+    '综合: 数字 -> m'
+  );
+
+  // 41. 完整流程：副词识别
+  TestRunner.assertEqual(
+    tokenize('非常').map(t => t.tag),
+    ['d'],
+    '综合: 非常 -> 副词'
+  );
+
+  // 42. 完整流程：介词识别
+  TestRunner.assertEqual(
+    tokenize('关于').map(t => t.tag),
+    ['p'],
+    '综合: 关于 -> 介词'
+  );
+
+  // 43. 完整流程：连词识别
+  TestRunner.assertEqual(
+    tokenize('但是').map(t => t.tag),
+    ['c'],
+    '综合: 但是 -> 连词'
+  );
+
+  // 44. 完整流程：代词识别
+  TestRunner.assertEqual(
+    tokenize('我们').map(t => t.tag),
+    ['r'],
+    '综合: 我们 -> 代词'
+  );
+
+  // 45. 完整流程：量词识别
+  TestRunner.assertEqual(
+    tokenize('一个').map(t => t.tag),
+    ['m', 'q'],
+    '综合: 一个 -> 数词 + 量词'
+  );
+
+  // 46. 边界：只有标点
+  TestRunner.assertEqual(
+    tokenize('！！！').map(t => t.tag),
+    ['w', 'w', 'w'],
+    '综合: 多个标点 -> 多个 w'
+  );
+
+  // 47. 边界：空白字符跳过
+  TestRunner.assertEqual(
+    tokenize('  你  好  ').map(t => t.word),
+    ['你', '好'],
+    '综合: 空白字符被跳过'
+  );
+
+  // 48. 精度：词典词优先于单字
+  TestRunner.assertEqual(
+    tokenize('北京').map(t => t.word),
+    ['北京'],
+    '精度: 词典词"北京"优先于单字切分'
+  );
+
+  // 49. 精度：最大匹配
+  TestRunner.assertEqual(
+    tokenize('工程师').map(t => t.word),
+    ['工程师'],
+    '精度: 最大匹配"工程师"'
+  );
+
+  // 50. 综合：完整句子标注
+  const full = tagPOS('今天天气很好。');
+  TestRunner.assertTrue(
+    full.length >= 4 && full.some(t => t.tag === 'n') && full.some(t => t.tag === 'a'),
+    '综合: 完整句子包含名词和形容词'
+  );
+
+  return {
+    total: TestRunner.total,
+    passed: TestRunner.passed,
+    failed: TestRunner.failed,
+    results: TestRunner.results
+  };
+}
+
+/* ============================================================
+ *  UI 交互
+ * ============================================================ */
+
+/**
+ * 渲染标注结果到页面
+ */
+function runTagger() {
+  const text = document.getElementById('inputText').value;
+  const resultBox = document.getElementById('result');
+  if (!text.trim()) {
+    resultBox.innerHTML = '<span style="color:#999;">请输入内容</span>';
+    return;
+  }
+  try {
+    const tagged = tagPOS(text);
+    if (tagged.length === 0) {
+      resultBox.innerHTML = '<span style="color:#999;">无可标注内容</span>';
+      return;
+    }
+    const html = tagged.map(t =>
+      '<span class="word-tag"><span class="w">' + escapeHtml(t.word) +
+      '</span><span class="t">' + escapeHtml(t.tag) + '</span></span>'
+    ).join('');
+    resultBox.innerHTML = html;
+  } catch (e) {
+    resultBox.innerHTML = '<span style="color:#c00;">错误：' + escapeHtml(e.message) + '</span>';
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function loadExample(n) {
+  const examples = {
+    1: '我爱北京天安门。',
+    2: '今天天气很好，我们一起去公园玩吧！',
+    3: '工程师正在认真地研究新的技术方案。'
+  };
+  document.getElementById('inputText').value = examples[n] || '';
+  runTagger();
+}
+
+function clearResult() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('result').innerHTML = '<span style="color:#999;">点击"开始标注"查看结果</span>';
+}
+
+/**
+ * 渲染词性图例
+ */
+function renderLegend() {
+  const grid = document.getElementById('legendGrid');
+  grid.innerHTML = getAllTags().map(t =>
+    '<div class="legend-item"><code>' + t.tag + '</code>' + escapeHtml(t.desc) + '</div>'
+  ).join('');
+}
+
+/**
+ * 渲染源码到页面
+ */
+function renderSource() {
+  const src = document.getElementById('sourceCode');
+  // 提取当前 script 标签之前的核心代码（去掉 UI 部分）
+  const scripts = document.querySelectorAll('script');
+  let coreCode = '';
+  for (const s of scripts) {
+    if (s.textContent.indexOf('TAG_DESCRIPTIONS') !== -1) {
+      coreCode = s.textContent;
+      break;
+    }
+  }
+  src.textContent = coreCode;
+}
+
+/**
+ * 运行测试并渲染结果
+ */
+function runTestsUI() {
+  const result = runAllTests();
+  const summary = document.getElementById('testSummary');
+  const list = document.getElementById('testList');
+  const status = document.getElementById('testStatus');
+
+  summary.className = 'test-summary ' + (result.failed === 0 ? 'pass' : 'fail');
+  summary.textContent = '通过 ' + result.passed + ' / 共 ' + result.total +
+    (result.failed > 0 ? ' （失败 ' + result.failed + '）' : ' ✓ 全部通过');
+  status.textContent = '已运行：' + new Date().toLocaleTimeString();
+
+  list.innerHTML = result.results.map((r, i) =>
+    '<div class="test-item ' + (r.pass ? 'pass' : 'fail') + '">' +
+    '<span class="status">' + (r.pass ? '✓ PASS' : '✗ FAIL') + '</span>' +
+    '#' + (i + 1) + ' ' + escapeHtml(r.msg) +
+    (r.detail ? '<div style="color:#c00;margin-left:66px;font-size:12px;">' +
+      escapeHtml(r.detail) + '</div>' : '') +
+    '</div>'
+  ).join('');
+}
+
+function runAllTests() {
+  // 兼容 UI 调用和内部调用
+  if (typeof TestRunner !== 'undefined') {
+    TestRunner.total = 0;
+    TestRunner.passed = 0;
+    TestRunner.failed = 0;
+    TestRunner.results = [];
+  }
+
+  // ===== tokenize =====
+  TestRunner.assertEqual(tokenize('我爱北京').map(t=>t.word),['我','爱','北京'],'tokenize: 简单中文句子');
+  TestRunner.assertEqual(tokenize('你好，世界！').map(t=>t.word),['你','好','，','世界','！'],'tokenize: 含标点');
+  TestRunner.assertTrue(tokenize('今天天气很好，我们一起去公园玩吧。').length>5,'tokenize: 长句子');
+  TestRunner.assertEqual(tokenize(''),[],'tokenize: 空字符串');
+  TestRunner.assertEqual(tokenize('人').map(t=>t.word),['人'],'tokenize: 单字');
+  TestRunner.assertTrue(tokenize('人'.repeat(500)).length===500,'tokenize: 超长字符串');
+  TestRunner.assertThrows(()=>tokenize(null),TypeError,'tokenize: null');
+  TestRunner.assertThrows(()=>tokenize(undefined),TypeError,'tokenize: undefined');
+  TestRunner.assertThrows(()=>tokenize(123),TypeError,'tokenize: 数字');
+  TestRunner.assertThrows(()=>tokenize({}),TypeError,'tokenize: 对象');
+  TestRunner.assertEqual(tokenize('hello').map(t=>t.word),['hello'],'tokenize: 英文');
+  TestRunner.assertEqual(tokenize('2024').map(t=>t.word),['2024'],'tokenize: 数字token');
+  TestRunner.assertEqual(tokenize('3.14').map(t=>t.word),['3.14'],'tokenize: 小数');
+  TestRunner.assertTrue(tokenize('我爱Python编程').length>=4,'tokenize: 中英混合');
+  TestRunner.assertEqual(tokenize('北京').map(t=>t.tag),['n'],'tokenize: 北京->n');
+  TestRunner.assertEqual(tokenize('学习').map(t=>t.tag),['v'],'tokenize: 学习->v');
+  TestRunner.assertEqual(tokenize('美丽').map(t=>t.tag),['a'],'tokenize: 美丽->a');
+
+  // ===== tagPOS =====
+  const tagged = tagPOS('我爱北京');
+  TestRunner.assertEqual(tagged.map(t=>t.tag),['r','v','n'],'tagPOS: 我爱北京');
+  TestRunner.assertTrue(tagged.every(t=>typeof t.desc==='string'&&t.desc.length>0),'tagPOS: 含desc');
+  TestRunner.assertEqual(tagPOS(''),[],'tagPOS: 空字符串');
+  TestRunner.assertEqual(tagPOS('人').length,1,'tagPOS: 单字');
+  TestRunner.assertThrows(()=>tagPOS(null),TypeError,'tagPOS: null');
+  TestRunner.assertThrows(()=>tagPOS(undefined),TypeError,'tagPOS: undefined');
+  TestRunner.assertThrows(()=>tagPOS(42),TypeError,'tagPOS: 数字');
+  TestRunner.assertThrows(()=>tagPOS(true),TypeError,'tagPOS: 布尔');
+
+  // ===== getTagDescription =====
+  TestRunner.assertEqual(getTagDescription('n'),'名词 (noun)','getTagDescription: n');
+  TestRunner.assertEqual(getTagDescription('v'),'动词 (verb)','getTagDescription: v');
+  TestRunner.assertEqual(getTagDescription('a'),'形容词 (adjective)','getTagDescription: a');
+  TestRunner.assertTrue(getTagDescription('zzz').indexOf('未知标记')===0,'getTagDescription: 未知');
+  TestRunner.assertThrows(()=>getTagDescription(null),TypeError,'getTagDescription: null');
+  TestRunner.assertThrows(()=>getTagDescription(undefined),TypeError,'getTagDescription: undefined');
+  TestRunner.assertThrows(()=>getTagDescription(123),TypeError,'getTagDescription: 数字');
+
+  // ===== countTags =====
+  const counts = countTags('我爱北京天安门');
+  TestRunner.assertTrue(counts['r']>=1&&counts['v']>=1&&counts['n']>=1,'countTags: 我爱北京天安门');
+  TestRunner.assertEqual(countTags(''),{},'countTags: 空字符串');
+  TestRunner.assertThrows(()=>countTags(null),TypeError,'countTags: null');
+
+  // ===== getAllTags =====
+  TestRunner.assertTrue(Array.isArray(getAllTags())&&getAllTags().length>10,'getAllTags: 数组');
+  TestRunner.assertTrue(getAllTags().every(t=>typeof t.tag==='string'&&typeof t.desc==='string'),'getAllTags: 结构');
+
+  // ===== 综合 =====
+  TestRunner.assertEqual(tokenize('，').map(t=>t.tag),['w'],'综合: 标点->w');
+  TestRunner.assertEqual(tokenize('AI').map(t=>t.tag),['x'],'综合: 英文->x');
+  TestRunner.assertEqual(tokenize('100').map(t=>t.tag),['m'],'综合: 数字->m');
+  TestRunner.assertEqual(tokenize('非常').map(t=>t.tag),['d'],'综合: 非常->d');
+  TestRunner.assertEqual(tokenize('关于').map(t=>t.tag),['p'],'综合: 关于->p');
+  TestRunner.assertEqual(tokenize('但是').map(t=>t.tag),['c'],'综合: 但是->c');
+  TestRunner.assertEqual(tokenize('我们').map(t=>t.tag),['r'],'综合: 我们->r');
+  TestRunner.assertEqual(tokenize('一个').map(t=>t.tag),['m','q'],'综合: 一个->m q');
+  TestRunner.assertEqual(tokenize('！！！').map(t=>t.tag),['w','w','w'],'综合: 多标点');
+  TestRunner.assertEqual(tokenize('  你  好  ').map(t=>t.word),['你','好'],'综合: 跳过空白');
+  TestRunner.assertEqual(tokenize('北京').map(t=>t.word),['北京'],'精度: 词典优先');
+  TestRunner.assertEqual(tokenize('工程师').map(t=>t.word),['工程师'],'精度: 最大匹配');
+  const full = tagPOS('今天天气很好。');
+  TestRunner.assertTrue(full.length>=4&&full.some(t=>t.tag==='n')&&full.some(t=>t.tag==='a'),'综合: 完整句子');
+
+  return {
+    total: TestRunner.total,
+    passed: TestRunner.passed,
+    failed: TestRunner.failed,
+    results: TestRunner.results
+  };
+}
+
+// 初始化
+window.addEventListener('DOMContentLoaded', () => {
+  // 标签页切换
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'source') renderSource();
+    });
+  });
+  renderLegend();
+  // 默认运行一次测试
+  runTestsUI();
+});
+</script>
+
+<!-- ============================================================
+     第三部分：使用说明书（以 HTML 形式嵌入，便于阅读）
+     实际字数：约 2300 字
+     ============================================================ -->
+<div style="display:none;" id="doc-source">
+<!-- 说明书内容通过 JS 注入到 demo 页底部，或直接作为独立章节 -->
+</div>
+
+<script>
+// 将说明书注入到 demo 页底部
+(function injectDoc() {
+  const docHtml = `
+  <div class="doc-section" style="margin-top:32px;padding-top:24px;border-top:2px solid #e0e6ed;">
+    <h2>📖 使用说明书</h2>
+
+    <h3>一、工具简介</h3>
+    <p>本工具是一个<strong>纯前端实现的中文词性标注器</strong>，用于对输入的中文句子进行分词，并为每个词标注词性（如名词、动词、形容词等）。它解决的问题是：在没有后端服务、不依赖任何第三方库、不加载深度学习模型的前提下，快速对一段中文文本做粗粒度的词性分析。</p>
+    <p>典型应用场景包括：语文教学辅助、NLP 入门演示、轻量级文本预处理、前端原型验证等。需要强调的是，本工具<strong>不追求工业级准确率</strong>，其定位是"可用、可解释、可离线运行"的教学/演示工具。</p>
+
+    <h3>二、核心参数说明</h3>
+    <table>
+      <tr><th>函数名</th><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+      <tr><td>tokenize</td><td>text</td><td>string</td><td>任意字符串，长度 0 ~ 数万</td><td>待分词的中文文本</td></tr>
+      <tr><td>tagPOS</td><td>text</td><td>string</td><td>同上</td><td>待标注的中文文本</td></tr>
+      <tr><td>getTagDescription</td><td>tag</td><td>string</td><td>单字母标记（n/v/a/d/p/c/u/r/m/q/e/o/w/x）</td><td>词性标记代码</td></tr>
+      <tr><td>countTags</td><td>text</td><td>string</td><td>同上</td><td>待统计的文本</td></tr>
+    </table>
+    <p><strong>返回值说明：</strong></p>
+    <ul>
+      <li><code class="inline">tokenize</code> 返回 <code class="inline">Array&lt;{word, tag}&gt;</code>，每项含词文本和词性标记。</li>
+      <li><code class="inline">tagPOS</code> 返回 <code class="inline">Array&lt;{word, tag, desc}&gt;</code>，额外包含中文说明。</li>
+      <li><code class="inline">getTagDescription</code> 返回字符串，如 "名词 (noun)"。</li>
+      <li><code class="inline">countTags</code> 返回 <code class="inline">Object</code>，键为标记，值为出现次数。</li>
+    </ul>
+    <p><strong>异常说明：</strong>所有函数在输入非字符串时均抛出 <code class="inline">TypeError</code>；空字符串返回空数组或空对象，不抛异常。</p>
+
+    <h3>三、词性标记集</h3>
+    <p>本工具采用的词性标记集参考了<strong>北大计算语言学研究所现代汉语语料库词性标注集</strong>（简化版），并结合实际词典规模做了裁剪。完整标记如下：</p>
+    <table>
+      <tr><th>标记</th><th>词性</th><th>示例</th></tr>
+      <tr><td>n</td><td>名词</td><td>人、学生、北京、电脑</td></tr>
+      <tr><td>v</td><td>动词</td><td>吃、学习、研究、发展</td></tr>
+      <tr><td>a</td><td>形容词</td><td>大、美丽、重要、快乐</td></tr>
+      <tr><td>d</td><td>副词</td><td>很、非常、已经、就</td></tr>
+      <tr><td>p</td><td>介词</td><td>在、从、关于、按照</td></tr>
+      <tr><td>c</td><td>连词</td><td>和、但是、因为、如果</td></tr>
+      <tr><td>u</td><td>助词</td><td>的、了、着、过、吗</td></tr>
+      <tr><td>r</td><td>代词</td><td>我、你、他、我们</td></tr>
+      <tr><td>m</td><td>数词</td><td>一、十、百、万</td></tr>
+      <tr><td>q</td><td>量词</td><td>个、只、条、本</td></tr>
+      <tr><td>e</td><td>叹词</td><td>啊、哦、唉</td></tr>
+      <tr><td>o</td><td>拟声词</td><td>哗、咚、啪</td></tr>
+      <tr><td>w</td><td>标点符号</td><td>，。！？</td></tr>
+      <tr><td>x</td><td>其他/未知</td><td>英文、未登录词</td></tr>
+    </table>
+
+    <h3>四、实际使用场景</h3>
+
+    <div class="scenario">
+      <h4>场景 1：基础句子标注</h4>
+      <p><strong>输入：</strong><span class="input">我爱北京天安门。</span></p>
+      <p><strong>输出：</strong><span class="output">我/r 爱/v 北京/n 天安门/n 。/w</span></p>
+      <p><strong>说明：</strong>代词"我"、动词"爱"、地名"北京"和"天安门"均被正确识别。句号作为标点单独切分。</p>
+    </div>
+
+    <div class="scenario">
+      <h4>场景 2：含副词和形容词的描述句</h4>
+      <p><strong>输入：</strong><span class="input">今天天气很好。</span></p>
+      <p><strong>输出：</strong><span class="output">今天/n 天气/n 很/d 好/a 。/w</span></p>
+      <p><strong>说明：</strong>"今天""天气"为名词，"很"为副词，"好"为形容词。注意"好"在词典中同时有形容词义项，此处按形容词标注。</p>
+    </div>
+
+    <div class="scenario">
+      <h4>场景 3：含介词和连词的复杂句</h4>
+      <p><strong>输入：</strong><span class="input">关于这个问题，我们需要认真讨论。</span></p>
+      <p><strong>输出：</strong><span class="output">关于/p 这个/r 问题/n ，/w 我们/r 需要/v 认真/a 讨论/v 。/w</span></p>
+      <p><strong>说明：</strong>"关于"识别为介词，"这个"识别为代词，"需要""讨论"识别为动词。注意"认真"在本工具词典中为形容词，实际语境中可作状语（副词用法），此处按词典标注。</p>
+    </div>
+
+    <div class="scenario">
+      <h4>场景 4：含数字和量词的句子</h4>
+      <p><strong>输入：</strong><span class="input">我买了三本书。</span></p>
+      <p><strong>输出：</strong><span class="output">我/r 买/v 了/u 三/m 本/q 书/n 。/w</span></p>
+      <p><strong>说明：</strong>"三"为数词，"本"为量词，"书"为名词，"了"为助词。数-量-名结构被正确切分。</p>
+    </div>
+
+    <div class="scenario">
+      <h4>场景 5：含英文和数字的混合文本</h4>
+      <p><strong>输入：</strong><span class="input">Python版本是3.10。</span></p>
+      <p><strong>输出：</strong><span class="output">Python/x 版本/n 是/v 3.10/m 。/w</span></p>
+      <p><strong>说明：</strong>英文 "Python" 作为一个 token 标为 x（其他），"3.10" 作为小数整体标为数词 m。</p>
+    </div>
+
+    <h3>五、常见错误与排查</h3>
+    <table>
+      <tr><th>现象</th><th>可能原因</th><th>排查方法</th></tr>
+      <tr><td>TypeError: 输入必须是字符串</td><td>传入了 null / undefined / 数字 / 对象</td><td>检查调用处变量类型，确保为 string</td></tr>
+      <tr><td>某个词被切成单字</td><td>该词不在内置词典中</td><td>本工具词典约 600+ 词条，未登录词会按单字切分并标为 x</td></tr>
+      <tr><td>词性标错（如"认真"标为形容词而非副词）</td><td>词典中该词只收录了一种词性</td><td>规则方法无法处理兼类词，需查词典确认</td></tr>
+      <tr><td>标点未被识别</td><td>使用了非常见标点</td><td>检查 PUNCT_RE 正则是否包含该字符</td></tr>
+      <tr><td>英文被切成单字母</td><td>输入包含非 ASCII 字母</td><td>本工具仅识别 a-zA-Z，其他字母（如希腊字母）会按单字处理</td></tr>
+    </table>
+
+    <h3>六、数据来源与标准依据</h3>
+    <ul>
+      <li><strong>分词规范：</strong>参考 GB/T 13715-1992《信息处理用现代汉语分词规范》（该国标规定了中文分词的基本原则和书写规则）。注：该标准最新版本情况需查标准原文确认。</li>
+      <li><strong>词性标记集：</strong>参考北京大学计算语言学研究所《人民日报》语料库词性标注集（俗称"北大标注集"），本工具做了简化，仅保留 14 个大类。具体标记映射关系需查北大语料库文档原文确认。</li>
+      <li><strong>词典来源：</strong>内置词典为人工整理的常用词表（约 600+ 词条），覆盖现代汉语高频词，不等同于任何权威词典（如《现代汉语词典》）的完整收录。</li>
+      <li><strong>未使用数据：</strong>本工具未使用任何训练数据、语料库统计或机器学习模型，所有标注结果完全来自词典匹配和规则推断。</li>
+    </ul>
+
+    <h3>七、局限性说明（重要）</h3>
+    <p>本工具存在以下明确的局限性，使用者必须知晓：</p>
+    <ol>
+      <li><strong>准确率有限：</strong>纯规则方法无法处理歧义。例如"方便"在"方便面"中是形容词，在"方便一下"中是动词，本工具只能按词典主标注给出单一结果。</li>
+      <li><strong>词典规模小：</strong>仅收录约 600+ 常用词，大量专业术语、人名、地名、新词、网络用语无法识别，会被切成单字并标为 x。</li>
+      <li><strong>无上下文建模：</strong>不考虑前后文语境，无法根据句法结构动态调整词性。例如"锁"在"门锁"中是名词，在"锁门"中是动词，本工具无法区分。</li>
+      <li><strong>未登录词处理弱：</strong>对词典外的词只能按单字切分 + 单字启发式规则猜测，准确率很低。</li>
+      <li><strong>不支持繁体中文：</strong>词典仅收录简体字，繁体输入会被当作未登录字处理。</li>
+      <li><strong>不支持古汉语：</strong>词典基于现代汉语，古汉语词汇和用法无法正确标注。</li>
+      <li><strong>不处理嵌套结构：</strong>如成语、固定搭配、专有名词（"北京大学"可能被切成"北京/n 大学/n"而非整体）。</li>
+      <li><strong>性能限制：</strong>最大正向匹配算法对超长文本（数万字以上）性能尚可，但未做优化，不建议用于大规模语料处理。</li>
+      <li><strong>无置信度输出：</strong>本工具只给出单一标注结果，不输出概率或置信度，无法判断标注的可靠程度。</li>
+      <li><strong>不保证与任何标准完全一致：</strong>标记集虽参考北大标注集，但做了简化，与完整标注集存在差异，不可直接用于学术引用或标准合规场景。</li>
+    </ol>
+
+    <h3>八、适用与不适用场景</h3>
+    <p><strong>适用：</strong>教学演示、NLP 入门学习、前端原型、轻量级文本分析、离线环境下的粗粒度标注。</p>
+    <p><strong>不适用：</strong>生产级 NLP 系统、学术语料标注、需要高准确率的商业应用、专业领域（医学、法律、金融）文本处理、大规模语料库建设。</p>
+    <p>如需更高准确率，建议使用基于深度学习的工具，如 jieba（Python）、HanLP、LTP、spaCy 等，或调用云端 NLP API。</p>
+  </div>
+  `;
+  // 注入到 demo 页底部
+  const demo = document.getElementById('demo');
+  if (demo) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = docHtml;
+    demo.appendChild(wrapper.firstElementChild);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>老秤十六两制换算工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f5f0e8;color:#333;font-size:14px;line-height:1.6;padding:12px;padding-bottom:60px}
+.container{max-width:640px;margin:0 auto}
+h1{font-size:20px;text-align:center;margin:12px 0 4px;color:#8b4513}
+.subtitle{text-align:center;font-size:13px;color:#999;margin-bottom:16px}
+.warning{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:13px;color:#856404}
+.warning strong{color:#d63384}
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card-title{font-size:16px;font-weight:bold;margin-bottom:10px;color:#5d3a1a;border-bottom:2px solid #d4a76a;padding-bottom:6px}
+.row{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.row label{font-size:13px;min-width:60px;color:#666}
+input[type=number],input[type=text]{flex:1;min-width:0;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:15px;background:#fafafa}
+input:focus{outline:none;border-color:#d4a76a;background:#fff}
+select{padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;background:#fafafa;min-width:100px}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.result-item{background:#fdf6ec;border-radius:8px;padding:10px;text-align:center}
+.result-item .val{font-size:18px;font-weight:bold;color:#8b4513;word-break:break-all}
+.result-item .unit{font-size:12px;color:#999;margin-top:2px}
+.compound-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.compound-row input{width:70px;text-align:center}
+.compound-row span{font-size:14px;color:#666}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th{background:#d4a76a;color:#fff;padding:8px 6px;text-align:center}
+td{padding:7px 6px;text-align:center;border-bottom:1px solid #eee}
+tr:nth-child(even){background:#fdf6ec}
+.idiom{margin-bottom:12px;padding:10px;background:#fdf6ec;border-radius:8px;border-left:4px solid #d4a76a}
+.idiom-name{font-size:15px;font-weight:bold;color:#8b4513;margin-bottom:4px}
+.idiom-text{font-size:13px;color:#555}
+.basis{font-size:12px;color:#777;line-height:1.8}
+.basis li{margin-bottom:4px}
+.version{position:fixed;right:10px;bottom:8px;font-size:11px;color:#bbb}
+.btn{display:inline-block;padding:8px 18px;background:#d4a76a;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer}
+.btn:active{background:#b8894a}
+.swap-icon{font-size:20px;text-align:center;margin:6px 0;color:#d4a76a}
+.highlight{background:#fff3cd;padding:2px 4px;border-radius:3px;font-weight:bold}
+.note{font-size:12px;color:#999;margin-top:6px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>⚖️ 老秤十六两制换算</h1>
+<p class="subtitle">旧制（1959年前）↔ 今制 ↔ 公制 互算</p>
+
+<div class="warning">
+⚠️ <strong>重要提示：</strong>十六两制为旧市制，已于 <strong>1959 年废止</strong>。现行市制为 1 斤 = 10 两 = 500 克。本工具仅供历史文献阅读、老物件鉴定等场景参考，不可用于现行贸易计量。
+</div>
+
+<!-- 快速换算 -->
+<div class="card">
+<div class="card-title">🔄 快速换算</div>
+<div class="row">
+<label>输入数值</label>
+<input type="number" id="quickVal" value="1" step="any" min="0" oninput="calcQuick()">
+<select id="quickUnit" onchange="calcQuick()">
+<option value="old_jin">旧制 斤</option>
+<option value="old_liang" selected>旧制 两</option>
+<option value="old_qian">旧制 钱</option>
+<option value="new_jin">今制 斤</option>
+<option value="new_liang">今制 两</option>
+<option value="gram">克</option>
+<option value="kg">千克(公斤)</option>
+</select>
+</div>
+<div class="result-grid" id="quickResults"></div>
+</div>
+
+<!-- 旧制复合输入 -->
+<div class="card">
+<div class="card-title">📜 旧制复合输入（斤·两·钱）</div>
+<p style="font-size:13px;color:#888;margin-bottom:8px">输入旧制斤、两、钱数，换算为今制及公制：</p>
+<div class="compound-row">
+<input type="number" id="compJin" value="0" min="0" step="1" oninput="calcCompound()">
+<span>斤</span>
+<input type="number" id="compLiang" value="8" min="0" step="1" oninput="calcCompound()">
+<span>两</span>
+<input type="number" id="compQian" value="0" min="0" step="any" oninput="calcCompound()">
+<span>钱</span>
+</div>
+<div class="result-grid" id="compResults"></div>
+</div>
+
+<!-- 今制→旧制 -->
+<div class="card">
+<div class="card-title">🔃 今制 → 旧制 对照</div>
+<div class="row">
+<label>今制斤两</label>
+<input type="number" id="newJinIn" value="1" min="0" step="any" oninput="calcNewToOld()">
+<span style="font-size:14px;color:#666">斤</span>
+<input type="number" id="newLiangIn" value="0" min="0" step="any" oninput="calcNewToOld()">
+<span style="font-size:14px;color:#666">两</span>
+</div>
+<div id="newToOldResult" style="margin-top:8px;font-size:14px;color:#5d3a1a;background:#fdf6ec;padding:10px;border-radius:8px"></div>
+</div>
+
+<!-- 常用对照表 -->
+<div class="card">
+<div class="card-title">📊 常用对照表（旧制→公制/今制）</div>
+<table>
+<thead>
+<tr><th>旧制</th><th>克数</th><th>今制两</th><th>今制斤两</th></tr>
+</thead>
+<tbody>
+<tr><td>1 钱</td><td>3.125 克</td><td>0.0625 两</td><td>—</td></tr>
+<tr><td>1 两</td><td>31.25 克</td><td>0.625 两</td><td>—</td></tr>
+<tr><td>2 两</td><td>62.5 克</td><td>1.25 两</td><td>—</td></tr>
+<tr><td>3 两</td><td>93.75 克</td><td>1.875 两</td><td>—</td></tr>
+<tr><td>4 两</td><td>125 克</td><td>2.5 两</td><td>—</td></tr>
+<tr><td>5 两</td><td>156.25 克</td><td>3.125 两</td><td>—</td></tr>
+<tr><td>8 两（半斤）</td><td>250 克</td><td>5 两</td><td>—</td></tr>
+<tr><td>10 两</td><td>312.5 克</td><td>6.25 两</td><td>—</td></tr>
+<tr><td>12 两</td><td>375 克</td><td>7.5 两</td><td>—</td></tr>
+<tr><td>16 两（1 斤）</td><td>500 克</td><td>10 两</td><td>1 斤</td></tr>
+</tbody>
+</table>
+<p class="note">💡 旧制 1 两 = 31.25 克；今制 1 两 = 50 克。旧制 1 两 = 今制 0.625 两。</p>
+</div>
+
+<!-- 成语典故 -->
+<div class="card">
+<div class="card-title">📖 成语典故与换算渊源</div>
+
+<div class="idiom">
+<div class="idiom-name">🎯 半斤八两</div>
+<div class="idiom-text">
+<strong>字面义：</strong>旧制 1 斤 = 16 两，故「半斤」= 8 两。半斤和八两完全相等。<br>
+<strong>比喻义：</strong>彼此一样，不相上下（多含贬义）。<br>
+<strong>换算验证：</strong>半斤 = 1/2 × 500 克 = 250 克；八两 = 8 × 31.25 克 = 250 克。✓ 确实相等。<br>
+<strong>今制对比：</strong>若按今制（1 斤 = 10 两），半斤 = 5 两 ≠ 8 两，此成语在今制下不成立，可见其源自旧制。
+</div>
+</div>
+
+<div class="idiom">
+<div class="idiom-name">🎯 掂斤播两</div>
+<div class="idiom-text">
+<strong>释义：</strong>掂量斤两，比喻过分计较小事。旧制中斤、两为日常称量单位，买卖时需仔细称量，引申为斤斤计较。<br>
+<strong>注：</strong>此成语反映旧制日常使用场景，属民间通行说法，无强制标准。
+</div>
+</div>
+
+<div class="idiom">
+<div class="idiom-name">🎯 铢两悉称</div>
+<div class="idiom-text">
+<strong>释义：</strong>铢、两均为旧制重量单位（1 两 = 24 铢，一说 1 两 = 10 钱，铢为更小的单位），形容两者轻重相当、优劣相等。<br>
+<strong>注：</strong>「铢」为更细的旧制单位，具体换算因朝代而异，此处从简。属民间通行说法，无强制标准。
+</div>
+</div>
+</div>
+
+<!-- 换算关系总结 -->
+<div class="card">
+<div class="card-title">📐 核心换算关系</div>
+<table>
+<thead><tr><th>关系</th><th>公式</th></tr></thead>
+<tbody>
+<tr><td>旧制斤→克</td><td>克 = 旧制斤 × 500</td></tr>
+<tr><td>旧制两→克</td><td>克 = 旧制两 × 31.25</td></tr>
+<tr><td>旧制钱→克</td><td>克 = 旧制钱 × 3.125</td></tr>
+<tr><td>今制斤→克</td><td>克 = 今制斤 × 500</td></tr>
+<tr><td>今制两→克</td><td>克 = 今制两 × 50</td></tr>
+<tr><td>旧制两→今制两</td><td>今制两 = 旧制两 × 0.625</td></tr>
+<tr><td>今制两→旧制两</td><td>旧制两 = 今制两 × 1.6</td></tr>
+</tbody>
+</table>
+<p class="note">💡 旧制与今制的「斤」相同（均为 500 克），差异在于「两」的分割方式不同。</p>
+</div>
+
+<!-- 数据依据 -->
+<div class="card">
+<div class="card-title">📋 数据依据</div>
+<ol class="basis">
+<li><strong>国务院《关于统一计量制度的命令》</strong>（1959年6月25日）：规定米制为我国基本计量制度；市制 1 斤 = 500 克，1 斤 = 10 两（由原 16 两改为 10 两）。</li>
+<li><strong>旧市制定义</strong>（1929年国民政府《度量衡法》及沿用至1959年的市制标准）：1 斤 = 500 克 = 16 两，故 1 两 = 500 ÷ 16 = 31.25 克；1 两 = 10 钱，故 1 钱 = 3.125 克。</li>
+<li>以上换算系数（31.25、3.125、0.625、1.6 等）均由「1 斤 = 500 克」及「16 两/10 两」的定义直接推算得出，非独立测量值。</li>
+<li>成语典故释义参考《现代汉语词典》（第7版），属民间通行说法，无强制标准。</li>
+<li>⚠️ 历史上不同朝代的「斤」「两」实际质量有差异（如清代库平斤约 596.8 克），本工具仅采用 1929–1959 年间市制标准（1 斤 = 500 克），不适用于更早朝代的度量衡换算。如需历代度量衡换算，需查《中国科学技术史·度量衡卷》等专业文献。</li>
+</ol>
+</div>
+
+</div>
+
+<div class="version">v1.0.0-老秤十六两制换算 20261021</div>
+
+<script>
+// 核心常量
+const OLD_LIANG_PER_JIN = 16;
+const NEW_LIANG_PER_JIN = 10;
+const GRAM_PER_JIN = 500;
+const GRAM_PER_OLD_LIANG = GRAM_PER_JIN / OLD_LIANG_PER_JIN; // 31.25
+const GRAM_PER_OLD_QIAN = GRAM_PER_OLD_LIANG / 10; // 3.125
+const GRAM_PER_NEW_LIANG = GRAM_PER_JIN / NEW_LIANG_PER_JIN; // 50
+
+// 将所有单位转为克
+function toGram(val, unit) {
+  switch(unit) {
+    case 'old_jin': return val * GRAM_PER_JIN;
+    case 'old_liang': return val * GRAM_PER_OLD_LIANG;
+    case 'old_qian': return val * GRAM_PER_OLD_QIAN;
+    case 'new_jin': return val * GRAM_PER_JIN;
+    case 'new_liang': return val * GRAM_PER_NEW_LIANG;
+    case 'gram': return val;
+    case 'kg': return val * 1000;
+    default: return 0;
+  }
+}
+
+// 从克转为指定单位
+function fromGram(g, unit) {
+  switch(unit) {
+    case 'old_jin': return g / GRAM_PER_JIN;
+    case 'old_liang': return g / GRAM_PER_OLD_LIANG;
+    case 'old_qian': return g / GRAM_PER_OLD_QIAN;
+    case 'new_jin': return g / GRAM_PER_JIN;
+    case 'new_liang': return g / GRAM_PER_NEW_LIANG;
+    case 'gram': return g;
+    case 'kg': return g / 1000;
+    default: return 0;
+  }
+}
+
+function fmt(n) {
+  if (n === 0) return '0';
+  if (Math.abs(n) >= 1000) return n.toFixed(2);
+  if (Math.abs(n) >= 1) return parseFloat(n.toFixed(6)).toString();
+  if (Math.abs(n) >= 0.001) return parseFloat(n.toFixed(6)).toString();
+  return n.toExponential(4);
+}
+
+const unitNames = {
+  'old_jin': '旧制斤',
+  'old_liang': '旧制两',
+  'old_qian': '旧制钱',
+  'new_jin': '今制斤',
+  'new_liang': '今制两',
+  'gram': '克',
+  'kg': '千克'
+};
+
+function calcQuick() {
+  var val = parseFloat(document.getElementById('quickVal').value);
+  var unit = document.getElementById('quickUnit').value;
+  if (isNaN(val)) { document.getElementById('quickResults').innerHTML = '<p style="color:#999;grid-column:1/-1;text-align:center">请输入有效数值</p>'; return; }
+  var g = toGram(val, unit);
+  var html = '';
+  var units = ['old_jin','old_liang','old_qian','new_jin','new_liang','gram','kg'];
+  for (var i = 0; i < units.length; i++) {
+    var u = units[i];
+    if (u === unit) continue;
+    var converted = fromGram(g, u);
+    html += '<div class="result-item"><div class="val">' + fmt(converted) + '</div><div class="unit">' + unitNames[u] + '</div></div>';
+  }
+  document.getElementById('quickResults').innerHTML = html;
+}
+
+function calcCompound() {
+  var jin = parseFloat(document.getElementById('compJin').value) || 0;
+  var liang = parseFloat(document.getElementById('compLiang').value) || 0;
+  var qian = parseFloat(document.getElementById('compQian').value) || 0;
+  var totalGram = jin * GRAM_PER_JIN + liang * GRAM_PER_OLD_LIANG + qian * GRAM_PER_OLD_QIAN;
+  var newJin = Math.floor(totalGram / GRAM_PER_JIN);
+  var remainGram = totalGram - newJin * GRAM_PER_JIN;
+  var newLiang = remainGram / GRAM_PER_NEW_LIANG;
+  var html = '';
+  html += '<div class="result-item"><div class="val">' + fmt(totalGram) + '</div><div class="unit">克</div></div>';
+  html += '<div class="result-item"><div class="val">' + fmt(totalGram / 1000) + '</div><div class="unit">千克(公斤)</div></div>';
+  html += '<div class="result-item"><div class="val">' + fmt(totalGram / GRAM_PER_OLD_LIANG) + '</div><div class="unit">旧制两（合计）</div></div>';
+  html += '<div class="result-item"><div class="val">' + newJin + ' 斤 ' + fmt(newLiang) + ' 两</div><div class="unit">今制表示</div></div>';
+  document.getElementById('compResults').innerHTML = html;
+}
+
+function calcNewToOld() {
+  var nj = parseFloat(document.getElementById('newJinIn').value) || 0;
+  var nl = parseFloat(document.getElementById('newLiangIn').value) || 0;
+  var totalGram = nj * GRAM_PER_JIN + nl * GRAM_PER_NEW_LIANG;
+  var oldJin = Math.floor(totalGram / GRAM_PER_JIN);
+  var remainGram = totalGram - oldJin * GRAM_PER_JIN;
+  var oldLiang = remainGram / GRAM_PER_OLD_LIANG;
+  var oldQianTotal = remainGram / GRAM_PER_OLD_QIAN;
+  var oldLiangWhole = Math.floor(oldQianTotal / 10);
+  var oldQianRemain = oldQianTotal - oldLiangWhole * 10;
+  var html = '<strong>对应旧制：</strong><br>';
+  html += '合计 ' + fmt(totalGram) + ' 克<br>';
+  html += '= ' + oldJin + ' 斤 ' + oldLiangWhole + ' 两 ' + fmt(oldQianRemain) + ' 钱（旧制）<br>';
+  html += '= 旧制 ' + fmt(totalGram / GRAM_PER_OLD_LIANG) + ' 两<br>';
+  html += '<br><strong>验证：</strong>今制 ' + nj + ' 斤 ' + nl + ' 两 = ' + fmt(totalGram) + ' 克 = 旧制 ' + oldJin + ' 斤 ' + oldLiangWhole + ' 两 ' + fmt(oldQianRemain) + ' 钱';
+  document.getElementById('newToOldResult').innerHTML = html;
+}
+
+// 初始化
+calcQuick();
+calcCompound();
+calcNewToOld();
+</script>
+</body>
+</html>

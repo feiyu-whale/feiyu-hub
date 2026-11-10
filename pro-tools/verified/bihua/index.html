@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>笔画笔顺查询工具 · 完整交付物</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; padding: 24px; color: #222; background: #fafafa; line-height: 1.7; }
+  h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+  h2 { font-size: 18px; margin-top: 28px; color: #1a5490; }
+  h3 { font-size: 15px; margin-top: 18px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #ccc; }
+  .tab { padding: 10px 18px; cursor: pointer; background: #eee; border: 1px solid #ccc; border-bottom: none; border-radius: 4px 4px 0 0; }
+  .tab.active { background: #fff; font-weight: bold; border-bottom: 1px solid #fff; margin-bottom: -1px; }
+  .panel { display: none; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 0 4px 4px 4px; }
+  .panel.active { display: block; }
+  pre { background: #1e1e1e; color: #dcdcdc; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  code { font-family: "SF Mono", Consolas, monospace; }
+  .demo { background: #fff; padding: 16px; border: 1px solid #ddd; border-radius: 6px; margin: 12px 0; }
+  .demo input { padding: 6px 10px; font-size: 16px; width: 120px; }
+  .demo button { padding: 6px 14px; font-size: 14px; margin-left: 8px; cursor: pointer; }
+  .result { margin-top: 12px; padding: 12px; background: #f5f9ff; border-left: 3px solid #1a5490; min-height: 40px; }
+  .stroke-box { display: inline-block; padding: 4px 10px; margin: 2px; background: #fff; border: 1px solid #bbb; border-radius: 3px; font-size: 14px; }
+  .warn { background: #fff8e1; border-left: 3px solid #f0a020; padding: 10px 14px; margin: 12px 0; }
+  .err { color: #c0392b; }
+  .ok { color: #27ae60; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 14px; }
+  th { background: #f0f0f0; }
+  .version { position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #999; }
+  .test-log { font-family: monospace; font-size: 12px; background: #111; color: #ddd; padding: 12px; border-radius: 4px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<h1>笔画笔顺查询工具 · 完整交付物</h1>
+<p>依据：国家语委、新闻出版署 1997 年发布的《现代汉语通用字笔顺规范》。</p>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="doc">三、使用说明书</div>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="panel-source">
+<h2>一、JS 源码（纯函数实现，无外部依赖）</h2>
+<p class="warn"><b>数据说明：</b>本工具内置的笔顺字典仅包含少量常用字（如"一、二、三、十、人、大、中、国、永、学、書"等）。<b>本工具参数为经验整理值，未经与规范原文逐字核对，可能仍存在错误，使用前请自行查证。</b>对于字典未收录的汉字，函数会返回 <code>null</code> 并提示"需查标准原文"，<b>绝不编造数据</b>。如需完整 7000 字覆盖，需接入完整规范数据源。</p>
+
+<pre><code id="src-code"></code></pre>
+
+<h3>在线演示</h3>
+<div class="demo">
+  <label>输入汉字：<input id="demo-input" value="国" maxlength="1"></label>
+  <button onclick="runDemo()">查询</button>
+  <button onclick="document.getElementById('demo-input').value='永';runDemo()">示例：永</button>
+  <button onclick="document.getElementById('demo-input').value='龘';runDemo()">示例：龘（未收录）</button>
+  <div class="result" id="demo-result">请输入一个汉字后点击"查询"。</div>
+</div>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div class="panel" id="panel-test">
+<h2>二、单元测试（纯 JS，30+ 用例）</h2>
+<button onclick="runAllTests()" style="padding:8px 16px;font-size:14px;">▶ 运行全部测试</button>
+<pre class="test-log" id="test-log">点击按钮运行测试…</pre>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel" id="panel-doc">
+<h2>三、使用说明书</h2>
+<div id="doc-content"></div>
+</div>
+
+<div class="version">v2.0.1-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码
+ *  依据：《现代汉语通用字笔顺规范》（国家语委、新闻出版署 1997 年发布）
+ * ============================================================ */
+
+/**
+ * 笔画名称常量（五种基本笔画 + 复合笔画）
+ * 命名遵循《现代汉语通用字笔顺规范》的通行叫法。
+ * @readonly
+ * @enum {string}
+ */
+const STROKE_NAME = Object.freeze({
+  HENG:   '横',     // 一
+  SHU:    '竖',     // 丨
+  PIE:    '撇',     // 丿
+  NA:     '捺',     // ㇏
+  DIAN:   '点',     // 丶
+  TI:     '提',     // ㇀
+  HENGZHE:'横折',   // 𠃍
+  SHUZHE: '竖折',   // 𠄎
+  PIEZHE: '撇折',   // 𠃋
+  HENGZHEGOU: '横折钩', // 𠃌
+  SHUGOU: '竖钩',   // 亅
+  WOGOU:  '弯钩',   // ㇁
+  XIEGOU: '斜钩',   // ㇂
+  HENGPIE:'横撇',   // ㇇
+  SHUTIZHEGOU: '竖提', // 𠄌
+  HENGZHEWANGOU: '横折弯钩', // 乙
+  SHUWANGOU: '竖弯钩' // ㇄
+});
+
+/**
+ * 内置笔顺字典。
+ * 键：单个汉字；值：笔画名称数组（按书写顺序）。
+ * 说明：仅收录经过核对的少量常用字，未收录的字返回 null。
+ * @type {Object<string, string[]>}
+ */
+const STROKE_DICT = {
+  '一': ['横'],
+  '二': ['横', '横'],
+  '三': ['横', '横', '横'],
+  '十': ['横', '竖'],
+  '人': ['撇', '捺'],
+  '大': ['横', '撇', '捺'],
+  '中': ['竖', '横折', '横', '竖'],
+  '国': ['竖', '横折', '横', '横', '竖', '横', '点', '横'],
+  '永': ['点', '横折钩', '横撇', '撇', '捺'],
+  '学': ['点', '点', '撇', '点', '横钩', '横撇', '竖钩', '横'],
+  '書': ['横折', '横', '横', '竖', '横', '竖', '横折', '横', '横'],
+  '字': ['点', '点', '横钩', '横撇', '竖钩', '横'],
+  '笔': ['撇', '横', '竖', '撇', '横', '竖钩', '撇', '横', '横', '竖弯钩'],
+  '画': ['横', '竖', '横折', '横', '竖', '横', '竖折', '竖'],
+  '问': ['点', '竖', '横折钩', '竖', '横折', '横'],
+  '我': ['撇', '横', '竖钩', '提', '斜钩', '撇', '点'],
+  '是': ['竖', '横折', '横', '横', '横', '竖', '横', '撇', '捺'],
+  '的': ['撇', '竖', '横折', '横', '横', '撇', '横折钩', '点'],
+  '不': ['横', '撇', '竖', '点'],
+  '了': ['横撇', '竖钩'],
+  '子': ['横撇', '竖钩', '横']
+};
+
+/**
+ * 繁简对照字典（部分常用字）。
+ * @type {Object<string, string>}
+ */
+const TRAD_SIMP_DICT = {
+  '國': '国',
+  '學': '学',
+  '書': '书',
+  '問': '问',
+  '畫': '画',
+  '筆': '笔',
+  '點': '点',
+  '說': '说',
+  '語': '语',
+  '電': '电',
+  '車': '车',
+  '門': '门',
+  '馬': '马',
+  '魚': '鱼',
+  '鳥': '鸟',
+  '龍': '龙',
+  '風': '风',
+  '雲': '云',
+  '華': '华',
+  '發': '发'
+};
+
+/**
+ * 校验输入是否为单个汉字。
+ * @param {any} input - 待校验的输入
+ * @returns {{valid: boolean, reason?: string}} 校验结果
+ * @example
+ *   validateInput('国'); // { valid: true }
+ *   validateInput('');   // { valid: false, reason: '空输入' }
+ *   validateInput('AB'); // { valid: false, reason: '非单字' }
+ *   validateInput('a');  // { valid: false, reason: '非汉字' }
+ */
+function validateInput(input) {
+  if (input === null || input === undefined) {
+    return { valid: false, reason: '输入为 null 或 undefined' };
+  }
+  if (typeof input !== 'string') {
+    return { valid: false, reason: '输入类型非字符串' };
+  }
+  if (input.length === 0) {
+    return { valid: false, reason: '空字符串' };
+  }
+  if (input.length > 1) {
+    return { valid: false, reason: '非单字（长度 > 1）' };
+  }
+  // 简易汉字范围判断（CJK 统一汉字基本区 + 扩展 A）
+  const code = input.codePointAt(0);
+  const isCJK = (code >= 0x4E00 && code <= 0x9FFF) ||
+                (code >= 0x3400 && code <= 0x4DBF) ||
+                (code >= 0x20000 && code <= 0x2A6DF);
+  if (!isCJK) {
+    return { valid: false, reason: '非汉字字符' };
+  }
+  return { valid: true };
+}
+
+/**
+ * 查询单个汉字的笔画数。
+ * @param {string} char - 单个汉字
+ * @returns {number|null} 笔画数；若未收录返回 null
+ * @throws {Error} 输入非法时抛出
+ * @example
+ *   getStrokeCount('国'); // 8
+ *   getStrokeCount('一'); // 1
+ *   getStrokeCount('龘'); // null（未收录）
+ */
+function getStrokeCount(char) {
+  const v = validateInput(char);
+  if (!v.valid) throw new Error('输入非法：' + v.reason);
+  const strokes = STROKE_DICT[char];
+  if (!strokes) return null; // 未收录，不编数据
+  return strokes.length;
+}
+
+/**
+ * 查询单个汉字的笔顺（按书写顺序返回笔画名称数组）。
+ * @param {string} char - 单个汉字
+ * @returns {string[]|null} 笔画名称数组；未收录返回 null
+ * @throws {Error} 输入非法时抛出
+ * @example
+ *   getStrokeOrder('十'); // ['横', '竖']
+ *   getStrokeOrder('永'); // ['点','横折钩','横撇','撇','捺']
+ */
+function getStrokeOrder(char) {
+  const v = validateInput(char);
+  if (!v.valid) throw new Error('输入非法：' + v.reason);
+  const strokes = STROKE_DICT[char];
+  if (!strokes) return null;
+  return strokes.slice(); // 返回副本，纯函数
+}
+
+/**
+ * 生成逐笔展示数据（每笔包含序号、名称、累计进度）。
+ * 用于前端动画或分步展示。
+ * @param {string} char - 单个汉字
+ * @returns {Array<{index:number, name:string, progress:number}>|null}
+ *   每笔数据；未收录返回 null
+ * @throws {Error} 输入非法时抛出
+ * @example
+ *   getStrokeAnimation('二');
+ *   // [{index:1,name:'横',progress:0.5},{index:2,name:'横',progress:1}]
+ */
+function getStrokeAnimation(char) {
+  const order = getStrokeOrder(char);
+  if (order === null) return null;
+  return order.map((name, i) => ({
+    index: i + 1,
+    name: name,
+    progress: Number(((i + 1) / order.length).toFixed(4))
+  }));
+}
+
+/**
+ * 查询繁简对照。
+ * @param {string} char - 单个汉字（繁或简均可）
+ * @returns {{input:string, counterpart:string|null, direction:string}|null}
+ *   对照结果；若该字无繁简差异或未收录返回 null
+ * @throws {Error} 输入非法时抛出
+ * @example
+ *   getTraditionalSimplified('国'); // {input:'国',counterpart:'國',direction:'简→繁'}
+ *   getTraditionalSimplified('人'); // null（繁简同形）
+ */
+function getTraditionalSimplified(char) {
+  const v = validateInput(char);
+  if (!v.valid) throw new Error('输入非法：' + v.reason);
+  const cp = TRAD_SIMP_DICT[char];
+  if (cp) {
+    // 字典为「繁→简」单向映射：直接命中即为繁体输入
+    return { input: char, counterpart: cp, direction: '繁→简' };
+  }
+  // 反查：输入为简体时，遍历找出对应繁体
+  for (const [trad, simp] of Object.entries(TRAD_SIMP_DICT)) {
+    if (simp === char) {
+      return { input: char, counterpart: trad, direction: '简→繁' };
+    }
+  }
+  return null;
+}
+
+/**
+ * 综合查询：一次返回笔画数、笔顺、动画数据、繁简对照。
+ * @param {string} char - 单个汉字
+ * @returns {{valid:boolean, char:string, strokeCount:number|null,
+ *            strokeOrder:string[]|null, animation:Array|null,
+ *            traditionalSimplified:object|null, message:string}}
+ * @throws {Error} 输入非法时抛出
+ * @example
+ *   query('国');
+ *   // { valid:true, char:'国', strokeCount:8, strokeOrder:[...], ... }
+ */
+function query(char) {
+  const v = validateInput(char);
+  if (!v.valid) throw new Error('输入非法：' + v.reason);
+  const strokeCount = getStrokeCount(char);
+  const strokeOrder = getStrokeOrder(char);
+  const animation = getStrokeAnimation(char);
+  const ts = getTraditionalSimplified(char);
+  const message = strokeOrder === null
+    ? '该字未收录于内置字典，需查《现代汉语通用字笔顺规范》原文。'
+    : '查询成功。';
+  return {
+    valid: true,
+    char: char,
+    strokeCount: strokeCount,
+    strokeOrder: strokeOrder,
+    animation: animation,
+    traditionalSimplified: ts,
+    message: message
+  };
+}
+
+/* ============================================================
+ *  第二部分：单元测试框架 + 用例
+ * ============================================================ */
+
+let _passed = 0, _failed = 0, _log = [];
+
+/**
+ * 简易断言：严格相等。
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string} label
+ */
+function assertEqual(actual, expected, label) {
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (ok) { _passed++; _log.push('  ✓ ' + label); }
+  else    { _failed++; _log.push('  ✗ ' + label + '  期望=' + JSON.stringify(expected) + ' 实际=' + JSON.stringify(actual)); }
+}
+
+/**
+ * 断言函数抛出异常。
+ * @param {Function} fn
+ * @param {string} label
+ */
+function assertThrows(fn, label) {
+  try { fn(); _failed++; _log.push('  ✗ ' + label + '  期望抛错但未抛'); }
+  catch (e) { _passed++; _log.push('  ✓ ' + label + '  (抛错:' + e.message + ')'); }
+}
+
+/**
+ * 断言返回 null。
+ * @param {any} actual
+ * @param {string} label
+ */
+function assertNull(actual, label) {
+  if (actual === null) { _passed++; _log.push('  ✓ ' + label); }
+  else { _failed++; _log.push('  ✗ ' + label + '  期望 null，实际=' + JSON.stringify(actual)); }
+}
+
+/**
+ * 运行全部测试。
+ * @returns {{passed:number, failed:number, total:number}}
+ */
+function runAllTests() {
+  _passed = 0; _failed = 0; _log = [];
+  _log.push('=== 开始测试 ===');
+
+  // ---- validateInput 正常值 ----
+  _log.push('\n[validateInput] 正常值');
+  assertEqual(validateInput('一').valid, true, 'validateInput("一") 应为合法');
+  assertEqual(validateInput('国').valid, true, 'validateInput("国") 应为合法');
+  assertEqual(validateInput('龘').valid, true, 'validateInput("龘") 应为合法（CJK 扩展）');
+
+  // ---- validateInput 边界 / 异常 ----
+  _log.push('\n[validateInput] 边界与异常');
+  assertEqual(validateInput('').valid, false, '空字符串应非法');
+  assertEqual(validateInput('AB').valid, false, '多字符应非法');
+  assertEqual(validateInput('a').valid, false, '英文字母应非法');
+  assertEqual(validateInput('1').valid, false, '数字应非法');
+  assertEqual(validateInput(null).valid, false, 'null 应非法');
+  assertEqual(validateInput(undefined).valid, false, 'undefined 应非法');
+  assertEqual(validateInput(123).valid, false, '数字类型应非法');
+  assertEqual(validateInput(NaN).valid, false, 'NaN 应非法');
+  assertEqual(validateInput({}).valid, false, '对象应非法');
+  assertEqual(validateInput([]).valid, false, '数组应非法');
+
+  // ---- getStrokeCount 正常值 ----
+  _log.push('\n[getStrokeCount] 正常值');
+  assertEqual(getStrokeCount('一'), 1, '"一" 笔画数 = 1');
+  assertEqual(getStrokeCount('十'), 2, '"十" 笔画数 = 2');
+  assertEqual(getStrokeCount('大'), 3, '"大" 笔画数 = 3');
+  assertEqual(getStrokeCount('中'), 4, '"中" 笔画数 = 4');
+  assertEqual(getStrokeCount('国'), 8, '"国" 笔画数 = 8');
+
+  // ---- getStrokeCount 未收录 ----
+  _log.push('\n[getStrokeCount] 未收录字');
+  assertNull(getStrokeCount('龘'), '"龘" 未收录应返回 null');
+  assertNull(getStrokeCount('鑫'), '"鑫" 未收录应返回 null');
+
+  // ---- getStrokeCount 异常 ----
+  _log.push('\n[getStrokeCount] 异常输入');
+  assertThrows(() => getStrokeCount(''), '空字符串应抛错');
+  assertThrows(() => getStrokeCount(null), 'null 应抛错');
+  assertThrows(() => getStrokeCount('AB'), '多字符应抛错');
+
+  // ---- getStrokeOrder 正常值 ----
+  _log.push('\n[getStrokeOrder] 正常值');
+  assertEqual(getStrokeOrder('十'), ['横', '竖'], '"十" 笔顺 = [横,竖]');
+  assertEqual(getStrokeOrder('大'), ['横', '撇', '捺'], '"大" 笔顺 = [横,撇,捺]');
+  assertEqual(getStrokeOrder('永'), ['点','横折钩','横撇','撇','捺'], '"永" 笔顺');
+
+  // ---- getStrokeOrder 返回副本（纯函数） ----
+  _log.push('\n[getStrokeOrder] 纯函数性');
+  const o1 = getStrokeOrder('十');
+  const o2 = getStrokeOrder('十');
+  assertEqual(o1 === o2, false, '两次调用应返回不同数组实例');
+
+  // ---- getStrokeAnimation 正常值 ----
+  _log.push('\n[getStrokeAnimation] 正常值');
+  const anim = getStrokeAnimation('二');
+  assertEqual(anim.length, 2, '"二" 动画共 2 步');
+  assertEqual(anim[0].index, 1, '第 1 步 index=1');
+  assertEqual(anim[1].progress, 1, '最后一步 progress=1');
+  assertEqual(anim[0].progress, 0.5, '第一步 progress=0.5');
+
+  // ---- getStrokeAnimation 未收录 ----
+  _log.push('\n[getStrokeAnimation] 未收录');
+  assertNull(getStrokeAnimation('龘'), '"龘" 动画应返回 null');
+
+  // ---- getTraditionalSimplified 正常值 ----
+  _log.push('\n[getTraditionalSimplified] 正常值');
+  const ts1 = getTraditionalSimplified('国');
+  assertEqual(ts1.counterpart, '國', '"国" 对应繁体 "國"');
+  assertEqual(ts1.direction, '简→繁', '"国" 方向为 简→繁');
+  const ts2 = getTraditionalSimplified('國');
+  assertEqual(ts2.counterpart, '国', '"國" 对应简体 "国"');
+
+  // ---- getTraditionalSimplified 无对照 ----
+  _log.push('\n[getTraditionalSimplified] 无繁简差异');
+  assertNull(getTraditionalSimplified('人'), '"人" 繁简同形应返回 null');
+  assertNull(getTraditionalSimplified('一'), '"一" 繁简同形应返回 null');
+
+  // ---- query 综合 ----
+  _log.push('\n[query] 综合查询');
+  const q1 = query('国');
+  assertEqual(q1.valid, true, 'query("国") valid=true');
+  assertEqual(q1.strokeCount, 8, 'query("国") strokeCount=8');
+  assertEqual(q1.strokeOrder.length, 8, 'query("国") strokeOrder 长度 8');
+  assertEqual(q1.message, '查询成功。', 'query("国") message 成功');
+
+  const q2 = query('龘');
+  assertEqual(q2.valid, true, 'query("龘") valid=true（输入合法）');
+  assertEqual(q2.strokeCount, null, 'query("龘") strokeCount=null');
+  assertEqual(q2.strokeOrder, null, 'query("龘") strokeOrder=null');
+  assertEqual(q2.message.indexOf('未收录') >= 0, true, 'query("龘") message 含"未收录"');
+
+  // ---- query 异常 ----
+  _log.push('\n[query] 异常输入');
+  assertThrows(() => query(''), 'query("") 应抛错');
+  assertThrows(() => query(null), 'query(null) 应抛错');
+
+  // ---- 浮点精度（progress 字段） ----
+  _log.push('\n[浮点精度]');
+  const anim3 = getStrokeAnimation('三');
+  assertEqual(anim3[2].progress, 1, '"三" 第 3 步 progress 精确为 1（非 0.9999...）');
+
+  // ---- 汇总 ----
+  const total = _passed + _failed;
+  _log.push('\n=== 测试完成：通过 ' + _passed + ' / 共 ' + total + ' ===');
+  if (_failed > 0) _log.push('失败 ' + _failed + ' 个，请检查。');
+
+  /* 修正：原来只 return 结果对象，从不写页面，点“运行全部测试”毫无反应 */
+  var outEl = document.getElementById('test-log');
+  if (outEl) outEl.textContent = _log.join('\n');
+
+  return { passed: _passed, failed: _failed, total: total };
+}
+
+/* ============================================================
+ *  第三部分：说明书内容
+ * ============================================================ */
+const DOC_HTML = `
+<h3>1. 工具简介</h3>
+<p>「笔画笔顺查询」是一个面向汉字教学、书法练习、语文考试复习、对外汉语教学等场景的轻量级查询工具。用户输入一个汉字，工具返回该字的笔画数、笔顺名称序列、逐笔展示数据以及繁简对照信息。</p>
+<p>本工具解决的核心问题：在不依赖大型字典库或网络服务的前提下，通过纯前端 JavaScript 提供符合规范的笔顺查询能力，便于嵌入教学网页、小程序、离线课件等场景。</p>
+
+<h3>2. 数据来源与标准依据</h3>
+<p>笔顺数据依据：<b>国家语委、新闻出版署 1997 年发布的《现代汉语通用字笔顺规范》</b>。该规范对 7000 个现代汉语通用字的笔顺作出了统一规定，是大陆现行汉字笔顺的权威依据。</p>
+<p class="warn"><b>重要说明：</b>该规范为规范性文件，非 GB 国家标准（即没有"GB/T XXXXX"形式的标准号）。如需引用标准号，需查原文件封面或相关出版信息确认。本工具不编造标准号。</p>
+<p>繁简对照依据：《简化字总表》（1986 年重新发表版）及通行繁简转换规则。</p>
+<p class="warn"><b>数据核对提示：</b>本工具笔顺与繁简数据为经验整理值，未经与标准原文逐条核对，可能存在错误，使用前请自行查证。</p>
+
+<h3>3. 函数与参数说明</h3>
+<table>
+  <tr><th>函数名</th><th>参数</th><th>取值范围</th><th>返回值</th><th>单位/含义</th></tr>
+  <tr><td>validateInput(input)</td><td>input: any</td><td>任意 JS 值</td><td>{valid, reason?}</td><td>校验输入是否为单个汉字</td></tr>
+  <tr><td>getStrokeCount(char)</td><td>char: string</td><td>单个汉字</td><td>number | null</td><td>笔画数（单位：画）；未收录返回 null</td></tr>
+  <tr><td>getStrokeOrder(char)</td><td>char: string</td><td>单个汉字</td><td>string[] | null</td><td>笔顺名称数组，按书写顺序；未收录返回 null</td></tr>
+  <tr><td>getStrokeAnimation(char)</td><td>char: string</td><td>单个汉字</td><td>Array | null</td><td>逐笔数据，含 index/name/progress（0~1）</td></tr>
+  <tr><td>getTraditionalSimplified(char)</td><td>char: string</td><td>单个汉字</td><td>object | null</td><td>繁简对照；无差异或未收录返回 null</td></tr>
+  <tr><td>query(char)</td><td>char: string</td><td>单个汉字</td><td>object</td><td>综合查询结果</td></tr>
+</table>
+<p><b>输入约束：</b>所有函数要求输入为<b>单个汉字</b>（长度 = 1 且属于 CJK 统一汉字区）。非法输入（null、undefined、空串、多字符、非汉字）会抛出 Error。</p>
+
+<h3>4. 实际使用场景（5 个）</h3>
+
+<p><b>场景 1：小学语文教师备课</b></p>
+<p>输入：<code>query('国')</code></p>
+<p>结果：<code>{ strokeCount: 8, strokeOrder: ['竖','横折','横','横','竖','横','点','横'], message: '查询成功。' }</code></p>
+<p>用途：教师在黑板上按规范笔顺书写"国"字，先写外框"冂"的前两笔（竖、横折），再写内部"玉"，最后封口（末横）。</p>
+
+<p><b>场景 2：对外汉语学生自学</b></p>
+<p>输入：<code>getStrokeAnimation('永')</code></p>
+<p>结果：<code>[{index:1,name:'点',progress:0.2}, {index:2,name:'横折钩',progress:0.4}, {index:3,name:'横撇',progress:0.6}, {index:4,name:'撇',progress:0.8}, {index:5,name:'捺',progress:1}]</code></p>
+<p>用途："永字八法"是书法入门经典，学生可据此分步练习。</p>
+
+<p><b>场景 3：书法爱好者核对笔顺</b></p>
+<p>输入：<code>getStrokeOrder('中')</code></p>
+<p>结果：<code>['竖','横折','横','竖']</code></p>
+<p>用途：确认"中"字先写"口"部再写中竖，而非先写中竖。</p>
+
+<p><b>场景 4：繁体字用户查阅简体</b></p>
+<p>输入：<code>getTraditionalSimplified('國')</code></p>
+<p>结果：<code>{ input: '國', counterpart: '国', direction: '繁→简' }</code></p>
+<p>用途：港澳台用户查阅大陆规范字形。</p>
+
+<p><b>场景 5：查询未收录字</b></p>
+<p>输入：<code>query('龘')</code></p>
+<p>结果：<code>{ strokeCount: null, strokeOrder: null, message: '该字未收录于内置字典，需查《现代汉语通用字笔顺规范》原文。' }</code></p>
+<p>用途：工具诚实告知未收录，避免给出错误笔顺。用户需查阅规范原文或专业字典。</p>
+
+<h3>5. 常见错误与排查</h3>
+<table>
+  <tr><th>现象</th><th>原因</th><th>解决</th></tr>
+  <tr><td>抛出 "输入非法：非单字"</td><td>传入了多字符字符串</td><td>确保输入长度为 1</td></tr>
+  <tr><td>抛出 "输入非法：非汉字字符"</td><td>传入了字母、数字、标点</td><td>传入汉字</td></tr>
+  <tr><td>返回 null</td><td>该字未收录于内置字典</td><td>查《现代汉语通用字笔顺规范》原文或专业字典</td></tr>
+  <tr><td>抛出 "输入非法：输入为 null 或 undefined"</td><td>未传参或传了 null</td><td>检查调用代码</td></tr>
+  <tr><td>笔顺与记忆不符</td><td>可能记忆的是旧写法或地区差异</td><td>以 1997 规范为准；港澳台笔顺可能不同</td></tr>
+</table>
+
+<h3>6. 局限性说明（诚实告知）</h3>
+<ul>
+  <li><b>字典覆盖有限：</b>内置字典仅收录少量常用字（约 20 个），远未覆盖规范中的 7000 字。未收录字返回 null，绝不编造。</li>
+  <li><b>无字形渲染：</b>本工具仅提供笔顺数据，不渲染汉字字形或笔画轨迹。如需动画展示，需配合字体或 SVG 资源。</li>
+  <li><b>仅支持大陆规范：</b>笔顺依据大陆 1997 规范，港澳台地区笔顺可能不同（如"里""果"等字的笔顺存在差异）。</li>
+  <li><b>不支持异体字、古汉字：</b>仅处理现代通用汉字，不处理甲骨文、金文、小篆等古文字。</li>
+  <li><b>繁简对照有限：</b>仅收录部分常用繁简对，未覆盖《简化字总表》全部 2000+ 字。</li>
+  <li><b>无读音、释义：</b>本工具专注笔顺，不提供拼音、释义、组词等功能。</li>
+  <li><b>复合笔画命名简化：</b>部分复合笔画（如"横折弯钩""竖折折钩"）在字典中以通行名呈现，未严格区分所有细分类型。</li>
+</ul>
+
+<h3>7. 版本与许可</h3>
+<p>版本：v2.0.1-修审查问题 20261108</p>
+<p>本工具代码可自由使用、修改。笔顺数据版权归原规范发布机构所有，引用时请注明出处。</p>
+`;
+
+/* ============================================================
+ *  UI 绑定
+ * ============================================================ */
+// 把源码文本填入 pre
+(function fillSource(){
+  // 直接展示页面实际运行的真实源码，保证「展示源码」与「实际运行代码」一致
+  const scriptEl = document.querySelector('script:not([src])');
+  document.getElementById('src-code').textContent = scriptEl ? scriptEl.textContent : '未找到内联源码';
+})();
+
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+
+// Tab 切换
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// Demo
+function runDemo() {
+  const ch = document.getElementById('demo-input').value;
+  const box = document.getElementById('demo-result');
+  if (!ch) {
+    box.innerHTML = '<span class="err">请先输入一个汉字再查询。</span>';
+    return;
+  }
+  try {
+    const r = query(ch);
+    let html = '<b>查询结果：</b><br>';
+    html += '汉字：' + r.char + '<br>';
+    html += '笔画数：' + (r.strokeCount === null ? '<span class="err">未收录</span>' : r.strokeCount) + '<br>';
+    if (r.strokeOrder) {
+      html += '笔顺：' + r.strokeOrder.map((s,i) => '<span class="stroke-box">' + (i+1) + '. ' + s + '</span>').join(' ') + '<br>';
+    }
+    if (r.traditionalSimplified) {
+      html += '繁简对照：' + r.traditionalSimplified.input + ' ⇄ ' + r.traditionalSimplified.counterpart +
+              '（' + r.traditionalSimplified.direction + '）<br>';
+    }
+    html += '<i>' + r.message + '</i>';
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<span class="err">错误：' + e.message + '</span>';
+  }
+}
+</script>
+</body>
+</html>

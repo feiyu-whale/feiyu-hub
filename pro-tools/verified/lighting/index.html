@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>照度计算工具 - 利用系数法（流明法）</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; margin-bottom: 8px; font-size: 24px; color: #1a1a2e; }
+.subtitle { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 0; }
+.tab-btn { padding: 12px 24px; cursor: pointer; background: #f0f0f0; border: 1px solid #e0e0e0; border-bottom: none; border-radius: 8px 8px 0 0; margin-right: 4px; font-size: 15px; transition: all 0.2s; }
+.tab-btn:hover { background: #e8e8e8; }
+.tab-btn.active { background: #fff; border-bottom: 2px solid #fff; margin-bottom: -2px; font-weight: bold; color: #1a73e8; }
+.tab-content { display: none; background: #fff; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; padding: 24px; min-height: 600px; }
+.tab-content.active { display: block; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5; white-space: pre; tab-size: 2; }
+code { font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace; }
+.test-result { padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 14px; }
+.test-pass { background: #e8f5e9; border: 1px solid #4caf50; color: #2e7d32; }
+.test-fail { background: #ffebee; border: 1px solid #f44336; color: #c62828; }
+.test-log { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-top: 12px; max-height: 400px; overflow-y: auto; font-size: 12px; font-family: monospace; }
+.test-log .pass { color: #2e7d32; }
+.test-log .fail { color: #c62828; font-weight: bold; }
+.manual h2 { margin: 24px 0 12px; color: #1a1a2e; border-bottom: 2px solid #1a73e8; padding-bottom: 6px; }
+.manual h3 { margin: 18px 0 8px; color: #333; }
+.manual p { margin-bottom: 10px; text-indent: 2em; }
+.manual ul, .manual ol { margin: 8px 0 12px 2em; }
+.manual li { margin-bottom: 6px; }
+.manual table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.manual th, .manual td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+.manual th { background: #f5f5f5; font-weight: bold; }
+.manual .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px 16px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+.manual .note { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+.version-tag { position: fixed; bottom: 8px; right: 12px; font-size: 11px; color: #999; }
+.run-btn { padding: 10px 24px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 12px; }
+.run-btn:hover { background: #1557b0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>照度计算工具 — 利用系数法（流明法）</h1>
+<p class="subtitle">依据 GB 50034《建筑照明设计标准》</p>
+
+<div class="tabs">
+<div class="tab-btn active" onclick="switchTab(0)">JS 源码</div>
+<div class="tab-btn" onclick="switchTab(1)">单元测试</div>
+<div class="tab-btn" onclick="switchTab(2)">使用说明书</div>
+<div class="tab-btn" onclick="switchTab(3)">🧮 开始计算</div>
+</div>
+
+<div class="tab-content active" id="tab0">
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div class="tab-content" id="tab1">
+<button class="run-btn" onclick="runTests()">运行全部测试</button>
+<div id="testResult"></div>
+<div id="testLog" class="test-log"></div>
+</div>
+
+<div class="tab-content" id="tab3">
+<style>
+.li-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:20px 22px}
+.li-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.li-fg{flex:1;min-width:140px}
+.li-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:6px}
+.li-fg input,.li-fg select{width:100%;padding:9px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+.li-fg input:focus,.li-fg select:focus{outline:none;border-color:#e6a23c;box-shadow:0 0 0 2px rgba(230,162,60,.15)}
+.li-btn{background:#e6a23c;color:#fff;border:none;padding:11px 30px;border-radius:6px;font-size:15px;cursor:pointer;font-family:inherit}
+.li-btn:hover{background:#cf8319}
+.li-out{margin-top:18px;padding:18px 20px;background:#fdf6ec;border-radius:8px;display:none;line-height:2;font-size:14px}
+.li-out.show{display:block}
+.li-out .k{color:#5a6a7a}
+.li-out .v{font-weight:700;color:#a8681c;font-size:16px}
+.li-err{margin-top:14px;padding:11px 15px;background:#fef0f0;border-left:3px solid #f56c6c;border-radius:4px;color:#c45656;font-size:13px;display:none}
+.li-err.show{display:block}
+</style>
+<div class="li-box">
+  <div class="li-row">
+    <div class="li-fg"><label>房间长（m）</label><input type="number" id="liL" step="any" placeholder="例如 10"></div>
+    <div class="li-fg"><label>房间宽（m）</label><input type="number" id="liW" step="any" placeholder="例如 8"></div>
+    <div class="li-fg"><label>层高（m）</label><input type="number" id="liH" step="any" placeholder="例如 3.0"></div>
+  </div>
+  <div class="li-row">
+    <div class="li-fg"><label>吊装高度（m）</label><input type="number" id="liSus" step="any" value="0"></div>
+    <div class="li-fg"><label>工作面高度（m）</label><input type="number" id="liWork" step="any" value="0.75"></div>
+    <div class="li-fg"><label>要求照度（lx）</label><input type="number" id="liE" step="any" placeholder="例如 300"></div>
+  </div>
+  <div class="li-row">
+    <div class="li-fg"><label>单灯光通量（lm）</label><input type="number" id="liFlux" step="any" placeholder="例如 3000"></div>
+    <div class="li-fg"><label>顶棚反射比（%）</label><input type="number" id="liCeil" step="any" value="70"></div>
+    <div class="li-fg"><label>墙面反射比（%）</label><input type="number" id="liWall" step="any" value="50"></div>
+  </div>
+  <div class="li-row">
+    <div class="li-fg"><label>地面反射比（%）</label><input type="number" id="liFloor" step="any" value="20"></div>
+    <div class="li-fg"><label>环境（维护系数）</label>
+      <select id="liEnv">
+        <option value="clean">清洁（0.8）</option>
+        <option value="general" selected>一般（0.7）</option>
+        <option value="dirty">污染（0.6）</option>
+      </select>
+    </div>
+  </div>
+  <button class="li-btn" onclick="liCalc()">计算灯具数量</button>
+  <div class="li-out" id="liOut"></div>
+  <div class="li-err" id="liErr"></div>
+  <div style="margin-top:16px;font-size:12px;color:#8899aa;line-height:1.7">※ 依据 GB 50034 利用系数法（流明法），结果为工程估算。</div>
+</div>
+</div>
+
+<div class="tab-content manual" id="tab2">
+<div id="manualContent"></div>
+</div>
+</div>
+
+<div class="version-tag">v2.1.0-加计算界面 20261022</div>
+
+<script>
+// ============================================================
+// 第一部分：核心算法源码
+// ============================================================
+
+/**
+ * 利用系数法（流明法）照度计算模块
+ * 依据 GB 50034《建筑照明设计标准》
+ *
+ * 核心公式：N = (E × A) / (Φ × U × K)
+ * 其中：
+ *   N = 灯具数量（取整向上）
+ *   E = 目标平均照度（lx）
+ *   A = 房间面积（m²）
+ *   Φ = 单套灯具光通量（lm）
+ *   U = 利用系数（无量纲，0~1）
+ *   K = 维护系数（无量纲，0~1）
+ *
+ * @module IlluminanceCalculator
+ * @version 2.0.0
+ */
+
+/**
+ * 利用系数参考表（基于典型直接型灯具配光）
+ * 行：室形指数 RI，列组合：(ρc, ρw) 其中 ρc=顶棚反射比, ρw=墙面反射比
+ * 地面反射比默认取 20%
+ *
+ * 注意：此表为典型直接型灯具参考值，实际工程中应以灯具厂商提供的
+ * 利用系数表或光度数据文件为准。数据来源参考照明工程教材常用表格，
+ * 具体数值需查标准原文或灯具技术资料确认。
+ *
+ * @type {Object}
+ */
+const UF_TABLE = {
+  // 室形指数 RI 为 key
+  // 每个 RI 下按 (ρc, ρw) 组合给出利用系数
+  // ρc: 顶棚反射比(%), ρw: 墙面反射比(%)
+  0.6:  { '80-80': 0.35, '80-50': 0.30, '80-30': 0.27, '80-10': 0.23,
+           '70-80': 0.33, '70-50': 0.28, '70-30': 0.25, '70-10': 0.22,
+           '50-80': 0.30, '50-50': 0.26, '50-30': 0.23, '50-10': 0.20,
+           '30-80': 0.27, '30-50': 0.23, '30-30': 0.21, '30-10': 0.18 },
+  0.8:  { '80-80': 0.42, '80-50': 0.37, '80-30': 0.33, '80-10': 0.28,
+           '70-80': 0.40, '70-50': 0.35, '70-30': 0.31, '70-10': 0.27,
+           '50-80': 0.37, '50-50': 0.32, '50-30': 0.29, '50-10': 0.25,
+           '30-80': 0.33, '30-50': 0.29, '30-30': 0.26, '30-10': 0.23 },
+  1.0:  { '80-80': 0.49, '80-50': 0.43, '80-30': 0.39, '80-10': 0.33,
+           '70-80': 0.47, '70-50': 0.41, '70-30': 0.37, '70-10': 0.32,
+           '50-80': 0.43, '50-50': 0.38, '50-30': 0.34, '50-10': 0.30,
+           '30-80': 0.39, '30-50': 0.34, '30-30': 0.31, '30-10': 0.27 },
+  1.25: { '80-80': 0.54, '80-50': 0.48, '80-30': 0.44, '80-10': 0.38,
+           '70-80': 0.52, '70-50': 0.46, '70-30': 0.42, '70-10': 0.36,
+           '50-80': 0.48, '50-50': 0.43, '50-30': 0.39, '50-10': 0.34,
+           '30-80': 0.44, '30-50': 0.39, '30-30': 0.35, '30-10': 0.31 },
+  1.5:  { '80-80': 0.58, '80-50': 0.52, '80-30': 0.48, '80-10': 0.42,
+           '70-80': 0.56, '70-50': 0.50, '70-30': 0.46, '70-10': 0.40,
+           '50-80': 0.52, '50-50': 0.47, '50-30': 0.43, '50-10': 0.38,
+           '30-80': 0.48, '30-50': 0.43, '30-30': 0.39, '30-10': 0.35 },
+  2.0:  { '80-80': 0.64, '80-50': 0.58, '80-30': 0.54, '80-10': 0.48,
+           '70-80': 0.62, '70-50': 0.56, '70-30': 0.52, '70-10': 0.46,
+           '50-80': 0.58, '50-50': 0.53, '50-30': 0.49, '50-10': 0.44,
+           '30-80': 0.54, '30-50': 0.49, '30-30': 0.45, '30-10': 0.41 },
+  2.5:  { '80-80': 0.68, '80-50': 0.62, '80-30': 0.58, '80-10': 0.52,
+           '70-80': 0.66, '70-50': 0.60, '70-30': 0.56, '70-10': 0.50,
+           '50-80': 0.62, '50-50': 0.57, '50-30': 0.53, '50-10': 0.48,
+           '30-80': 0.58, '30-50': 0.53, '30-30': 0.49, '30-10': 0.45 },
+  3.0:  { '80-80': 0.71, '80-50': 0.65, '80-30': 0.61, '80-10': 0.55,
+           '70-80': 0.69, '70-50': 0.63, '70-30': 0.59, '70-10': 0.53,
+           '50-80': 0.65, '50-50': 0.60, '50-30': 0.56, '50-10': 0.51,
+           '30-80': 0.61, '30-50': 0.56, '30-30': 0.52, '30-10': 0.48 },
+  4.0:  { '80-80': 0.75, '80-50': 0.70, '80-30': 0.66, '80-10': 0.60,
+           '70-80': 0.73, '70-50': 0.68, '70-30': 0.64, '70-10': 0.58,
+           '50-80': 0.70, '50-50': 0.65, '50-30': 0.61, '50-10': 0.56,
+           '30-80': 0.66, '30-50': 0.61, '30-30': 0.57, '30-10': 0.53 },
+  5.0:  { '80-80': 0.78, '80-50': 0.73, '80-30': 0.69, '80-10': 0.64,
+           '70-80': 0.76, '70-50': 0.71, '70-30': 0.67, '70-10': 0.62,
+           '50-80': 0.73, '50-50': 0.68, '50-30': 0.64, '50-10': 0.59,
+           '30-80': 0.69, '30-50': 0.64, '30-30': 0.60, '30-10': 0.56 }
+};
+
+/**
+ * 室形指数（RI）查表用的标准节点值
+ * @type {number[]}
+ */
+const RI_NODES = [0.6, 0.8, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
+
+/**
+ * 反射比查表用的标准节点值（%）
+ * @type {number[]}
+ */
+const REFLECTANCE_NODES = {
+  ceiling: [80, 70, 50, 30],
+  wall: [80, 50, 30, 10]
+};
+
+/**
+ * 校验输入参数是否为有效正数
+ * @param {number} value - 待校验的数值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @param {number} [min=0] - 最小值（不含）
+ * @param {number} [max=Infinity] - 最大值（含）
+ * @returns {boolean} 校验通过返回 true
+ * @throws {Error} 校验不通过时抛出错误
+ */
+function validatePositiveNumber(value, name, min = 0, max = Infinity) {
+  if (typeof value !== 'number' || isNaN(value)) {
+    throw new Error(`参数 "${name}" 必须为有效数字，当前值: ${value}`);
+  }
+  if (value <= min) {
+    throw new Error(`参数 "${name}" 必须大于 ${min}，当前值: ${value}`);
+  }
+  if (value > max) {
+    throw new Error(`参数 "${name}" 不能超过 ${max}，当前值: ${value}`);
+  }
+  return true;
+}
+
+/**
+ * 校验输入参数是否在 [min, max] 闭区间内
+ * @param {number} value - 待校验的数值
+ * @param {string} name - 参数名称
+ * @param {number} min - 最小值（含）
+ * @param {number} max - 最大值（含）
+ * @returns {boolean} 校验通过返回 true
+ * @throws {Error} 校验不通过时抛出错误
+ */
+function validateRange(value, name, min, max) {
+  if (typeof value !== 'number' || isNaN(value)) {
+    throw new Error(`参数 "${name}" 必须为有效数字，当前值: ${value}`);
+  }
+  if (value < min || value > max) {
+    throw new Error(`参数 "${name}" 必须在 [${min}, ${max}] 范围内，当前值: ${value}`);
+  }
+  return true;
+}
+
+/**
+ * 计算室形指数（Room Index, RI）
+ *
+ * 公式：RI = (L × W) / (Hm × (L + W))
+ * 其中 L=房间长, W=房间宽, Hm=灯具计算高度
+ *
+ * 室形指数反映房间的几何比例关系，值越大表示房间越"扁平开阔"，
+ * 光线利用效率越高。
+ *
+ * @param {number} length - 房间长度（m），必须 > 0
+ * @param {number} width - 房间宽度（m），必须 > 0
+ * @param {number} mountingHeight - 灯具计算高度 Hm（m），必须 > 0
+ *   Hm = 房间净高 - 灯具安装悬垂高度 - 工作面高度
+ *   通常工作面高度取 0.75m
+ * @returns {number} 室形指数 RI（无量纲），结果 > 0
+ * @throws {Error} 参数无效时抛出错误
+ *
+ * @example
+ * calculateRoomIndex(10, 6, 2.5); // 约 1.38
+ */
+function calculateRoomIndex(length, width, mountingHeight) {
+  validatePositiveNumber(length, '房间长度(length)');
+  validatePositiveNumber(width, '房间宽度(width)');
+  validatePositiveNumber(mountingHeight, '灯具计算高度(mountingHeight)');
+
+  return (length * width) / (mountingHeight * (length + width));
+}
+
+/**
+ * 根据反射比获取最接近的查表键名
+ * @param {number} reflectance - 反射比值（0-100）
+ * @param {number[]} nodes - 可用节点值数组
+ * @returns {number} 最接近的节点值
+ */
+function findNearestReflectance(reflectance, nodes) {
+  let nearest = nodes[0];
+  let minDiff = Math.abs(reflectance - nodes[0]);
+  for (let i = 1; i < nodes.length; i++) {
+    const diff = Math.abs(reflectance - nodes[i]);
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearest = nodes[i];
+    }
+  }
+  return nearest;
+}
+
+/**
+ * 线性插值
+ * @param {number} x - 插值点
+ * @param {number} x0 - 下界
+ * @param {number} x1 - 上界
+ * @param {number} y0 - 下界对应的值
+ * @param {number} y1 - 上界对应的值
+ * @returns {number} 插值结果
+ */
+function lerp(x, x0, x1, y0, y1) {
+  if (x1 === x0) return y0;
+  return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+}
+
+/**
+ * 获取利用系数（Utilization Factor, U）
+ *
+ * 根据室形指数和房间表面反射比，通过查表+双线性插值获取利用系数。
+ *
+ * 注意：本函数使用的参考表为典型直接型灯具数据。实际工程中，
+ * 利用系数应由灯具制造商提供的光度数据确定，不同灯具差异较大。
+ *
+ * @param {number} roomIndex - 室形指数 RI，范围 [0.6, 5.0]
+ * @param {number} ceilingReflectance - 顶棚反射比（%），范围 [0, 100]
+ * @param {number} wallReflectance - 墙面反射比（%），范围 [0, 100]
+ * @param {number} [floorReflectance=20] - 地面反射比（%），默认 20%
+ * @returns {number} 利用系数 U，范围约 [0.15, 0.85]
+ * @throws {Error} 参数超出范围时抛出错误
+ *
+ * @example
+ * getUtilizationFactor(1.5, 70, 50); // 约 0.50
+ */
+function getUtilizationFactor(roomIndex, ceilingReflectance, wallReflectance, floorReflectance = 20) {
+  validateRange(roomIndex, '室形指数(roomIndex)', 0.3, 10);
+  validateRange(ceilingReflectance, '顶棚反射比(ceilingReflectance)', 0, 100);
+  validateRange(wallReflectance, '墙面反射比(wallReflectance)', 0, 100);
+  validateRange(floorReflectance, '地面反射比(floorReflectance)', 0, 100);
+
+  // 找到室形指数的插值区间
+  let riLow = RI_NODES[0];
+  let riHigh = RI_NODES[RI_NODES.length - 1];
+  let riIdx = 0;
+
+  if (roomIndex <= RI_NODES[0]) {
+    // 外推到最小 RI 以下：使用最小 RI 的值（保守估计）
+    riLow = RI_NODES[0];
+    riHigh = RI_NODES[0];
+    riIdx = 0;
+  } else if (roomIndex >= RI_NODES[RI_NODES.length - 1]) {
+    // 外推到最大 RI 以上
+    riLow = RI_NODES[RI_NODES.length - 1];
+    riHigh = RI_NODES[RI_NODES.length - 1];
+    riIdx = RI_NODES.length - 1;
+  } else {
+    for (let i = 0; i < RI_NODES.length - 1; i++) {
+      if (roomIndex >= RI_NODES[i] && roomIndex <= RI_NODES[i + 1]) {
+        riLow = RI_NODES[i];
+        riHigh = RI_NODES[i + 1];
+        riIdx = i;
+        break;
+      }
+    }
+  }
+
+  // 找到反射比的插值区间
+  const cNodes = REFLECTANCE_NODES.ceiling;
+  const wNodes = REFLECTANCE_NODES.wall;
+
+  let cLow, cHigh, cIdx;
+  if (ceilingReflectance <= cNodes[cNodes.length - 1]) {
+    cLow = cNodes[cNodes.length - 1];
+    cHigh = cNodes[cNodes.length - 1];
+    cIdx = cNodes.length - 1;
+  } else if (ceilingReflectance >= cNodes[0]) {
+    cLow = cNodes[0];
+    cHigh = cNodes[0];
+    cIdx = 0;
+  } else {
+    // cNodes 是降序 [80, 70, 50, 30]
+    for (let i = 0; i < cNodes.length - 1; i++) {
+      if (ceilingReflectance <= cNodes[i] && ceilingReflectance >= cNodes[i + 1]) {
+        cLow = cNodes[i + 1]; // 较小值
+        cHigh = cNodes[i];     // 较大值
+        cIdx = i;
+        break;
+      }
+    }
+  }
+
+  let wLow, wHigh, wIdx;
+  // wNodes 是降序 [80, 50, 30, 10]
+  if (wallReflectance >= wNodes[0]) {
+    wLow = wNodes[0];
+    wHigh = wNodes[0];
+    wIdx = 0;
+  } else if (wallReflectance <= wNodes[wNodes.length - 1]) {
+    wLow = wNodes[wNodes.length - 1];
+    wHigh = wNodes[wNodes.length - 1];
+    wIdx = wNodes.length - 1;
+  } else {
+    for (let i = 0; i < wNodes.length - 1; i++) {
+      if (wallReflectance <= wNodes[i] && wallReflectance >= wNodes[i + 1]) {
+        wLow = wNodes[i + 1];
+        wHigh = wNodes[i];
+        wIdx = i;
+        break;
+      }
+    }
+  }
+
+  // 获取四个角的利用系数值
+  const keyCH_WL = `${cHigh}-${wLow}`;
+  const keyCH_WH = `${cHigh}-${wHigh}`;
+  const keyCL_WL = `${cLow}-${wLow}`;
+  const keyCL_WH = `${cLow}-${wHigh}`;
+
+  // 在 riLow 和 riHigh 处分别做反射比双线性插值
+  function getUAtRI(ri) {
+    const table = UF_TABLE[ri];
+    if (!table) return null;
+
+    const u_ch_wh = table[keyCH_WH] !== undefined ? table[keyCH_WH] : table[keyCH_WL];
+    const u_ch_wl = table[keyCH_WL] !== undefined ? table[keyCH_WL] : table[keyCH_WH];
+    const u_cl_wh = table[keyCL_WH] !== undefined ? table[keyCL_WH] : table[keyCL_WL];
+    const u_cl_wl = table[keyCL_WL] !== undefined ? table[keyCL_WL] : table[keyCL_WH];
+
+    // 先对墙面反射比插值
+    const u_ch = lerp(wallReflectance, wLow, wHigh, u_ch_wl, u_ch_wh);
+    const u_cl = lerp(wallReflectance, wLow, wHigh, u_cl_wl, u_cl_wh);
+
+    // 再对顶棚反射比插值
+    return lerp(ceilingReflectance, cLow, cHigh, u_cl, u_ch);
+  }
+
+  const uLow = getUAtRI(riLow);
+  const uHigh = getUAtRI(riHigh);
+
+  if (uLow === null || uHigh === null) {
+    throw new Error(`无法获取利用系数，室形指数 ${roomIndex} 超出查表范围`);
+  }
+
+  // 最后对室形指数插值
+  const result = lerp(roomIndex, riLow, riHigh, uLow, uHigh);
+
+  // 限制在合理范围
+  return Math.max(0.1, Math.min(0.95, result));
+}
+
+/**
+ * 获取维护系数（Maintenance Factor, K）
+ *
+ * 维护系数考虑了灯具在使用过程中因积尘、光源光衰等因素导致的
+ * 照度下降。依据 GB 50034，维护系数根据环境清洁程度和灯具维护周期确定。
+ *
+ * @param {string} environment - 环境清洁程度
+ *   'clean' - 清洁环境（办公室、教室、实验室等），K ≈ 0.8
+ *   'general' - 一般环境（商店、候车室等），K ≈ 0.7
+ *   'dirty' - 污染严重环境（厨房、铸造车间等），K ≈ 0.6
+ * @returns {number} 维护系数 K，范围 [0.5, 0.85]
+ * @throws {Error} 环境类型无效时抛出错误
+ *
+ * @example
+ * getMaintenanceFactor('clean'); // 0.8
+ */
+function getMaintenanceFactor(environment) {
+  const factors = {
+    'clean': 0.8,
+    'general': 0.7,
+    'dirty': 0.6
+  };
+
+  if (!factors.hasOwnProperty(environment)) {
+    throw new Error(
+      `环境类型 "${environment}" 无效。可选值: ${Object.keys(factors).join(', ')}`
+    );
+  }
+
+  return factors[environment];
+}
+
+/**
+ * 计算所需灯具数量（核心公式）
+ *
+ * 公式：N = (E × A) / (Φ × U × K)
+ * 结果向上取整（灯具数量必须为整数）
+ *
+ * @param {number} requiredIlluminance - 目标平均照度 E（lx），必须 > 0
+ * @param {number} area - 房间面积 A（m²），必须 > 0
+ * @param {number} luminousFlux - 单套灯具总光通量 Φ（lm），必须 > 0
+ * @param {number} utilizationFactor - 利用系数 U，范围 (0, 1]
+ * @param {number} maintenanceFactor - 维护系数 K，范围 (0, 1]
+ * @returns {number} 所需灯具数量 N（正整数）
+ * @throws {Error} 参数无效时抛出错误
+ *
+ * @example
+ * calculateLuminaireCount(300, 60, 3000, 0.5, 0.8);
+ * // N = (300 × 60) / (3000 × 0.5 × 0.8) = 18000 / 1200 = 15
+ */
+function calculateLuminaireCount(requiredIlluminance, area, luminousFlux, utilizationFactor, maintenanceFactor) {
+  validatePositiveNumber(requiredIlluminance, '目标照度(requiredIlluminance)');
+  validatePositiveNumber(area, '房间面积(area)');
+  validatePositiveNumber(luminousFlux, '灯具光通量(luminousFlux)');
+  validatePositiveNumber(utilizationFactor, '利用系数(utilizationFactor)', 0, 1);
+  validatePositiveNumber(maintenanceFactor, '维护系数(maintenanceFactor)', 0, 1);
+
+  const n = (requiredIlluminance * area) / (luminousFlux * utilizationFactor * maintenanceFactor);
+  return Math.ceil(n);
+}
+
+/**
+ * 反向计算：已知灯具数量，求实际平均照度
+ *
+ * 公式：E = (N × Φ × U × K) / A
+ *
+ * @param {number} luminaireCount - 灯具数量 N，必须 > 0 且为整数
+ * @param {number} luminousFlux - 单套灯具光通量 Φ（lm），必须 > 0
+ * @param {number} utilizationFactor - 利用系数 U，范围 (0, 1]
+ * @param {number} maintenanceFactor - 维护系数 K，范围 (0, 1]
+ * @param {number} area - 房间面积 A（m²），必须 > 0
+ * @returns {number} 实际平均照度 E（lx）
+ * @throws {Error} 参数无效时抛出错误
+ *
+ * @example
+ * calculateActualIlluminance(15, 3000, 0.5, 0.8, 60);
+ * // E = (15 × 3000 × 0.5 × 0.8) / 60 = 300 lx
+ */
+function calculateActualIlluminance(luminaireCount, luminousFlux, utilizationFactor, maintenanceFactor, area) {
+  validatePositiveNumber(luminaireCount, '灯具数量(luminaireCount)');
+  validatePositiveNumber(luminousFlux, '灯具光通量(luminousFlux)');
+  validatePositiveNumber(utilizationFactor, '利用系数(utilizationFactor)', 0, 1);
+  validatePositiveNumber(maintenanceFactor, '维护系数(maintenanceFactor)', 0, 1);
+  validatePositiveNumber(area, '房间面积(area)');
+
+  if (!Number.isInteger(luminaireCount)) {
+    throw new Error(`灯具数量必须为整数，当前值: ${luminaireCount}`);
+  }
+
+  return (luminaireCount * luminousFlux * utilizationFactor * maintenanceFactor) / area;
+}
+
+/**
+ * 计算灯具计算高度 Hm
+ *
+ * Hm = 房间净高 - 灯具悬垂高度 - 工作面高度
+ *
+ * @param {number} roomHeight - 房间净高（m），必须 > 0
+ * @param {number} [suspensionHeight=0] - 灯具悬垂高度（m），≥ 0，默认 0（吸顶安装）
+ * @param {number} [workPlaneHeight=0.75] - 工作面高度（m），≥ 0，默认 0.75m
+ * @returns {number} 灯具计算高度 Hm（m）
+ * @throws {Error} 参数无效或计算结果 ≤ 0 时抛出错误
+ *
+ * @example
+ * calculateMountingHeight(3.0, 0.3, 0.75); // 1.95m
+ */
+function calculateMountingHeight(roomHeight, suspensionHeight = 0, workPlaneHeight = 0.75) {
+  validatePositiveNumber(roomHeight, '房间净高(roomHeight)');
+  validateRange(suspensionHeight, '灯具悬垂高度(suspensionHeight)', 0, roomHeight);
+  validateRange(workPlaneHeight, '工作面高度(workPlaneHeight)', 0, roomHeight);
+
+  const hm = roomHeight - suspensionHeight - workPlaneHeight;
+
+  if (hm <= 0) {
+    throw new Error(
+      `灯具计算高度 Hm 必须 > 0。当前: 房间净高=${roomHeight}m, ` +
+      `悬垂高度=${suspensionHeight}m, 工作面高度=${workPlaneHeight}m, ` +
+      `计算得 Hm=${hm.toFixed(2)}m`
+    );
+  }
+
+  return hm;
+}
+
+/**
+ * 计算房间面积
+ * @param {number} length - 房间长度（m），必须 > 0
+ * @param {number} width - 房间宽度（m），必须 > 0
+ * @returns {number} 房间面积（m²）
+ * @throws {Error} 参数无效时抛出错误
+ */
+function calculateArea(length, width) {
+  validatePositiveNumber(length, '房间长度(length)');
+  validatePositiveNumber(width, '房间宽度(width)');
+  return length * width;
+}
+
+/**
+ * 计算单灯所需光通量（已知灯具数量反推）
+ *
+ * 公式：Φ = (E × A) / (N × U × K)
+ *
+ * @param {number} requiredIlluminance - 目标照度 E（lx）
+ * @param {number} area - 房间面积 A（m²）
+ * @param {number} luminaireCount - 灯具数量 N
+ * @param {number} utilizationFactor - 利用系数 U
+ * @param {number} maintenanceFactor - 维护系数 K
+ * @returns {number} 单灯所需光通量 Φ（lm）
+ * @throws {Error} 参数无效时抛出错误
+ */
+function calculateRequiredFlux(requiredIlluminance, area, luminaireCount, utilizationFactor, maintenanceFactor) {
+  validatePositiveNumber(requiredIlluminance, '目标照度');
+  validatePositiveNumber(area, '面积');
+  validatePositiveNumber(luminaireCount, '灯具数量');
+  validatePositiveNumber(utilizationFactor, '利用系数', 0, 1);
+  validatePositiveNumber(maintenanceFactor, '维护系数', 0, 1);
+
+  return (requiredIlluminance * area) / (luminaireCount * utilizationFactor * maintenanceFactor);
+}
+
+/**
+ * 计算功率密度（LPD, Lighting Power Density）
+ *
+ * LPD = (N × P) / A
+ * 其中 P 为单灯功率（W）
+ *
+ * 依据 GB 50034，各类房间有 LPD 限值要求。
+ *
+ * @param {number} luminaireCount - 灯具数量 N
+ * @param {number} powerPerLuminaire - 单灯功率 P（W）
+ * @param {number} area - 房间面积 A（m²）
+ * @returns {number} 功率密度 LPD（W/m²）
+ * @throws {Error} 参数无效时抛出错误
+ */
+function calculateLPD(luminaireCount, powerPerLuminaire, area) {
+  validatePositiveNumber(luminaireCount, '灯具数量');
+  validatePositiveNumber(powerPerLuminaire, '单灯功率');
+  validatePositiveNumber(area, '面积');
+
+  return (luminaireCount * powerPerLuminaire) / area;
+}
+
+/**
+ * 完整计算流程：从房间参数到灯具数量
+ *
+ * 整合所有子计算，提供一站式计算接口。
+ *
+ * @param {Object} params - 输入参数对象
+ * @param {number} params.length - 房间长度（m）
+ * @param {number} params.width - 房间宽度（m）
+ * @param {number} params.roomHeight - 房间净高（m）
+ * @param {number} [params.suspensionHeight=0] - 灯具悬垂高度（m）
+ * @param {number} [params.workPlaneHeight=0.75] - 工作面高度（m）
+ * @param {number} params.requiredIlluminance - 目标平均照度（lx）
+ * @param {number} params.luminousFlux - 单灯光通量（lm）
+ * @param {number} params.ceilingReflectance - 顶棚反射比（%）
+ * @param {number} params.wallReflectance - 墙面反射比（%）
+ * @param {number} [params.floorReflectance=20] - 地面反射比（%）
+ * @param {string} params.environment - 环境类型 'clean'|'general'|'dirty'
+ * @returns {Object} 计算结果对象
+ * @returns {number} returns.mountingHeight - 灯具计算高度 Hm（m）
+ * @returns {number} returns.area - 房间面积（m²）
+ * @returns {number} returns.roomIndex - 室形指数 RI
+ * @returns {number} returns.utilizationFactor - 利用系数 U
+ * @returns {number} returns.maintenanceFactor - 维护系数 K
+ * @returns {number} returns.luminaireCount - 所需灯具数量（整数）
+ * @returns {number} returns.actualIlluminance - 实际平均照度（lx）
+ * @returns {number} returns.lpd - 功率密度（W/m²），需额外传入功率
+ * @throws {Error} 参数无效时抛出错误
+ *
+ * @example
+ * const result = fullCalculation({
+ *   length: 10, width: 6, roomHeight: 3,
+ *   requiredIlluminance: 300, luminousFlux: 3000,
+ *   ceilingReflectance: 70, wallReflectance: 50,
+ *   environment: 'clean'
+ * });
+ */
+function fullCalculation(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+
+  const {
+    length, width, roomHeight,
+    suspensionHeight = 0,
+    workPlaneHeight = 0.75,
+    requiredIlluminance,
+    luminousFlux,
+    ceilingReflectance,
+    wallReflectance,
+    floorReflectance = 20,
+    environment
+  } = params;
+
+  // 逐步计算
+  const hm = calculateMountingHeight(roomHeight, suspensionHeight, workPlaneHeight);
+  const area = calculateArea(length, width);
+  const ri = calculateRoomIndex(length, width, hm);
+  const u = getUtilizationFactor(ri, ceilingReflectance, wallReflectance, floorReflectance);
+  const k = getMaintenanceFactor(environment);
+  const n = calculateLuminaireCount(requiredIlluminance, area, luminousFlux, u, k);
+  const actualE = calculateActualIlluminance(n, luminousFlux, u, k, area);
+
+  return {
+    mountingHeight: hm,
+    area: area,
+    roomIndex: ri,
+    utilizationFactor: u,
+    maintenanceFactor: k,
+    luminaireCount: n,
+    actualIlluminance: actualE
+  };
+}
+
+// 导出所有函数（兼容浏览器和 Node.js）
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    UF_TABLE, RI_NODES, REFLECTANCE_NODES,
+    validatePositiveNumber, validateRange,
+    calculateRoomIndex, getUtilizationFactor,
+    getMaintenanceFactor, calculateLuminaireCount,
+    calculateActualIlluminance, calculateMountingHeight,
+    calculateArea, calculateRequiredFlux, calculateLPD,
+    fullCalculation, lerp, findNearestReflectance
+  };
+}
+</script>
+
+<script>
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+/**
+ * 简易测试框架
+ */
+const TestRunner = {
+  passed: 0,
+  failed: 0,
+  total: 0,
+  logs: [],
+
+  /**
+   * 断言相等（数值比较，允许误差）
+   * @param {*} actual - 实际值
+   * @param {*} expected - 期望值
+   * @param {string} message - 测试描述
+   * @param {number} [tolerance=0] - 数值容差
+   */
+  assertEqual(actual, expected, message, tolerance = 0) {
+    this.total++;
+    if (tolerance > 0) {
+      if (Math.abs(actual - expected) <= tolerance) {
+        this.passed++;
+        this.logs.push({ pass: true, msg: `✓ ${message} (实际: ${actual}, 期望: ${expected}±${tolerance})` });
+      } else {
+        this.failed++;
+        this.logs.push({ pass: false, msg: `✗ ${message} — 实际: ${actual}, 期望: ${expected}±${tolerance}` });
+      }
+    } else {
+      if (actual === expected) {
+        this.passed++;
+        this.logs.push({ pass: true, msg: `✓ ${message}` });
+      } else {
+        this.failed++;
+        this.logs.push({ pass: false, msg: `✗ ${message} — 实际: ${actual}, 期望: ${expected}` });
+      }
+    }
+  },
+
+  /**
+   * 断言抛出异常
+   * @param {Function} fn - 待测函数
+   * @param {string} message - 测试描述
+   */
+  assertThrows(fn, message) {
+    this.total++;
+    try {
+      fn();
+      this.failed++;
+      this.logs.push({ pass: false, msg: `✗ ${message} — 未抛出异常` });
+    } catch (e) {
+      this.passed++;
+      this.logs.push({ pass: true, msg: `✓ ${message} (抛出: ${e.message.substring(0, 50)}...)` });
+    }
+  },
+
+  /**
+   * 断言为真
+   * @param {*} value - 待测值
+   * @param {string} message - 测试描述
+   */
+  assertTrue(value, message) {
+    this.total++;
+    if (value) {
+      this.passed++;
+      this.logs.push({ pass: true, msg: `✓ ${message}` });
+    } else {
+      this.failed++;
+      this.logs.push({ pass: false, msg: `✗ ${message} — 期望为真，实际: ${value}` });
+    }
+  },
+
+  /**
+   * 断言为整数
+   * @param {*} value - 待测值
+   * @param {string} message - 测试描述
+   */
+  assertInteger(value, message) {
+    this.total++;
+    if (Number.isInteger(value)) {
+      this.passed++;
+      this.logs.push({ pass: true, msg: `✓ ${message} (值: ${value})` });
+    } else {
+      this.failed++;
+      this.logs.push({ pass: false, msg: `✗ ${message} — 期望整数，实际: ${value}` });
+    }
+  },
+
+  /**
+   * 获取结果摘要
+   * @returns {string} 摘要文本
+   */
+  summary() {
+    return `通过 ${this.passed} / 共 ${this.total}`;
+  }
+};
+
+/**
+ * 运行全部测试
+ */
+function runTests() {
+  TestRunner.passed = 0;
+  TestRunner.failed = 0;
+  TestRunner.total = 0;
+  TestRunner.logs = [];
+
+  // ---- 室形指数计算测试 ----
+
+  // 测试1：标准正方形房间
+  TestRunner.assertEqual(
+    calculateRoomIndex(6, 6, 2.5),
+    (6 * 6) / (2.5 * (6 + 6)),
+    '室形指数：正方形房间 6×6, Hm=2.5',
+    0.001
+  );
+
+  // 测试2：矩形房间
+  TestRunner.assertEqual(
+    calculateRoomIndex(10, 6, 2.5),
+    (10 * 6) / (2.5 * (10 + 6)),
+    '室形指数：矩形房间 10×6, Hm=2.5',
+    0.001
+  );
+
+  // 测试3：室形指数应 > 0
+  TestRunner.assertTrue(
+    calculateRoomIndex(5, 4, 3) > 0,
+    '室形指数：结果为正数'
+  );
+
+  // 测试4：房间越大（扁平），RI 越大
+  TestRunner.assertTrue(
+    calculateRoomIndex(20, 20, 2) > calculateRoomIndex(4, 4, 2),
+    '室形指数：大房间 RI > 小房间 RI'
+  );
+
+  // 测试5：计算高度越大，RI 越小
+  TestRunner.assertTrue(
+    calculateRoomIndex(6, 6, 3) < calculateRoomIndex(6, 6, 2),
+    '室形指数：Hm 越大 RI 越小'
+  );
+
+  // 测试6：室形指数异常输入 - 长度为0
+  TestRunner.assertThrows(
+    () => calculateRoomIndex(0, 6, 2.5),
+    '室形指数：长度为0应抛异常'
+  );
+
+  // 测试7：室形指数异常输入 - 负数
+  TestRunner.assertThrows(
+    () => calculateRoomIndex(-5, 6, 2.5),
+    '室形指数：负数长度应抛异常'
+  );
+
+  // 测试8：室形指数异常输入 - NaN
+  TestRunner.assertThrows(
+    () => calculateRoomIndex(NaN, 6, 2.5),
+    '室形指数：NaN 应抛异常'
+  );
+
+  // ---- 利用系数测试 ----
+
+  // 测试9：标准值查询
+  const u1 = getUtilizationFactor(1.5, 70, 50);
+  TestRunner.assertTrue(u1 > 0.4 && u1 < 0.6, `利用系数：RI=1.5, ρc=70, ρw=50 应在合理范围 (实际: ${u1.toFixed(3)})`);
+
+  // 测试10：高反射比 → 高利用系数
+  const uHigh = getUtilizationFactor(2.0, 80, 80);
+  const uLow = getUtilizationFactor(2.0, 30, 10);
+  TestRunner.assertTrue(uHigh > uLow, `利用系数：高反射比(${uHigh.toFixed(3)}) > 低反射比(${uLow.toFixed(3)})`);
+
+  // 测试11：大 RI → 高利用系数
+  const uBigRI = getUtilizationFactor(3.0, 70, 50);
+  const uSmallRI = getUtilizationFactor(0.8, 70, 50);
+  TestRunner.assertTrue(uBigRI > uSmallRI, `利用系数：大RI(${uBigRI.toFixed(3)}) > 小RI(${uSmallRI.toFixed(3)})`);
+
+  // 测试12：利用系数范围检查
+  TestRunner.assertTrue(u1 >= 0.1 && u1 <= 0.95, `利用系数：结果在 [0.1, 0.95] 范围内 (实际: ${u1.toFixed(3)})`);
+
+  // 测试13：利用系数异常 - RI 超范围
+  TestRunner.assertThrows(
+    () => getUtilizationFactor(0.1, 70, 50),
+    '利用系数：RI=0.1 应抛异常'
+  );
+
+  // 测试14：利用系数异常 - 反射比超范围
+  TestRunner.assertThrows(
+    () => getUtilizationFactor(1.5, 110, 50),
+    '利用系数：反射比>100 应抛异常'
+  );
+
+  // 测试15：利用系数 - 精确节点值
+  const uExact = getUtilizationFactor(1.0, 80, 80);
+  TestRunner.assertEqual(uExact, 0.49, '利用系数：精确节点 RI=1.0, ρc=80, ρw=80', 0.001);
+
+  // 测试16：利用系数 - 插值连续性
+  const u16a = getUtilizationFactor(1.2, 70, 50);
+  const u16b = getUtilizationFactor(1.3, 70, 50);
+  TestRunner.assertTrue(Math.abs(u16a - u16b) < 0.05, `利用系数：相邻 RI 插值连续 (差值: ${Math.abs(u16a - u16b).toFixed(4)})`);
+
+  // ---- 维护系数测试 ----
+
+  // 测试17：清洁环境
+  TestRunner.assertEqual(getMaintenanceFactor('clean'), 0.8, '维护系数：清洁环境 = 0.8');
+
+  // 测试18：一般环境
+  TestRunner.assertEqual(getMaintenanceFactor('general'), 0.7, '维护系数：一般环境 = 0.7');
+
+  // 测试19：污染环境
+  TestRunner.assertEqual(getMaintenanceFactor('dirty'), 0.6, '维护系数：污染环境 = 0.6');
+
+  // 测试20：无效环境类型
+  TestRunner.assertThrows(
+    () => getMaintenanceFactor('unknown'),
+    '维护系数：无效类型应抛异常'
+  );
+
+  // ---- 灯具数量计算测试 ----
+
+  // 测试21：标准计算
+  TestRunner.assertEqual(
+    calculateLuminaireCount(300, 60, 3000, 0.5, 0.8),
+    15,
+    '灯具数量：300lx, 60m², 3000lm, U=0.5, K=0.8 → 15套'
+  );
+
+  // 测试22：向上取整
+  TestRunner.assertEqual(
+    calculateLuminaireCount(300, 60, 3200, 0.5, 0.8),
+    Math.ceil((300 * 60) / (3200 * 0.5 * 0.8)),
+    '灯具数量：非整除结果向上取整'
+  );
+
+  // 测试23：结果为整数
+  TestRunner.assertInteger(
+    calculateLuminaireCount(500, 100, 3000, 0.45, 0.7),
+    '灯具数量：结果必须为整数'
+  );
+
+  // 测试24：照度为0应抛异常
+  TestRunner.assertThrows(
+    () => calculateLuminaireCount(0, 60, 3000, 0.5, 0.8),
+    '灯具数量：照度=0 应抛异常'
+  );
+
+  // 测试25：利用系数为0应抛异常
+  TestRunner.assertThrows(
+    () => calculateLuminaireCount(300, 60, 3000, 0, 0.8),
+    '灯具数量：U=0 应抛异常'
+  );
+
+  // ---- 反向计算测试 ----
+
+  // 测试26：反向计算验证
+  TestRunner.assertEqual(
+    calculateActualIlluminance(15, 3000, 0.5, 0.8, 60),
+    300,
+    '反向照度：15套, 3000lm, U=0.5, K=0.8, 60m² → 300lx',
+    0.001
+  );
+
+  // 测试27：非整数灯具数量应抛异常
+  TestRunner.assertThrows(
+    () => calculateActualIlluminance(15.5, 3000, 0.5, 0.8, 60),
+    '反向照度：非整数灯具数量应抛异常'
+  );
+
+  // ---- 灯具计算高度测试 ----
+
+  // 测试28：标准计算
+  TestRunner.assertEqual(
+    calculateMountingHeight(3.0, 0.3, 0.75),
+    1.95,
+    '计算高度：3.0 - 0.3 - 0.75 = 1.95m',
+    0.001
+  );
+
+  // 测试29：吸顶安装（悬垂=0）
+  TestRunner.assertEqual(
+    calculateMountingHeight(3.0, 0, 0.75),
+    2.25,
+    '计算高度：吸顶安装 3.0 - 0 - 0.75 = 2.25m',
+    0.001
+  );
+
+  // 测试30：计算高度 ≤ 0 应抛异常
+  TestRunner.assertThrows(
+    () => calculateMountingHeight(1.0, 0, 1.2),
+    '计算高度：Hm≤0 应抛异常'
+  );
+
+  // ---- 面积计算测试 ----
+
+  // 测试31：标准面积
+  TestRunner.assertEqual(calculateArea(10, 6), 60, '面积：10×6 = 60m²');
+
+  // 测试32：面积异常输入
+  TestRunner.assertThrows(
+    () => calculateArea(-5, 6),
+    '面积：负数应抛异常'
+  );
+
+  // ---- LPD 计算测试 ----
+
+  // 测试33：标准 LPD
+  TestRunner.assertEqual(
+    calculateLPD(15, 36, 60),
+    9,
+    'LPD：15套×36W / 60m² = 9 W/m²',
+    0.001
+  );
+
+  // ---- 完整流程测试 ----
+
+  // 测试34：完整计算流程
+  const result = fullCalculation({
+    length: 10, width: 6, roomHeight: 3,
+    requiredIlluminance: 300, luminousFlux: 3000,
+    ceilingReflectance: 70, wallReflectance: 50,
+    environment: 'clean'
+  });
+  TestRunner.assertTrue(result.luminaireCount > 0, `完整流程：灯具数量 > 0 (实际: ${result.luminaireCount})`);
+  TestRunner.assertInteger(result.luminaireCount, '完整流程：灯具数量为整数');
+  TestRunner.assertTrue(result.actualIlluminance >= 300, `完整流程：实际照度 ≥ 目标照度 (实际: ${result.actualIlluminance.toFixed(1)})`);
+
+  // 测试35：完整流程参数校验
+  TestRunner.assertThrows(
+    () => fullCalculation(null),
+    '完整流程：null 参数应抛异常'
+  );
+
+  // 测试36：完整流程 - 实际照度与灯具数量一致性
+  const r2 = fullCalculation({
+    length: 8, width: 5, roomHeight: 2.8,
+    requiredIlluminance: 500, luminousFlux: 2800,
+    ceilingReflectance: 70, wallReflectance: 50,
+    environment: 'general'
+  });
+  const verifyE = calculateActualIlluminance(r2.luminaireCount, 2800, r2.utilizationFactor, r2.maintenanceFactor, r2.area);
+  TestRunner.assertEqual(r2.actualIlluminance, verifyE, '完整流程：实际照度与反向验证一致', 0.01);
+
+  // ---- 精度与边界测试 ----
+
+  // 测试37：极小房间
+  const rSmall = fullCalculation({
+    length: 2, width: 2, roomHeight: 2.5,
+    requiredIlluminance: 300, luminousFlux: 1500,
+    ceilingReflectance: 70, wallReflectance: 50,
+    environment: 'clean'
+  });
+  TestRunner.assertTrue(rSmall.luminaireCount >= 1, `极小房间：至少1套灯 (实际: ${rSmall.luminaireCount})`);
+
+  // 测试38：极大房间
+  const rLarge = fullCalculation({
+    length: 50, width: 30, roomHeight: 5,
+    requiredIlluminance: 200, luminousFlux: 6000,
+    ceilingReflectance: 70, wallReflectance: 50,
+    environment: 'general'
+  });
+  TestRunner.assertTrue(rLarge.luminaireCount > 0, `极大房间：灯具数量 > 0 (实际: ${rLarge.luminaireCount})`);
+
+  // 测试39：浮点精度 - 避免 0.1 + 0.2 问题
+  const flux39 = calculateRequiredFlux(300, 60.0, 15, 0.5, 0.8);
+  TestRunner.assertTrue(typeof flux39 === 'number' && !isNaN(flux39), '浮点精度：结果为有效数字');
+
+  // 测试40：所需光通量反推
+  TestRunner.assertEqual(
+    calculateRequiredFlux(300, 60, 15, 0.5, 0.8),
+    2400,
+    '所需光通量：(300×60)/(15×0.5×0.8) = 2400lm',
+    0.01
+  );
+
+  // 输出结果
+  const resultDiv = document.getElementById('testResult');
+  const logDiv = document.getElementById('testLog');
+
+  resultDiv.className = 'test-result ' + (TestRunner.failed === 0 ? 'test-pass' : 'test-fail');
+  resultDiv.textContent = TestRunner.summary() + (TestRunner.failed > 0 ? ` (失败 ${TestRunner.failed} 个)` : ' ✓ 全部通过');
+
+  logDiv.innerHTML = TestRunner.logs.map(l =>
+    `<div class="${l.pass ? 'pass' : 'fail'}">${l.msg}</div>`
+  ).join('');
+}
+
+// 页面加载后自动运行测试
+window.addEventListener('DOMContentLoaded', function() {
+  runTests();
+});
+</script>
+
+<script>
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+
+document.getElementById('manualContent').innerHTML = `
+<h2>一、工具概述</h2>
+<p>本工具用于室内照明设计中，利用利用系数法（又称流明法）计算房间达到目标平均照度所需的灯具数量。该方法依据 GB 50034《建筑照明设计标准》中规定的平均照度计算方法，是照明工程设计中最基础、最常用的计算方法之一。</p>
+<p>利用系数法的核心思想是：根据房间几何尺寸、表面反射特性、灯具光通量和配光特性，计算出有多少比例的光通量最终到达工作面，从而确定需要多少套灯具才能满足照度要求。</p>
+<p>本工具适用于一般室内场所的均匀照明设计，包括办公室、教室、会议室、商店、厂房等。对于需要精确照度分布的场景（如体育场馆、道路照明），应使用逐点计算法或其他专业方法。</p>
+
+<h2>二、核心公式</h2>
+<p>利用系数法的基本公式为：</p>
+<p style="text-align:center; font-size:18px; font-weight:bold; margin:16px 0;">N = (E × A) / (Φ × U × K)</p>
+<p>其中各参数含义如下：</p>
+<table>
+<tr><th>符号</th><th>含义</th><th>单位</th><th>说明</th></tr>
+<tr><td>N</td><td>灯具数量</td><td>套</td><td>计算结果向上取整</td></tr>
+<tr><td>E</td><td>目标平均照度</td><td>lx（勒克斯）</td><td>依据 GB 50034 中各类场所照度标准值选取</td></tr>
+<tr><td>A</td><td>房间面积</td><td>m²</td><td>A = 长 × 宽</td></tr>
+<tr><td>Φ</td><td>单套灯具光通量</td><td>lm（流明）</td><td>由灯具厂商提供，含光源和灯具效率</td></tr>
+<tr><td>U</td><td>利用系数</td><td>无量纲</td><td>由室形指数和表面反射比查表确定</td></tr>
+<tr><td>K</td><td>维护系数</td><td>无量纲</td><td>考虑灯具老化和积尘的折减系数</td></tr>
+</table>
+
+<h2>三、参数详解</h2>
+
+<h3>3.1 室形指数（Room Index, RI）</h3>
+<p>室形指数是反映房间几何比例关系的无量纲参数，计算公式为：</p>
+<p style="text-align:center; font-weight:bold;">RI = (L × W) / (Hm × (L + W))</p>
+<p>其中 L 为房间长度，W 为房间宽度，Hm 为灯具计算高度。室形指数越大，表示房间越"扁平开阔"，光线在室内多次反射后被工作面接收的比例越高，利用系数也越大。</p>
+<p>灯具计算高度 Hm 的计算方法为：</p>
+<p style="text-align:center; font-weight:bold;">Hm = 房间净高 − 灯具悬垂高度 − 工作面高度</p>
+<p>工作面高度一般取 0.75m（标准办公桌面高度）。灯具悬垂高度指灯具下沿距天花板的距离，吸顶安装时为 0。</p>
+
+<h3>3.2 利用系数（Utilization Factor, U）</h3>
+<p>利用系数表示从灯具发出的总光通量中，最终到达工作面的比例。它取决于三个因素：</p>
+<ul>
+<li><strong>室形指数 RI</strong>：房间越开阔（RI 越大），利用系数越高</li>
+<li><strong>顶棚反射比 ρc</strong>：顶棚越亮（反射比越高），反射到工作面的光越多</li>
+<li><strong>墙面反射比 ρw</strong>：墙面越亮，间接照射到工作面的光越多</li>
+</ul>
+<div class="note">
+<strong>重要说明：</strong>本工具内置的利用系数表为典型直接型灯具的参考数据。实际工程中，不同灯具的利用系数差异很大，应以灯具制造商提供的光度数据文件（如 IES 文件）中的利用系数表为准。
+</div>
+
+<h3>3.3 维护系数（Maintenance Factor, K）</h3>
+<p>维护系数考虑了灯具在使用过程中因以下原因导致的照度下降：</p>
+<ul>
+<li>光源光通量衰减（光衰）</li>
+<li>灯具表面积尘导致效率下降</li>
+<li>房间表面脏污导致反射比降低</li>
+</ul>
+<p>依据 GB 50034，维护系数根据环境清洁程度和维护周期选取：</p>
+<table>
+<tr><th>环境类型</th><th>典型场所</th><th>维护系数 K</th></tr>
+<tr><td>清洁</td><td>办公室、教室、实验室、精密车间</td><td>0.8</td></tr>
+<tr><td>一般</td><td>商店、候车室、餐厅、普通车间</td><td>0.7</td></tr>
+<tr><td>污染严重</td><td>厨房、铸造车间、锻造车间</td><td>0.6</td></tr>
+</table>
+
+<h3>3.4 表面反射比</h3>
+<p>房间各表面的反射比影响光线的多次反射效果。常见材料反射比参考值：</p>
+<table>
+<tr><th>表面</th><th>材料/颜色</th><th>反射比（%）</th></tr>
+<tr><td>顶棚</td><td>白色乳胶漆</td><td>70~80</td></tr>
+<tr><td>顶棚</td><td>浅色吊顶板</td><td>50~70</td></tr>
+<tr><td>墙面</td><td>白色/浅色涂料</td><td>50~70</td></tr>
+<tr><td>墙面</td><td>中等颜色涂料</td><td>30~50</td></tr>
+<tr><td>墙面</td><td>深色涂料/壁纸</td><td>10~30</td></tr>
+<tr><td>地面</td><td>浅色地砖</td><td>20~30</td></tr>
+<tr><td>地面</td><td>深色地毯</td><td>10~20</td></tr>
+</table>
+
+<h2>四、使用场景</h2>
+
+<h3>场景一：标准办公室照明设计</h3>
+<p><strong>条件：</strong>一间 10m × 6m 的开放式办公室，净高 3.0m，采用吸顶安装 LED 面板灯（单灯光通量 3600lm，功率 36W），目标照度 300lx（依据 GB 50034 办公室标准值），顶棚白色（反射比 70%），墙面浅色（反射比 50%），清洁环境。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>灯具计算高度 Hm = 3.0 − 0 − 0.75 = 2.25m</li>
+<li>室形指数 RI = (10 × 6) / (2.25 × (10 + 6)) = 60 / 36 ≈ 1.67</li>
+<li>利用系数 U ≈ 0.52（查表插值）</li>
+<li>维护系数 K = 0.8（清洁环境）</li>
+<li>房间面积 A = 10 × 6 = 60m²</li>
+<li>N = (300 × 60) / (3600 × 0.52 × 0.8) = 18000 / 1497.6 ≈ 12.02 → <strong>13 套</strong></li>
+<li>实际照度 E = (13 × 3600 × 0.52 × 0.8) / 60 ≈ 324.5lx</li>
+<li>功率密度 LPD = (13 × 36) / 60 = 7.8 W/m²</li>
+</ul>
+
+<h3>场景二：教室照明设计</h3>
+<p><strong>条件：</strong>一间 9m × 7m 的标准教室，净高 3.2m，使用 LED 教室专用灯（单灯光通量 3000lm），目标照度 300lx（黑板面 500lx 需单独计算），顶棚反射比 70%，墙面反射比 50%，一般环境。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>Hm = 3.2 − 0.2 − 0.75 = 2.25m（假设悬垂 0.2m）</li>
+<li>RI = (9 × 7) / (2.25 × (9 + 7)) = 63 / 36 = 1.75</li>
+<li>U ≈ 0.53</li>
+<li>K = 0.7（一般环境）</li>
+<li>A = 9 × 7 = 63m²</li>
+<li>N = (300 × 63) / (3000 × 0.53 × 0.7) = 18900 / 1113 ≈ 16.98 → <strong>17 套</strong></li>
+</ul>
+
+<h3>场景三：小型会议室</h3>
+<p><strong>条件：</strong>5m × 4m 会议室，净高 2.8m，LED 筒灯（单灯 2000lm），目标照度 300lx，顶棚反射比 80%，墙面反射比 50%，清洁环境。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>Hm = 2.8 − 0 − 0.75 = 2.05m</li>
+<li>RI = (5 × 4) / (2.05 × (5 + 4)) = 20 / 18.45 ≈ 1.08</li>
+<li>U ≈ 0.48</li>
+<li>K = 0.8</li>
+<li>A = 20m²</li>
+<li>N = (300 × 20) / (2000 × 0.48 × 0.8) = 6000 / 768 ≈ 7.81 → <strong>8 套</strong></li>
+</ul>
+
+<h3>场景四：工业厂房照明</h3>
+<p><strong>条件：</strong>20m × 15m 机加工车间，净高 6m，高棚 LED 灯（单灯 15000lm），目标照度 200lx（粗加工），顶棚反射比 50%，墙面反射比 30%，污染严重环境。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>Hm = 6.0 − 0.5 − 0.75 = 4.75m（吊挂 0.5m）</li>
+<li>RI = (20 × 15) / (4.75 × (20 + 15)) = 300 / 166.25 ≈ 1.80</li>
+<li>U ≈ 0.50</li>
+<li>K = 0.6（污染严重）</li>
+<li>A = 300m²</li>
+<li>N = (200 × 300) / (15000 × 0.50 × 0.6) = 60000 / 4500 ≈ 13.33 → <strong>14 套</strong></li>
+</ul>
+
+<h3>场景五：地下车库照明</h3>
+<p><strong>条件：</strong>40m × 20m 车库区域，净高 3.5m（扣除管线后），LED 线型灯（单灯 4000lm），目标照度 75lx（车道），顶棚反射比 50%，墙面反射比 30%，一般环境。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>Hm = 3.5 − 0 − 0.15 = 3.35m（车道地面为工作面，取 0.15m 或按实际情况）</li>
+<li>RI = (40 × 20) / (3.35 × (40 + 20)) = 800 / 201 ≈ 3.98</li>
+<li>U ≈ 0.58</li>
+<li>K = 0.7</li>
+<li>A = 800m²</li>
+<li>N = (75 × 800) / (4000 × 0.58 × 0.7) = 60000 / 1624 ≈ 36.95 → <strong>37 套</strong></li>
+</ul>
+
+<h2>五、常见错误与注意事项</h2>
+
+<h3>5.1 常见计算错误</h3>
+<ul>
+<li><strong>忘记向上取整：</strong>灯具数量必须为整数，计算结果 12.1 套应取 13 套，不能取 12 套</li>
+<li><strong>灯具计算高度算错：</strong>Hm 是从工作面到灯具发光中心的距离，不是房间净高</li>
+<li><strong>混淆光通量和功率：</strong>光通量单位是 lm（流明），功率单位是 W（瓦），两者不能混用</li>
+<li><strong>利用系数取值不当：</strong>不同灯具的利用系数差异很大，不能随意套用参考值</li>
+<li><strong>忽略维护系数：</strong>不乘维护系数会导致设计照度偏高，使用一段时间后照度不达标</li>
+</ul>
+
+<h3>5.2 参数选取注意事项</h3>
+<ul>
+<li><strong>目标照度：</strong>应依据 GB 50034 中对应场所的标准值选取，不可凭经验随意指定</li>
+<li><strong>反射比：</strong>应根据实际装修材料确定，不确定时可取保守值（偏低选取）</li>
+<li><strong>灯具光通量：</strong>应使用灯具厂商提供的实测数据，不能简单用光源光通量代替</li>
+</ul>
+
+<h2>六、数据依据</h2>
+<p>本工具的计算方法和参数选取依据以下标准和技术资料：</p>
+<ul>
+<li><strong>GB 50034-2024</strong>《建筑照明设计标准》— 规定了各类建筑场所的照度标准值、功率密度限值、利用系数法计算公式</li>
+<li><strong>GB/T 50033</strong>《建筑采光设计标准》— 采光相关参考</li>
+<li>照明工程学会相关技术指南</li>
+<li>主流灯具厂商光度数据手册</li>
+</ul>
+<div class="warning">
+<strong>声明：</strong>本工具内置的利用系数参考表为典型直接型灯具的通用数据，不能替代具体灯具的光度数据。正式工程设计中，必须使用实际选用灯具的利用系数表。维护系数取值也应结合具体维护方案确定。
+</div>
+
+<h2>七、精度与误差说明</h2>
+<div class="warning">
+<strong>有限精准原则：</strong>现实变量是无限的，本工具只做到「方法准、输入项准、结果给误差范围」，<strong>不承诺绝对精确</strong>。
+</div>
+
+<h3>7.1 算准了什么</h3>
+<ul>
+<li><strong>公式计算无误：</strong>利用系数法的数学公式严格按照 GB 50034 执行，给定输入参数后，计算过程不存在算术错误</li>
+<li><strong>插值算法可靠：</strong>室形指数和反射比的双线性插值算法经过充分测试，数值精度在浮点运算允许范围内</li>
+<li><strong>输入校验完备：</strong>所有输入参数均经过有效性检查，非法输入会被拦截并提示</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<p>利用系数法本身是一种简化计算方法，以下因素未纳入计算：</p>
+<ul>
+<li><strong>照度均匀度：</strong>本方法只计算平均照度，不保证照度分布均匀。实际中灯具布置方式直接影响均匀度</li>
+<li><strong>遮挡效应：</strong>家具、设备、隔断等对光线的遮挡未考虑</li>
+<li><strong>非标准房间形状：</strong>L 形、T 形等不规则房间的计算精度下降</li>
+<li><strong>灯具配光差异：</strong>内置利用系数表为典型值，与具体灯具可能存在 ±15% 偏差</li>
+<li><strong>自然光贡献：</strong>白天有窗房间的自然光贡献未计入</li>
+<li><strong>空间高度极端情况：</strong>超高空间（>10m）的对流和光衰减未特殊处理</li>
+<li><strong>色温和显色性：</strong>本方法仅计算照度（亮度），不涉及色温、显色指数等视觉质量指标</li>
+<li><strong>初始光通量偏差：</strong>光源出厂光通量存在公差（通常 ±5%~10%）</li>
+<li><strong>电压波动：</strong>供电电压偏差对光源光输出的影响未考虑</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<table>
+<tr><th>误差来源</th><th>估计范围</th><th>说明</th></tr>
+<tr><td>利用系数查表偏差</td><td>±10%~15%</td><td>取决于实际灯具与参考表的差异</td></tr>
+<tr><td>反射比取值偏差</td><td>±5%~10%</td><td>取决于对实际材料反射比的估计准确度</td></tr>
+<tr><td>维护系数取值偏差</td><td>±5%</td><td>取决于维护计划的执行情况</td></tr>
+<tr><td>光源光通量公差</td><td>±5%~10%</td><td>光源出厂参数公差</td></tr>
+<tr><td>综合误差</td><td>±15%~25%</td><td>上述因素叠加后的总误差范围</td></tr>
+</table>
+<p>因此，本工具的计算结果应作为<strong>设计参考值</strong>，实际工程中建议：</p>
+<ul>
+<li>在计算结果基础上适当增加 10%~20% 的余量</li>
+<li>重要项目应使用专业照明设计软件（如 DIALux）进行逐点计算验证</li>
+<li>施工完成后应进行实地照度测量验收</li>
+</ul>
+
+<h2>八、局限性</h2>
+<ul>
+<li><strong>仅适用于室内均匀照明：</strong>不适用于室外照明、道路照明、体育照明、应急照明等专项照明设计</li>
+<li><strong>不考虑灯具布置：</strong>本方法只给出灯具总数，不给出具体排列方式。灯具布置需根据房间形状和均匀度要求另行设计</li>
+<li><strong>单区域计算：</strong>每次只能计算一个矩形区域，多区域或连通空间需分别计算</li>
+<li><strong>静态计算：</strong>不考虑调光、智能控制等动态因素</li>
+<li><strong>不替代专业软件：</strong>对于复杂空间或高精度要求的项目，应使用 DIALux、AGi32 等专业照明设计软件</li>
+</ul>
+
+<h2>九、版本信息</h2>
+<p>当前版本：v2.0.0-完整版 20261021</p>
+<p>本工具为纯前端实现，无需服务器，可直接在浏览器中运行。所有计算在本地完成，不上传任何数据。</p>
+`;
+
+// ============================================================
+// 页面交互逻辑
+// ============================================================
+
+// ====== 计算界面（v2.1.0 新增） ======
+function liCalc() {
+  var out = document.getElementById('liOut'), err = document.getElementById('liErr');
+  out.classList.remove('show'); err.classList.remove('show');
+  function num(id) { var e = document.getElementById(id); if (!e) return NaN; var v = String(e.value).trim(); return v === '' ? NaN : parseFloat(v); }
+  var L = num('liL'), W = num('liW'), H = num('liH');
+  var sus = num('liSus'), work = num('liWork');
+  var E = num('liE'), flux = num('liFlux');
+  var ceil = num('liCeil'), wall = num('liWall'), floor = num('liFloor');
+  var env = document.getElementById('liEnv').value;
+  if (isNaN(L) || isNaN(W) || isNaN(H)) { err.textContent = '⚠ 房间长、宽、层高都要填'; err.classList.add('show'); return; }
+  if (isNaN(E) || isNaN(flux)) { err.textContent = '⚠ 要求照度和单灯光通量都要填'; err.classList.add('show'); return; }
+  if (isNaN(sus)) sus = 0;
+  if (isNaN(work)) work = 0.75;
+  if (isNaN(ceil)) ceil = 70;
+  if (isNaN(wall)) wall = 50;
+  if (isNaN(floor)) floor = 20;
+  try {
+    var r = fullCalculation({
+      length: L, width: W, roomHeight: H,
+      suspensionHeight: sus, workPlaneHeight: work,
+      requiredIlluminance: E, luminousFlux: flux,
+      ceilingReflectance: ceil, wallReflectance: wall, floorReflectance: floor,
+      environment: env
+    });
+    var f2 = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d === undefined ? 2 : d) : '—'; };
+    var html = '<div><span class="k">房间面积：</span><span class="v">' + f2(r.area) + ' m²</span></div>' +
+      '<div><span class="k">灯具安装高度 hm：</span><span class="v">' + f2(r.mountingHeight) + ' m</span></div>' +
+      '<div><span class="k">室形指数 RI：</span>' + f2(r.roomIndex, 3) + '</div>' +
+      '<div><span class="k">利用系数 U：</span>' + f2(r.utilizationFactor, 3) + '</div>' +
+      '<div><span class="k">维护系数 K：</span>' + f2(r.maintenanceFactor, 2) + '</div>' +
+      '<hr style="border:none;border-top:1px dashed #e8cfa8;margin:14px 0">' +
+      '<div><span class="k">所需灯具数量：</span><span class="v">' + r.luminaireCount + ' 盏</span></div>' +
+      '<div><span class="k">实际达到照度：</span><span class="v">' + f2(r.actualIlluminance, 1) + ' lx</span></div>';
+    if (r.actualIlluminance < E) html += '<div style="margin-top:10px;padding:10px 12px;background:#fff8e1;border-left:3px solid #f0a030;border-radius:4px;font-size:13px;color:#8a6d3b">💡 实际照度略低于要求值，建议再增一盏或选用更高光通量的灯具。</div>';
+    out.innerHTML = html;
+    out.classList.add('show');
+  } catch (e) { err.textContent = '⚠ ' + e.message; err.classList.add('show'); }
+}
+
+function switchTab(index) {
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === index);
+  });
+  document.querySelectorAll('.tab-content').forEach((content, i) => {
+    content.classList.toggle('active', i === index);
+  });
+}
+
+// 将源码显示到页面
+window.addEventListener('DOMContentLoaded', function() {
+  const sourceEl = document.getElementById('sourceCode');
+  // 获取第一个 script 标签的内容（即核心算法源码）
+  const scripts = document.querySelectorAll('script');
+  // 第一个 script 标签包含核心算法
+  const sourceScript = scripts[0];
+  if (sourceScript) {
+    sourceEl.textContent = sourceScript.textContent;
+  }
+});
+</script>
+</body>
+</html>

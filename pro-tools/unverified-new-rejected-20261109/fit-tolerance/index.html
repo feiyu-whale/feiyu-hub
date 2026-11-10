@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公差配合查询计算器</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#0a1628;color:#cfe3ff;font:13px/1.55 system-ui,"Microsoft YaHei",sans-serif;padding:10px 10px 34px;max-width:900px;margin:0 auto}
+h1{font-size:17px;color:#4a9eff}
+.sub{font-size:11px;color:#5f82ab;margin:2px 0 10px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tabs button{background:#122440;color:#9dc3f0;border:1px solid #1e3a5f;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:12px}
+.tabs button.on{background:#4a9eff;color:#06121f;font-weight:700}
+.p{display:none}.p.on{display:block}
+.card{background:#0f1f38;border:1px solid #1e3a5f;border-radius:8px;padding:10px;margin-bottom:10px}
+.card h2{font-size:13px;color:#4a9eff;margin-bottom:6px}
+label{display:block;font-size:11px;color:#7fa8d8;margin:6px 0 2px}
+input,select{width:100%;background:#0a1628;color:#e6f0ff;border:1px solid #1e3a5f;border-radius:5px;padding:6px;font-size:13px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:520px){.g2{grid-template-columns:1fr}}
+.go{width:100%;background:#4a9eff;color:#06121f;border:0;padding:10px;border-radius:6px;font-size:14px;font-weight:700;margin-top:10px;cursor:pointer}
+.r{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #1e3a5f;padding:4px 0}
+.r b{color:#4a9eff;text-align:right}
+.err{color:#ff6b6b;font-weight:700}
+.note{font-size:11px;color:#6f92b8;margin-top:8px;line-height:1.7}
+pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:#9dc3f0;max-height:400px;overflow:auto}
+.tst{font-size:12px;padding:3px 0;border-bottom:1px dashed #1e3a5f}
+.ok{color:#4ade80}.no{color:#ff6b6b}
+#ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#3d5f85;background:#0a1628}
+</style></head><body>
+<h1>公差配合查询计算器</h1>
+<div class="sub">数据来源：GB/T 1800.1—2020《产品几何技术规范(GPS) 线性尺寸公差 ISO 代号体系 第1部分：公差、偏差和配合的基础》标准公差数值表与基本偏差表</div>
+<div class="tabs">
+<button class="on" onclick="tab(0)">计算工具</button>
+<button onclick="tab(1)">JS 源码</button>
+<button onclick="tab(2)">单元测试</button>
+<button onclick="tab(3)">使用说明</button>
+</div>
+<div class="p on" id="p0">
+<div class="card"><h2>输入条件</h2><div class="g2">
+<div><label>基本尺寸 D (mm，0 &lt; D ≤ 500)</label><input id="D" value="25" inputmode="decimal"></div>
+<div><label>配合制式</label><select id="sys" onchange="syncSys()"><option value="H">基孔制（孔固定为 H）</option><option value="h">基轴制（轴固定为 h）</option></select></div>
+<div><label>孔基本偏差代号</label><select id="hc"><option>H</option><option>G</option><option>F</option><option>K</option><option>M</option><option>N</option><option>P</option></select></div>
+<div><label>孔公差等级</label><select id="hg"></select></div>
+<div><label>轴基本偏差代号</label><select id="sc"><option>h</option><option>g</option><option>f</option><option>e</option><option>d</option><option>k</option><option>m</option><option>n</option><option>p</option><option>s</option></select></div>
+<div><label>轴公差等级</label><select id="sg"></select></div>
+<div><label>孔零件材料</label><select id="mh"><option>钢</option><option>铝</option><option>铜</option><option>铸铁</option></select></div>
+<div><label>轴零件材料</label><select id="ms"><option>钢</option><option>铝</option><option>铜</option><option>铸铁</option></select></div>
+<div><label>工作温度 (℃)</label><input id="T" value="20" inputmode="decimal"></div>
+<div><label>工况类型（推荐配合参考）</label><select id="w"><option>一般传动</option><option>精密导向</option><option>滑动轴承</option><option>过盈传力</option></select></div>
+</div><button class="go" onclick="run()">开始计算</button></div>
+<div class="card"><h2>计算结果</h2><div id="out"><div class="note">请输入参数后点击「开始计算」。</div></div>
+<div class="note">公式（GB/T 1800.1—2020）：Xmax = ES − ei，Xmin = EI − es，Tf = Xmax − Xmin = Th + Ts。温度修正 ΔX = D·(α孔 − α轴)·(T − 20)，线膨胀系数取行业经验值（钢 11.5、铝 23、铜 17、铸铁 10.5 ×10⁻⁶/K，未经标准核对）。</div></div>
+</div>
+<div class="p" id="p1"><div class="card"><h2>核心计算函数源码（纯函数，可复制复用）</h2><pre id="src"></pre></div></div>
+<div class="p" id="p2"><div class="card"><h2>内置单元测试</h2><button class="go" onclick="runtest()">运行全部测试</button><div id="tout" class="note">点击按钮执行 10 条用例。</div></div></div>
+<div class="p" id="p3"><div class="card"><h2>使用说明</h2><div class="note">
+1. 配合制式：基孔制时孔固定 H，可选轴 d/e/f/g/h/k/m/n/p/s；基轴制时轴固定 h，可选孔 G/F/K/M/N/P。<br>
+2. 输入基本尺寸（0~500 mm）与孔、轴公差等级（IT5~IT11）后点击计算。<br>
+3. 结果给出孔/轴上下偏差（μm）、最大间隙 Xmax、最小间隙 Xmin（负值即过盈）、配合公差 Tf 与配合性质判断。<br>
+4. 材料与工作温度用于热变形修正：异种材料在非 20 ℃ 下配合间隙会发生偏移，ΔX 可叠加到 Xmax/Xmin 上使用。<br>
+5. 数据来源：GB/T 1800.1—2020 标准公差数值表与基本偏差表。孔 K/M/N/P 采用对应尺寸段基本偏差表值（IT7 级基准），IT8 及以上按标准需加 Δ 修正，本工具从简，误差约数微米。<br>
+6. 材料线膨胀系数与工况推荐配合为行业经验值，未经标准核对，仅供趋势参考。
+</div></div></div>
+<div id="ver">v1.0.0-fit-tolerance 20261108</div>
+<script>
+const B=[3,6,10,18,30,50,80,120,180,250,315,400,500];
+const IT={5:[4,5,6,8,9,11,13,15,18,20,23,25,27],6:[6,8,9,11,13,16,19,22,25,29,32,36,40],7:[10,12,15,18,21,25,30,35,40,46,52,57,63],8:[14,18,22,27,33,39,46,54,63,72,81,89,97],9:[25,30,36,43,52,62,74,87,100,115,130,140,155],10:[40,48,58,70,84,100,120,140,160,185,210,230,250],11:[60,75,90,110,130,160,190,220,250,290,320,360,400]};
+const AE={d:[-20,-30,-40,-50,-65,-80,-100,-120,-145,-170,-190,-210,-230],e:[-14,-20,-25,-32,-40,-50,-60,-72,-85,-100,-110,-125,-135],f:[-6,-10,-13,-16,-20,-25,-30,-36,-43,-50,-56,-62,-68],g:[-2,-4,-5,-6,-7,-9,-10,-12,-14,-15,-17,-18,-20],h:[0,0,0,0,0,0,0,0,0,0,0,0,0]};
+const AI={k:[0,1,1,1,2,2,2,3,3,4,4,4,5],m:[2,4,6,7,8,9,11,13,15,17,20,21,23],n:[4,8,10,12,15,17,20,23,27,31,34,37,40],p:[6,12,15,18,22,26,32,37,43,50,56,62,68],s:[14,19,23,28,35,43,53,64,77,96,106,119,131]};
+const HE={H:[0,0,0,0,0,0,0,0,0,0,0,0,0],G:[2,4,5,6,7,9,10,12,14,15,17,18,20],F:[6,10,13,16,20,25,30,36,43,50,56,62,68]};
+const HS={K:[0,0,-2,-2,-3,-3,-3,-3,-3,-4,-4,-4,-5],M:[-4,-5,-8,-8,-10,-10,-12,-12,-14,-15,-16,-17,-18],N:[-8,-12,-15,-18,-22,-26,-32,-37,-43,-50,-56,-62,-68],P:[-12,-18,-23,-28,-35,-43,-53,-64,-77,-96,-106,-119,-131]};
+const MAT={钢:11.5,铝:23,铜:17,铸铁:10.5};
+function seg(D){for(let i=0;i<13;i++)if(D<=B[i])return i;return -1}
+function tol(D,g){const i=seg(D);return i<0||!IT[g]?null:IT[g][i]}
+function hole(D,c,g){const i=seg(D);if(i<0||!IT[g])return null;const t=IT[g][i];let EI,ES;
+if(HE[c]){EI=HE[c][i];ES=EI+t}else if(HS[c]){ES=HS[c][i];EI=ES-t}else return null;return{EI,ES}}
+function shaft(D,c,g){const i=seg(D);if(i<0||!IT[g])return null;const t=IT[g][i];let es,ei;
+if(AE[c]){es=AE[c][i];ei=es-t}else if(AI[c]){ei=AI[c][i];es=ei+t}else return null;return{es,ei}}
+function fit(D,H,S){const h=hole(D,H.c,H.g),s=shaft(D,S.c,S.g);if(!h||!s)return null;
+const Xmax=h.ES-s.ei,Xmin=h.EI-s.es;const type=Xmin>=0?'间隙配合':(Xmax<=0?'过盈配合':'过渡配合');
+return{EI:h.EI,ES:h.ES,es:s.es,ei:s.ei,Xmax,Xmin,Tf:Xmax-Xmin,type}}
+function thermal(D,a1,a2,T){return D*(a1-a2)*(T-20)/1000}
+function tab(i){document.querySelectorAll('.p').forEach((e,k)=>e.classList.toggle('on',k===i));
+document.querySelectorAll('.tabs button').forEach((e,k)=>e.classList.toggle('on',k===i))}
+function syncSys(){const s=document.getElementById('sys').value,hc=document.getElementById('hc'),sc=document.getElementById('sc');
+if(s==='H'){hc.value='H';hc.disabled=true;sc.disabled=false}else{sc.value='h';sc.disabled=true;hc.disabled=false}}
+function run(){const out=document.getElementById('out');
+try{
+const dv=document.getElementById('D').value.trim();
+if(dv==='')throw'基本尺寸不能为空';
+const D=Number(dv);
+if(!isFinite(D))throw'基本尺寸必须为数字';
+if(D<=0)throw'基本尺寸必须大于 0';
+if(D>500)throw'基本尺寸超出 GB/T 1800.1 常用范围（0~500 mm）';
+const tv=document.getElementById('T').value.trim();
+if(tv==='')throw'工作温度不能为空';
+const T=Number(tv);
+if(!isFinite(T))throw'工作温度必须为数字';
+if(T<-50||T>300)throw'工作温度应在 −50 ~ 300 ℃ 之间';
+const sys=document.getElementById('sys').value;
+let hc=document.getElementById('hc').value,sc=document.getElementById('sc').value;
+if(sys==='H')hc='H';else sc='h';
+const hg=Number(document.getElementById('hg').value),sg=Number(document.getElementById('sg').value);
+const mh=document.getElementById('mh').value,ms=document.getElementById('ms').value;
+const w=document.getElementById('w').value;
+const f=fit(D,{c:hc,g:hg},{c:sc,g:sg});
+if(!f)throw'该代号/等级组合暂无数据，请检查输入';
+const dX=thermal(D,MAT[mh],MAT[ms],T);
+const REC={'一般传动':'H7/g6','精密导向':'H7/h6','滑动轴承':'H7/f7','过盈传力':'H7/p6'};
+const sgn=v=>(v>0?'+':'')+v;
+let html='';const p=(k,v)=>html+='<div class="r"><span>'+k+'</span><b>'+v+'</b></div>';
+p('尺寸分段','≤ '+B[seg(D)]+' mm');
+p('孔 '+hc+hg+' 偏差 EI / ES',sgn(f.EI)+' / '+sgn(f.ES)+' μm');
+p('轴 '+sc+sg+' 偏差 ei / es',sgn(f.ei)+' / '+sgn(f.es)+' μm');
+p('最大间隙 Xmax',f.Xmax+' μm');
+p('最小间隙 Xmin',f.Xmin+' μm'+(f.Xmin<0?'（负值=过盈）':''));
+p('配合公差 Tf',f.Tf+' μm');
+p('配合性质','<span style="color:#4ade80">'+f.type+'</span>');
+p('推荐配合参考',REC[w]+'（行业经验值，未经标准核对）');
+p('温度修正 ΔX @'+T+'℃',sgn(+dX.toFixed(1))+' μm');
+p('修正后 Xmax',(f.Xmax+dX).toFixed(1)+' μm');
+p('修正后 Xmin',(f.Xmin+dX).toFixed(1)+' μm');
+out.innerHTML=html;
+}catch(e){out.innerHTML='<div class="err">⚠ '+e+'</div>'}}
+const TESTS=[
+['IT7 @D=25 → 21',()=>tol(25,7),21],
+['IT6 @D=50 → 16',()=>tol(50,6),16],
+['H7 @25 ES → +21',()=>hole(25,'H',7).ES,21],
+['g6 @25 es → −7',()=>shaft(25,'g',6).es,-7],
+['g6 @25 ei → −20',()=>shaft(25,'g',6).ei,-20],
+['H7/g6 @25 Xmax → 41',()=>fit(25,{c:'H',g:7},{c:'g',g:6}).Xmax,41],
+['H7/g6 @25 Xmin → 7',()=>fit(25,{c:'H',g:7},{c:'g',g:6}).Xmin,7],
+['H7/k6 @25 → 过渡配合',()=>fit(25,{c:'H',g:7},{c:'k',g:6}).type,'过渡配合'],
+['H7/p6 @25 → 过盈配合',()=>fit(25,{c:'H',g:7},{c:'p',g:6}).type,'过盈配合'],
+['D=600 超范围 → null',()=>tol(600,7),null]];
+function runtest(){let h='',p=0;
+TESTS.forEach(t=>{let got;try{got=t[1]()}catch(e){got='异常'}
+const ok=got===t[2];if(ok)p++;
+h+='<div class="tst '+(ok?'ok':'no')+'">'+(ok?'✔':'✘')+' '+t[0]+' ｜ 期望 '+t[2]+' ｜ 实际 '+got+'</div>'});
+h+='<div class="tst"><b>'+p+' / '+TESTS.length+' 通过</b></div>';
+document.getElementById('tout').innerHTML=h}
+[5,6,7,8,9,10,11].forEach(g=>['hg','sg'].forEach(id=>document.getElementById(id).add(new Option('IT'+g,g))));
+document.getElementById('hg').value='7';document.getElementById('sg').value='6';
+document.getElementById('src').textContent=
+'// 尺寸分段上界 (mm)\nconst B=['+B.join(',')+'];\n\n// 标准公差 IT5~IT11 (μm)，来源 GB/T 1800.1—2020\nconst IT='+JSON.stringify(IT)+';\n\n// 轴基本偏差 es (μm)\nconst AE='+JSON.stringify(AE)+';\n\n// 轴基本偏差 ei (μm)\nconst AI='+JSON.stringify(AI)+';\n\n// 孔基本偏差 EI (μm)\nconst HE='+JSON.stringify(HE)+';\n\n// 孔基本偏差 ES (μm)\nconst HS='+JSON.stringify(HS)+';\n\n'+seg.toString()+'\n\n'+tol.toString()+'\n\n'+hole.toString()+'\n\n'+shaft.toString()+'\n\n'+fit.toString()+'\n\n'+thermal.toString();
+</script></body></html>

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>酒类酒精度与卡路里换算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 24px; margin-bottom: 6px; }
+  header p { font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e5e5ea;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #6e6e73;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #fafafa; }
+  .tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .warning {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 14px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .warning strong { color: #856404; }
+  .danger {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+    padding: 14px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #721c24;
+  }
+  .doc h2 { margin: 22px 0 10px; color: #1d1d1f; font-size: 20px; border-bottom: 2px solid #667eea; padding-bottom: 6px; }
+  .doc h3 { margin: 16px 0 8px; color: #333; font-size: 16px; }
+  .doc p { margin: 8px 0; font-size: 14.5px; }
+  .doc ul, .doc ol { margin: 8px 0 8px 24px; font-size: 14.5px; }
+  .doc li { margin: 4px 0; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  .doc th, .doc td { border: 1px solid #d1d1d6; padding: 8px 10px; text-align: left; }
+  .doc th { background: #f2f2f7; }
+  .doc code {
+    background: #f2f2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #af52de;
+  }
+  .scene {
+    background: #fff;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 10px 0;
+  }
+  .scene h4 { color: #667eea; margin-bottom: 6px; }
+  .test-result {
+    background: #fff;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 14px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .pass { color: #34c759; }
+  .fail { color: #ff3b30; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #8e8e93;
+    background: rgba(255,255,255,0.8);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍷 酒类酒精度与卡路里换算工具</h1>
+  <p>基于 GB 5009.225、Atwater 系数、Widmark 公式的科学计算</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">🧮 计算器</div>
+  <div class="tab" data-tab="source">源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明</div>
+</div>
+
+<div class="panel active" id="panel-calc">
+  <div class="warning">
+    <strong>⚠️ 提醒：</strong>卡路里为理论估算值。<strong>血液酒精浓度（BAC）绝不能用来判断能否开车</strong>，实际受空腹、肝功能、耐受度等影响极大，请以交警检测为准。
+  </div>
+  <div class="card">
+    <h2>酒类卡路里换算</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>酒类</label>
+        <select id="acCategory">
+          <option value="啤酒">啤酒</option>
+          <option value="白酒">白酒</option>
+          <option value="红酒">红酒</option>
+          <option value="黄酒">黄酒</option>
+          <option value="威士忌">威士忌</option>
+          <option value="伏特加">伏特加</option>
+          <option value="朗姆酒">朗姆酒</option>
+          <option value="白兰地">白兰地</option>
+          <option value="清酒">清酒</option>
+          <option value="米酒">米酒</option>
+          <option value="自定义">自定义</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>酒精度（%vol）</label>
+        <input type="number" id="acAbv" value="4.5" min="0" max="100" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>饮用量（ml）</label>
+        <input type="number" id="acVolume" value="500" min="0" max="100000" step="1">
+      </div>
+      <div class="form-group">
+        <label>碳水化合物（g/100ml，可留空）</label>
+        <input type="number" id="acCarb" value="" min="0" max="100" step="0.1" placeholder="留空则用品类典型值">
+      </div>
+      <div class="form-group">
+        <label>体重（kg，用于 BAC 估算）</label>
+        <input type="number" id="acWeight" value="70" min="20" max="300" step="1">
+      </div>
+      <div class="form-group">
+        <label>性别</label>
+        <select id="acGender">
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>已过时间（小时）</label>
+        <input type="number" id="acHours" value="0" min="0" max="200" step="0.5">
+      </div>
+    </div>
+    <button class="btn" onclick="acCalculate()">🔎 换算</button>
+    <button class="btn btn-secondary" onclick="acReset()">重置</button>
+    <div id="acResult"></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-source">
+  <div class="warning">
+    <strong>⚠️ 重要提示：</strong>本工具所有计算结果均为理论估算值，<strong>血液酒精浓度（BAC）绝不能用来判断能否开车</strong>。实际 BAC 受空腹/饱腹、肝功能、个体耐受度、饮酒速度、是否混饮等多因素影响，差异极大。驾驶前请以交警呼气/血液检测为准。
+  </div>
+  <pre id="source-code"></pre>
+</div>
+
+<div class="panel" id="panel-test">
+  <div class="warning">
+    <strong>测试说明：</strong>共 32 个测试用例，覆盖正常值、边界值、异常输入、精度问题。打开浏览器控制台可查看完整输出。
+  </div>
+  <pre id="test-code"></pre>
+  <div class="test-result" id="test-result"></div>
+</div>
+
+<div class="panel doc" id="panel-doc">
+  <div id="doc-content"></div>
+</div>
+
+<div class="version">v3.0.0-加交互界面 20261025</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码
+ * ============================================================ */
+const SOURCE_CODE = `/**
+ * 酒类酒精度与卡路里换算核心算法库
+ *
+ * 依据：
+ *  - GB 5009.225-2016《食品安全国家标准 酒中乙醇浓度的测定》（酒精度定义）
+ *  - Atwater 系数：酒精 7 kcal/g（FAO/WHO 通行能量折算系数）
+ *  - Widmark 公式（法医学通行 BAC 估算式）
+ *  - 乙醇密度 0.789 g/mL（20°C 标准物理常数）
+ *
+ * 所有函数均为纯函数，无副作用，不依赖外部库。
+ */
+
+/**
+ * 乙醇密度（g/mL），20°C 标准值
+ * @constant {number}
+ */
+const ETHANOL_DENSITY = 0.789;
+
+/**
+ * 酒精能量系数（kcal/g），Atwater 系数
+ * @constant {number}
+ */
+const ALCOHOL_KCAL_PER_GRAM = 7;
+
+/**
+ * 碳水化合物能量系数（kcal/g），Atwater 系数
+ * @constant {number}
+ */
+const CARB_KCAL_PER_GRAM = 4;
+
+/**
+ * WHO 标准杯所含纯酒精克数
+ * @constant {number}
+ */
+const STANDARD_DRINK_GRAMS = 10;
+
+/**
+ * Widmark 分布系数（性别）
+ * @constant {Object}
+ */
+const WIDMARK_R = { male: 0.68, female: 0.55 };
+
+/**
+ * 酒精代谢速率（‰/小时），Widmark 经验值
+ * @constant {number}
+ */
+const METABOLISM_RATE = 0.15;
+
+/**
+ * 常见酒种典型碳水化合物含量（g/100mL）
+ * 数据来源：USDA FoodData Central 及中国食物成分表典型值
+ * 注意：实际因品牌、工艺差异较大，此处仅为典型参考
+ * @constant {Object}
+ */
+const TYPICAL_CARB = {
+  '啤酒':     { min: 3.0, max: 5.0, typical: 3.6 },
+  '红酒':     { min: 2.0, max: 4.0, typical: 2.6 },
+  '白酒':     { min: 0.0, max: 0.5, typical: 0.0 },
+  '黄酒':     { min: 3.0, max: 6.0, typical: 4.0 },
+  '威士忌':   { min: 0.0, max: 0.1, typical: 0.0 },
+  '伏特加':   { min: 0.0, max: 0.0, typical: 0.0 },
+  '朗姆酒':   { min: 0.0, max: 0.1, typical: 0.0 },
+  '白兰地':   { min: 0.0, max: 0.5, typical: 0.0 },
+  '清酒':     { min: 3.0, max: 6.0, typical: 4.5 },
+  '米酒':     { min: 5.0, max: 15.0, typical: 8.0 }
+};
+
+/**
+ * 校验数值输入合法性
+ * @param {number} value - 待校验值
+ * @param {string} name - 参数名（用于错误信息）
+ * @param {number} min - 最小值（含）
+ * @param {number} max - 最大值（含）
+ * @returns {number} 校验通过的数值
+ * @throws {TypeError} 非数字类型
+ * @throws {RangeError} 超出范围
+ */
+function validateNumber(value, name, min, max) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new TypeError(\`\${name} 必须是有效数字，收到: \${value}\`);
+  }
+  if (value < min || value > max) {
+    throw new RangeError(\`\${name} 必须在 [\${min}, \${max}] 范围内，收到: \${value}\`);
+  }
+  return value;
+}
+
+/**
+ * 计算纯酒精克数
+ *
+ * 公式：酒精克数 = 容量(mL) × 酒精度(%vol) / 100 × 0.789
+ *
+ * @param {number} volumeMl - 酒液容量，单位 mL，范围 (0, 100000]
+ * @param {number} abvPercent - 酒精度，单位 %vol，范围 (0, 100]
+ * @returns {number} 纯酒精质量，单位 g
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数超出范围
+ * @example
+ *   calcAlcoholGrams(500, 5);   // 啤酒 500mL 5%vol → 19.725 g
+ *   calcAlcoholGrams(100, 52);  // 白酒 100mL 52%vol → 41.028 g
+ */
+function calcAlcoholGrams(volumeMl, abvPercent) {
+  validateNumber(volumeMl, 'volumeMl', 0, 100000);
+  validateNumber(abvPercent, 'abvPercent', 0, 100);
+  if (volumeMl <= 0 || abvPercent <= 0) return 0;
+  return volumeMl * (abvPercent / 100) * ETHANOL_DENSITY;
+}
+
+/**
+ * 计算酒精本身提供的热量
+ *
+ * 公式：酒精热量(kcal) = 酒精克数 × 7
+ *
+ * @param {number} alcoholGrams - 纯酒精质量，单位 g，≥ 0
+ * @returns {number} 酒精热量，单位 kcal
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数为负
+ * @example
+ *   calcAlcoholKcal(19.725);  // → 138.075 kcal
+ */
+function calcAlcoholKcal(alcoholGrams) {
+  validateNumber(alcoholGrams, 'alcoholGrams', 0, 1e9);
+  return alcoholGrams * ALCOHOL_KCAL_PER_GRAM;
+}
+
+/**
+ * 计算酒液中碳水化合物提供的热量
+ *
+ * 公式：碳水热量(kcal) = 容量(mL) × 碳水含量(g/100mL) / 100 × 4
+ *
+ * @param {number} volumeMl - 酒液容量，单位 mL，≥ 0
+ * @param {number} carbPer100ml - 每 100mL 碳水化合物克数，≥ 0
+ * @returns {number} 碳水热量，单位 kcal
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数为负
+ * @example
+ *   calcCarbKcal(500, 3.6);  // 啤酒 500mL → 72 kcal
+ */
+function calcCarbKcal(volumeMl, carbPer100ml) {
+  validateNumber(volumeMl, 'volumeMl', 0, 1e9);
+  validateNumber(carbPer100ml, 'carbPer100ml', 0, 100);
+  return volumeMl * (carbPer100ml / 100) * CARB_KCAL_PER_GRAM;
+}
+
+/**
+ * 计算总热量（酒精热量 + 碳水热量）
+ *
+ * @param {number} volumeMl - 容量 mL
+ * @param {number} abvPercent - 酒精度 %vol
+ * @param {number} [carbPer100ml=0] - 每 100mL 碳水克数，默认 0
+ * @returns {{ alcoholKcal: number, carbKcal: number, totalKcal: number }}
+ * @throws {TypeError|RangeError} 参数非法
+ * @example
+ *   calcTotalKcal(500, 5, 3.6);
+ *   // → { alcoholKcal: 138.075, carbKcal: 72, totalKcal: 210.075 }
+ */
+function calcTotalKcal(volumeMl, abvPercent, carbPer100ml = 0) {
+  const alcoholGrams = calcAlcoholGrams(volumeMl, abvPercent);
+  const alcoholKcal = calcAlcoholKcal(alcoholGrams);
+  const carbKcal = calcCarbKcal(volumeMl, carbPer100ml);
+  return {
+    alcoholKcal: alcoholKcal,
+    carbKcal: carbKcal,
+    totalKcal: alcoholKcal + carbKcal
+  };
+}
+
+/**
+ * 计算标准杯数（WHO 标准：1 标准杯 = 10g 纯酒精）
+ *
+ * @param {number} alcoholGrams - 纯酒精质量 g
+ * @returns {number} 标准杯数
+ * @throws {TypeError|RangeError} 参数非法
+ * @example
+ *   calcStandardDrinks(19.725);  // → 1.9725 杯
+ */
+function calcStandardDrinks(alcoholGrams) {
+  validateNumber(alcoholGrams, 'alcoholGrams', 0, 1e9);
+  return alcoholGrams / STANDARD_DRINK_GRAMS;
+}
+
+/**
+ * 估算血液酒精浓度 BAC（Widmark 公式）
+ *
+ * 公式：BAC(‰) = 酒精克数 / (体重kg × r) - 代谢率 × 时间h
+ *   - r：男性 0.68，女性 0.55
+ *   - 代谢率：0.15‰/小时
+ *
+ * 注意：结果下限为 0（不返回负数）
+ *
+ * @param {number} alcoholGrams - 纯酒精质量 g
+ * @param {number} weightKg - 体重 kg，范围 (20, 300]
+ * @param {'male'|'female'} gender - 性别
+ * @param {number} [hoursElapsed=0] - 饮酒后经过小时数，≥ 0
+ * @returns {number} BAC 估算值，单位 ‰（千分比）
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 参数超出范围
+ * @example
+ *   estimateBAC(19.725, 70, 'male', 0);
+ *   // → 约 0.42‰
+ */
+function estimateBAC(alcoholGrams, weightKg, gender, hoursElapsed = 0) {
+  validateNumber(alcoholGrams, 'alcoholGrams', 0, 1e9);
+  validateNumber(weightKg, 'weightKg', 20, 300);
+  validateNumber(hoursElapsed, 'hoursElapsed', 0, 200);
+  if (gender !== 'male' && gender !== 'female') {
+    throw new TypeError(\`gender 必须是 'male' 或 'female'，收到: \${gender}\`);
+  }
+  const r = WIDMARK_R[gender];
+  const peak = alcoholGrams / (weightKg * r);
+  const metabolized = METABOLISM_RATE * hoursElapsed;
+  const bac = peak - metabolized;
+  return Math.max(0, bac);
+}
+
+/**
+ * 一站式综合计算：给定酒种、酒精度、容量，返回全部指标
+ *
+ * @param {Object} options - 输入参数
+ * @param {string} options.category - 酒种（如 '啤酒'、'红酒'）
+ * @param {number} options.abvPercent - 酒精度 %vol
+ * @param {number} options.volumeMl - 容量 mL
+ * @param {number} [options.carbPer100ml] - 碳水 g/100mL，未提供则用典型值
+ * @param {number} [options.weightKg=70] - 体重 kg（用于 BAC）
+ * @param {'male'|'female'} [options.gender='male'] - 性别（用于 BAC）
+ * @param {number} [options.hoursElapsed=0] - 饮酒后经过小时数
+ * @returns {Object} 完整计算结果
+ * @throws {TypeError|RangeError} 参数非法
+ * @example
+ *   analyzeDrink({
+ *     category: '啤酒', abvPercent: 5, volumeMl: 500,
+ *     weightKg: 70, gender: 'male'
+ *   });
+ */
+function analyzeDrink(options) {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('options 必须是对象');
+  }
+  const { category, abvPercent, volumeMl } = options;
+  if (typeof category !== 'string' || category.length === 0) {
+    throw new TypeError('category 必须是非空字符串');
+  }
+  const weightKg = options.weightKg !== undefined ? options.weightKg : 70;
+  const gender = options.gender || 'male';
+  const hoursElapsed = options.hoursElapsed !== undefined ? options.hoursElapsed : 0;
+
+  const carbPer100ml = options.carbPer100ml !== undefined
+    ? options.carbPer100ml
+    : (TYPICAL_CARB[category] ? TYPICAL_CARB[category].typical : 0);
+
+  const alcoholGrams = calcAlcoholGrams(volumeMl, abvPercent);
+  const kcal = calcTotalKcal(volumeMl, abvPercent, carbPer100ml);
+  const standardDrinks = calcStandardDrinks(alcoholGrams);
+  const bac = estimateBAC(alcoholGrams, weightKg, gender, hoursElapsed);
+
+  return {
+    category,
+    abvPercent,
+    volumeMl,
+    carbPer100ml,
+    alcoholGrams: +alcoholGrams.toFixed(3),
+    alcoholKcal: +kcal.alcoholKcal.toFixed(2),
+    carbKcal: +kcal.carbKcal.toFixed(2),
+    totalKcal: +kcal.totalKcal.toFixed(2),
+    standardDrinks: +standardDrinks.toFixed(2),
+    bacPerMille: +bac.toFixed(3),
+    bacWarning: bac >= 0.2 ? '已达酒驾标准（≥0.2‰），严禁驾驶' :
+                bac >= 0.02 ? '可能影响驾驶能力，建议勿驾车' : '理论值较低，但仍不建议立即驾驶'
+  };
+}
+
+// 导出（兼容浏览器与 Node）
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    ETHANOL_DENSITY, ALCOHOL_KCAL_PER_GRAM, CARB_KCAL_PER_GRAM,
+    STANDARD_DRINK_GRAMS, WIDMARK_R, METABOLISM_RATE, TYPICAL_CARB,
+    validateNumber, calcAlcoholGrams, calcAlcoholKcal, calcCarbKcal,
+    calcTotalKcal, calcStandardDrinks, estimateBAC, analyzeDrink
+  };
+}
+`;
+
+/* ============================================================
+ * 第二部分：单元测试
+ * ============================================================ */
+const TEST_CODE = `/**
+ * 自实现极简测试框架 + 32 个测试用例
+ * 覆盖：正常值、边界值、异常输入、精度问题
+ */
+
+let passed = 0, failed = 0, total = 0;
+const failures = [];
+
+function assert(condition, message) {
+  total++;
+  if (condition) {
+    passed++;
+    console.log('  ✓ ' + message);
+  } else {
+    failed++;
+    failures.push(message);
+    console.log('  ✗ ' + message);
+  }
+}
+
+function assertClose(actual, expected, tolerance, message) {
+  assert(Math.abs(actual - expected) <= tolerance,
+    message + ' (期望 ' + expected + '，实际 ' + actual + '，容差 ' + tolerance + ')');
+}
+
+function assertThrows(fn, errorType, message) {
+  total++;
+  try {
+    fn();
+    failed++;
+    failures.push(message + ' (未抛出异常)');
+    console.log('  ✗ ' + message);
+  } catch (e) {
+    if (e instanceof errorType) {
+      passed++;
+      console.log('  ✓ ' + message);
+    } else {
+      failed++;
+      failures.push(message + ' (抛出 ' + e.constructor.name + ' 而非 ' + errorType.name + ')');
+      console.log('  ✗ ' + message);
+    }
+  }
+}
+
+console.log('=== 开始运行测试 ===\\n');
+
+// ---------- calcAlcoholGrams ----------
+console.log('[calcAlcoholGrams]');
+assertClose(calcAlcoholGrams(500, 5), 19.725, 0.001, '啤酒 500mL 5%vol');
+assertClose(calcAlcoholGrams(100, 52), 41.028, 0.001, '白酒 100mL 52%vol');
+assertClose(calcAlcoholGrams(750, 13), 76.9275, 0.001, '红酒 750mL 13%vol');
+assertClose(calcAlcoholGrams(50, 40), 15.78, 0.001, '威士忌 50mL 40%vol');
+assert(calcAlcoholGrams(0, 5) === 0, '容量为 0 返回 0');
+assert(calcAlcoholGrams(500, 0) === 0, '酒精度为 0 返回 0');
+assertThrows(() => calcAlcoholGrams(-1, 5), RangeError, '容量负数抛 RangeError');
+assertThrows(() => calcAlcoholGrams(500, 101), RangeError, '酒精度超 100 抛 RangeError');
+assertThrows(() => calcAlcoholGrams('500', 5), TypeError, '容量字符串抛 TypeError');
+assertThrows(() => calcAlcoholGrams(NaN, 5), TypeError, '容量 NaN 抛 TypeError');
+assertThrows(() => calcAlcoholGrams(null, 5), TypeError, '容量 null 抛 TypeError');
+assertThrows(() => calcAlcoholGrams(undefined, 5), TypeError, '容量 undefined 抛 TypeError');
+
+// ---------- calcAlcoholKcal ----------
+console.log('\\n[calcAlcoholKcal]');
+assertClose(calcAlcoholKcal(19.725), 138.075, 0.001, '19.725g 酒精 → 138.075 kcal');
+assert(calcAlcoholKcal(0) === 0, '0g 酒精 → 0 kcal');
+assertThrows(() => calcAlcoholKcal(-1), RangeError, '负数克数抛 RangeError');
+
+// ---------- calcCarbKcal ----------
+console.log('\\n[calcCarbKcal]');
+assertClose(calcCarbKcal(500, 3.6), 72, 0.001, '啤酒 500mL 3.6g/100mL → 72 kcal');
+assert(calcCarbKcal(500, 0) === 0, '碳水为 0 → 0 kcal');
+assertThrows(() => calcCarbKcal(500, -1), RangeError, '碳水负数抛 RangeError');
+
+// ---------- calcTotalKcal ----------
+console.log('\\n[calcTotalKcal]');
+const total1 = calcTotalKcal(500, 5, 3.6);
+assertClose(total1.alcoholKcal, 138.075, 0.001, '啤酒总热量-酒精部分');
+assertClose(total1.carbKcal, 72, 0.001, '啤酒总热量-碳水部分');
+assertClose(total1.totalKcal, 210.075, 0.001, '啤酒总热量-合计');
+const total2 = calcTotalKcal(100, 52, 0);
+assertClose(total2.totalKcal, 287.196, 0.01, '白酒总热量（无碳水）');
+
+// ---------- calcStandardDrinks ----------
+console.log('\\n[calcStandardDrinks]');
+assertClose(calcStandardDrinks(10), 1, 0.001, '10g → 1 标准杯');
+assertClose(calcStandardDrinks(19.725), 1.9725, 0.001, '19.725g → 1.9725 杯');
+assertThrows(() => calcStandardDrinks(-1), RangeError, '负数抛 RangeError');
+
+// ---------- estimateBAC ----------
+console.log('\\n[estimateBAC]');
+// 19.725g / (70 × 0.68) ≈ 0.416‰
+assertClose(estimateBAC(19.725, 70, 'male', 0), 0.416, 0.002, '男性 70kg 19.725g 即时 BAC');
+// 19.725g / (60 × 0.55) ≈ 0.598‰
+assertClose(estimateBAC(19.725, 60, 'female', 0), 0.598, 0.002, '女性 60kg 19.725g 即时 BAC');
+// 1 小时后代谢 0.15‰
+assertClose(estimateBAC(19.725, 70, 'male', 1), 0.266, 0.002, '男性 1 小时后 BAC');
+// 足够长时间后归 0
+assert(estimateBAC(10, 70, 'male', 100) === 0, '长时间代谢后归 0');
+assertThrows(() => estimateBAC(10, 70, 'other', 0), TypeError, '非法性别抛 TypeError');
+assertThrows(() => estimateBAC(10, 15, 'male', 0), RangeError, '体重过轻抛 RangeError');
+
+// ---------- analyzeDrink ----------
+console.log('\\n[analyzeDrink]');
+const r1 = analyzeDrink({ category: '啤酒', abvPercent: 5, volumeMl: 500, weightKg: 70, gender: 'male' });
+assert(r1.alcoholGrams > 19 && r1.alcoholGrams < 20, '啤酒分析-酒精克数合理');
+assert(r1.totalKcal > 200 && r1.totalKcal < 220, '啤酒分析-总热量合理');
+assert(r1.standardDrinks > 1.9 && r1.standardDrinks < 2.1, '啤酒分析-标准杯合理');
+assert(r1.bacPerMille > 0.3 && r1.bacPerMille < 0.5, '啤酒分析-BAC 合理');
+assert(typeof r1.bacWarning === 'string', '啤酒分析-含警告文案');
+assertThrows(() => analyzeDrink(null), TypeError, 'null 参数抛 TypeError');
+assertThrows(() => analyzeDrink({}), TypeError, '缺 category 抛 TypeError');
+
+// ---------- 精度问题 ----------
+console.log('\\n[精度问题]');
+// 0.1 + 0.2 经典问题
+const p = calcAlcoholGrams(100, 1);  // 100 × 0.01 × 0.789 = 0.789
+assertClose(p, 0.789, 1e-10, '浮点精度：0.789 应精确');
+
+// ---------- 汇总 ----------
+console.log('\\n=== 测试完成 ===');
+console.log('通过 ' + passed + ' / 共 ' + total);
+if (failed > 0) {
+  console.log('失败用例：');
+  failures.forEach(f => console.log('  - ' + f));
+}
+`;
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+const DOC_CONTENT = `
+<h2>一、工具简介</h2>
+<p>本工具用于科学估算饮用酒类后摄入的<strong>纯酒精克数、热量（kcal）、标准杯数</strong>以及<strong>血液酒精浓度（BAC）</strong>的理论值。适用于：</p>
+<ul>
+  <li>关注热量摄入、进行体重管理的人群</li>
+  <li>需要了解"喝了多少酒精"的健康意识者</li>
+  <li>科普教育场景（理解酒精度、标准杯等概念）</li>
+  <li>餐饮、健康管理类应用的算法参考</li>
+</ul>
+<p>本工具<strong>不提供医疗建议</strong>，<strong>计算结果绝不能作为能否驾车的判断依据</strong>。</p>
+
+<div class="danger">
+  <strong>🚨 严正声明：</strong>血液酒精浓度（BAC）估算值仅供科普参考，<strong>实际 BAC 受空腹/饱腹、肝功能、个体耐受度、饮酒速度、是否混饮、是否服药等多因素影响，个体差异极大</strong>。任何情况下，<strong>都不得依据本工具结果判断能否驾驶</strong>。驾驶前请以交警呼气式酒精检测或血液检测为准。
+</div>
+
+<h2>二、核心参数详解</h2>
+
+<h3>2.1 酒种（category）</h3>
+<p>字符串类型，用于匹配典型碳水化合物含量。支持值：</p>
+<table>
+  <tr><th>酒种</th><th>典型酒精度 %vol</th><th>典型碳水 g/100mL</th><th>数据来源</th></tr>
+  <tr><td>啤酒</td><td>3 - 5</td><td>3.0 - 5.0（典型 3.6）</td><td>USDA FoodData Central / 中国食物成分表</td></tr>
+  <tr><td>红酒</td><td>11 - 14</td><td>2.0 - 4.0（典型 2.6）</td><td>干红更低，甜红酒更高</td></tr>
+  <tr><td>白酒</td><td>38 - 53</td><td>0 - 0.5（典型 0）</td><td>蒸馏酒几乎不含碳水</td></tr>
+  <tr><td>黄酒</td><td>14 - 18</td><td>3.0 - 6.0（典型 4.0）</td><td>含残余糖分</td></tr>
+  <tr><td>威士忌</td><td>40 - 43</td><td>0</td><td>蒸馏酒</td></tr>
+  <tr><td>伏特加</td><td>40</td><td>0</td><td>蒸馏酒</td></tr>
+  <tr><td>朗姆酒</td><td>40</td><td>0</td><td>蒸馏酒</td></tr>
+  <tr><td>白兰地</td><td>40</td><td>0 - 0.5</td><td>蒸馏酒</td></tr>
+  <tr><td>清酒</td><td>15 - 16</td><td>3.0 - 6.0（典型 4.5）</td><td>含残余糖分与氨基酸</td></tr>
+  <tr><td>米酒</td><td>10 - 18</td><td>5.0 - 15.0（典型 8.0）</td><td>甜米酒含糖高</td></tr>
+</table>
+<p><strong>注意：</strong>以上为典型参考值，实际因品牌、工艺、年份差异较大。如需精确值，请查阅产品营养标签或送检（依据 GB 5009.225 测定酒精度，GB 28050 测定营养成分）。</p>
+
+<h3>2.2 酒精度（abvPercent）</h3>
+<ul>
+  <li><strong>单位：</strong>%vol（体积百分比），即 20°C 时 100mL 酒液中含乙醇的 mL 数</li>
+  <li><strong>定义依据：</strong>GB 5009.225-2016《食品安全国家标准 酒中乙醇浓度的测定》</li>
+  <li><strong>范围：</strong>(0, 100]，实际酒类不超过 70%vol（如生命之水 96%vol 为特例，本工具上限设为 100）</li>
+  <li><strong>常见误区：</strong>"度"在白酒中即指 %vol，52 度白酒 = 52%vol；啤酒的"度"常指原麦汁浓度（°P），<strong>不等于酒精度</strong>，需查看标签上的"酒精度"字段</li>
+</ul>
+
+<h3>2.3 容量（volumeMl）</h3>
+<ul>
+  <li><strong>单位：</strong>mL（毫升）</li>
+  <li><strong>范围：</strong>(0, 100000]</li>
+  <li><strong>常见规格参考：</strong>
+    <ul>
+      <li>啤酒小瓶 330mL、大瓶 500mL、扎杯 500-1000mL</li>
+      <li>红酒标准瓶 750mL、一杯约 150mL</li>
+      <li>白酒一杯约 50mL（1 两）、一瓶 500mL</li>
+      <li>威士忌单份（single shot）约 30-50mL</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>2.4 体重（weightKg）与性别（gender）</h3>
+<p>仅用于 BAC 估算（Widmark 公式）：</p>
+<ul>
+  <li><strong>体重：</strong>kg，范围 (20, 300]</li>
+  <li><strong>性别：</strong>'male' 或 'female'，对应 Widmark 分布系数 r = 0.68 / 0.55</li>
+  <li>r 值反映体液占比差异，男性肌肉占比高、体液占比高，故 r 较大</li>
+</ul>
+
+<h3>2.5 经过时间（hoursElapsed）</h3>
+<ul>
+  <li><strong>单位：</strong>小时</li>
+  <li><strong>作用：</strong>用于估算酒精代谢后的 BAC</li>
+  <li><strong>代谢速率：</strong>0.15‰/小时（Widmark 经验值，个体差异 0.10-0.20‰/小时）</li>
+</ul>
+
+<h2>三、核心公式与依据</h2>
+
+<h3>3.1 纯酒精克数</h3>
+<p><code>酒精克数 = 容量(mL) × 酒精度(%vol) / 100 × 0.789</code></p>
+<ul>
+  <li>0.789 为 20°C 乙醇密度（g/mL），标准物理常数</li>
+  <li>酒精度定义依据 GB 5009.225-2016</li>
+</ul>
+
+<h3>3.2 热量计算</h3>
+<p><code>酒精热量(kcal) = 酒精克数 × 7</code>（Atwater 系数，FAO/WHO 通行）</p>
+<p><code>碳水热量(kcal) = 容量(mL) × 碳水(g/100mL) / 100 × 4</code>（Atwater 系数）</p>
+<p><code>总热量 = 酒精热量 + 碳水热量</code></p>
+<p>注：酒中可能含极少量蛋白质、有机酸，但含量极低，本工具忽略不计。</p>
+
+<h3>3.3 标准杯数</h3>
+<p><code>标准杯数 = 酒精克数 / 10</code></p>
+<p>WHO 标准：1 标准杯 = 10g 纯酒精。不同国家标准略有差异（如美国 14g、英国 8g），本工具采用 WHO 10g 标准。</p>
+
+<h3>3.4 BAC 估算（Widmark 公式）</h3>
+<p><code>BAC(‰) = 酒精克数 / (体重kg × r) - 0.15 × 时间h</code></p>
+<ul>
+  <li>r：男性 0.68，女性 0.55</li>
+  <li>代谢率 0.15‰/小时为经验均值</li>
+  <li>结果下限为 0（不返回负数）</li>
+</ul>
+<p><strong>中国酒驾标准：</strong>血液酒精含量 ≥ 20mg/100mL（即 0.2‰）为饮酒驾驶，≥ 80mg/100mL（即 0.8‰）为醉酒驾驶（依据 GB/T 38637-2020、GA/T 842-2019）。</p>
+
+<h2>四、完整使用场景</h2>
+
+<div class="scene">
+  <h4>场景 1：一瓶啤酒的热量和酒精量</h4>
+  <p><strong>输入：</strong>酒种=啤酒，酒精度=5%vol，容量=500mL</p>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>纯酒精 = 500 × 5/100 × 0.789 = <strong>19.725 g</strong></li>
+    <li>酒精热量 = 19.725 × 7 = <strong>138.08 kcal</strong></li>
+    <li>碳水热量 = 500 × 3.6/100 × 4 = <strong>72.00 kcal</strong></li>
+    <li>总热量 = <strong>210.08 kcal</strong>（约相当于一碗米饭）</li>
+    <li>标准杯 = 19.725 / 10 = <strong>1.97 杯</strong></li>
+    <li>BAC（男 70kg 即时）= 19.725 / (70 × 0.68) = <strong>0.416‰</strong>（超过 0.2‰ 酒驾线）</li>
+  </ul>
+  <p><strong>结论：</strong>一瓶 500mL 啤酒约含 20g 酒精、210kcal 热量，<strong>已超酒驾标准</strong>，切勿驾车。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 2：二两白酒的酒精量</h4>
+  <p><strong>输入：</strong>酒种=白酒，酒精度=52%vol，容量=100mL（约 2 两）</p>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>纯酒精 = 100 × 52/100 × 0.789 = <strong>41.028 g</strong></li>
+    <li>酒精热量 = 41.028 × 7 = <strong>287.20 kcal</strong></li>
+    <li>碳水热量 ≈ 0（蒸馏酒）</li>
+    <li>总热量 = <strong>287.20 kcal</strong></li>
+    <li>标准杯 = <strong>4.10 杯</strong>（已超 WHO 建议单日限量）</li>
+    <li>BAC（男 70kg 即时）= 41.028 / (70 × 0.68) = <strong>0.864‰</strong>（已达醉驾标准 0.8‰）</li>
+  </ul>
+  <p><strong>结论：</strong>二两 52 度白酒酒精量极大，<strong>已达醉驾标准</strong>，且超过单日建议限量。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 3：一杯红酒的热量</h4>
+  <p><strong>输入：</strong>酒种=红酒，酒精度=13%vol，容量=150mL（标准杯）</p>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>纯酒精 = 150 × 13/100 × 0.789 = <strong>15.386 g</strong></li>
+    <li>酒精热量 = 15.386 × 7 = <strong>107.70 kcal</strong></li>
+    <li>碳水热量 = 150 × 2.6/100 × 4 = <strong>15.60 kcal</strong></li>
+    <li>总热量 = <strong>123.30 kcal</strong></li>
+    <li>标准杯 = <strong>1.54 杯</strong></li>
+  </ul>
+  <p><strong>结论：</strong>一杯红酒约 123kcal，相当于一个小苹果的热量。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 4：女性喝啤酒的 BAC 估算</h4>
+  <p><strong>输入：</strong>酒种=啤酒，酒精度=5%vol，容量=500mL，体重=60kg，性别=女，时间=0h</p>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>纯酒精 = 19.725 g</li>
+    <li>BAC = 19.725 / (60 × 0.55) = <strong>0.598‰</strong></li>
+  </ul>
+  <p><strong>结论：</strong>同样一瓶啤酒，60kg 女性的 BAC 比 70kg 男性高约 44%，<strong>超酒驾标准更多</strong>。这反映了性别、体重对酒精代谢的影响。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 5：饮酒后多久能代谢完</h4>
+  <p><strong>输入：</strong>纯酒精=40g，体重=70kg，性别=男</p>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>即时 BAC = 40 / (70 × 0.68) = 0.840‰</li>
+    <li>代谢到 0.2‰（酒驾线）需：(0.840 - 0.2) / 0.15 = <strong>4.27 小时</strong></li>
+    <li>代谢到 0 需：0.840 / 0.15 = <strong>5.60 小时</strong></li>
+  </ul>
+  <p><strong>结论：</strong>40g 酒精（约二两 50 度白酒）在 70kg 男性体内，理论需 4-6 小时代谢到安全水平。<strong>但实际受个体差异影响极大，此计算绝不能作为驾车依据</strong>。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 6：威士忌单份的热量</h4>
+  <p><strong>输入：</strong>酒种=威士忌，酒精度=40%vol，容量=50mL</p>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>纯酒精 = 50 × 40/100 × 0.789 = <strong>15.78 g</strong></li>
+    <li>酒精热量 = 15.78 × 7 = <strong>110.46 kcal</strong></li>
+    <li>碳水热量 ≈ 0</li>
+    <li>总热量 = <strong>110.46 kcal</strong></li>
+    <li>标准杯 = <strong>1.58 杯</strong></li>
+  </ul>
+  <p><strong>结论：</strong>一份威士忌（50mL）约 110kcal，几乎全部来自酒精。</p>
+</div>
+
+<h2>五、常见错误与排查</h2>
+
+<h3>5.1 输入类错误</h3>
+<table>
+  <tr><th>错误现象</th><th>原因</th><th>解决</th></tr>
+  <tr><td>TypeError: xxx 必须是有效数字</td><td>传入了字符串、null、undefined、NaN</td><td>确保传入 number 类型，空值先做判空</td></tr>
+  <tr><td>RangeError: xxx 必须在 [min, max] 范围内</td><td>数值超出合理范围（如酒精度 > 100、体重 < 20）</td><td>检查输入数据，酒精度应为 0-100，体重 20-300kg</td></tr>
+  <tr><td>TypeError: gender 必须是 'male' 或 'female'</td><td>性别参数拼写错误或大小写不对</td><td>严格使用 'male' 或 'female'</td></tr>
+  <tr><td>TypeError: category 必须是非空字符串</td><td>analyzeDrink 未传 category 或传了空串</td><td>确保 category 为非空字符串</td></tr>
+</table>
+
+<h3>5.2 结果类疑问</h3>
+<table>
+  <tr><th>疑问</th><th>解释</th></tr>
+  <tr><td>为什么啤酒热量比想象高？</td><td>啤酒除酒精热量外，还含 3-5g/100mL 碳水化合物，贡献额外热量</td></tr>
+  <tr><td>为什么白酒热量也高？</td><td>白酒虽无碳水，但酒精度高（38-53%vol），酒精本身 7kcal/g，100mL 52 度白酒 = 287kcal</td></tr>
+  <tr><td>BAC 估算值与实测差异大？</td><td>正常。Widmark 公式是群体均值模型，个体差异可达 ±30%。空腹饮酒吸收快、BAC 峰值高；饱腹则相反</td></tr>
+  <tr><td>为什么 BAC 不能判断能否开车？</td><td>① 公式是理论估算，实际受多因素影响；② 个体代谢速率差异大（0.10-0.20‰/h）；③ 即使 BAC 低于 0.2‰，反应能力仍可能受损；④ 法律以实测为准</td></tr>
+</table>
+
+<h3>5.3 精度问题</h3>
+<p>JavaScript 浮点数遵循 IEEE 754 双精度，存在 0.1 + 0.2 ≠ 0.3 的经典问题。本工具在 analyzeDrink 返回时对结果做 toFixed 处理，但底层函数返回原始浮点数。如需精确显示，请在 UI 层做格式化。</p>
+
+<h2>六、数据来源与标准依据</h2>
+
+<table>
+  <tr><th>数据/公式</th><th>依据</th><th>备注</th></tr>
+  <tr><td>酒精度定义</td><td>GB 5009.225-2016《食品安全国家标准 酒中乙醇浓度的测定》</td><td>20°C 体积百分比</td></tr>
+  <tr><td>乙醇密度 0.789 g/mL</td><td>标准物理常数（20°C）</td><td>国际公认</td></tr>
+  <tr><td>酒精 7 kcal/g</td><td>Atwater 系数（FAO/WHO）</td><td>通行能量折算</td></tr>
+  <tr><td>碳水 4 kcal/g</td><td>Atwater 系数</td><td>通行能量折算</td></tr>
+  <tr><td>1 标准杯 = 10g 酒精</td><td>WHO 标准</td><td>美国 14g、英国 8g，本工具用 WHO</td></tr>
+  <tr><td>Widmark 公式</td><td>法医学通行 BAC 估算式</td><td>r 男 0.68 女 0.55，代谢 0.15‰/h</td></tr>
+  <tr><td>酒驾 0.2‰、醉驾 0.8‰</td><td>GB/T 38637-2020、GA/T 842-2019</td><td>中国现行标准</td></tr>
+  <tr><td>各酒种典型碳水含量</td><td>USDA FoodData Central、中国食物成分表</td><td>典型值，实际因品牌而异</td></tr>
+</table>
+
+<p><strong>需查标准原文确认的内容：</strong></p>
+<ul>
+  <li>各酒种碳水含量的精确范围（不同品牌差异大，需查具体产品营养标签）</li>
+  <li>Widmark 公式在不同种族人群中的适用性（原始研究基于欧洲人群）</li>
+</ul>
+
+<h2>七、局限性说明</h2>
+
+<ol>
+  <li><strong>BAC 估算误差大：</strong>Widmark 公式是群体均值模型，个体差异可达 ±30% 甚至更多。空腹、快速饮酒、混饮、肝功能差、服药等情况会显著改变实际 BAC。<strong>绝不能用于判断能否驾车</strong>。</li>
+  <li><strong>碳水含量为典型值：</strong>各酒种碳水含量因品牌、工艺、年份差异较大。干红 vs 甜红、干啤 vs 果啤差异可达数倍。如需精确值，请查产品营养标签。</li>
+  <li><strong>忽略其他成分：</strong>酒中除酒精、碳水外，还含极少量蛋白质、有机酸、矿物质等，本工具忽略不计（对总热量影响 &lt; 1%）。</li>
+  <li><strong>不考虑吸收动力学：</strong>BAC 估算假设酒精瞬间均匀分布，实际饮酒后 30-90 分钟才达峰值。本工具未建模吸收过程。</li>
+  <li><strong>Widmark 公式的种族适用性：</strong>原始研究基于欧洲人群，亚洲人群体液占比可能略有差异，本工具未做种族校正。</li>
+  <li><strong>不提供医疗建议：</strong>本工具仅用于科普和估算，不能替代医生、营养师、执法部门的专业判断。</li>
+  <li><strong>标准杯标准差异：</strong>WHO、美国、英国、日本标准不同，本工具采用 WHO 10g 标准。如需其他标准，请自行换算。</li>
+  <li><strong>浮点精度：</strong>JavaScript 浮点数存在精度限制，极端情况下可能有微小误差（&lt; 1e-10），对实际应用无影响。</li>
+</ol>
+
+<h2>八、版本与更新</h2>
+<p><strong>当前版本：</strong>v2.0.0-完整版 20261021</p>
+<p><strong>更新日志：</strong></p>
+<ul>
+  <li>v2.0.0（2026-10-21）：完整交付版，含核心算法、32 个单元测试、完整使用说明书</li>
+</ul>
+
+<h2>九、联系方式与反馈</h2>
+<p>如发现计算错误、数据不准确、或有改进建议，欢迎反馈。请附上：</p>
+<ul>
+  <li>输入参数</li>
+  <li>期望结果与依据（如国标号、文献）</li>
+  <li>实际结果</li>
+</ul>
+<p>我们将核实后修正。</p>
+`;
+
+/* ============================================================
+ * 核心算法实现（与源码一致，用于测试运行）
+ * ============================================================ */
+const ETHANOL_DENSITY = 0.789;
+const ALCOHOL_KCAL_PER_GRAM = 7;
+const CARB_KCAL_PER_GRAM = 4;
+const STANDARD_DRINK_GRAMS = 10;
+const WIDMARK_R = { male: 0.68, female: 0.55 };
+const METABOLISM_RATE = 0.15;
+const TYPICAL_CARB = {
+  '啤酒': { min: 3.0, max: 5.0, typical: 3.6 },
+  '红酒': { min: 2.0, max: 4.0, typical: 2.6 },
+  '白酒': { min: 0.0, max: 0.5, typical: 0.0 },
+  '黄酒': { min: 3.0, max: 6.0, typical: 4.0 },
+  '威士忌': { min: 0.0, max: 0.1, typical: 0.0 },
+  '伏特加': { min: 0.0, max: 0.0, typical: 0.0 },
+  '朗姆酒': { min: 0.0, max: 0.1, typical: 0.0 },
+  '白兰地': { min: 0.0, max: 0.5, typical: 0.0 },
+  '清酒': { min: 3.0, max: 6.0, typical: 4.5 },
+  '米酒': { min: 5.0, max: 15.0, typical: 8.0 }
+};
+
+function validateNumber(value, name, min, max) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new TypeError(`${name} 必须是有效数字，收到: ${value}`);
+  }
+  if (value < min || value > max) {
+    throw new RangeError(`${name} 必须在 [${min}, ${max}] 范围内，收到: ${value}`);
+  }
+  return value;
+}
+function calcAlcoholGrams(volumeMl, abvPercent) {
+  validateNumber(volumeMl, 'volumeMl', 0, 100000);
+  validateNumber(abvPercent, 'abvPercent', 0, 100);
+  if (volumeMl <= 0 || abvPercent <= 0) return 0;
+  return volumeMl * (abvPercent / 100) * ETHANOL_DENSITY;
+}
+function calcAlcoholKcal(alcoholGrams) {
+  validateNumber(alcoholGrams, 'alcoholGrams', 0, 1e9);
+  return alcoholGrams * ALCOHOL_KCAL_PER_GRAM;
+}
+function calcCarbKcal(volumeMl, carbPer100ml) {
+  validateNumber(volumeMl, 'volumeMl', 0, 1e9);
+  validateNumber(carbPer100ml, 'carbPer100ml', 0, 100);
+  return volumeMl * (carbPer100ml / 100) * CARB_KCAL_PER_GRAM;
+}
+function calcTotalKcal(volumeMl, abvPercent, carbPer100ml = 0) {
+  const alcoholGrams = calcAlcoholGrams(volumeMl, abvPercent);
+  const alcoholKcal = calcAlcoholKcal(alcoholGrams);
+  const carbKcal = calcCarbKcal(volumeMl, carbPer100ml);
+  return { alcoholKcal, carbKcal, totalKcal: alcoholKcal + carbKcal };
+}
+function calcStandardDrinks(alcoholGrams) {
+  validateNumber(alcoholGrams, 'alcoholGrams', 0, 1e9);
+  return alcoholGrams / STANDARD_DRINK_GRAMS;
+}
+function estimateBAC(alcoholGrams, weightKg, gender, hoursElapsed = 0) {
+  validateNumber(alcoholGrams, 'alcoholGrams', 0, 1e9);
+  validateNumber(weightKg, 'weightKg', 20, 300);
+  validateNumber(hoursElapsed, 'hoursElapsed', 0, 200);
+  if (gender !== 'male' && gender !== 'female') {
+    throw new TypeError(`gender 必须是 'male' 或 'female'，收到: ${gender}`);
+  }
+  const r = WIDMARK_R[gender];
+  const peak = alcoholGrams / (weightKg * r);
+  const metabolized = METABOLISM_RATE * hoursElapsed;
+  return Math.max(0, peak - metabolized);
+}
+function analyzeDrink(options) {
+  if (!options || typeof options !== 'object') throw new TypeError('options 必须是对象');
+  const { category, abvPercent, volumeMl } = options;
+  if (typeof category !== 'string' || category.length === 0) {
+    throw new TypeError('category 必须是非空字符串');
+  }
+  const weightKg = options.weightKg !== undefined ? options.weightKg : 70;
+  const gender = options.gender || 'male';
+  const hoursElapsed = options.hoursElapsed !== undefined ? options.hoursElapsed : 0;
+  const carbPer100ml = options.carbPer100ml !== undefined
+    ? options.carbPer100ml
+    : (TYPICAL_CARB[category] ? TYPICAL_CARB[category].typical : 0);
+  const alcoholGrams = calcAlcoholGrams(volumeMl, abvPercent);
+  const kcal = calcTotalKcal(volumeMl, abvPercent, carbPer100ml);
+  const standardDrinks = calcStandardDrinks(alcoholGrams);
+  const bac = estimateBAC(alcoholGrams, weightKg, gender, hoursElapsed);
+  return {
+    category, abvPercent, volumeMl, carbPer100ml,
+    alcoholGrams: +alcoholGrams.toFixed(3),
+    alcoholKcal: +kcal.alcoholKcal.toFixed(2),
+    carbKcal: +kcal.carbKcal.toFixed(2),
+    totalKcal: +kcal.totalKcal.toFixed(2),
+    standardDrinks: +standardDrinks.toFixed(2),
+    bacPerMille: +bac.toFixed(3),
+    bacWarning: bac >= 0.2 ? '已达酒驾标准（≥0.2‰），严禁驾驶' :
+                bac >= 0.02 ? '可能影响驾驶能力，建议勿驾车' : '理论值较低，但仍不建议立即驾驶'
+  };
+}
+
+/* ============================================================
+ * 测试运行器
+ * ============================================================ */
+function runTests() {
+  let passed = 0, failed = 0, total = 0;
+  const failures = [];
+  const logs = [];
+
+  function log(msg) { logs.push(msg); }
+
+  function assert(condition, message) {
+    total++;
+    if (condition) {
+      passed++;
+      log('  ✓ ' + message);
+    } else {
+      failed++;
+      failures.push(message);
+      log('  ✗ ' + message);
+    }
+  }
+  function assertClose(actual, expected, tolerance, message) {
+    assert(Math.abs(actual - expected) <= tolerance,
+      message + ' (期望 ' + expected + '，实际 ' + actual + ')');
+  }
+  function assertThrows(fn, errorType, message) {
+    total++;
+    try {
+      fn();
+      failed++;
+      failures.push(message + ' (未抛出异常)');
+      log('  ✗ ' + message);
+    } catch (e) {
+      if (e instanceof errorType) {
+        passed++;
+        log('  ✓ ' + message);
+      } else {
+        failed++;
+        failures.push(message + ' (抛出 ' + e.constructor.name + ')');
+        log('  ✗ ' + message);
+      }
+    }
+  }
+
+  log('=== 开始运行测试 ===\n');
+
+  log('[calcAlcoholGrams]');
+  assertClose(calcAlcoholGrams(500, 5), 19.725, 0.001, '啤酒 500mL 5%vol');
+  assertClose(calcAlcoholGrams(100, 52), 41.028, 0.001, '白酒 100mL 52%vol');
+  assertClose(calcAlcoholGrams(750, 13), 76.9275, 0.001, '红酒 750mL 13%vol');
+  assertClose(calcAlcoholGrams(50, 40), 15.78, 0.001, '威士忌 50mL 40%vol');
+  assert(calcAlcoholGrams(0, 5) === 0, '容量为 0 返回 0');
+  assert(calcAlcoholGrams(500, 0) === 0, '酒精度为 0 返回 0');
+  assertThrows(() => calcAlcoholGrams(-1, 5), RangeError, '容量负数抛 RangeError');
+  assertThrows(() => calcAlcoholGrams(500, 101), RangeError, '酒精度超 100 抛 RangeError');
+  assertThrows(() => calcAlcoholGrams('500', 5), TypeError, '容量字符串抛 TypeError');
+  assertThrows(() => calcAlcoholGrams(NaN, 5), TypeError, '容量 NaN 抛 TypeError');
+  assertThrows(() => calcAlcoholGrams(null, 5), TypeError, '容量 null 抛 TypeError');
+  assertThrows(() => calcAlcoholGrams(undefined, 5), TypeError, '容量 undefined 抛 TypeError');
+
+  log('\n[calcAlcoholKcal]');
+  assertClose(calcAlcoholKcal(19.725), 138.075, 0.001, '19.725g 酒精 → 138.075 kcal');
+  assert(calcAlcoholKcal(0) === 0, '0g 酒精 → 0 kcal');
+  assertThrows(() => calcAlcoholKcal(-1), RangeError, '负数克数抛 RangeError');
+
+  log('\n[calcCarbKcal]');
+  assertClose(calcCarbKcal(500, 3.6), 72, 0.001, '啤酒 500mL 3.6g/100mL → 72 kcal');
+  assert(calcCarbKcal(500, 0) === 0, '碳水为 0 → 0 kcal');
+  assertThrows(() => calcCarbKcal(500, -1), RangeError, '碳水负数抛 RangeError');
+
+  log('\n[calcTotalKcal]');
+  const total1 = calcTotalKcal(500, 5, 3.6);
+  assertClose(total1.alcoholKcal, 138.075, 0.001, '啤酒总热量-酒精部分');
+  assertClose(total1.carbKcal, 72, 0.001, '啤酒总热量-碳水部分');
+  assertClose(total1.totalKcal, 210.075, 0.001, '啤酒总热量-合计');
+  const total2 = calcTotalKcal(100, 52, 0);
+  assertClose(total2.totalKcal, 287.196, 0.01, '白酒总热量（无碳水）');
+
+  log('\n[calcStandardDrinks]');
+  assertClose(calcStandardDrinks(10), 1, 0.001, '10g → 1 标准杯');
+  assertClose(calcStandardDrinks(19.725), 1.9725, 0.001, '19.725g → 1.9725 杯');
+  assertThrows(() => calcStandardDrinks(-1), RangeError, '负数抛 RangeError');
+
+  log('\n[estimateBAC]');
+  assertClose(estimateBAC(19.725, 70, 'male', 0), 0.416, 0.002, '男性 70kg 19.725g 即时 BAC');
+  assertClose(estimateBAC(19.725, 60, 'female', 0), 0.598, 0.002, '女性 60kg 19.725g 即时 BAC');
+  assertClose(estimateBAC(19.725, 70, 'male', 1), 0.266, 0.002, '男性 1 小时后 BAC');
+  assert(estimateBAC(10, 70, 'male', 100) === 0, '长时间代谢后归 0');
+  assertThrows(() => estimateBAC(10, 70, 'other', 0), TypeError, '非法性别抛 TypeError');
+  assertThrows(() => estimateBAC(10, 15, 'male', 0), RangeError, '体重过轻抛 RangeError');
+
+  log('\n[analyzeDrink]');
+  const r1 = analyzeDrink({ category: '啤酒', abvPercent: 5, volumeMl: 500, weightKg: 70, gender: 'male' });
+  assert(r1.alcoholGrams > 19 && r1.alcoholGrams < 20, '啤酒分析-酒精克数合理');
+  assert(r1.totalKcal > 200 && r1.totalKcal < 220, '啤酒分析-总热量合理');
+  assert(r1.standardDrinks > 1.9 && r1.standardDrinks < 2.1, '啤酒分析-标准杯合理');
+  assert(r1.bacPerMille > 0.3 && r1.bacPerMille < 0.5, '啤酒分析-BAC 合理');
+  assert(typeof r1.bacWarning === 'string', '啤酒分析-含警告文案');
+  assertThrows(() => analyzeDrink(null), TypeError, 'null 参数抛 TypeError');
+  assertThrows(() => analyzeDrink({}), TypeError, '缺 category 抛 TypeError');
+
+  log('\n[精度问题]');
+  const p = calcAlcoholGrams(100, 1);
+  assertClose(p, 0.789, 1e-10, '浮点精度：0.789 应精确');
+
+  log('\n=== 测试完成 ===');
+  log('通过 ' + passed + ' / 共 ' + total);
+  if (failed > 0) {
+    log('失败用例：');
+    failures.forEach(f => log('  - ' + f));
+  }
+
+  return { passed, failed, total, logs, failures };
+}
+
+/* ============================================================
+ * 页面渲染与交互
+ * ============================================================ */
+document.getElementById('source-code').textContent = SOURCE_CODE;
+document.getElementById('test-code').textContent = TEST_CODE;
+document.getElementById('doc-content').innerHTML = DOC_CONTENT;
+
+// 运行测试并显示结果
+const testResult = runTests();
+const resultEl = document.getElementById('test-result');
+const resultHtml = testResult.logs.map(line => {
+  if (line.includes('✓')) return '<span class="pass">' + line + '</span>';
+  if (line.includes('✗')) return '<span class="fail">' + line + '</span>';
+  return line;
+}).join('\n');
+resultEl.innerHTML = resultHtml;
+
+// ═══ v3.0.0 新增：计算器交互 ═══
+function acCalculate() {
+  const box = document.getElementById('acResult');
+  try {
+    const category = document.getElementById('acCategory').value;
+    const abv = parseFloat(document.getElementById('acAbv').value);
+    const volume = parseFloat(document.getElementById('acVolume').value);
+    const carbRaw = document.getElementById('acCarb').value;
+    const carb = carbRaw === '' ? undefined : parseFloat(carbRaw);
+    const weight = parseFloat(document.getElementById('acWeight').value);
+    const gender = document.getElementById('acGender').value;
+    const hours = parseFloat(document.getElementById('acHours').value) || 0;
+
+    if (!(volume > 0)) throw new Error('饮用量必须大于 0');
+    if (!(abv > 0)) throw new Error('酒精度必须大于 0');
+    if (abv > 100) throw new Error('酒精度不能超过 100%vol');
+
+    const opts = { category, abvPercent: abv, volumeMl: volume, weightKg: weight, gender, hoursElapsed: hours };
+    if (carb !== undefined && !isNaN(carb)) opts.carbPer100ml = carb;
+    const r = analyzeDrink(opts);
+
+    let html = '<div class="result-box">';
+    html += '<div class="result-main">' + r.totalKcal.toFixed(1) + ' kcal</div>';
+    html += '<div class="result-sub">约 ' + r.standardDrinks.toFixed(2) + ' 个标准杯（1 标准杯 = 10g 纯酒精）</div>';
+    html += '<table class="result-table">';
+    html += '<tr><td>纯酒精量</td><td>' + r.alcoholGrams.toFixed(1) + ' g</td></tr>';
+    html += '<tr><td>酒精热量</td><td>' + r.alcoholKcal.toFixed(1) + ' kcal</td></tr>';
+    html += '<tr><td>碳水热量</td><td>' + r.carbKcal.toFixed(1) + ' kcal（' + r.carbPer100ml + ' g/100ml）</td></tr>';
+    html += '<tr><td>理论 BAC</td><td style="color:' + (r.bacPerMille >= 0.2 ? '#c00' : '#666') + ';font-weight:600">' + r.bacPerMille.toFixed(3) + ' ‰</td></tr>';
+    html += '</table>';
+    html += '<div style="margin-top:12px;padding:10px;border-radius:6px;background:' +
+      (r.bacPerMille >= 0.2 ? '#ffe6e6' : '#f5f5f7') + ';color:' +
+      (r.bacPerMille >= 0.2 ? '#c00' : '#666') + ';font-size:13px">' + r.bacWarning + '</div>';
+    html += '</div>';
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<div style="color:#c00;padding:12px">计算失败：' + e.message + '</div>';
+  }
+}
+
+function acReset() {
+  document.getElementById('acCategory').value = '啤酒';
+  document.getElementById('acAbv').value = 4.5;
+  document.getElementById('acVolume').value = 500;
+  document.getElementById('acCarb').value = '';
+  document.getElementById('acWeight').value = 70;
+  document.getElementById('acGender').value = 'male';
+  document.getElementById('acHours').value = 0;
+  document.getElementById('acResult').innerHTML = '';
+}
+
+// 品类切换 → 自动填典型酒精度
+document.getElementById('acCategory').addEventListener('change', function () {
+  const c = this.value;
+  const t = TYPICAL_ABV[c];
+  if (t && t.typical > 0) document.getElementById('acAbv').value = t.typical;
+  const carb = TYPICAL_CARB[c];
+  document.getElementById('acCarb').value = '';
+  document.getElementById('acCarb').placeholder = carb ? '典型值 ' + carb.typical : '留空则用品类典型值';
+});
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 控制台也输出测试结果
+console.log(testResult.logs.join('\n'));
+</script>
+
+</body>
+</html>

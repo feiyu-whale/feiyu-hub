@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐳 小鲸鱼接泡泡</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(circle at 50% 20%, #1b3a5c 0%, #0a1628 70%, #060d18 100%);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #cfe8ff; user-select: none;
+    touch-action: none;
+  }
+  #wrap { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .hud {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; font-size: 15px; pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  }
+  .hud .score { font-weight: 700; color: #9fd8ff; }
+  .hud .best { color: #6b8fb3; font-size: 13px; }
+  .hud .title { color: #8fd0ff; font-weight: 700; letter-spacing: 1px; }
+  .overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    background: rgba(6,13,24,.82); backdrop-filter: blur(3px);
+    text-align: center; padding: 30px; z-index: 10;
+  }
+  .overlay h1 { font-size: 26px; color: #8fd0ff; margin: 0; letter-spacing: 2px; }
+  .overlay p { color: #7fa7c9; font-size: 14px; line-height: 1.7; margin: 0; max-width: 340px; }
+  .overlay .big { font-size: 40px; }
+  .btn {
+    margin-top: 6px; padding: 13px 40px; border: none; border-radius: 30px;
+    background: linear-gradient(160deg, #2e7fb8, #1a5a8a); color: #eaf6ff;
+    font-size: 17px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(46,127,184,.45); transition: .15s;
+  }
+  .btn:active { transform: scale(.95); }
+  .hide { display: none !important; }
+  .foot { position: fixed; bottom: 10px; left: 0; right: 0; text-align: center;
+          color: #3f5a75; font-size: 11px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+
+<div class="hud">
+  <span class="title">🐳 接泡泡</span>
+  <span><span class="score" id="score">0</span> <span class="best" id="best">最高 0</span></span>
+</div>
+
+<div class="overlay" id="start">
+  <div class="big">🐳</div>
+  <h1>小鲸鱼接泡泡</h1>
+  <p>拖动小鲸鱼（或按 ← → / 手指滑动）<br>接住落下的泡泡，接到就得分<br>漏一个掉底，命就少一条 💧</p>
+  <button class="btn" id="startBtn">开 始 游</button>
+</div>
+
+<div class="overlay hide" id="over">
+  <div class="big">💧</div>
+  <h1 id="overTitle">游累了~</h1>
+  <p id="overText"></p>
+  <button class="btn" id="againBtn">再 来 一 局</button>
+</div>
+
+<div class="foot">🐳 大肥鱼出品</div>
+
+<script>
+(function(){
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  let W=0, H=0, dpr=Math.min(window.devicePixelRatio||1, 2);
+
+  function resize(){
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W*dpr; cv.height = H*dpr;
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  const S = { menu:0, play:1, over:2 };
+  let state = S.menu;
+
+  const whale = { x: W/2, y: 0, w: 84, dir: 1, bob: 0 };
+  let bubbles = [];      // 落下的泡泡 {x,y,r,vy,hue,wob}
+  let pops = [];         // 接住特效 {x,y,t}
+  let ripples = [];      // 底部漏掉的水花
+  let stars = [];
+  let score = 0, lives = 3, spawnT = 0, frame = 0, best = +(localStorage.getItem('whaleBubbleBest')||0);
+  document.getElementById('best').textContent = '最高 ' + best;
+
+  // 背景星星
+  for(let i=0;i<60;i++) stars.push({x:Math.random(),y:Math.random(),s:Math.random()*1.6+.4,tw:Math.random()*6.28});
+
+  // 小鲸鱼绘制（面向 dir）
+  function drawWhale(x, y, s, dir, bob){
+    ctx.save();
+    ctx.translate(x, y + Math.sin(bob)*3);
+    ctx.scale(dir, 1);
+    ctx.scale(s, s);
+    // 身体
+    ctx.beginPath();
+    ctx.moveTo(-38, 0);
+    ctx.bezierCurveTo(-38, -26, 20, -30, 34, -6);
+    ctx.bezierCurveTo(40, 2, 40, 8, 34, 12);
+    ctx.bezierCurveTo(20, 30, -38, 22, -38, 0);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(-38,-20,34,20);
+    g.addColorStop(0,'#bfe4ff'); g.addColorStop(1,'#7cb8e8');
+    ctx.fillStyle = g; ctx.fill();
+    // 尾巴
+    ctx.beginPath();
+    ctx.moveTo(-38,0); ctx.lineTo(-58,-16); ctx.lineTo(-50,0); ctx.lineTo(-58,16);
+    ctx.closePath(); ctx.fillStyle='#9fd0f0'; ctx.fill();
+    // 肚皮
+    ctx.beginPath(); ctx.ellipse(0,10,26,10,0,0,6.28);
+    ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fill();
+    // 眼睛
+    ctx.beginPath(); ctx.arc(22,-6,3.4,0,6.28); ctx.fillStyle='#0a1628'; ctx.fill();
+    ctx.beginPath(); ctx.arc(23,-7,1.2,0,6.28); ctx.fillStyle='#fff'; ctx.fill();
+    // 喷水孔小水柱
+    ctx.beginPath(); ctx.moveTo(6,-24); ctx.lineTo(4,-34); ctx.lineTo(9,-30);
+    ctx.strokeStyle='rgba(190,230,255,.7)'; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBubble(b){
+    ctx.save();
+    ctx.translate(b.x + Math.sin(b.y/40 + b.wob)*4, b.y);
+    const g = ctx.createRadialGradient(-b.r*0.3, -b.r*0.3, b.r*0.2, 0, 0, b.r);
+    g.addColorStop(0, 'hsla('+b.hue+',100%,88%,.95)');
+    g.addColorStop(0.7, 'hsla('+b.hue+',80%,65%,.35)');
+    g.addColorStop(1, 'hsla('+b.hue+',80%,55%,.12)');
+    ctx.beginPath(); ctx.arc(0,0,b.r,0,6.28); ctx.fillStyle=g; ctx.fill();
+    ctx.strokeStyle='hsla('+b.hue+',90%,80%,.7)'; ctx.lineWidth=1.4; ctx.stroke();
+    // 高光
+    ctx.beginPath(); ctx.arc(-b.r*0.32,-b.r*0.32,b.r*0.22,0,6.28);
+    ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fill();
+    ctx.restore();
+  }
+
+  function loop(){
+    frame++;
+    ctx.clearRect(0,0,W,H);
+
+    // 星星闪烁
+    for(const st of stars){
+      const a = 0.25 + 0.35*(0.5+0.5*Math.sin(frame/30 + st.tw));
+      ctx.beginPath(); ctx.arc(st.x*W, st.y*H*0.9, st.s, 0, 6.28);
+      ctx.fillStyle = 'rgba(160,210,255,'+a+')'; ctx.fill();
+    }
+
+    const baseY = H*0.72;
+
+    if(state === S.play){
+      // 生成泡泡
+      spawnT++;
+      const rate = Math.max(26, 60 - score*0.6);
+      if(spawnT > rate){
+        spawnT = 0;
+        const r = 16 + Math.random()*14;
+        bubbles.push({ x: r+20 + Math.random()*(W-2*r-40), y: -20, r, vy: 1.6 + Math.random()*1.2 + score*0.02, hue: Math.floor(Math.random()*120)+170, wob: Math.random()*6.28 });
+      }
+      // 泡泡下落
+      for(const b of bubbles) b.y += b.vy;
+
+      // 碰撞判定（鲸鱼嘴边）
+      const mouthX = whale.x + whale.dir*30;
+      const mouthY = baseY - 4;
+      bubbles = bubbles.filter(b => {
+        const dx = (b.x) - mouthX, dy = b.y - mouthY;
+        if(Math.sqrt(dx*dx+dy*dy) < b.r + 26){
+          score++; pops.push({x:b.x,y:b.y,t:0});
+          return false;
+        }
+        if(b.y - b.r > H){         // 漏掉
+          lives--; ripples.push({x:b.x,y:H-8,t:0,hue:b.hue});
+          return false;
+        }
+        return true;
+      });
+      document.getElementById('score').textContent = score;
+
+      if(lives <= 0){ endGame(); }
+    }
+
+    // 小鲸鱼跟随目标（鼠标/触摸/键盘设定的 x）
+    whale.x += (whale.target - whale.x) * 0.16;
+    whale.x = Math.max(60, Math.min(W-60, whale.x));
+    whale.bob += 0.12;
+
+    // 尾巴水花
+    drawWhale(whale.x, baseY - 18, 1.05, whale.dir, whale.bob);
+
+    // 画泡泡
+    for(const b of bubbles) drawBubble(b);
+
+    // 接住特效
+    pops.forEach(p=>{ p.t++; });
+    pops = pops.filter(p=>p.t < 26);
+    for(const p of pops){
+      const a = 1 - p.t/26;
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillStyle = 'rgba(255,240,150,'+a+')';
+      ctx.fillText('+1', p.x - 12, p.y - p.t*1.2);
+    }
+
+    // 漏掉的水花
+    ripples.forEach(r=>{ r.t++; });
+    ripples = ripples.filter(r=>r.t < 30);
+    for(const r of ripples){
+      const a = 1 - r.t/30;
+      ctx.beginPath(); ctx.arc(r.x, r.y, 4 + r.t*1.4, 0, 6.28);
+      ctx.strokeStyle = 'hsla('+r.hue+',80%,70%,'+a+')'; ctx.lineWidth=2; ctx.stroke();
+    }
+
+    // 生命显示
+    if(state === S.play){
+      ctx.font = '20px sans-serif';
+      for(let i=0;i<lives;i++) ctx.fillText('💧', 18 + i*26, H-22);
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // ---- 控制：鼠标/触摸 ----
+  function pointerX(e){
+    const t = e.touches ? e.touches[0] : e;
+    return (t.clientX !== undefined ? t.clientX : W/2);
+  }
+  function move(e){
+    if(state !== S.play) return;
+    const x = pointerX(e);
+    whale.dir = x > whale.x ? 1 : -1;
+    whale.target = x;
+    if(e.cancelable) e.preventDefault();
+  }
+  document.addEventListener('mousemove', move);
+  document.addEventListener('touchmove', move, {passive:false});
+  document.addEventListener('touchstart', move, {passive:false});
+
+  // 键盘
+  document.addEventListener('keydown', e=>{
+    if(state !== S.play) return;
+    if(e.key === 'ArrowLeft'){ whale.target = Math.max(60, whale.target - 60); whale.dir = -1; }
+    if(e.key === 'ArrowRight'){ whale.target = Math.min(W-60, whale.target + 60); whale.dir = 1; }
+  });
+
+  whale.target = W/2;
+
+  function startGame(){
+    score = 0; lives = 3; bubbles = []; pops = []; ripples = [];
+    spawnT = 0; document.getElementById('score').textContent = 0;
+    whale.x = whale.target = W/2; whale.dir = 1;
+    state = S.play;
+    document.getElementById('start').classList.add('hide');
+    document.getElementById('over').classList.add('hide');
+  }
+  function endGame(){
+    state = S.over;
+    if(score > best){ best = score; localStorage.setItem('whaleBubbleBest', best);
+      document.getElementById('best').textContent = '最高 ' + best; }
+    document.getElementById('overText').innerHTML =
+      '这一局接了 <b style="color:#9fd8ff;font-size:20px">'+score+'</b> 个泡泡<br>最高纪录：'+best;
+    document.getElementById('over').classList.remove('hide');
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('againBtn').addEventListener('click', startGame);
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

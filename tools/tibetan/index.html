@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏔️ 藏历</title>
+<link rel="stylesheet" href="../../assets/themes/skins.css">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:var(--bg); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--text);
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; position:relative; }
+  #wrap { width:100%; max-width:520px; position:relative; z-index:1; }
+  h1 { font-size:12px; color:var(--accent); margin-bottom:4px; text-align:center; letter-spacing:3px;
+    text-shadow:0 0 18px rgba(255,215,0,.25); }
+  .sub { color:var(--text-mute); font-size:12px; margin-bottom:16px; text-align:center; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; color:var(--text-dim); margin-bottom:10px; font-weight:700; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:14px; border-bottom:1px solid var(--border); }
+  .row:last-child { border-bottom:none; }
+  .k { color:var(--text-mute); } .v { color:var(--text); font-weight:600; }
+  .big { font-size:12px; font-weight:800; color:var(--accent); letter-spacing:1px; }
+  button { padding:11px; font-size:14px; font-weight:700; color:var(--text); background:rgba(0,0,0,.25);
+    border:1px solid var(--border); border-radius:10px; cursor:pointer; font-family:inherit; }
+  button:active { transform:scale(.96); }
+  button.go { background:linear-gradient(160deg,#7a3a2a,#3a1a14); color:#fff; border-color:#c9604d; }
+  input[type=date],input[type=number] { width:100%; background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:9px; padding:10px;
+    font-size:15px; color:var(--text); outline:none; font-family:inherit; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button { flex:1; }
+  .tabs button.on { background:#4a2618; border-color:#c9604d; color:#fff; }
+  .hint { color:var(--text-mute); font-size:11px; margin-top:6px; line-height:1.7; }
+  .ver { color:var(--text-mute); font-size:10px; margin-top:10px; text-align:center; opacity:.6; }
+  .err { color:#ff8fa3; font-size:13px; padding:8px 0; }
+  .num-row { display:flex; gap:8px; }
+  .num-row input { flex:1; text-align:center; }
+</style>
+</head>
+<body class="theme-tibetan">
+<div id="wrap">
+  <h1>🏔️ 藏 历</h1>
+  <div class="sub">公历 ↔ 藏历双向换算 · 饶迥六十年周期 · 闰月闰日</div>
+
+  <div class="tabs">
+    <button id="tabG2T" class="on">公历 → 藏历</button>
+    <button id="tabT2G">藏历 → 公历</button>
+  </div>
+
+  <div id="panelG2T">
+    <div class="card">
+      <h3>选一个公历日期</h3>
+      <input type="date" id="gDate">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="todayBtn" style="flex:1" class="go">📍 今天</button>
+        <button id="convBtn" style="flex:1" class="go">换算 →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panelT2G" style="display:none">
+    <div class="card">
+      <h3>输入藏历日期</h3>
+      <div class="hint" style="margin-bottom:8px">饶迥(周期) · 年 · 月 · 日</div>
+      <div class="num-row">
+        <input type="number" id="tCycle" placeholder="饶迥" min="1">
+        <input type="number" id="tYear" placeholder="年" min="1" max="60">
+        <input type="number" id="tMonth" placeholder="月" min="1" max="12">
+        <input type="number" id="tDay" placeholder="日" min="1" max="30">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;font-size:13px;color:#9fb0d8">
+        <label><input type="checkbox" id="tLeapM" style="width:auto"> 闰月</label>
+        <label><input type="checkbox" id="tLeapD" style="width:auto"> 闰日</label>
+      </div>
+      <div style="margin-top:10px">
+        <button id="convBtn2" class="go" style="width:100%">换算 →</button>
+      </div>
+      <div class="hint">逗号提示：饶迥一般 1-20；年 1-60（六十年一轮）。</div>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint" style="text-align:center;margin-top:14px">
+    藏历（时轮历 · 普巴派）· 引擎 @hnw/date-tibetan（MIT）<br>
+    算法依据 Svante Janson《Tibetan calendar mathematics》· 历史文化参考
+  </div>
+  <div class="ver">v1.0.0-藏历 20261016</div>
+</div>
+
+<script src="lib/date-tibetan.bundle.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  if(typeof DateTibetan === 'undefined' || !DateTibetan.CalendarTibetan){
+    $('result').innerHTML = '<div class="err">引擎加载失败</div>'; return;
+  }
+  var CT = DateTibetan.CalendarTibetan;
+
+  // 藏历 60 年周期名（饶迥内的年名）
+  // 【重要】饶迥第1年 = 1987年 = 兔年（第1饶迥起于公元1027年阴火兔）
+  // 生肖序列以“兔”为首（不是公历的“鼠”）：兔龙蛇马羊猴鸡狗猪鼠牛虎
+  // 索引 = (饶迥内年份 - 1) % 12
+  var RABJUNG_ANIMALS = ['兔','龙','蛇','马','羊','猴','鸡','狗','猪','鼠','牛','虎'];
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function render(gDate, tib){
+    var h = '';
+    h += '<div class="card"><h3>📅 公历</h3>';
+    h += '<div class="row"><span class="k">公历</span><span class="v">'+gDate.year+' 年 '+gDate.month+' 月 '+gDate.day+' 日</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>🏔️ 藏历</h3>';
+    h += '<div class="row"><span class="k">饶迥（周期）</span><span class="v big">第 '+tib.cycle+' 饶迥</span></div>';
+    h += '<div class="row"><span class="k">年</span><span class="v">第 '+tib.year+' 年'+(tib.year>=1&&tib.year<=60?' · 生肖'+RABJUNG_ANIMALS[(tib.year-1)%12]:'')+'</span></div>';
+    h += '<div class="row"><span class="k">月</span><span class="v">'+tib.month+' 月'+(tib.leapMonth?'（闰月）':'')+'</span></div>';
+    h += '<div class="row"><span class="k">日</span><span class="v">'+tib.day+' 日'+(tib.leapDay?'（闰日）':'')+'</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>💡 白话解读</h3><div style="font-size:13px;color:#9fb0d8;line-height:1.8">';
+    h += '<p>藏历是<b>时轮历</b>（普巴派），一种结合<b>月亮盈亏 + 太阳黄道</b>的阴阳合历：</p>';
+    h += '<p><b>· 饶迥（周期）</b>：藏历以 <b>60 年</b>为一"饶迥"（六十年一轮），像"第几轮"。</p>';
+    h += '<p><b>· 年</b>：每年配 <b>十二生肖 + 五行</b>（如火兔年、水龙年），类似汉地的干支。</p>';
+    h += '<p><b>· 月</b>：以朔望月为一个月，但因为要跟太阳年对齐，<b>会插入闰月</b>（约每 32 个月一次）。</p>';
+    h += '<p><b>· 日</b>：藏历还有独特的<b>闰日</b>——某些日子会"重复"或"跳过"，这是时轮历的特色（因日均太阳日长度差异）。</p>';
+    h += '<p style="color:#5b6a99;font-size:12px;margin-top:6px">※ 藏历还有"缺日/重日"的复杂规则，本工具采用 Phugpa（普巴派）标准算法。历史文化参考，非科学预测。</p>';
+    h += '</div></div>';
+    $('result').innerHTML = h;
+  }
+
+  function convertG2T(){
+    var v = $('gDate').value;
+    if(!v){ $('result').innerHTML='<div class="err">请选一个公历日期</div>'; return; }
+    var p = v.split('-').map(Number);
+    try{
+      var t = new CT().fromGregorian(p[0], p[1], p[2]);
+      render({year:p[0],month:p[1],day:p[2]}, t);
+    }catch(e){ $('result').innerHTML='<div class="err">换算失败：'+e.message+'</div>'; }
+  }
+
+  function convertT2G(){
+    var cy=parseInt($('tCycle').value,10), yr=parseInt($('tYear').value,10),
+        mo=parseInt($('tMonth').value,10), dy=parseInt($('tDay').value,10);
+    var lm=$('tLeapM').checked, ld=$('tLeapD').checked;
+    if([cy,yr,mo,dy].some(isNaN)){ $('result').innerHTML='<div class="err">请填完整：饶迥 年 月 日</div>'; return; }
+    try{
+      var t = new CT(cy,yr,mo,lm,dy,ld);
+      var g = t.toGregorian();
+      if(!g || isNaN(g.year)){ $('result').innerHTML='<div class="err">该藏历日期无对应公历</div>'; return; }
+      render(g, {cycle:cy,year:yr,month:mo,leapMonth:lm,day:dy,leapDay:ld});
+    }catch(e){ $('result').innerHTML='<div class="err">换算失败：'+e.message+'</div>'; }
+  }
+
+  var now = new Date();
+  $('gDate').value = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  $('todayBtn').addEventListener('click', function(){ var n=new Date(); $('gDate').value=n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate()); convertG2T(); });
+  $('convBtn').addEventListener('click', convertG2T);
+  $('convBtn2').addEventListener('click', convertT2G);
+  $('gDate').addEventListener('change', convertG2T);
+  $('tabG2T').addEventListener('click', function(){ $('tabG2T').classList.add('on'); $('tabT2G').classList.remove('on'); $('panelG2T').style.display=''; $('panelT2G').style.display='none'; });
+  $('tabT2G').addEventListener('click', function(){ $('tabT2G').classList.add('on'); $('tabG2T').classList.remove('on'); $('panelT2G').style.display=''; $('panelG2T').style.display='none'; });
+
+  convertG2T();
+})();
+</script>
+</body>
+</html>

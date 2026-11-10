@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管道保温层厚度计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe2f5;font:14px/1.5 system-ui,"Segoe UI",Arial,sans-serif}
+header{padding:14px 16px;background:#0e1f38;border-bottom:1px solid #1c3556}
+h1{margin:0;font-size:17px;color:#4a9eff}
+.sub{font-size:11.5px;color:#7d97b3;margin-top:2px}
+nav{display:flex;gap:6px;padding:10px;flex-wrap:wrap;background:#0d1a2e}
+nav button{flex:1 1 auto;padding:8px 10px;background:#12233c;color:#9fc4e8;border:1px solid #1e3a5f;border-radius:6px;cursor:pointer;font-size:13px}
+nav button.on{background:#4a9eff;color:#06121f;border-color:#4a9eff;font-weight:700}
+main{padding:12px;max-width:1040px;margin:0 auto}
+section{display:none}
+section.on{display:block}
+.card{background:#0f2038;border:1px solid #1c3556;border-radius:8px;padding:12px;margin-bottom:12px}
+h2{font-size:14px;color:#4a9eff;margin:0 0 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px}
+label{display:block;font-size:12px;color:#8fa9c4}
+input,select{width:100%;padding:7px;margin-top:3px;background:#08121f;border:1px solid #23456b;border-radius:5px;color:#e6f1ff;font-size:13px}
+input:focus,select:focus{outline:1px solid #4a9eff}
+button.act{padding:9px 16px;background:#4a9eff;border:0;border-radius:6px;color:#06121f;font-weight:700;cursor:pointer;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td,th{border-bottom:1px solid #1c3556;padding:5px;text-align:left;vertical-align:top}
+th{color:#4a9eff}
+.err{color:#ff8080}
+.ok{color:#5ce08a}
+pre{white-space:pre-wrap;word-break:break-all;font-size:11.5px;background:#08121f;padding:8px;border-radius:6px;color:#9dc6ef}
+.tbl{overflow-x:auto}
+h3{font-size:13px;color:#4a9eff;margin:10px 0 4px}
+ul{padding-left:18px;margin:6px 0}
+li{margin:3px 0;font-size:12.5px;color:#a9c3dd}
+footer{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4a9eff;background:#0a1628e6;padding:2px 7px;border-radius:4px;border:1px solid #1c3556}
+</style>
+</head>
+<body>
+<header><h1>管道保温层厚度计算器</h1><div class="sub">经济厚度法 · 允许散热损失法　依据 GB/T 8175-2008、GB 50264-2013</div></header>
+<nav>
+<button class="on" onclick="tab('c',this)">计算工具</button>
+<button onclick="tab('s',this)">JS源码</button>
+<button onclick="tab('t',this)">单元测试</button>
+<button onclick="tab('h',this)">使用说明</button>
+</nav>
+<main>
+
+<section id="c" class="on">
+<div class="card"><h2>输入条件</h2><div class="grid">
+<label>管道外径 do (mm)<input id="do" value="108"></label>
+<label>介质温度 Tf (℃)<input id="tf" value="150"></label>
+<label>环境温度 Ta (℃)<input id="ta" value="20"></label>
+<label>保温材料<select id="mat" onchange="pick()">
+<option value="0.040,0.00018">岩棉</option>
+<option value="0.038,0.00017">玻璃棉</option>
+<option value="0.048,0.00020">硅酸铝棉</option>
+<option value="0.024,0.00010">聚氨酯 PU/PIR</option>
+<option value="0.020,0.00012">气凝胶毡</option>
+<option value="">自定义</option>
+</select></label>
+<label>导热系数 λ0 (W/(m·K))<input id="l0" value="0.040"></label>
+<label>温度系数 b (1/K)<input id="b" value="0.00018"></label>
+<label>表面散热系数 α (W/(m²·K))<input id="al" value="11.6"></label>
+<label>允许散热损失 qs (W/m²)<input id="qs" value="116"></label>
+<label>材料单价 Cp (元/m³)<input id="cp" value="1200"></label>
+<label>年摊销率 A (1/年)<input id="am" value="0.15"></label>
+<label>年运行小时 H (h)<input id="hrs" value="8000"></label>
+<label>热价 Ce (元/kWh)<input id="ce" value="0.35"></label>
+</div><button class="act" onclick="calc()">开始计算</button></div>
+<div class="card"><h2>计算结果</h2><div id="out" class="tbl" style="color:#a9c3dd">请输入参数后点击「开始计算」。</div></div>
+<div class="card"><h2>公式与出处</h2>
+<h3>1 圆筒壁稳态传热（核心模型）</h3>
+<ul><li>Q = (Tf − Ta) / [ ln(D1/do)/(2πλm) + 1/(πD1α) ]　（W/m）</li>
+<li>出处：圆筒壁热阻表达式为传热学经典公式（杨世铭、陶文铨《传热学》圆筒壁一章）；绝热层热阻计算方式见 GB 50264-2013《工业设备及管道绝热工程设计规范》。</li></ul>
+<h3>2 导热系数随温度变化</h3>
+<ul><li>λm = λ0 + b·tm，tm = (Tf + Ts)/2（保温层平均温度，℃）。</li>
+<li>出处：GB/T 8175-2008《设备及管道绝热设计导则》附录中绝热材料导热系数取平均温度线性经验式的形式。</li></ul>
+<h3>3 允许散热损失法</h3>
+<ul><li>令外表面散热流密度 qs = Q/(πD1) = α(Ts − Ta)，得 Ts = Ta + qs/α，再反解保温层外径 D1：</li>
+<li>(Tf − Ta − qs/α) = qs·D1·ln(D1/do)/(2λm)，二分法求根，δ = (D1 − do)/2。</li>
+<li>出处：GB/T 8175-2008 / GB 50264-2013 允许（最大）散热损失法原理。</li></ul>
+<h3>4 经济厚度法</h3>
+<ul><li>min f(D1) = π/4·(D1² − do²)·Cp·A + Q(D1)·H·Ce/1000（元/(m·a)，三分法求极小）。</li>
+<li>出处：GB/T 8175-2008 经济厚度法（年摊销费与年散热损失费之和最小）原理；本工具采用数值寻优实现，经济参数 Cp、A、H、Ce 由用户给定。</li></ul>
+<h3>5 参数取值的可靠性声明</h3>
+<ul><li>材料 λ0、b 值为<b>行业经验典型值，未经标准逐条核对</b>，工程应用必须以供货方型式检验报告或现行版本标准为准。</li>
+<li>表面散热系数 α 默认 11.6 W/(m²·K)：室内自然对流＋辐射的常用取值，<b>本参数为行业经验值，未经标准核对</b>。</li>
+<li>允许散热损失 qs 默认 116 W/m²：季节运行工况常用量级，<b>本参数为行业经验值，未经标准核对</b>，请按现行 GB/T 8175、GB 50264 表格核对后取用。</li></ul>
+</div>
+</section>
+
+<section id="s"><div class="card"><h2>核心计算函数源码（页面实时读取）</h2><pre id="srcpre"></pre></div></section>
+
+<section id="t"><div class="card"><h2>单元测试（纯函数，输入→期望输出）</h2>
+<button class="act" onclick="runTests()">运行全部测试</button>
+<div class="tbl" style="margin-top:10px"><table id="tout"><tr><th>#</th><th>用例</th><th>判定</th></tr></table></div></div></section>
+
+<section id="h"><div class="card"><h2>使用说明</h2>
+<h3>适用对象</h3>
+<ul><li>热介质管道（蒸汽、热水、导热油、工艺流体）的保温层厚度确定；不做保冷工况。</li>
+<li>圆形管道、单层均质保温材料、稳态传热；不考虑支架、法兰等局部热桥。</li></ul>
+<h3>操作步骤</h3>
+<ul><li>1. 填写管道外径 do、介质温度 Tf、环境温度 Ta。</li>
+<li>2. 选择保温材料自动带入 λ0 与 b，也可选「自定义」手工填写。</li>
+<li>3. 按工程地点/室内外情况填写表面散热系数 α（室内自然对流常用 10~12，室外有风可到 20~30）。</li>
+<li>4. 填写允许散热损失 qs（按设计规范表格核对）与经济参数 Cp、A、H、Ce。</li>
+<li>5. 点击「开始计算」，推荐厚度取两种方法结果的较大值。</li></ul>
+<h3>输入校验</h3>
+<ul><li>空值、非数字、超出物理合理范围（如外径 &lt;5 mm、材料单价为负、年运行小时 &gt;8760）均会给出中文提示，不输出 NaN。</li>
+<li>介质温度不高于环境温度时提示不适用本模型。</li></ul>
+<h3>结果解读</h3>
+<ul><li>经济厚度法：使「年摊销费＋年散热损失费」最小的厚度，受能源价格与材料单价影响大。</li>
+<li>允许散热损失法：保证外表面散热流密度不超过限值的厚度，属于节能强制性要求，推荐厚度不得小于它。</li>
+<li>工程取值还应向上圆整到产品规格（如 10 mm 一档），并加保护层与施工余量。</li></ul>
+<h3>主要依据</h3>
+<ul><li>GB/T 8175-2008《设备及管道绝热设计导则》</li>
+<li>GB 50264-2013《工业设备及管道绝热工程设计规范》</li>
+<li>杨世铭、陶文铨《传热学》圆筒壁导热与复合换热章节</li></ul>
+</div></section>
+
+</main>
+<footer>v1.0.0-pipe-insulation 20261108</footer>
+<script>
+function vf(v,a,b){if(v==null)return NaN;var s=(''+v).trim();if(!s)return NaN;var n=parseFloat(s);return(isFinite(n)&&n>=a&&n<=b)?n:NaN}
+function lamAt(l0,b,tm){return l0+b*tm}
+function qOf(Tf,Ta,do_,D1,al,l0,b){var Ts=(Tf+Ta)/2,i,lam,Q,t2;for(i=0;i<80;i++){lam=lamAt(l0,b,(Tf+Ts)/2);Q=(Tf-Ta)/(Math.log(D1/do_)/(2*Math.PI*lam)+1/(Math.PI*D1*al));t2=Ta+Q/(Math.PI*D1*al);if(Math.abs(t2-Ts)<1e-9){Ts=t2;break}Ts=t2}lam=lamAt(l0,b,(Tf+Ts)/2);var R=Math.log(D1/do_)/(2*Math.PI*lam)+1/(Math.PI*D1*al);Q=(Tf-Ta)/R;Ts=Ta+Q/(Math.PI*D1*al);return{Ts:Ts,Q:Q,R:R,lam:lamAt(l0,b,(Tf+Ts)/2)}}
+function allowThk(Tf,Ta,do_,al,l0,b,qs){if(!(Tf>Ta))return NaN;var c=Tf-Ta-qs/al;if(c<=0)return 0;var lam=lamAt(l0,b,(Tf+Ta+qs/al)/2),f=function(D1){return c-qs*D1*Math.log(D1/do_)/(2*lam)},lo=do_,hi=do_+8,i,m;if(f(hi)>0)return NaN;for(i=0;i<120;i++){m=(lo+hi)/2;if(f(m)>0)lo=m;else hi=m}return(lo+hi)/2-do_}
+function econThk(Tf,Ta,do_,al,l0,b,Cp,am,H,Ce){var cost=function(D1){var r=qOf(Tf,Ta,do_,D1,al,l0,b);return Math.PI/4*(D1*D1-do_*do_)*Cp*am+r.Q*H*Ce/1000},lo=do_,hi=do_+2,m1,m2,i;for(i=0;i<200;i++){m1=lo+(hi-lo)/3;m2=hi-(hi-lo)/3;if(cost(m1)<cost(m2))hi=m2;else lo=m1}var D1=(lo+hi)/2,r=qOf(Tf,Ta,do_,D1,al,l0,b);return{d:D1-do_,D1:D1,Q:r.Q,Ts:r.Ts,lam:r.lam,cost:cost(D1)}}
+function tab(id,el){var ss=document.querySelectorAll('main section');for(var i=0;i<ss.length;i++)ss[i].className='';document.getElementById(id).className='on';var bs=document.querySelectorAll('nav button');for(i=0;i<bs.length;i++)bs[i].className='';el.className='on'}
+function pick(){var s=document.getElementById('mat').value;if(!s)return;var p=s.split(',');document.getElementById('l0').value=p[0];document.getElementById('b').value=p[1]}
+function calc(){
+var ids=['do','tf','ta','l0','b','al','qs','cp','am','hrs','ce'];
+var lb={'do':'管道外径','tf':'介质温度','ta':'环境温度','l0':'导热系数λ0','b':'温度系数b','al':'散热系数α','qs':'允许散热损失','cp':'材料单价','am':'年摊销率','hrs':'年运行小时','ce':'热价'};
+var lim=[[5,3000],[-100,700],[-60,100],[0.005,0.2],[-0.002,0.002],[1,100],[10,2000],[0,100000],[0.001,1],[1,8760],[0,100]];
+var v={},bad=[],i,n,out=document.getElementById('out');
+for(i=0;i<ids.length;i++){n=vf(document.getElementById(ids[i]).value,lim[i][0],lim[i][1]);v[ids[i]]=n;if(isNaN(n))bad.push(lb[ids[i]])}
+if(bad.length){out.innerHTML='<span class="err">输入异常：'+bad.join('、')+' 为空、非数字或超出允许范围，请修正后重新计算。</span>';return}
+if(v.tf<=v.ta){out.innerHTML='<span class="err">介质温度必须高于环境温度：本工具针对热介质管道保温，保冷工况请另用专用模型。</span>';return}
+var doM=v.do/1000;
+var dA=allowThk(v.tf,v.ta,doM,v.al,v.l0,v.b,v.qs);
+var eE=econThk(v.tf,v.ta,doM,v.al,v.l0,v.b,v.cp,v.am,v.hrs,v.ce);
+var dAs=isNaN(dA)?0:dA;
+var dR=Math.max(dAs,eE.d);
+var D1=doM+dR,r=qOf(v.tf,v.ta,doM,D1,v.al,v.l0,v.b);
+var rows=[
+['推荐保温层厚度 δ',(dR*1000).toFixed(1),'mm','max(经济厚度, 允许散热损失厚度)'],
+['经济厚度法 δ_ec',(eE.d*1000).toFixed(1),'mm','年摊销费＋年散热损失费最小'],
+['允许散热损失法 δ_q',isNaN(dA)?'不适用':(dA*1000).toFixed(1),'mm','外表面散热流密度不超过 qs'],
+['保温层外径 D1',(D1*1000).toFixed(1),'mm','D1 = do + 2δ'],
+['导热系数 λm',r.lam.toFixed(4),'W/(m·K)','λm = λ0 + b·tm'],
+['保温层平均温度 tm',((v.tf+r.Ts)/2).toFixed(1),'℃','tm = (Tf + Ts)/2'],
+['外表面温度 Ts',r.Ts.toFixed(1),'℃','Ts = Ta + Q/(πD1α)'],
+['外表面散热流密度',(r.Q/(Math.PI*D1)).toFixed(1),'W/m²','qs = Q/(πD1)'],
+['单位管长散热损失 Q',r.Q.toFixed(1),'W/m','Q = (Tf−Ta)/R'],
+['单位长度热阻 R',r.R.toFixed(3),'m·K/W','ln(D1/do)/(2πλm)+1/(πD1α)'],
+['年散热损失量',(r.Q*v.hrs/1000).toFixed(1),'kWh/(m·a)','Q·H/1000'],
+['年散热损失费',(r.Q*v.hrs*v.ce/1000).toFixed(1),'元/(m·a)','Q·H·Ce/1000'],
+['保温层年摊销费',(Math.PI/4*(D1*D1-doM*doM)*v.cp*v.am).toFixed(1),'元/(m·a)','π/4(D1²−do²)·Cp·A']
+];
+var h='<table><tr><th>项目</th><th style="text-align:right">数值</th><th>单位</th><th>说明/公式</th></tr>';
+for(i=0;i<rows.length;i++)h+='<tr><td>'+rows[i][0]+'</td><td style="color:#4a9eff;text-align:right;font-weight:700">'+rows[i][1]+'</td><td>'+rows[i][2]+'</td><td style="color:#7d97b3">'+rows[i][3]+'</td></tr>';
+out.innerHTML=h+'</table><div style="margin-top:8px;color:#7d97b3;font-size:12px">注：材料导热系数与经济参数为用户输入值，工程取值须按现行标准核对。</div>';
+}
+var T=[
+['lamAt 线性叠加：λ=λ0+b·tm',function(){return Math.abs(lamAt(0.04,0.0002,100)-0.06)<1e-12}],
+['lamAt：b=0 时与温度无关',function(){return lamAt(0.05,0,80)===0.05}],
+['λ 随平均温度单调递增',function(){return lamAt(0.04,0.0002,200)>lamAt(0.04,0.0002,50)}],
+['vf 接受合法数值 12.5',function(){return vf('12.5',0,100)===12.5}],
+['vf 拒绝空字符串',function(){return isNaN(vf('',0,100))}],
+['vf 拒绝低于下限的负数',function(){return isNaN(vf('-1',0,100))}],
+['vf 拒绝非数字 abc',function(){return isNaN(vf('abc',0,100))}],
+['允许散热损失法厚度落在 (0,1) m',function(){var d=allowThk(150,20,0.108,11.6,0.045,0.0002,116);return d>0&&d<1}],
+['反算外表面热流≈qs（误差<1%）',function(){var d=allowThk(150,20,0.108,11.6,0.045,0.0002,116),D1=0.108+d,r=qOf(150,20,0.108,D1,11.6,0.045,0.0002);return Math.abs(r.Q/(Math.PI*D1)-116)/116<0.01}],
+['qs 越小所需厚度越大',function(){return allowThk(150,20,0.108,11.6,0.045,0.0002,80)>allowThk(150,20,0.108,11.6,0.045,0.0002,116)}],
+['经济厚度法返回正厚度与有限费用',function(){var r=econThk(150,20,0.108,11.6,0.045,0.0002,1200,0.15,8000,0.35);return r.d>0&&isFinite(r.cost)}],
+['经济厚度确为费用极小点（±30%处更高）',function(){var r=econThk(150,20,0.108,11.6,0.045,0.0002,1200,0.15,8000,0.35);var f=function(D1){var q=qOf(150,20,0.108,D1,11.6,0.045,0.0002);return Math.PI/4*(D1*D1-0.108*0.108)*1200*0.15+q.Q*8000*0.35/1000};return f(r.D1)<=f(r.D1*0.7)&&f(r.D1)<=f(r.D1*1.3)}]
+];
+function runTests(){var h='<tr><th>#</th><th>用例</th><th>判定</th></tr>',p=0,i,ok;for(i=0;i<T.length;i++){try{ok=T[i][1]()}catch(e){ok=false}if(ok)p++;h+='<tr><td>'+(i+1)+'</td><td>'+T[i][0]+'</td><td class="'+(ok?'ok':'err')+'">'+(ok?'PASS':'FAIL')+'</td></tr>'}h+='<tr><td colspan="3" style="color:#4a9eff;font-weight:700">通过 '+p+' / '+T.length+'</td></tr>';document.getElementById('tout').innerHTML=h}
+document.getElementById('srcpre').textContent=[vf,lamAt,qOf,allowThk,econThk].map(String).join('\n\n');
+</script>
+</body>
+</html>

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>齿轮参数计算器（含图解）</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f5f7fa;color:#2c3e50;line-height:1.6}
+header{background:linear-gradient(135deg,#2c3e50,#3498db);color:#fff;padding:20px 30px;text-align:center}
+header h1{font-size:1.6em;margin-bottom:4px}
+header p{font-size:0.85em;opacity:0.85}
+nav#tab-nav{display:flex;background:#fff;border-bottom:2px solid #e1e8ed;overflow-x:auto}
+nav#tab-nav button{flex:1;min-width:120px;padding:12px 16px;border:none;background:none;font-size:0.95em;cursor:pointer;color:#7f8c8d;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+nav#tab-nav button:hover{color:#2c3e50;background:#f8f9fa}
+nav#tab-nav button.active{color:#2980b9;border-bottom-color:#2980b9;font-weight:600}
+.tab-panel{display:none;padding:24px;max-width:1200px;margin:0 auto}
+.tab-panel.active{display:block}
+.calc-layout{display:grid;grid-template-columns:320px 1fr;gap:24px}
+@media(max-width:800px){.calc-layout{grid-template-columns:1fr}}
+.input-card,.output-card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.input-card h3,.output-card h3{margin-bottom:16px;color:#2c3e50;font-size:1.1em;border-bottom:2px solid #3498db;padding-bottom:8px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:0.9em;margin-bottom:4px;color:#555;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:0.95em}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,0.2)}
+.form-group small{color:#999;font-size:0.78em}
+.btn-row{display:flex;gap:8px;margin-top:16px}
+.btn{padding:10px 20px;border:none;border-radius:4px;cursor:pointer;font-size:0.95em;font-weight:500;transition:all .2s}
+.btn-primary{background:#3498db;color:#fff}.btn-primary:hover{background:#2980b9}
+.btn-secondary{background:#ecf0f1;color:#2c3e50}.btn-secondary:hover{background:#dfe6e9}
+.result-table{width:100%;border-collapse:collapse;font-size:0.9em;margin-bottom:16px}
+.result-table th,.result-table td{padding:6px 10px;border:1px solid #e1e8ed;text-align:left}
+.result-table th{background:#f8f9fa;color:#555;font-weight:600;width:40%}
+.result-table td{font-family:"Courier New",monospace;color:#2c3e50}
+.result-table tr:hover{background:#f0f7ff}
+.svg-container{background:#fff;border:1px solid #e1e8ed;border-radius:8px;padding:10px;text-align:center}
+.svg-container svg{max-width:100%;height:auto}
+.error-msg{color:#e74c3c;background:#fdf0ef;padding:10px;border-radius:4px;margin-top:10px;font-size:0.9em;display:none}
+.warning-msg{color:#f39c12;background:#fef9e7;padding:10px;border-radius:4px;margin-top:10px;font-size:0.9em;display:none}
+#source-display{background:#1e1e1e;color:#d4d4d4;padding:20px;border-radius:8px;overflow:auto;max-height:75vh;font-size:0.82em;line-height:1.5;tab-size:2;white-space:pre;font-family:"Courier New",Consolas,monospace}
+#test-panel button{margin-bottom:12px}
+#test-results{background:#1e1e1e;color:#d4d4d4;padding:20px;border-radius:8px;overflow:auto;max-height:65vh;font-size:0.82em;line-height:1.6;font-family:"Courier New",Consolas,monospace;white-space:pre-wrap}
+.test-pass{color:#2ecc71}.test-fail{color:#e74c3c}.test-summary{color:#f39c12;font-weight:bold;font-size:1.1em}
+.manual-content{background:#fff;border-radius:8px;padding:30px;box-shadow:0 2px 8px rgba(0,0,0,0.08);max-width:900px;margin:0 auto;font-size:0.95em;line-height:1.8}
+.manual-content h2{color:#2c3e50;margin:24px 0 12px;padding-bottom:6px;border-bottom:2px solid #3498db}
+.manual-content h3{color:#34495e;margin:18px 0 8px}
+.manual-content p{margin-bottom:10px;text-indent:2em}
+.manual-content ul,.manual-content ol{margin:8px 0 12px 2em}
+.manual-content li{margin-bottom:4px}
+.manual-content code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:0.9em;color:#c0392b}
+.manual-content table{width:100%;border-collapse:collapse;margin:12px 0}
+.manual-content table th,.manual-content table td{border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:0.9em}
+.manual-content table th{background:#f8f9fa}
+#version-tag{position:fixed;bottom:8px;right:12px;font-size:0.72em;color:#bbb;z-index:999}
+.legend-box{font-size:0.8em;text-align:left;margin-top:8px}
+.legend-item{display:inline-flex;align-items:center;margin-right:16px;margin-bottom:4px}
+.legend-line{display:inline-block;width:30px;height:0;border-top:2px solid;margin-right:6px}
+</style>
+</head>
+<body>
+<header>
+<h1>⚙ 工业齿轮参数完整计算器（含图解）</h1>
+<p>依据 GB/T 1356-2001、GB/T 1357-2008 | 支持标准齿轮与变位齿轮</p>
+</header>
+<nav id="tab-nav">
+<button class="active" onclick="switchTab(0)">在线计算器</button>
+<button onclick="switchTab(1)">JS 源码</button>
+<button onclick="switchTab(2)">单元测试</button>
+<button onclick="switchTab(3)">使用说明书</button>
+</nav>
+
+<div id="panel-0" class="tab-panel active">
+<div class="calc-layout">
+<div class="input-card">
+<h3>输入参数</h3>
+<div class="form-group">
+<label>模数 m (mm)</label>
+<input type="number" id="inp-m" value="2" step="0.05" min="0.05">
+<small>标准系列见 GB/T 1357，如 0.5, 0.8, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5…</small>
+</div>
+<div class="form-group">
+<label>齿数 z</label>
+<input type="number" id="inp-z" value="20" step="1" min="1">
+<small>正整数，标准齿轮不根切最小齿数 z<sub>min</sub>=17（α=20°）</small>
+</div>
+<div class="form-group">
+<label>压力角 α (°)</label>
+<select id="inp-alpha">
+<option value="14.5">14.5°（旧标准）</option>
+<option value="20" selected>20°（标准）</option>
+<option value="25">25°（重载）</option>
+<option value="custom">自定义…</option>
+</select>
+<input type="number" id="inp-alpha-custom" value="20" step="0.5" min="1" max="45" style="display:none;margin-top:4px">
+</div>
+<div class="form-group">
+<label>变位系数 x</label>
+<input type="number" id="inp-x" value="0" step="0.05" min="-2" max="2">
+<small>标准齿轮 x=0；正变位增大齿厚，负变位减小齿厚；本工具固定允许 |x| ≤ 2</small>
+</div>
+<div class="form-group">
+<p style="font-size:0.82em;color:#e67e22;background:#fef9e7;padding:8px;border-radius:4px">⚙ 固定设定（暂不可配置）：齿顶高系数 ha*=1、顶隙系数 c*=0.25（GB/T 1356 标准齿制）。<strong>本工具不支持齿制选择、螺旋角（斜齿）、内齿轮、精度等级与齿轮副啮合计算</strong>，如需上述工况请使用专业软件。</p>
+</div>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="doCalculate()">计 算</button>
+<button class="btn btn-secondary" onclick="loadExample(1)">示例1</button>
+<button class="btn btn-secondary" onclick="loadExample(2)">示例2</button>
+<button class="btn btn-secondary" onclick="loadExample(3)">示例3</button>
+</div>
+<div id="error-msg" class="error-msg"></div>
+<div id="warning-msg" class="warning-msg"></div>
+<div style="margin-top:10px;padding:10px;border:2px solid #e74c3c;border-radius:4px;background:#fdf0ef;color:#c0392b;font-size:0.88em;font-weight:600">⚠ 来源提示：本页跨齿数 k 与公法线长度 W 公式为工程近似/经验公式，<u>无已核对的标准或手册出处（未核对页码）</u>；SVG 齿形角度公式亦无标准来源，仅供示意。请勿直接用于正式工程设计。</div>
+</div>
+<div class="output-card">
+<h3>计算结果</h3>
+<table class="result-table" id="result-table">
+<tr><th>参数</th><th>符号</th><th>公式</th><th>数值</th></tr>
+<tr><td colspan="4" style="text-align:center;color:#999">请输入参数后点击"计算"</td></tr>
+</table>
+<h3>齿轮剖面图解</h3>
+<div class="svg-container" id="svg-container">
+<svg viewBox="0 0 560 560" width="100%" height="auto" style="background:#fafbfc;max-width:560px;height:auto">
+<text x="280" y="280" text-anchor="middle" fill="#bbb" font-size="14">计算后显示齿轮图解</text>
+</svg>
+</div>
+<div class="legend-box" id="legend-box"></div>
+</div>
+</div>
+</div>
+
+<div id="panel-1" class="tab-panel">
+<h2 style="margin-bottom:16px">JS 源码（核心算法库）</h2>
+<p style="margin-bottom:12px;color:#666;font-size:0.9em">以下为纯函数实现，无外部依赖，可直接在浏览器运行。每个函数均含完整 JSDoc 注释。</p>
+<pre id="source-display"></pre>
+</div>
+
+<div id="panel-2" class="tab-panel">
+<h2 style="margin-bottom:16px">单元测试</h2>
+<button class="btn btn-primary" onclick="runAllTests()" id="btn-run-tests">▶ 运行全部测试</button>
+<div id="test-results">点击按钮运行测试…</div>
+</div>
+
+<div id="panel-3" class="tab-panel">
+<div class="manual-content" id="manual-content"></div>
+</div>
+
+<script id="gear-lib">
+/**
+ * 角度转弧度
+ * @param {number} deg - 角度值（度）
+ * @returns {number} 弧度值
+ * @example
+ * degToRad(180); // 3.141592653589793
+ * degToRad(90);  // 1.5707963267948966
+ */
+function degToRad(deg) {
+  return deg * Math.PI / 180;
+}
+
+/**
+ * 弧度转角度
+ * @param {number} rad - 弧度值
+ * @returns {number} 角度值（度）
+ * @example
+ * radToDeg(Math.PI); // 180
+ */
+function radToDeg(rad) {
+  return rad * 180 / Math.PI;
+}
+
+/**
+ * 渐开线函数 inv(α) = tan(α) - α
+ * 这是齿轮计算中的核心函数，用于渐开线齿廓的几何计算。
+ * 依据：GB/T 1356-2001 中渐开线齿廓的数学定义。
+ *
+ * @param {number} alpha - 压力角，单位为弧度
+ * @returns {number} 渐开线函数值 inv(α)
+ * @throws {TypeError} 当参数不是有限数字时抛出
+ * @example
+ * inv(degToRad(20)); // 0.014904378...
+ * inv(0);            // 0
+ */
+function inv(alpha) {
+  if (typeof alpha !== 'number' || !isFinite(alpha)) {
+    throw new TypeError('inv(): 参数必须是有限数字');
+  }
+  return Math.tan(alpha) - alpha;
+}
+
+/**
+ * 验证齿轮输入参数的合法性
+ *
+ * @param {number} m - 模数 (mm)，必须 > 0
+ * @param {number} z - 齿数，必须为正整数
+ * @param {number} alphaDeg - 压力角（度），范围 (0, 45]
+ * @param {number} x - 变位系数，实数
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ *   valid: 是否通过验证;
+ *   errors: 错误信息列表（不满足则不可计算）;
+ *   warnings: 警告信息列表（可计算但需注意）
+ * @example
+ * validateGearInput(2, 20, 20, 0);
+ * // { valid: true, errors: [], warnings: [] }
+ *
+ * validateGearInput(0, 20, 20, 0);
+ * // { valid: false, errors: ['模数 m 必须大于 0'], warnings: [] }
+ */
+function validateGearInput(m, z, alphaDeg, x) {
+  var errors = [];
+  var warnings = [];
+
+  if (m === null || m === undefined || m === '' || (typeof m === 'string' && m.trim() === '')) {
+    errors.push('模数 m 不能为空');
+  } else if (typeof m !== 'number' || isNaN(m)) {
+    errors.push('模数 m 必须是有效数字');
+  } else if (m <= 0) {
+    errors.push('模数 m 必须大于 0');
+  } else if (m > 50) {
+    warnings.push('模数 m=' + m + ' 超出常规范围（GB/T 1357 标准系列最大到 50 需查标准原文确认）');
+  }
+
+  if (z === null || z === undefined || z === '' || (typeof z === 'string' && z.trim() === '')) {
+    errors.push('齿数 z 不能为空');
+  } else if (typeof z !== 'number' || isNaN(z)) {
+    errors.push('齿数 z 必须是有效数字');
+  } else if (!Number.isInteger(z)) {
+    errors.push('齿数 z 必须是正整数');
+  } else if (z <= 0) {
+    errors.push('齿数 z 必须大于 0');
+  } else if (z > 500) {
+    warnings.push('齿数 z=' + z + ' 较大，计算结果仅供参考');
+  }
+
+  if (alphaDeg === null || alphaDeg === undefined || alphaDeg === '' || (typeof alphaDeg === 'string' && alphaDeg.trim() === '')) {
+    errors.push('压力角 α 不能为空');
+  } else if (typeof alphaDeg !== 'number' || isNaN(alphaDeg)) {
+    errors.push('压力角 α 必须是有效数字');
+  } else if (alphaDeg <= 0 || alphaDeg > 45) {
+    errors.push('压力角 α 必须在 (0°, 45°] 范围内');
+  }
+
+  if (x === null || x === undefined || x === '' || (typeof x === 'string' && x.trim() === '')) {
+    errors.push('变位系数 x 不能为空');
+  } else if (typeof x !== 'number' || isNaN(x)) {
+    errors.push('变位系数 x 必须是有效数字');
+  } else if (Math.abs(x) > 2) {
+    warnings.push('变位系数 x=' + x + ' 绝对值较大，请确认设计合理性');
+  }
+
+  // 额外检查：如果基本参数都有效，做进一步几何检查
+  if (errors.length === 0 && typeof m === 'number' && typeof z === 'number' && typeof alphaDeg === 'number' && typeof x === 'number') {
+    var alphaRad = degToRad(alphaDeg);
+    var df = m * (z - 2.5 + 2 * x);
+    if (df <= 0) {
+      errors.push('齿根圆直径 df=' + df.toFixed(3) + 'mm ≤ 0，几何上不合理（齿廓会自交），已阻止计算，请调整参数组合');
+    }
+    // 标准齿轮不根切最小齿数 z_min = 2·ha*/sin²α，α=20°、ha*=1 时为 17.097 → 取实际可用最小整数 17
+    var zMin = Math.floor(2 / (Math.sin(alphaRad) * Math.sin(alphaRad)));
+    if (x === 0 && z < zMin) {
+      warnings.push('标准齿轮（x=0）不根切最小齿数为 ' + zMin + '（α=' + alphaDeg + '°），当前 z=' + z + ' 会发生根切');
+    }
+  }
+
+  return { valid: errors.length === 0, errors: errors, warnings: warnings };
+}
+
+/**
+ * 计算跨齿数 k（公法线测量时跨过的齿数）
+ * 公式：k = round(z × α / 180 + 0.5)
+ * 对于 α=20° 简化为 k = round(z/9 + 0.5)
+ * 依据：机械设计手册，齿轮公法线测量方法。
+ *
+ * @param {number} z - 齿数，正整数
+ * @param {number} alphaDeg - 压力角（度）
+ * @returns {number} 跨齿数 k（正整数，≥2）
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * calcSpanTeeth(20, 20); // 3
+ * calcSpanTeeth(30, 20); // 4
+ * calcSpanTeeth(17, 20); // 2
+ */
+function calcSpanTeeth(z, alphaDeg) {
+  if (!Number.isInteger(z) || z <= 0) throw new Error('calcSpanTeeth: z 必须为正整数');
+  if (typeof alphaDeg !== 'number' || alphaDeg <= 0) throw new Error('calcSpanTeeth: alphaDeg 必须为正数');
+  var k = Math.round(z * alphaDeg / 180 + 0.5);
+  if (k < 2) k = 2;
+  if (k > z) k = z;
+  return k;
+}
+
+/**
+ * 计算直齿圆柱齿轮的全部几何参数
+ *
+ * 依据标准：
+ * - GB/T 1356-2001《通用机械和重型机械用圆柱齿轮 标准基本齿条齿廓》
+ * - GB/T 1357-2008《通用机械和重型机械用圆柱齿轮 模数》
+ *
+ * 基本齿条参数（GB/T 1356）：
+ * - 齿顶高系数 ha* = 1
+ * - 顶隙系数 c* = 0.25
+ *
+ * @param {number} m - 模数 (mm)，> 0
+ * @param {number} z - 齿数，正整数，> 0
+ * @param {number} alphaDeg - 压力角（度），范围 (0, 45]
+ * @param {number} x - 变位系数，实数（标准齿轮为 0）
+ * @returns {Object} 包含以下字段的计算结果对象：
+ *   - m {number} 模数
+ *   - z {number} 齿数
+ *   - alphaDeg {number} 压力角（度）
+ *   - alphaRad {number} 压力角（弧度）
+ *   - x {number} 变位系数
+ *   - ha_star {number} 齿顶高系数（=1）
+ *   - c_star {number} 顶隙系数（=0.25）
+ *   - d {number} 分度圆直径 (mm)
+ *   - da {number} 齿顶圆直径 (mm)
+ *   - df {number} 齿根圆直径 (mm)
+ *   - db {number} 基圆直径 (mm)
+ *   - ha {number} 齿顶高 (mm)
+ *   - hf {number} 齿根高 (mm)
+ *   - h {number} 全齿高 (mm)
+ *   - p {number} 齿距（周节）(mm)
+ *   - s {number} 分度圆齿厚 (mm)
+ *   - invAlpha {number} 渐开线函数值 inv(α)
+ *   - alpha_a {number} 齿顶压力角（度）
+ *   - k {number} 跨齿数
+ *   - W {number} 公法线长度 (mm)
+ * @throws {Error} 参数验证不通过时抛出
+ * @example
+ * var r = calculateGearParameters(2, 20, 20, 0);
+ * r.d;  // 40
+ * r.da; // 44
+ * r.df; // 35
+ * r.db; // 37.588...
+ */
+function calculateGearParameters(m, z, alphaDeg, x) {
+  var validation = validateGearInput(m, z, alphaDeg, x);
+  if (!validation.valid) {
+    throw new Error('参数验证失败: ' + validation.errors.join('; '));
+  }
+
+  var alphaRad = degToRad(alphaDeg);
+  var cosAlpha = Math.cos(alphaRad);
+  var sinAlpha = Math.sin(alphaRad);
+  var tanAlpha = Math.tan(alphaRad);
+  var ha_star = 1;
+  var c_star = 0.25;
+
+  // 分度圆直径
+  var d = m * z;
+
+  // 齿顶高
+  var ha = m * (ha_star + x);
+
+  // 齿根高
+  var hf = m * (ha_star + c_star - x);
+
+  // 全齿高
+  var h = ha + hf; // 恒等于 2.25m
+
+  // 齿顶圆直径
+  var da = d + 2 * ha; // = m(z + 2 + 2x)
+
+  // 齿根圆直径
+  var df = d - 2 * hf; // = m(z - 2.5 + 2x)
+
+  // 基圆直径
+  var db = d * cosAlpha;
+
+  // 齿距（周节）
+  var p = Math.PI * m;
+
+  // 分度圆齿厚
+  var s = p / 2 + 2 * x * m * tanAlpha; // = πm/2 + 2xm·tanα
+
+  // 渐开线函数值
+  var invAlpha = inv(alphaRad);
+
+  // 齿顶压力角
+  var alpha_a_rad = (da > 0 && db > 0 && db <= da) ? Math.acos(db / da) : 0;
+  var alpha_a = radToDeg(alpha_a_rad);
+
+  // 跨齿数
+  var k = calcSpanTeeth(z, alphaDeg);
+
+  // 公法线长度
+  // W = m·cosα·[π(k-0.5) + z·inv(α)] + 2x·m·sinα
+  var W = m * cosAlpha * (Math.PI * (k - 0.5) + z * invAlpha) + 2 * x * m * sinAlpha;
+
+  return {
+    m: m, z: z, alphaDeg: alphaDeg, alphaRad: alphaRad, x: x,
+    ha_star: ha_star, c_star: c_star,
+    d: d, da: da, df: df, db: db,
+    ha: ha, hf: hf, h: h,
+    p: p, s: s,
+    invAlpha: invAlpha,
+    alpha_a: alpha_a,
+    k: k, W: W
+  };
+}
+
+/**
+ * 生成齿轮剖面 SVG 图解
+ * 绘制齿轮齿廓（渐开线）及四条参考圆：齿顶圆、分度圆、基圆、齿根圆。
+ * 图解按标准直齿圆柱齿轮绘制，标注各直径。
+ *
+ * @param {number} m - 模数 (mm)
+ * @param {number} z - 齿数
+ * @param {number} alphaDeg - 压力角（度）
+ * @param {number} x - 变位系数
+ * @returns {string} SVG 标记字符串
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * var svg = generateGearSVG(2, 20, 20, 0);
+ * document.getElementById('container').innerHTML = svg;
+ */
+function generateGearSVG(m, z, alphaDeg, x) {
+  var params = calculateGearParameters(m, z, alphaDeg, x);
+  var r = params.d / 2;
+  var ra = params.da / 2;
+  var rf = params.df / 2;
+  var rb = params.db / 2;
+  var alphaRad = params.alphaRad;
+  var invAlpha = params.invAlpha;
+
+  var svgW = 560, svgH = 560;
+  var cx = svgW / 2, cy = svgH / 2;
+  var maxDim = Math.max(ra, Math.abs(rf));
+  var scale = (Math.min(svgW, svgH) * 0.38) / maxDim;
+
+  function toSVG(px, py) {
+    return [cx + px * scale, cy - py * scale];
+  }
+
+  // 生成齿廓路径
+  var xiMax = Math.acos(Math.min(1, rb / ra));
+  var xiMin = (rf > rb && rf > 0) ? Math.acos(Math.min(1, rb / rf)) : 0;
+  var N = 16;
+  var teethToDraw = z;
+  var pathParts = [];
+  var firstPoint = true;
+
+  for (var i = 0; i < teethToDraw; i++) {
+    var baseAngle = i * 2 * Math.PI / z;
+
+    // 右齿面（从齿根到齿顶）
+    if (rf < rb && rf > 0) {
+      var deltaBase = Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha;
+      var angRBase = baseAngle - deltaBase;
+      var p0 = toSVG(rf * Math.cos(angRBase), rf * Math.sin(angRBase));
+      var p1 = toSVG(rb * Math.cos(angRBase), rb * Math.sin(angRBase));
+      if (firstPoint) { pathParts.push('M' + p0[0].toFixed(2) + ',' + p0[1].toFixed(2)); firstPoint = false; }
+      else { pathParts.push('L' + p0[0].toFixed(2) + ',' + p0[1].toFixed(2)); }
+      pathParts.push('L' + p1[0].toFixed(2) + ',' + p1[1].toFixed(2));
+    }
+
+    for (var j = 0; j <= N; j++) {
+      var xi = xiMin + (xiMax - xiMin) * j / N;
+      var ri = rb / Math.cos(xi);
+      var invXi = Math.tan(xi) - xi;
+      var delta = Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha - invXi;
+      var ang = baseAngle - delta;
+      var pt = toSVG(ri * Math.cos(ang), ri * Math.sin(ang));
+      if (firstPoint) { pathParts.push('M' + pt[0].toFixed(2) + ',' + pt[1].toFixed(2)); firstPoint = false; }
+      else { pathParts.push('L' + pt[0].toFixed(2) + ',' + pt[1].toFixed(2)); }
+    }
+
+    // 左齿面（从齿顶到齿根）
+    for (var j2 = N; j2 >= 0; j2--) {
+      var xi2 = xiMin + (xiMax - xiMin) * j2 / N;
+      var ri2 = rb / Math.cos(xi2);
+      var invXi2 = Math.tan(xi2) - xi2;
+      var delta2 = Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha - invXi2;
+      var ang2 = baseAngle + delta2;
+      var pt2 = toSVG(ri2 * Math.cos(ang2), ri2 * Math.sin(ang2));
+      pathParts.push('L' + pt2[0].toFixed(2) + ',' + pt2[1].toFixed(2));
+    }
+
+    if (rf < rb && rf > 0) {
+      var deltaBase2 = Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha;
+      var angLBase = baseAngle + deltaBase2;
+      var p2 = toSVG(rb * Math.cos(angLBase), rb * Math.sin(angLBase));
+      var p3 = toSVG(rf * Math.cos(angLBase), rf * Math.sin(angLBase));
+      pathParts.push('L' + p2[0].toFixed(2) + ',' + p2[1].toFixed(2));
+      pathParts.push('L' + p3[0].toFixed(2) + ',' + p3[1].toFixed(2));
+    }
+
+    // 齿根圆弧到下一个齿
+    if (i < teethToDraw - 1) {
+      var curAng = baseAngle + (rf < rb && rf > 0 ? (Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha) : (Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha - (Math.tan(xiMin) - xiMin)));
+      var nextBase = (i + 1) * 2 * Math.PI / z;
+      var nextAng = nextBase - (rf < rb && rf > 0 ? (Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha) : (Math.PI / (2 * z) + 2 * x * Math.tan(alphaRad) / z + invAlpha - (Math.tan(xiMin) - xiMin)));
+      var arcR = Math.max(rf, 0.01);
+      var arcSteps = 4;
+      for (var j3 = 1; j3 <= arcSteps; j3++) {
+        var a = curAng + (nextAng - curAng) * j3 / arcSteps;
+        var apt = toSVG(arcR * Math.cos(a), arcR * Math.sin(a));
+        pathParts.push('L' + apt[0].toFixed(2) + ',' + apt[1].toFixed(2));
+      }
+    }
+  }
+  pathParts.push('Z');
+  var gearPath = pathParts.join(' ');
+
+  // 构建 SVG
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + svgW + ' ' + svgH + '" width="100%" height="auto" style="background:#fafbfc;border-radius:6px;max-width:' + svgW + 'px;height:auto">';
+
+  // 齿廓填充
+  svg += '<path d="' + gearPath + '" fill="#dfe6e9" stroke="#636e72" stroke-width="1" />';
+
+  // 中心十字线
+  svg += '<line x1="' + (cx - 8) + '" y1="' + cy + '" x2="' + (cx + 8) + '" y2="' + cy + '" stroke="#b2bec3" stroke-width="0.8" />';
+  svg += '<line x1="' + cx + '" y1="' + (cy - 8) + '" x2="' + cx + '" y2="' + (cy + 8) + '" stroke="#b2bec3" stroke-width="0.8" />';
+
+  // 四条参考圆
+  // 齿顶圆 - 红色实线
+  svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (ra * scale).toFixed(2) + '" fill="none" stroke="#e74c3c" stroke-width="1.8" />';
+  // 分度圆 - 蓝色点划线
+  svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * scale).toFixed(2) + '" fill="none" stroke="#2980b9" stroke-width="1.5" stroke-dasharray="10,4,2,4" />';
+  // 基圆 - 绿色虚线
+  svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rb * scale).toFixed(2) + '" fill="none" stroke="#27ae60" stroke-width="1.3" stroke-dasharray="6,4" />';
+  // 齿根圆 - 橙色实线
+  if (rf > 0) {
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rf * scale).toFixed(2) + '" fill="none" stroke="#e67e22" stroke-width="1.3" />';
+  }
+
+  // 标注线和文字
+  var labelR = ra * scale;
+  var offsets = [
+    { name: 'da', val: params.da, r: ra, color: '#e74c3c', angle: -30 },
+    { name: 'd', val: params.d, r: r, color: '#2980b9', angle: -50 },
+    { name: 'db', val: params.db, r: rb, color: '#27ae60', angle: -70 },
+    { name: 'df', val: params.df, r: rf > 0 ? rf : 0, color: '#e67e22', angle: -110 }
+  ];
+
+  for (var li = 0; li < offsets.length; li++) {
+    var lb = offsets[li];
+    if (lb.r <= 0) continue;
+    var aRad = degToRad(lb.angle);
+    var x1 = cx + lb.r * scale * Math.cos(aRad);
+    var y1 = cy - lb.r * scale * Math.sin(aRad);
+    var ext = 25;
+    var x2 = cx + (lb.r * scale + ext) * Math.cos(aRad);
+    var y2 = cy - (lb.r * scale + ext) * Math.sin(aRad);
+    svg += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + lb.color + '" stroke-width="0.8" />';
+    var tx = cx + (lb.r * scale + ext + 6) * Math.cos(aRad);
+    var ty = cy - (lb.r * scale + ext + 6) * Math.sin(aRad);
+    var anchor = (lb.angle > -90 && lb.angle < 90) ? 'start' : 'end';
+    if (lb.angle < -90 || lb.angle > 90) anchor = 'end';
+    svg += '<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" fill="' + lb.color + '" font-size="11" font-weight="600" text-anchor="' + anchor + '" dominant-baseline="middle">' + lb.name + '=' + lb.val.toFixed(3) + '</text>';
+  }
+
+  // 图例
+  var lgX = 12, lgY = svgH - 80;
+  svg += '<rect x="' + lgX + '" y="' + lgY + '" width="160" height="72" rx="4" fill="white" fill-opacity="0.9" stroke="#ddd" stroke-width="0.5" />';
+  var legends = [
+    { label: '齿顶圆 da', color: '#e74c3c', dash: '' },
+    { label: '分度圆 d', color: '#2980b9', dash: '10,4,2,4' },
+    { label: '基圆 db', color: '#27ae60', dash: '6,4' },
+    { label: '齿根圆 df', color: '#e67e22', dash: '' }
+  ];
+  for (var lgi = 0; lgi < legends.length; lgi++) {
+    var lg = legends[lgi];
+    var ly = lgY + 14 + lgi * 15;
+    var dashAttr = lg.dash ? ' stroke-dasharray="' + lg.dash + '"' : '';
+    svg += '<line x1="' + (lgX + 8) + '" y1="' + ly + '" x2="' + (lgX + 32) + '" y2="' + ly + '" stroke="' + lg.color + '" stroke-width="2"' + dashAttr + ' />';
+    svg += '<text x="' + (lgX + 38) + '" y="' + (ly + 4) + '" fill="#555" font-size="10">' + lg.label + '</text>';
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+</script>
+
+<script>
+// ====== 齿轮库代码：gear-lib 脚本本身会执行，无需再 eval（消除 eval 安全隐患）======
+
+// ====== 显示源码 ======
+document.getElementById('source-display').textContent = document.getElementById('gear-lib').textContent;
+
+// ====== 标签页切换 ======
+function switchTab(idx) {
+  var panels = document.querySelectorAll('.tab-panel');
+  var btns = document.querySelectorAll('#tab-nav button');
+  for (var i = 0; i < panels.length; i++) {
+    panels[i].classList.remove('active');
+    btns[i].classList.remove('active');
+  }
+  panels[idx].classList.add('active');
+  btns[idx].classList.add('active');
+}
+
+// ====== 压力角下拉联动 ======
+document.getElementById('inp-alpha').addEventListener('change', function() {
+  var custom = document.getElementById('inp-alpha-custom');
+  custom.style.display = this.value === 'custom' ? 'block' : 'none';
+  if (this.value !== 'custom') custom.value = this.value;
+});
+
+// ====== 获取输入值 ======
+function getInputs() {
+  var m = parseFloat(document.getElementById('inp-m').value);
+  var z = parseFloat(document.getElementById('inp-z').value); // 保留小数以便校验拒绝，不做静默截断
+  var alphaSel = document.getElementById('inp-alpha').value;
+  var alphaDeg = alphaSel === 'custom' ? parseFloat(document.getElementById('inp-alpha-custom').value) : parseFloat(alphaSel);
+  var x = parseFloat(document.getElementById('inp-x').value);
+  return { m: m, z: z, alphaDeg: alphaDeg, x: x };
+}
+
+// ====== 执行计算 ======
+function doCalculate() {
+  var errDiv = document.getElementById('error-msg');
+  var warnDiv = document.getElementById('warning-msg');
+  errDiv.style.display = 'none';
+  warnDiv.style.display = 'none';
+
+  var inp = getInputs();
+  var validation = validateGearInput(inp.m, inp.z, inp.alphaDeg, inp.x);
+
+  if (!validation.valid) {
+    errDiv.textContent = '❌ ' + validation.errors.join('；');
+    errDiv.style.display = 'block';
+    return;
+  }
+  if (validation.warnings.length > 0) {
+    warnDiv.textContent = '⚠ ' + validation.warnings.join('；');
+    warnDiv.style.display = 'block';
+  }
+
+  try {
+    var r = calculateGearParameters(inp.m, inp.z, inp.alphaDeg, inp.x);
+    renderResults(r);
+    renderSVG(inp.m, inp.z, inp.alphaDeg, inp.x);
+  } catch (e) {
+    errDiv.textContent = '❌ 计算错误: ' + e.message;
+    errDiv.style.display = 'block';
+  }
+}
+
+// ====== 渲染结果表 ======
+function renderResults(r) {
+  var f = function(v) { return v.toFixed(4); };
+  var rows = [
+    ['分度圆直径', 'd', 'm·z', f(r.d) + ' mm'],
+    ['齿顶圆直径', 'da', 'm(z+2+2x)', f(r.da) + ' mm'],
+    ['齿根圆直径', 'df', 'm(z−2.5+2x)', f(r.df) + ' mm'],
+    ['基圆直径', 'db', 'd·cosα', f(r.db) + ' mm'],
+    ['齿顶高', 'ha', 'm(ha*+x)', f(r.ha) + ' mm'],
+    ['齿根高', 'hf', 'm(ha*+c*−x)', f(r.hf) + ' mm'],
+    ['全齿高', 'h', 'ha+hf = 2.25m', f(r.h) + ' mm'],
+    ['齿距（周节）', 'p', 'πm', f(r.p) + ' mm'],
+    ['分度圆齿厚', 's', 'πm/2 + 2xm·tanα', f(r.s) + ' mm'],
+    ['渐开线函数值', 'inv(α)', 'tanα − α', r.invAlpha.toFixed(6)],
+    ['齿顶压力角', 'αa', 'acos(db/da)', (r.db <= r.da) ? f(r.alpha_a) + '°' : '无效（da < db，齿顶圆小于基圆，请检查参数）'],
+    ['跨齿数', 'k', 'round(zα/180+0.5)', r.k],
+    ['公法线长度', 'W', 'm·cosα[π(k−0.5)+z·invα]+2xm·sinα', f(r.W) + ' mm']
+  ];
+  var html = '<tr><th>参数名称</th><th>符号</th><th>公式</th><th>数值</th></tr>';
+  for (var i = 0; i < rows.length; i++) {
+    html += '<tr><td>' + rows[i][0] + '</td><td>' + rows[i][1] + '</td><td><code>' + rows[i][2] + '</code></td><td><strong>' + rows[i][3] + '</strong></td></tr>';
+  }
+  document.getElementById('result-table').innerHTML = html;
+}
+
+// ====== 渲染 SVG ======
+function renderSVG(m, z, alphaDeg, x) {
+  try {
+    var svgStr = generateGearSVG(m, z, alphaDeg, x);
+    document.getElementById('svg-container').innerHTML = svgStr;
+  } catch (e) {
+    document.getElementById('svg-container').innerHTML = '<p style="color:#e74c3c;padding:20px">图解生成失败: ' + e.message + '</p>';
+  }
+}
+
+// ====== 示例加载 ======
+function loadExample(n) {
+  var examples = {
+    1: { m: 2, z: 20, alpha: '20', x: 0 },
+    2: { m: 3, z: 17, alpha: '20', x: 0.5 },
+    3: { m: 1.5, z: 36, alpha: '20', x: -0.2 }
+  };
+  var ex = examples[n];
+  document.getElementById('inp-m').value = ex.m;
+  document.getElementById('inp-z').value = ex.z;
+  document.getElementById('inp-alpha').value = ex.alpha;
+  document.getElementById('inp-alpha-custom').style.display = 'none';
+  document.getElementById('inp-x').value = ex.x;
+  doCalculate();
+}
+
+// ====== 单元测试框架 ======
+function runAllTests() {
+  var passed = 0, failed = 0, total = 0;
+  var results = [];
+
+  function assert(cond, msg) {
+    if (!cond) throw new Error(msg || '断言失败');
+  }
+  function assertClose(actual, expected, tol, msg) {
+    if (Math.abs(actual - expected) > tol) {
+      throw new Error((msg || '') + ' 期望 ' + expected + ' 实际 ' + actual + ' 差值 ' + Math.abs(actual - expected));
+    }
+  }
+  function assertThrows(fn, msg) {
+    var threw = false;
+    try { fn(); } catch (e) { threw = true; }
+    if (!threw) throw new Error(msg || '期望抛出异常但未抛出');
+  }
+  function test(name, fn) {
+    total++;
+    try {
+      fn();
+      passed++;
+      results.push('<span class="test-pass">✓</span> ' + name);
+    } catch (e) {
+      failed++;
+      results.push('<span class="test-fail">✗</span> ' + name + ' — ' + e.message);
+    }
+  }
+
+  // ===== 标准齿轮 m=2, z=20, α=20°, x=0 =====
+  var r1 = calculateGearParameters(2, 20, 20, 0);
+  test('T01: d = mz = 40', function() { assertClose(r1.d, 40, 1e-10, 'd'); });
+  test('T02: da = m(z+2) = 44', function() { assertClose(r1.da, 44, 1e-10, 'da'); });
+  test('T03: df = m(z-2.5) = 35', function() { assertClose(r1.df, 35, 1e-10, 'df'); });
+  test('T04: db = d·cos20° ≈ 37.588', function() { assertClose(r1.db, 40 * Math.cos(degToRad(20)), 1e-8, 'db'); });
+  test('T05: ha = m = 2', function() { assertClose(r1.ha, 2, 1e-10, 'ha'); });
+  test('T06: hf = 1.25m = 2.5', function() { assertClose(r1.hf, 2.5, 1e-10, 'hf'); });
+  test('T07: h = 2.25m = 4.5', function() { assertClose(r1.h, 4.5, 1e-10, 'h'); });
+  test('T08: p = πm ≈ 6.2832', function() { assertClose(r1.p, Math.PI * 2, 1e-10, 'p'); });
+  test('T09: s = πm/2 ≈ 3.1416', function() { assertClose(r1.s, Math.PI, 1e-10, 's'); });
+  test('T10: k = 3 (z=20, α=20°)', function() { assert(r1.k === 3, 'k=' + r1.k); });
+  test('T11: W ≈ 15.32 (z=20, α=20°)', function() {
+    var expectedW = 2 * Math.cos(degToRad(20)) * (Math.PI * 2.5 + 20 * r1.invAlpha);
+    assertClose(r1.W, expectedW, 1e-6, 'W');
+  });
+
+  // ===== 不同模数 m=1, z=30 =====
+  var r2 = calculateGearParameters(1, 30, 20, 0);
+  test('T12: m=1,z=30: d = 30', function() { assertClose(r2.d, 30, 1e-10); });
+  test('T13: m=1,z=30: da = 32', function() { assertClose(r2.da, 32, 1e-10); });
+  test('T14: m=1,z=30: df = 27.5', function() { assertClose(r2.df, 27.5, 1e-10); });
+  test('T15: m=1,z=30: k = 4', function() { assert(r2.k === 4, 'k=' + r2.k); });
+
+  // ===== 不同齿数 m=3, z=17 =====
+  var r3 = calculateGearParameters(3, 17, 20, 0);
+  test('T16: m=3,z=17: d = 51', function() { assertClose(r3.d, 51, 1e-10); });
+  test('T17: m=3,z=17: da = 57', function() { assertClose(r3.da, 57, 1e-10); });
+  test('T18: m=3,z=17: k = 2', function() { assert(r3.k === 2, 'k=' + r3.k); });
+
+  // ===== 不同压力角 α=14.5° =====
+  var r4 = calculateGearParameters(2, 20, 14.5, 0);
+  test('T19: α=14.5°: db = 40·cos14.5°', function() { assertClose(r4.db, 40 * Math.cos(degToRad(14.5)), 1e-8); });
+  test('T20: α=14.5°: k = 2', function() { assert(r4.k === 2, 'k=' + r4.k); });
+
+  // ===== α=25° =====
+  var r4b = calculateGearParameters(2, 20, 25, 0);
+  test('T21: α=25°: db = 40·cos25°', function() { assertClose(r4b.db, 40 * Math.cos(degToRad(25)), 1e-8); });
+
+  // ===== 正变位 x=0.5 =====
+  var r5 = calculateGearParameters(2, 20, 20, 0.5);
+  test('T22: x=0.5: da = m(z+2+2x) = 46', function() { assertClose(r5.da, 46, 1e-10); });
+  test('T23: x=0.5: df = m(z-2.5+2x) = 37', function() { assertClose(r5.df, 37, 1e-10); });
+  test('T24: x=0.5: ha = m(1+x) = 3', function() { assertClose(r5.ha, 3, 1e-10); });
+  test('T25: x=0.5: hf = m(1.25-x) = 1.5', function() { assertClose(r5.hf, 1.5, 1e-10); });
+  test('T26: x=0.5: h = 4.5 (不变)', function() { assertClose(r5.h, 4.5, 1e-10); });
+  test('T27: x=0.5: s > πm/2 (齿厚增大)', function() { assert(r5.s > Math.PI, 's=' + r5.s); });
+
+  // ===== 负变位 x=-0.3 =====
+  var r6 = calculateGearParameters(2, 20, 20, -0.3);
+  test('T28: x=-0.3: da = 42.8', function() { assertClose(r6.da, 42.8, 1e-10); });
+  test('T29: x=-0.3: df = 33.8', function() { assertClose(r6.df, 33.8, 1e-10); });
+  test('T30: x=-0.3: ha = 1.4', function() { assertClose(r6.ha, 1.4, 1e-10); });
+
+  // ===== 边界值 =====
+  test('T31: z=4 可计算', function() {
+    var r = calculateGearParameters(2, 4, 20, 0);
+    assertClose(r.d, 8, 1e-10);
+  });
+  test('T32: m=0.1 小模数', function() {
+    var r = calculateGearParameters(0.1, 20, 20, 0);
+    assertClose(r.d, 2, 1e-10);
+  });
+  test('T33: m=10 大模数', function() {
+    var r = calculateGearParameters(10, 20, 20, 0);
+    assertClose(r.d, 200, 1e-10);
+  });
+  test('T34: z=100 大齿数', function() {
+    var r = calculateGearParameters(2, 100, 20, 0);
+    assertClose(r.d, 200, 1e-10);
+    assert(r.k >= 2, 'k>=2');
+  });
+
+  // ===== 异常输入 =====
+  test('T35: m=0 抛出异常', function() { assertThrows(function() { calculateGearParameters(0, 20, 20, 0); }); });
+  test('T36: m=-1 抛出异常', function() { assertThrows(function() { calculateGearParameters(-1, 20, 20, 0); }); });
+  test('T37: z=0 抛出异常', function() { assertThrows(function() { calculateGearParameters(2, 0, 20, 0); }); });
+  test('T38: z=-5 抛出异常', function() { assertThrows(function() { calculateGearParameters(2, -5, 20, 0); }); });
+  test('T39: z=3.5 非整数抛出异常', function() { assertThrows(function() { calculateGearParameters(2, 3.5, 20, 0); }); });
+  test('T40: m=null 抛出异常', function() { assertThrows(function() { calculateGearParameters(null, 20, 20, 0); }); });
+  test('T41: m=NaN 抛出异常', function() { assertThrows(function() { calculateGearParameters(NaN, 20, 20, 0); }); });
+  test('T42: α=0 抛出异常', function() { assertThrows(function() { calculateGearParameters(2, 20, 0, 0); }); });
+  test('T43: α=-20 抛出异常', function() { assertThrows(function() { calculateGearParameters(2, 20, -20, 0); }); });
+  test('T44: α=50 超范围抛出异常', function() { assertThrows(function() { calculateGearParameters(2, 20, 50, 0); }); });
+
+  // ===== 精度与恒等式 =====
+  test('T45: db/d = cosα 高精度', function() {
+    var r = calculateGearParameters(2, 20, 20, 0);
+    assertClose(r.db / r.d, Math.cos(degToRad(20)), 1e-14, 'db/d vs cosα');
+  });
+  test('T46: h = ha + hf 恒等', function() {
+    var r = calculateGearParameters(2, 20, 20, 0.3);
+    assertClose(r.h, r.ha + r.hf, 1e-14, 'h = ha+hf');
+  });
+  test('T47: h = 2.25m 恒等', function() {
+    var r = calculateGearParameters(3, 25, 20, 0.7);
+    assertClose(r.h, 2.25 * 3, 1e-14, 'h = 2.25m');
+  });
+  test('T48: p = πm 恒等', function() {
+    var r = calculateGearParameters(1.5, 30, 20, 0);
+    assertClose(r.p, Math.PI * 1.5, 1e-14);
+  });
+  test('T49: da - df = 2h', function() {
+    var r = calculateGearParameters(2, 20, 20, 0.2);
+    assertClose(r.da - r.df, 2 * r.h, 1e-12, 'da-df=2h');
+  });
+  test('T50: inv(0) = 0', function() { assertClose(inv(0), 0, 1e-15); });
+  test('T51: inv(α) 单调递增', function() {
+    var a1 = inv(degToRad(14.5));
+    var a2 = inv(degToRad(20));
+    var a3 = inv(degToRad(25));
+    assert(a1 < a2 && a2 < a3, 'inv 应单调递增');
+  });
+  test('T52: validateGearInput 返回结构正确', function() {
+    var v = validateGearInput(2, 20, 20, 0);
+    assert(v.valid === true, 'should be valid');
+    assert(Array.isArray(v.errors), 'errors should be array');
+    assert(Array.isArray(v.warnings), 'warnings should be array');
+  });
+  test('T53: validateGearInput 检测 m=0', function() {
+    var v = validateGearInput(0, 20, 20, 0);
+    assert(v.valid === false, 'm=0 should be invalid');
+    assert(v.errors.length > 0, 'should have errors');
+  });
+  test('T54: validateGearInput 检测 z 非整数', function() {
+    var v = validateGearInput(2, 3.5, 20, 0);
+    assert(v.valid === false, 'z=3.5 should be invalid');
+  });
+  test('T55: SVG 生成返回字符串', function() {
+    var svg = generateGearSVG(2, 20, 20, 0);
+    assert(typeof svg === 'string', 'should return string');
+    assert(svg.indexOf('<svg') >= 0, 'should contain svg tag');
+    assert(svg.indexOf('</svg>') >= 0, 'should contain closing svg tag');
+  });
+  test('T56: SVG 包含四条参考圆', function() {
+    var svg = generateGearSVG(2, 20, 20, 0);
+    var circleCount = (svg.match(/<circle/g) || []).length;
+    assert(circleCount >= 4, 'should have at least 4 circles, got ' + circleCount);
+  });
+  test('T57: 公法线长度 W > 0', function() {
+    var r = calculateGearParameters(2, 20, 20, 0);
+    assert(r.W > 0, 'W should be positive');
+  });
+  test('T58: 变位齿轮公法线变化', function() {
+    var r0 = calculateGearParameters(2, 20, 20, 0);
+    var r1 = calculateGearParameters(2, 20, 20, 0.5);
+    assert(r1.W > r0.W, '正变位应增大公法线');
+  });
+  test('T59: degToRad/radToDeg 互逆', function() {
+    assertClose(radToDeg(degToRad(37.5)), 37.5, 1e-12);
+    assertClose(degToRad(radToDeg(1.234)), 1.234, 1e-12);
+  });
+  test('T60: calcSpanTeeth 边界', function() {
+    assert(calcSpanTeeth(7, 20) >= 2, 'k>=2');
+    assert(calcSpanTeeth(100, 20) <= 100, 'k<=z');
+  });
+
+  // 输出结果
+  var html = results.join('\n');
+  html += '\n\n<span class="test-summary">══════════════════════════════\n通过 ' + passed + ' / 共 ' + total + '（失败 ' + failed + '）</span>';
+  document.getElementById('test-results').innerHTML = html;
+}
+
+// ====== 使用说明书内容 ======
+document.getElementById('manual-content').innerHTML = `
+<h2>一、工具简介</h2>
+<p>本工具是一个工业级直齿圆柱齿轮几何参数计算器，用于根据基本参数（模数、齿数、压力角、变位系数）计算齿轮的全部几何尺寸，并生成 SVG 剖面图解。适用于机械设计、齿轮加工检验、教学演示等场景。</p>
+<p>本工具解决的典型问题包括：设计阶段快速校验齿轮几何参数是否合理；加工阶段计算公法线长度等检验尺寸；教学中直观展示渐开线齿廓与四条参考圆的关系。</p>
+
+<h2>二、输入参数详解</h2>
+<h3>2.1 模数 m（单位：mm）</h3>
+<p>模数是齿轮最基本的参数，定义为分度圆直径与齿数之比：m = d/z。它决定了齿轮的整体尺寸。模数已标准化（GB/T 1357-2008），常用第一系列包括：0.5, 0.6, 0.8, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 32, 40, 50。本工具接受任意正实数输入，但建议优先选用标准值。</p>
+<p><strong>范围：</strong>> 0，推荐 0.05 ~ 50 mm。超出此范围需查标准原文确认是否适用。</p>
+
+<h3>2.2 齿数 z</h3>
+<p>齿数是齿轮的齿的数量，必须为正整数。它直接影响传动比和齿轮尺寸。对于标准齿轮（x=0，α=20°），不产生根切的最小齿数为 z<sub>min</sub> = 17。当 z < 17 时需采用正变位来避免根切。</p>
+<p><strong>范围：</strong>正整数，≥ 1。实际应用中通常 z ≥ 4（极小齿数的齿轮设计需特殊处理）。</p>
+
+<h3>2.3 压力角 α（单位：度）</h3>
+<p>压力角是齿廓在分度圆上的受力方向与运动方向之间的夹角，决定了齿廓的形状。GB/T 1356-2001 规定标准压力角为 20°。旧标准中曾使用 14.5°，重载场合有时使用 25°。</p>
+<p><strong>范围：</strong>(0°, 45°]。标准值为 14.5°、20°、25°。</p>
+
+<h3>2.4 变位系数 x</h3>
+<p>变位系数用于描述刀具相对于标准位置的偏移量。x = 0 为标准齿轮；x > 0 为正变位（齿厚增大、齿根增强）；x < 0 为负变位（齿厚减小）。变位齿轮可以配凑中心距、避免根切、改善磨损分布。</p>
+<p><strong>范围：</strong>实数，通常 |x| < 1。极端值可能导致齿顶变尖或齿根过度削弱。</p>
+
+<h2>三、输出参数详解</h2>
+<table>
+<tr><th>参数</th><th>符号</th><th>公式</th><th>说明</th></tr>
+<tr><td>分度圆直径</td><td>d</td><td>mz</td><td>齿轮的基准圆，所有尺寸的参考基准</td></tr>
+<tr><td>齿顶圆直径</td><td>d<sub>a</sub></td><td>m(z + 2 + 2x)</td><td>齿顶所在的圆，齿轮外轮廓</td></tr>
+<tr><td>齿根圆直径</td><td>d<sub>f</sub></td><td>m(z − 2.5 + 2x)</td><td>齿槽底部所在的圆</td></tr>
+<tr><td>基圆直径</td><td>d<sub>b</sub></td><td>d·cosα</td><td>渐开线的发生圆，决定齿廓形状</td></tr>
+<tr><td>齿顶高</td><td>h<sub>a</sub></td><td>m(1 + x)</td><td>分度圆到齿顶圆的径向距离</td></tr>
+<tr><td>齿根高</td><td>h<sub>f</sub></td><td>m(1.25 − x)</td><td>分度圆到齿根圆的径向距离</td></tr>
+<tr><td>全齿高</td><td>h</td><td>2.25m</td><td>齿顶圆到齿根圆的径向距离，恒等于 2.25m</td></tr>
+<tr><td>齿距</td><td>p</td><td>πm</td><td>分度圆上相邻两齿同侧齿廓间的弧长</td></tr>
+<tr><td>齿厚</td><td>s</td><td>πm/2 + 2xm·tanα</td><td>分度圆上一个齿的弧厚</td></tr>
+<tr><td>跨齿数</td><td>k</td><td>round(zα/180 + 0.5)</td><td>公法线测量时跨过的齿数</td></tr>
+<tr><td>公法线长度</td><td>W</td><td>m·cosα·[π(k−0.5) + z·invα] + 2xm·sinα</td><td>齿轮加工检验的重要测量尺寸</td></tr>
+</table>
+<p>注：以上公式中齿顶高系数 h<sub>a</sub>* = 1，顶隙系数 c* = 0.25，均为 GB/T 1356-2001 规定的标准基本齿条参数。</p>
+
+<h2>四、使用场景</h2>
+<h3>场景 1：标准直齿轮设计校验</h3>
+<p><strong>输入：</strong>m = 2, z = 20, α = 20°, x = 0</p>
+<p><strong>关键结果：</strong>d = 40 mm, d<sub>a</sub> = 44 mm, d<sub>f</sub> = 35 mm, d<sub>b</sub> = 37.588 mm, h = 4.5 mm, W = 15.321 mm（跨 3 齿）</p>
+<p><strong>用途：</strong>最常见的标准齿轮，用于一般传动。z = 20 > 17，不会根切。</p>
+
+<h3>场景 2：避免根切的变位齿轮</h3>
+<p><strong>输入：</strong>m = 3, z = 12, α = 20°, x = 0.5</p>
+<p><strong>关键结果：</strong>d = 36 mm, d<sub>a</sub> = 45 mm, d<sub>f</sub> = 31.5 mm, h<sub>a</sub> = 4.5 mm, h<sub>f</sub> = 2.25 mm</p>
+<p><strong>用途：</strong>z = 12 < 17，标准齿轮会根切。采用正变位 x = 0.5 可避免根切并增强齿根强度。</p>
+
+<h3>场景 3：齿轮加工检验——公法线测量</h3>
+<p><strong>输入：</strong>m = 2.5, z = 30, α = 20°, x = 0</p>
+<p><strong>关键结果：</strong>k = 4（跨 4 齿测量），W = 26.8816 mm</p>
+<p><strong>用途：</strong>在车间用公法线千分尺测量 W 值，与计算值对比可判断齿厚加工是否合格。</p>
+
+<h3>场景 4：教学演示——渐开线齿廓图解</h3>
+<p><strong>输入：</strong>m = 3, z = 17, α = 20°, x = 0</p>
+<p><strong>用途：</strong>SVG 图解清晰展示齿顶圆（红）、分度圆（蓝点划线）、基圆（绿虚线）、齿根圆（橙）的位置关系，以及渐开线齿廓的形状。z = 17 恰好是不根切的最小齿数，具有教学意义。</p>
+
+<h3>场景 5：配凑中心距的变位齿轮副</h3>
+<p><strong>输入：</strong>m = 2, z = 30, α = 20°, x = 0.3（小齿轮）；m = 2, z = 60, α = 20°, x = −0.1（大齿轮，需另算）</p>
+<p><strong>关键结果（小齿轮）：</strong>d = 60 mm, d<sub>a</sub> = 65.2 mm, d<sub>f</sub> = 56.2 mm, s = 3.5784 mm</p>
+<p><strong>用途：</strong>当标准中心距不满足安装要求时，通过变位配凑实际中心距。本工具计算单个齿轮参数，齿轮副的啮合计算需额外处理（需查标准原文或专业手册）。</p>
+
+<h2>五、常见错误与排查</h2>
+<ul>
+<li><strong>"模数 m 必须大于 0"</strong>：模数是尺寸参数，不能为零或负数。请检查输入。</li>
+<li><strong>"齿数 z 必须是正整数"</strong>：齿数不能为小数。如果输入了 20.0，请确认输入框值为整数。</li>
+<li><strong>"齿根圆直径 df ≤ 0"</strong>：这通常发生在齿数很少且负变位较大时，此时计算会被<strong>阻止</strong>（不再出图），请调整参数组合。</li>
+<li><strong>"标准齿轮不根切最小齿数为 17"</strong>：这是警告而非错误。如果确实需要 z < 17 的标准齿轮，请改用正变位。</li>
+<li><strong>公法线长度 W 测量值与计算值偏差大</strong>：请确认压力角是否正确（旧设备可能用 14.5°），变位系数是否为零，以及测量时跨齿数是否与计算值一致。</li>
+<li><strong>SVG 图解中齿形异常</strong>：极小齿数（z < 4）或极大变位系数可能导致齿廓自交，此时图解仅供参考。</li>
+</ul>
+
+<h2>六、数据来源与标准依据</h2>
+<ul>
+<li><strong>GB/T 1356-2001</strong>《通用机械和重型机械用圆柱齿轮 标准基本齿条齿廓》——规定了标准基本齿条的齿廓参数：齿顶高系数 h<sub>a</sub>* = 1，顶隙系数 c* = 0.25，标准压力角 α = 20°。</li>
+<li><strong>GB/T 1357-2008</strong>《通用机械和重型机械用圆柱齿轮 模数》——规定了标准模数系列。</li>
+<li>渐开线函数、公法线长度公式等来源于通用机械设计手册（如《机械设计手册》成大先版）中的齿轮传动章节。</li>
+<li>跨齿数公式 k = round(z·α/180 + 0.5) 为工程近似公式，精确值需考虑齿顶压力角，详见专业手册。</li>
+<li>公法线长度 W 公式仅文字引用《机械设计手册》（成大先版）齿轮传动章节，<strong>未核对具体页码/章节，属无具体出处</strong>。</li>
+<li>SVG 图解中的齿形角度公式（deltaBase 等）为本工具绘制用的近似推导，<strong>无标准来源</strong>，仅供示意。</li>
+<li>⚠ <strong>醒目提示：本工具部分参数与公式为经验值/近似公式，未经标准原文逐条核对，请勿直接用于正式工程设计。</strong></li>
+</ul>
+
+<h2>七、局限性说明</h2>
+<ul>
+<li>本工具仅适用于<strong>直齿圆柱齿轮</strong>（ spur gear ），不适用于斜齿轮、锥齿轮、蜗轮蜗杆等。</li>
+<li>齿顶高系数固定为 h<sub>a</sub>* = 1，顶隙系数固定为 c* = 0.25。对于短齿制（h<sub>a</sub>* = 0.8）等特殊齿制不适用。</li>
+<li>公法线长度计算使用工程近似公式，对于极端参数组合（如极少齿数、极大变位）可能存在偏差，需查标准原文核实。</li>
+<li>本工具不计算齿轮副的啮合参数（如啮合角、中心距变动系数、重合度等），这些需要配对齿轮的参数联合计算。</li>
+<li>SVG 图解为简化示意，齿根过渡曲线（圆角）未精确绘制，实际齿根圆角由刀具决定。</li>
+<li>本工具不替代专业齿轮设计软件。对于重要工程设计，请使用经过验证的专业软件并参照完整标准文件。</li>
+<li>所有计算结果基于理论几何公式，不考虑制造公差、热变形、受力变形等实际因素。</li>
+</ul>
+`;
+
+// 页面加载后自动计算一次
+window.addEventListener('DOMContentLoaded', function() {
+  doCalculate();
+});
+</script>
+
+<div id="version-tag">v2.0.3-修审查问题 20261108</div>
+</body>
+</html>

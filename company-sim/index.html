@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏢 公司经营模拟</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    margin:0; min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 0%, #1a2430 0%, #0d141c 55%, #05080c 100%);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#c8d8e8; padding:16px 12px 60px; user-select:none;
+  }
+  .back { display:inline-block; text-decoration:none; color:#6a8aaa; font-size:10px; margin-bottom:8px;
+    padding:6px 12px; border:1px solid #2a4055; border-radius:20px; }
+  h1 { font-size:13px; text-align:center; color:#60a0e0; font-weight:700; letter-spacing:2px; margin:4px 0 4px; }
+  .sub { text-align:center; color:#7a94ac; font-size:10px; margin-bottom:12px; line-height:1.7; }
+  .wrap { max-width:760px; margin:0 auto; }
+
+  /* 开局选择 */
+  .warnBox { background:#1a1410; border:1px solid #6a4a20; border-radius:9px; padding:10px 12px;
+    font-size:9px; color:#c0a070; line-height:1.9; margin-bottom:14px; }
+  .warnBox b { color:#e0b060; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+  .sel { width:100%; padding:9px 8px; background:#0e1620; border:1px solid #2a4055; border-radius:8px;
+    color:#a0c0d8; font-size:11px; font-family:inherit; }
+  .cityinfo { background:#0c151c; border:1px solid #1e3448; border-radius:8px; padding:9px 11px;
+    font-size:9px; color:#7a94ac; line-height:1.9; }
+  .cityinfo b { color:#90c0e0; }
+  .yeargrid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .ybtn { padding:9px 6px; background:#0e1620; border:1px solid #2a4055; border-radius:8px;
+    color:#8aa8c0; font-size:10px; cursor:pointer; text-align:left; }
+  .ybtn.active { border-color:#3a7aaa; background:#14283a; color:#a0d8ff; }
+  .ybtn .yd { font-size:8px; color:#6a8aa0; margin-top:3px; display:block; }
+  .modebtn { padding:10px; background:#0e1620; border:1px solid #2a4055; border-radius:9px;
+    color:#8aa8c0; cursor:pointer; text-align:left; font-family:inherit; }
+  .modebtn.active { border-color:#3a7a5a; background:#10281a; }
+  .mname { font-size:11px; font-weight:700; margin-bottom:4px; }
+  .mdesc { font-size:9px; color:#6a8aa0; line-height:1.7; }
+  .brandcard { border:1px solid #24404a; border-radius:9px; padding:9px 11px; margin-bottom:6px; cursor:pointer; }
+  .brandcard.active { border-color:#3a7aaa; background:#14283a; }
+  .bname { font-size:11px; font-weight:700; color:#90c0d8; }
+  .bdesc { font-size:9px; color:#6a8aa0; margin:3px 0 5px; line-height:1.6; }
+  .bsign { font-size:9px; color:#7a94ac; line-height:1.8; }
+  .bsign .no { color:#c06060; }
+
+  /* 开局选择 */
+  #setup { background:linear-gradient(160deg,#16202c,#0a1018); border:1px solid #24405a; border-radius:14px; padding:16px; }
+  .setup-title { font-size:11px; color:#80b8e8; margin-bottom:12px; font-weight:700; }
+  .segopt { display:block; margin-bottom:8px; padding:10px 12px; border:1px solid #24405a; border-radius:10px;
+    cursor:pointer; transition:.15s; }
+  .segopt:active { background:#162430; }
+  .segopt input { display:none; }
+  .segopt input:checked + .segbox { color:#80d0ff; }
+  .segopt input:checked ~ * { }
+  .segbox { display:flex; align-items:center; gap:10px; }
+  .segname { font-size:12px; font-weight:700; }
+  .segdesc { font-size:10px; color:#7a94ac; }
+  .segdata { font-size:9px; color:#6a8aa8; margin-top:4px; line-height:1.6; }
+  .segdiff { margin-left:auto; font-size:10px; color:#c0a050; }
+  .startbtn { width:100%; margin-top:12px; padding:12px; background:linear-gradient(160deg,#1e4a6a,#0e2a40);
+    border:1px solid #3060a0; border-radius:10px; color:#a0d8ff; font-size:12px; font-weight:700; cursor:pointer; }
+  .startbtn:active { transform:scale(.98); }
+
+  /* 状态栏 */
+  #game { display:none; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .stat { background:linear-gradient(160deg,#14202c,#0a1018); border:1px solid #1e3448; border-radius:9px;
+    padding:8px 6px; text-align:center; }
+  .stat .k { font-size:9px; color:#7a94ac; margin-bottom:3px; }
+  .stat .v { font-size:12px; font-weight:700; color:#a0c8e8; }
+  .v.bad { color:#e05050; }
+  .v.warn { color:#d0a040; }
+  .good { color:#50c080; }
+  .bad { color:#e05050; }
+
+  .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .tbtn { padding:9px 4px; background:linear-gradient(160deg,#1a2c3c,#0c1620); border:1px solid #28485f;
+    border-radius:8px; color:#80b0d0; font-size:10px; cursor:pointer; font-weight:600; }
+  .tbtn:active { transform:scale(.96); background:#203848; }
+  .tbtn:disabled { opacity:.35; cursor:not-allowed; }
+  .tbtn.primary { background:linear-gradient(160deg,#1e5a3a,#0e3020); border-color:#30a060; color:#80e0a0; }
+
+  /* 日志 */
+  #log { background:linear-gradient(160deg,#141e28,#080e14); border:1px solid #1e3448; border-radius:12px;
+    padding:12px; min-height:100px; margin-bottom:10px; font-size:10px; line-height:1.8; }
+  .logtitle { font-size:11px; color:#80b8e8; font-weight:700; margin-bottom:8px; }
+  /* v3.0.7 合同样式 */
+  .contract-wrap { background:#f7f5f0; color:#2a2a26; padding:18px 16px; border-radius:6px; font-family:'Songti SC','SimSun',serif; line-height:1.95; }
+  .contract-head { text-align:center; border-bottom:2px solid #8a8070; padding-bottom:12px; margin-bottom:14px; }
+  .contract-title { font-size:17px; letter-spacing:7px; font-weight:700; color:#3a3630; }
+  .contract-sub { font-size:10px; color:#7a7468; margin-top:8px; letter-spacing:.5px; }
+  .contract-clause { margin-bottom:11px; }
+  .cc-no { font-size:11px; font-weight:700; color:#4a4640; margin-bottom:3px; }
+  .cc-text { font-size:11px; color:#4a4640; text-indent:2em; line-height:2.0; }
+  .contract-foot { margin-top:16px; padding-top:12px; border-top:1px dashed #a8a094; font-size:10px; color:#6a6458; text-align:center; line-height:1.9; }
+  /* v3.0.6 品牌卡详细条款 */
+  .bdetail-toggle { margin-top:6px; font-size:10px; color:#6a8aa8; cursor:pointer; text-decoration:underline; }
+  .bdetail-toggle:hover { color:#8fc8f0; }
+  .bdetail { margin-top:6px; padding:8px 10px; background:#0e1418; border-left:2px solid #2a3a48; border-radius:4px; font-size:10px; color:#8a9aaa; line-height:1.9; }
+  /* v3.0.4 手册样式 */
+  .manual-wrap { padding:2px 0; }
+  .manual-intro { background:#141c24; border:1px solid #2a4055; border-radius:9px; padding:11px 13px; margin-bottom:12px; font-size:13px; color:#a8c0d8; line-height:1.8; }
+  .manual-sec { border-bottom:1px solid #26262c; }
+  .manual-sec:last-child { border-bottom:none; }
+  .manual-title { display:flex; justify-content:space-between; align-items:center; padding:11px 4px; font-size:13px; font-weight:600; color:#c8d8e8; cursor:pointer; user-select:none; }
+  .manual-title:hover { color:#8fc8f0; }
+  .manual-arrow { color:#666; font-size:11px; }
+  .manual-body { padding:0 4px 12px 4px; }
+  .manual-line { font-size:12px; color:#a0b0c0; line-height:1.95; }
+  .manual-line b { color:#e0e8f0; }
+  .manual-tip { margin-top:9px; padding:9px 11px; background:#1a2018; border-left:2px solid #4a7a4a; border-radius:5px; font-size:12px; color:#a8c8a8; line-height:1.8; }
+  /* v3.0.2 月报弹窗 */
+  .modal-mask { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:9999; align-items:center; justify-content:center; padding:16px; }
+  .modal-mask.show { display:flex; }
+  .modal-box { background:#141418; border:1px solid #3a3a42; border-radius:12px; width:100%; max-width:520px; max-height:82vh; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+  .modal-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #2a2a30; font-size:14px; font-weight:700; color:#8fc8f0; }
+  .modal-x { background:none; border:none; color:#888; font-size:22px; line-height:1; cursor:pointer; padding:0 4px; }
+  .modal-x:hover { color:#fff; }
+  .modal-body { padding:14px 16px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .modal-foot { padding:10px 16px 14px; border-top:1px solid #2a2a30; }
+  .modal-btn { width:100%; padding:11px; background:#2a5a3a; border:1px solid #3a7a4a; color:#c8f0d0; border-radius:9px; font-size:14px; font-weight:700; cursor:pointer; }
+  .modal-btn:hover { background:#336a44; }
+  .modal-btn:disabled { background:#2a2a2e; border-color:#3a3a40; color:#666; cursor:not-allowed; }
+  /* 弹窗内紧凑排版 */
+  .modal-body .diagbox, .modal-body .survivalbox, .modal-body .tutbox, .modal-body .hintbox,
+  .modal-body .event, .modal-body .bigEvent { margin-top:9px; }
+  .modal-body table.detail { width:100%; }
+  .modal-sum { display:flex; gap:8px; margin-bottom:12px; }
+  .modal-sum .ms { flex:1; background:#1c1c22; border-radius:9px; padding:9px 10px; text-align:center; }
+  .modal-sum .ms .k { font-size:10px; color:#777; margin-bottom:3px; }
+  .modal-sum .ms .v { font-size:15px; font-weight:700; }
+  .modal-sum .ms .v.good { color:#5ad07a; }
+  .modal-sum .ms .v.bad { color:#ff7070; }
+
+  /* v3.0.1 引导样式 */
+  .diagbox { background:#0e1620; border:1px solid #23405c; border-radius:9px; padding:10px 12px; margin-top:10px; }
+  .diagtitle { font-size:11px; color:#7ab8e8; font-weight:700; margin-bottom:7px; }
+  .diagline { font-size:12px; color:#b8c8d8; line-height:1.85; }
+  .diagline b { color:#e8e8e8; }
+  .survivalbox { margin-top:10px; padding:9px 12px; border-radius:9px; font-size:12px; line-height:1.75; font-weight:600; }
+  .survivalbox.crit { background:#2a0e0e; border:1px solid #8a2020; color:#ff8888; }
+  .survivalbox.dang { background:#2a1a0e; border:1px solid #8a5a20; color:#ffb060; }
+  .survivalbox.warn { background:#221c0e; border:1px solid #6a5a20; color:#d0b060; }
+  .tutbox { background:#141c14; border:1px solid #2a4a2a; border-radius:9px; padding:10px 12px; margin-top:10px; }
+  .tuttitle { font-size:12px; color:#7fd07f; font-weight:700; margin-bottom:7px; }
+  .tutline { font-size:12px; color:#b0c0b0; line-height:1.85; }
+  .tutline b { color:#e8f0e8; }
+  .hintbox { background:#1a1a14; border:1px solid #4a4a26; border-radius:9px; padding:10px 12px; margin-top:10px; }
+  .hinttitle { font-size:11px; color:#c8c070; font-weight:700; margin-bottom:6px; }
+  .hintline { font-size:12px; line-height:1.8; color:#c0c0a8; }
+  .hintline.urgent { color:#ff9090; }
+  .hintline.warn { color:#e0b060; }
+  table.detail { width:100%; border-collapse:collapse; font-size:10px; }
+  table.detail td { padding:3px 4px; }
+  table.detail td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  table.detail tr.total { border-top:1px solid #2a4055; font-weight:700; }
+  .bigEvent { background:#1a0e1e; border:1px solid #5a2a6a; border-radius:9px; padding:9px 11px; margin-top:10px; }
+  .betitle { color:#c080e0; font-size:11px; font-weight:700; margin-bottom:4px; }
+  .betext { color:#a080b0; font-size:10px; line-height:1.7; }
+  .bereal { color:#6a5070; font-size:9px; margin-top:4px; font-style:italic; }
+  .event { background:#1c1a10; border:1px solid #4a3a18; border-radius:9px; padding:9px 11px; margin-top:10px; }
+  .evtitle { color:#e0b050; font-size:10px; font-weight:700; margin-bottom:4px; }
+  .evtext { color:#a09070; font-size:10px; line-height:1.7; }
+  .evresult { margin-top:8px; padding:7px 10px; background:#0e1a12; border-left:2px solid #30a060;
+    border-radius:4px; font-size:10px; color:#80c8a0; line-height:1.7; }
+  .evresult.bad { background:#1a0e0e; border-color:#c04040; color:#e08080; }
+  .evresult.warn { background:#1a1608; border-color:#c0a040; color:#e0c080; }
+  .choices { display:grid; gap:6px; margin-top:9px; }
+  .choice { padding:9px 11px; background:#16283a; border:1px solid #2a4a68; border-radius:8px;
+    color:#90c0e0; font-size:10px; cursor:pointer; text-align:left; }
+  .choice:active { background:#1e3850; }
+
+  /* 贷款面板 */
+  #loanPanel, #mortgagePanel, #termsPanel, #ipoPanel, #reportPanel, #orgPanel, #illegalPanel { display:none; background:#101820; border:1px solid #2a4a3a; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .loanhead { font-size:10px; color:#7a94ac; margin-bottom:10px; line-height:1.9; }
+  .loanhead b { color:#80c8a0; }
+  .loanhead b.warn2 { color:#d0a040; }
+  .loanhead b.bad { color:#e05050; }
+  .loansub { font-size:9px; color:#4a6a7a; margin:10px 0 6px; letter-spacing:1px; }
+  .loanrow { display:flex; align-items:center; gap:8px; font-size:9px; color:#8aa8c0;
+    background:#0c151c; border:1px solid #1e3448; border-radius:7px; padding:7px 9px; margin-bottom:5px; }
+  .loanrow .pay { margin-left:auto; color:#d0a040; }
+  .loanprod { border:1px solid #24404a; border-radius:9px; padding:9px 11px; margin-bottom:7px; }
+  .loanprod.disabled { opacity:.45; }
+  .lpname { font-size:11px; font-weight:700; color:#90c0d8; }
+  .lpterm { font-size:9px; color:#5a7a90; font-weight:400; }
+  .lpdesc { font-size:9px; color:#6a8aa0; margin:3px 0 5px; line-height:1.6; }
+  .lprate { font-size:10px; color:#d0a040; margin-bottom:5px; }
+  .lpno { font-size:9px; color:#a05a5a; }
+  .lpbtns { display:flex; gap:6px; }
+  .tiny { padding:5px 10px; background:#16283a; border:1px solid #2a4a68; border-radius:6px;
+    color:#90c0e0; font-size:9px; cursor:pointer; }
+  .tiny:active { background:#1e3850; }
+  .loanprod.activeIllegal { border-color:#7a3a3a; background:#1a1010; }
+  .tiny.danger { border-color:#7a3a3a; color:#e09090; }
+  .loanwarn { font-size:9px; color:#8a7040; margin-top:10px; line-height:1.7;
+    background:#181408; border:1px solid #3a3018; border-radius:7px; padding:7px 9px; }
+
+  /* 换赛道面板 */
+  #switchPanel { display:none; background:#101820; border:1px solid #3a2a4a; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .switem { padding:10px; border:1px solid #2a3a4a; border-radius:9px; margin-bottom:8px; }
+  .switem.disabled { opacity:.5; }
+  .swname { font-size:11px; font-weight:700; color:#a0b8d0; }
+  .swdesc { font-size:9px; color:#5a7090; margin:3px 0; }
+  .swcost { font-size:10px; color:#c0a050; margin:5px 0; }
+  .swcost.bad { color:#c06060; }
+
+  /* 历史 */
+  .hist-wrap { background:linear-gradient(160deg,#141e28,#080e14); border:1px solid #1e3448;
+    border-radius:12px; padding:10px; }
+  .hist-title { font-size:10px; color:#7a94ac; margin-bottom:6px; }
+  table.hist { width:100%; border-collapse:collapse; font-size:9px; }
+  table.hist th { color:#40607a; font-weight:400; padding:3px; text-align:right; }
+  table.hist th:first-child { text-align:left; }
+  table.hist td { padding:3px; text-align:right; font-variant-numeric:tabular-nums; }
+  table.hist td:first-child { text-align:left; color:#5a7090; }
+
+  .over { text-align:center; font-size:16px; color:#e05050; padding:20px; font-weight:700; }
+  .ver { text-align:center; color:#4a6070; font-size:9px; margin-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../finance-sim/">← 回模拟金融</a>
+  <h1>🏢 公司经营模拟</h1>
+  <div class="sub">规则与成本结构全部来自真实上市公司财报<br>随机只决定"什么时候来"，不决定"合不合理"</div>
+
+  <!-- 开局 -->
+  <div id="setup">
+    <div class="warnBox">
+      ⚠️ <b>这不是一个让你觉得创业容易的游戏。</b><br>
+      参数取自 A 股/港股 15 家餐饮上市公司年报 + 真实行业数据。<br>
+      餐饮业门店年倒闭率超 60%，平均寿命 508 天。<b>默认结果是失败。</b><br>
+      请勿以此作为创业决策依据。
+    </div>
+
+    <div class="setup-title">① 选择品类</div>
+    <label class="segopt">
+      <input type="radio" name="seg" value="zhengcan" checked>
+      <div class="segbox"><div>
+        <div class="segname">🍽️ 正餐</div>
+        <div class="segdesc">家常菜 / 地方菜 / 老字号</div>
+        <div class="segdata">数据来源：3 家 A 股餐饮上市公司年报</div>
+      </div><div class="segdiff">难度 ★★★☆☆</div></div>
+    </label>
+    <label class="segopt">
+      <input type="radio" name="seg" value="huoguo">
+      <div class="segbox"><div>
+        <div class="segname">🍲 火锅</div>
+        <div class="segdesc">火锅 / 川渝 / 潮汕</div>
+        <div class="segdata">数据来源：3 家港股火锅上市公司年报</div>
+      </div><div class="segdiff">难度 ★★☆☆☆</div></div>
+    </label>
+    <label class="segopt">
+      <input type="radio" name="seg" value="kuaican">
+      <div class="segbox"><div>
+        <div class="segname">🍔 快餐</div>
+        <div class="segdesc">中式快餐 / 西式连锁</div>
+        <div class="segdata">数据来源：1 家港股快餐上市公司年报</div>
+      </div><div class="segdiff">难度 ★★☆☆☆</div></div>
+    </label>
+    <label class="segopt">
+      <input type="radio" name="seg" value="chayin">
+      <div class="segbox"><div>
+        <div class="segname">🧋 茶饮</div>
+        <div class="segdesc">奶茶 / 果茶 / 加盟模式</div>
+        <div class="segdata">数据来源：3 家港股茶饮上市公司年报</div>
+      </div><div class="segdiff">难度 ★☆☆☆☆</div></div>
+    </label>
+    <div class="setup-title" style="margin-top:16px">② 选择城市与商圈</div>
+    <div class="row2">
+      <select id="selCity" class="sel" onchange="onCityChange()"></select>
+      <select id="selDist" class="sel">
+        <option value="core">核心商圈</option>
+        <option value="comm">社区</option>
+        <option value="suburb">郊区/新城</option>
+      </select>
+    </div>
+    <div id="cityInfo" class="cityinfo"></div>
+
+    <div class="setup-title" style="margin-top:16px">③ 选择开局年份</div>
+    <div id="yearBox" class="yeargrid"></div>
+
+    <div class="setup-title" style="margin-top:16px">④ 自己创业 还是 加盟</div>
+    <div class="row2">
+      <button class="modebtn active" id="modeStart" onclick="setMode('start')">
+        <div class="mname">🔨 自己创业</div>
+        <div class="mdesc">自建品牌，投入大、什么都自己摸索，但赚的全是自己的</div>
+      </button>
+      <button class="modebtn" id="modeJoin" onclick="setMode('join')">
+        <div class="mname">🤝 加盟</div>
+        <div class="mdesc">借别人的牌子，开店快有总部支持，但要交加盟费、被抽成</div>
+      </button>
+    </div>
+    <div id="brandBox" style="display:none"></div>
+
+    <div class="setup-title" style="margin-top:16px">⑤ 结算节奏</div>
+    <div class="row2">
+      <button class="modebtn active" id="paceMonth" onclick="setPace('month')">
+        <div class="mname">📅 按月</div>
+        <div class="mdesc">一次结算一个月，节奏快，适合先熟悉玩法</div>
+      </button>
+      <button class="modebtn" id="paceDay" onclick="setPace('day')">
+        <div class="mname">☀️ 按天</div>
+        <div class="mdesc">一天一天推，周末客流翘尾、生鲜天天损耗，更真实也更磨人</div>
+      </button>
+    </div>
+
+    <button class="startbtn" onclick="startGame()">开始经营</button>
+  </div>
+
+  <!-- 游戏主体 -->
+  <div id="game">
+    <div class="stats">
+      <div class="stat"><div class="k">现金</div><div class="v" id="cash">-</div></div>
+      <div class="stat"><div class="k">负债</div><div class="v" id="debt">-</div></div>
+      <div class="stat"><div class="k">月份</div><div class="v" id="month">0</div></div>
+      <div class="stat"><div class="k">门店</div><div class="v" id="stores">1</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">品类</div><div class="v" id="seg">-</div></div>
+      <div class="stat"><div class="k">阶段</div><div class="v" id="stage">-</div></div>
+      <div class="stat"><div class="k">口碑</div><div class="v" id="rep">50</div></div>
+      <div class="stat"><div class="k">士气</div><div class="v" id="morale">70</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">信用评分</div><div class="v" id="credit">100</div></div>
+      <div class="stat"><div class="k">可贷余额</div><div class="v" id="avail">-</div></div>
+      <div class="stat"><div class="k">月供合计</div><div class="v" id="monthlyPay">-</div></div>
+      <div class="stat"><div class="k">员工</div><div class="v" id="staff2">-</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">城市·商圈</div><div class="v" id="cityLabel">-</div></div>
+      <div class="stat"><div class="k">同行</div><div class="v" id="rivalVal">-</div></div>
+      <div class="stat"><div class="k">风险累积</div><div class="v" id="riskVal">0</div></div>
+      <div class="stat"><div class="k">组织</div><div class="v" id="orgVal">无</div></div>
+    </div>
+
+    <div class="actions">
+      <button class="tbtn primary" id="btnNext" onclick="doSettle()">▶ 下一个月</button>
+      <div class="verline" id="verLine" style="font-size:10px;color:#4a6a80;text-align:right;padding:2px 4px">v3.6.0-加盟总部报批 20261031</div>
+      <button class="tbtn" id="btnReport" onclick="showReport()">📊 报表</button>
+      <button class="tbtn" id="btnSell" onclick="showSellPanel()">🌿 卖掉公司</button>
+      <button class="tbtn" id="btnManual" onclick="showManual()">📖 手册</button>
+    </div>
+    <!-- v3.0.3 按钮按条件显示：钱够了才出现，不够就折叠（老爹 01:39） -->
+    <div class="actions" id="actRow1"></div>
+    <div class="actions" id="actRow2"></div>
+    <div id="actMore"></div>
+
+    <div id="status"></div>
+    <div id="pricePanel"></div>
+    <div id="researchPanel"></div>
+    <div id="chefPanel"></div>
+    <div id="promoPanel"></div>
+    <div id="endingPanel"></div>
+    <div id="loanPanel"></div>
+    <div id="mortgagePanel"></div>
+    <div id="termsPanel"></div>
+    <div id="ipoPanel"></div>
+    <div id="reportPanel"></div>
+    <div id="orgPanel"></div>
+    <div id="illegalPanel"></div>
+    <div id="switchPanel" style="display:none"></div>
+    <div id="log"></div>
+
+    <!-- v3.0.2 月报弹窗：点「下一个月」直接弹出来，不用往下滚 -->
+    <div id="monthModal" class="modal-mask" onclick="if(event.target===this)closeMonthModal()">
+      <div class="modal-box">
+        <div class="modal-head">
+          <span id="modalTitle">第 1 个月</span>
+          <button class="modal-x" onclick="closeMonthModal()">×</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-foot">
+          <button class="modal-btn" onclick="closeMonthModal()">知道了，继续</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hist-wrap">
+      <div class="hist-title">最近 12 个月</div>
+      <table class="hist">
+        <thead><tr><th>月</th><th>营收</th><th>净利</th><th>月末现金</th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ver">v3.3.0-上市与卖掉养老结局 20261028</div>
+</div>
+
+<script src="params.js"></script>
+<script src="city.js"></script>
+<script src="franchise.js"></script>
+<script src="rivals.js"></script>
+<script src="timeline.js"></script>
+<script src="engine.js"></script>
+<script src="finance.js"></script>
+<script src="org.js"></script>
+<script src="illegal.js"></script>
+<script src="events.js"></script>
+<script src="balance.js"></script>
+<script src="inventory.js"></script>
+<script src="pricing.js"></script>
+<script src="research.js"></script>
+<script src="chef.js"></script>
+<script src="promo.js"></script>
+<script src="hq.js"></script>
+<script src="people.js"></script>
+<script src="channel.js"></script>
+<script src="risk.js"></script>
+<script src="ending.js"></script>
+<script src="guide.js"></script>
+<script src="manual.js"></script>
+<script src="contract.js"></script>
+<script src="ui.js"></script>
+<script>
+  // v3.0.0 修复（00:59）：initSetup 从来没被调用 → 城市下拉框为空 → startGame 读 null.rentMult 报错
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSetup);
+  } else {
+    initSetup();
+  }
+</script>
+</body>
+</html>

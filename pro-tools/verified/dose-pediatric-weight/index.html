@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>儿童按体重给药计算器 v1.0.0</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#dce6f5;font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;padding:12px 12px 30px}
+h1{font-size:18px;margin:0 0 10px;color:#4a9eff}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tabs button{background:#132542;color:#9fb6d4;border:1px solid #1e3a63;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:13px}
+.tabs button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+.card{background:#0f2240;border:1px solid #1e3a63;border-radius:10px;padding:12px;margin-bottom:10px}
+label{display:block;font-size:12px;color:#8fa8c8;margin:7px 0 3px}
+input,select{width:100%;background:#08152a;border:1px solid #24456f;color:#dce6f5;padding:7px 8px;border-radius:6px;font-size:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.act{width:100%;background:#4a9eff;color:#04101f;border:0;padding:10px;border-radius:8px;font-weight:700;font-size:15px;margin-top:12px;cursor:pointer}
+.msg{color:#ff8080;font-size:13px}
+.res b{color:#4a9eff;font-size:21px}
+.sec{font-size:12px;color:#93aecd;margin:6px 0 0}
+.warn{font-size:12px;color:#ffcf6b;background:#2a2110;border:1px solid #6b5320;border-radius:8px;padding:8px;margin:0}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+th,td{border:1px solid #233d63;padding:4px 5px;text-align:left}
+th{background:#132542;color:#9fb6d4}
+pre{white-space:pre-wrap;word-break:break-word;font-size:11px;color:#a9c4e6;background:#08152a;padding:8px;border-radius:6px;max-height:420px;overflow:auto;margin:0}
+.ok{color:#5ddc8a;font-size:12px}.bad{color:#ff8080;font-size:12px}
+.ver{position:fixed;right:8px;bottom:5px;font-size:10px;color:#4d6b93;background:#0a1628}
+.hide{display:none}
+@media(max-width:420px){.row{grid-template-columns:1fr}}
+</style></head><body>
+<h1>儿童按体重给药计算器</h1>
+<div class="tabs" id="tabs"><button data-t="c" class="on">计算工具</button><button data-t="s">JS源码</button><button data-t="t">单元测试</button><button data-t="h">使用说明</button></div>
+
+<div id="p-c">
+<div class="card">
+<label>选择常用药物（自动填入参考参数）</label><select id="drug"><option value="">自定义 / 手动输入</option></select>
+<div class="row"><div><label>体重 (kg)</label><input id="w" type="number" step="0.1" value="10"></div><div><label>剂量 (mg/kg/次)</label><input id="m" type="number" step="0.1" value="15"></div></div>
+<div class="row"><div><label>每日分次</label><input id="n" type="number" step="1" value="4"></div><div><label>最大单次量 (mg)</label><input id="ms" type="number" step="1" value="1000"></div></div>
+<label>最大日剂量 (mg)</label><input id="md" type="number" step="1" value="4000">
+<button class="act" onclick="render()">计算给药量</button>
+<div id="out" style="margin-top:12px"></div>
+</div></div>
+
+<div id="p-s" class="hide"><div class="card"><pre id="src"></pre></div></div>
+
+<div id="p-t" class="hide"><div class="card"><button class="act" style="margin:0" onclick="runTests()">运行全部测试</button><div id="tout" style="margin-top:10px"></div></div></div>
+
+<div id="p-h" class="hide"><div class="card">
+<p class="warn">⚠ 安全声明：本工具仅用于剂量换算的辅助核对，不能替代医师／药师的处方与药品说明书。适应症、剂型、肝肾功能、年龄及联合用药均可改变用药剂量，儿童用药必须由专业医务人员评估决定。计算结果仅供参考，超说明书用药须有明确依据。</p>
+<p class="sec">计算口径：单次量 = min(体重 × mg/kg/次, 最大单次量)；日剂量 = min(体重 × mg/kg/次 × 每日分次, 最大日剂量)。</p>
+<p class="sec">参考剂量表（取常规推荐区间上限值，mg/kg/次）：</p>
+<table><thead><tr><th>药物</th><th>mg/kg/次</th><th>次/日</th><th>单次上限mg</th><th>日上限mg</th></tr></thead><tbody id="dt"></tbody></table>
+<p class="sec">出处：①《中国国家处方集（儿童版）》2013年版（对乙酰氨基酚10~15mg/kg/次、q4~6h；布洛芬5~10mg/kg/次、q6~8h；阿莫西林20~40mg/kg/日分2~3次）；②WHO儿童基本药物示范目录（WHO Model List of Essential Medicines for Children）；③各药品法定说明书。表内为常规剂量上限取值，具体以说明书与处方为准；本表参数未经药品注册标准逐条核对，属经验取值。</p>
+</div></div>
+<div class="ver">v1.0.0-dose-pediatric-weight 20261108</div>
+
+<script>
+function calc(w,m,n,ms,md){var r=w*m;return{s:Math.min(r,ms),d:Math.min(r*n,md),r:r,rd:r*n,cs:r>ms,cd:r*n>md}}
+function fmt(x){return String(Math.round(x*100)/100)}
+function el(id){return document.getElementById(id)}
+var DRUGS={
+"对乙酰氨基酚":{m:15,n:4,ms:1000,md:4000},
+"布洛芬":{m:10,n:4,ms:400,md:1200},
+"阿莫西林":{m:25,n:2,ms:1000,md:2000},
+"阿奇霉素":{m:10,n:1,ms:500,md:500},
+"头孢克肟":{m:3,n:2,ms:100,md:200}
+};
+var TESTS=[[[10,15,4,1000,4000],150,600],[[20,10,3,400,1200],200,600],[[5,15,4,1000,4000],75,300],[[40,15,4,1000,4000],600,2400],[[70,15,4,1000,4000],1000,4000],[[70,10,3,400,1200],400,1200],[[3.5,20,2,500,1000],70,140],[[12,25,2,1000,2000],300,600],[[8,15,4,100,400],100,400],[[30,10,3,400,1200],300,900],[[25,15,4,1000,4000],375,1500],[[1.8,10,1,500,500],18,18]];
+function render(){
+var w=parseFloat(el('w').value),m=parseFloat(el('m').value),n=parseFloat(el('n').value),ms=parseFloat(el('ms').value),md=parseFloat(el('md').value),e='',o=el('out');
+if(!isFinite(w)||w<=0)e='体重须为大于0的数字';
+else if(w<0.5||w>150)e='体重超出范围（0.5~150 kg）';
+else if(!isFinite(m)||m<=0)e='mg/kg/次须为大于0的数字';
+else if(m>200)e='mg/kg/次超出范围（0~200）';
+else if(!(n>=1&&n<=6&&n%1===0))e='每日分次须为1~6的整数';
+else if(!(ms>0&&ms<=5000))e='最大单次量须在0~5000 mg';
+else if(!(md>0&&md<=20000))e='最大日剂量须在0~20000 mg';
+if(e){o.innerHTML='<span class="msg">⚠ 输入有误：'+e+'，请修正后重新计算。</span>';return}
+var r=calc(w,m,n,ms,md);
+o.innerHTML='<div class="res">单次剂量 <b>'+fmt(r.s)+'</b> mg ｜ 日剂量 <b>'+fmt(r.d)+'</b> mg</div>'
++'<p class="sec">中间量：体重×mg/kg/次 = '+w+'×'+m+' = '+fmt(r.r)+' mg；日剂量 = '+fmt(r.r)+'×'+n+' = '+fmt(r.rd)+' mg</p>'
++'<p class="sec">封顶判定：单次上限 '+ms+' mg '+(r.cs?'<b style="color:#ffcf6b">已触发，按上限取值</b>':'未触发')+'；日上限 '+md+' mg '+(r.cd?'<b style="color:#ffcf6b">已触发，按上限取值</b>':'未触发')+'</p>'
++'<p class="sec">用药安排：每次 '+fmt(r.s)+' mg，每日 '+n+' 次（约 q'+Math.round(24/n)+'h），折合 '+fmt(r.d/w)+' mg/kg/日</p>'
++'<p class="sec">公式：单次量 = min(体重×mg/kg/次, 单次上限)；日剂量 = min(体重×mg/kg/次×分次, 日上限)</p>'
+}
+function runTests(){var h='',p=0;for(var i=0;i<TESTS.length;i++){var t=TESTS[i],a=t[0],r=calc(a[0],a[1],a[2],a[3],a[4]),ok=Math.abs(r.s-t[1])<0.01&&Math.abs(r.d-t[2])<0.01;if(ok)p++;h+='<div class="'+(ok?'ok':'bad')+'">'+(ok?'✔':'✘')+' #'+(i+1)+' 输入['+a.join(',')+'] → 单次 '+fmt(r.s)+' / 日 '+fmt(r.d)+' mg（期望 '+t[1]+' / '+t[2]+'）</div>'}el('tout').innerHTML='<b>通过 '+p+' / '+TESTS.length+'</b>'+h}
+var dsel=el('drug'),k;for(k in DRUGS){var op=document.createElement('option');op.value=k;op.textContent=k;dsel.appendChild(op)}
+dsel.onchange=function(){var d=DRUGS[this.value];if(!d)return;el('m').value=d.m;el('n').value=d.n;el('ms').value=d.ms;el('md').value=d.md;render()};
+el('tabs').onclick=function(ev){var b=ev.target;if(b.tagName!=='BUTTON')return;var ts=['c','s','t','h'],i;for(i=0;i<this.children.length;i++)this.children[i].classList.toggle('on',this.children[i]===b);for(i=0;i<ts.length;i++)el('p-'+ts[i]).classList.toggle('hide',ts[i]!==b.getAttribute('data-t'))};
+var tb='';for(k in DRUGS){var d=DRUGS[k];tb+='<tr><td>'+k+'</td><td>'+d.m+'</td><td>'+d.n+'</td><td>'+d.ms+'</td><td>'+d.md+'</td></tr>'}el('dt').innerHTML=tb;
+el('src').textContent=[calc,fmt,render,runTests].map(String).join('\n\n')+'\nvar TESTS='+JSON.stringify(TESTS);
+render();
+</script>
+</body></html>

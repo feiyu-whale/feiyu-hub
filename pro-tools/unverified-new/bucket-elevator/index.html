@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>斗式提升机选型计算器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a1628;color:#d6e4f5;font:14px/1.55 system-ui,"Segoe UI",sans-serif;padding:14px 14px 44px}
+h1{font-size:18px;color:#4a9eff}
+.sub{font-size:12px;color:#6b88a8;margin:2px 0 12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{padding:7px 12px;background:#122441;border:1px solid #1e3a5f;border-radius:8px;font-size:13px;color:#8fb4d8;cursor:pointer}
+.tab.on{background:#4a9eff;color:#04121f;font-weight:600;border-color:#4a9eff}
+.panel{display:none}.panel.on{display:block}
+.card{background:#0f2138;border:1px solid #1e3a5f;border-radius:10px;padding:12px;margin-bottom:12px}
+h2{font-size:13px;color:#4a9eff;margin-bottom:9px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}
+label{display:block;font-size:12px;color:#8fb4d8;margin-bottom:3px}
+input,select{width:100%;padding:6px 8px;background:#0a1628;border:1px solid #24476f;border-radius:6px;color:#d6e4f5;font-size:13px;font-family:inherit}
+input:focus,select:focus{outline:0;border-color:#4a9eff}
+button{background:#4a9eff;color:#04121f;border:0;padding:9px 18px;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer}
+button.g{background:#1e3a5f;color:#8fb4d8}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
+.res div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed #1c3454;font-size:13px}
+.res b{color:#4a9eff;font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+.res i{color:#6b88a8;font-style:normal;font-size:11.5px;margin-left:4px}
+.err{color:#ff7b7b;background:#2a1216;border:1px solid #5c2630;border-radius:8px;padding:10px;font-size:13px;line-height:1.8}
+.warn{color:#fbbf24;font-size:12.5px;margin-top:8px;line-height:1.7}
+.ok{color:#4ade80}.no{color:#ff7b7b}
+.note{font-size:12px;color:#8aa8c6;line-height:1.75}
+pre{background:#071322;border:1px solid #1e3a5f;border-radius:8px;padding:10px;overflow:auto;font-size:11px;line-height:1.5;color:#a3d4ff;max-height:520px;white-space:pre-wrap;word-break:break-all}
+.tl div{padding:5px 0;border-bottom:1px solid #1c3454;font-size:12.5px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ver{position:fixed;right:9px;bottom:7px;font-size:11px;color:#3f6088;background:#0a1628;padding:1px 4px;border-radius:4px}
+@media(max-width:560px){body{padding:9px 9px 44px}h1{font-size:16px}input,select{font-size:16px}.res div{font-size:12px}}
+</style></head><body>
+<h1>斗式提升机选型计算器</h1>
+<div class="sub">bucket-elevator · 斗容 / 功率 / 牵引力 / 离心式-重力式卸料判别</div>
+<div class="tabs">
+<div class="tab on" data-t="c">计算工具</div>
+<div class="tab" data-t="s">JS 源码</div>
+<div class="tab" data-t="t">单元测试</div>
+<div class="tab" data-t="h">使用说明</div>
+</div>
+
+<div class="panel on" id="p-c">
+<div class="card"><h2>输入条件</h2><div class="grid">
+<div><label>提升量 Q (t/h)</label><input id="Q" value="50"></div>
+<div><label>提升高度 H (m)</label><input id="H" value="20"></div>
+<div><label>物料容重 ρ (t/m³)</label><input id="rho" value="0.8"></div>
+<div><label>物料特性</label><select id="mat"><option value="powder">粉状（易扬尘）</option><option value="granule" selected>颗粒状（松散）</option><option value="lump">块状（磨琢性大）</option></select></div>
+<div><label>头轮直径 D (mm)</label><input id="D" value="500"></div>
+<div><label>斗间距 a (mm)</label><input id="a" value="400"></div>
+<div><label>带速 v (m/s)</label><input id="v" value="1.5"></div>
+<div><label>阻力系数 K</label><input id="K" value="1.2"></div>
+<div><label>传动效率 η</label><input id="eta" value="0.9"></div>
+</div>
+<div class="row"><button onclick="run()">计算</button><button class="g" onclick="run()">重算</button></div>
+</div>
+<div id="out"></div>
+<div class="card note"><b style="color:#4a9eff">公式与依据</b><br>
+① 输送量 Q = 3.6·(i/a)·v·ρ·ψ，i/a 为线容量（L/m）——《运输机械设计选用手册》（化学工业出版社）<br>
+② 净提升功率 P₀ = Q·g·H/3600（g=9.81 m/s²）；轴功率 P_sh = K·P₀/η，K=1.0~1.6 为运行阻力系数（含链条/胶带与滚筒阻力、掏取阻力）<br>
+③ 牵引力 F = 1000·K·P₀/v（N）<br>
+④ 头轮转速 n = 60v/(πD)；极点距 h = 895/n²（m）。h≤R 为离心式、R&lt;h≤1.5R 为混合式、h&gt;1.5R 为重力式，R=D/2<br>
+⑤ 电机功率按 GB/T 755《旋转电机 定额和性能》标准功率等级向上圆整，并留 10% 裕量<br>
+⑥ 装满系数 ψ：粉状 0.78 / 颗粒 0.70 / 块状 0.60；带速上限粉 1.6 / 颗粒 2.0 / 块 1.5 m/s —— 本参数为行业经验值，未经标准核对<br>
+⑦ 料斗型式 Q（浅斗）/ S（中深斗）/ H（深斗）参照 JB/T 3926《垂直斗式提升机》型式与基本参数
+</div>
+</div>
+
+<div class="panel" id="p-s"><div class="card"><h2>核心计算源码（纯函数，可单独复制测试）</h2><pre id="src"></pre></div></div>
+
+<div class="panel" id="p-t"><div class="card"><h2>单元测试（纯函数 core / calc）</h2>
+<div class="row"><button onclick="testAll()">运行全部测试</button><span id="sum" class="note"></span></div>
+<div class="tl" id="tres" style="margin-top:10px"></div></div></div>
+
+<div class="panel" id="p-h"><div class="card note">
+<h2>使用说明</h2>
+<b>1. 输入</b>：提升量 Q、提升高度 H、物料容重 ρ、物料特性（决定装满系数 ψ 与带速上限）、头轮直径 D、斗间距 a、带速 v、阻力系数 K、传动效率 η。<br>
+<b>2. 输出</b>：所需线容量 i/a、单斗容积 i、推荐斗型、净提升功率、轴功率、圆整后电机功率、牵引力、头轮转速、极点距 h 及 h/R、卸料方式判别。<br>
+<b>3. 卸料判别</b>：极点距 h=895/n² 与头轮半径 R 比较。h≤R 时离心力主导为离心式，适合粉状/小颗粒且要求带速较高；h&gt;1.5R 时重力主导为重力式，适合块状磨琢性物料；两者之间为混合式。<br>
+<b>4. 输入校验</b>：任一输入为空、非数字、负数或超范围，均在结果区给出中文提示，绝不输出 NaN。<br>
+<b>5. 适用边界</b>：本工具用于初步选型估算。胶带/链条强度、轴功率精确校核、启动与堵料工况、料斗实际装满率须按厂家样本及 JB/T 3926《垂直斗式提升机》系列标准复核；ψ 与带速上限为行业经验值，未经标准核对。<br>
+<b>6. 精度</b>：电机功率按 GB/T 755 标准等级向上圆整并留 10% 裕量，结果为工程量级参考值。
+</div></div>
+
+<div class="ver">v1.0.0-bucket-elevator 20261108</div>
+<script>
+var G=9.81;
+var MAT={powder:{psi:0.78,vmax:1.6,t:'Q 型浅斗'},granule:{psi:0.70,vmax:2.0,t:'S 型中深斗'},lump:{psi:0.60,vmax:1.5,t:'H 型深斗'}};
+var PWR=[0.55,0.75,1.1,1.5,2.2,3,4,5.5,7.5,11,15,18.5,22,30,37,45,55,75,90,110,132,160,200,250];
+function core(Q,H,rho,mat,D,a,v,K,eta){
+var m=MAT[mat],ia=Q/(3.6*v*rho*m.psi),iL=ia*a/1000,P0=Q*G*H/3600,Psh=P0*K/eta,Preq=Psh*1.1;
+var Pm=PWR.filter(function(x){return x>=Preq})[0]||250;
+var F=1000*P0*K/v,n=60*v/(Math.PI*D/1000),R=D/2000,h=895/(n*n),r=h/R;
+var dis=r<=1?'离心式':(r<=1.5?'混合式':'重力式');
+return{ia:ia,iL:iL,P0:P0,Psh:Psh,Pm:Pm,F:F,n:n,h:h,R:R,r:r,dis:dis,t:m.t};
+}
+function calc(inp){
+var e=[],f=function(k){var x=parseFloat(inp[k]);return isFinite(x)?x:NaN};
+var Q=f('Q'),H=f('H'),rho=f('rho'),D=f('D'),a=f('a'),v=f('v'),K=f('K'),eta=f('eta'),mat=inp.mat;
+if(!(Q>0&&Q<=800))e.push('提升量 Q 须为 1~800 t/h（当前输入无效）');
+if(!(H>0&&H<=80))e.push('提升高度 H 须为 0.5~80 m');
+if(!(rho>=0.3&&rho<=2.5))e.push('物料容重 ρ 须为 0.3~2.5 t/m³');
+if(!(D>=200&&D<=1600))e.push('头轮直径 D 须为 200~1600 mm');
+if(!(a>=150&&a<=1000))e.push('斗间距 a 须为 150~1000 mm');
+if(!(v>=0.3&&v<=3))e.push('带速 v 须为 0.3~3.0 m/s');
+if(!(K>=1&&K<=1.6))e.push('阻力系数 K 须为 1.0~1.6');
+if(!(eta>=0.7&&eta<=0.98))e.push('传动效率 η 须为 0.70~0.98');
+if(!MAT[mat])e.push('请选择物料特性');
+if(e.length)return{ok:false,err:e};
+var r=core(Q,H,rho,mat,D,a,v,K,eta),w=[];
+if(v>MAT[mat].vmax)w.push('带速 '+v+' m/s 超过'+MAT[mat].t+'建议上限 '+MAT[mat].vmax+' m/s（粉料易扬尘、块料易破碎）');
+if(mat==='lump'&&r.dis!=='重力式')w.push('块状磨琢性物料宜采用重力式卸料：降低带速或加大头轮直径');
+if(mat==='powder'&&r.dis==='重力式')w.push('粉状物料重力式卸料易积料，宜提高带速或减小头轮直径');
+if(r.r>0.8&&r.r<1.2)w.push('h/R≈1，卸料工况介于离心式与重力式之间，建议按混合式校核斗型');
+return{ok:true,err:[],warn:w,d:r};
+}
+function run(){
+var ids=['Q','H','rho','mat','D','a','v','K','eta'],inp={};
+ids.forEach(function(k){inp[k]=document.getElementById(k).value});
+var r=calc(inp),o=document.getElementById('out');
+if(!r.ok){o.innerHTML='<div class="card"><h2>输入校验</h2><div class="err">⚠ 参数有误，请修正后重算：<br>· '+r.err.join('<br>· ')+'</div></div>';return}
+var d=r.d,L=[['所需线容量 i/a',d.ia.toFixed(2),'L/m'],['单斗容积 i',d.iL.toFixed(2),'L'],['推荐斗型',d.t,''],['净提升功率 P₀',d.P0.toFixed(3),'kW'],['轴功率 P_sh',d.Psh.toFixed(3),'kW'],['电机功率（圆整）',d.Pm,'kW'],['牵引力 F',d.F.toFixed(0),'N'],['牵引力 F',(d.F/1000).toFixed(2),'kN'],['头轮转速 n',d.n.toFixed(1),'r/min'],['极点距 h',d.h.toFixed(3),'m'],['h / R',d.r.toFixed(2),'—'],['卸料方式',d.dis,'']];
+var s='<div class="card"><h2>选型结果</h2><div class="res">';
+L.forEach(function(x){s+='<div><span>'+x[0]+'</span><b>'+x[1]+'<i>'+x[2]+'</i></b></div>'});
+s+='</div>';
+if(r.warn.length)s+='<div class="warn">⚠ '+r.warn.join('<br>⚠ ')+'</div>';
+o.innerHTML=s+'</div>';
+}
+var T=[
+['提升功率 P₀ (50t/h,20m)',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).P0},2.725,0.001],
+['牵引力 F (N)',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).F},2180,0.5],
+['所需线容量 i/a',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).ia},16.5344,0.001],
+['单斗容积 i (L)',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).iL},6.6138,0.001],
+['头轮转速 n',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).n},57.2958,0.001],
+['极点距 h (m)',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).h},0.27264,0.0001],
+['离心式卸料判别',function(){return core(100,30,1,'powder',300,300,2,1.2,0.88).dis},'离心式',0],
+['重力式卸料判别',function(){return core(20,20,0.8,'lump',800,400,0.6,1.2,0.9).dis},'重力式',0],
+['电机功率标准等级圆整',function(){return core(50,20,0.8,'granule',500,400,1.5,1.2,0.9).Pm},4,0],
+['空输入返回校验错误',function(){return calc({}).ok},false,0],
+['负值输入返回校验错误',function(){return calc({Q:-5,H:20,rho:0.8,mat:'lump',D:500,a:400,v:1,K:1.2,eta:0.9}).ok},false,0]
+];
+function testAll(){
+var pass=0,h='';
+T.forEach(function(t){
+var g,ok;
+try{g=t[1]()}catch(ex){g='异常:'+ex.message}
+ok=(typeof t[2]==='number')?Math.abs(g-t[2])<=t[3]:g===t[2];
+if(ok)pass++;
+h+='<div><span>'+(ok?'<span class="ok">PASS</span>':'<span class="no">FAIL</span>')+' '+t[0]+'</span><span style="font-family:ui-monospace,monospace;color:#8fb4d8">期望 '+t[2]+' / 实得 '+(typeof g==='number'?(Math.round(g*1e4)/1e4):g)+'</span></div>';
+});
+document.getElementById('tres').innerHTML=h;
+document.getElementById('sum').innerHTML='<span class="'+(pass===T.length?'ok':'no')+'">'+pass+' / '+T.length+' 通过</span>';
+}
+document.querySelectorAll('.tab').forEach(function(el){el.onclick=function(){
+document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('on')});
+el.classList.add('on');document.getElementById('p-'+el.dataset.t).classList.add('on');
+}});
+document.getElementById('src').textContent='var G=9.81;\nvar MAT='+JSON.stringify(MAT)+';\nvar PWR=['+PWR.join(',')+'];\n\n'+core.toString()+'\n\n'+calc.toString();
+run();
+</script>
+</body></html>

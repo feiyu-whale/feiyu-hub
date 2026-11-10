@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🖐️ 小六壬</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0c0a14; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e0dce8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#c0a0e0; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#807099; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#1a1426,#100a18); border:1px solid #4a3a60;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#b090d0; margin-bottom:10px; border-left:3px solid #b090d0; padding-left:8px; }
+  input, select { width:100%; background:#0d0816; border:1px solid #4a3a60; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#e8dcf5; outline:none; font-family:inherit; }
+  input:focus, select:focus { border-color:#9a70c0; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .lbl { font-size:11px; color:#807099; margin-bottom:4px; display:block; }
+  button.go { width:100%; padding:13px; font-size:11px; font-weight:700; color:#140a1c;
+    background:linear-gradient(160deg,#c0a0e0,#7a5a9a); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px; }
+  button.go:active { transform:scale(.98); }
+  /* 六宫掌诀盘 */
+  .six { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .gong { background:#150e20; border:1px solid #3a2850; border-radius:10px; padding:10px 6px; text-align:center; }
+  .gong.on { background:linear-gradient(160deg,#3a2050,#2a1540); border-color:#b090d0;
+    box-shadow:0 0 16px rgba(176,144,208,.4); }
+  .gong .nm { font-size:16px; font-weight:700; color:#c0a0e0; }
+  .gong .sixgod { font-size:10px; color:#9070b0; }
+  .gong .idx { font-size:9px; color:#6a5878; margin-top:2px; }
+  .result-g { text-align:center; padding:6px 0 12px; }
+  .rg-name { font-size:14px; font-weight:900; color:#e0c0f0; letter-spacing:4px; }
+  .rg-song { font-size:12px; color:#a090b8; margin-top:6px; }
+  .row { display:flex; justify-content:space-between; padding:6px 0;
+    border-bottom:1px solid #2a1e3a; font-size:13px; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#807099; }
+  .row .v { color:#e0d0f0; text-align:right; }
+  .sect { font-size:13px; color:#b090d0; margin:16px 0 8px; border-left:3px solid #b090d0; padding-left:8px; }
+  .interp { font-size:13px; line-height:1.85; color:#d0c4e0; }
+  .disclaim { font-size:11px; color:#9a8aa8; background:#181022; border:1px solid #3a2a50;
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .interp ul { padding-left:18px; margin:8px 0; }
+  .interp li { margin-bottom:5px; }
+  .hint { text-align:center; font-size:11px; color:#605070; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; font-size:10px; color:#403050; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🖐️ 小 六 壬</h1>
+  <div class="sub">掌诀速断 · 六宫定吉凶<br>纯本地计算 · 无网络</div>
+
+  <div class="card">
+    <div class="line">
+      <div><span class="lbl">农历月</span><input type="number" id="lm" value="1" min="1" max="12"></div>
+      <div><span class="lbl">农历日</span><input type="number" id="ld" value="1" min="1" max="30"></div>
+      <div><span class="lbl">时辰（子=1）</span><input type="number" id="hz" value="1" min="1" max="12"></div>
+    </div>
+    <button class="go" id="calc">起 课</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">小六壬属中国传统术数 · 民间掌诀速断 · 娱乐参考 🐳<br>请勿据此做重大决定</div>
+  <div class="ver">v1.0.0-小六壬 20261015</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 六宫：大安·留连·速喜·赤口·小吉·空亡（掌诀环序）
+  var GONGS = [
+    {nm:'大安', god:'青龙', luck:'吉', song:'身不动时，五行属木，青龙之象。',
+     keys:['平安·稳定·不动','宜守不宜动','谋事可成，失物未远']},
+    {nm:'留连', god:'玄武', luck:'凶', song:'卒未归时，属水，玄武之象。',
+     keys:['拖延·纠缠·未定','事多反复','谋事难成，宜缓']},
+    {nm:'速喜', god:'朱雀', luck:'吉', song:'人便至时，属火，朱雀之象。',
+     keys:['快速·喜讯·临门','宜速行','谋事迅捷，喜事将至']},
+    {nm:'赤口', god:'白虎', luck:'凶', song:'官事凶时，属金，白虎之象。',
+     keys:['口舌·争执·官非','防是非','谋事宜慎，防争端']},
+    {nm:'小吉', god:'六合', luck:'吉', song:'人来喜时，属木，六合之象。',
+     keys:['和合·顺利·吉祥','合作有利','谋事多成，宜合']},
+    {nm:'空亡', god:'勾陈', luck:'大凶', song:'音信稀时，属土，勾陈之象。',
+     keys:['落空·劳而无功','宜静守','谋事落空，宜待时']}
+  ];
+
+  function calc(){
+    var lm=Math.max(1,Math.min(12,parseInt(document.getElementById('lm').value,10)||1));
+    var ld=Math.max(1,Math.min(30,parseInt(document.getElementById('ld').value,10)||1));
+    var hz=Math.max(1,Math.min(12,parseInt(document.getElementById('hz').value,10)||1));
+
+    // 掌诀推法：从大安起正月顺数到月 → 从月落宫起初一顺数到日 → 从日落宫起子时顺数到时辰
+    var i1=(lm-1)%6;                 // 月落宫
+    var i2=(i1+(ld-1))%6;            // 日落宫
+    var i3=(i2+(hz-1))%6;            // 时落宫（最终）
+    var step1=i1, step2=i2, result=i3;
+
+    var res=document.getElementById('result');
+    var h='';
+
+    // 掌诀盘（两行三列，环形）
+    h+='<div class="card"><h3>六宫掌诀盘</h3><div class="six">';
+    for(var i=0;i<6;i++){
+      var g=GONGS[i], on = (i===result);
+      h+='<div class="gong'+(on?' on':'')+'">';
+      h+='<div class="nm">'+g.nm+'</div>';
+      h+='<div class="sixgod">'+g.god+' · '+g.luck+'</div>';
+      h+='<div class="idx">第'+(i+1)+'位</div>';
+      h+='</div>';
+    }
+    h+='</div></div>';
+
+    // 推演过程
+    var g=GONGS[result];
+    h+='<div class="card"><h3>推演过程</h3>';
+    h+='<div class="row"><span class="k">农历</span><span class="v">'+lm+'月 '+ld+'日 '+hz+'时辰</span></div>';
+    h+='<div class="row"><span class="k">月落宫（起大安数到'+lm+'月）</span><span class="v">'+GONGS[step1].nm+'</span></div>';
+    h+='<div class="row"><span class="k">日落宫（从'+GONGS[step1].nm+'起初一数到'+ld+'）</span><span class="v">'+GONGS[step2].nm+'</span></div>';
+    h+='<div class="row"><span class="k">时落宫（从'+GONGS[step2].nm+'起子时数到'+hz+'）</span><span class="v"><b>'+g.nm+'</b></span></div>';
+    h+='</div>';
+
+    // 结果
+    h+='<div class="card"><div class="result-g">';
+    h+='<div class="rg-name">'+g.nm+'</div>';
+    h+='<div class="rg-song">'+g.song+'（'+g.god+'）</div>';
+    h+='</div>';
+    h+='<div class="row"><span class="k">吉凶</span><span class="v">'+g.luck+'</span></div>';
+    h+='<div class="row"><span class="k">核心</span><span class="v">'+g.keys[0]+'</span></div>';
+    h+='<div class="row"><span class="k">宜</span><span class="v">'+g.keys[1]+'</span></div>';
+    h+='<div class="row"><span class="k">断语</span><span class="v">'+g.keys[2]+'</span></div>';
+    h+='</div>';
+
+    // 解读
+    h+='<div class="sect">📖 解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 小六壬属中国传统术数（民间掌诀速断），以下为传统说法，非科学结论，仅供娱乐参考。</div>';
+    h+='<p>本课落 <b>'+g.nm+'</b>（'+g.god+'，'+g.luck+'）。'+g.song+'</p>';
+    h+='<ul>';
+    h+='<li><b>大安</b>：属木，青龙——主安稳不动，宜守；谋事可成。</li>';
+    h+='<li><b>留连</b>：属水，玄武——主拖延迟滞，事多反复，宜缓。</li>';
+    h+='<li><b>速喜</b>：属火，朱雀——主快速喜讯，宜速行，喜事将至。</li>';
+    h+='<li><b>赤口</b>：属金，白虎——主口舌官非，防争执，谋事宜慎。</li>';
+    h+='<li><b>小吉</b>：属木，六合——主和合顺利，合作有利，多成。</li>';
+    h+='<li><b>空亡</b>：属土，勾陈——主落空劳而无功，宜静守待时。</li>';
+    h+='</ul>';
+    h+='<p style="font-size:12px;color:#9080a0">小六壬是民间流行的掌诀速断法，起课以农历月日时为准，重在快捷；各家起法略有小异，此处按最通行的"月→日→时"顺数三落宫法。仅供参考娱乐。</p>';
+    h+='</div>';
+
+    res.innerHTML=h;
+  }
+
+  document.getElementById('calc').addEventListener('click',calc);
+  var now=new Date();
+  calc();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐳 鲸鱼娘 · 深海冲浪</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #04121f; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    user-select: none; color: #cfe9ff;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #wrap { position: relative; width: 100%; max-width: 480px; height: 100%; max-height: 100vh; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .hud {
+    position: absolute; top: 12px; left: 14px; right: 14px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    font-size: 15px; font-weight: 700; pointer-events: none;
+    text-shadow: 0 2px 6px rgba(0,0,0,.6);
+  }
+  .hud .lives { color: #ff8fa3; letter-spacing: 2px; }
+  .hud .score { color: #9fe0ff; }
+  .hud .score small { display:block; font-size: 11px; font-weight: 400; color: #6e93b3; text-align: right; }
+  .overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: rgba(4, 18, 31, .78); backdrop-filter: blur(3px);
+    padding: 24px; gap: 12px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 { font-size: 26px; color: #8fd0ff; letter-spacing: 2px; }
+  .overlay p { font-size: 14px; color: #8fb3cf; line-height: 1.9; }
+  .overlay .big { font-size: 40px; margin-bottom: 4px; }
+  button {
+    margin-top: 10px; padding: 12px 30px; font-size: 16px; font-weight: 700;
+    color: #04121f; background: linear-gradient(160deg,#9fe0ff,#5db4e8);
+    border: none; border-radius: 30px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(93,180,232,.4); font-family: inherit;
+  }
+  button:active { transform: scale(.95); }
+  .ver { position: absolute; bottom: 8px; right: 12px; font-size: 10px; color: #33536e; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <div class="lives" id="lives">♥♥♥</div>
+    <div class="score"><span id="score">0</span><small>距离</small></div>
+  </div>
+  <div class="overlay" id="startScreen">
+    <div class="big">🐳</div>
+    <h1>鲸鱼娘 · 深海冲浪</h1>
+    <p>按住 / 点屏幕 → 小鲸鱼上浮<br>松手 → 下沉<br><br>吃 🦐 磷虾加分 · 躲 🪼 水母礁石<br>擦到就丢一颗心</p>
+    <button id="startBtn">下海 🐟</button>
+  </div>
+  <div class="overlay hidden" id="overScreen">
+    <div class="big">💫</div>
+    <h1>冲浪结束</h1>
+    <p>本次距离：<b id="finalScore">0</b><br>最远纪录：<b id="bestScore">0</b></p>
+    <button id="retryBtn">再来一次 🔁</button>
+  </div>
+  <div class="ver">v1.0.0-深海冲浪 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resize(){
+    var r = cv.parentElement.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---- 状态 ----
+  var STATE = 'ready'; // ready | playing | over
+  var whale, fishes, bubbles, bgStars, decor;
+  var holding = false;
+  var score = 0, lives = 3, spawnTimer = 0, frame = 0, speed, difficulty;
+  var best = +(localStorage.getItem('feiyu_dive_best') || 0);
+
+  var GRAVITY = 0.00042, FLAP = -0.00085; // 相对高度/毫秒
+
+  function reset(){
+    whale = { y: H * 0.5, vy: 0, x: W * 0.28, r: Math.max(16, W * 0.045), tilt: 0 };
+    fishes = []; bubbles = []; decor = [];
+    bgStars = [];
+    for (var i = 0; i < 40; i++){
+      bgStars.push({ x: Math.random()*W, y: Math.random()*H, s: Math.random()*2+0.5, a: Math.random()*0.5+0.2 });
+    }
+    for (var j = 0; j < 5; j++){
+      decor.push({ x: Math.random()*W, y: H + Math.random()*H, h: 60 + Math.random()*120, w: 30 + Math.random()*40 });
+    }
+    score = 0; lives = 3; spawnTimer = 0; frame = 0;
+    speed = W * 0.00022; difficulty = 0;
+    updateHUD();
+  }
+
+  function updateHUD(){
+    document.getElementById('score').textContent = Math.floor(score);
+    var s = ''; for (var i = 0; i < lives; i++) s += '♥';
+    for (var k = lives; k < 3; k++) s += '♡';
+    document.getElementById('lives').textContent = s || '♡♡♡';
+  }
+
+  // ---- 输入 ----
+  function onDown(e){ e.preventDefault(); holding = true; }
+  function onUp(e){ e.preventDefault(); holding = false; }
+  cv.addEventListener('pointerdown', onDown);
+  cv.addEventListener('pointerup', onUp);
+  cv.addEventListener('pointercancel', onUp);
+  cv.addEventListener('pointerleave', onUp);
+
+  // ---- 生成物 ----
+  function spawn(){
+    var gapTop = H * 0.18, gapBot = H * 0.82;
+    var r = Math.random();
+    if (r < 0.62){
+      // 磷虾（加分）
+      fishes.push({ x: W + 30, y: gapTop + Math.random()*(gapBot-gapTop), type:'shrimp', r: 12, rot: Math.random()*6.28, collected:false });
+    } else {
+      // 水母（障碍）
+      var ry = gapTop + Math.random()*(gapBot-gapTop);
+      var hz = 34 + Math.random()*20;
+      fishes.push({ x: W + 40, y: ry, type:'jelly', r: hz, phase: Math.random()*6.28 });
+      // 偶尔来个礁石柱
+      if (Math.random() < 0.35){
+        decor.push({ x: W + 60, y: ry + (Math.random()<0.5?-1:1)*(H*0.3), h: H*0.4, w: 26+Math.random()*20, rock:true });
+      }
+    }
+  }
+
+  // ---- 主循环 ----
+  var last = performance.now(), acc = 0;
+  function loop(now){
+    var dt = Math.min(now - last, 50); last = now;
+    if (STATE === 'playing') update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    frame++;
+    difficulty = Math.min(1, frame / 4000);
+    var spd = speed * (1 + difficulty * 1.6);
+
+    // 鲸鱼物理
+    var ay = holding ? FLAP : GRAVITY;
+    whale.vy += ay * dt;
+    whale.vy *= 0.985;
+    whale.vy = Math.max(-1.4, Math.min(1.4, whale.vy));
+    whale.y += whale.vy * dt;
+    whale.tilt += (Math.max(-0.5, Math.min(0.5, whale.vy*2)) - whale.tilt) * 0.15;
+    if (whale.y < whale.r){ whale.y = whale.r; whale.vy = 0; }
+    if (whale.y > H - whale.r){ whale.y = H - whale.r; whale.vy = 0; }
+
+    // 生成
+    spawnTimer -= dt;
+    var interval = Math.max(520, 1100 - difficulty * 500);
+    if (spawnTimer <= 0){ spawn(); spawnTimer = interval * (0.7 + Math.random()*0.6); }
+
+    // 移动 + 碰撞
+    for (var i = fishes.length - 1; i >= 0; i--){
+      var f = fishes[i];
+      f.x -= spd * dt;
+      if (f.type === 'jelly') f.phase += dt * 0.004;
+      if (f.x < -80){ fishes.splice(i,1); continue; }
+      // 碰撞
+      var dx = (f.x - whale.x), dy = (f.y - whale.y);
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < f.r + whale.r * 0.8){
+        if (f.type === 'shrimp' && !f.collected){
+          f.collected = true; score += 5; fishes.splice(i,1); updateHUD();
+        } else if (f.type === 'jelly' && !f.hit){
+          f.hit = true; lives--; updateHUD();
+          if (lives <= 0){ gameOver(); return; }
+        }
+      }
+    }
+
+    // 装饰礁石
+    for (var d = decor.length - 1; d >= 0; d--){
+      var o = decor[d];
+      o.x -= spd * dt;
+      if (o.x < -120){ decor.splice(d,1); }
+    }
+    for (var b = bubbles.length - 1; b >= 0; b--){
+      var bb = bubbles[b];
+      bb.x -= (spd*0.6) * dt; bb.y -= 0.03 * dt * 60;
+      if (bb.x < -20) bubbles.splice(b,1);
+    }
+
+    // 距离分
+    score += spd * dt * 0.008;
+    if (frame % 12 === 0) updateHUD();
+
+    // 气泡
+    if (frame % 8 === 0){
+      bubbles.push({ x: whale.x - whale.r*0.6, y: whale.y + whale.r*0.3, r: 2 + Math.random()*3 });
+    }
+  }
+
+  function gameOver(){
+    STATE = 'over';
+    var fs = Math.floor(score);
+    if (fs > best){ best = fs; localStorage.setItem('feiyu_dive_best', best); }
+    document.getElementById('finalScore').textContent = fs;
+    document.getElementById('bestScore').textContent = best;
+    document.getElementById('overScreen').classList.remove('hidden');
+  }
+
+  // ---- 绘制 ----
+  function draw(){
+    // 背景：深海渐变
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#082a44');
+    g.addColorStop(0.5, '#061e33');
+    g.addColorStop(1, '#04121f');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // 星点（浮游）
+    for (var i = 0; i < bgStars.length; i++){
+      var s = bgStars[i];
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = '#7fd0ff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 海草 / 礁石装饰
+    for (var d = 0; d < decor.length; d++){
+      var o = decor[d];
+      if (o.rock){
+        ctx.fillStyle = '#0e3550';
+        ctx.beginPath(); ctx.moveTo(o.x, o.y - o.h/2); ctx.lineTo(o.x+o.w, o.y); ctx.lineTo(o.x, o.y + o.h/2); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.strokeStyle = 'rgba(60,140,120,.35)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.quadraticCurveTo(o.x-14, o.y-o.h/2, o.x+6, o.y-o.h); ctx.stroke();
+      }
+    }
+
+    // 气泡
+    for (var b = 0; b < bubbles.length; b++){
+      var bb = bubbles[b];
+      ctx.globalAlpha = 0.4; ctx.strokeStyle = '#bfe8ff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(bb.x, bb.y, bb.r, 0, 6.283); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // 生成物
+    for (var f = 0; f < fishes.length; f++) drawFish(fishes[f]);
+
+    // 鲸鱼娘
+    if (whale) drawWhale(whale);
+  }
+
+  function drawFish(f){
+    ctx.save();
+    if (f.type === 'shrimp'){
+      ctx.translate(f.x, f.y); ctx.rotate(0.3);
+      ctx.fillStyle = '#ff9e6d';
+      ctx.beginPath(); ctx.ellipse(0,0,f.r*1.3,f.r*0.7,0,0,6.283); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-f.r*1.1,0); ctx.lineTo(-f.r*2, -f.r*0.6); ctx.lineTo(-f.r*2, f.r*0.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#04202f'; ctx.beginPath(); ctx.arc(f.r*0.5,-f.r*0.2,1.8,0,6.283); ctx.fill();
+      // 磷虾光
+      ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffd8a8';
+      ctx.beginPath(); ctx.arc(0,0,f.r*1.9,0,6.283); ctx.fill();
+    } else {
+      var wob = Math.sin(f.phase) * 4;
+      ctx.translate(f.x, f.y + wob);
+      ctx.globalAlpha = 0.85; ctx.fillStyle = '#b06ce8';
+      ctx.beginPath(); ctx.arc(0,0,f.r, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c78cf5';
+      for (var t = -0.7; t <= 0.7; t += 0.35){
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.lineTo(Math.sin(t+f.phase*0.5)*f.r*0.9, f.r*1.3 + Math.cos(t)*4);
+        ctx.lineTo(Math.sin(t+f.phase*0.5)*f.r*0.9 + 6, f.r*1.3 + Math.cos(t)*4);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 0.25; ctx.fillStyle = '#e0b0ff';
+      ctx.beginPath(); ctx.arc(0,0,f.r*1.15, Math.PI, 0); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawWhale(w){
+    ctx.save();
+    ctx.translate(w.x, w.y);
+    ctx.rotate(w.tilt * 0.3);
+    var r = w.r;
+    // 云朵鲸身（白云色 + 天蓝）
+    var body = ctx.createLinearGradient(0, -r, 0, r);
+    body.addColorStop(0, '#ffffff'); body.addColorStop(1, '#bfe3ff');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r*1.5, r, 0, 0, 6.283);
+    ctx.fill();
+    // 鲸尾
+    ctx.beginPath();
+    ctx.moveTo(-r*1.3, 0);
+    ctx.quadraticCurveTo(-r*2.1, -r*0.9, -r*2.3, -r*0.15);
+    ctx.quadraticCurveTo(-r*2.1, 0, -r*2.3, r*0.15);
+    ctx.quadraticCurveTo(-r*2.1, r*0.9, -r*1.3, 0);
+    ctx.fill();
+    // 鳍
+    ctx.fillStyle = '#a9d6ff';
+    ctx.beginPath(); ctx.ellipse(-r*0.1, r*0.75, r*0.5, r*0.28, 0.5, 0, 6.283); ctx.fill();
+    // 腮红
+    ctx.fillStyle = 'rgba(255,150,170,.55)';
+    ctx.beginPath(); ctx.arc(r*0.55, r*0.28, r*0.22, 0, 6.283); ctx.fill();
+    // 眼睛
+    ctx.fillStyle = '#1b2b3a';
+    ctx.beginPath(); ctx.arc(r*0.65, -r*0.12, r*0.14, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(r*0.7, -r*0.18, r*0.05, 0, 6.283); ctx.fill();
+    // 嘴
+    ctx.strokeStyle = 'rgba(27,43,58,.5)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(r*0.95, r*0.05, r*0.16, -0.4, 1.2); ctx.stroke();
+    // 喷水柱（吸气时）
+    if (holding){
+      ctx.strokeStyle = 'rgba(180,225,255,.7)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(r*0.1, -r*0.95);
+      ctx.quadraticCurveTo(r*0.05, -r*1.6, r*0.2, -r*1.9);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---- 启动 / 重开 ----
+  function start(){
+    reset();
+    STATE = 'playing';
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('overScreen').classList.add('hidden');
+  }
+  document.getElementById('startBtn').addEventListener('click', start);
+  document.getElementById('retryBtn').addEventListener('click', start);
+  document.addEventListener('keydown', function(e){
+    if (e.code === 'Space'){ e.preventDefault(); holding = true; }
+  });
+  document.addEventListener('keyup', function(e){
+    if (e.code === 'Space'){ holding = false; }
+  });
+
+  reset();
+  requestAnimationFrame(function(t){ last = t; loop(t); });
+})();
+</script>
+</body>
+</html>

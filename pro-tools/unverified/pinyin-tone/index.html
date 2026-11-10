@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拼音声调标注工具</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 14px; line-height: 1.6; background: #f4f6f8; color: #333;
+  padding: 12px; padding-bottom: 60px;
+}
+.container { max-width: 660px; margin: 0 auto; }
+h1 { font-size: 20px; text-align: center; margin-bottom: 6px; color: #2c3e50; }
+.subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 16px; }
+.card {
+  background: #fff; border-radius: 10px; padding: 14px;
+  margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card h2 { font-size: 15px; margin-bottom: 10px; color: #34495e; border-left: 3px solid #e67e22; padding-left: 8px; }
+.modes { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.modes label {
+  flex: 1 1 auto; text-align: center; padding: 8px 10px; border: 1px solid #d5dbe1;
+  border-radius: 6px; cursor: pointer; font-size: 13px; background: #fff; user-select: none;
+}
+.modes input { display: none; }
+.modes input:checked + span { color: #e67e22; font-weight: 600; }
+.modes label:has(input:checked) { border-color: #e67e22; background: #fff8f2; }
+.modes label.active { border-color: #e67e22; background: #fff8f2; }
+textarea {
+  width: 100%; min-height: 90px; padding: 10px; border: 1px solid #d5dbe1;
+  border-radius: 6px; font-size: 15px; font-family: inherit; resize: vertical;
+  line-height: 1.8;
+}
+textarea:focus { outline: none; border-color: #e67e22; box-shadow: 0 0 0 2px rgba(230,126,34,0.15); }
+.result {
+  background: #fafcfe; border: 1px solid #e3e9ef; border-radius: 8px;
+  padding: 12px; margin-top: 12px; min-height: 60px;
+  font-size: 16px; line-height: 2; word-break: break-all; white-space: pre-wrap;
+}
+.err { color: #e74c3c; font-size: 13px; }
+.hint { font-size: 12px; color: #95a5a6; margin-top: 8px; line-height: 1.6; }
+.tip { background: #fff8e6; border: 1px solid #f5d78e; border-radius: 6px; padding: 8px 10px; font-size: 12px; color: #8a6d3b; margin-top: 8px; }
+.version { text-align: center; font-size: 11px; color: #b0b8c1; margin-top: 16px; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>拼音声调标注</h1>
+  <div class="subtitle">输拼音数字 → 出带调号拼音 · 支持 ü / 多音节</div>
+
+  <div class="card">
+    <h2>输入</h2>
+    <div class="modes">
+      <label><input type="radio" name="mode" value="tone" checked><span>数字转调号</span></label>
+      <label><input type="radio" name="mode" value="plain"><span>去声调</span></label>
+      <label><input type="radio" name="mode" value="num"><span>调号转数字</span></label>
+    </div>
+    <textarea id="input" placeholder="ni3 hao3  或  wo3 men5 或 lv4 / nv3"></textarea>
+    <div class="result" id="result" aria-live="polite"></div>
+    <div class="err" id="errMsg"></div>
+    <div class="hint">数字声调写在音节末尾；轻声用 5 或 0；ü 可直接写 v（lv4 → lǜ）。多音节用空格或撇号分隔。</div>
+  <div class="tip">⚠ 数据来源提示：本工具的标调优先级规则（a>o>e>末元音，即 iu 标 u、ui 标 i）参照《汉语拼音方案》通用惯例，参数为经验值，未经标准全文逐条核对，请自行验证。</div>
+    <div class="tip" id="tipBox" style="display:none"></div>
+  </div>
+
+  <div class="version">v1.0.2-拼音声调标注 20261022-修审查问题 20261108</div>
+</div>
+
+<script>
+// 带调号元音对照表
+var TONE_MAP = {
+  'a': ['a', 'ā', 'á', 'ǎ', 'à', 'a'],
+  'o': ['o', 'ō', 'ó', 'ǒ', 'ò', 'o'],
+  'e': ['e', 'ē', 'é', 'ě', 'è', 'e'],
+  'i': ['i', 'ī', 'í', 'ǐ', 'ì', 'i'],
+  'u': ['u', 'ū', 'ú', 'ǔ', 'ù', 'u'],
+  'v': ['ü', 'ǖ', 'ǘ', 'ǚ', 'ǜ', 'ü'],
+  'ü': ['ü', 'ǖ', 'ǘ', 'ǚ', 'ǜ', 'ü']
+};
+
+// 反向表：带调号 → [原元音, 声调]
+var REVERSE = {};
+(function () {
+  for (var base in TONE_MAP) {
+    var arr = TONE_MAP[base];
+    for (var t = 0; t < 6; t++) {
+      if (!REVERSE[arr[t]]) REVERSE[arr[t]] = { base: (base === 'v' ? 'ü' : base), tone: t };
+    }
+  }
+})();
+
+// 标调优先级：a > o > e > 最后一个元音（iu 标 u，ui 标 i）
+function pickVowelIndex(syl) {
+  var lower = syl.toLowerCase();
+  var ia = lower.indexOf('a');
+  if (ia >= 0) return ia;
+  // iou 特例：iou3 应标在 u 上（iǔ），不能命中 o
+  var iou = lower.indexOf('iou');
+  if (iou >= 0) return iou + 2;
+  var io = lower.indexOf('o');
+  if (io >= 0) return io;
+  var ie = lower.indexOf('e');
+  if (ie >= 0) return ie;
+  // iu / ui 等：取最后一个元音
+  var last = -1;
+  for (var i = 0; i < lower.length; i++) {
+    var c = lower[i];
+    if (c === 'a' || c === 'o' || c === 'e' || c === 'i' || c === 'u' || c === 'v' || c === 'ü') last = i;
+  }
+  return last;
+}
+
+// 单个音节：数字声调 → 调号
+function numToTone(syl) {
+  var m = syl.match(/^([a-zA-ZüÜvV]+)([0-5])$/);
+  if (!m) return null;
+  var letters = m[1];
+  var tone = parseInt(m[2], 10);
+  if (tone === 0) tone = 5;
+  if (tone === 5) return letters.replace(/v/g, 'ü').replace(/V/g, 'Ü');
+  var idx = pickVowelIndex(letters);
+  if (idx < 0) return null;
+  var ch = letters[idx].toLowerCase();
+  var table = TONE_MAP[ch];
+  if (!table) return null;
+  var marked = table[tone];
+  var out = letters.slice(0, idx) + marked + letters.slice(idx + 1);
+  return out.replace(/v/g, 'ü').replace(/V/g, 'Ü');
+}
+
+// 单个音节：调号 → 数字
+function toneToNum(syl) {
+  var out = '';
+  var foundTone = 0;
+  for (var i = 0; i < syl.length; i++) {
+    var c = syl[i];
+    if (REVERSE[c]) {
+      foundTone = REVERSE[c].tone;
+      out += REVERSE[c].base;
+    } else {
+      out += c;
+    }
+  }
+  out = out.replace(/ü/g, 'v');
+  // 无调号时不强加 5（轻声）：如 "de" 保持原样，避免语义错误
+  return foundTone > 0 ? out + foundTone : out;
+}
+
+// 去声调
+function stripTone(syl) {
+  var out = '';
+  for (var i = 0; i < syl.length; i++) {
+    var c = syl[i];
+    if (REVERSE[c]) out += REVERSE[c].base;
+    else out += c;
+  }
+  return out;
+}
+
+function isNumSyllable(s) { return /^[a-zA-ZüÜvV]+[0-5]$/.test(s); }
+function isToneSyllable(s) { return /[\u00C0-\u00DB\u00DD-\u00FB\u00FD-\u00FF\u0100-\u01FF]/.test(s); }
+
+function convert() {
+  var raw = document.getElementById('input').value;
+  var resEl = document.getElementById('result');
+  var errEl = document.getElementById('errMsg');
+  var tipEl = document.getElementById('tipBox');
+  errEl.textContent = '';
+  tipEl.style.display = 'none';
+
+  var mode = document.querySelector('input[name=mode]:checked').value;
+
+  if (!raw.trim()) {
+    resEl.textContent = '';
+    return;
+  }
+
+  // 保留分隔符，逐片段处理
+  var parts = raw.split(/('|\s+)/);
+  var outParts = [];
+  var failed = [];
+
+  for (var i = 0; i < parts.length; i++) {
+    var seg = parts[i];
+    if (seg === '' || /^\s+$/.test(seg) || seg === "'") {
+      outParts.push(seg);
+      continue;
+    }
+    if (mode === 'tone') {
+      if (isNumSyllable(seg)) {
+        var r = numToTone(seg);
+        if (r) outParts.push(r);
+        else { outParts.push(seg); failed.push(seg); }
+      } else {
+        outParts.push(seg);
+        if (/[0-5]$/.test(seg)) failed.push(seg);
+      }
+    } else if (mode === 'plain') {
+      outParts.push(stripTone(seg));
+    } else {
+      if (isToneSyllable(seg)) outParts.push(toneToNum(seg));
+      else outParts.push(seg);
+    }
+  }
+
+  resEl.textContent = outParts.join('');
+
+  if (failed.length) {
+    errEl.textContent = '这些音节没认出：' + failed.join('、') + '（需为纯字母 + 数字声调）';
+  }
+  if (mode === 'tone') {
+    tipEl.style.display = 'block';
+    tipEl.textContent = '提示：ü 统一显示为 ü；如需输入 nüe / lüe 请写 nve4 / lve4。';
+  }
+}
+
+document.getElementById('input').addEventListener('input', convert);
+var radios = document.querySelectorAll('input[name=mode]');
+function syncActive() {
+  var labels = document.querySelectorAll('.modes label');
+  for (var j = 0; j < labels.length; j++) {
+    var inp = labels[j].querySelector('input');
+    if (inp && inp.checked) labels[j].className = 'active';
+    else labels[j].className = '';
+  }
+}
+for (var i = 0; i < radios.length; i++) radios[i].addEventListener('change', function () { syncActive(); convert(); });
+syncActive();
+
+convert();
+</script>
+</body>
+</html>

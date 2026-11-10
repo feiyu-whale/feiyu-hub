@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>泵汽蚀余量 NPSH 计算器</title><style>
+*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#dbe8f7;font:14px/1.5 system-ui,sans-serif}
+header{padding:10px 16px;background:#0f1e34;border-bottom:2px solid #4a9eff}h1{font-size:18px;margin:0}
+nav{display:flex;gap:6px;padding:10px 16px;flex-wrap:wrap}nav button{background:#12243d;color:#9fb9d8;border:1px solid #24456b;padding:6px 12px;border-radius:6px;cursor:pointer}nav button.on{background:#4a9eff;color:#03101f;border-color:#4a9eff}
+main{padding:0 16px 60px;max-width:1000px;margin:auto}.panel{display:none;background:#12243d;border:1px solid #24456b;border-radius:10px;padding:14px;margin-bottom:12px}.panel.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#9fb9d8;margin-bottom:3px}input,select{width:100%;padding:7px;background:#0a1628;border:1px solid #2a4d78;color:#dbe8f7;border-radius:5px}
+button.go{background:#4a9eff;color:#03101f;border:0;padding:9px 18px;border-radius:6px;font-weight:700;cursor:pointer;margin-top:10px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.card{background:#0a1628;border:1px solid #24456b;border-radius:8px;padding:8px;overflow-wrap:anywhere}.card b{display:block;color:#4a9eff;font-size:12px}.card span{font-size:18px;font-weight:700}
+.err{color:#ff6b6b;font-size:13px;margin-top:6px}.ok{color:#38d39f}.bad{color:#ff6b6b}.warn{color:#ffb347}
+pre{white-space:pre-wrap;word-break:break-word;font-size:11px;max-height:60vh;overflow:auto;background:#081222;padding:10px;border-radius:6px}
+footer{position:fixed;right:10px;bottom:8px;background:#0f1e34;border:1px solid #24456b;border-radius:6px;padding:3px 8px;font-size:11px;color:#9fb9d8}
+.small{font-size:12px;color:#9fb9d8}@media(max-width:480px){main{padding:0 8px 60px}nav{padding:8px}.panel{padding:10px}}
+</style></head><body>
+<header><h1>泵汽蚀余量 NPSH 计算器</h1></header>
+<nav><button class="on" data-t="calc">计算工具</button><button data-t="src">JS源码</button><button data-t="test">单元测试</button><button data-t="help">使用说明</button></nav>
+<main>
+<section id="calc" class="panel on">
+<div class="grid">
+<div><label>介质</label><select id="med" onchange="setMed()"><option value="water">水</option><option value="ethanol">乙醇</option><option value="benzene">苯</option></select></div>
+<div><label>材料（仅记录）</label><select id="mat"><option>碳钢</option><option>304不锈钢</option><option>铜</option></select></div>
+<div><label>温度 T (°C)</label><input id="T" type="number" value="20" step="0.1"></div>
+<div><label>密度 ρ (kg/m³)</label><input id="rho" type="number" value="998.2" step="0.1"></div>
+<div><label>吸入液面压力 p0 (kPa绝压)</label><input id="p0" type="number" value="101.325" step="0.1"></div>
+<div><label>液面至泵入口静压头 Hz (m)</label><input id="hz" type="number" value="2" step="0.1"></div>
+<div><label>吸入管路损失 Hf (m)</label><input id="hf" type="number" value="1" step="0.1"></div>
+<div><label>泵必需 NPSHr (m)</label><input id="nr" type="number" value="3" step="0.1"></div>
+</div>
+<button class="go" onclick="calc()">计算 NPSHa</button>
+<div id="err" class="err"></div>
+<div id="out" class="res"></div>
+<div class="small" style="margin-top:10px">公式：NPSHa=(p0-pv)/(ρg)+Hz-Hf。p0为绝压；Hz液面高于泵入口为正；Hf为吸入管损；g=9.80665m/s²。出处：GB/T 3216-2016；饱和蒸气压用Antoine方程（Perry 8th、NIST WebBook）。</div>
+</section>
+<section id="src" class="panel"><pre id="srcBox"></pre></section>
+<section id="test" class="panel"><button class="go" onclick="runTests()">运行全部测试</button><div id="testOut" style="margin-top:10px"></div></section>
+<section id="help" class="panel"><div class="small">
+<h3>用途</h3>计算有效汽蚀余量NPSHa，并与泵必需NPSHr比较，判断汽蚀风险。<br>
+<h3>步骤</h3>选介质，填温度、密度、p0、Hz、Hf、NPSHr，点计算。<br>
+<h3>判据</h3>裕量=NPSHa-NPSHr；≥1m安全，0~1m临界，&lt;0m汽蚀风险。1m为行业经验值，未经标准核对。<br>
+<h3>来源</h3>NPSH定义：GB/T 3216-2016《回转动力泵 水力性能验收试验》；饱和蒸气压：Antoine方程，系数取自Perry 8th与NIST WebBook；g按ISO 80000-4。水1~100°C与100~200°C分段；乙醇0~78°C；苯8~103°C。<br>
+<h3>注意</h3>p0用绝压；密度按实际温度输入；材料仅记录，不参与热力学计算，Hf按实际管路损失输入。
+</div></section>
+</main>
+<footer>v1.0.0-pump-npsh 20261108</footer>
+<script>
+const MED={water:{n:'水',A:[8.07131,1730.63,233.426],B:[7.96681,1668.21,228.0],t:[1,200],rho:998.2},ethanol:{n:'乙醇',A:[8.20417,1642.89,230.3],t:[0,78],rho:789},benzene:{n:'苯',A:[6.90565,1211.033,220.790],t:[8,103],rho:876}};
+function pv(med,T){let m=MED[med];if(!m)throw Error('介质未知');let a=(med==='water'&&T>100)?m.B:m.A;return Math.pow(10,a[0]-a[1]/(a[2]+T))*133.322368}
+function npsh(o){let p=pv(o.med,o.T);return{pv:p,n:(o.p0*1000-p)/(o.rho*9.80665)+o.hz-o.hf}}
+function chk(o){let m=MED[o.med];if(!m)return'介质未知';if([o.T,o.rho,o.p0,o.hz,o.hf,o.nr].some(isNaN))return'请填写全部输入且为数字';if(o.T<m.t[0]||o.T>m.t[1])return'温度须在'+m.t[0]+'~'+m.t[1]+'°C';if(o.rho<500||o.rho>2000)return'密度须在500~2000kg/m³';if(o.p0<1||o.p0>10000)return'p0须在1~10000kPa';if(o.hz<-20||o.hz>50)return'Hz须在-20~50m';if(o.hf<0||o.hf>100)return'Hf须在0~100m';if(o.nr<0||o.nr>50)return'NPSHr须在0~50m';return''}
+function setMed(){let m=MED[document.getElementById('med').value];document.getElementById('rho').value=m.rho;let t=document.getElementById('T');t.min=m.t[0];t.max=m.t[1];t.title=m.t[0]+'~'+m.t[1]+'°C'}
+function calc(){let g=id=>document.getElementById(id).value.trim();let o={med:g('med'),T:parseFloat(g('T')),rho:parseFloat(g('rho')),p0:parseFloat(g('p0')),hz:parseFloat(g('hz')),hf:parseFloat(g('hf')),nr:parseFloat(g('nr'))};let e=chk(o),out=document.getElementById('out');document.getElementById('err').textContent=e;if(e){out.innerHTML='';return}let r=npsh(o),mg=r.n-o.nr,cls=mg>=1?'ok':mg>=0?'warn':'bad',txt=mg>=1?'无汽蚀风险':mg>=0?'临界，建议增大裕量':'汽蚀风险';out.innerHTML=`<div class="card"><b>NPSHa</b><span>${r.n.toFixed(3)} m</span></div><div class="card"><b>NPSHr</b><span>${o.nr.toFixed(3)} m</span></div><div class="card"><b>裕量 NPSHa-NPSHr</b><span class="${cls}">${mg.toFixed(3)} m</span></div><div class="card"><b>判断</b><span class="${cls}">${txt}</span></div><div class="card"><b>饱和蒸气压 pv</b><span>${(r.pv/1000).toFixed(3)} kPa</span></div><div class="card"><b>密度 ρ</b><span>${o.rho} kg/m³</span></div><div class="card"><b>静压头 Hz</b><span>${o.hz} m</span></div><div class="card"><b>管路损失 Hf</b><span>${o.hf} m</span></div>`}
+function eq(a,b,t=0.05){return Math.abs(a-b)<=t}
+const TESTS=[
+['水20°C NPSHa',()=>eq(npsh({med:'water',T:20,rho:998.2,p0:101.325,hz:2,hf:1}).n,11.11)],
+['水100°C pv≈101.325kPa',()=>eq(pv('water',100)/1000,101.325,0.2)],
+['乙醇20°C NPSHa',()=>eq(npsh({med:'ethanol',T:20,rho:789,p0:101.325,hz:3,hf:0.5}).n,14.84,0.1)],
+['苯25°C pv≈12.7kPa',()=>eq(pv('benzene',25)/1000,12.7,0.3)],
+['负静压头-2m',()=>eq(npsh({med:'water',T:20,rho:998.2,p0:101.325,hz:-2,hf:1}).n,7.11)],
+['空温度校验',()=>chk({med:'water',T:NaN,rho:998.2,p0:101.325,hz:0,hf:0,nr:3})!==''],
+['温度超范围校验',()=>chk({med:'ethanol',T:90,rho:789,p0:101.325,hz:0,hf:0,nr:3})!==''],
+['负损失校验',()=>chk({med:'water',T:20,rho:998.2,p0:101.325,hz:0,hf:-1,nr:3})!==''],
+['零密度校验',()=>chk({med:'water',T:20,rho:0,p0:101.325,hz:0,hf:0,nr:3})!==''],
+['零吸入压力校验',()=>chk({med:'water',T:20,rho:998.2,p0:0,hz:0,hf:0,nr:3})!=='']
+];
+function runTests(){let h='',p=0;TESTS.forEach((t,i)=>{let ok=false;try{ok=t[1]()}catch(e){ok=false}if(ok)p++;h+=`<div class="${ok?'ok':'bad'}">${i+1}. ${t[0]}：${ok?'通过':'失败'}</div>`});document.getElementById('testOut').innerHTML=`<div class="${p===TESTS.length?'ok':'bad'}">通过 ${p}/${TESTS.length}</div>`+h}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.getElementById(b.dataset.t).classList.add('on');if(b.dataset.t==='src')document.getElementById('srcBox').textContent=document.querySelector('script').textContent});
+</script>
+</body></html>

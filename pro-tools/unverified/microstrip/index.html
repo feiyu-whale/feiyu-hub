@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微带线特征阻抗计算器 — Hammerstad-Jensen 准静态模型</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#1a3a5c;--accent:#2980b9;--bg:#f4f6f8;--card:#fff;--text:#2c3e50;--border:#dce1e6;--success:#27ae60;--danger:#c0392b;--warn:#e67e22;--radius:6px}
+body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:15px}
+header{background:linear-gradient(135deg,var(--primary),#2c5f8a);color:#fff;padding:28px 24px 22px;text-align:center}
+header h1{font-size:1.6em;font-weight:700;letter-spacing:.5px}
+header p{font-size:.88em;opacity:.85;margin-top:6px}
+nav{display:flex;justify-content:center;gap:0;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+nav button{padding:12px 28px;border:none;background:transparent;font-size:.95em;cursor:pointer;color:var(--text);border-bottom:3px solid transparent;transition:all .2s}
+nav button:hover{background:#eef3f8}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+main{max-width:1100px;margin:0 auto;padding:24px 16px}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card h2{font-size:1.15em;color:var(--primary);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--accent)}
+.card h3{font-size:1.05em;color:var(--primary);margin:18px 0 10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px}
+.form-group{display:flex;flex-direction:column}
+.form-group label{font-size:.88em;font-weight:600;margin-bottom:4px;color:#555}
+.form-group input{padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:.95em;transition:border-color .2s}
+.form-group input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(41,128,185,.15)}
+.form-group .unit{font-size:.78em;color:#888;margin-top:2px}
+.btn{padding:10px 28px;border:none;border-radius:4px;font-size:.95em;cursor:pointer;font-weight:600;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#2471a3}
+.btn-secondary{background:#7f8c8d;color:#fff}
+.btn-secondary:hover{background:#6c7a7b}
+.btn-row{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+.result-box{background:#f0f7ff;border:1px solid #b8d4f0;border-radius:var(--radius);padding:18px;margin-top:18px}
+.result-box h3{margin-top:0;color:var(--accent)}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-top:10px}
+.result-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #d0e0f0}
+.result-item .label{font-weight:600;color:#555}
+.result-item .value{font-family:"Cascadia Code","Fira Code",monospace;color:var(--primary);font-weight:700}
+.warning-box{background:#fef9e7;border:1px solid #f9e79f;border-radius:var(--radius);padding:14px 18px;margin-top:14px;font-size:.9em;color:#7d6608}
+.error-box{background:#fdedec;border:1px solid #f5b7b1;border-radius:var(--radius);padding:14px 18px;margin-top:14px;font-size:.9em;color:#922b21}
+.test-table{width:100%;border-collapse:collapse;font-size:.88em;margin-top:12px}
+.test-table th{background:var(--primary);color:#fff;padding:10px 8px;text-align:left;font-weight:600}
+.test-table td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top}
+.test-table tr:nth-child(even){background:#f8f9fa}
+.test-pass{color:var(--success);font-weight:700}
+.test-fail{color:var(--danger);font-weight:700}
+.test-summary{padding:14px 18px;border-radius:var(--radius);margin-top:14px;font-weight:600;font-size:.95em}
+.test-summary.all-pass{background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf}
+.test-summary.has-fail{background:#fdedec;color:#922b21;border:1px solid #f5b7b1}
+.doc-section{margin-bottom:24px}
+.doc-section h3{color:var(--primary);border-left:4px solid var(--accent);padding-left:12px;margin-bottom:10px}
+.doc-section p{margin-bottom:10px;text-align:justify}
+.doc-section ul,.doc-section ol{margin:8px 0 12px 24px}
+.doc-section li{margin-bottom:4px}
+.safety-box{background:#fff3cd;border:2px solid #ffc107;border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.safety-box h2{color:#856404;border-bottom-color:#ffc107}
+.safety-box .icon{font-size:2em;margin-bottom:10px}
+.safety-statement{background:#f8f9fa;border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:14px;font-size:.92em;line-height:1.8}
+.safety-statement strong{color:var(--danger)}
+.code-block{background:#2d2d2d;color:#f8f8f2;padding:16px;border-radius:4px;font-family:"Cascadia Code","Fira Code",monospace;font-size:.82em;overflow-x:auto;margin:10px 0;line-height:1.5}
+footer{text-align:center;padding:16px;font-size:.78em;color:#999;border-top:1px solid var(--border);margin-top:30px}
+footer .version{position:fixed;bottom:8px;right:12px;font-size:.72em;color:#bbb;z-index:50}
+nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.test-table th,.test-table td{word-break:break-word}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr}.result-grid{grid-template-columns:1fr}nav button{padding:10px 14px;font-size:.85em;white-space:nowrap}.test-table{display:block;overflow-x:auto}}
+</style>
+</head>
+<body>
+<header>
+<h1>微带线特征阻抗计算器</h1>
+<p>基于 Hammerstad-Jensen 准静态解析模型 · 参考 IPC-2141A</p>
+</header>
+
+<nav>
+<button class="active" onclick="showTab('calculator',this)">📐 计算器</button>
+<button onclick="showTab('tests',this)">🧪 单元测试</button>
+<button onclick="showTab('docs',this)">📖 专业说明</button>
+<button onclick="showTab('safety',this)">⚠️ 安全声明</button>
+</nav>
+
+<main>
+<!-- ==================== TAB 1: CALCULATOR ==================== -->
+<div id="calculator" class="tab-content active">
+
+<div class="card">
+<h2>正算：已知几何参数 → 求特征阻抗 Z₀</h2>
+<div class="form-grid">
+<div class="form-group">
+<label>相对介电常数 ε<sub>r</sub></label>
+<input type="number" id="f_epsR" value="4.4" step="0.1" min="1" max="15">
+<span class="unit">无量纲，范围 1 &lt; εr &lt; 15</span>
+</div>
+<div class="form-group">
+<label>基板厚度 h</label>
+<input type="number" id="f_h" value="1.6" step="0.1" min="0.01">
+<span class="unit">mm</span>
+</div>
+<div class="form-group">
+<label>导线宽度 w</label>
+<input type="number" id="f_w" value="3.0" step="0.1" min="0.01">
+<span class="unit">mm</span>
+</div>
+<div class="form-group">
+<label>导线厚度 t</label>
+<input type="number" id="f_t" value="0.035" step="0.001" min="0">
+<span class="unit">mm（典型铜箔 1 oz ≈ 0.035 mm）</span>
+</div>
+</div>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="doForward()">计算 Z₀</button>
+<button class="btn btn-secondary" onclick="resetForward()">重置</button>
+</div>
+<div class="warning-box" style="margin-bottom:14px">⚠️ <strong>数据来源提示：</strong>本工具的 Δw 厚度修正系数及页面所载各项误差数字（如「偏差 5%～10%」「蚀刻因子 1:1」「±1～2Ω」等）均为经验值，<strong>未经标准或原始文献逐条核对</strong>，仅供工程参考。核心 εeff/Z₀/逆公式可对应公开文献（Hammerstad & Jensen, IEEE MTT-S 1980）。</div>
+<div id="fwdResult"></div>
+</div>
+
+<div class="card">
+<h2>反算：已知目标阻抗 Z₀ → 求线宽 w</h2>
+<div class="form-grid">
+<div class="form-group">
+<label>目标特征阻抗 Z₀</label>
+<input type="number" id="i_Z0" value="50" step="1" min="1">
+<span class="unit">Ω</span>
+</div>
+<div class="form-group">
+<label>相对介电常数 ε<sub>r</sub></label>
+<input type="number" id="i_epsR" value="4.4" step="0.1" min="1" max="15">
+<span class="unit">无量纲</span>
+</div>
+<div class="form-group">
+<label>基板厚度 h</label>
+<input type="number" id="i_h" value="1.6" step="0.1" min="0.01">
+<span class="unit">mm</span>
+</div>
+<div class="form-group">
+<label>导线厚度 t</label>
+<input type="number" id="i_t" value="0.035" step="0.001" min="0">
+<span class="unit">mm</span>
+</div>
+</div>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="doInverse()">反算 w</button>
+<button class="btn btn-secondary" onclick="resetInverse()">重置</button>
+</div>
+<div id="invResult"></div>
+</div>
+</div>
+
+<!-- ==================== TAB 2: UNIT TESTS ==================== -->
+<div id="tests" class="tab-content">
+<div class="card">
+<h2>单元测试（10 项）</h2>
+<p style="margin-bottom:12px;font-size:.9em;color:#666">覆盖正常值、边界值、极端值、非法输入。点击按钮运行全部测试。</p>
+<div class="warning-box" style="margin-bottom:12px">⚠️ <strong>提示：</strong>下列 10 项测试的期望值为开发时自行估算并写入代码（自证循环），<strong>无外部基准数据核对</strong>，仅用于回归验证实现未被改动，不作为公式正确性的证明。</div>
+<button class="btn btn-primary" onclick="runAllTests()">▶ 运行全部测试</button>
+<div id="testOutput"></div>
+</div>
+</div>
+
+<!-- ==================== TAB 3: DOCUMENTATION ==================== -->
+<div id="docs" class="tab-content">
+<div class="card">
+<h2>专业说明文档</h2>
+
+<div class="doc-section">
+<h3>一、工具概述</h3>
+<p>本计算器实现了 <strong>Hammerstad-Jensen 准静态解析模型</strong>，用于计算矩形截面微带线（Microstrip Line）的特征阻抗 Z₀ 和有效介电常数 ε<sub>eff</sub>。微带线是高频/微波印制电路板（PCB）中最基本的传输线结构，广泛应用于射频前端、功率分配器、滤波器、天线馈电网络等设计中。准确的阻抗计算是保证信号完整性（Signal Integrity）和功率传输效率的前提。</p>
+<p>本工具同时支持正算（已知几何参数求阻抗）和反算（已知目标阻抗求线宽），适用于 IPC-2141A 标准推荐的参数范围：0.1 &lt; w/h &lt; 10，1 &lt; ε<sub>r</sub> &lt; 15。</p>
+</div>
+
+<div class="doc-section">
+<h3>二、公式体系与计算步骤</h3>
+<p><strong>核心文献：</strong>Hammerstad E, Jensen O. "Accurate Models for Microstrip Computer-Aided Design." <em>IEEE MTT-S International Microwave Symposium Digest</em>, 1980. 标准参考：IPC-2141A《Design Guide for High Frequency/Microwave Printed Boards》。</p>
+
+<p><strong>步骤 1：计算有效介电常数 ε<sub>eff</sub>（初始值）</strong></p>
+<p>有效介电常数反映了微带线中电磁场部分分布在介质中、部分分布在空气中的综合效应。Hammerstad 公式分两段：</p>
+<ul>
+<li>当 w/h ≤ 1 时：ε<sub>eff</sub> = (ε<sub>r</sub>+1)/2 + (ε<sub>r</sub>−1)/2 × [1/√(1+12h/w) + 0.04(1−w/h)²]</li>
+<li>当 w/h &gt; 1 时：ε<sub>eff</sub> = (ε<sub>r</sub>+1)/2 + (ε<sub>r</sub>−1)/2 × [1/√(1+12h/w)]</li>
+</ul>
+<p>其中 0.04(1−w/h)² 项是窄带修正，仅在 w/h &lt; 1 时启用，用于补偿边缘场效应在窄带情况下的额外贡献。</p>
+
+<p><strong>步骤 2：有限导体厚度的等效宽度修正</strong></p>
+<p>实际 PCB 的铜箔具有有限厚度 t（典型 1 oz 铜箔约 0.035 mm）。Hammerstad 给出的等效宽度增量为：</p>
+<p>Δw = (t/π) × ln(4e / √((t/h)² + (1/(π·ε<sub>eff</sub>))²))</p>
+<p>其中 e ≈ 2.71828 为自然对数底。修正后的有效宽度 w<sub>eff</sub> = w + Δw。此修正的物理含义是：有限厚度的导体边缘增加了额外的电容，等效于加宽了导线。</p>
+
+<p><strong>步骤 3：用 w<sub>eff</sub>/h 重新计算 ε<sub>eff</sub></strong></p>
+<p>将步骤 1 中的 w/h 替换为 w<sub>eff</sub>/h，重新计算有效介电常数。这一步是必要的，因为厚度修正改变了有效宽高比。</p>
+
+<p><strong>步骤 4：计算特征阻抗 Z₀</strong></p>
+<ul>
+<li>当 w<sub>eff</sub>/h ≤ 1 时：Z₀ = (60/√ε<sub>eff</sub>) × ln(8h/w<sub>eff</sub> + w<sub>eff</sub>/(4h))</li>
+<li>当 w<sub>eff</sub>/h &gt; 1 时：Z₀ = (120π/√ε<sub>eff</sub>) / [w<sub>eff</sub>/h + 1.393 + 0.667·ln(w<sub>eff</sub>/h + 1.444)]</li>
+</ul>
+<p>其中 120π ≈ 376.73 Ω 为自由空间波阻抗 η₀。</p>
+
+<p><strong>反算步骤（已知 Z₀ 求 w）：</strong></p>
+<p>反算使用 Hammerstad 给出的解析逆公式获得初始猜测值，然后通过二分迭代法结合厚度修正收敛到精确解。逆公式分两段：</p>
+<ul>
+<li>窄带（Z₀ &gt; Z<sub>threshold</sub>）：A = (Z₀/60)√((ε<sub>r</sub>+1)/2) + (ε<sub>r</sub>−1)/(ε<sub>r</sub>+1)·(0.23+0.11/ε<sub>r</sub>)，w/h = 8e<sup>A</sup>/(e<sup>2A</sup>−2)</li>
+<li>宽带（Z₀ ≤ Z<sub>threshold</sub>）：B = 377π/(2Z₀√ε<sub>r</sub>)，w/h = (2/π)[B−1−ln(2B−1) + (ε<sub>r</sub>−1)/(2ε<sub>r</sub>)·(ln(B−1)+0.39−0.61/ε<sub>r</sub>)]</li>
+</ul>
+<p>其中 Z<sub>threshold</sub> 为 w/h = 2 时对应的阻抗值，动态计算。</p>
+</div>
+
+<div class="doc-section">
+<h3>三、适用场景与不适用场景</h3>
+<p><strong>适用场景：</strong></p>
+<ul>
+<li>常规 FR-4、Rogers 等 PCB 基板的微带线初步设计</li>
+<li>频率 ≤ 10 GHz 的准静态分析（波长 λ ≫ 基板厚度 h）</li>
+<li>w/h 在 0.1～10 范围内、ε<sub>r</sub> 在 1～15 范围内的标准微带线</li>
+<li>导体厚度 t 远小于基板厚度 h（t/h ≪ 1）的情况</li>
+<li>快速估算和参数扫描，用于设计初期筛选</li>
+</ul>
+<p><strong>不适用场景：</strong></p>
+<ul>
+<li>频率 &gt; 10 GHz 时，色散效应显著，准静态近似失效，须使用全波电磁仿真（如 HFSS、CST、ADS Momentum）</li>
+<li>t/h 比较大（如 &gt; 0.1）时，厚度修正公式的精度下降</li>
+<li>蚀刻后的梯形截面导线（本模型假设矩形截面）</li>
+<li>耦合微带线、带状线（Stripline）、共面波导（CPW）等其他传输线结构</li>
+<li>基板存在各向异性介电常数时</li>
+<li>表面粗糙度显著影响导体损耗的场景</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>四、工程意义</h3>
+<p>在射频/微波 PCB 设计中，特征阻抗的精确控制至关重要：</p>
+<ul>
+<li><strong>阻抗匹配：</strong>50 Ω 是射频系统中最常用的标准阻抗。本工具可帮助设计者快速确定实现 50 Ω 所需的线宽，从而在 Layout 阶段精确控制走线尺寸。</li>
+<li><strong>信号完整性：</strong>阻抗不连续会导致信号反射，产生振铃、过冲等问题。通过精确计算阻抗，可以最小化传输路径中的阻抗突变。</li>
+<li><strong>功率传输：</strong>在功率放大器输出级，阻抗匹配直接影响功率传输效率和回波损耗。</li>
+<li><strong>滤波器与匹配网络：</strong>微带线本身可作为分布参数元件使用，其阻抗值直接决定滤波器响应和匹配网络性能。</li>
+<li><strong>制造公差分析：</strong>通过正算和反算的结合，可以评估线宽公差对阻抗偏差的影响，指导 PCB 厂商的工艺控制。</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>五、已知局限与误差来源</h3>
+<ul>
+<li><strong>准静态近似：</strong>Hammerstad-Jensen 模型忽略了频率相关的色散效应。当频率升高时，有效介电常数会随频率变化（通常增大），导致实际阻抗偏离计算值。在 10 GHz 以上，偏差可达 5%～10%。</li>
+<li><strong>矩形截面假设：</strong>实际 PCB 蚀刻后的导线截面呈梯形或倒梯形，而非理想矩形。蚀刻因子（Etch Factor）通常为 1:1 左右，会导致线宽偏差 0.02～0.05 mm，对应阻抗偏差 2～5 Ω。</li>
+<li><strong>厚度修正系数来源存疑：</strong>本工具所用的 Δw 厚度修正式，<strong>不同文献版本给出的系数与适用范围存在差异，本工具未能核对该式原始文献的条款/公式号，该系数属经验近似、未经标准核对</strong>。t/h 较大时该项误差会明显放大。</li>
+<li><strong>厚度修正精度：</strong>当 t/h &gt; 0.1 时，Hammerstad 厚度修正公式的误差增大。对于 2 oz 铜箔（t ≈ 0.07 mm）在薄基板（h = 0.5 mm）上，t/h = 0.14，误差可能达到 1%～3%。</li>
+<li><strong>介电常数公差：</strong>FR-4 的 ε<sub>r</sub> 标称值通常为 4.2～4.8，实际值随频率、温度和批次变化。ε<sub>r</sub> 的 5% 偏差可导致 Z₀ 偏差 2%～3%。</li>
+<li><strong>接地平面有限：</strong>公式假设无限大接地平面。当接地平面尺寸有限时，边缘效应会引入额外误差。</li>
+<li><strong>表面粗糙度：</strong>导体表面粗糙度会增加高频损耗，但不显著影响特征阻抗（主要影响衰减常数）。</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>六、精度与误差说明</h3>
+<p><strong>① 算准了什么：</strong>在适用范围内（0.1 &lt; w/h &lt; 10，1 &lt; ε<sub>r</sub> &lt; 15，t/h ≪ 1，f ≪ c/h），Hammerstad-Jensen 模型与实验数据的吻合度通常为：特征阻抗 Z₀ 误差 ≤ 1%～2%，有效介电常数 ε<sub>eff</sub> 误差 ≤ 1%。该模型被 IEEE MTT-S 社区广泛认可，是微带线 CAD 工具的基础模型之一。</p>
+<p><strong>② 哪些因素没算进去：</strong>频率色散、导体表面粗糙度、蚀刻梯形截面、基板各向异性、有限接地平面、邻近效应（耦合线）、辐射损耗、表面波激发等。这些因素在高频或特殊结构中不可忽略。</p>
+<p><strong>③ 误差大概多大：</strong>在标准条件（FR-4，ε<sub>r</sub>=4.4，h=1.6mm，1 oz 铜，f ≤ 3 GHz）下，与全波仿真结果的典型偏差为 Z₀ 约 ±1～2 Ω（即 ±2%～4%）。在边界条件（w/h 接近 0.1 或 10，或 t/h &gt; 0.1）下，偏差可能增大至 ±5%。在频率 &gt; 10 GHz 时，偏差可能超过 ±10%。</p>
+<div class="warning-box">⚠️ <strong>数据来源提示：</strong>本节以及第五节中引用的全部误差数字（5%～10%、蚀刻因子 1:1、±1～2 Ω 等）均为经验估计，<strong>未经标准或文献核对，本工具不为其提供出处</strong>。</div>
+<p><strong>重要提示：</strong>本工具提供的是<strong>准静态近似计算</strong>，并非"精确计算"或"绝对准确"的结果。对于关键射频设计，强烈建议使用全波电磁仿真软件进行验证，并结合实际板材的 Dk/Df 测试数据。</p>
+</div>
+
+</div>
+</div>
+
+<!-- ==================== TAB 4: SAFETY ==================== -->
+<div id="safety" class="tab-content">
+
+<div class="safety-box card">
+<h2>⚠️ 安全与免责声明</h2>
+<div class="safety-statement">
+<p><strong>【工程工具声明】</strong>本工具为射频/微波工程辅助计算工具，基于 Hammerstad-Jensen 准静态解析模型实现。本工具<strong>不属于医疗器械</strong>，不涉及人体诊断或治疗。</p>
+<p><strong>【适用范围】</strong>本工具仅适用于矩形截面微带线在准静态条件下的特征阻抗估算。适用参数范围：0.1 &lt; w/h &lt; 10，1 &lt; ε<sub>r</sub> &lt; 15，t/h ≪ 1，工作频率建议 ≤ 10 GHz。超出此范围时，计算结果的可靠性无法保证。</p>
+<p><strong>【假设条件】</strong>计算基于以下假设：①理想矩形导线截面；②无限大理想导体接地平面；③均匀、各向同性、无损耗介质基板；④准静态条件（波长远大于基板厚度）；⑤单模 TEM  quasi-TEM 传播。</p>
+<p><strong>【使用限制】</strong>本工具的计算结果仅供工程参考，<strong>不构成最终设计依据</strong>。对于航空航天、医疗设备、军事电子等高可靠性应用，必须使用全波电磁仿真软件（如 ANSYS HFSS、Dassault CST、Keysight ADS）进行验证，并通过实物测试确认。设计者须对最终设计决策承担全部责任。</p>
+<p><strong>【数据准确性】</strong>本工具不保证计算结果与实际情况完全一致。介电常数 ε<sub>r</sub> 的实际值受频率、温度、湿度、批次等因素影响，建议以板材厂商提供的实测数据为准。计算结果可能因公式的准静态近似、厚度修正模型的局限性等因素存在 ±2%～5% 的偏差。</p>
+<p><strong>【文献依据】</strong>核心算法基于以下公开学术文献：Hammerstad E, Jensen O. "Accurate Models for Microstrip Computer-Aided Design." <em>IEEE MTT-S International Microwave Symposium Digest</em>, 1980. 设计标准参考：IPC-2141A "Design Guide for High Frequency/Microwave Printed Boards". 本工具未编造任何文献或数据。</p>
+</div>
+</div>
+
+<div class="card">
+<h2>专业参考声明</h2>
+<div class="safety-statement">
+<p>本工具面向具备射频/微波工程背景的专业人员。使用者应理解微带线传输线理论、准静态近似的适用条件以及 PCB 制造工艺对阻抗控制的影响。如使用者不具备相关背景，建议在专业人员指导下使用本工具。</p>
+<p>本工具中引用的所有公式、系数和文献均为公开学术资料，不存在编造数据或虚构文献的情况。对于无法完全确认的系数，已在代码注释中标注"需查原始文献"。</p>
+</div>
+</div>
+
+</div>
+</main>
+
+<footer>
+<p>微带线特征阻抗计算器 · Hammerstad-Jensen 准静态模型 · 仅供工程参考</p>
+<span class="version">v2.0.2-修审查问题 20261108</span>
+</footer>
+
+<script>
+/* ========================================================================
+ *  微带线特征阻抗计算核心引擎
+ *  模型：Hammerstad-Jensen 准静态解析模型
+ *  文献：Hammerstad E, Jensen O. "Accurate Models for Microstrip
+ *        Computer-Aided Design." IEEE MTT-S Int. Microwave Symp. Dig., 1980.
+ *  标准：IPC-2141A "Design Guide for High Frequency/Microwave Printed Boards"
+ * ======================================================================== */
+
+/**
+ * 验证输入参数的合法性
+ *
+ * 公式名称：输入校验（非公式，为工程约束）
+ * 文献出处：IPC-2141A 推荐参数范围
+ *
+ * @param {number} epsR - 相对介电常数
+ * @param {number} h - 基板厚度 (mm)
+ * @param {number} w - 导线宽度 (mm)
+ * @param {number} t - 导线厚度 (mm)
+ * @throws {Error} 当参数非法时抛出错误
+ * @returns {void}
+ */
+function validateInputs(epsR, h, w, t) {
+    if (typeof epsR !== 'number' || isNaN(epsR)) throw new Error('εr 必须为有效数字，当前值：' + epsR);
+    if (typeof h !== 'number' || isNaN(h)) throw new Error('h 必须为有效数字，当前值：' + h);
+    if (typeof w !== 'number' || isNaN(w)) throw new Error('w 必须为有效数字，当前值：' + w);
+    if (typeof t !== 'number' || isNaN(t)) throw new Error('t 必须为有效数字，当前值：' + t);
+    if (epsR <= 0) throw new Error('εr 必须 > 0，当前值：' + epsR);
+    if (epsR < 1) throw new Error('εr 不应 < 1（真空为下限），当前值：' + epsR);
+    if (epsR > 15) throw new Error('εr 超出适用范围上限 15，当前值：' + epsR);
+    if (h <= 0) throw new Error('基板厚度 h 必须 > 0，当前值：' + h);
+    if (w <= 0) throw new Error('导线宽度 w 必须 > 0，当前值：' + w);
+    if (t < 0) throw new Error('导线厚度 t 不能为负，当前值：' + t);
+    var ratio = w / h;
+    if (ratio < 0.05) throw new Error('w/h = ' + ratio.toFixed(4) + ' 过小，超出公式可靠范围（建议 ≥ 0.1）');
+    if (ratio > 20) throw new Error('w/h = ' + ratio.toFixed(4) + ' 过大，超出公式可靠范围（建议 ≤ 10）');
+}
+
+/**
+ * 计算微带线有效介电常数（不含厚度修正）
+ *
+ * 公式名称：Hammerstad 有效介电常数公式
+ * 文献出处：Hammerstad E, Jensen O. IEEE MTT-S, 1980.
+ *          亦见 Pozar DM. Microwave Engineering. 4th ed. Wiley, 2012. §3.8
+ *
+ * @param {number} epsR - 相对介电常数
+ * @param {number} wOverH - 宽高比 w/h
+ * @returns {number} 有效介电常数 εeff
+ */
+function calcEpsEff(epsR, wOverH) {
+    var a = (epsR + 1) / 2;
+    var b = (epsR - 1) / 2;
+    var c = 1 / Math.sqrt(1 + 12 / wOverH);
+    if (wOverH <= 1) {
+        return a + b * (c + 0.04 * Math.pow(1 - wOverH, 2));
+    } else {
+        return a + b * c;
+    }
+}
+
+/**
+ * 计算有限导体厚度引起的等效宽度增量
+ *
+ * 公式名称：Hammerstad 厚度修正公式
+ * 文献出处：Hammerstad E, Jensen O. IEEE MTT-S, 1980.
+ *          亦见 Gonzalez G. Microwave Transistor Amplifiers: Analysis and Design. 2nd ed. Prentice Hall, 1997.
+ * 注意：不同文献中此公式的系数可能略有差异（部分版本含 (1+1/εeff) 因子），
+ *       本实现采用最广泛引用的形式。如需更高精度，需查原始文献确认。
+ *
+ * @param {number} t - 导线厚度 (mm)
+ * @param {number} h - 基板厚度 (mm)
+ * @param {number} epsEff - 有效介电常数
+ * @returns {number} 等效宽度增量 Δw (mm)
+ */
+function calcDeltaW(t, h, epsEff) {
+    if (t <= 0) return 0;
+    var e = Math.E; // Euler's number ≈ 2.71828
+    var th = t / h;
+    var denom = Math.sqrt(th * th + Math.pow(1 / (Math.PI * epsEff), 2));
+    return (t / Math.PI) * Math.log(4 * e / denom);
+}
+
+/**
+ * 计算微带线特征阻抗和有效介电常数（正算）
+ *
+ * 公式名称：Hammerstad-Jensen 特征阻抗公式（含厚度修正）
+ * 文献出处：Hammerstad E, Jensen O. "Accurate Models for Microstrip Computer-Aided Design."
+ *          IEEE MTT-S International Microwave Symposium Digest, 1980.
+ * 标准参考：IPC-2141A "Design Guide for High Frequency/Microwave Printed Boards"
+ *
+ * 计算步骤：
+ *   1. 用 w/h 计算初始 εeff
+ *   2. 用 εeff 计算 Δw（厚度修正）
+ *   3. w_eff = w + Δw
+ *   4. 用 w_eff/h 重新计算 εeff
+ *   5. 用 w_eff/h 和 εeff 计算 Z0
+ *
+ * @param {number} epsR - 相对介电常数 (1 < εr < 15)
+ * @param {number} h - 基板厚度 (mm), h > 0
+ * @param {number} w - 导线宽度 (mm), w > 0
+ * @param {number} t - 导线厚度 (mm), t >= 0
+ * @returns {Object} { Z0: 特征阻抗(Ω), epsEff: 有效介电常数, wEff: 有效宽度(mm), deltaW: 宽度增量(mm), wOverH: 原始宽高比, wEffOverH: 有效宽高比 }
+ */
+function calcZ0(epsR, h, w, t) {
+    validateInputs(epsR, h, w, t);
+
+    var wOverH = w / h;
+
+    // Step 1: Initial εeff
+    var epsEff1 = calcEpsEff(epsR, wOverH);
+
+    // Step 2: Thickness correction
+    var dw = calcDeltaW(t, h, epsEff1);
+
+    // Step 3: Effective width
+    var wEff = w + dw;
+    var wEffOverH = wEff / h;
+
+    // Step 4: Recompute εeff with effective width
+    var epsEff = calcEpsEff(epsR, wEffOverH);
+
+    // Step 5: Characteristic impedance
+    var Z0;
+    if (wEffOverH <= 1) {
+        Z0 = (60 / Math.sqrt(epsEff)) * Math.log(8 / wEffOverH + wEffOverH / 4);
+    } else {
+        Z0 = (120 * Math.PI / Math.sqrt(epsEff)) /
+             (wEffOverH + 1.393 + 0.667 * Math.log(wEffOverH + 1.444));
+    }
+
+    return {
+        Z0: Z0,
+        epsEff: epsEff,
+        wEff: wEff,
+        deltaW: dw,
+        wOverH: wOverH,
+        wEffOverH: wEffOverH
+    };
+}
+
+/**
+ * 由目标阻抗反算线宽（反算）
+ *
+ * 公式名称：Hammerstad 逆公式 + 二分迭代法（含厚度修正）
+ * 文献出处：Hammerstad E, Jensen O. IEEE MTT-S, 1980.
+ *          逆公式亦见 Pozar DM. Microwave Engineering. 4th ed. Wiley, 2012. §3.8
+ *
+ * 方法：
+ *   1. 用 Hammerstad 解析逆公式获得初始 w/h 猜测值
+ *   2. 用二分法迭代，结合正算函数和厚度修正，收敛到目标 Z0
+ *
+ * @param {number} epsR - 相对介电常数 (1 < εr < 15)
+ * @param {number} h - 基板厚度 (mm), h > 0
+ * @param {number} Z0target - 目标特征阻抗 (Ω), Z0 > 0
+ * @param {number} t - 导线厚度 (mm), t >= 0
+ * @returns {Object} { w: 线宽(mm), wOverH: 宽高比, epsEff: 有效介电常数, iterations: 迭代次数 }
+ */
+function calcWidthFromZ0(epsR, h, Z0target, t) {
+    if (typeof epsR !== 'number' || isNaN(epsR) || epsR < 1 || epsR > 15)
+        throw new Error('εr 必须在 1～15 范围内，当前值：' + epsR);
+    if (typeof h !== 'number' || isNaN(h) || h <= 0)
+        throw new Error('h 必须 > 0，当前值：' + h);
+    if (typeof Z0target !== 'number' || isNaN(Z0target) || Z0target <= 0)
+        throw new Error('Z₀ 必须 > 0，当前值：' + Z0target);
+    if (typeof t !== 'number' || isNaN(t) || t < 0)
+        throw new Error('t 不能为负，当前值：' + t);
+
+    // Compute threshold Z0 at w/h = 2
+    // 2026-11-08 修：原用不含厚度修正的 εeff 手算阈值，与正算（calcZ0 含 t 修正）口径不一致，
+    // 导致 t 较大时窄/宽带逆公式切换点错位、初始猜测落进错误分支。
+    // 改为直接调正算函数取阈值，保证与正算同口径。
+    var Z0At2 = calcZ0(epsR, h, 2 * h, t).Z0;
+
+    // Analytical inverse (initial guess, no thickness correction)
+    var wOverHGuess;
+    if (Z0target > Z0At2) {
+        // Narrow strip formula
+        var A = (Z0target / 60) * Math.sqrt((epsR + 1) / 2) +
+                (epsR - 1) / (epsR + 1) * (0.23 + 0.11 / epsR);
+        var expA = Math.exp(A);
+        wOverHGuess = 8 * expA / (expA * expA - 2);
+    } else {
+        // Wide strip formula
+        var B = (377 * Math.PI) / (2 * Z0target * Math.sqrt(epsR));
+        if (2 * B - 1 <= 0 || B - 1 <= 0) {
+            throw new Error('目标阻抗 Z₀ = ' + Z0target + ' Ω 过低，超出公式可计算范围');
+        }
+        wOverHGuess = (2 / Math.PI) * (B - 1 - Math.log(2 * B - 1) +
+            (epsR - 1) / (2 * epsR) * (Math.log(B - 1) + 0.39 - 0.61 / epsR));
+    }
+
+    // Bisection refinement with thickness correction
+    // 2026-11-08 修：原区间 [0.005h, 30h] 与 validateInputs 要求的 0.05 ≤ w/h ≤ 20 直接冲突，
+    // 边界值必然抛错 → 迭代靠 try/catch 空转 200 次后返回未收敛值且无报错。
+    // 改为与校验一致的合法区间 [0.05h, 20h]，并在区间外给出明确异常。
+    var wLow = 0.05 * h;    // w/h = 0.05（校验下限）
+    var wHigh = 20 * h;     // w/h = 20  （校验上限）
+    var wGuess = wOverHGuess * h;
+
+    // 先探边界，目标阻抗若在可达范围之外，立刻明确报错，而不是空转后返回垃圾值
+    var Z0atLow, Z0atHigh;
+    try { Z0atLow = calcZ0(epsR, h, wLow, t).Z0; } catch (e) { Z0atLow = Infinity; }
+    try { Z0atHigh = calcZ0(epsR, h, wHigh, t).Z0; } catch (e) { Z0atHigh = 0; }
+    if (Z0target > Z0atLow) {
+        throw new Error('目标阻抗 Z₀ = ' + Z0target + ' Ω 过高，超出可计算范围：在 εr=' + epsR +
+            '、h=' + h + ' mm、t=' + t + ' mm 条件下，最窄线（w/h=0.05）最高约 ' +
+            Z0atLow.toFixed(1) + ' Ω。请增大 εr 或减小 h。');
+    }
+    if (Z0target < Z0atHigh) {
+        throw new Error('目标阻抗 Z₀ = ' + Z0target + ' Ω 过低，超出可计算范围：在 εr=' + epsR +
+            '、h=' + h + ' mm、t=' + t + ' mm 条件下，最宽线（w/h=20）最低约 ' +
+            Z0atHigh.toFixed(1) + ' Ω。请减小 εr 或增大 h。');
+    }
+
+    // Ensure guess is within bounds
+    if (wGuess < wLow) wGuess = wLow;
+    if (wGuess > wHigh) wGuess = wHigh;
+
+    var maxIter = 200;
+    var tol = 0.001; // Ω
+    var iter = 0;
+
+    for (iter = 0; iter < maxIter; iter++) {
+        var result;
+        try {
+            result = calcZ0(epsR, h, wGuess, t);
+        } catch (e) {
+            // If validation fails, adjust bounds
+            if (wGuess < wLow * 2) {
+                wLow = wGuess;
+                wGuess = (wLow + wHigh) / 2;
+                continue;
+            }
+            if (wGuess > wHigh / 2) {
+                wHigh = wGuess;
+                wGuess = (wLow + wHigh) / 2;
+                continue;
+            }
+            throw e;
+        }
+
+        var err = result.Z0 - Z0target;
+
+        if (Math.abs(err) < tol) {
+            return {
+                w: wGuess,
+                wOverH: wGuess / h,
+                epsEff: result.epsEff,
+                Z0: result.Z0,
+                iterations: iter + 1
+            };
+        }
+
+        if (result.Z0 > Z0target) {
+            // Z0 too high → need wider strip
+            wLow = wGuess;
+        } else {
+            // Z0 too low → need narrower strip
+            wHigh = wGuess;
+        }
+        wGuess = (wLow + wHigh) / 2;
+    }
+
+    // 迭代耗尽仍未收敛 → 明确报错（2026-11-08 修：原实现静默返回未收敛值，用户无法察觉）
+    var finalResult;
+    try {
+        finalResult = calcZ0(epsR, h, wGuess, t);
+    } catch(e) {
+        throw new Error('反算未收敛（迭代 ' + maxIter + ' 次），请检查输入参数是否在合理范围内');
+    }
+    if (Math.abs(finalResult.Z0 - Z0target) > 0.01) {
+        throw new Error('反算未收敛：迭代 ' + maxIter + ' 次后 Z₀ = ' + finalResult.Z0.toFixed(3) +
+            ' Ω，与目标 ' + Z0target + ' Ω 相差 ' + (finalResult.Z0 - Z0target).toFixed(3) +
+            ' Ω，请检查参数是否在模型适用范围内。');
+    }
+    return {
+        w: wGuess,
+        wOverH: wGuess / h,
+        epsEff: finalResult.epsEff,
+        Z0: finalResult.Z0,
+        iterations: iter
+    };
+}
+
+/* ========================================================================
+ *  UI 交互函数
+ * ======================================================================== */
+
+/**
+ * 切换标签页
+ * @param {string} tabId - 目标标签页 ID
+ * @param {HTMLElement} btn - 被点击的按钮
+ */
+function showTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(function(el) {
+        el.classList.remove('active');
+    });
+    document.querySelectorAll('nav button').forEach(function(el) {
+        el.classList.remove('active');
+    });
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+}
+
+/**
+ * 执行正算并显示结果
+ */
+function doForward() {
+    var container = document.getElementById('fwdResult');
+    try {
+        var epsR = parseFloat(document.getElementById('f_epsR').value);
+        var h = parseFloat(document.getElementById('f_h').value);
+        var w = parseFloat(document.getElementById('f_w').value);
+        var t = parseFloat(document.getElementById('f_t').value);
+
+        var r = calcZ0(epsR, h, w, t);
+
+        var warnHtml = '';
+        if (r.wOverH < 0.1 || r.wOverH > 10) {
+            warnHtml += '<div class="warning-box">⚠️ 警告：w/h = ' + r.wOverH.toFixed(4) +
+                ' 超出推荐范围 (0.1～10)，结果可靠性降低。</div>';
+        }
+        if (t / h > 0.1) {
+            warnHtml += '<div class="warning-box">⚠️ 警告：t/h = ' + (t/h).toFixed(4) +
+                ' > 0.1，厚度修正公式精度可能下降。</div>';
+        }
+
+        container.innerHTML =
+            '<div class="result-box">' +
+            '<h3>计算结果</h3>' +
+            '<div class="result-grid">' +
+            '<div class="result-item"><span class="label">特征阻抗 Z₀</span><span class="value">' + r.Z0.toFixed(2) + ' Ω</span></div>' +
+            '<div class="result-item"><span class="label">有效介电常数 ε<sub>eff</sub></span><span class="value">' + r.epsEff.toFixed(4) + '</span></div>' +
+            '<div class="result-item"><span class="label">有效宽度 w<sub>eff</sub></span><span class="value">' + r.wEff.toFixed(4) + ' mm</span></div>' +
+            '<div class="result-item"><span class="label">宽度增量 Δw</span><span class="value">' + r.deltaW.toFixed(4) + ' mm</span></div>' +
+            '<div class="result-item"><span class="label">原始 w/h</span><span class="value">' + r.wOverH.toFixed(4) + '</span></div>' +
+            '<div class="result-item"><span class="label">有效 w<sub>eff</sub>/h</span><span class="value">' + r.wEffOverH.toFixed(4) + '</span></div>' +
+            '</div>' +
+            warnHtml +
+            '<div class="warning-box" style="margin-top:10px;background:#eaf2f8;border-color:#aed6f1;color:#1a5276">' +
+            '📌 注意：此为准静态近似结果。频率 &gt; 10 GHz 时须用全波电磁仿真验证。' +
+            '</div>' +
+            '</div>';
+    } catch (e) {
+        var errBox = document.createElement('div');
+        errBox.className = 'error-box';
+        errBox.textContent = '❌ 计算错误：' + e.message;
+        container.innerHTML = '';
+        container.appendChild(errBox);
+    }
+}
+
+/**
+ * 重置正算表单
+ */
+function resetForward() {
+    document.getElementById('f_epsR').value = '4.4';
+    document.getElementById('f_h').value = '1.6';
+    document.getElementById('f_w').value = '3.0';
+    document.getElementById('f_t').value = '0.035';
+    document.getElementById('fwdResult').innerHTML = '';
+}
+
+/**
+ * 执行反算并显示结果
+ */
+function doInverse() {
+    var container = document.getElementById('invResult');
+    try {
+        var Z0t = parseFloat(document.getElementById('i_Z0').value);
+        var epsR = parseFloat(document.getElementById('i_epsR').value);
+        var h = parseFloat(document.getElementById('i_h').value);
+        var t = parseFloat(document.getElementById('i_t').value);
+
+        var r = calcWidthFromZ0(epsR, h, Z0t, t);
+
+        var warnHtml = '';
+        if (r.wOverH < 0.1 || r.wOverH > 10) {
+            warnHtml += '<div class="warning-box">⚠️ 警告：反算得到 w/h = ' + r.wOverH.toFixed(4) +
+                '，超出推荐范围 (0.1～10)，结果可靠性降低。</div>';
+        }
+
+        container.innerHTML =
+            '<div class="result-box">' +
+            '<h3>反算结果</h3>' +
+            '<div class="result-grid">' +
+            '<div class="result-item"><span class="label">所需线宽 w</span><span class="value">' + r.w.toFixed(4) + ' mm</span></div>' +
+            '<div class="result-item"><span class="label">宽高比 w/h</span><span class="value">' + r.wOverH.toFixed(4) + '</span></div>' +
+            '<div class="result-item"><span class="label">有效介电常数 ε<sub>eff</sub></span><span class="value">' + r.epsEff.toFixed(4) + '</span></div>' +
+            '<div class="result-item"><span class="label">验证 Z₀</span><span class="value">' + r.Z0.toFixed(2) + ' Ω</span></div>' +
+            '<div class="result-item"><span class="label">迭代次数</span><span class="value">' + r.iterations + '</span></div>' +
+            '<div class="result-item"><span class="label">目标 Z₀</span><span class="value">' + Z0t.toFixed(2) + ' Ω</span></div>' +
+            '</div>' +
+            warnHtml +
+            '<div class="warning-box" style="margin-top:10px;background:#eaf2f8;border-color:#aed6f1;color:#1a5276">' +
+            '📌 注意：反算结果基于准静态近似。实际加工中须考虑蚀刻公差（通常 ±0.02～0.05 mm），建议以全波仿真和实物测试为准。' +
+            '</div>' +
+            '</div>';
+    } catch (e) {
+        var errBox = document.createElement('div');
+        errBox.className = 'error-box';
+        errBox.textContent = '❌ 计算错误：' + e.message;
+        container.innerHTML = '';
+        container.appendChild(errBox);
+    }
+}
+
+/**
+ * 重置反算表单
+ */
+function resetInverse() {
+    document.getElementById('i_Z0').value = '50';
+    document.getElementById('i_epsR').value = '4.4';
+    document.getElementById('i_h').value = '1.6';
+    document.getElementById('i_t').value = '0.035';
+    document.getElementById('invResult').innerHTML = '';
+}
+
+/* ========================================================================
+ *  单元测试框架与用例
+ * ======================================================================== */
+
+/**
+ * 简易断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} msg - 失败时的消息
+ */
+function assert(condition, msg) {
+    if (!condition) throw new Error('断言失败: ' + msg);
+}
+
+/**
+ * 近似值断言
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tol - 容差
+ * @param {string} msg - 失败时的消息
+ */
+function assertApprox(actual, expected, tol, msg) {
+    if (Math.abs(actual - expected) > tol) {
+        throw new Error('断言失败: ' + msg + ' (期望 ' + expected + ' ± ' + tol + ', 实际 ' + actual.toFixed(4) + ')');
+    }
+}
+
+/**
+ * 运行全部 10 项单元测试并显示结果
+ *
+ * 测试覆盖：
+ *   1. 标准 FR-4 50Ω 微带线（正常值）
+ *   2. 窄带 w/h=0.1（下边界）
+ *   3. 宽带 w/h=10（上边界）
+ *   4. 低介电常数边界 εr=2.0, w/h=0.1
+ *   5. 低介电常数边界 εr=2.0, w/h=10
+ *   6. 负数 εr（非法输入）
+ *   7. 零值 h（非法输入）
+ *   8. NaN 输入（非法输入）
+ *   9. 高介电常数 εr=15（上边界）
+ *  10. 反算验证：Z0=50Ω → 应得 w≈3.0mm
+ */
+function runAllTests() {
+    var container = document.getElementById('testOutput');
+    var results = [];
+    var passCount = 0;
+    var failCount = 0;
+
+    var tests = [
+        {
+            name: '测试1：标准 FR-4 50Ω 微带线',
+            desc: 'εr=4.4, h=1.6mm, w=3.0mm, t=0.035mm → Z₀≈50Ω',
+            run: function() {
+                var r = calcZ0(4.4, 1.6, 3.0, 0.035);
+                assertApprox(r.Z0, 50.3, 1.5, 'Z₀ 应约 50.3Ω');
+                assertApprox(r.epsEff, 3.33, 0.15, 'εeff 应约 3.33');
+                assert(r.wOverH > 0.1 && r.wOverH < 10, 'w/h 应在适用范围内');
+            }
+        },
+        {
+            name: '测试2：窄带 w/h=0.1（下边界）',
+            desc: 'εr=4.4, h=1.6mm, w=0.16mm, t=0.035mm → 高阻抗',
+            run: function() {
+                var r = calcZ0(4.4, 1.6, 0.16, 0.035);
+                assertApprox(r.Z0, 144, 10, 'Z₀ 应约 144Ω');
+                assertApprox(r.epsEff, 2.93, 0.15, 'εeff 应约 2.93');
+                assert(r.Z0 > 100, '窄带应产生高阻抗');
+            }
+        },
+        {
+            name: '测试3：宽带 w/h=10（上边界）',
+            desc: 'εr=4.4, h=1.6mm, w=16.0mm, t=0.035mm → 低阻抗',
+            run: function() {
+                var r = calcZ0(4.4, 1.6, 16.0, 0.035);
+                assertApprox(r.Z0, 14.7, 2.0, 'Z₀ 应约 14.7Ω');
+                assertApprox(r.epsEff, 3.85, 0.15, 'εeff 应约 3.85');
+                assert(r.Z0 < 30, '宽带应产生低阻抗');
+            }
+        },
+        {
+            name: '测试4：低 εr 窄带边界',
+            desc: 'εr=2.0, h=1.0mm, w=0.1mm, t=0.035mm → w/h=0.1',
+            run: function() {
+                var r = calcZ0(2.0, 1.0, 0.1, 0.035);
+                assertApprox(r.Z0, 192, 15, 'Z₀ 应约 192Ω');
+                assertApprox(r.epsEff, 1.57, 0.1, 'εeff 应约 1.57');
+                assert(r.Z0 > 150, '低 εr 窄带应产生很高阻抗');
+            }
+        },
+        {
+            name: '测试5：低 εr 宽带边界',
+            desc: 'εr=2.0, h=1.0mm, w=10.0mm, t=0.035mm → w/h=10',
+            run: function() {
+                var r = calcZ0(2.0, 1.0, 10.0, 0.035);
+                assertApprox(r.Z0, 21.3, 2.5, 'Z₀ 应约 21.3Ω');
+                assertApprox(r.epsEff, 1.84, 0.1, 'εeff 应约 1.84');
+                assert(r.Z0 < 35, '低 εr 宽带应产生低阻抗');
+            }
+        },
+        {
+            name: '测试6：负数 εr（应报错）',
+            desc: 'εr=-1 → 应抛出错误',
+            run: function() {
+                var threw = false;
+                try { calcZ0(-1, 1.6, 3.0, 0.035); }
+                catch(e) { threw = true; }
+                assert(threw, '负数 εr 应抛出错误');
+            }
+        },
+        {
+            name: '测试7：零值 h（应报错）',
+            desc: 'h=0 → 应抛出错误',
+            run: function() {
+                var threw = false;
+                try { calcZ0(4.4, 0, 3.0, 0.035); }
+                catch(e) { threw = true; }
+                assert(threw, '零值 h 应抛出错误');
+            }
+        },
+        {
+            name: '测试8：NaN 输入（应报错）',
+            desc: 'εr=NaN → 应抛出错误',
+            run: function() {
+                var threw = false;
+                try { calcZ0(NaN, 1.6, 3.0, 0.035); }
+                catch(e) { threw = true; }
+                assert(threw, 'NaN εr 应抛出错误');
+            }
+        },
+        {
+            name: '测试9：高 εr=15 边界',
+            desc: 'εr=15, h=1.0mm, w=1.0mm, t=0.035mm → 高介电常数',
+            run: function() {
+                var r = calcZ0(15, 1.0, 1.0, 0.035);
+                assertApprox(r.Z0, 38.9, 3.0, 'Z₀ 应约 38.9Ω');
+                assertApprox(r.epsEff, 10.0, 1.0, 'εeff 应约 10.0');
+                assert(r.epsEff > 5, '高 εr 应产生高 εeff');
+            }
+        },
+        {
+            name: '测试10：反算验证 Z₀=50Ω → w≈3.0mm',
+            desc: 'εr=4.4, h=1.6mm, Z₀=50Ω, t=0.035mm → w 应约 3.0mm',
+            run: function() {
+                var r = calcWidthFromZ0(4.4, 1.6, 50, 0.035);
+                assertApprox(r.w, 3.0, 0.3, '反算 w 应约 3.0mm');
+                assertApprox(r.Z0, 50, 0.5, '验证 Z₀ 应约 50Ω');
+                assert(r.wOverH > 0.1 && r.wOverH < 10, 'w/h 应在适用范围内');
+            }
+        }
+    ];
+
+    var html = '<table class="test-table"><thead><tr>' +
+        '<th>#</th><th>测试名称</th><th>说明</th><th>结果</th><th>详情</th>' +
+        '</tr></thead><tbody>';
+
+    for (var i = 0; i < tests.length; i++) {
+        var t = tests[i];
+        var passed = false;
+        var detail = '';
+        try {
+            t.run();
+            passed = true;
+            passCount++;
+            detail = '通过';
+        } catch (e) {
+            failCount++;
+            detail = e.message;
+        }
+        results.push({ name: t.name, passed: passed, detail: detail });
+
+        html += '<tr>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + t.name + '</td>' +
+            '<td style="font-size:.85em;color:#666">' + t.desc + '</td>' +
+            '<td class="' + (passed ? 'test-pass' : 'test-fail') + '">' + (passed ? '✅ PASS' : '❌ FAIL') + '</td>' +
+            '<td style="font-size:.82em;color:#888;max-width:300px;word-break:break-all">' + detail + '</td>' +
+            '</tr>';
+    }
+
+    html += '</tbody></table>';
+
+    if (failCount === 0) {
+        html += '<div class="test-summary all-pass">✅ 全部 ' + passCount + ' 项测试通过</div>';
+    } else {
+        html += '<div class="test-summary has-fail">❌ ' + failCount + ' 项失败 / ' + passCount + ' 项通过（共 ' + tests.length + ' 项）</div>';
+    }
+
+    container.innerHTML = html;
+}
+
+/* 页面加载后自动运行一次测试 */
+window.addEventListener('DOMContentLoaded', function() {
+    runAllTests();
+});
+</script>
+</body>
+</html>

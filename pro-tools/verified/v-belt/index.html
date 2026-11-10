@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V带选型计算工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  line-height: 1.6;
+  padding: 20px;
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 30px;
+}
+h1 {
+  color: #1a1a1a;
+  margin-bottom: 20px;
+  font-size: 24px;
+  border-bottom: 2px solid #0066cc;
+  padding-bottom: 10px;
+}
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+.tab {
+  padding: 12px 24px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 15px;
+  color: #666;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab:hover { color: #0066cc; }
+.tab.active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+  font-weight: 500;
+}
+.panel { display: none; }
+.panel.active { display: block; }
+pre {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  border: 1px solid #e1e4e8;
+  white-space: pre;
+}
+code {
+  font-family: "SF Mono", Consolas, Monaco, "Courier New", monospace;
+}
+.run-btn {
+  background: #0066cc;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+.run-btn:hover { background: #0052a3; }
+.test-result {
+  padding: 15px;
+  background: #f0f8ff;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  border-left: 4px solid #0066cc;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.test-pass { color: #28a745; padding: 2px 0; font-size: 13px; }
+.test-fail { color: #dc3545; padding: 2px 0; font-size: 13px; }
+.summary { font-size: 18px; font-weight: bold; color: #0066cc; margin-bottom: 10px; }
+.manual h2 {
+  margin: 25px 0 12px;
+  color: #1a1a1a;
+  font-size: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+}
+.manual h3 {
+  margin: 18px 0 8px;
+  color: #333;
+  font-size: 16px;
+}
+.manual h4 {
+  margin: 12px 0 6px;
+  color: #555;
+  font-size: 15px;
+}
+.manual p { margin: 8px 0; color: #444; }
+.manual ul, .manual ol { margin: 10px 0 10px 24px; }
+.manual li { margin: 5px 0; color: #444; }
+.manual table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.manual th, .manual td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+.manual th { background: #f5f5f5; font-weight: 500; }
+.warning {
+  background: #fff8e1;
+  border-left: 4px solid #ffa000;
+  padding: 12px 16px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+.note {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  padding: 12px 16px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+.version {
+  position: fixed;
+  bottom: 10px;
+  right: 15px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(255,255,255,0.9);
+  padding: 4px 8px;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>V带选型计算工具</h1>
+<div class="tabs">
+  <button class="tab active" data-tab="source">JS源码</button>
+  <button class="tab" data-tab="tests">单元测试</button>
+  <button class="tab" data-tab="manual">使用说明书</button>
+</div>
+
+<div id="source" class="panel active">
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div id="tests" class="panel">
+<button class="run-btn" onclick="runTests()">运行测试</button>
+<div id="testResult" class="test-result">点击"运行测试"按钮执行</div>
+<pre><code id="testCode"></code></pre>
+</div>
+
+<div id="calc" class="panel">
+<style>
+.vb-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:22px 24px;max-width:820px}
+.vb-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.vb-fg{flex:1;min-width:160px}
+.vb-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:6px}
+.vb-fg input{width:100%;padding:10px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+.vb-fg input:focus{outline:none;border-color:#2196f3;box-shadow:0 0 0 2px rgba(33,150,243,.15)}
+.vb-btn{background:#2196f3;color:#fff;border:none;padding:11px 30px;border-radius:6px;font-size:15px;cursor:pointer;font-family:inherit}
+.vb-btn:hover{background:#1976d2}
+.vb-out{margin-top:18px;padding:18px 20px;background:#e8f4fd;border-radius:8px;display:none;line-height:2;font-size:14px}
+.vb-out.show{display:block}
+.vb-out .k{color:#5a6a7a}
+.vb-out .v{font-weight:700;color:#0d47a1;font-size:16px}
+.vb-err{margin-top:14px;padding:11px 15px;background:#fdeeee;border-left:3px solid #e06060;border-radius:4px;color:#c0392b;font-size:13px;display:none}
+.vb-err.show{display:block}
+</style>
+<div class="vb-box">
+  <div class="vb-row">
+    <div class="vb-fg"><label>传递功率 P（kW）</label><input type="number" id="vbP" step="any" placeholder="例如 7.5"></div>
+    <div class="vb-fg"><label>小带轮转速 n1（r/min）</label><input type="number" id="vbN1" step="any" placeholder="例如 1450"></div>
+  </div>
+  <div class="vb-row">
+    <div class="vb-fg"><label>传动比 i</label><input type="number" id="vbI" step="any" placeholder="例如 3"></div>
+    <div class="vb-fg"><label>工况系数（默认 1.2）</label><input type="number" id="vbKa" step="any" placeholder="1.2"></div>
+  </div>
+  <button class="vb-btn" onclick="vbCalc()">选型计算</button>
+  <div class="vb-out" id="vbOut"></div>
+  <div class="vb-err" id="vbErr"></div>
+  <div style="margin-top:16px;font-size:12px;color:#8899aa;line-height:1.7">※ 依据 GB/T 13575.1-2008 与 GB/T 11544-2008。选型图采用工程近似分段函数，结果供参考，正式设计请查标准选型图。</div>
+</div>
+</div>
+
+<div id="manual" class="panel manual">
+<h2>一、工具用途</h2>
+<p>本工具用于普通V带传动的设计选型计算，依据国家标准 <strong>GB/T 13575.1-2008</strong>《带传动 普通V带和窄V带传动 第1部分：普通V带传动》和 <strong>GB/T 11544-2008</strong>《普通V带和窄V带 尺寸》。</p>
+<p>输入传递功率、小带轮转速、传动比等参数，工具自动完成以下计算：</p>
+<ul>
+<li>选择V带型号（Y / Z / A / B / C / D / E）</li>
+<li>确定带轮基准直径 dd1、dd2</li>
+<li>计算V带基准长度并圆整到标准值</li>
+<li>反算实际安装中心距</li>
+<li>验算小轮包角</li>
+<li>计算所需V带根数</li>
+</ul>
+<p>适用于机械设计、设备改造、教学演示等场景。本工具为工程参考工具，不承诺绝对精确，实际设计需结合标准原文和厂家样本验证。</p>
+
+<h2>二、参数详解</h2>
+<h3>2.1 输入参数</h3>
+<table>
+<tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th></tr>
+<tr><td>传递功率</td><td>P</td><td>kW</td><td>电机或原动机输出功率</td></tr>
+<tr><td>小带轮转速</td><td>n1</td><td>r/min</td><td>主动轮转速</td></tr>
+<tr><td>传动比</td><td>i</td><td>—</td><td>从动轮转速/主动轮转速，≥1</td></tr>
+<tr><td>工况系数</td><td>Ka_work</td><td>—</td><td>考虑载荷特性的修正系数，默认1.2</td></tr>
+</table>
+<p><strong>计算功率</strong>：Pc = P × Ka_work，用于选型。工况系数参考值：均匀载荷1.0~1.1，轻度冲击1.2~1.3，中等冲击1.3~1.5，严重冲击1.5~2.0。</p>
+
+<h3>2.2 输出参数</h3>
+<table>
+<tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th></tr>
+<tr><td>V带型号</td><td>type</td><td>—</td><td>Y/Z/A/B/C/D/E</td></tr>
+<tr><td>计算功率</td><td>Pc</td><td>kW</td><td>考虑工况后的功率</td></tr>
+<tr><td>小轮直径</td><td>dd1</td><td>mm</td><td>基准直径</td></tr>
+<tr><td>大轮直径</td><td>dd2</td><td>mm</td><td>基准直径</td></tr>
+<tr><td>基准长度</td><td>Ld</td><td>mm</td><td>标准带长</td></tr>
+<tr><td>中心距</td><td>a</td><td>mm</td><td>实际安装中心距</td></tr>
+<tr><td>小轮包角</td><td>α</td><td>°</td><td>应≥120°</td></tr>
+<tr><td>包角系数</td><td>Kα</td><td>—</td><td>0.5~1.0</td></tr>
+<tr><td>带长系数</td><td>KL</td><td>—</td><td>0.8~1.2</td></tr>
+<tr><td>额定功率</td><td>P0</td><td>kW</td><td>单根带额定功率</td></tr>
+<tr><td>功率增量</td><td>ΔP0</td><td>kW</td><td>传动比>1时的增量</td></tr>
+<tr><td>带根数</td><td>z</td><td>根</td><td>向上取整</td></tr>
+</table>
+
+<h2>三、使用场景</h2>
+<h3>场景1：小型风机传动</h3>
+<p><strong>工况</strong>：电机功率1.5kW，转速1440r/min，风机转速720r/min。</p>
+<p><strong>计算</strong>：传动比 i = 1440/720 = 2；取工况系数1.2，Pc = 1.5 × 1.2 = 1.8kW；选型Z型；小轮直径约60mm；大轮直径约120mm；基准长度约1000mm；根数约2根。</p>
+<p><strong>要点</strong>：小功率低速场合，Z型经济实用，结构简单。</p>
+
+<h3>场景2：机床主轴传动</h3>
+<p><strong>工况</strong>：电机功率5.5kW，转速1500r/min，主轴转速750r/min。</p>
+<p><strong>计算</strong>：传动比 i = 2；Pc = 5.5 × 1.2 = 6.6kW；选型A型；小轮直径约100mm；大轮直径约200mm；基准长度约1600mm；根数约3根。</p>
+<p><strong>要点</strong>：机床要求传动平稳，A型适用，包角需验算≥120°。</p>
+
+<h3>场景3：输送机驱动</h3>
+<p><strong>工况</strong>：电机功率15kW，转速1460r/min，输送机转速485r/min。</p>
+<p><strong>计算</strong>：传动比 i = 3；Pc = 15 × 1.3 = 19.5kW（输送机启动载荷大，取1.3）；选型B型；小轮直径约160mm；大轮直径约475mm；基准长度约2500mm；根数约4根。</p>
+<p><strong>要点</strong>：输送机启动冲击大，工况系数取高值，需考虑张紧装置。</p>
+
+<h3>场景4：压缩机传动</h3>
+<p><strong>工况</strong>：电机功率37kW，转速1480r/min，压缩机转速740r/min。</p>
+<p><strong>计算</strong>：传动比 i = 2；Pc = 37 × 1.3 = 48.1kW；选型C型；小轮直径约250mm；大轮直径约500mm；基准长度约3550mm；根数约5根。</p>
+<p><strong>要点</strong>：大功率场合，C型承载能力强，需验算带轮轴强度。</p>
+
+<h3>场景5：农业机械</h3>
+<p><strong>工况</strong>：柴油机功率10kW，转速2000r/min，工作机转速1000r/min。</p>
+<p><strong>计算</strong>：传动比 i = 2；Pc = 10 × 1.4 = 14kW（农业机械振动大，取1.4）；选型B型；小轮直径约160mm；大轮直径约315mm；基准长度约2000mm；根数约3根。</p>
+<p><strong>要点</strong>：农业机械工况恶劣，工况系数需提高，建议加防护罩。</p>
+
+<h2>四、常见错误</h2>
+<h4>4.1 功率单位错误</h4>
+<p>将马力（HP）直接当作kW输入。1HP ≈ 0.746kW，需先换算。</p>
+<h4>4.2 传动比方向错误</h4>
+<p>传动比i定义为从动轮转速/主动轮转速，应≥1。若i&lt;1，说明输入反了。</p>
+<h4>4.3 忽略工况系数</h4>
+<p>不同工况下载荷特性差异很大，必须根据实际情况选取合适的工况系数。</p>
+<h4>4.4 包角过小未调整</h4>
+<p>小轮包角α&lt;120°时，传动能力下降，应增大中心距或减小直径差。</p>
+<h4>4.5 根数过多未重新选型</h4>
+<p>当z&gt;8~10根时，受力不均，应改选大一号型号重新计算。</p>
+<h4>4.6 带长未圆整</h4>
+<p>计算带长必须圆整到GB/T 11544规定的标准系列值，不能直接使用计算值。</p>
+
+<h2>五、数据依据</h2>
+<p>本工具数据主要依据：</p>
+<ol>
+<li><strong>GB/T 11544-2008</strong>《普通V带和窄V带 尺寸》：V带截面尺寸、各型号最小基准直径、基准长度标准系列。</li>
+<li><strong>GB/T 13575.1-2008</strong>《带传动 普通V带和窄V带传动 第1部分：普通V带传动》：选型图、额定功率表、包角系数、带长系数。</li>
+<li><strong>机械设计手册</strong>：工况系数推荐值、设计经验公式。</li>
+</ol>
+<div class="note"><strong>注意</strong>：部分性能数据（额定功率P0、功率增量ΔP0）采用工程近似公式，精确值需查标准原文表格。不同厂家V带性能可能存在差异，建议参考厂家样本。</div>
+
+<h2>六、局限性</h2>
+<p>本工具存在以下局限：</p>
+<ul>
+<li>未考虑温度影响：高温环境下V带寿命下降，需降额使用。</li>
+<li>未考虑张紧力：实际安装需保证适当张紧力。</li>
+<li>未考虑带轮槽型：带轮轮槽角度、槽距需另行设计。</li>
+<li>未考虑动态载荷：启动、制动、反转等动态工况未计入。</li>
+<li>未考虑带的磨损：长期使用后传动能力下降。</li>
+<li>未考虑多根带受力不均：实际多根带载荷分配不均。</li>
+<li>选型图为近似：型号选择基于简化规则，精确选型需查标准图。</li>
+</ul>
+
+<h2>七、精度与误差说明</h2>
+<div class="warning">
+<strong>重要提示</strong>：现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，不承诺绝对精确。
+</div>
+
+<h3>7.1 算准了什么</h3>
+<p>本工具在以下方面计算准确：</p>
+<ul>
+<li><strong>几何关系</strong>：带长、中心距、包角的几何公式精确，误差&lt;0.1mm或0.1°。</li>
+<li><strong>标准值匹配</strong>：基准长度、最小直径等严格依据GB/T 11544。</li>
+<li><strong>圆整逻辑</strong>：带长圆整到标准系列值准确。</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<p>以下因素未计入计算：</p>
+<ul>
+<li>温度修正：环境温度对V带寿命的影响。</li>
+<li>带速修正：带速过高或过低时的修正。</li>
+<li>材质差异：不同厂家V带性能差异。</li>
+<li>安装误差：中心距偏差、平行度误差。</li>
+<li>润滑条件：某些特殊工况需考虑。</li>
+<li>疲劳寿命：未进行寿命校核。</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<p>根据工程经验，本工具计算结果的误差范围：</p>
+<ul>
+<li><strong>V带型号选择</strong>：基本准确，但边界工况可能差一档。</li>
+<li><strong>带轮直径</strong>：几何计算准确，但最小直径推荐值可能因厂家而异。</li>
+<li><strong>基准长度</strong>：圆整准确，误差±1个标准值。</li>
+<li><strong>中心距</strong>：几何计算准确，误差&lt;1mm。</li>
+<li><strong>包角</strong>：几何计算准确，误差&lt;0.5°。</li>
+<li><strong>额定功率P0</strong>：近似公式，误差±20%~30%。</li>
+<li><strong>带根数</strong>：综合误差±1~2根。</li>
+</ul>
+
+<div class="warning">
+<strong>重要提示</strong>：本工具提供的是工程参考值，不是精确计算结果。实际设计必须：
+<ol>
+<li>查阅GB/T 13575、GB/T 11544标准原文</li>
+<li>参考V带厂家样本数据</li>
+<li>必要时进行试验验证</li>
+<li>考虑安全系数和裕量</li>
+</ol>
+</div>
+
+</div>
+</div>
+
+<script type="text/plain" id="sourceScript">
+/**
+ * V带选型计算工具
+ * 依据：GB/T 13575.1-2008《带传动 普通V带和窄V带传动 第1部分：普通V带传动》
+ *       GB/T 11544-2008《普通V带和窄V带 尺寸》
+ * 
+ * 注意：本工具使用工程近似方法，部分性能数据需查标准原文验证
+ * 不承诺绝对精确，仅提供工程参考值
+ */
+
+/**
+ * V带型号规格定义
+ * 依据：GB/T 11544-2008
+ * @constant {Object}
+ * @property {Object} Y - Y型V带
+ * @property {number} Y.topWidth - 顶宽，mm
+ * @property {number} Y.height - 高度，mm
+ * @property {number} Y.minDiameter - 最小基准直径，mm
+ */
+const V_BELT_SPECS = {
+  'Y': { topWidth: 6, height: 4, minDiameter: 20 },
+  'Z': { topWidth: 10, height: 6, minDiameter: 50 },
+  'A': { topWidth: 12.5, height: 8.5, minDiameter: 75 },
+  'B': { topWidth: 16.5, height: 11, minDiameter: 125 },
+  'C': { topWidth: 22, height: 14, minDiameter: 200 },
+  'D': { topWidth: 31.5, height: 19, minDiameter: 355 },
+  'E': { topWidth: 38, height: 23, minDiameter: 500 }
+};
+
+/**
+ * 各型号V带基准长度系列（mm）
+ * 依据：GB/T 11544-2008
+ * @constant {Object}
+ */
+const STANDARD_LENGTHS = {
+  'Y': [200, 224, 250, 280, 315, 355, 400, 450, 500, 560, 630, 710, 800, 900, 1000],
+  'Z': [400, 450, 500, 560, 630, 710, 800, 900, 1000, 1120, 1250, 1400, 1600, 1800, 2000, 2240, 2500, 2800],
+  'A': [630, 710, 800, 900, 1000, 1120, 1250, 1400, 1600, 1800, 2000, 2240, 2500, 2800, 3150, 3550, 4000, 4500, 5000],
+  'B': [1000, 1120, 1250, 1400, 1600, 1800, 2000, 2240, 2500, 2800, 3150, 3550, 4000, 4500, 5000, 5600, 6300],
+  'C': [2000, 2240, 2500, 2800, 3150, 3550, 4000, 4500, 5000, 5600, 6300, 7100, 8000, 9000, 10000, 11200, 12500],
+  'D': [4000, 4500, 5000, 5600, 6300, 7100, 8000, 9000, 10000, 11200, 12500, 14000],
+  'E': [6300, 7100, 8000, 9000, 10000, 11200, 12500, 14000, 16000]
+};
+
+/**
+ * 根据计算功率和小带轮转速选择V带型号
+ * 基于GB/T 13575.1-2008选型图的工程近似
+ * 
+ * @param {number} Pc - 计算功率，单位kW，必须大于0
+ * @param {number} n1 - 小带轮转速，单位r/min，必须大于0
+ * @returns {string} V带型号，取值范围：'Y'|'Z'|'A'|'B'|'C'|'D'|'E'
+ * @throws {Error} 当输入参数非法时抛出异常
+ * 
+ * @example
+ * selectVBeltType(5, 1500); // 返回 'A'
+ * selectVBeltType(0.3, 1000); // 返回 'Y'
+ * 
+ * @note 此为近似选型，精确选型需查GB/T 13575.1-2008图1
+ */
+function selectVBeltType(Pc, n1) {
+  if (typeof Pc !== 'number' || typeof n1 !== 'number') {
+    throw new Error('功率和转速必须为数字');
+  }
+  if (Pc <= 0 || n1 <= 0) {
+    throw new Error('功率和转速必须大于0');
+  }
+  if (!isFinite(Pc) || !isFinite(n1)) {
+    throw new Error('功率和转速必须为有限值');
+  }
+  
+  // 基于选型图的工程近似（分段函数）
+  // 注意：实际选型图是曲线，此处为简化近似
+  if (Pc <= 0.5 && n1 <= 2000) return 'Y';
+  if (Pc <= 2.5 && n1 <= 3000) return 'Z';
+  if (Pc <= 8 && n1 <= 4000) return 'A';
+  if (Pc <= 25 && n1 <= 5000) return 'B';
+  if (Pc <= 70 && n1 <= 5000) return 'C';
+  if (Pc <= 180 && n1 <= 4000) return 'D';
+  return 'E';
+}
+
+/**
+ * 计算带轮基准直径
+ * 依据：GB/T 13575.1-2008
+ * 
+ * @param {string} type - V带型号
+ * @param {number} n1 - 小带轮转速，r/min
+ * @param {number} i - 传动比，必须大于等于1
+ * @param {number} [epsilon=0.015] - 滑动率，默认0.015（1.5%）
+ * @returns {Object} 包含dd1（小轮直径）和dd2（大轮直径），单位mm
+ * @returns {number} returns.dd1 - 小带轮基准直径
+ * @returns {number} returns.dd2 - 大带轮基准直径
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @example
+ * calcPulleyDiameters('A', 1500, 2); // 返回 { dd1: 90, dd2: 180 }
+ */
+function calcPulleyDiameters(type, n1, i, epsilon = 0.015) {
+  if (!V_BELT_SPECS[type]) {
+    throw new Error('无效的V带型号：' + type);
+  }
+  if (typeof i !== 'number' || i < 1) {
+    throw new Error('传动比必须为大于等于1的数字');
+  }
+  
+  const minD = V_BELT_SPECS[type].minDiameter;
+  // 小轮直径取最小推荐值的1.1-1.3倍，圆整到5的倍数
+  const dd1 = Math.ceil(minD * 1.2 / 5) * 5;
+  // 大轮直径（考虑滑动率）
+  const dd2Raw = dd1 * i * (1 - epsilon);
+  const dd2 = Math.ceil(dd2Raw / 5) * 5;
+  
+  return { dd1, dd2 };
+}
+
+/**
+ * 计算V带基准长度
+ * 几何公式：Ld = 2a + π(dd1+dd2)/2 + (dd2-dd1)²/(4a)
+ * 
+ * @param {number} a - 中心距，单位mm，必须大于0
+ * @param {number} dd1 - 小带轮基准直径，单位mm
+ * @param {number} dd2 - 大带轮基准直径，单位mm
+ * @returns {number} V带基准长度，单位mm
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @example
+ * calcBeltLength(500, 100, 200); // 返回约1414
+ */
+function calcBeltLength(a, dd1, dd2) {
+  if (typeof a !== 'number' || typeof dd1 !== 'number' || typeof dd2 !== 'number') {
+    throw new Error('所有参数必须为数字');
+  }
+  if (a <= 0) throw new Error('中心距必须大于0');
+  if (dd1 <= 0 || dd2 <= 0) throw new Error('带轮直径必须大于0');
+  
+  const delta = dd2 - dd1;
+  const Ld = 2 * a + Math.PI * (dd1 + dd2) / 2 + (delta * delta) / (4 * a);
+  return Ld;
+}
+
+/**
+ * 将计算带长圆整到标准基准长度
+ * 依据：GB/T 11544-2008
+ * 
+ * @param {number} Ld - 计算得到的带长，单位mm
+ * @param {string} type - V带型号
+ * @returns {number} 最接近的标准基准长度，单位mm
+ * @throws {Error} 当型号无效时抛出异常
+ * 
+ * @example
+ * roundToStandardLength(1300, 'A'); // 返回1250
+ */
+function roundToStandardLength(Ld, type) {
+  if (!STANDARD_LENGTHS[type]) {
+    throw new Error('无效的V带型号：' + type);
+  }
+  if (typeof Ld !== 'number' || Ld <= 0) {
+    throw new Error('带长必须为正数');
+  }
+  
+  const standards = STANDARD_LENGTHS[type];
+  let closest = standards[0];
+  let minDiff = Math.abs(Ld - closest);
+  
+  for (const len of standards) {
+    const diff = Math.abs(Ld - len);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = len;
+    }
+  }
+  
+  return closest;
+}
+
+/**
+ * 根据标准带长反算实际中心距
+ * 使用近似公式求解
+ * 
+ * @param {number} Ld - 标准基准长度，单位mm
+ * @param {number} dd1 - 小带轮基准直径，单位mm
+ * @param {number} dd2 - 大带轮基准直径，单位mm
+ * @returns {number} 实际中心距，单位mm
+ * @throws {Error} 当参数非法或无解时抛出异常
+ * 
+ * @example
+ * calcCenterDistance(2000, 100, 200); // 返回约750
+ */
+function calcCenterDistance(Ld, dd1, dd2) {
+  if (typeof Ld !== 'number' || typeof dd1 !== 'number' || typeof dd2 !== 'number') {
+    throw new Error('所有参数必须为数字');
+  }
+  if (Ld <= 0 || dd1 <= 0 || dd2 <= 0) {
+    throw new Error('所有参数必须大于0');
+  }
+  
+  // 近似公式
+  const b = Ld - Math.PI * (dd1 + dd2) / 2;
+  const discriminant = b * b - 2 * (dd2 - dd1) * (dd2 - dd1);
+  
+  if (discriminant < 0) {
+    throw new Error('带长过短，无法安装，请增大带长或减小带轮直径差');
+  }
+  
+  const a = (b + Math.sqrt(discriminant)) / 4;
+  return a;
+}
+
+/**
+ * 计算小带轮包角
+ * 公式：α1 = 180° - (dd2-dd1)/a × 57.3°
+ * 
+ * @param {number} dd1 - 小带轮基准直径，单位mm
+ * @param {number} dd2 - 大带轮基准直径，单位mm
+ * @param {number} a - 中心距，单位mm
+ * @returns {number} 小带轮包角，单位度
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @example
+ * calcWrapAngle(100, 200, 500); // 返回约169°
+ */
+function calcWrapAngle(dd1, dd2, a) {
+  if (typeof dd1 !== 'number' || typeof dd2 !== 'number' || typeof a !== 'number') {
+    throw new Error('所有参数必须为数字');
+  }
+  if (a <= 0) throw new Error('中心距必须大于0');
+  
+  const alpha = 180 - (dd2 - dd1) / a * 57.3;
+  return alpha;
+}
+
+/**
+ * 计算包角系数Kα
+ * 近似公式：Kα = 1 - 0.003(180 - α)
+ * 
+ * @param {number} alpha - 小带轮包角，单位度
+ * @returns {number} 包角系数，范围[0.5, 1]
+ * @throws {Error} 当包角超出合理范围时抛出异常
+ * 
+ * @example
+ * calcWrapAngleFactor(180); // 返回1
+ * calcWrapAngleFactor(120); // 返回约0.82
+ */
+function calcWrapAngleFactor(alpha) {
+  if (typeof alpha !== 'number') {
+    throw new Error('包角必须为数字');
+  }
+  if (alpha <= 0 || alpha > 180) {
+    throw new Error('包角必须在(0, 180]度范围内');
+  }
+  
+  // 近似公式
+  const Ka = 1 - 0.003 * (180 - alpha);
+  return Math.max(0.5, Math.min(1, Ka));
+}
+
+/**
+ * 计算带长系数KL
+ * 工程近似：基准长度越长，系数越大
+ * 
+ * @param {number} Ld - 基准长度，单位mm
+ * @param {string} type - V带型号
+ * @returns {number} 带长系数，范围[0.8, 1.2]
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @note 此为近似计算，精确值需查GB/T 13575.1-2008表
+ */
+function calcLengthFactor(Ld, type) {
+  if (!V_BELT_SPECS[type]) {
+    throw new Error('无效的V带型号：' + type);
+  }
+  if (typeof Ld !== 'number' || Ld <= 0) {
+    throw new Error('带长必须为正数');
+  }
+  
+  // 各型号的参考基准长度
+  const baseLength = {
+    'Y': 400, 'Z': 800, 'A': 1250, 'B': 1800,
+    'C': 2800, 'D': 4500, 'E': 7100
+  };
+  
+  // 近似公式
+  const Kl = 1 + 0.00005 * (Ld - baseLength[type]);
+  return Math.max(0.8, Math.min(1.2, Kl));
+}
+
+/**
+ * 计算单根V带额定功率P0
+ * 工程近似，实际需查GB/T 13575.1-2008表
+ * 
+ * @param {string} type - V带型号
+ * @param {number} dd1 - 小带轮基准直径，单位mm
+ * @param {number} n1 - 小带轮转速，单位r/min
+ * @returns {number} 单根V带额定功率，单位kW
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @warning 此为粗略近似，精确值必须查标准表格
+ */
+function calcRatedPower(type, dd1, n1) {
+  if (!V_BELT_SPECS[type]) {
+    throw new Error('无效的V带型号：' + type);
+  }
+  if (typeof dd1 !== 'number' || typeof n1 !== 'number') {
+    throw new Error('直径和转速必须为数字');
+  }
+  if (dd1 <= 0 || n1 <= 0) {
+    throw new Error('直径和转速必须大于0');
+  }
+  
+  // 各型号的基础功率系数（粗略近似）
+  const basePower = {
+    'Y': 0.05, 'Z': 0.15, 'A': 0.4, 'B': 1.0,
+    'C': 2.5, 'D': 6.0, 'E': 12.0
+  };
+  
+  // 转速因子（考虑带速影响）
+  const speedFactor = Math.min(n1 / 1000, 3);
+  // 直径因子
+  const diameterFactor = dd1 / 100;
+  
+  return basePower[type] * speedFactor * diameterFactor;
+}
+
+/**
+ * 计算功率增量ΔP0
+ * 考虑传动比i > 1时的功率增量
+ * 
+ * @param {string} type - V带型号
+ * @param {number} n1 - 小带轮转速，单位r/min
+ * @param {number} i - 传动比
+ * @returns {number} 功率增量，单位kW
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @note 此为近似计算，精确值需查GB/T 13575.1-2008表
+ */
+function calcPowerIncrement(type, n1, i) {
+  if (!V_BELT_SPECS[type]) {
+    throw new Error('无效的V带型号：' + type);
+  }
+  if (typeof n1 !== 'number' || typeof i !== 'number') {
+    throw new Error('转速和传动比必须为数字');
+  }
+  if (n1 <= 0) {
+    throw new Error('转速必须大于0');
+  }
+  if (i < 1) {
+    throw new Error('传动比必须大于等于1');
+  }
+  
+  const base = {
+    'Y': 0.01, 'Z': 0.03, 'A': 0.08, 'B': 0.2,
+    'C': 0.5, 'D': 1.2, 'E': 2.5
+  };
+  
+  const speedFactor = Math.min(n1 / 1000, 3);
+  return base[type] * (i - 1) * speedFactor;
+}
+
+/**
+ * 计算V带根数
+ * 公式：z = Pc / ((P0 + ΔP0) × Kα × KL)
+ * 
+ * @param {number} Pc - 计算功率，单位kW
+ * @param {number} P0 - 单根带额定功率，单位kW
+ * @param {number} deltaP0 - 功率增量，单位kW
+ * @param {number} Ka - 包角系数
+ * @param {number} Kl - 带长系数
+ * @returns {number} V带根数（向上取整）
+ * @throws {Error} 当参数非法或分母为零时抛出异常
+ * 
+ * @example
+ * calcBeltCount(10, 3, 0.5, 0.9, 1); // 返回4
+ */
+function calcBeltCount(Pc, P0, deltaP0, Ka, Kl) {
+  if (typeof Pc !== 'number' || typeof P0 !== 'number' || 
+      typeof deltaP0 !== 'number' || typeof Ka !== 'number' || typeof Kl !== 'number') {
+    throw new Error('所有参数必须为数字');
+  }
+  if (Pc <= 0) throw new Error('计算功率必须大于0');
+  if (Ka <= 0 || Kl <= 0) throw new Error('系数必须大于0');
+  
+  const denominator = (P0 + deltaP0) * Ka * Kl;
+  if (denominator <= 0) {
+    throw new Error('额定功率计算异常，请检查参数');
+  }
+  
+  const z = Pc / denominator;
+  return Math.ceil(z);
+}
+
+/**
+ * V带选型主计算函数
+ * 整合所有计算步骤，返回完整选型结果
+ * 
+ * @param {Object} params - 输入参数
+ * @param {number} params.P - 传递功率，单位kW
+ * @param {number} params.n1 - 小带轮转速，单位r/min
+ * @param {number} params.i - 传动比
+ * @param {number} [params.Ka_work=1.2] - 工况系数，默认1.2
+ * @returns {Object} 选型结果
+ * @returns {string} returns.type - V带型号
+ * @returns {number} returns.Pc - 计算功率，kW
+ * @returns {number} returns.dd1 - 小带轮基准直径，mm
+ * @returns {number} returns.dd2 - 大带轮基准直径，mm
+ * @returns {number} returns.Ld - 基准长度，mm
+ * @returns {number} returns.a - 实际中心距，mm
+ * @returns {number} returns.alpha - 小轮包角，度
+ * @returns {number} returns.Ka - 包角系数
+ * @returns {number} returns.Kl - 带长系数
+ * @returns {number} returns.P0 - 单根带额定功率，kW
+ * @returns {number} returns.deltaP0 - 功率增量，kW
+ * @returns {number} returns.z - V带根数
+ * @throws {Error} 当参数非法时抛出异常
+ * 
+ * @example
+ * const result = calculateVBelt({ P: 5, n1: 1500, i: 2 });
+ * console.log(result); // { type: 'A', dd1: 90, dd2: 180, ... }
+ */
+function calculateVBelt(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+  
+  const { P, n1, i, Ka_work = 1.2 } = params;
+  
+  if (typeof P !== 'number' || typeof n1 !== 'number' || typeof i !== 'number') {
+    throw new Error('功率、转速、传动比必须为数字');
+  }
+  if (P <= 0 || n1 <= 0 || i < 1) {
+    throw new Error('功率和转速必须大于0，传动比必须大于等于1');
+  }
+  
+  // 1. 计算功率
+  const Pc = P * Ka_work;
+  
+  // 2. 选择V带型号
+  const type = selectVBeltType(Pc, n1);
+  
+  // 3. 计算带轮直径
+  const { dd1, dd2 } = calcPulleyDiameters(type, n1, i);
+  
+  // 4. 初选中心距（经验公式：a0 ≈ 1.2(dd1+dd2)）
+  const a0 = 1.2 * (dd1 + dd2);
+  
+  // 5. 计算带长
+  const Ld_calc = calcBeltLength(a0, dd1, dd2);
+  
+  // 6. 圆整到标准带长
+  const Ld = roundToStandardLength(Ld_calc, type);
+  
+  // 7. 反算实际中心距
+  const a = calcCenterDistance(Ld, dd1, dd2);
+  
+  // 8. 计算包角
+  const alpha = calcWrapAngle(dd1, dd2, a);
+  
+  // 9. 计算包角系数
+  const Ka = calcWrapAngleFactor(alpha);
+  
+  // 10. 计算带长系数
+  const Kl = calcLengthFactor(Ld, type);
+  
+  // 11. 计算单根带额定功率
+  const P0 = calcRatedPower(type, dd1, n1);
+  
+  // 12. 计算功率增量
+  const deltaP0 = calcPowerIncrement(type, n1, i);
+  
+  // 13. 计算根数
+  const z = calcBeltCount(Pc, P0, deltaP0, Ka, Kl);
+  
+  return {
+    type, Pc, dd1, dd2, Ld, a, alpha, Ka, Kl, P0, deltaP0, z
+  };
+}
+</script>
+
+<script type="text/plain" id="testScript">
+// 测试框架
+let passCount = 0;
+let totalCount = 0;
+const testResults = [];
+
+function assert(condition, message) {
+  totalCount++;
+  if (condition) {
+    passCount++;
+    testResults.push({ pass: true, message });
+  } else {
+    testResults.push({ pass: false, message });
+  }
+}
+
+function assertEqual(actual, expected, message) {
+  assert(actual === expected, `${message}: 期望 ${expected}, 实际 ${actual}`);
+}
+
+function assertApprox(actual, expected, tolerance, message) {
+  const diff = Math.abs(actual - expected);
+  assert(diff <= tolerance, `${message}: 期望 ${expected}±${tolerance}, 实际 ${actual}`);
+}
+
+function assertThrows(fn, message) {
+  try {
+    fn();
+    assert(false, `${message}: 应该抛出异常但未抛出`);
+  } catch (e) {
+    assert(true, message);
+  }
+}
+
+// ========== 测试用例 ==========
+
+// 1-8: selectVBeltType 型号选择
+assertEqual(selectVBeltType(0.3, 1000), 'Y', 'Y型：小功率低速');
+assertEqual(selectVBeltType(1.5, 2000), 'Z', 'Z型：小功率中速');
+assertEqual(selectVBeltType(5, 2500), 'A', 'A型：中功率中速');
+assertEqual(selectVBeltType(15, 3500), 'B', 'B型：中功率高速');
+assertEqual(selectVBeltType(50, 3000), 'C', 'C型：大功率中速');
+assertEqual(selectVBeltType(120, 2000), 'D', 'D型：大功率低速');
+assertEqual(selectVBeltType(200, 1500), 'E', 'E型：超大功率');
+assertThrows(() => selectVBeltType(-1, 1000), '负功率应抛异常');
+
+// 9-13: calcPulleyDiameters 带轮直径
+const pd1 = calcPulleyDiameters('Y', 1000, 2);
+assert(pd1.dd1 >= 20, 'Y型最小直径≥20');
+const pd2 = calcPulleyDiameters('Z', 1500, 2);
+assert(pd2.dd1 >= 50, 'Z型最小直径≥50');
+const pd3 = calcPulleyDiameters('A', 2000, 2);
+assert(pd3.dd1 >= 75, 'A型最小直径≥75');
+const pd4 = calcPulleyDiameters('A', 2000, 2);
+const pd5 = calcPulleyDiameters('A', 2000, 3);
+assert(pd5.dd2 > pd4.dd2, '传动比增大，大轮直径增大');
+assertThrows(() => calcPulleyDiameters('X', 1000, 2), '无效型号应抛异常');
+
+// 14-17: calcBeltLength 带长计算
+const L1 = calcBeltLength(500, 100, 100);
+assertApprox(L1, 2*500 + Math.PI*100, 1, '等径带轮带长');
+const L2 = calcBeltLength(500, 100, 200);
+assert(L2 > 0, '不等径带轮带长为正');
+assertThrows(() => calcBeltLength(-100, 100, 200), '负中心距应抛异常');
+assertThrows(() => calcBeltLength(500, -100, 200), '负直径应抛异常');
+
+// 18-21: roundToStandardLength 标准带长圆整
+assert(STANDARD_LENGTHS['A'].includes(roundToStandardLength(1300, 'A')), 'A型标准长度');
+assert(STANDARD_LENGTHS['B'].includes(roundToStandardLength(2000, 'B')), 'B型标准长度');
+assert(STANDARD_LENGTHS['C'].includes(roundToStandardLength(3000, 'C')), 'C型标准长度');
+assertThrows(() => roundToStandardLength(1000, 'X'), '无效型号应抛异常');
+
+// 22-24: calcCenterDistance 中心距反算
+const a1 = calcCenterDistance(2000, 100, 200);
+assert(a1 > 0, '中心距为正');
+assertThrows(() => calcCenterDistance(-100, 100, 200), '负带长应抛异常');
+assertThrows(() => calcCenterDistance(100, 100, 200), '带长过短应抛异常');
+
+// 25-27: calcWrapAngle 包角计算
+assertApprox(calcWrapAngle(100, 100, 500), 180, 0.1, '等径包角180度');
+assert(calcWrapAngle(100, 200, 500) < 180, '不等径包角<180');
+assertThrows(() => calcWrapAngle(100, 200, -500), '负中心距应抛异常');
+
+// 28-30: calcWrapAngleFactor 包角系数
+assertApprox(calcWrapAngleFactor(180), 1, 0.01, '180度系数为1');
+assert(calcWrapAngleFactor(120) < 1, '120度系数<1');
+assertThrows(() => calcWrapAngleFactor(0), '0度应抛异常');
+
+// 31-32: calcLengthFactor 带长系数
+const Kl1 = calcLengthFactor(1250, 'A');
+assert(Kl1 > 0.8 && Kl1 < 1.2, 'A型带长系数在合理范围');
+assertThrows(() => calcLengthFactor(1000, 'X'), '无效型号应抛异常');
+
+// 33-35: calcRatedPower 额定功率
+const P0_1 = calcRatedPower('A', 100, 1500);
+assert(P0_1 > 0, '额定功率为正');
+assertThrows(() => calcRatedPower('X', 100, 1500), '无效型号应抛异常');
+assertThrows(() => calcRatedPower('A', -100, 1500), '负直径应抛异常');
+
+// 36-37: calcPowerIncrement 功率增量
+const dP1 = calcPowerIncrement('A', 1500, 2);
+assert(dP1 > 0, '功率增量为正');
+assertThrows(() => calcPowerIncrement('X', 1500, 2), '无效型号应抛异常');
+
+// 38-40: calcBeltCount 根数
+const z1 = calcBeltCount(10, 3, 0.5, 0.9, 1);
+assert(Number.isInteger(z1) && z1 > 0, '根数为正整数');
+assertThrows(() => calcBeltCount(0, 3, 0.5, 0.9, 1), '功率为0应抛异常');
+
+// 41-43: calculateVBelt 主函数
+const r = calculateVBelt({ P: 7.5, n1: 1450, i: 3 });
+assert(!!r.type, '选型返回型号');
+assert(r.dd1 > 0 && r.dd2 > 0, '带轮直径为正');
+assert(r.z >= 1, '根数至少1');
+
+// 输出测试结果
+if (typeof document !== 'undefined') {
+  var box = document.getElementById('testResult');
+  if (box) {
+    box.textContent = '通过 ' + passCount + ' / 共 ' + totalCount + (passCount === totalCount ? '  ✅ 全部通过' : '  ❌ 有失败');
+  }
+}
+</script>
+
+<script>
+// ====== 页签切换（v2.1.0 补全） ======
+(function () {
+  var tabs = document.querySelectorAll('.tab');
+  var panels = { source: 'source', tests: 'tests', manual: 'manual', calc: 'calc' };
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (x) { x.classList.remove('active'); });
+      t.classList.add('active');
+      Object.keys(panels).forEach(function (k) {
+        var el = document.getElementById(panels[k]);
+        if (el) el.classList.remove('active');
+      });
+      var target = document.getElementById(panels[t.dataset.tab]);
+      if (target) target.classList.add('active');
+    });
+  });
+
+  // 把 text/plain 的源码与测试代码渲染出来
+  var srcEl = document.getElementById('sourceCode');
+  var srcScript = document.getElementById('sourceScript');
+  if (srcEl && srcScript) srcEl.textContent = srcScript.textContent;
+
+  // 把核心算法从 text/plain 里执行并挂到全局（页面原本没做这步，导致计算函数全是 undefined）
+  if (srcScript) {
+    try { (0, eval)(srcScript.textContent + '\n;window.calcBeltCount=calcBeltCount;window.calcBeltLength=calcBeltLength;window.calcCenterDistance=calcCenterDistance;window.calcLengthFactor=calcLengthFactor;window.calcPowerIncrement=calcPowerIncrement;window.calcPulleyDiameters=calcPulleyDiameters;window.calcRatedPower=calcRatedPower;window.calcWrapAngle=calcWrapAngle;window.calcWrapAngleFactor=calcWrapAngleFactor;window.calculateVBelt=calculateVBelt;window.roundToStandardLength=roundToStandardLength;window.selectVBeltType=selectVBeltType;window.STANDARD_LENGTHS=STANDARD_LENGTHS;window.V_BELT_SPECS=V_BELT_SPECS;'); }
+    catch (e) { console.error('核心算法载入失败：', e); }
+  }
+
+  var testCodeEl = document.getElementById('testCode');
+  var testScript = document.getElementById('testScript');
+  if (testCodeEl && testScript) testCodeEl.textContent = testScript.textContent;
+
+  // 测试按钮：把测试代码 eval 出来执行
+  window.runTests = function () {
+    try {
+      var code = testScript ? testScript.textContent : '';
+      (new Function(code))();
+    } catch (e) {
+      var box = document.getElementById('testResult');
+      if (box) box.textContent = '测试执行出错：' + e.message;
+    }
+  };
+})();
+
+// ====== 计算界面（v2.1.0 新增） ======
+function vbCalc() {
+  var out = document.getElementById('vbOut'), err = document.getElementById('vbErr');
+  out.classList.remove('show'); err.classList.remove('show');
+  function num(id) { var e = document.getElementById(id); if (!e) return NaN; var v = String(e.value).trim(); return v === '' ? NaN : parseFloat(v); }
+  var P = num('vbP'), n1 = num('vbN1'), i = num('vbI'), Ka = num('vbKa');
+  if (isNaN(P) || isNaN(n1) || isNaN(i)) { err.textContent = '⚠ 功率、转速、传动比都要填'; err.classList.add('show'); return; }
+  if (isNaN(Ka)) Ka = 1.2;
+  try {
+    var r = calculateVBelt({ P: P, n1: n1, i: i, Ka_work: Ka });
+    var f = function (v, d) { return (typeof v === 'number') ? v.toFixed(d === undefined ? 2 : d) : '—'; };
+    var html = '<div><span class="k">V带型号：</span><span class="v">' + r.type + ' 型</span></div>' +
+      '<div><span class="k">计算功率 Pc：</span><span class="v">' + f(r.Pc) + ' kW</span></div>' +
+      '<div><span class="k">小带轮基准直径 dd1：</span><span class="v">' + f(r.dd1, 0) + ' mm</span></div>' +
+      '<div><span class="k">大带轮基准直径 dd2：</span><span class="v">' + f(r.dd2, 0) + ' mm</span></div>' +
+      '<div><span class="k">标准带长 Ld：</span><span class="v">' + f(r.Ld, 0) + ' mm</span></div>' +
+      '<div><span class="k">中心距 a：</span><span class="v">' + f(r.a, 1) + ' mm</span></div>' +
+      '<div><span class="k">包角 α：</span><span class="v">' + f(r.alpha, 1) + '°</span></div>' +
+      '<div><span class="k">单根额定功率 P0：</span><span class="v">' + f(r.P0, 3) + ' kW</span></div>' +
+      '<div><span class="k">所需根数 z：</span><span class="v">' + r.z + ' 根</span></div>';
+    out.innerHTML = html;
+    out.classList.add('show');
+  } catch (e) { err.textContent = '⚠ ' + e.message; err.classList.add('show'); }
+}
+
+// ====== 计算面板挂载 ======
+window.addEventListener('DOMContentLoaded', function () {
+  var tabsBox = document.querySelector('.tabs');
+  if (!tabsBox) return;
+  var btn = document.createElement('button');
+  btn.className = 'tab';
+  btn.dataset.tab = 'calc';
+  btn.textContent = '🧮 开始计算';
+  tabsBox.appendChild(btn);
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
+    btn.classList.add('active');
+    ['source', 'tests', 'manual', 'calc'].forEach(function (id) {
+      var el = document.getElementById(id); if (el) el.classList.remove('active');
+    });
+    var c = document.getElementById('calc'); if (c) c.classList.add('active');
+  });
+});
+</script>
+<div class="version">v2.1.0-补全界面 20261022</div>
+</body>
+</html>

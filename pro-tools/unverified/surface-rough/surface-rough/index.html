@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表面粗糙度对照工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:14px;line-height:1.6;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:12px;padding-bottom:60px}
+h1{font-size:20px;text-align:center;padding:16px 0 8px;color:#1a365d}
+.subtitle{text-align:center;font-size:13px;color:#666;margin-bottom:16px}
+.card{background:#fff;border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card-title{font-size:16px;font-weight:700;margin-bottom:12px;color:#1a365d;border-left:4px solid #3182ce;padding-left:10px}
+.converter-box{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.converter-box label{font-size:13px;color:#555;display:block;margin-bottom:4px}
+.converter-box select,.converter-box input{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;background:#fff}
+.converter-box .field{flex:1;min-width:120px}
+.btn{display:inline-block;padding:8px 18px;background:#3182ce;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-top:4px}
+.btn:active{background:#2c5282}
+.result-box{margin-top:14px;padding:14px;background:#ebf8ff;border-radius:8px;border:1px solid #bee3f8;display:none}
+.result-box.show{display:block}
+.result-box h3{font-size:14px;color:#2b6cb0;margin-bottom:8px}
+.result-item{margin-bottom:8px;font-size:13px}
+.result-item strong{color:#1a365d}
+.result-note{font-size:12px;color:#718096;margin-top:6px;padding-top:6px;border-top:1px dashed #bee3f8}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{border:1px solid #e2e8f0;padding:6px 8px;text-align:center}
+th{background:#edf2f7;font-weight:600;color:#2d3748;position:sticky;top:0}
+td{color:#4a5568}
+tr:nth-child(even){background:#f7fafc}
+tr.highlight{background:#fefcbf !important}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.warn-box{background:#fffbeb;border:1px solid #f6e05e;border-radius:8px;padding:12px;margin-top:10px;font-size:13px;color:#744210}
+.warn-box strong{color:#975a16}
+.info-box{background:#f0fff4;border:1px solid #9ae6b4;border-radius:8px;padding:12px;margin-top:10px;font-size:13px;color:#22543d}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab-btn{padding:6px 14px;border:1px solid #d1d5db;border-radius:20px;background:#fff;font-size:13px;cursor:pointer;color:#4a5568}
+.tab-btn.active{background:#3182ce;color:#fff;border-color:#3182ce}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.source-section{font-size:12px;color:#718096;line-height:1.8}
+.source-section li{margin-bottom:4px}
+.version{position:fixed;bottom:8px;right:10px;font-size:11px;color:#a0aec0;z-index:99}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-left:4px}
+.badge-old{background:#fed7d7;color:#9b2c2c}
+.badge-new{background:#c6f6d5;color:#276749}
+.method-tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;margin:1px;background:#e2e8f0;color:#4a5568}
+@media(max-width:400px){
+.container{padding:8px}
+.card{padding:12px}
+th,td{padding:4px 5px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🔧 表面粗糙度对照工具</h1>
+<p class="subtitle">Ra / Rz / RSm 新旧标准对照 · 加工方法可达精度</p>
+
+<div class="card">
+<div class="card-title">🔄 快速查询</div>
+<div class="converter-box">
+<div class="field">
+<label>选择 Ra 值（μm）</label>
+<select id="raSelect">
+<option value="">-- 请选择 --</option>
+<option value="0.012">0.012</option>
+<option value="0.025">0.025</option>
+<option value="0.05">0.050</option>
+<option value="0.1">0.100</option>
+<option value="0.2">0.20</option>
+<option value="0.4">0.40</option>
+<option value="0.8">0.80</option>
+<option value="1.6">1.60</option>
+<option value="3.2">3.2</option>
+<option value="6.3">6.3</option>
+<option value="12.5">12.5</option>
+<option value="25">25</option>
+<option value="50">50</option>
+<option value="100">100</option>
+</select>
+</div>
+<div class="field">
+<label>或手动输入 Ra（μm）</label>
+<input type="number" id="raInput" placeholder="如 1.6" step="any" min="0">
+</div>
+</div>
+<button class="btn" onclick="doConvert()">🔍 查询</button>
+<div class="result-box" id="resultBox">
+<h3>📋 查询结果</h3>
+<div id="resultContent"></div>
+</div>
+</div>
+
+<div class="card">
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab(0)">📊 新旧对照</button>
+<button class="tab-btn" onclick="switchTab(1)">🏭 加工方法</button>
+<button class="tab-btn" onclick="switchTab(2)">📐 参数说明</button>
+</div>
+
+<div class="tab-content active" id="tab0">
+<div class="card-title" style="border-left-color:#e53e3e">旧标准光洁度等级 ↔ 新标准 Ra / Rz</div>
+<p style="font-size:12px;color:#718096;margin-bottom:8px">旧标准 GB 1031-68 采用▽等级制，新标准 GB/T 1031-2009 采用参数值标注。</p>
+<div class="table-wrap">
+<table id="gradeTable">
+<thead>
+<tr><th>光洁度<br>等级</th><th>Ra<br>(μm)</th><th>Rz 旧<br>十点高度<br>(μm)</th><th>表面<br>外观</th></tr>
+</thead>
+<tbody id="gradeBody"></tbody>
+</table>
+</div>
+<div class="warn-box">
+<strong>⚠️ 重要变化：</strong>GB/T 1031-2009 中 <strong>Rz 的定义已改变</strong>。<br>
+旧标准（GB/T 3505-1983）：Rz = 微观不平度十点高度<br>
+新标准（GB/T 3505-2009）：Rz = 轮廓最大高度（即旧标准的 Ry）<br>
+<span style="font-size:12px">新旧 Rz 数值不可直接等同，上表 Rz 列为旧标准十点高度值。</span>
+</div>
+</div>
+
+<div class="tab-content" id="tab1">
+<div class="card-title" style="border-left-color:#38a169">常用加工方法可达 Ra 范围</div>
+<p style="font-size:12px;color:#718096;margin-bottom:8px">以下为典型条件下可达范围，实际值受材料、刀具、切削参数等影响。</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>加工方法</th><th>工序</th><th>Ra 范围<br>(μm)</th></tr>
+</thead>
+<tbody>
+<tr><td rowspan="4">🔩 车削</td><td>粗车</td><td>12.5 ~ 50</td></tr>
+<tr><td>半精车</td><td>3.2 ~ 12.5</td></tr>
+<tr><td>精车</td><td>0.8 ~ 3.2</td></tr>
+<tr><td>精密车（金刚石车刀）</td><td>0.2 ~ 0.8</td></tr>
+<tr><td rowspan="3">⚙️ 铣削</td><td>粗铣</td><td>6.3 ~ 25</td></tr>
+<tr><td>半精铣</td><td>1.6 ~ 6.3</td></tr>
+<tr><td>精铣</td><td>0.4 ~ 1.6</td></tr>
+<tr><td rowspan="4">💎 磨削</td><td>粗磨</td><td>1.6 ~ 6.3</td></tr>
+<tr><td>半精磨</td><td>0.4 ~ 1.6</td></tr>
+<tr><td>精磨</td><td>0.1 ~ 0.4</td></tr>
+<tr><td>精密磨</td><td>0.025 ~ 0.1</td></tr>
+<tr><td rowspan="2">✨ 研磨</td><td>粗研</td><td>0.1 ~ 0.4</td></tr>
+<tr><td>精研</td><td>0.012 ~ 0.1</td></tr>
+<tr><td>🪞 抛光</td><td>—</td><td>0.012 ~ 0.05</td></tr>
+<tr><td>🔧 钻削</td><td>—</td><td>6.3 ~ 25</td></tr>
+<tr><td>🔧 铰孔</td><td>精铰</td><td>0.4 ~ 1.6</td></tr>
+</tbody>
+</table>
+</div>
+<div class="info-box">
+💡 <strong>提示：</strong>以上数据为一般钢件在正常工艺条件下的典型范围。有色金属、铸铁等材料及特殊工艺条件下可能有所不同。具体工程应用请参考相关工艺手册。
+</div>
+</div>
+
+<div class="tab-content" id="tab2">
+<div class="card-title" style="border-left-color:#805ad5">参数定义与新旧标准变化</div>
+
+<p style="font-size:14px;font-weight:600;margin:10px 0 6px;color:#2d3748">Ra — 轮廓算术平均偏差</p>
+<p style="font-size:13px">在一个取样长度内，轮廓偏距绝对值的算术平均值。</p>
+<p style="font-size:13px;color:#38a169">✅ 新旧标准定义一致，数值系列未变。</p>
+<p style="font-size:12px;color:#555;margin-top:4px">公式：Ra = (1/l) ∫₀ˡ |Z(x)| dx</p>
+
+<p style="font-size:14px;font-weight:600;margin:14px 0 6px;color:#2d3748">Rz — 轮廓最大高度 / 十点高度</p>
+<p style="font-size:13px"><span class="badge badge-old">旧</span> GB/T 3505-1983：Rz = 微观不平度十点高度（5个最高峰与5个最深谷的平均值之差）</p>
+<p style="font-size:13px"><span class="badge badge-new">新</span> GB/T 3505-2009：Rz = 轮廓最大高度（最大峰高与最大谷深之和，即旧标准的 Ry）</p>
+<div class="warn-box">
+<strong>⚠️ 注意：</strong>新旧 Rz 定义完全不同，数值不可直接换算。若图纸引用旧标准 Rz 值，需确认其含义。
+</div>
+
+<p style="font-size:14px;font-weight:600;margin:14px 0 6px;color:#2d3748">RSm — 轮廓单元的平均宽度</p>
+<p style="font-size:13px"><span class="badge badge-old">旧</span> 旧标准中对应参数为 Sm（轮廓微观不平度的平均间距）</p>
+<p style="font-size:13px"><span class="badge badge-new">新</span> GB/T 1031-2009 / GB/T 3505-2009：RSm = 轮廓单元的平均宽度</p>
+<p style="font-size:12px;color:#555;margin-top:4px">RSm 无标准优先数值系列，其值取决于具体表面形貌，需通过测量获得。</p>
+
+<p style="font-size:14px;font-weight:600;margin:14px 0 6px;color:#2d3748">Ra 标准数值系列（GB/T 1031-2009）</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>第一系列（优先选用）</th></tr></thead>
+<tbody>
+<tr><td style="text-align:left;font-family:monospace;letter-spacing:1px">0.012 · 0.025 · 0.050 · 0.100 · 0.20 · 0.40 · 0.80 · 1.60 · 3.2 · 6.3 · 12.5 · 25 · 50 · 100</td></tr>
+</tbody>
+</table>
+</div>
+<p style="font-size:12px;color:#718096;margin-top:4px">单位：μm。数值按 R'10 优先数系（公比约 2）排列。</p>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">📖 数据来源</div>
+<div class="source-section">
+<ul>
+<li>GB/T 1031-2009《产品几何技术规范(GPS) 表面结构 轮廓法 表面粗糙度参数及其数值》</li>
+<li>GB/T 3505-2009《产品几何技术规范(GPS) 表面结构 轮廓法 术语、定义及表面结构参数》</li>
+<li>GB 1031-1995《表面粗糙度 参数及其数值》（已废止，被 GB/T 1031-2009 替代）</li>
+<li>GB/T 3505-1983《表面粗糙度 术语 表面及其参数》（已废止，被 GB/T 3505-2009 替代）</li>
+<li>ISO 4287:1997 Geometrical Product Specifications (GPS) — Surface texture: Profile method — Terms, definitions and surface texture parameters</li>
+<li>加工方法可达 Ra 范围参考《机械设计手册》（闻邦椿 主编）及《机械制造工艺学》相关章节典型数据</li>
+<li>旧标准▽等级与 Ra 对应关系参考 GB 1031-68《表面光洁度》及机械工程手册通用数据</li>
+</ul>
+<p style="margin-top:8px;font-size:11px;color:#a0aec0">注：加工方法可达 Ra 范围为典型参考值，具体数值需根据实际工况查阅相关工艺手册。Rz 新旧定义差异详见标准原文。</p>
+</div>
+</div>
+</div>
+
+<div class="version">v1.0.0-表面粗糙度对照 20261021</div>
+
+<script>
+var gradeData = [
+  {grade:'▽1', raMin:50, raMax:100, rzMin:200, rzMax:400, appearance:'可见刀纹，粗糙'},
+  {grade:'▽2', raMin:25, raMax:50, rzMin:100, rzMax:200, appearance:'可见刀纹'},
+  {grade:'▽3', raMin:12.5, raMax:25, rzMin:50, rzMax:100, appearance:'微见刀纹'},
+  {grade:'▽4', raMin:6.3, raMax:12.5, rzMin:25, rzMax:50, appearance:'微见刀纹'},
+  {grade:'▽5', raMin:3.2, raMax:6.3, rzMin:12.5, rzMax:25, appearance:'微见加工痕迹'},
+  {grade:'▽6', raMin:1.6, raMax:3.2, rzMin:6.3, rzMax:12.5, appearance:'可见加工痕迹'},
+  {grade:'▽7', raMin:0.8, raMax:1.6, rzMin:3.2, rzMax:6.3, appearance:'微见加工痕迹'},
+  {grade:'▽8', raMin:0.4, raMax:0.8, rzMin:1.6, rzMax:3.2, appearance:'微见加工痕迹，略有光泽'},
+  {grade:'▽9', raMin:0.2, raMax:0.4, rzMin:0.8, rzMax:1.6, appearance:'不可见加工痕迹，有光泽'},
+  {grade:'▽10', raMin:0.1, raMax:0.2, rzMin:0.4, rzMax:0.8, appearance:'光泽面'},
+  {grade:'▽11', raMin:0.05, raMax:0.1, rzMin:0.2, rzMax:0.4, appearance:'强光面'},
+  {grade:'▽12', raMin:0.025, raMax:0.05, rzMin:0.1, rzMax:0.2, appearance:'镜面光泽'},
+  {grade:'▽13', raMin:0.012, raMax:0.025, rzMin:0.05, rzMax:0.1, appearance:'镜面'},
+  {grade:'▽14', raMin:0, raMax:0.012, rzMin:0, rzMax:0.05, appearance:'超镜面'}
+];
+
+var methodData = [
+  {method:'车削', steps:[
+    {step:'粗车', min:12.5, max:50},
+    {step:'半精车', min:3.2, max:12.5},
+    {step:'精车', min:0.8, max:3.2},
+    {step:'精密车', min:0.2, max:0.8}
+  ]},
+  {method:'铣削', steps:[
+    {step:'粗铣', min:6.3, max:25},
+    {step:'半精铣', min:1.6, max:6.3},
+    {step:'精铣', min:0.4, max:1.6}
+  ]},
+  {method:'磨削', steps:[
+    {step:'粗磨', min:1.6, max:6.3},
+    {step:'半精磨', min:0.4, max:1.6},
+    {step:'精磨', min:0.1, max:0.4},
+    {step:'精密磨', min:0.025, max:0.1}
+  ]},
+  {method:'研磨', steps:[
+    {step:'粗研', min:0.1, max:0.4},
+    {step:'精研', min:0.012, max:0.1}
+  ]},
+  {method:'抛光', steps:[
+    {step:'—', min:0.012, max:0.05}
+  ]},
+  {method:'钻削', steps:[
+    {step:'—', min:6.3, max:25}
+  ]},
+  {method:'铰孔', steps:[
+    {step:'精铰', min:0.4, max:1.6}
+  ]}
+];
+
+function initGradeTable(){
+  var tbody = document.getElementById('gradeBody');
+  var html = '';
+  for(var i=0;i<gradeData.length;i++){
+    var g = gradeData[i];
+    var raStr = '';
+    if(i === gradeData.length-1){
+      raStr = '≤ ' + g.raMax;
+    } else {
+      raStr = g.raMin + ' ~ ' + g.raMax;
+    }
+    var rzStr = '';
+    if(i === gradeData.length-1){
+      rzStr = '≤ ' + g.rzMax;
+    } else {
+      rzStr = g.rzMin + ' ~ ' + g.rzMax;
+    }
+    html += '<tr data-ra-min="'+g.raMin+'" data-ra-max="'+g.raMax+'">';
+    html += '<td><strong>'+g.grade+'</strong></td>';
+    html += '<td>'+raStr+'</td>';
+    html += '<td>'+rzStr+'</td>';
+    html += '<td style="font-size:12px;text-align:left">'+g.appearance+'</td>';
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function findGrade(ra){
+  for(var i=0;i<gradeData.length;i++){
+    var g = gradeData[i];
+    if(i === gradeData.length-1){
+      if(ra <= g.raMax) return i;
+    } else {
+      if(ra > g.raMin && ra <= g.raMax) return i;
+      if(i === 0 && ra > g.raMax) return 0;
+    }
+  }
+  if(ra > gradeData[0].raMax) return 0;
+  if(ra <= gradeData[gradeData.length-1].raMax) return gradeData.length-1;
+  return -1;
+}
+
+function findMethods(ra){
+  var results = [];
+  for(var m=0;m<methodData.length;m++){
+    var method = methodData[m];
+    for(var s=0;s<method.steps.length;s++){
+      var step = method.steps[s];
+      if(ra >= step.min && ra <= step.max){
+        results.push(method.method + '（' + step.step + '）');
+      }
+    }
+  }
+  return results;
+}
+
+function doConvert(){
+  var sel = document.getElementById('raSelect');
+  var inp = document.getElementById('raInput');
+  var ra = parseFloat(inp.value) || parseFloat(sel.value);
+  
+  if(isNaN(ra) || ra <= 0){
+    alert('请选择或输入有效的 Ra 值');
+    return;
+  }
+  
+  var resultBox = document.getElementById('resultBox');
+  var resultContent = document.getElementById('resultContent');
+  
+  var gradeIdx = findGrade(ra);
+  var methods = findMethods(ra);
+  
+  var html = '';
+  html += '<div class="result-item"><strong>输入 Ra：</strong>' + ra + ' μm</div>';
+  
+  if(gradeIdx >= 0){
+    var g = gradeData[gradeIdx];
+    var raRange = '';
+    if(gradeIdx === gradeData.length-1){
+      raRange = '≤ ' + g.raMax;
+    } else {
+      raRange = g.raMin + ' ~ ' + g.raMax;
+    }
+    var rzRange = '';
+    if(gradeIdx === gradeData.length-1){
+      rzRange = '≤ ' + g.rzMax;
+    } else {
+      rzRange = g.rzMin + ' ~ ' + g.rzMax;
+    }
+    html += '<div class="result-item"><strong>旧标准光洁度等级：</strong>' + g.grade + '</div>';
+    html += '<div class="result-item"><strong>对应 Ra 范围：</strong>' + raRange + ' μm</div>';
+    html += '<div class="result-item"><strong>对应 Rz 范围（旧·十点高度）：</strong>' + rzRange + ' μm</div>';
+    html += '<div class="result-item"><strong>表面外观：</strong>' + g.appearance + '</div>';
+    
+    highlightGradeRow(gradeIdx);
+  } else {
+    html += '<div class="result-item" style="color:#e53e3e">该 Ra 值超出标准对照范围</div>';
+    highlightGradeRow(-1);
+  }
+  
+  html += '<div class="result-item" style="margin-top:8px"><strong>可达此 Ra 的加工方法：</strong></div>';
+  if(methods.length > 0){
+    html += '<div class="result-item">';
+    for(var i=0;i<methods.length;i++){
+      html += '<span class="method-tag">' + methods[i] + '</span> ';
+    }
+    html += '</div>';
+  } else {
+    html += '<div class="result-item" style="color:#718096">该 Ra 值超出常用加工方法参考范围，可能需要特殊工艺。</div>';
+  }
+  
+  html += '<div class="result-note">';
+  html += '⚠️ 新标准 GB/T 3505-2009 中 Rz 定义为轮廓最大高度（旧标准 Ry），与旧标准 Rz（十点高度）定义不同，数值不可直接等同。';
+  html += '</div>';
+  
+  resultContent.innerHTML = html;
+  resultBox.classList.add('show');
+}
+
+function highlightGradeRow(idx){
+  var rows = document.getElementById('gradeBody').getElementsByTagName('tr');
+  for(var i=0;i<rows.length;i++){
+    rows[i].classList.remove('highlight');
+  }
+  if(idx >= 0 && idx < rows.length){
+    rows[idx].classList.add('highlight');
+    switchTab(0);
+  }
+}
+
+function switchTab(idx){
+  var btns = document.querySelectorAll('.tab-btn');
+  var contents = document.querySelectorAll('.tab-content');
+  for(var i=0;i<btns.length;i++){
+    btns[i].classList.remove('active');
+    contents[i].classList.remove('active');
+  }
+  btns[idx].classList.add('active');
+  contents[idx].classList.add('active');
+}
+
+document.getElementById('raSelect').addEventListener('change', function(){
+  if(this.value){
+    document.getElementById('raInput').value = '';
+    doConvert();
+  }
+});
+
+document.getElementById('raInput').addEventListener('input', function(){
+  if(this.value){
+    document.getElementById('raSelect').value = '';
+  }
+});
+
+document.getElementById('raInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') doConvert();
+});
+
+initGradeTable();
+</script>
+</body>
+</html>

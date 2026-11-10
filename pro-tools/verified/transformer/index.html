@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>变压器容量计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; line-height: 1.7; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; padding: 30px 0 10px; font-size: 28px; color: #1a1a2e; }
+.subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 0; }
+.tab-btn { padding: 12px 28px; cursor: pointer; background: #f0f0f0; border: none; font-size: 15px; color: #555; transition: all 0.2s; border-radius: 6px 6px 0 0; margin-right: 4px; }
+.tab-btn.active { background: #fff; color: #1a73e8; font-weight: 600; border-bottom: 3px solid #1a73e8; }
+.tab-btn:hover { background: #e8f0fe; }
+.tab-content { display: none; background: #fff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); min-height: 500px; }
+.tab-content.active { display: block; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+code { font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace; }
+.test-result { padding: 15px 20px; border-radius: 8px; margin: 15px 0; font-weight: 600; font-size: 16px; }
+.test-pass { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.test-fail { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+.test-detail { background: #fafafa; padding: 15px; border-radius: 6px; margin: 10px 0; font-size: 13px; max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; }
+.test-item { padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+.test-item.pass { color: #2e7d32; }
+.test-item.fail { color: #c62828; font-weight: 600; }
+.manual-content h2 { color: #1a1a2e; margin: 25px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e8f0fe; font-size: 20px; }
+.manual-content h3 { color: #333; margin: 18px 0 8px; font-size: 17px; }
+.manual-content p { margin: 8px 0; text-indent: 2em; }
+.manual-content ul, .manual-content ol { margin: 10px 0 10px 2em; }
+.manual-content li { margin: 5px 0; }
+.manual-content table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+.manual-content th, .manual-content td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; }
+.manual-content th { background: #f5f7fa; font-weight: 600; }
+.manual-content .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px 16px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+.manual-content .info { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 12px 16px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+.version-tag { position: fixed; bottom: 10px; right: 15px; font-size: 11px; color: #999; z-index: 999; }
+.run-btn { background: #1a73e8; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; margin: 15px 0; }
+.run-btn:hover { background: #1557b0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>变压器容量计算工具</h1>
+<p class="subtitle">依据 GB/T 6451《油浸式电力变压器技术参数和要求》标准容量档位</p>
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('source')">第一部分：JS 源码</button>
+<button class="tab-btn" onclick="switchTab('test')">第二部分：单元测试</button>
+<button class="tab-btn" onclick="switchTab('manual')">第三部分：使用说明书</button>
+<button class="tab-btn" onclick="switchTab('calc')">🧮 开始计算</button>
+</div>
+
+<div id="tab-source" class="tab-content active">
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div id="tab-test" class="tab-content">
+<button class="run-btn" onclick="runTests()">运行全部测试</button>
+<div id="testOutput"></div>
+</div>
+
+<div id="tab-manual" class="tab-content">
+<div class="manual-content" id="manualContent"></div>
+</div>
+
+<div id="tab-calc" class="tab-content">
+<style>
+.tr-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:22px 24px;max-width:820px}
+.tr-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.tr-fg{flex:1;min-width:170px}
+.tr-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:6px}
+.tr-fg input{width:100%;padding:10px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+.tr-fg input:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.15)}
+.tr-btn{background:#1a73e8;color:#fff;border:none;padding:11px 30px;border-radius:6px;font-size:15px;cursor:pointer;font-family:inherit}
+.tr-btn:hover{background:#1557b0}
+.tr-out{margin-top:18px;padding:18px 20px;background:#eaf2fd;border-radius:8px;display:none;line-height:2;font-size:14px}
+.tr-out.show{display:block}
+.tr-out .k{color:#5a6a7a}
+.tr-out .v{font-weight:700;color:#1557b0;font-size:17px}
+.tr-warn{margin-top:12px;padding:11px 14px;background:#fff8e1;border-left:3px solid #f0a030;border-radius:4px;font-size:13px;color:#8a6d3b}
+.tr-err{margin-top:14px;padding:11px 15px;background:#fdeeee;border-left:3px solid #e06060;border-radius:4px;color:#c0392b;font-size:13px;display:none}
+.tr-err.show{display:block}
+</style>
+<div class="tr-box">
+  <div class="tr-row">
+    <div class="tr-fg"><label>负载功率（kW）</label><input type="number" id="trLoad" step="any" placeholder="例如 100"></div>
+    <div class="tr-fg"><label>功率因数 cosφ（0~1）</label><input type="number" id="trPF" step="any" placeholder="例如 0.8"></div>
+    <div class="tr-fg"><label>需用系数（0~1）</label><input type="number" id="trDF" step="any" placeholder="例如 0.9"></div>
+  </div>
+  <button class="tr-btn" onclick="trCalc()">计算变压器容量</button>
+  <div class="tr-out" id="trOut"></div>
+  <div class="tr-err" id="trErr"></div>
+  <div style="margin-top:16px;font-size:12px;color:#8899aa;line-height:1.7">※ 计算值 = 负载功率 × 需用系数 ÷ 功率因数；标准档位依据 GB/T 6451 向上选取。</div>
+</div>
+</div>
+</div>
+
+<div class="version-tag">v2.1.0-加计算界面 20261022</div>
+
+<script>
+// ============================================================
+// 第一部分：核心算法源码
+// ============================================================
+
+/**
+ * GB/T 6451 标准规定的油浸式电力变压器标准容量档位（kVA）
+ * 采用 R10 优先数系，覆盖 30kVA 至 10000kVA
+ * 数据来源：GB/T 6451-2015《油浸式电力变压器技术参数和要求》
+ * @type {number[]}
+ */
+const STANDARD_CAPACITIES = [
+  30, 50, 63, 80, 100, 125, 160, 200, 250, 315,
+  400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150,
+  4000, 5000, 6300, 8000, 10000
+];
+
+/**
+ * 计算变压器所需容量（kVA）
+ *
+ * 公式：S = P × Kd / cosφ
+ * 其中：
+ *   S  —— 变压器额定容量（kVA）
+ *   P  —— 负载总有功功率（kW）
+ *   Kd —— 需用系数（0 < Kd ≤ 1），反映负载同时使用率
+ *   cosφ —— 功率因数（0 < cosφ ≤ 1）
+ *
+ * @param {number} loadPower - 负载总有功功率，单位 kW，必须 > 0
+ * @param {number} powerFactor - 功率因数 cosφ，范围 (0, 1]，典型值 0.8~0.95
+ * @param {number} demandFactor - 需用系数 Kd，范围 (0, 1]，典型值 0.6~0.9
+ * @returns {number} 计算所得变压器容量（kVA），未经档位选取
+ * @throws {Error} 参数不合法时抛出错误
+ *
+ * @example
+ * calculateCapacity(500, 0.85, 0.75); // 返回约 441.18 kVA
+ */
+function calculateCapacity(loadPower, powerFactor, demandFactor) {
+  if (typeof loadPower !== 'number' || typeof powerFactor !== 'number' || typeof demandFactor !== 'number') {
+    throw new Error('所有参数必须为数字类型');
+  }
+  if (!Number.isFinite(loadPower) || !Number.isFinite(powerFactor) || !Number.isFinite(demandFactor)) {
+    throw new Error('所有参数必须为有限数值，不允许 NaN 或 Infinity');
+  }
+  if (loadPower <= 0) {
+    throw new Error('负载功率必须大于 0 kW');
+  }
+  if (powerFactor <= 0 || powerFactor > 1) {
+    throw new Error('功率因数必须在 (0, 1] 范围内');
+  }
+  if (demandFactor <= 0 || demandFactor > 1) {
+    throw new Error('需用系数必须在 (0, 1] 范围内');
+  }
+  return (loadPower * demandFactor) / powerFactor;
+}
+
+/**
+ * 从标准容量档位中选取不小于计算值的最小标准容量
+ *
+ * 依据 GB/T 6451 标准容量序列，向上选取最近的标准档位。
+ * 若计算值超出最大标准档位（10000kVA），返回 null 并附带提示。
+ *
+ * @param {number} calculatedCapacity - 计算所得容量（kVA），必须 > 0
+ * @returns {{ selected: number, isExact: boolean, exceedsMax: boolean, message: string }}
+ *   - selected: 选取的标准容量（kVA），超出范围时为 null
+ *   - isExact: 计算值是否恰好等于某标准档位
+ *   - exceedsMax: 是否超出最大标准档位
+ *   - message: 附加说明信息
+ * @throws {Error} 参数不合法时抛出错误
+ *
+ * @example
+ * selectStandardCapacity(441.18);
+ * // { selected: 500, isExact: false, exceedsMax: false, message: "向上选取标准档位 500 kVA" }
+ */
+function selectStandardCapacity(calculatedCapacity) {
+  if (typeof calculatedCapacity !== 'number' || !Number.isFinite(calculatedCapacity)) {
+    throw new Error('参数必须为有限数值');
+  }
+  if (calculatedCapacity <= 0) {
+    throw new Error('容量必须大于 0');
+  }
+
+  // 检查是否恰好等于某标准档位（考虑浮点精度）
+  const epsilon = 1e-9;
+  const isExact = STANDARD_CAPACITIES.some(c => Math.abs(c - calculatedCapacity) < epsilon);
+
+  if (calculatedCapacity > STANDARD_CAPACITIES[STANDARD_CAPACITIES.length - 1]) {
+    return {
+      selected: null,
+      isExact: false,
+      exceedsMax: true,
+      message: `计算值 ${calculatedCapacity.toFixed(2)} kVA 超出本标准工具最大档位 ${STANDARD_CAPACITIES[STANDARD_CAPACITIES.length - 1]} kVA，需选用特殊规格或多台变压器并联`
+    };
+  }
+
+  // 向上选取不小于计算值的最小标准档位
+  let selected = null;
+  for (let i = 0; i < STANDARD_CAPACITIES.length; i++) {
+    if (STANDARD_CAPACITIES[i] >= calculatedCapacity - epsilon) {
+      selected = STANDARD_CAPACITIES[i];
+      break;
+    }
+  }
+
+  return {
+    selected: selected,
+    isExact: isExact,
+    exceedsMax: false,
+    message: isExact
+      ? `计算值恰好等于标准档位 ${selected} kVA`
+      : `向上选取标准档位 ${selected} kVA（计算值 ${calculatedCapacity.toFixed(2)} kVA）`
+  };
+}
+
+/**
+ * 完整计算流程：输入参数 → 计算容量 → 选取标准档位 → 返回结果
+ *
+ * @param {number} loadPower - 负载总有功功率（kW）
+ * @param {number} powerFactor - 功率因数 cosφ
+ * @param {number} demandFactor - 需用系数 Kd
+ * @returns {{
+ *   loadPower: number,
+ *   powerFactor: number,
+ *   demandFactor: number,
+ *   rawCapacity: number,
+ *   selectedCapacity: number|null,
+ *   isExact: boolean,
+ *   exceedsMax: boolean,
+ *   loadRate: number|null,
+ *   message: string,
+ *   warning: string|null
+ * }}
+ *   - rawCapacity: 原始计算容量
+ *   - selectedCapacity: 选取的标准容量
+ *   - loadRate: 负载率（rawCapacity / selectedCapacity），仅当选取成功时有效
+ *   - warning: 负载率过低或过高时的警告
+ *
+ * @example
+ * fullCalculation(500, 0.85, 0.75);
+ */
+function fullCalculation(loadPower, powerFactor, demandFactor) {
+  const rawCapacity = calculateCapacity(loadPower, powerFactor, demandFactor);
+  const selection = selectStandardCapacity(rawCapacity);
+
+  let loadRate = null;
+  let warning = null;
+
+  if (selection.selected !== null) {
+    loadRate = rawCapacity / selection.selected;
+    if (loadRate < 0.4) {
+      warning = `负载率仅 ${(loadRate * 100).toFixed(1)}%，变压器长期轻载运行效率偏低，建议复核负载数据或考虑更小容量`;
+    } else if (loadRate > 0.85) {
+      warning = `负载率达 ${(loadRate * 100).toFixed(1)}%，接近满载运行，建议考虑留有裕量或选高一档容量`;
+    }
+  }
+
+  return {
+    loadPower: loadPower,
+    powerFactor: powerFactor,
+    demandFactor: demandFactor,
+    rawCapacity: rawCapacity,
+    selectedCapacity: selection.selected,
+    isExact: selection.isExact,
+    exceedsMax: selection.exceedsMax,
+    loadRate: loadRate,
+    message: selection.message,
+    warning: warning
+  };
+}
+
+/**
+ * 获取所有标准容量档位列表
+ * @returns {number[]} 标准容量数组的副本
+ */
+function getStandardCapacities() {
+  return [...STANDARD_CAPACITIES];
+}
+
+/**
+ * 格式化计算结果为可读字符串
+ * @param {object} result - fullCalculation 返回的结果对象
+ * @returns {string} 格式化的结果文本
+ */
+function formatResult(result) {
+  let text = '';
+  text += `═══════════════════════════════════════\n`;
+  text += `  变压器容量计算结果\n`;
+  text += `═══════════════════════════════════════\n`;
+  text += `输入参数：\n`;
+  text += `  负载功率：${result.loadPower} kW\n`;
+  text += `  功率因数：${result.powerFactor}\n`;
+  text += `  需用系数：${result.demandFactor}\n`;
+  text += `───────────────────────────────────────\n`;
+  text += `计算结果：\n`;
+  text += `  理论容量：${result.rawCapacity.toFixed(2)} kVA\n`;
+  if (result.selectedCapacity !== null) {
+    text += `  标准容量：${result.selectedCapacity} kVA\n`;
+    text += `  负载率：${(result.loadRate * 100).toFixed(1)}%\n`;
+  } else {
+    text += `  标准容量：超出范围\n`;
+  }
+  text += `  说明：${result.message}\n`;
+  if (result.warning) {
+    text += `  ⚠ 警告：${result.warning}\n`;
+  }
+  text += `═══════════════════════════════════════\n`;
+  return text;
+}
+
+
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+let testResults = [];
+
+/**
+ * 断言函数：判断条件是否为真
+ * @param {boolean} condition - 断言条件
+ * @param {string} testName - 测试名称
+ * @param {string} [detail] - 失败时的详细信息
+ */
+function assert(condition, testName, detail) {
+  if (condition) {
+    testResults.push({ name: testName, pass: true });
+  } else {
+    testResults.push({ name: testName, pass: false, detail: detail || '' });
+  }
+}
+
+/**
+ * 断言两个数值近似相等（考虑浮点精度）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {string} testName - 测试名称
+ * @param {number} [tolerance=1e-6] - 容差
+ */
+function assertApprox(actual, expected, testName, tolerance) {
+  tolerance = tolerance || 1e-6;
+  const pass = Math.abs(actual - expected) < tolerance;
+  if (pass) {
+    testResults.push({ name: testName, pass: true });
+  } else {
+    testResults.push({
+      name: testName,
+      pass: false,
+      detail: `期望 ${expected}，实际 ${actual}，差值 ${Math.abs(actual - expected)}`
+    });
+  }
+}
+
+/**
+ * 断言函数抛出指定类型的错误
+ * @param {Function} fn - 被测试的函数
+ * @param {string} testName - 测试名称
+ * @param {string} [errorMsgPart] - 期望错误信息中包含的字符串
+ */
+function assertThrows(fn, testName, errorMsgPart) {
+  try {
+    fn();
+    testResults.push({ name: testName, pass: false, detail: '期望抛出异常但未抛出' });
+  } catch (e) {
+    if (errorMsgPart && !e.message.includes(errorMsgPart)) {
+      testResults.push({ name: testName, pass: false, detail: `期望错误包含"${errorMsgPart}"，实际为"${e.message}"` });
+    } else {
+      testResults.push({ name: testName, pass: true });
+    }
+  }
+}
+
+/**
+ * 运行全部单元测试
+ */
+function runAllTests() {
+  testResults = [];
+
+  // ---- calculateCapacity 正常值测试 ----
+
+  // 测试1：基本计算 500kW, pf=0.85, kd=0.75
+  assertApprox(
+    calculateCapacity(500, 0.85, 0.75),
+    (500 * 0.75) / 0.85,
+    'T01: 基本计算 500kW/pf0.85/kd0.75'
+  );
+
+  // 测试2：100kW, pf=0.9, kd=0.8
+  assertApprox(
+    calculateCapacity(100, 0.9, 0.8),
+    (100 * 0.8) / 0.9,
+    'T02: 基本计算 100kW/pf0.9/kd0.8'
+  );
+
+  // 测试3：1000kW, pf=0.8, kd=0.7
+  assertApprox(
+    calculateCapacity(1000, 0.8, 0.7),
+    (1000 * 0.7) / 0.8,
+    'T03: 基本计算 1000kW/pf0.8/kd0.7'
+  );
+
+  // 测试4：功率因数为1（纯阻性负载）
+  assertApprox(
+    calculateCapacity(200, 1.0, 0.8),
+    200 * 0.8,
+    'T04: 功率因数=1时 S=P×Kd'
+  );
+
+  // 测试5：需用系数为1（全部负载同时运行）
+  assertApprox(
+    calculateCapacity(300, 0.85, 1.0),
+    300 / 0.85,
+    'T05: 需用系数=1时 S=P/cosφ'
+  );
+
+  // 测试6：极小负载
+  assertApprox(
+    calculateCapacity(0.1, 0.8, 0.5),
+    (0.1 * 0.5) / 0.8,
+    'T06: 极小负载 0.1kW'
+  );
+
+  // 测试7：极大负载
+  assertApprox(
+    calculateCapacity(50000, 0.9, 0.85),
+    (50000 * 0.85) / 0.9,
+    'T07: 极大负载 50000kW'
+  );
+
+  // 测试8：低功率因数 0.5
+  assertApprox(
+    calculateCapacity(100, 0.5, 0.8),
+    (100 * 0.8) / 0.5,
+    'T08: 低功率因数 0.5'
+  );
+
+  // 测试9：低需用系数 0.3
+  assertApprox(
+    calculateCapacity(500, 0.85, 0.3),
+    (500 * 0.3) / 0.85,
+    'T09: 低需用系数 0.3'
+  );
+
+  // 测试10：典型工业场景 800kW, pf=0.85, kd=0.75
+  assertApprox(
+    calculateCapacity(800, 0.85, 0.75),
+    (800 * 0.75) / 0.85,
+    'T10: 典型工业场景 800kW'
+  );
+
+  // ---- calculateCapacity 异常输入测试 ----
+
+  // 测试11：负载功率为0
+  assertThrows(
+    () => calculateCapacity(0, 0.85, 0.75),
+    'T11: 负载功率为0应抛异常',
+    '大于 0'
+  );
+
+  // 测试12：负载功率为负
+  assertThrows(
+    () => calculateCapacity(-100, 0.85, 0.75),
+    'T12: 负载功率为负应抛异常',
+    '大于 0'
+  );
+
+  // 测试13：功率因数为0
+  assertThrows(
+    () => calculateCapacity(100, 0, 0.75),
+    'T13: 功率因数为0应抛异常',
+    '(0, 1]'
+  );
+
+  // 测试14：功率因数大于1
+  assertThrows(
+    () => calculateCapacity(100, 1.1, 0.75),
+    'T14: 功率因数>1应抛异常',
+    '(0, 1]'
+  );
+
+  // 测试15：功率因数为负
+  assertThrows(
+    () => calculateCapacity(100, -0.5, 0.75),
+    'T15: 功率因数为负应抛异常'
+  );
+
+  // 测试16：需用系数为0
+  assertThrows(
+    () => calculateCapacity(100, 0.85, 0),
+    'T16: 需用系数为0应抛异常',
+    '(0, 1]'
+  );
+
+  // 测试17：需用系数大于1
+  assertThrows(
+    () => calculateCapacity(100, 0.85, 1.5),
+    'T17: 需用系数>1应抛异常',
+    '(0, 1]'
+  );
+
+  // 测试18：参数为字符串
+  assertThrows(
+    () => calculateCapacity('100', 0.85, 0.75),
+    'T18: 字符串类型参数应抛异常',
+    '数字类型'
+  );
+
+  // 测试19：参数为NaN
+  assertThrows(
+    () => calculateCapacity(NaN, 0.85, 0.75),
+    'T19: NaN参数应抛异常',
+    '有限数值'
+  );
+
+  // 测试20：参数为Infinity
+  assertThrows(
+    () => calculateCapacity(Infinity, 0.85, 0.75),
+    'T20: Infinity参数应抛异常',
+    '有限数值'
+  );
+
+  // ---- selectStandardCapacity 测试 ----
+
+  // 测试21：恰好等于标准档位
+  const r21 = selectStandardCapacity(500);
+  assert(r21.selected === 500 && r21.isExact === true, 'T21: 恰好等于500kVA标准档位');
+
+  // 测试22：介于两档之间向上选取
+  const r22 = selectStandardCapacity(441.18);
+  assert(r22.selected === 500, 'T22: 441.18kVA应选500kVA');
+
+  // 测试23：略大于标准档位
+  const r23 = selectStandardCapacity(500.001);
+  assert(r23.selected === 630, 'T23: 500.001kVA应选630kVA');
+
+  // 测试24：小于最小档位
+  const r24 = selectStandardCapacity(10);
+  assert(r24.selected === 30, 'T24: 10kVA应选最小档30kVA');
+
+  // 测试25：超出最大档位
+  const r25 = selectStandardCapacity(12000);
+  assert(r25.selected === null && r25.exceedsMax === true, 'T25: 12000kVA超出最大档位');
+
+  // 测试26：等于最大档位
+  const r26 = selectStandardCapacity(10000);
+  assert(r26.selected === 10000 && r26.isExact === true, 'T26: 恰好等于最大档10000kVA');
+
+  // 测试27：略小于最大档位
+  const r27 = selectStandardCapacity(9999);
+  assert(r27.selected === 10000, 'T27: 9999kVA应选10000kVA');
+
+  // 测试28：selectStandardCapacity 异常 - 负数
+  assertThrows(
+    () => selectStandardCapacity(-100),
+    'T28: 负数容量应抛异常'
+  );
+
+  // 测试29：selectStandardCapacity 异常 - 0
+  assertThrows(
+    () => selectStandardCapacity(0),
+    'T29: 零容量应抛异常'
+  );
+
+  // ---- fullCalculation 综合测试 ----
+
+  // 测试30：完整流程 - 典型场景
+  const r30 = fullCalculation(500, 0.85, 0.75);
+  assertApprox(r30.rawCapacity, (500 * 0.75) / 0.85, 'T30: fullCalculation rawCapacity正确');
+
+  // 测试31：完整流程 - 标准档位选取
+  const r31 = fullCalculation(500, 0.85, 0.75);
+  assert(r31.selectedCapacity === 500, 'T31: fullCalculation 选取500kVA档位');
+
+  // 测试32：完整流程 - 负载率计算
+  const r32 = fullCalculation(500, 0.85, 0.75);
+  assertApprox(r32.loadRate, r32.rawCapacity / 500, 'T32: fullCalculation 负载率计算正确');
+
+  // 测试33：完整流程 - 轻载警告
+  const r33 = fullCalculation(10, 0.95, 0.5);
+  assert(r33.warning !== null && r33.warning.includes('轻载'), 'T33: 轻载场景应触发警告');
+
+  // 测试34：完整流程 - 重载警告
+  const r34 = fullCalculation(800, 0.85, 0.95);
+  assert(r34.warning !== null && r34.warning.includes('满载') || r34.warning !== null, 'T34: 重载场景应触发警告');
+
+  // 测试35：完整流程 - 超出范围
+  const r35 = fullCalculation(20000, 0.9, 0.95);
+  assert(r35.exceedsMax === true && r35.selectedCapacity === null, 'T35: 超大负载超出范围');
+
+  // ---- 精度与边界测试 ----
+
+  // 测试36：浮点精度 - 0.1+0.2 场景
+  const r36 = calculateCapacity(1, 0.3, 0.1 + 0.2);
+  assert(Number.isFinite(r36), 'T36: 浮点精度场景结果有限');
+
+  // 测试37：极小功率因数
+  assertApprox(
+    calculateCapacity(100, 0.01, 0.5),
+    (100 * 0.5) / 0.01,
+    'T37: 极小功率因数0.01'
+  );
+
+  // 测试38：getStandardCapacities 返回副本
+  const caps = getStandardCapacities();
+  caps.push(99999);
+  assert(STANDARD_CAPACITIES.length === 25, 'T38: getStandardCapacities返回副本不影响原数组');
+
+  // 测试39：标准档位数量
+  assert(getStandardCapacities().length === 25, 'T39: 标准档位共25个');
+
+  // 测试40：formatResult 返回字符串
+  const r40 = fullCalculation(500, 0.85, 0.75);
+  const formatted = formatResult(r40);
+  assert(typeof formatted === 'string' && formatted.includes('500'), 'T40: formatResult返回包含关键数据的字符串');
+
+  // 输出结果
+  return testResults;
+}
+
+/**
+ * 在页面上运行测试并展示结果
+ */
+function runTests() {
+  const results = runAllTests();
+  const passed = results.filter(r => r.pass).length;
+  const total = results.length;
+  const allPass = passed === total;
+
+  let html = `<div class="test-result ${allPass ? 'test-pass' : 'test-fail'}">`;
+  html += allPass ? `✅ 全部通过 ${passed} / 共 ${total}` : `❌ 通过 ${passed} / 共 ${total}（${total - passed} 项失败）`;
+  html += `</div>`;
+  html += `<div class="test-detail">`;
+  results.forEach(r => {
+    html += `<div class="test-item ${r.pass ? 'pass' : 'fail'}">`;
+    html += r.pass ? `✓ ${r.name}` : `✗ ${r.name} —— ${r.detail}`;
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('testOutput').innerHTML = html;
+}
+
+
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+
+const manualHTML = `
+<h2>一、工具概述</h2>
+<p>本工具用于根据已知负载参数，计算所需变压器的额定容量（kVA），并自动选取符合 GB/T 6451 标准的容量档位。适用于工业与民用建筑配电设计中变压器容量的初步选型阶段。</p>
+<p>核心计算逻辑：已知负载总有功功率 P（kW）、功率因数 cosφ、需用系数 Kd，通过公式 S = P × Kd / cosφ 计算视在功率需求，再从标准容量序列中向上选取最近档位。</p>
+
+<div class="info">
+<strong>适用场景：</strong>配电方案设计初期，快速估算变压器容量需求，为设备选型提供参考依据。
+</div>
+
+<h2>二、参数详解</h2>
+
+<h3>2.1 负载总有功功率 P（kW）</h3>
+<p>指所有用电设备的额定有功功率之和。单位为千瓦（kW）。该值应为所有接入变压器二次侧的用电设备铭牌功率的总和。注意：此处为设备铭牌有功功率之和，而非实际运行功率。</p>
+<p>典型取值参考：</p>
+<ul>
+<li>小型商业建筑：50~200 kW</li>
+<li>中型工业厂房：200~2000 kW</li>
+<li>大型工业用户：2000~10000 kW 及以上</li>
+</ul>
+
+<h3>2.2 功率因数 cosφ</h3>
+<p>功率因数反映有功功率与视在功率的比值。cosφ 越接近 1，说明电能利用效率越高。取值范围 (0, 1]。</p>
+<p>典型取值参考：</p>
+<ul>
+<li>纯阻性负载（电加热等）：cosφ ≈ 1.0</li>
+<li>经无功补偿后的系统：cosφ ≈ 0.90~0.95</li>
+<li>未补偿的电动机负载：cosφ ≈ 0.70~0.85</li>
+<li>混合负载（未补偿）：cosφ ≈ 0.75~0.85</li>
+</ul>
+<div class="warning">
+<strong>注意：</strong>若系统装有自动无功补偿装置，应按补偿后的功率因数取值。补偿前后差异可达 20%~30%，直接影响容量计算结果。
+</div>
+
+<h3>2.3 需用系数 Kd</h3>
+<p>需用系数（Demand Factor）定义为系统最大需求功率与所有设备额定功率总和之比。它反映了设备不会全部同时满载运行的实际情况。取值范围 (0, 1]。</p>
+<p>典型取值参考（需查相关设计手册确认）：</p>
+<ul>
+<li>住宅建筑：0.4~0.6</li>
+<li>商业建筑：0.6~0.8</li>
+<li>一般工业：0.6~0.8</li>
+<li>连续生产型工业：0.8~0.95</li>
+</ul>
+<div class="warning">
+<strong>注意：</strong>需用系数的选取对结果影响极大。不同行业、不同运行模式的需用系数差异显著。本工具不内置需用系数推荐值，使用者应根据实际工况或参考《工业与民用配电设计手册》等资料确定。
+</div>
+
+<h2>三、计算公式</h2>
+<p>核心公式：</p>
+<p style="text-align:center; font-size:18px; margin:15px 0;"><strong>S = P × K<sub>d</sub> / cosφ</strong></p>
+<p>其中：</p>
+<table>
+<tr><th>符号</th><th>含义</th><th>单位</th></tr>
+<tr><td>S</td><td>变压器所需额定容量</td><td>kVA</td></tr>
+<tr><td>P</td><td>负载总有功功率</td><td>kW</td></tr>
+<tr><td>K<sub>d</sub></td><td>需用系数</td><td>无量纲 (0,1]</td></tr>
+<tr><td>cosφ</td><td>功率因数</td><td>无量纲 (0,1]</td></tr>
+</table>
+<p>计算得到 S 后，从 GB/T 6451 标准容量档位中向上选取不小于 S 的最小标准值。</p>
+
+<h2>四、标准容量档位</h2>
+<p>依据 GB/T 6451-2015《油浸式电力变压器技术参数和要求》，本标准工具涵盖以下 25 个标准容量档位（kVA）：</p>
+<table>
+<tr><th>档位</th><th>容量（kVA）</th></tr>
+<tr><td>1~5</td><td>30, 50, 63, 80, 100</td></tr>
+<tr><td>6~10</td><td>125, 160, 200, 250, 315</td></tr>
+<tr><td>11~15</td><td>400, 500, 630, 800, 1000</td></tr>
+<tr><td>16~20</td><td>1250, 1600, 2000, 2500, 3150</td></tr>
+<tr><td>21~25</td><td>4000, 5000, 6300, 8000, 10000</td></tr>
+</table>
+<p>该序列基于 R10 优先数系。若计算结果超出 10000 kVA，需考虑选用特殊规格变压器或多台并联方案，本工具不自动处理此类情况。</p>
+
+<h2>五、使用场景示例</h2>
+
+<h3>场景一：小型商业配电</h3>
+<p>某商业店铺，设备总功率 80 kW，功率因数 0.85（已补偿），需用系数 0.7。</p>
+<p>计算：S = 80 × 0.7 / 0.85 = 65.88 kVA → 选取标准档位 <strong>80 kVA</strong></p>
+<p>负载率：65.88 / 80 = 82.4%，处于合理范围。</p>
+
+<h3>场景二：中型工业厂房</h3>
+<p>某机加工车间，设备总功率 600 kW，功率因数 0.82（未完全补偿），需用系数 0.75。</p>
+<p>计算：S = 600 × 0.75 / 0.82 = 548.78 kVA → 选取标准档位 <strong>630 kVA</strong></p>
+<p>负载率：548.78 / 630 = 87.1%，偏高，可考虑选 800 kVA 留裕量。</p>
+
+<h3>场景三：住宅小区配电</h3>
+<p>某住宅小区，总装机功率 1200 kW，功率因数 0.90（集中补偿后），需用系数 0.5。</p>
+<p>计算：S = 1200 × 0.5 / 0.90 = 666.67 kVA → 选取标准档位 <strong>800 kVA</strong></p>
+<p>负载率：666.67 / 800 = 83.3%，合理。</p>
+
+<h3>场景四：数据中心</h3>
+<p>某小型数据中心，IT 设备总功率 400 kW，UPS 效率计入后功率因数 0.95，需用系数 0.90（高可靠性要求）。</p>
+<p>计算：S = 400 × 0.90 / 0.95 = 378.95 kVA → 选取标准档位 <strong>400 kVA</strong></p>
+<p>负载率：378.95 / 400 = 94.7%，偏高。数据中心通常要求 N+1 冗余，实际应选更大容量或配置多台。</p>
+
+<h3>场景五：农业排灌泵站</h3>
+<p>某排灌站，水泵电机总功率 150 kW，功率因数 0.78（未补偿），需用系数 0.85（季节性满载运行）。</p>
+<p>计算：S = 150 × 0.85 / 0.78 = 163.46 kVA → 选取标准档位 <strong>200 kVA</strong></p>
+<p>负载率：163.46 / 200 = 81.7%，合理。</p>
+
+<h3>场景六：轻载场景（触发警告）</h3>
+<p>某办公楼层，设备总功率 20 kW，功率因数 0.92，需用系数 0.4。</p>
+<p>计算：S = 20 × 0.4 / 0.92 = 8.70 kVA → 选取标准档位 <strong>30 kVA</strong></p>
+<p>负载率：8.70 / 30 = 29.0%，工具将提示轻载警告。建议复核需用系数取值是否合理。</p>
+
+<h2>六、常见错误与注意事项</h2>
+
+<h3>6.1 功率因数取值错误</h3>
+<p>最常见错误是将未补偿的功率因数与补偿后的混淆。若系统已安装无功补偿装置，必须使用补偿后的功率因数。错误取值可导致容量偏差 20%~40%。</p>
+
+<h3>6.2 需用系数选取不当</h3>
+<p>需用系数不是固定值，与负载类型、运行模式、行业特性密切相关。照搬其他项目的需用系数可能导致严重偏差。建议参考《工业与民用配电设计手册》或同类项目实测数据。</p>
+
+<h3>6.3 忽略谐波影响</h3>
+<p>非线性负载（变频器、LED 照明、开关电源等）产生谐波电流，增加变压器额外损耗和温升。本工具未考虑谐波因素。当谐波畸变率 THD > 5% 时，建议容量增加 10%~25%（需查相关标准确认具体修正方法）。</p>
+
+<h3>6.4 未考虑未来发展裕量</h3>
+<p>实际工程中通常需预留 15%~30% 的容量裕量，以应对负载增长。本工具仅计算当前需求，不含裕量。使用者应在选取标准档位时自行考虑。</p>
+
+<h3>6.5 将设备视在功率当作有功功率输入</h3>
+<p>部分设备铭牌标注的是视在功率（kVA）或有功功率（kW），需确认输入的是有功功率 P（kW）。若误将 kVA 值当作 kW 输入，会导致计算结果偏大。</p>
+
+<h2>七、数据依据</h2>
+<p>本工具的数据依据如下：</p>
+<ul>
+<li><strong>标准容量档位：</strong>GB/T 6451-2015《油浸式电力变压器技术参数和要求》。该标准规定了油浸式电力变压器的额定容量序列、技术参数和试验要求。</li>
+<li><strong>计算公式：</strong>S = P × Kd / cosφ 为配电设计基本公式，广泛见于《工业与民用配电设计手册》（第四版）等权威参考资料。</li>
+<li><strong>R10 优先数系：</strong>标准容量档位遵循 GB/T 321 规定的优先数系 R10 系列。</li>
+</ul>
+<div class="warning">
+<strong>声明：</strong>本工具引用的标准容量档位数据基于 GB/T 6451-2015 版本。若标准更新修订，档位可能发生变化，请以最新标准原文为准。需用系数的典型取值范围参考了行业通用资料，具体项目应以实际工况为准。
+</div>
+
+<h2>八、精度与误差说明</h2>
+
+<div class="info">
+<strong>有限精准原则：</strong>现实变量是无限的，本工具只做到「方法准、输入项准、结果给误差范围」，不承诺绝对精确。
+</div>
+
+<h3>8.1 算准了什么</h3>
+<ul>
+<li><strong>数学计算本身：</strong>给定输入参数后，公式 S = P × Kd / cosφ 的计算过程无误差（浮点精度范围内，相对误差 < 10⁻¹²）。</li>
+<li><strong>标准档位选取：</strong>从 25 个标准档位中向上选取的逻辑确定无误。</li>
+<li><strong>负载率计算：</strong>rawCapacity / selectedCapacity 的计算无误差。</li>
+</ul>
+
+<h3>8.2 哪些因素没有算进去</h3>
+<p>以下因素对实际变压器容量需求有显著影响，但本工具未纳入计算：</p>
+<ul>
+<li><strong>谐波畸变：</strong>非线性负载产生的谐波电流导致变压器额外发热，需降容使用。谐波影响程度取决于 THD 值和各次谐波分量。</li>
+<li><strong>环境温度修正：</strong>标准容量基于基准环境温度（通常 20°C 或 40°C，需查标准原文确认）。高温环境需降容，低温环境可适当增载。</li>
+<li><strong>海拔修正：</strong>海拔超过 1000m 时，空气密度降低影响散热，需容量修正。</li>
+<li><strong>三相不平衡：</strong>严重不平衡负载导致变压器额外损耗。</li>
+<li><strong>冲击负载：</strong>电动机启动电流可达额定电流 5~7 倍，短时冲击可能要求更大容量。</li>
+<li><strong>负载增长裕量：</strong>未来 5~10 年的负载增长预期。</li>
+<li><strong>变压器自身损耗：</strong>空载损耗和负载损耗影响实际可用容量。</li>
+<li><strong>并联运行环流：</strong>多台变压器并联时的负载均衡问题。</li>
+<li><strong>电压偏差：</strong>实际运行电压偏离额定值时的影响。</li>
+<li><strong>绝缘老化：</strong>长期运行后变压器实际承载能力下降。</li>
+</ul>
+
+<h3>8.3 误差大概多大</h3>
+<p>综合以上未考虑因素，实际工程中的容量选型误差范围估计如下：</p>
+<table>
+<tr><th>误差来源</th><th>估计影响范围</th><th>说明</th></tr>
+<tr><td>输入参数取值偏差</td><td>±10%~30%</td><td>主要取决于需用系数和功率因数的取值准确度</td></tr>
+<tr><td>谐波影响（未计入）</td><td>0~+25%</td><td>THD>5% 时需额外容量，具体需查标准</td></tr>
+<tr><td>环境温度（未计入）</td><td>±5%~15%</td><td>取决于实际环境温度与基准温度的偏差</td></tr>
+<tr><td>海拔修正（未计入）</td><td>0~+10%</td><td>海拔 1000~4000m 范围</td></tr>
+<tr><td>综合工程误差</td><td>±20%~40%</td><td>上述因素叠加后的总体估计</td></tr>
+</table>
+<p>因此，本工具的计算结果应视为<strong>初步估算值</strong>，最终选型须结合工程实际情况，由注册电气工程师审核确认。建议在本工具计算结果基础上，根据具体工况增加适当裕量。</p>
+
+<h2>九、局限性声明</h2>
+<ol>
+<li>本工具仅适用于三相油浸式电力变压器的容量初步估算，不适用于干式变压器（干式变压器容量序列可能不同，需查相应标准）。</li>
+<li>本工具不替代正式的电气设计计算书。正式工程设计须由具备资质的电气设计人员完成，并考虑全部相关因素。</li>
+<li>标准容量档位仅覆盖 30~10000 kVA 范围。超出此范围的特殊需求不在本工具处理范围内。</li>
+<li>本工具不涉及变压器的短路阻抗校验、温升校验、噪声校验等其它技术参数。</li>
+<li>本工具不涉及经济性分析（如变压器运行效率、损耗费用、投资回收期等）。</li>
+<li>计算结果仅供参考，不构成任何工程承诺或担保。使用者须对最终选型决策负责。</li>
+</ol>
+
+<h2>十、版本信息</h2>
+<p>版本：v2.0.0-完整版 20261021</p>
+<p>标准依据：GB/T 6451-2015（如有更新版本请以最新标准为准）</p>
+<p>技术实现：纯 JavaScript，无外部依赖，可在现代浏览器中直接运行。</p>
+`;
+
+// ============================================================
+// 页面初始化
+// ============================================================
+
+// 填充源码
+document.getElementById('sourceCode').textContent = `/**
+ * 变压器容量计算工具 - 核心算法
+ * 依据 GB/T 6451-2015 标准容量档位
+ * 版本：v2.0.0-完整版 20261021
+ */
+
+/**
+ * GB/T 6451 标准规定的油浸式电力变压器标准容量档位（kVA）
+ * 采用 R10 优先数系，覆盖 30kVA 至 10000kVA
+ * @type {number[]}
+ */
+const STANDARD_CAPACITIES = [
+  30, 50, 63, 80, 100, 125, 160, 200, 250, 315,
+  400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150,
+  4000, 5000, 6300, 8000, 10000
+];
+
+/**
+ * 计算变压器所需容量（kVA）
+ * 公式：S = P × Kd / cosφ
+ * @param {number} loadPower - 负载总有功功率（kW），必须 > 0
+ * @param {number} powerFactor - 功率因数 cosφ，范围 (0, 1]
+ * @param {number} demandFactor - 需用系数 Kd，范围 (0, 1]
+ * @returns {number} 计算所得变压器容量（kVA）
+ * @throws {Error} 参数不合法时抛出错误
+ */
+function calculateCapacity(loadPower, powerFactor, demandFactor) {
+  if (typeof loadPower !== 'number' || typeof powerFactor !== 'number' || typeof demandFactor !== 'number') {
+    throw new Error('所有参数必须为数字类型');
+  }
+  if (!Number.isFinite(loadPower) || !Number.isFinite(powerFactor) || !Number.isFinite(demandFactor)) {
+    throw new Error('所有参数必须为有限数值，不允许 NaN 或 Infinity');
+  }
+  if (loadPower <= 0) {
+    throw new Error('负载功率必须大于 0 kW');
+  }
+  if (powerFactor <= 0 || powerFactor > 1) {
+    throw new Error('功率因数必须在 (0, 1] 范围内');
+  }
+  if (demandFactor <= 0 || demandFactor > 1) {
+    throw new Error('需用系数必须在 (0, 1] 范围内');
+  }
+  return (loadPower * demandFactor) / powerFactor;
+}
+
+/**
+ * 从标准容量档位中选取不小于计算值的最小标准容量
+ * @param {number} calculatedCapacity - 计算所得容量（kVA），必须 > 0
+ * @returns {{ selected: number, isExact: boolean, exceedsMax: boolean, message: string }}
+ * @throws {Error} 参数不合法时抛出错误
+ */
+function selectStandardCapacity(calculatedCapacity) {
+  if (typeof calculatedCapacity !== 'number' || !Number.isFinite(calculatedCapacity)) {
+    throw new Error('参数必须为有限数值');
+  }
+  if (calculatedCapacity <= 0) {
+    throw new Error('容量必须大于 0');
+  }
+  const epsilon = 1e-9;
+  const isExact = STANDARD_CAPACITIES.some(c => Math.abs(c - calculatedCapacity) < epsilon);
+  if (calculatedCapacity > STANDARD_CAPACITIES[STANDARD_CAPACITIES.length - 1]) {
+    return {
+      selected: null, isExact: false, exceedsMax: true,
+      message: \`计算值 \${calculatedCapacity.toFixed(2)} kVA 超出最大档位 \${STANDARD_CAPACITIES[STANDARD_CAPACITIES.length - 1]} kVA\`
+    };
+  }
+  let selected = null;
+  for (let i = 0; i < STANDARD_CAPACITIES.length; i++) {
+    if (STANDARD_CAPACITIES[i] >= calculatedCapacity - epsilon) {
+      selected = STANDARD_CAPACITIES[i];
+      break;
+    }
+  }
+  return { selected, isExact, exceedsMax: false, message: isExact ? \`恰好等于标准档位 \${selected} kVA\` : \`向上选取标准档位 \${selected} kVA\` };
+}
+
+/**
+ * 完整计算流程
+ * @param {number} loadPower - 负载总有功功率（kW）
+ * @param {number} powerFactor - 功率因数
+ * @param {number} demandFactor - 需用系数
+ * @returns {object} 完整计算结果
+ */
+function fullCalculation(loadPower, powerFactor, demandFactor) {
+  const rawCapacity = calculateCapacity(loadPower, powerFactor, demandFactor);
+  const selection = selectStandardCapacity(rawCapacity);
+  let loadRate = null, warning = null;
+  if (selection.selected !== null) {
+    loadRate = rawCapacity / selection.selected;
+    if (loadRate < 0.4) warning = \`负载率仅 \${(loadRate*100).toFixed(1)}%，建议复核\`;
+    else if (loadRate > 0.85) warning = \`负载率达 \${(loadRate*100).toFixed(1)}%，接近满载\`;
+  }
+  return { loadPower, powerFactor, demandFactor, rawCapacity, selectedCapacity: selection.selected, isExact: selection.isExact, exceedsMax: selection.exceedsMax, loadRate, message: selection.message, warning };
+}
+
+/**
+ * 获取所有标准容量档位列表
+ * @returns {number[]} 标准容量数组的副本
+ */
+function getStandardCapacities() { return [...STANDARD_CAPACITIES]; }
+
+/**
+ * 格式化计算结果为可读字符串
+ * @param {object} result - fullCalculation 返回的结果对象
+ * @returns {string} 格式化的结果文本
+ */
+function formatResult(result) {
+  let text = '═══════════════════════════════════════\\n';
+  text += '  变压器容量计算结果\\n';
+  text += '═══════════════════════════════════════\\n';
+  text += \`输入参数：负载 \${result.loadPower}kW, cosφ=\${result.powerFactor}, Kd=\${result.demandFactor}\\n\`;
+  text += \`理论容量：\${result.rawCapacity.toFixed(2)} kVA\\n\`;
+  text += result.selectedCapacity ? \`标准容量：\${result.selectedCapacity} kVA, 负载率：\${(result.loadRate*100).toFixed(1)}%\\n\` : '标准容量：超出范围\\n';
+  text += \`说明：\${result.message}\\n\`;
+  if (result.warning) text += \`⚠ \${result.warning}\\n\`;
+  text += '═══════════════════════════════════════';
+  return text;
+}`;
+
+// 填充说明书
+document.getElementById('manualContent').innerHTML = manualHTML;
+
+// 标签页切换
+// ====== 计算界面逻辑（v2.1.0 新增） ======
+function trCalc(){
+  var out=document.getElementById('trOut'), err=document.getElementById('trErr');
+  out.classList.remove('show'); err.classList.remove('show');
+  function num(id){ var e=document.getElementById(id); if(!e) return NaN; var v=String(e.value).trim(); return v===''?NaN:parseFloat(v); }
+  var load=num('trLoad'), pf=num('trPF'), df=num('trDF');
+  if(isNaN(load)||isNaN(pf)||isNaN(df)){ err.textContent='⚠ 三项都要填'; err.classList.add('show'); return; }
+  try{
+    var r=fullCalculation(load, pf, df);
+    var f2=function(v){ return (v===null||v===undefined)?'—':(Math.round(v*100)/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    var html='<div><span class="k">计算容量：</span><span class="v">'+f2(r.rawCapacity)+' kVA</span></div>';
+    if(r.selectedCapacity!==null){
+      html+='<div><span class="k">选用标准档位：</span><span class="v">'+r.selectedCapacity+' kVA</span>'+(r.isExact?' <span style="color:#1a7f37;font-size:13px">（正好等于标准值）</span>':'')+'</div>';
+      if(r.loadRate!==null) html+='<div><span class="k">实际负载率：</span><span class="v">'+(r.loadRate*100).toFixed(1)+'%</span></div>';
+    } else {
+      html+='<div><span class="k">选用标准档位：</span><span class="v" style="color:#c0392b">超出最大标准档位（10000 kVA）</span></div>';
+    }
+    if(r.message) html+='<div style="font-size:13px;color:#5a6a7a;margin-top:6px">'+r.message+'</div>';
+    if(r.warning) html+='<div class="tr-warn">💡 '+r.warning+'</div>';
+    out.innerHTML=html;
+    out.classList.add('show');
+  }catch(e){ err.textContent='⚠ '+e.message; err.classList.add('show'); }
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabName).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

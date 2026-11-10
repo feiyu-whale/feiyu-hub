@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⏱️ 时间戳转换</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #14283a 0%, #0a1622 60%, #060a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:6px 6px 12px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#6b8fb3; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #22384c; border-radius:20px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:18px; }
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:14px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:7px; letter-spacing:1px; }
+  input[type=text] { width:100%; background:#060a10; border:1px solid #24384c; border-radius:9px; padding:11px 12px;
+    color:#eaf4ff; font-size:15px; font-family:inherit; }
+  input:focus { outline:none; border-color:#4d8fc9; }
+  .row { display:flex; gap:8px; }
+  .row input { flex:1; }
+  button.act { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border:1px solid #4d8fc9;
+    border-radius:9px; padding:11px 16px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  button.act:active { transform:scale(.97); }
+  button.mini { background:#132638; border:1px solid #2e5f8e; color:#9fe0ff; border-radius:8px; padding:6px 10px;
+    font-size:12px; cursor:pointer; font-family:inherit; }
+  .out { margin-top:8px; color:#8fe0c0; font-size:14px; word-break:break-all; line-height:1.7; }
+  .out b { color:#eaf4ff; }
+  .now { text-align:center; color:#8fb3cf; font-size:13px; margin-top:6px; }
+  .ver { text-align:center; color:#22383c; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回工具区</a>
+  <h1>⏱️ 时间戳转换</h1>
+  <div class="sub">Unix 秒/毫秒 ↔ 本地时间/UTC ↔ 公历</div>
+
+  <div class="card">
+    <div class="lbl">当前时间</div>
+    <div class="now" id="now"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">时间戳 → 日期（自动识别秒/毫秒）</div>
+    <div class="row">
+      <input type="text" id="tsIn" placeholder="如 1792160000 或 1792160000000" inputmode="numeric">
+      <button class="mini" id="useNow">现在</button>
+    </div>
+    <div class="out" id="tsOut"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">日期 → 时间戳（本地时区）</div>
+    <div class="row">
+      <input type="text" id="dtIn" placeholder="如 2026-10-16 22:15:00">
+      <button class="act" id="conv">转换</button>
+    </div>
+    <div class="out" id="dtOut"></div>
+  </div>
+
+  <div class="ver">v1.0.0-时间戳 20261016</div>
+</div>
+<script>
+(function(){
+'use strict';
+  // 依据：Unix 时间戳定义（1970-01-01 UTC 起的秒数）；本地/UTC 经浏览器原生 Date。
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,"0");
+
+  function tick(){
+    const d = new Date();
+    $("now").innerHTML = d.toLocaleString("zh-CN",{hour12:false})
+      + " &nbsp;|&nbsp; 秒 <b>"+Math.floor(d.getTime()/1000)+"</b>"
+      + " &nbsp;|&nbsp; 毫秒 <b>"+d.getTime()+"</b>";
+  }
+
+  function tsToDate(){
+    let s = $("tsIn").value.trim();
+    if(!/^-?\d+$/.test(s)){ $("tsOut").innerHTML = s ? "<span style='color:#e08'>请输入纯数字</span>" : ""; return; }
+    let n = Number(s);
+    let ms = s.length <= 10 ? n*1000 : n;  // 10位以内按秒
+    const d = new Date(ms);
+    if(isNaN(d.getTime())){ $("tsOut").innerHTML = "<span style='color:#e08'>无效时间戳</span>"; return; }
+    const local = d.toLocaleString("zh-CN",{hour12:false});
+    const utc = d.toISOString().replace("T"," ").replace(".000Z"," UTC");
+    $("tsOut").innerHTML = "本地：<b>"+local+"</b><br>UTC：<b>"+utc+"</b><br>ISO：<b>"+d.toISOString()+"</b>";
+  }
+
+  function dateToTs(){
+    let s = $("dtIn").value.trim().replace(/\//g,"-");
+    // 支持 "YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DD"
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+    if(!m){ $("dtOut").innerHTML = s ? "<span style='color:#e08'>格式：YYYY-MM-DD HH:mm:ss</span>" : ""; return; }
+    const d = new Date(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    if(isNaN(d.getTime())){ $("dtOut").innerHTML = "<span style='color:#e08'>无效日期</span>"; return; }
+    const sec = Math.floor(d.getTime()/1000);
+    $("dtOut").innerHTML = "秒：<b>"+sec+"</b><br>毫秒：<b>"+d.getTime()+"</b>";
+  }
+
+  $("tsIn").addEventListener("input", tsToDate);
+  $("conv").onclick = dateToTs;
+  $("dtIn").addEventListener("keydown", e => { if(e.key==="Enter") dateToTs(); });
+  $("useNow").onclick = () => { $("tsIn").value = Math.floor(Date.now()/1000); tsToDate(); };
+  $("dtIn").value = "";
+
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

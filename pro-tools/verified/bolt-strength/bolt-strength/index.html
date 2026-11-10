@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>螺栓强度校核工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:#f1f5f9;color:#1e293b;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.container{max-width:640px;margin:0 auto;padding:16px;padding-bottom:60px}
+header{text-align:center;margin-bottom:20px}
+header h1{font-size:22px;font-weight:700}
+header p{color:#64748b;font-size:13px;margin-top:4px}
+.card{background:#fff;border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card h2{font-size:15px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9}
+.form-row{display:flex;gap:12px;margin-bottom:10px}
+.form-group{flex:1;margin-bottom:10px}
+.form-group label{display:block;font-size:13px;color:#64748b;margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;background:#fff;color:#1e293b;min-height:40px}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.radio-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.radio-group label{display:flex;align-items:center;gap:4px;font-size:14px;color:#1e293b;cursor:pointer}
+.checkbox-label{display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;cursor:pointer;margin-top:6px}
+.info-row{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:#475569;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px}
+.hint{font-size:12px;color:#64748b;margin-top:4px;line-height:1.5}
+.result-block{padding:12px;margin-bottom:10px;background:#f8fafc;border-radius:8px;border-left:3px solid #2563eb}
+.result-block h3{font-size:14px;font-weight:600;margin-bottom:8px}
+.formula{font-size:13px;color:#475569;margin-bottom:4px;font-family:"SF Mono","Fira Code","Cascadia Code",monospace;word-break:break-all;line-height:1.7}
+.formula strong{color:#1e293b}
+.util-bar-wrap{width:100%;height:8px;background:#e2e8f0;border-radius:4px;margin:8px 0 4px;overflow:hidden}
+.util-bar{height:100%;border-radius:4px;transition:width .3s ease}
+.util-text{font-size:13px;color:#64748b;margin-bottom:4px}
+.result-status{font-size:14px;font-weight:600;padding:6px 10px;border-radius:6px;margin-top:6px}
+.result-status.pass{background:#dcfce7;color:#16a34a}
+.result-status.fail{background:#fef2f2;color:#dc2626}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px}
+.detail-item{padding:4px 8px;background:#f8fafc;border-radius:4px}
+.detail-item span{color:#64748b}
+.detail-item strong{color:#1e293b}
+.card ol{padding-left:20px;font-size:13px;color:#475569}
+.card ol li{margin-bottom:6px}
+.note{font-size:12px;color:#b45309;margin-top:10px;padding:8px 10px;background:#fffbeb;border-radius:6px;line-height:1.6}
+.version{position:fixed;bottom:8px;right:12px;font-size:11px;color:#94a3b8;pointer-events:none}
+@media(max-width:480px){.form-row{flex-direction:column;gap:0}.detail-grid{grid-template-columns:1fr}.info-row{flex-direction:column;gap:4px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>🔩 螺栓强度校核</h1>
+<p>受拉 / 受剪 / 预紧力矩计算工具</p>
+</header>
+
+<div class="card">
+<h2>📐 螺栓参数</h2>
+<div class="form-row">
+<div class="form-group">
+<label>螺栓规格</label>
+<select id="bolt-size"></select>
+</div>
+<div class="form-group">
+<label>性能等级</label>
+<select id="prop-class"></select>
+</div>
+</div>
+<div class="form-group">
+<label>螺距 P（mm）— 默认为粗牙，可手动修改为细牙</label>
+<input type="number" id="pitch" step="0.01" min="0.1">
+</div>
+</div>
+
+<div class="card">
+<h2>⚡ 载荷与校核</h2>
+<div class="form-group">
+<label>工作载荷 F（kN）</label>
+<input type="number" id="force" step="0.1" min="0" value="10">
+</div>
+<div class="form-group">
+<label>校核类型</label>
+<div class="radio-group">
+<label><input type="radio" name="check-type" value="tension" checked> 受拉</label>
+<label><input type="radio" name="check-type" value="shear"> 受剪</label>
+<label><input type="radio" name="check-type" value="combined"> 拉剪组合</label>
+</div>
+</div>
+<div class="form-group">
+<label class="checkbox-label"><input type="checkbox" id="shear-in-thread"> 剪切面在螺纹处（受剪时生效，否则按杆部直径计算）</label>
+</div>
+</div>
+
+<div class="card">
+<h2>🛡️ 许用应力</h2>
+<div class="form-group">
+<label>安全系数 n</label>
+<input type="number" id="safety-factor" step="0.1" min="0.1" value="1.5">
+</div>
+<div class="info-row">
+<span>许用拉应力 [σ] = <strong id="sigma-allow">—</strong> MPa</span>
+<span>许用剪应力 [τ] = <strong id="tau-allow">—</strong> MPa</span>
+</div>
+<div class="hint">💡 [σ] = σs / n ；[τ] = σs / (√3 · n)，基于 von Mises 屈服准则</div>
+</div>
+
+<div class="card">
+<h2>🔧 预紧与拧紧力矩</h2>
+<div class="form-row">
+<div class="form-group">
+<label>预紧系数 K₁（F₀ = K₁·F）</label>
+<input type="number" id="preload-factor" step="0.1" min="0" value="1.0">
+</div>
+<div class="form-group">
+<label>力矩系数 K₂（T = K₂·F₀·d）</label>
+<input type="number" id="torque-coeff" step="0.01" min="0" value="0.2">
+</div>
+</div>
+<div class="hint">💡 K₁ 取决于连接类型：一般连接 0.6~1.0，有密封要求 1.5~1.8；K₂ = 0.2 为钢制螺栓典型值</div>
+</div>
+
+<div class="card">
+<h2>📊 校核结果</h2>
+<div id="results-content"><p style="color:#64748b;font-size:13px;">请输入参数后自动计算</p></div>
+</div>
+
+<div class="card">
+<h2>📋 详细参数</h2>
+<div id="detail-params"><p style="color:#64748b;font-size:13px;">—</p></div>
+</div>
+
+<div class="card">
+<h2>📚 数据来源</h2>
+<ol>
+<li><strong>GB/T 3098.1-2010</strong>《紧固件机械性能 螺栓、螺钉和螺柱》— 性能等级与力学指标</li>
+<li><strong>GB/T 196-2003</strong>《普通螺纹 基本尺寸》— 螺纹几何参数（d₁ = d − 1.0825P）</li>
+<li><strong>GB 50017-2017</strong>《钢结构设计标准》— 螺栓连接设计</li>
+<li><strong>濮良贵 等《机械设计》</strong>（第10版），高等教育出版社 — 螺栓连接设计理论与公式</li>
+</ol>
+<div class="note">⚠️ 本工具中螺纹小径 d₁ 按基本尺寸公式计算，应力截面积 As 按 ISO 898-1 经验公式 As = 0.7854(d − 0.9382P)² 计算。具体公差及详细表值需查标准原文。本工具仅供工程参考，正式设计请以现行有效标准文件为准。</div>
+</div>
+</div>
+
+<div class="version">v1.0.0-螺栓强度校核 20261021</div>
+
+<script>
+(function(){
+var BOLT_SIZES=['M6','M8','M10','M12','M14','M16','M18','M20','M22','M24','M27','M30'];
+var COARSE_PITCH={'M6':1.0,'M8':1.25,'M10':1.5,'M12':1.75,'M14':2.0,'M16':2.0,'M18':2.5,'M20':2.5,'M22':2.5,'M24':3.0,'M27':3.0,'M30':3.5};
+var PROP_CLASSES=['4.6','4.8','5.6','5.8','6.8','8.8','10.9','12.9'];
+
+function getDiameter(size){return parseInt(size.substring(1));}
+function getD1(d,P){return d-1.0825*P;}
+function getAs(d,P){return 0.7854*Math.pow(d-0.9382*P,2);}
+function getPropData(propClass,d){
+    var parts=propClass.split('.');
+    var x=parseInt(parts[0]);
+    var y=parseInt(parts[1]);
+    var sigma_b=x*100;
+    var sigma_s=x*y*10;
+    if(propClass==='8.8'&&d>16){sigma_s=660;}
+    return{sigma_b:sigma_b,sigma_s:sigma_s};
+}
+function getUtilColor(util){
+    if(util>100)return'#dc2626';
+    if(util>80)return'#f59e0b';
+    if(util>60)return'#eab308';
+    return'#16a34a';
+}
+function fmt(v,digits){if(digits===undefined)digits=1;return v.toFixed(digits);}
+
+function calculate(){
+    var size=document.getElementById('bolt-size').value;
+    var d=getDiameter(size);
+    var P=parseFloat(document.getElementById('pitch').value);
+    var propClass=document.getElementById('prop-class').value;
+    var F_kN=parseFloat(document.getElementById('force').value);
+    if(isNaN(F_kN)||F_kN<0)F_kN=0;
+    var F=F_kN*1000;
+    var checkType=document.querySelector('input[name="check-type"]:checked').value;
+    var n=parseFloat(document.getElementById('safety-factor').value);
+    if(isNaN(n)||n<=0)n=1.5;
+    var K1=parseFloat(document.getElementById('preload-factor').value);
+    if(isNaN(K1)||K1<0)K1=0;
+    var K2=parseFloat(document.getElementById('torque-coeff').value);
+    if(isNaN(K2)||K2<0)K2=0;
+    var shearInThread=document.getElementById('shear-in-thread').checked;
+
+    if(isNaN(P)||P<=0){
+        document.getElementById('results-content').innerHTML='<p style="color:#dc2626;font-size:13px;">⚠️ 请输入有效的螺距值</p>';
+        document.getElementById('detail-params').innerHTML='<p style="color:#64748b;font-size:13px;">—</p>';
+        document.getElementById('sigma-allow').textContent='—';
+        document.getElementById('tau-allow').textContent='—';
+        return;
+    }
+
+    var d1=getD1(d,P);
+    var As=getAs(d,P);
+    var pd=getPropData(propClass,d);
+    var sigma_b=pd.sigma_b;
+    var sigma_s=pd.sigma_s;
+
+    var sigma_allow=sigma_s/n;
+    var tau_allow=sigma_s/(Math.sqrt(3)*n);
+
+    var A_tension=Math.PI*d1*d1/4;
+    var d_shear=shearInThread?d1:d;
+    var A_shear=Math.PI*d_shear*d_shear/4;
+
+    var sigma=F>0?F/A_tension:0;
+    var tau=F>0?F/A_shear:0;
+
+    var F0=K1*F;
+    var T_Nm=K2*F0*d/1000;
+
+    document.getElementById('sigma-allow').textContent=fmt(sigma_allow);
+    document.getElementById('tau-allow').textContent=fmt(tau_allow);
+
+    document.getElementById('detail-params').innerHTML=
+        '<div class="detail-grid">'+
+        '<div class="detail-item"><span>公称直径 d = </span><strong>'+d+' mm</strong></div>'+
+        '<div class="detail-item"><span>螺距 P = </span><strong>'+fmt(P,2)+' mm</strong></div>'+
+        '<div class="detail-item"><span>小径 d₁ = </span><strong>'+fmt(d1,3)+' mm</strong></div>'+
+        '<div class="detail-item"><span>应力面积 As = </span><strong>'+fmt(As,1)+' mm²</strong></div>'+
+        '<div class="detail-item"><span>抗拉强度 σb = </span><strong>'+sigma_b+' MPa</strong></div>'+
+        '<div class="detail-item"><span>屈服强度 σs = </span><strong>'+sigma_s+' MPa</strong></div>'+
+        '<div class="detail-item"><span>受拉面积 πd₁²/4 = </span><strong>'+fmt(A_tension,2)+' mm²</strong></div>'+
+        '<div class="detail-item"><span>受剪面积 π'+(shearInThread?'d₁':'d')+'²/4 = </span><strong>'+fmt(A_shear,2)+' mm²</strong></div>'+
+        '</div>';
+
+    var html='';
+
+    if(checkType==='tension'||checkType==='combined'){
+        var sigma_util=sigma_allow>0?(sigma/sigma_allow*100):0;
+        var tension_pass=sigma<=sigma_allow;
+        var exceedStr='';
+        if(!tension_pass&&sigma_allow>0){exceedStr='，超出 '+fmt((sigma-sigma_allow)/sigma_allow*100)+'%';}
+        html+='<div class="result-block">'+
+            '<h3>受拉校核</h3>'+
+            '<div class="formula">σ = F / (π·d₁²/4)</div>'+
+            '<div class="formula">&nbsp;&nbsp;= '+fmt(F,0)+' / (π × '+fmt(d1,3)+'² / 4)</div>'+
+            '<div class="formula">&nbsp;&nbsp;= '+fmt(F,0)+' / '+fmt(A_tension,2)+' = <strong>'+fmt(sigma)+' MPa</strong></div>'+
+            '<div class="formula">[σ] = σs / n = '+sigma_s+' / '+fmt(n,1)+' = <strong>'+fmt(sigma_allow)+' MPa</strong></div>'+
+            '<div class="util-bar-wrap"><div class="util-bar" style="width:'+Math.min(sigma_util,100).toFixed(1)+'%;background:'+getUtilColor(sigma_util)+'"></div></div>'+
+            '<div class="util-text">利用率: '+fmt(sigma_util)+'%</div>'+
+            '<div class="result-status '+(tension_pass?'pass':'fail')+'">'+
+            (tension_pass?'✅ 满足要求 (σ ≤ [σ])':'❌ 不满足要求 (σ = '+fmt(sigma)+' > [σ] = '+fmt(sigma_allow)+exceedStr+')')+
+            '</div></div>';
+    }
+
+    if(checkType==='shear'||checkType==='combined'){
+        var tau_util=tau_allow>0?(tau/tau_allow*100):0;
+        var shear_pass=tau<=tau_allow;
+        var d_label=shearInThread?'d₁':'d';
+        var exceedStr2='';
+        if(!shear_pass&&tau_allow>0){exceedStr2='，超出 '+fmt((tau-tau_allow)/tau_allow*100)+'%';}
+        html+='<div class="result-block">'+
+            '<h3>受剪校核</h3>'+
+            '<div class="formula">τ = F / (π·'+d_label+'²/4)</div>'+
+            '<div class="formula">&nbsp;&nbsp;= '+fmt(F,0)+' / (π × '+fmt(d_shear,3)+'² / 4)</div>'+
+            '<div class="formula">&nbsp;&nbsp;= '+fmt(F,0)+' / '+fmt(A_shear,2)+' = <strong>'+fmt(tau)+' MPa</strong></div>'+
+            '<div class="formula">[τ] = σs / (√3·n) = '+sigma_s+' / (√3 × '+fmt(n,1)+') = <strong>'+fmt(tau_allow)+' MPa</strong></div>'+
+            '<div class="util-bar-wrap"><div class="util-bar" style="width:'+Math.min(tau_util,100).toFixed(1)+'%;background:'+getUtilColor(tau_util)+'"></div></div>'+
+            '<div class="util-text">利用率: '+fmt(tau_util)+'%</div>'+
+            '<div class="result-status '+(shear_pass?'pass':'fail')+'">'+
+            (shear_pass?'✅ 满足要求 (τ ≤ [τ])':'❌ 不满足要求 (τ = '+fmt(tau)+' > [τ] = '+fmt(tau_allow)+exceedStr2+')')+
+            '</div></div>';
+    }
+
+    if(checkType==='combined'){
+        var sigma_e=Math.sqrt(sigma*sigma+3*tau*tau);
+        var combined_util=sigma_allow>0?(sigma_e/sigma_allow*100):0;
+        var combined_pass=sigma_e<=sigma_allow;
+        var exceedStr3='';
+        if(!combined_pass&&sigma_allow>0){exceedStr3='，超出 '+fmt((sigma_e-sigma_allow)/sigma_allow*100)+'%';}
+        html+='<div class="result-block" style="border-left-color:#7c3aed;">'+
+            '<h3>组合应力校核（von Mises）</h3>'+
+            '<div class="formula">σe = √(σ² + 3τ²)</div>'+
+            '<div class="formula">&nbsp;&nbsp;= √('+fmt(sigma)+'² + 3 × '+fmt(tau)+'²)</div>'+
+            '<div class="formula">&nbsp;&nbsp;= <strong>'+fmt(sigma_e)+' MPa</strong></div>'+
+            '<div class="util-bar-wrap"><div class="util-bar" style="width:'+Math.min(combined_util,100).toFixed(1)+'%;background:'+getUtilColor(combined_util)+'"></div></div>'+
+            '<div class="util-text">利用率: '+fmt(combined_util)+'%</div>'+
+            '<div class="result-status '+(combined_pass?'pass':'fail')+'">'+
+            (combined_pass?'✅ 满足要求 (σe ≤ [σ])':'❌ 不满足要求 (σe = '+fmt(sigma_e)+' > [σ] = '+fmt(sigma_allow)+exceedStr3+')')+
+            '</div></div>';
+    }
+
+    html+='<div class="result-block" style="border-left-color:#0891b2;">'+
+        '<h3>预紧力与拧紧力矩</h3>'+
+        '<div class="formula">F₀ = K₁ · F = '+fmt(K1,1)+' × '+fmt(F,0)+' = <strong>'+fmt(F0/1000,2)+' kN</strong> ('+fmt(F0,0)+' N)</div>'+
+        '<div class="formula">T = K₂ · F₀ · d = '+fmt(K2,2)+' × '+fmt(F0,0)+' × '+d+' / 1000</div>'+
+        '<div class="formula">&nbsp;&nbsp;= <strong>'+fmt(T_Nm,2)+' N·m</strong></div>'+
+        '</div>';
+
+    if(F_kN===0){
+        html+='<div class="hint" style="margin-top:8px;">💡 当前工作载荷为 0，请输入实际载荷进行校核。预紧力与力矩按 F₀ = K₁·F 计算，若 F = 0 则 F₀ = 0。</div>';
+    }
+
+    document.getElementById('results-content').innerHTML=html;
+}
+
+function init(){
+    var sizeSelect=document.getElementById('bolt-size');
+    BOLT_SIZES.forEach(function(size){
+        var opt=document.createElement('option');
+        opt.value=size;
+        opt.textContent=size;
+        if(size==='M10')opt.selected=true;
+        sizeSelect.appendChild(opt);
+    });
+
+    var propSelect=document.getElementById('prop-class');
+    PROP_CLASSES.forEach(function(pc){
+        var opt=document.createElement('option');
+        opt.value=pc;
+        opt.textContent=pc;
+        if(pc==='8.8')opt.selected=true;
+        propSelect.appendChild(opt);
+    });
+
+    document.getElementById('pitch').value=COARSE_PITCH['M10'];
+
+    sizeSelect.addEventListener('change',function(){
+        document.getElementById('pitch').value=COARSE_PITCH[this.value];
+        calculate();
+    });
+
+    var inputs=['pitch','force','safety-factor','preload-factor','torque-coeff'];
+    inputs.forEach(function(id){
+        document.getElementById(id).addEventListener('input',calculate);
+    });
+
+    propSelect.addEventListener('change',calculate);
+    document.getElementById('shear-in-thread').addEventListener('change',calculate);
+
+    document.querySelectorAll('input[name="check-type"]').forEach(function(radio){
+        radio.addEventListener('change',calculate);
+    });
+
+    calculate();
+}
+
+document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+</body>
+</html>

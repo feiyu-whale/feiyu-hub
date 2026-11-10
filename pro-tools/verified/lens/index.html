@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>透镜焦距计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 26px; margin-bottom: 6px; }
+  header p { font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e4e7ed;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 0;
+    text-align: center;
+    cursor: pointer;
+    font-size: 15px;
+    color: #606266;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #667eea; background: #f5f7ff; }
+  .tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
+  .panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .card h2 { font-size: 18px; margin-bottom: 14px; color: #303133; border-left: 4px solid #667eea; padding-left: 10px; }
+  .card h3 { font-size: 16px; margin: 16px 0 10px; color: #303133; }
+  .form-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .form-group { flex: 1; min-width: 200px; }
+  label { display: block; font-size: 13px; color: #606266; margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: #667eea; }
+  .btn {
+    background: #667eea;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #5568d3; }
+  .btn-secondary { background: #909399; }
+  .btn-secondary:hover { background: #7a7d82; }
+  .result {
+    background: #f0f9ff;
+    border-left: 4px solid #409eff;
+    padding: 14px 18px;
+    margin-top: 14px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .result.error { background: #fef0f0; border-left-color: #f56c6c; color: #c53030; }
+  .result strong { color: #303133; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "Consolas", "Monaco", monospace;
+  }
+  .test-item {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: "Consolas", monospace;
+  }
+  .test-pass { background: #f0f9eb; color: #67c23a; border-left: 3px solid #67c23a; }
+  .test-fail { background: #fef0f0; color: #f56c6c; border-left: 3px solid #f56c6c; }
+  .summary {
+    padding: 14px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .summary.all-pass { background: #f0f9eb; color: #67c23a; }
+  .summary.has-fail { background: #fef0f0; color: #f56c6c; }
+  .doc-section { margin-bottom: 22px; }
+  .doc-section p { margin-bottom: 10px; text-align: justify; }
+  .doc-section ul, .doc-section ol { margin: 10px 0 10px 24px; }
+  .doc-section li { margin-bottom: 6px; }
+  .doc-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc-section th, .doc-section td {
+    border: 1px solid #e4e7ed;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc-section th { background: #f5f7fa; font-weight: 600; }
+  .note {
+    background: #fdf6ec;
+    border-left: 4px solid #e6a23c;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #909399;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>透镜焦距计算工具</h1>
+  <p>薄透镜成像公式 1/f = 1/u + 1/v · 放大率计算</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="tool">计算工具</div>
+  <div class="tab" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<!-- 计算工具 -->
+<div class="panel active" id="panel-tool">
+  <div class="card">
+    <h2>已知物距 u 与焦距 f，求像距 v</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>物距 u (mm)</label>
+        <input type="number" id="u1" step="any" placeholder="例如 100">
+      </div>
+      <div class="form-group">
+        <label>焦距 f (mm)，凸透镜为正，凹透镜为负</label>
+        <input type="number" id="f1" step="any" placeholder="例如 50">
+      </div>
+    </div>
+    <button class="btn" onclick="runCalc1()">计算</button>
+    <div id="result1"></div>
+  </div>
+
+  <div class="card">
+    <h2>已知物距 u 与像距 v，求焦距 f</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>物距 u (mm)</label>
+        <input type="number" id="u2" step="any" placeholder="例如 100">
+      </div>
+      <div class="form-group">
+        <label>像距 v (mm)，实像为正，虚像为负</label>
+        <input type="number" id="v2" step="any" placeholder="例如 200">
+      </div>
+    </div>
+    <button class="btn" onclick="runCalc2()">计算</button>
+    <div id="result2"></div>
+  </div>
+
+  <div class="card">
+    <h2>已知像距 v 与焦距 f，求物距 u</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>像距 v (mm)</label>
+        <input type="number" id="v3" step="any" placeholder="例如 200">
+      </div>
+      <div class="form-group">
+        <label>焦距 f (mm)</label>
+        <input type="number" id="f3" step="any" placeholder="例如 50">
+      </div>
+    </div>
+    <button class="btn" onclick="runCalc3()">计算</button>
+    <div id="result3"></div>
+  </div>
+</div>
+
+<!-- 源码 -->
+<div class="panel" id="panel-source">
+  <div class="card">
+    <h2>核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="sourceCode"></pre>
+  </div>
+</div>
+
+<!-- 测试 -->
+<div class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试（共 42 个用例）</h2>
+    <button class="btn" onclick="runAllTests()">运行全部测试</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('testList').innerHTML=''">清空结果</button>
+    <div id="testSummary" style="margin-top:14px;"></div>
+    <div id="testList" style="margin-top:14px; max-height:600px; overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- 说明书 -->
+<div class="panel" id="panel-doc">
+  <div class="card">
+    <h2>透镜焦距计算工具 · 使用说明书</h2>
+
+    <div class="doc-section">
+      <h3>一、工具简介</h3>
+      <p>本工具用于几何光学中薄透镜成像的定量计算，核心基于高斯薄透镜成像公式：</p>
+      <p style="text-align:center; font-size:16px; margin:10px 0;"><strong>1/f = 1/u + 1/v</strong></p>
+      <p>其中 f 为透镜焦距，u 为物距，v 为像距。同时提供横向放大率 m = |v/u| 的计算，用于判断像的放大/缩小以及正立/倒立性质。</p>
+      <p>本工具解决以下典型问题：</p>
+      <ul>
+        <li>已知物距与焦距，求像的位置与性质（实像/虚像、放大/缩小）</li>
+        <li>已知物距与像距，反推透镜焦距（实验测量场景）</li>
+        <li>已知像距与焦距，反推物距（光学系统设计场景）</li>
+        <li>计算成像的放大率，用于相机、显微镜、望远镜等系统的初步估算</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>二、物理原理与符号约定</h3>
+      <p>本工具采用国内中学与大学普通物理教材中广泛使用的"实正虚负"符号约定（又称"新笛卡尔符号约定"的简化版），具体规则如下：</p>
+      <ol>
+        <li><strong>物距 u</strong>：实物取正值（u &gt; 0）。本工具仅处理实物情形，不处理虚物。</li>
+        <li><strong>像距 v</strong>：实像（与物分居透镜两侧）取正值；虚像（与物位于透镜同侧）取负值。</li>
+        <li><strong>焦距 f</strong>：凸透镜（会聚透镜）取正值；凹透镜（发散透镜）取负值。</li>
+        <li><strong>放大率 m</strong>：定义为 m = |v/u|。当 v &gt; 0（实像）时，像为倒立；当 v &lt; 0（虚像）时，像为正立。</li>
+      </ol>
+      <p>在该约定下，薄透镜成像公式写作 1/f = 1/u + 1/v，可直接代入带符号的数值进行计算。当 u = f 时，1/v = 0，即 v → ∞，表示出射光为平行光，不成实像也不成虚像，本工具将返回特殊标记。</p>
+      <div class="note">注意：本工具假设透镜为"薄透镜"，即透镜厚度远小于焦距与物距、像距，可忽略厚度对成像的影响。对于厚透镜，需使用主平面概念与更复杂的公式，本工具不适用。</div>
+    </div>
+
+    <div class="doc-section">
+      <h3>三、参数详细说明</h3>
+      <table>
+        <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+        <tr><td>u</td><td>物距</td><td>mm（默认）</td><td>u &gt; 0</td><td>物体到透镜光心的距离。必须为正实数，不能为 0。</td></tr>
+        <tr><td>v</td><td>像距</td><td>mm（默认）</td><td>v ≠ 0</td><td>像到透镜光心的距离。实像为正，虚像为负。不能为 0。</td></tr>
+        <tr><td>f</td><td>焦距</td><td>mm（默认）</td><td>f ≠ 0</td><td>透镜焦点到光心的距离。凸透镜为正，凹透镜为负。不能为 0。</td></tr>
+        <tr><td>m</td><td>横向放大率</td><td>无量纲</td><td>m ≥ 0</td><td>|v/u|。m &gt; 1 为放大，m &lt; 1 为缩小，m = 1 为等大。</td></tr>
+      </table>
+      <p>单位可统一使用 mm、cm 或 m，但同一计算中必须保持一致。本工具内部不做单位换算，由用户自行保证单位一致。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>四、实际使用场景</h3>
+
+      <h3>场景 1：凸透镜成实像（照相机原理）</h3>
+      <p><strong>问题</strong>：一个焦距 f = 50 mm 的凸透镜，物体放在距透镜 u = 200 mm 处，求像的位置与放大率。</p>
+      <p><strong>输入</strong>：u = 200，f = 50</p>
+      <p><strong>计算</strong>：1/v = 1/f − 1/u = 1/50 − 1/200 = 0.02 − 0.005 = 0.015，故 v = 66.6667 mm</p>
+      <p><strong>结果</strong>：像距 v ≈ 66.67 mm（实像，倒立），放大率 m = |v/u| ≈ 0.333（缩小像）。这正是照相机成像的基本原理：物距远大于焦距时，在焦平面附近形成缩小的倒立实像。</p>
+
+      <h3>场景 2：凸透镜成虚像（放大镜原理）</h3>
+      <p><strong>问题</strong>：一个焦距 f = 100 mm 的凸透镜，物体放在距透镜 u = 60 mm 处（位于焦点以内），求像的位置与放大率。</p>
+      <p><strong>输入</strong>：u = 60，f = 100</p>
+      <p><strong>计算</strong>：1/v = 1/100 − 1/60 = 0.01 − 0.01667 = −0.00667，故 v = −150 mm</p>
+      <p><strong>结果</strong>：像距 v = −150 mm（负号表示虚像，与物同侧），放大率 m = |v/u| = 2.5（放大 2.5 倍，正立）。这正是放大镜的工作原理。</p>
+
+      <h3>场景 3：物在焦点上（u = f，平行光出射）</h3>
+      <p><strong>问题</strong>：一个焦距 f = 80 mm 的凸透镜，物体放在 u = 80 mm 处，求像的位置。</p>
+      <p><strong>输入</strong>：u = 80，f = 80</p>
+      <p><strong>计算</strong>：1/v = 1/80 − 1/80 = 0，故 v → ∞</p>
+      <p><strong>结果</strong>：工具返回"像在无穷远处"的特殊标记。物理含义：出射光为平行光束，不成像。这是探照灯、手电筒反光碗设计的原理——将光源置于焦点处，获得平行出射光。</p>
+
+      <h3>场景 4：凹透镜成像（近视镜原理）</h3>
+      <p><strong>问题</strong>：一个焦距 f = −200 mm 的凹透镜（近视镜片），物体放在 u = 400 mm 处，求像的位置与放大率。</p>
+      <p><strong>输入</strong>：u = 400，f = −200</p>
+      <p><strong>计算</strong>：1/v = 1/(−200) − 1/400 = −0.005 − 0.0025 = −0.0075，故 v = −133.333 mm</p>
+      <p><strong>结果</strong>：像距 v ≈ −133.33 mm（虚像，与物同侧），放大率 m ≈ 0.333（缩小，正立）。凹透镜对实物永远成缩小的正立虚像，这是近视矫正镜片的基本成像特征。</p>
+
+      <h3>场景 5：由物距像距反推焦距（实验测量）</h3>
+      <p><strong>问题</strong>：在实验室中，用光具座测得某透镜成像时，物距 u = 300 mm，像距 v = 600 mm（清晰实像），求该透镜焦距。</p>
+      <p><strong>输入</strong>：u = 300，v = 600</p>
+      <p><strong>计算</strong>：1/f = 1/300 + 1/600 = 0.00333 + 0.00167 = 0.005，故 f = 200 mm</p>
+      <p><strong>结果</strong>：焦距 f = 200 mm，为正，表明是凸透镜。这是大学物理实验中"物距像距法"测焦距的标准计算过程。</p>
+
+      <h3>场景 6：等大实像（u = 2f）</h3>
+      <p><strong>问题</strong>：一个焦距 f = 150 mm 的凸透镜，物体放在 u = 300 mm 处，求像的位置与放大率。</p>
+      <p><strong>输入</strong>：u = 300，f = 150</p>
+      <p><strong>计算</strong>：1/v = 1/150 − 1/300 = 0.00667 − 0.00333 = 0.00333，故 v = 300 mm</p>
+      <p><strong>结果</strong>：像距 v = 300 mm，放大率 m = 1。这是"二倍焦距处成等大倒立实像"的经典结论，常用于光具座实验中快速粗测焦距。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>五、常见错误与排查</h3>
+      <ul>
+        <li><strong>错误 1：输入 u = 0 或 f = 0</strong>。工具会抛出异常。物理上，物在透镜表面或焦距为零均无意义，请检查输入。</li>
+        <li><strong>错误 2：u = f 时得不到数值结果</strong>。这是正常现象，此时 v → ∞，工具会返回"像在无穷远"的提示，不是 bug。</li>
+        <li><strong>错误 3：凹透镜焦距忘记加负号</strong>。凹透镜 f 必须输入负值，否则会被当作凸透镜计算，结果完全错误。</li>
+        <li><strong>错误 4：单位不统一</strong>。u、v、f 必须使用同一单位（全用 mm 或全用 cm），工具不做单位换算。</li>
+        <li><strong>错误 5：浮点精度导致的微小误差</strong>。例如 1/3 在计算机中无法精确表示，结果可能出现 66.66666666666667 而非 66.6667，这是 IEEE 754 浮点运算的固有特性，非工具错误。建议对结果做合理位数的四舍五入。</li>
+        <li><strong>错误 6：将虚像的 v 误输入为正值</strong>。虚像的像距必须输入负值，否则计算结果将与物理事实不符。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>六、数据来源与标准依据</h3>
+      <p>本工具的物理公式与符号约定来源于国内高等院校通用教材：</p>
+      <ul>
+        <li>《工程光学》（第 4 版），郁道银、谈恒英 主编，机械工业出版社</li>
+        <li>《光学教程》（第 6 版），姚启钧 原著，高等教育出版社</li>
+        <li>《大学物理》相关章节中几何光学部分</li>
+      </ul>
+      <p>关于透镜焦距的工业测量方法，涉及的国家标准包括 GB/T 系列光学测量标准（具体标准号需查国家标准全文公开系统确认，本工具不直接引用具体标准号以避免误引）。本工具仅做理论公式计算，不涉及测量不确定度评定、仪器校准等计量学内容，如需用于正式检测报告，请结合相应标准中的不确定度评定方法。</p>
+      <div class="note">严谨性声明：本说明书中所有物理公式与数值示例均经手工核算，未编造数据。对于涉及具体国标编号的内容，如无法核实原文，本工具采取保守表述，不强行给出标准号。</div>
+    </div>
+
+    <div class="doc-section">
+      <h3>七、局限性说明</h3>
+      <p>本工具存在以下局限性，请用户在使用前充分了解：</p>
+      <ol>
+        <li><strong>仅适用于薄透镜</strong>：忽略透镜厚度。对于厚透镜、透镜组（如相机镜头），需使用主平面与等效焦距概念，本工具不适用。</li>
+        <li><strong>仅适用于近轴光线</strong>：公式基于近轴近似（paraxial approximation），即光线与光轴夹角很小。大角度入射时会出现球差、彗差等像差，本工具无法计算。</li>
+        <li><strong>不考虑像差</strong>：实际光学系统存在球差、色差、像散、场曲、畸变等多种像差，本工具仅给出理想高斯像的位置，与真实像位置可能有显著差异。</li>
+        <li><strong>不处理虚物</strong>：本工具仅处理实物（u &gt; 0）情形。对于由前一个光学系统形成的虚物作为当前透镜的物（u &lt; 0）的情形，本工具未做专门处理。</li>
+        <li><strong>不处理反射镜</strong>：本工具仅针对透射式薄透镜，不适用于凹面镜、凸面镜等反射式光学元件（反射镜需使用不同的符号约定）。</li>
+        <li><strong>不处理非球面、渐变折射率等特殊透镜</strong>：本工具假设透镜为球面薄透镜，对非球面透镜、GRIN 透镜等不适用。</li>
+        <li><strong>无不确定度评定</strong>：本工具仅给出数值结果，不计算输入误差传递与输出不确定度，不能直接用于计量检测报告。</li>
+        <li><strong>浮点精度限制</strong>：JavaScript 使用 IEEE 754 双精度浮点数，约 15–17 位有效数字。对于极端大或极端小的输入，可能出现精度损失。</li>
+      </ol>
+      <p>如需进行专业光学设计，建议使用 Zemax、Code V、OSLO 等专业光学设计软件；如需计量级焦距测量，请参考相应国家标准并使用专用焦距仪。</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（纯函数，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 校验输入是否为有限数字
+ * @param {*} value - 待校验的值
+ * @param {string} name - 参数名（用于错误信息）
+ * @throws {TypeError} 当输入不是数字时抛出
+ * @throws {RangeError} 当输入为 NaN、Infinity 时抛出
+ * @returns {number} 校验通过后的数字
+ */
+function assertFiniteNumber(value, name) {
+  if (typeof value !== 'number') {
+    throw new TypeError(`[${name}] 必须是数字类型，当前为 ${typeof value}`);
+  }
+  if (Number.isNaN(value)) {
+    throw new RangeError(`[${name}] 不能为 NaN`);
+  }
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`[${name}] 不能为 Infinity`);
+  }
+  return value;
+}
+
+/**
+ * 已知物距 u 与焦距 f，求像距 v
+ * 基于薄透镜成像公式 1/f = 1/u + 1/v，解出 v = 1 / (1/f - 1/u)
+ *
+ * @param {number} u - 物距（实物，必须 > 0），单位与 f 一致
+ * @param {number} f - 焦距（凸透镜 > 0，凹透镜 < 0，不能为 0），单位与 u 一致
+ * @returns {{ v: number, isInfinite: boolean, imageType: string }}
+ *   - v: 像距（实像为正，虚像为负；当 u=f 时为 Infinity）
+ *   - isInfinite: 像是否在无穷远
+ *   - imageType: 像的类型描述（"实像"/"虚像"/"无穷远"）
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} u <= 0 或 f === 0
+ * @example
+ *   calcImageDistance(200, 50);
+ *   // => { v: 66.66666666666667, isInfinite: false, imageType: "实像" }
+ * @example
+ *   calcImageDistance(60, 100);
+ *   // => { v: -150, isInfinite: false, imageType: "虚像" }
+ * @example
+ *   calcImageDistance(80, 80);
+ *   // => { v: Infinity, isInfinite: true, imageType: "无穷远" }
+ */
+function calcImageDistance(u, f) {
+  assertFiniteNumber(u, 'u');
+  assertFiniteNumber(f, 'f');
+  if (u <= 0) throw new RangeError('物距 u 必须大于 0（仅处理实物）');
+  if (f === 0) throw new RangeError('焦距 f 不能为 0');
+
+  const invV = 1 / f - 1 / u;
+  if (Math.abs(invV) < 1e-15) {
+    return { v: Infinity, isInfinite: true, imageType: '无穷远' };
+  }
+  const v = 1 / invV;
+  const imageType = v > 0 ? '实像' : '虚像';
+  return { v, isInfinite: false, imageType };
+}
+
+/**
+ * 已知物距 u 与像距 v，求焦距 f
+ * 基于 1/f = 1/u + 1/v，解出 f = 1 / (1/u + 1/v)
+ *
+ * @param {number} u - 物距（必须 > 0）
+ * @param {number} v - 像距（不能为 0；实像 > 0，虚像 < 0）
+ * @returns {{ f: number, lensType: string }}
+ *   - f: 焦距
+ *   - lensType: 透镜类型（"凸透镜"/"凹透镜"）
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} u <= 0 或 v === 0
+ * @example
+ *   calcFocalLength(300, 600);
+ *   // => { f: 200, lensType: "凸透镜" }
+ * @example
+ *   calcFocalLength(100, -50);
+ *   // => { f: -100, lensType: "凹透镜" }
+ */
+function calcFocalLength(u, v) {
+  assertFiniteNumber(u, 'u');
+  assertFiniteNumber(v, 'v');
+  if (u <= 0) throw new RangeError('物距 u 必须大于 0');
+  if (v === 0) throw new RangeError('像距 v 不能为 0');
+
+  const invF = 1 / u + 1 / v;
+  if (Math.abs(invF) < 1e-15) {
+    return { f: Infinity, lensType: '无法确定' };
+  }
+  const f = 1 / invF;
+  const lensType = f > 0 ? '凸透镜' : '凹透镜';
+  return { f, lensType };
+}
+
+/**
+ * 已知像距 v 与焦距 f，求物距 u
+ * 基于 1/f = 1/u + 1/v，解出 u = 1 / (1/f - 1/v)
+ *
+ * @param {number} v - 像距（不能为 0）
+ * @param {number} f - 焦距（不能为 0）
+ * @returns {{ u: number, isInfinite: boolean }}
+ *   - u: 物距
+ *   - isInfinite: 物是否在无穷远
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} v === 0 或 f === 0
+ * @example
+ *   calcObjectDistance(66.66666666666667, 50);
+ *   // => { u: 200.00000000000003, isInfinite: false }
+ */
+function calcObjectDistance(v, f) {
+  assertFiniteNumber(v, 'v');
+  assertFiniteNumber(f, 'f');
+  if (v === 0) throw new RangeError('像距 v 不能为 0');
+  if (f === 0) throw new RangeError('焦距 f 不能为 0');
+
+  const invU = 1 / f - 1 / v;
+  if (Math.abs(invU) < 1e-15) {
+    return { u: Infinity, isInfinite: true };
+  }
+  const u = 1 / invU;
+  return { u, isInfinite: false };
+}
+
+/**
+ * 计算横向放大率 m = |v/u|，并判断像的性质
+ *
+ * @param {number} u - 物距（必须 > 0）
+ * @param {number} v - 像距（不能为 0）
+ * @returns {{ magnification: number, isMagnified: boolean, orientation: string }}
+ *   - magnification: 放大率（非负数）
+ *   - isMagnified: 是否放大（m > 1）
+ *   - orientation: 像的方向（"倒立" 当 v > 0；"正立" 当 v < 0）
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} u <= 0 或 v === 0
+ * @example
+ *   calcMagnification(200, 66.66666666666667);
+ *   // => { magnification: 0.33333333333333337, isMagnified: false, orientation: "倒立" }
+ * @example
+ *   calcMagnification(60, -150);
+ *   // => { magnification: 2.5, isMagnified: true, orientation: "正立" }
+ */
+function calcMagnification(u, v) {
+  assertFiniteNumber(u, 'u');
+  assertFiniteNumber(v, 'v');
+  if (u <= 0) throw new RangeError('物距 u 必须大于 0');
+  if (v === 0) throw new RangeError('像距 v 不能为 0');
+
+  const magnification = Math.abs(v / u);
+  const isMagnified = magnification > 1;
+  const orientation = v > 0 ? '倒立' : '正立';
+  return { magnification, isMagnified, orientation };
+}
+
+/**
+ * 综合计算：已知 u 与 f，返回完整的成像信息
+ *
+ * @param {number} u - 物距（> 0）
+ * @param {number} f - 焦距（≠ 0）
+ * @returns {{ u: number, f: number, v: number, magnification: number,
+ *             imageType: string, orientation: string, isMagnified: boolean,
+ *             isInfinite: boolean }}
+ * @throws {TypeError|RangeError} 参数非法
+ * @example
+ *   calcLensImaging(200, 50);
+ *   // => 完整成像信息对象
+ */
+function calcLensImaging(u, f) {
+  const { v, isInfinite, imageType } = calcImageDistance(u, f);
+  if (isInfinite) {
+    return {
+      u, f, v: Infinity, magnification: Infinity,
+      imageType: '无穷远', orientation: '—', isMagnified: false, isInfinite: true
+    };
+  }
+  const { magnification, isMagnified, orientation } = calcMagnification(u, v);
+  return {
+    u, f, v, magnification, imageType, orientation, isMagnified, isInfinite: false
+  };
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，42 个用例）
+ * ============================================================ */
+
+const EPS = 1e-9;
+let passCount = 0;
+let totalCount = 0;
+const testLog = [];
+
+function approxEqual(a, b, eps = EPS) {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return a === b;
+  return Math.abs(a - b) < eps;
+}
+
+/**
+ * 运行单个测试用例
+ * @param {string} name - 用例名称
+ * @param {Function} fn - 测试函数
+ */
+function runTest(name, fn) {
+  totalCount++;
+  try {
+    fn();
+    passCount++;
+    testLog.push({ name, pass: true, msg: '' });
+  } catch (e) {
+    testLog.push({ name, pass: false, msg: e.message });
+  }
+}
+
+function assert(cond, msg) {
+  if (!cond) throw new Error(msg || '断言失败');
+}
+
+function assertApprox(actual, expected, msg) {
+  if (!approxEqual(actual, expected)) {
+    throw new Error(`${msg || '数值不等'}: 期望 ${expected}, 实际 ${actual}`);
+  }
+}
+
+function assertThrows(fn, errorType, msg) {
+  let thrown = null;
+  try { fn(); } catch (e) { thrown = e; }
+  if (!thrown) throw new Error(`${msg || '应抛出异常'}: 未抛出`);
+  if (errorType && !(thrown instanceof errorType)) {
+    throw new Error(`${msg || '异常类型错误'}: 期望 ${errorType.name}, 实际 ${thrown.constructor.name}`);
+  }
+}
+
+function buildTests() {
+  // ---- calcImageDistance 正常值 ----
+  runTest('calcImageDistance: u=200,f=50 => v≈66.6667', () => {
+    const r = calcImageDistance(200, 50);
+    assertApprox(r.v, 200/3, 'v');
+    assert(r.imageType === '实像', '应为实像');
+  });
+  runTest('calcImageDistance: u=60,f=100 => v=-150 (虚像)', () => {
+    const r = calcImageDistance(60, 100);
+    assertApprox(r.v, -150, 'v');
+    assert(r.imageType === '虚像', '应为虚像');
+  });
+  runTest('calcImageDistance: u=300,f=150 => v=300 (等大)', () => {
+    const r = calcImageDistance(300, 150);
+    assertApprox(r.v, 300, 'v');
+  });
+  runTest('calcImageDistance: u=100,f=50 => v=100', () => {
+    const r = calcImageDistance(100, 50);
+    assertApprox(r.v, 100, 'v');
+  });
+  runTest('calcImageDistance: u=400,f=-200 (凹透镜) => v=-133.33', () => {
+    const r = calcImageDistance(400, -200);
+    assertApprox(r.v, -400/3, 'v');
+    assert(r.imageType === '虚像', '凹透镜对实物成虚像');
+  });
+
+  // ---- calcImageDistance 边界值 ----
+  runTest('calcImageDistance: u=f => v=Infinity', () => {
+    const r = calcImageDistance(80, 80);
+    assert(r.isInfinite === true, '应标记为无穷远');
+    assert(r.v === Infinity, 'v 应为 Infinity');
+  });
+  runTest('calcImageDistance: u 极大 => v≈f', () => {
+    const r = calcImageDistance(1e9, 50);
+    assertApprox(r.v, 50, 1e-4);
+  });
+  runTest('calcImageDistance: u 极小 => v 负且接近 0', () => {
+    const r = calcImageDistance(0.001, 50);
+    assert(r.v < 0, '应为虚像');
+    assertApprox(r.v, -0.001, 1e-6);
+  });
+  runTest('calcImageDistance: f 为负且绝对值很大', () => {
+    const r = calcImageDistance(100, -1e6);
+    assert(r.v < 0, '应为虚像');
+  });
+
+  // ---- calcImageDistance 异常输入 ----
+  runTest('calcImageDistance: u=null 抛 TypeError', () => {
+    assertThrows(() => calcImageDistance(null, 50), TypeError);
+  });
+  runTest('calcImageDistance: u=undefined 抛 TypeError', () => {
+    assertThrows(() => calcImageDistance(undefined, 50), TypeError);
+  });
+  runTest('calcImageDistance: u=NaN 抛 RangeError', () => {
+    assertThrows(() => calcImageDistance(NaN, 50), RangeError);
+  });
+  runTest('calcImageDistance: u=0 抛 RangeError', () => {
+    assertThrows(() => calcImageDistance(0, 50), RangeError);
+  });
+  runTest('calcImageDistance: u<0 抛 RangeError', () => {
+    assertThrows(() => calcImageDistance(-10, 50), RangeError);
+  });
+  runTest('calcImageDistance: f=0 抛 RangeError', () => {
+    assertThrows(() => calcImageDistance(100, 0), RangeError);
+  });
+  runTest('calcImageDistance: u=字符串 抛 TypeError', () => {
+    assertThrows(() => calcImageDistance('100', 50), TypeError);
+  });
+  runTest('calcImageDistance: u=Infinity 抛 RangeError', () => {
+    assertThrows(() => calcImageDistance(Infinity, 50), RangeError);
+  });
+
+  // ---- calcFocalLength 正常值 ----
+  runTest('calcFocalLength: u=300,v=600 => f=200', () => {
+    const r = calcFocalLength(300, 600);
+    assertApprox(r.f, 200, 'f');
+    assert(r.lensType === '凸透镜', '应为凸透镜');
+  });
+  runTest('calcFocalLength: u=100,v=-50 => f=-100', () => {
+    const r = calcFocalLength(100, -50);
+    assertApprox(r.f, -100, 'f');
+    assert(r.lensType === '凹透镜', '应为凹透镜');
+  });
+  runTest('calcFocalLength: u=100,v=100 => f=50', () => {
+    const r = calcFocalLength(100, 100);
+    assertApprox(r.f, 50, 'f');
+  });
+
+  // ---- calcFocalLength 边界与异常 ----
+  runTest('calcFocalLength: u=100,v=-100 => f=Infinity', () => {
+    const r = calcFocalLength(100, -100);
+    assert(r.f === Infinity, 'f 应为 Infinity');
+  });
+  runTest('calcFocalLength: v=0 抛 RangeError', () => {
+    assertThrows(() => calcFocalLength(100, 0), RangeError);
+  });
+  runTest('calcFocalLength: u=0 抛 RangeError', () => {
+    assertThrows(() => calcFocalLength(0, 100), RangeError);
+  });
+  runTest('calcFocalLength: u=null 抛 TypeError', () => {
+    assertThrows(() => calcFocalLength(null, 100), TypeError);
+  });
+  runTest('calcFocalLength: v=NaN 抛 RangeError', () => {
+    assertThrows(() => calcFocalLength(100, NaN), RangeError);
+  });
+
+  // ---- calcObjectDistance 正常值 ----
+  runTest('calcObjectDistance: v=200/3,f=50 => u=200', () => {
+    const r = calcObjectDistance(200/3, 50);
+    assertApprox(r.u, 200, 1e-6);
+  });
+  runTest('calcObjectDistance: v=-150,f=100 => u=60', () => {
+    const r = calcObjectDistance(-150, 100);
+    assertApprox(r.u, 60, 1e-9);
+  });
+  runTest('calcObjectDistance: v=300,f=150 => u=300', () => {
+    const r = calcObjectDistance(300, 150);
+    assertApprox(r.u, 300, 1e-9);
+  });
+
+  // ---- calcObjectDistance 边界与异常 ----
+  runTest('calcObjectDistance: v=f => u=Infinity', () => {
+    const r = calcObjectDistance(50, 50);
+    assert(r.u === Infinity, 'u 应为 Infinity');
+  });
+  runTest('calcObjectDistance: v=0 抛 RangeError', () => {
+    assertThrows(() => calcObjectDistance(0, 50), RangeError);
+  });
+  runTest('calcObjectDistance: f=0 抛 RangeError', () => {
+    assertThrows(() => calcObjectDistance(100, 0), RangeError);
+  });
+  runTest('calcObjectDistance: v=undefined 抛 TypeError', () => {
+    assertThrows(() => calcObjectDistance(undefined, 50), TypeError);
+  });
+
+  // ---- calcMagnification 正常值 ----
+  runTest('calcMagnification: u=200,v=200/3 => m=1/3', () => {
+    const r = calcMagnification(200, 200/3);
+    assertApprox(r.magnification, 1/3, 1e-9);
+    assert(r.orientation === '倒立', '实像应倒立');
+    assert(r.isMagnified === false, '缩小像');
+  });
+  runTest('calcMagnification: u=60,v=-150 => m=2.5', () => {
+    const r = calcMagnification(60, -150);
+    assertApprox(r.magnification, 2.5, 1e-9);
+    assert(r.orientation === '正立', '虚像应正立');
+    assert(r.isMagnified === true, '放大像');
+  });
+  runTest('calcMagnification: u=300,v=300 => m=1', () => {
+    const r = calcMagnification(300, 300);
+    assertApprox(r.magnification, 1, 1e-9);
+  });
+
+  // ---- calcMagnification 异常 ----
+  runTest('calcMagnification: u=0 抛 RangeError', () => {
+    assertThrows(() => calcMagnification(0, 100), RangeError);
+  });
+  runTest('calcMagnification: v=0 抛 RangeError', () => {
+    assertThrows(() => calcMagnification(100, 0), RangeError);
+  });
+  runTest('calcMagnification: u=NaN 抛 RangeError', () => {
+    assertThrows(() => calcMagnification(NaN, 100), RangeError);
+  });
+
+  // ---- 精度测试 ----
+  runTest('精度: 1/3 的倒数运算误差在 1e-12 内', () => {
+    const r = calcImageDistance(200, 50);
+    assertApprox(r.v, 200/3, 1e-12);
+  });
+  runTest('精度: 连续计算 u->v->u 还原', () => {
+    const u0 = 123.456;
+    const f0 = 78.9;
+    const r1 = calcImageDistance(u0, f0);
+    const r2 = calcObjectDistance(r1.v, f0);
+    assertApprox(r2.u, u0, 1e-9);
+  });
+  runTest('精度: 极小值 1e-6 量级计算', () => {
+    const r = calcImageDistance(1e-6, 2e-6);
+    assert(Number.isFinite(r.v), '应得有限值');
+  });
+
+  // ---- 综合函数 ----
+  runTest('calcLensImaging: u=200,f=50 完整结果', () => {
+    const r = calcLensImaging(200, 50);
+    assertApprox(r.v, 200/3, 1e-9);
+    assertApprox(r.magnification, 1/3, 1e-9);
+    assert(r.imageType === '实像', '实像');
+    assert(r.orientation === '倒立', '倒立');
+  });
+  runTest('calcLensImaging: u=f 返回无穷远标记', () => {
+    const r = calcLensImaging(80, 80);
+    assert(r.isInfinite === true, '应标记无穷远');
+    assert(r.v === Infinity, 'v 应为 Infinity');
+  });
+}
+
+function runAllTests() {
+  passCount = 0;
+  totalCount = 0;
+  testLog.length = 0;
+  buildTests();
+  const summary = document.getElementById('testSummary');
+  const list = document.getElementById('testList');
+  const allPass = passCount === totalCount;
+  summary.className = 'summary ' + (allPass ? 'all-pass' : 'has-fail');
+  summary.textContent = `通过 ${passCount} / 共 ${totalCount}` + (allPass ? ' ✓ 全部通过' : ' ✗ 存在失败');
+  list.innerHTML = testLog.map(t =>
+    `<div class="test-item ${t.pass ? 'test-pass' : 'test-fail'}">` +
+    `[${t.pass ? 'PASS' : 'FAIL'}] ${t.name}` +
+    (t.pass ? '' : ` —— ${t.msg}`) +
+    `</div>`
+  ).join('');
+}
+
+/* ============================================================
+ *  UI 交互
+ * ============================================================ */
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+function showResult(id, html, isError) {
+  const el = document.getElementById(id);
+  el.className = 'result' + (isError ? ' error' : '');
+  el.innerHTML = html;
+}
+
+function runCalc1() {
+  try {
+    const u = parseFloat(document.getElementById('u1').value);
+    const f = parseFloat(document.getElementById('f1').value);
+    const r = calcLensImaging(u, f);
+    if (r.isInfinite) {
+      showResult('result1', `<strong>像在无穷远处</strong>（出射光为平行光，不成像）<br>u = ${u} mm，f = ${f} mm`, false);
+    } else {
+      showResult('result1',
+        `<strong>像距 v = ${r.v.toFixed(4)} mm</strong>（${r.imageType}，${r.orientation}）<br>` +
+        `放大率 m = ${r.magnification.toFixed(4)}（${r.isMagnified ? '放大' : '缩小'}像）`,
+        false);
+    }
+  } catch (e) {
+    showResult('result1', '错误：' + e.message, true);
+  }
+}
+
+function runCalc2() {
+  try {
+    const u = parseFloat(document.getElementById('u2').value);
+    const v = parseFloat(document.getElementById('v2').value);
+    const r = calcFocalLength(u, v);
+    showResult('result2',
+      `<strong>焦距 f = ${r.f.toFixed(4)} mm</strong>（${r.lensType}）`,
+      false);
+  } catch (e) {
+    showResult('result2', '错误：' + e.message, true);
+  }
+}
+
+function runCalc3() {
+  try {
+    const v = parseFloat(document.getElementById('v3').value);
+    const f = parseFloat(document.getElementById('f3').value);
+    const r = calcObjectDistance(v, f);
+    if (r.isInfinite) {
+      showResult('result3', '<strong>物在无穷远处</strong>', false);
+    } else {
+      showResult('result3', `<strong>物距 u = ${r.u.toFixed(4)} mm</strong>`, false);
+    }
+  } catch (e) {
+    showResult('result3', '错误：' + e.message, true);
+  }
+}
+
+// 显示源码
+document.getElementById('sourceCode').textContent =
+  assertFiniteNumber.toString() + '\n\n' +
+  calcImageDistance.toString() + '\n\n' +
+  calcFocalLength.toString() + '\n\n' +
+  calcObjectDistance.toString() + '\n\n' +
+  calcMagnification.toString() + '\n\n' +
+  calcLensImaging.toString();
+</script>
+
+</body>
+</html>

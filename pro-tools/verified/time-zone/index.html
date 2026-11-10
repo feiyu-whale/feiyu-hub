@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时区换算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding: 20px;
+    padding-bottom: 60px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #1a5490;
+    font-size: 28px;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #1a5490;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 10px 24px;
+    background: #e8eef5;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #555;
+    border-radius: 6px 6px 0 0;
+    margin-right: 4px;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #d0dce8; }
+  .tab.active {
+    background: #1a5490;
+    color: #fff;
+    font-weight: 600;
+  }
+  .panel {
+    display: none;
+    background: #fff;
+    padding: 24px;
+    border-radius: 0 8px 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .panel.active { display: block; }
+  pre {
+    background: #1e2733;
+    color: #e6e6e6;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, Monaco, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .run-btn {
+    background: #1a5490;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .run-btn:hover { background: #14426f; }
+  .test-output {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .docs h2 {
+    color: #1a5490;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e0e6ed;
+    font-size: 20px;
+  }
+  .docs h3 {
+    color: #2c5282;
+    margin: 18px 0 10px;
+    font-size: 16px;
+  }
+  .docs p { margin: 8px 0; text-align: justify; }
+  .docs ul, .docs ol { margin: 8px 0 8px 24px; }
+  .docs li { margin: 4px 0; }
+  .docs code {
+    background: #f0f4f8;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .docs pre {
+    background: #f6f8fa;
+    color: #24292e;
+    border: 1px solid #e1e4e8;
+    margin: 10px 0;
+  }
+  .docs table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .docs th, .docs td {
+    border: 1px solid #d0d7de;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .docs th { background: #f0f4f8; font-weight: 600; }
+  .warning-box {
+    background: #fff8e1;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+  }
+  .info-box {
+    background: #e7f3ff;
+    border-left: 4px solid #1a5490;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    font-family: monospace;
+    background: rgba(255,255,255,0.85);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<h1>时区换算工具</h1>
+
+<div class="tabs">
+  <button class="tab active" data-tab="source">第一部分：JS 源码</button>
+  <button class="tab" data-tab="tests">第二部分：单元测试</button>
+  <button class="tab" data-tab="docs">第三部分：使用说明书</button>
+  <button class="tab" data-tab="calc">🧮 开始换算</button>
+</div>
+
+<div class="panel active" id="panel-source">
+  <p style="margin-bottom:12px;color:#666;">纯函数实现，无外部依赖，可直接在浏览器运行。所有函数均含完整 JSDoc 注释。</p>
+  <pre><code id="source-code"></code></pre>
+</div>
+
+<div class="panel" id="panel-tests">
+  <button class="run-btn" onclick="runAndDisplayTests()">▶ 运行全部测试</button>
+  <pre class="test-output" id="test-output">点击按钮运行测试…</pre>
+</div>
+
+<div class="panel" id="panel-calc">
+  <style>
+  .tz-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:22px 24px;max-width:760px}
+  .tz-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .tz-fg{flex:1;min-width:170px}
+  .tz-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:6px}
+  .tz-fg select,.tz-fg input{width:100%;padding:10px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+  .tz-fg select:focus,.tz-fg input:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15)}
+  .tz-btn{background:#3498db;color:#fff;border:none;padding:11px 30px;border-radius:6px;font-size:15px;cursor:pointer;font-family:inherit}
+  .tz-btn:hover{background:#2980b9}
+  .tz-out{margin-top:18px;padding:18px 20px;background:#eaf4fd;border-radius:8px;display:none;line-height:2}
+  .tz-out.show{display:block}
+  .tz-out .city{font-weight:700;color:#2471a3}
+  .tz-out .time{font-size:20px;font-weight:700;color:#1a5276}
+  .tz-err{margin-top:14px;padding:11px 15px;background:#fdeeee;border-left:3px solid #e06060;border-radius:4px;color:#c0392b;font-size:13px;display:none}
+  .tz-err.show{display:block}
+  </style>
+  <div class="tz-box">
+    <div class="tz-row">
+      <div class="tz-fg"><label>源城市</label><select id="tzFrom"></select></div>
+      <div class="tz-fg"><label>目标城市</label><select id="tzTo"></select></div>
+    </div>
+    <div class="tz-row">
+      <div class="tz-fg"><label>时间（源城市当地时间）</label><input type="datetime-local" id="tzTime" step="1"></div>
+    </div>
+    <button class="tz-btn" onclick="tzConvert()">换算</button>
+    <div class="tz-out" id="tzOut"></div>
+    <div class="tz-err" id="tzErr"></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-docs">
+  <div class="docs">
+
+    <h2>一、工具简介</h2>
+    <p>本工具是一个纯前端实现的时区换算模块，用于在常用国际城市之间进行时间互转，并正确处理夏令时（Daylight Saving Time, DST）规则。整个实现不依赖任何第三方库（如 moment.js、date-fns、Luxon 等），所有核心逻辑均为纯函数，可直接在任意现代浏览器中运行。</p>
+    <p>工具覆盖 15 个常用国际城市，涵盖东亚、东南亚、中东、欧洲、北美、大洋洲等主要时区，并内置 4 套夏令时规则（EU、US、AU、NZ），可处理北半球与南半球不同的夏令时切换逻辑。</p>
+    <p>适用人群：跨国团队协调者、国际航班旅客、外贸从业者、远程工作者、金融从业者、活动组织者等需要在多个时区之间进行时间换算的用户。</p>
+
+    <h2>二、核心功能</h2>
+    <ul>
+      <li><b>时区转换</b>：支持任意两个已收录城市之间的时间互转，自动处理跨日、跨月、跨年、跨闰年等边界情况。</li>
+      <li><b>夏令时识别</b>：根据目标日期自动判断该城市是否处于夏令时期间，并应用对应的 UTC 偏移量。</li>
+      <li><b>输入校验</b>：对城市名、时间字符串格式、日期合法性（含闰年 2 月 29 日）进行严格校验，非法输入返回结构化错误信息。</li>
+      <li><b>纯函数设计</b>：所有函数无副作用，相同输入必定得到相同输出，便于单元测试与复用。</li>
+      <li><b>UTC 中间量</b>：转换过程以 UTC 为中间基准，保证双向转换的一致性。</li>
+    </ul>
+
+    <h2>三、参数详解</h2>
+    <h3>3.1 核心函数签名</h3>
+    <pre>convertTimezone(fromCity, toCity, dateTimeStr)</pre>
+
+    <h3>3.2 参数说明</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>fromCity</td><td>string</td><td>是</td><td>源城市名，必须为已收录城市之一（见下表）</td></tr>
+      <tr><td>toCity</td><td>string</td><td>是</td><td>目标城市名，必须为已收录城市之一</td></tr>
+      <tr><td>dateTimeStr</td><td>string</td><td>是</td><td>源时间字符串，格式严格为 <code>YYYY-MM-DD HH:mm:ss</code></td></tr>
+    </table>
+
+    <h3>3.3 已收录城市列表</h3>
+    <table>
+      <tr><th>城市</th><th>国家</th><th>标准 UTC 偏移</th><th>夏令时规则</th></tr>
+      <tr><td>北京</td><td>CN</td><td>+08:00</td><td>无</td></tr>
+      <tr><td>上海</td><td>CN</td><td>+08:00</td><td>无</td></tr>
+      <tr><td>东京</td><td>JP</td><td>+09:00</td><td>无</td></tr>
+      <tr><td>首尔</td><td>KR</td><td>+09:00</td><td>无</td></tr>
+      <tr><td>新加坡</td><td>SG</td><td>+08:00</td><td>无</td></tr>
+      <tr><td>迪拜</td><td>AE</td><td>+04:00</td><td>无</td></tr>
+      <tr><td>莫斯科</td><td>RU</td><td>+03:00</td><td>无</td></tr>
+      <tr><td>伦敦</td><td>GB</td><td>+00:00</td><td>EU</td></tr>
+      <tr><td>巴黎</td><td>FR</td><td>+01:00</td><td>EU</td></tr>
+      <tr><td>柏林</td><td>DE</td><td>+01:00</td><td>EU</td></tr>
+      <tr><td>纽约</td><td>US</td><td>−05:00</td><td>US</td></tr>
+      <tr><td>洛杉矶</td><td>US</td><td>−08:00</td><td>US</td></tr>
+      <tr><td>芝加哥</td><td>US</td><td>−06:00</td><td>US</td></tr>
+      <tr><td>悉尼</td><td>AU</td><td>+10:00</td><td>AU</td></tr>
+      <tr><td>奥克兰</td><td>NZ</td><td>+12:00</td><td>NZ</td></tr>
+    </table>
+
+    <h3>3.4 返回值结构</h3>
+    <p>返回一个对象，包含以下字段：</p>
+    <ul>
+      <li><code>success</code> (boolean)：转换是否成功。</li>
+      <li><code>error</code> (string)：失败时的错误信息。</li>
+      <li><code>from</code> (object)：源时间信息，含 city、time、offset（分钟）。</li>
+      <li><code>to</code> (object)：目标时间信息，含 city、time、offset（分钟）。</li>
+      <li><code>utc</code> (string)：对应的 UTC 时间字符串。</li>
+    </ul>
+
+    <h2>四、使用场景</h2>
+
+    <h3>场景 1：跨国会议安排</h3>
+    <p>北京团队计划在 2024 年 3 月 15 日下午 3 点与纽约团队召开视频会议。需要确认纽约当地的对应时间。</p>
+    <pre>convertTimezone('北京', '纽约', '2024-03-15 15:00:00')
+// 返回：纽约时间 2024-03-15 03:00:00（凌晨 3 点）</pre>
+    <p>说明：3 月 15 日纽约尚未进入夏令时（US 规则为 3 月第二个周日开始，2024 年为 3 月 10 日，实际上 3 月 15 日已进入夏令时，此处以实际 DST 判断为准），工具会自动根据 DST 规则计算偏移。</p>
+
+    <h3>场景 2：国际航班时间确认</h3>
+    <p>从伦敦飞往东京的航班，起飞时间为 2024 年 7 月 20 日上午 10 点（伦敦当地时间）。需要确认东京当地的到达参考时间。</p>
+    <pre>convertTimezone('伦敦', '东京', '2024-07-20 10:00:00')
+// 返回：东京时间 2024-07-20 18:00:00（下午 6 点）</pre>
+    <p>说明：7 月伦敦处于夏令时（BST, UTC+1），东京为 JST（UTC+9），时差 8 小时。</p>
+
+    <h3>场景 3：远程团队协作</h3>
+    <p>悉尼团队在 2024 年 2 月 10 日上午 9 点发起视频会议，巴黎团队需要确认本地时间。</p>
+    <pre>convertTimezone('悉尼', '巴黎', '2024-02-10 09:00:00')
+// 返回：巴黎时间 2024-02-09 23:00:00（前一天晚上 11 点）</pre>
+    <p>说明：2 月悉尼处于夏令时（AEDT, UTC+11），巴黎为标准时间（CET, UTC+1），时差 10 小时，且跨越国际日期变更线方向。</p>
+
+    <h3>场景 4：金融市场交易时间</h3>
+    <p>纽约证券交易所开盘时间为美东时间上午 9:30，北京的交易员需要确认对应的北京时间。</p>
+    <pre>convertTimezone('纽约', '北京', '2024-06-15 09:30:00')
+// 返回：北京时间 2024-06-15 21:30:00（晚上 9:30）</pre>
+    <p>说明：6 月纽约处于夏令时（EDT, UTC-4），北京为 CST（UTC+8），时差 12 小时。</p>
+
+    <h3>场景 5：国际直播活动</h3>
+    <p>洛杉矶的直播活动在当地 2024 年 11 月 5 日晚上 8 点开始，需要同时确认北京、伦敦、东京的对应时间。</p>
+    <pre>convertTimezone('洛杉矶', '北京', '2024-11-05 20:00:00')
+// 返回：北京时间 2024-11-06 12:00:00（次日中午）
+
+convertTimezone('洛杉矶', '伦敦', '2024-11-05 20:00:00')
+// 返回：伦敦时间 2024-11-06 04:00:00（次日凌晨）
+
+convertTimezone('洛杉矶', '东京', '2024-11-05 20:00:00')
+// 返回：东京时间 2024-11-06 13:00:00（次日下午 1 点）</pre>
+    <p>说明：11 月 5 日洛杉矶仍处于夏令时（2024 年 US 夏令时结束于 11 月 3 日，故 11 月 5 日已回到标准时间 PST, UTC-8），工具会根据 DST 规则自动判断。</p>
+
+    <h3>场景 6：跨南半球夏令时</h3>
+    <p>奥克兰的用户在 2024 年 10 月 1 日上午 10 点发起通话，需要确认悉尼的对应时间。</p>
+    <pre>convertTimezone('奥克兰', '悉尼', '2024-10-01 10:00:00')
+// 返回：悉尼时间 2024-10-01 08:00:00</pre>
+    <p>说明：10 月 1 日悉尼尚未进入夏令时（AU 规则为 10 月第一个周日），奥克兰也尚未进入夏令时（NZ 规则为 9 月最后一个周日，2024 年为 9 月 29 日，故 10 月 1 日已进入夏令时）。工具会分别判断两地的 DST 状态。</p>
+
+    <h2>五、常见错误</h2>
+    <ul>
+      <li><b>城市名拼写错误</b>：必须使用上表中的精确城市名（如"纽约"而非"New York"），否则返回 <code>success: false</code>。</li>
+      <li><b>时间格式错误</b>：必须严格使用 <code>YYYY-MM-DD HH:mm:ss</code> 格式，不支持 <code>YYYY/MM/DD</code>、<code>MM-DD-YYYY</code> 等其他格式。</li>
+      <li><b>非法日期</b>：如 2 月 30 日、13 月、25 点等，会被校验拦截。</li>
+      <li><b>忽略夏令时</b>：同一城市在不同日期的 UTC 偏移可能不同（如纽约冬令时 UTC-5、夏令时 UTC-4），工具会自动处理，但调用方需知晓此差异。</li>
+      <li><b>传入非字符串</b>：传入 null、undefined、数字、对象等非字符串类型，会返回格式错误。</li>
+      <li><b>混淆源与目标</b>：<code>fromCity</code> 是输入时间所属的城市，<code>toCity</code> 是要换算到的城市，顺序不可颠倒。</li>
+    </ul>
+
+    <h2>六、数据依据</h2>
+    <p>本工具的时区数据与夏令时规则主要依据以下来源：</p>
+    <ul>
+      <li><b>IANA Time Zone Database（tz database）</b>：由 IANA 维护的全球时区数据权威来源，本工具的城市标准偏移与 DST 规则均参考该数据库的公开版本。具体版本需查标准原文。</li>
+      <li><b>各国官方公告</b>：夏令时的具体开始/结束日期以各国政府官方公告为准。例如美国依据《能源政策法案 2005》（Energy Policy Act of 2005），欧盟依据欧盟指令 2000/84/EC。</li>
+      <li><b>日期时间表示标准</b>：日期时间字符串格式参考 <b>GB/T 7408-2005《数据元和交换格式 信息交换 日期和时间表示法》</b>（等同采用 ISO 8601:2004）。</li>
+    </ul>
+    <div class="info-box">
+      <b>注：</b>本工具内置的数据基于公开资料整理，具体时区规则以各国政府最新公告及 IANA 数据库最新版本为准。如需用于法律、财务等严肃场景，请核对官方来源。
+    </div>
+
+    <h2>七、精度与误差说明（有限精准原则）</h2>
+    <div class="warning-box">
+      <b>重要声明：</b>现实世界的时区变量是无限的（历史变更、政治决策、地方特殊规则等），本工具只做到「方法准、输入项准、结果给误差范围」，<b>不承诺绝对精确</b>。请勿将本工具输出作为法律、财务、航空等严肃场景的唯一依据。
+    </div>
+
+    <h3>7.1 算准了什么</h3>
+    <ul>
+      <li>在<b>当前已收录城市的现行时区规则</b>下，标准 UTC 偏移的计算是准确的。</li>
+      <li>在<b>当前已内置的 DST 规则</b>下，对给定日期是否处于夏令时的判断是准确的。</li>
+      <li>日期时间的加减运算（跨日、跨月、跨年、闰年）在数学上是准确的。</li>
+      <li>输入格式校验与错误返回是准确的。</li>
+    </ul>
+
+    <h3>7.2 哪些因素没算进去</h3>
+    <ul>
+      <li><b>历史时区变更</b>：许多城市在历史上多次变更时区或 DST 规则（如俄罗斯 2014 年后取消冬令时切换、萨摩亚 2011 年跳过 12 月 30 日、朝鲜 2018 年调整时区等）。本工具<b>不区分历史年份</b>，对 1970 年以前或规则变更年份的数据不保证准确。</li>
+      <li><b>政治决策变化</b>：各国可能随时调整 DST 规则（如欧盟曾讨论取消 DST 轮换，土耳其 2016 年起全年使用 UTC+3 等）。本工具无法预知未来政策变化。</li>
+      <li><b>闰秒</b>：UTC 与地球自转之间的闰秒调整（由 IERS 发布）未纳入计算。自 1972 年以来已累计 27 秒闰秒（需查标准原文确认最新数量）。</li>
+      <li><b>地方特殊规则</b>：部分国家/地区存在 30 分钟或 45 分钟偏移（如印度 UTC+5:30、尼泊尔 UTC+5:45、澳大利亚尤克拉 UTC+8:45 等），本工具未收录。</li>
+      <li><b>同一国家内多时区</b>：如美国、澳大利亚、俄罗斯等大国境内有多个时区，本工具仅收录代表性城市，不覆盖全部。</li>
+      <li><b>DST 切换瞬间的歧义</b>：在 DST 切换时刻（如美国春季 2:00→3:00 跳过 1 小时，秋季 2:00→1:00 重复 1 小时），存在"不存在的时间"和"重复的时间"，本工具按日期数值比较处理，未对这种歧义做特殊标注。</li>
+    </ul>
+
+    <h3>7.3 误差大概多大</h3>
+    <table>
+      <tr><th>场景</th><th>预期误差</th><th>说明</th></tr>
+      <tr><td>当前年份、已收录城市、现行规则</td><td>分钟级（仅由计算精度决定）</td><td>理论上无误差</td></tr>
+      <tr><td>近 10 年内、已收录城市</td><td>0 ~ 1 小时</td><td>若期间该城市 DST 规则发生过变更</td></tr>
+      <tr><td>10 年以上历史数据</td><td>数小时甚至 1 天</td><td>历史时区变更未纳入</td></tr>
+      <tr><td>未来年份（如 2050 年）</td><td>不确定</td><td>未来政策变化无法预知</td></tr>
+      <tr><td>未收录城市或地区</td><td>不适用</td><td>工具直接返回错误</td></tr>
+    </table>
+
+    <h2>八、局限性</h2>
+    <ul>
+      <li><b>城市覆盖有限</b>：仅收录 15 个常用城市，不覆盖全球所有时区。如需更多城市，需扩展 <code>TIMEZONE_DATA</code> 表。</li>
+      <li><b>历史数据不支持</b>：不保证 1970 年以前数据的准确性，也不保证历史 DST 规则变更的准确性。</li>
+      <li><b>未来数据不确定</b>：对 2038 年以后的数据，受限于规则可能变更，结果仅供参考。</li>
+      <li><b>无闰秒处理</b>：不处理 UTC 闰秒，对需要秒级精度的场景（如天文、导航）不适用。</li>
+      <li><b>无亚小时偏移</b>：不支持 UTC+5:30、UTC+5:45 等 30/45 分钟偏移的时区。</li>
+      <li><b>无时区 ID 支持</b>：不支持 IANA 时区 ID（如 <code>America/New_York</code>），仅支持城市名。</li>
+      <li><b>无格式化选项</b>：输出格式固定为 <code>YYYY-MM-DD HH:mm:ss</code>，不支持自定义格式。</li>
+      <li><b>无本地化</b>：不处理语言、日历（如农历、伊斯兰历）等本地化问题。</li>
+    </ul>
+
+    <h2>九、版本与维护</h2>
+    <p>当前版本：<b>v2.1.0-加换算界面 20261022</b></p>
+    <p>本工具为静态实现，时区数据需人工维护更新。如需跟踪最新时区变更，建议定期对照 IANA Time Zone Database 发布说明更新 <code>TIMEZONE_DATA</code> 与 <code>DST_RULES</code>。</p>
+
+  </div>
+</div>
+
+<div class="version">v2.1.0-加换算界面 20261022</div>
+
+<!-- 核心源码（以纯文本形式存储，便于展示与执行） -->
+<script type="text/plain" id="raw-source">
+/**
+ * 时区换算工具核心模块
+ * 提供常用城市时区互转功能，含夏令时规则处理
+ * 纯函数实现，无外部依赖，可直接在浏览器运行
+ * @module TimezoneConverter
+ * @version 2.0.0
+ */
+
+/**
+ * 城市时区数据表
+ * offset: 标准时间 UTC 偏移（单位：分钟，东正西负）
+ * dst: 夏令时规则名称（对应 DST_RULES 中的键）
+ * country: 国家/地区 ISO 3166-1 alpha-2 代码
+ * @type {Object&lt;string, {offset: number, dst: string, country: string}&gt;}
+ */
+const TIMEZONE_DATA = {
+  '北京':   { offset: 480,  dst: 'NONE', country: 'CN' },
+  '上海':   { offset: 480,  dst: 'NONE', country: 'CN' },
+  '东京':   { offset: 540,  dst: 'NONE', country: 'JP' },
+  '首尔':   { offset: 540,  dst: 'NONE', country: 'KR' },
+  '新加坡': { offset: 480,  dst: 'NONE', country: 'SG' },
+  '迪拜':   { offset: 240,  dst: 'NONE', country: 'AE' },
+  '莫斯科': { offset: 180,  dst: 'NONE', country: 'RU' },
+  '伦敦':   { offset: 0,    dst: 'EU',   country: 'GB' },
+  '巴黎':   { offset: 60,   dst: 'EU',   country: 'FR' },
+  '柏林':   { offset: 60,   dst: 'EU',   country: 'DE' },
+  '纽约':   { offset: -300, dst: 'US',   country: 'US' },
+  '洛杉矶': { offset: -480, dst: 'US',   country: 'US' },
+  '芝加哥': { offset: -360, dst: 'US',   country: 'US' },
+  '悉尼':   { offset: 600,  dst: 'AU',   country: 'AU' },
+  '奥克兰': { offset: 720,  dst: 'NZ',   country: 'NZ' }
+};
+
+/**
+ * 夏令时规则定义
+ * hasDST: 是否有夏令时
+ * hemisphere: 半球（'north' 北半球 / 'south' 南半球）
+ * offset: 夏令时期间额外偏移（分钟，通常为 60）
+ * start: 夏令时开始规则
+ * end: 夏令时结束规则
+ * 规则字段：month(1-12), week(第几个, -1 表示最后一个), weekday(0=周日), hour, minute
+ * @type {Object&lt;string, Object&gt;}
+ */
+const DST_RULES = {
+  'NONE': { hasDST: false },
+  'EU': {
+    hasDST: true,
+    hemisphere: 'north',
+    offset: 60,
+    start: { month: 3,  week: -1, weekday: 0, hour: 1, minute: 0 },
+    end:   { month: 10, week: -1, weekday: 0, hour: 1, minute: 0 }
+  },
+  'US': {
+    hasDST: true,
+    hemisphere: 'north',
+    offset: 60,
+    start: { month: 3,  week: 2,  weekday: 0, hour: 2, minute: 0 },
+    end:   { month: 11, week: 1,  weekday: 0, hour: 2, minute: 0 }
+  },
+  'AU': {
+    hasDST: true,
+    hemisphere: 'south',
+    offset: 60,
+    start: { month: 10, week: 1, weekday: 0, hour: 2, minute: 0 },
+    end:   { month: 4,  week: 1, weekday: 0, hour: 3, minute: 0 }
+  },
+  'NZ': {
+    hasDST: true,
+    hemisphere: 'south',
+    offset: 60,
+    start: { month: 9,  week: -1, weekday: 0, hour: 2, minute: 0 },
+    end:   { month: 4,  week: 1,  weekday: 0, hour: 3, minute: 0 }
+  }
+};
+
+/**
+ * 判断是否为闰年
+ * 按公历规则：能被 4 整除且不能被 100 整除，或能被 400 整除
+ * @param {number} year - 年份（整数）
+ * @returns {boolean} 是否为闰年
+ */
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+/**
+ * 获取指定年月的天数
+ * @param {number} year - 年份（整数）
+ * @param {number} month - 月份（1-12）
+ * @returns {number} 该月天数（28/29/30/31）
+ */
+function getDaysInMonth(year, month) {
+  const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month === 2 && isLeapYear(year)) return 29;
+  return days[month - 1];
+}
+
+/**
+ * 解析日期时间字符串
+ * 严格匹配格式 "YYYY-MM-DD HH:mm:ss"，并校验日期合法性
+ * @param {string} str - 待解析的字符串
+ * @returns {Object|null} 解析成功返回 {year, month, day, hour, minute, second}，失败返回 null
+ */
+function parseDateTime(str) {
+  if (typeof str !== 'string') return null;
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const y  = Number(match[1]);
+  const m  = Number(match[2]);
+  const d  = Number(match[3]);
+  const h  = Number(match[4]);
+  const mi = Number(match[5]);
+  const s  = Number(match[6]);
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > getDaysInMonth(y, m)) return null;
+  if (h < 0 || h > 23) return null;
+  if (mi < 0 || mi > 59) return null;
+  if (s < 0 || s > 59) return null;
+  return { year: y, month: m, day: d, hour: h, minute: mi, second: s };
+}
+
+/**
+ * 格式化日期时间对象为字符串
+ * @param {Object} dt - 日期时间对象 {year, month, day, hour, minute, second}
+ * @returns {string} 格式为 "YYYY-MM-DD HH:mm:ss"
+ */
+function formatDateTime(dt) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${dt.year}-${pad(dt.month)}-${pad(dt.day)} ${pad(dt.hour)}:${pad(dt.minute)}:${pad(dt.second)}`;
+}
+
+/**
+ * 根据 DST 规则计算某年的转换日期
+ * @param {number} year - 年份
+ * @param {Object} rule - 转换规则 {month, week, weekday, hour, minute}
+ * @returns {Object} 转换日期时间对象 {year, month, day, hour, minute, second}
+ */
+function getTransitionDate(year, rule) {
+  // 计算该月第 1 天是星期几
+  // 使用蔡勒公式的简化版：基于 Date 对象获取（仅用于计算星期，不涉及时区）
+  const firstDay = new Date(year, rule.month - 1, 1);
+  const firstWeekday = firstDay.getDay();
+  // 计算该月第一个目标星期几的日期
+  let dayOffset = (rule.weekday - firstWeekday + 7) % 7;
+  let day = 1 + dayOffset;
+  if (rule.week > 0) {
+    // 第 N 个：在第 1 个基础上加 (N-1) 周
+    day += (rule.week - 1) * 7;
+  } else {
+    // 最后一个：从月末往前推
+    const daysInMonth = getDaysInMonth(year, rule.month);
+    day = daysInMonth - ((daysInMonth - day) % 7);
+  }
+  return {
+    year: year,
+    month: rule.month,
+    day: day,
+    hour: rule.hour,
+    minute: rule.minute,
+    second: 0
+  };
+}
+
+/**
+ * 将日期时间对象转为可比较的数字
+ * 用于判断日期先后顺序
+ * @param {Object} dt - 日期时间对象
+ * @returns {number} 数字表示（越大越晚）
+ */
+function dateToNum(dt) {
+  return dt.year * 10000000000
+       + dt.month * 100000000
+       + dt.day * 1000000
+       + dt.hour * 10000
+       + dt.minute * 100
+       + dt.second;
+}
+
+/**
+ * 判断指定日期时间是否处于夏令时期间
+ * 北半球：start <= dt < end
+ * 南半球：dt >= start 或 dt < end（跨年）
+ * @param {Object} dt - 日期时间对象
+ * @param {string} dstRule - DST 规则名（对应 DST_RULES 的键）
+ * @returns {boolean} 是否处于夏令时
+ */
+function isInDST(dt, dstRule) {
+  const rule = DST_RULES[dstRule];
+  if (!rule || !rule.hasDST) return false;
+  const start = getTransitionDate(dt.year, rule.start);
+  const end   = getTransitionDate(dt.year, rule.end);
+  const dtNum    = dateToNum(dt);
+  const startNum = dateToNum(start);
+  const endNum   = dateToNum(end);
+  if (rule.hemisphere === 'north') {
+    return dtNum >= startNum && dtNum < endNum;
+  } else {
+    // 南半球夏令时跨年：从 start（如 10 月）到次年 end（如 4 月）
+    return dtNum >= startNum || dtNum < endNum;
+  }
+}
+
+/**
+ * 获取城市在指定时间的 UTC 偏移（分钟）
+ * 自动判断是否处于夏令时并叠加偏移
+ * @param {string} city - 城市名
+ * @param {Object} dt - 日期时间对象
+ * @returns {number|null} UTC 偏移（分钟），城市不存在时返回 null
+ */
+function getUTCOffset(city, dt) {
+  const data = TIMEZONE_DATA[city];
+  if (!data) return null;
+  let offset = data.offset;
+  if (isInDST(dt, data.dst)) {
+    offset += DST_RULES[data.dst].offset;
+  }
+  return offset;
+}
+
+/**
+ * 日期时间对象加减指定分钟数
+ * 自动处理跨分、跨时、跨日、跨月、跨年、闰年
+ * @param {Object} dt - 日期时间对象
+ * @param {number} minutes - 要加减的分钟数（可负）
+ * @returns {Object} 新的日期时间对象
+ */
+function addMinutes(dt, minutes) {
+  let year   = dt.year;
+  let month  = dt.month;
+  let day    = dt.day;
+  let hour   = dt.hour;
+  let minute = dt.minute;
+  const second = dt.second;
+
+  minute += minutes;
+
+  // 处理分钟溢出
+  while (minute < 0)  { minute += 60; hour--; }
+  while (minute >= 60) { minute -= 60; hour++; }
+
+  // 处理小时溢出
+  while (hour < 0)  { hour += 24; day--; }
+  while (hour >= 24) { hour -= 24; day++; }
+
+  // 处理日期下溢
+  while (day < 1) {
+    month--;
+    if (month < 1) { month = 12; year--; }
+    day += getDaysInMonth(year, month);
+  }
+  // 处理日期上溢
+  while (day > getDaysInMonth(year, month)) {
+    day -= getDaysInMonth(year, month);
+    month++;
+    if (month > 12) { month = 1; year++; }
+  }
+
+  return { year, month, day, hour, minute, second };
+}
+
+/**
+ * 时区转换核心函数
+ * 将源城市的本地时间转换为目标城市的本地时间
+ * 流程：源本地时间 → UTC → 目标本地时间
+ * @param {string} fromCity - 源城市名（必须在 TIMEZONE_DATA 中）
+ * @param {string} toCity - 目标城市名（必须在 TIMEZONE_DATA 中）
+ * @param {string} dateTimeStr - 源时间字符串，格式 "YYYY-MM-DD HH:mm:ss"
+ * @returns {Object} 转换结果
+ *   - success {boolean}: 是否成功
+ *   - error {string}: 失败时的错误信息
+ *   - from {Object}: 源时间信息 {city, time, offset}
+ *   - to {Object}: 目标时间信息 {city, time, offset}
+ *   - utc {string}: 对应的 UTC 时间字符串
+ */
+function convertTimezone(fromCity, toCity, dateTimeStr) {
+  // 校验城市
+  if (!TIMEZONE_DATA[fromCity]) {
+    return { success: false, error: '未知源城市: ' + fromCity };
+  }
+  if (!TIMEZONE_DATA[toCity]) {
+    return { success: false, error: '未知目标城市: ' + toCity };
+  }
+  // 解析时间
+  const dt = parseDateTime(dateTimeStr);
+  if (!dt) {
+    return { success: false, error: '无效时间格式或非法日期: ' + String(dateTimeStr) };
+  }
+  // 源城市 UTC 偏移
+  const fromOffset = getUTCOffset(fromCity, dt);
+  // 转 UTC
+  const utcDt = addMinutes(dt, -fromOffset);
+  // 目标城市 UTC 偏移（基于 UTC 时间判断 DST）
+  const toOffset = getUTCOffset(toCity, utcDt);
+  // 转目标本地时间
+  const targetDt = addMinutes(utcDt, toOffset);
+
+  return {
+    success: true,
+    from: { city: fromCity, time: formatDateTime(dt),       offset: fromOffset },
+    to:   { city: toCity,   time: formatDateTime(targetDt), offset: toOffset },
+    utc:  formatDateTime(utcDt)
+  };
+}
+</script>
+
+<!-- 测试代码（以纯文本形式存储，点击按钮时执行） -->
+<script type="text/plain" id="raw-tests">
+/**
+ * 断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} message - 失败时的错误信息
+ */
+function assert(condition, message) {
+  if (!condition) throw new Error(message || '断言失败');
+}
+
+/**
+ * 运行全部单元测试
+ * @returns {Object} 测试结果 {passed, total, results}
+ */
+function runAllTests() {
+  const results = [];
+
+  function test(name, fn) {
+    try {
+      fn();
+      results.push({ name: name, passed: true });
+    } catch (e) {
+      results.push({ name: name, passed: false, error: e.message });
+    }
+  }
+
+  // ============ 正常值测试 ============
+
+  test('01-同城市转换（北京→北京）', function() {
+    var r = convertTimezone('北京', '北京', '2024-01-15 10:00:00');
+    assert(r.success === true, '应成功');
+    assert(r.to.time === '2024-01-15 10:00:00', '时间应相同，实际 ' + r.to.time);
+    assert(r.to.offset === 480, '偏移应为 480');
+  });
+
+  test('02-北京→纽约（冬令时，1月）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 纽约冬令时 UTC-5, 时差 13 小时
+    assert(r.to.time === '2024-01-14 21:00:00', '应为 2024-01-14 21:00:00，实际 ' + r.to.time);
+  });
+
+  test('03-北京→纽约（夏令时，7月）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-07-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 纽约夏令时 UTC-4, 时差 12 小时
+    assert(r.to.time === '2024-07-14 22:00:00', '应为 2024-07-14 22:00:00，实际 ' + r.to.time);
+  });
+
+  test('04-纽约→北京（冬令时）', function() {
+    var r = convertTimezone('纽约', '北京', '2024-01-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 纽约 UTC-5, 北京 UTC+8, 时差 13 小时
+    assert(r.to.time === '2024-01-15 23:00:00', '应为 2024-01-15 23:00:00，实际 ' + r.to.time);
+  });
+
+  test('05-纽约→北京（夏令时）', function() {
+    var r = convertTimezone('纽约', '北京', '2024-07-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 纽约 UTC-4, 北京 UTC+8, 时差 12 小时
+    assert(r.to.time === '2024-07-15 22:00:00', '应为 2024-07-15 22:00:00，实际 ' + r.to.time);
+  });
+
+  test('06-伦敦→东京（英国夏令时，7月）', function() {
+    var r = convertTimezone('伦敦', '东京', '2024-07-20 10:00:00');
+    assert(r.success === true, '应成功');
+    // 伦敦 BST UTC+1, 东京 JST UTC+9, 时差 8 小时
+    assert(r.to.time === '2024-07-20 18:00:00', '应为 2024-07-20 18:00:00，实际 ' + r.to.time);
+  });
+
+  test('07-伦敦→东京（英国冬令时，1月）', function() {
+    var r = convertTimezone('伦敦', '东京', '2024-01-20 10:00:00');
+    assert(r.success === true, '应成功');
+    // 伦敦 GMT UTC+0, 东京 JST UTC+9, 时差 9 小时
+    assert(r.to.time === '2024-01-20 19:00:00', '应为 2024-01-20 19:00:00，实际 ' + r.to.time);
+  });
+
+  test('08-悉尼→巴黎（澳洲夏令时，2月）', function() {
+    var r = convertTimezone('悉尼', '巴黎', '2024-02-10 09:00:00');
+    assert(r.success === true, '应成功');
+    // 悉尼 AEDT UTC+11, 巴黎 CET UTC+1, 时差 10 小时
+    assert(r.to.time === '2024-02-09 23:00:00', '应为 2024-02-09 23:00:00，实际 ' + r.to.time);
+  });
+
+  test('09-巴黎→迪拜（无夏令时城市）', function() {
+    var r = convertTimezone('巴黎', '迪拜', '2024-06-15 12:00:00');
+    assert(r.success === true, '应成功');
+    // 巴黎 CEST UTC+2, 迪拜 UTC+4, 时差 -2 小时
+    assert(r.to.time === '2024-06-15 14:00:00', '应为 2024-06-15 14:00:00，实际 ' + r.to.time);
+  });
+
+  test('10-莫斯科→新加坡', function() {
+    var r = convertTimezone('莫斯科', '新加坡', '2024-05-01 15:00:00');
+    assert(r.success === true, '应成功');
+    // 莫斯科 UTC+3, 新加坡 UTC+8, 时差 5 小时
+    assert(r.to.time === '2024-05-01 20:00:00', '应为 2024-05-01 20:00:00，实际 ' + r.to.time);
+  });
+
+  test('11-跨日期变更线（东京→洛杉矶）', function() {
+    var r = convertTimezone('东京', '洛杉矶', '2024-06-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 东京 UTC+9, 洛杉矶 PDT UTC-7, 时差 16 小时
+    assert(r.to.time === '2024-06-14 18:00:00', '应为 2024-06-14 18:00:00，实际 ' + r.to.time);
+  });
+
+  test('12-反向跨日期变更线（洛杉矶→东京）', function() {
+    var r = convertTimezone('洛杉矶', '东京', '2024-06-14 18:00:00');
+    assert(r.success === true, '应成功');
+    assert(r.to.time === '2024-06-15 10:00:00', '应为 2024-06-15 10:00:00，实际 ' + r.to.time);
+  });
+
+  // ============ 边界值测试 ============
+
+  test('13-午夜 00:00:00 转换', function() {
+    var r = convertTimezone('北京', '伦敦', '2024-03-15 00:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 伦敦冬令时 UTC+0, 时差 8 小时
+    assert(r.to.time === '2024-03-14 16:00:00', '应为 2024-03-14 16:00:00，实际 ' + r.to.time);
+  });
+
+  test('14-年末 12-31 23:59:59 转换', function() {
+    var r = convertTimezone('北京', '纽约', '2024-12-31 23:59:59');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 纽约冬令时 UTC-5, 时差 13 小时
+    assert(r.to.time === '2024-12-31 10:59:59', '应为 2024-12-31 10:59:59，实际 ' + r.to.time);
+  });
+
+  test('15-年初 01-01 00:00:00 转换', function() {
+    var r = convertTimezone('纽约', '北京', '2024-01-01 00:00:00');
+    assert(r.success === true, '应成功');
+    // 纽约 UTC-5, 北京 UTC+8, 时差 13 小时
+    assert(r.to.time === '2024-01-01 13:00:00', '应为 2024-01-01 13:00:00，实际 ' + r.to.time);
+  });
+
+  test('16-闰年 2 月 29 日', function() {
+    var r = convertTimezone('北京', '东京', '2024-02-29 12:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 东京 UTC+9, 时差 -1 小时
+    assert(r.to.time === '2024-02-29 13:00:00', '应为 2024-02-29 13:00:00，实际 ' + r.to.time);
+  });
+
+  test('17-非闰年 2 月 28 日', function() {
+    var r = convertTimezone('北京', '东京', '2023-02-28 12:00:00');
+    assert(r.success === true, '应成功');
+    assert(r.to.time === '2023-02-28 13:00:00', '应为 2023-02-28 13:00:00，实际 ' + r.to.time);
+  });
+
+  test('18-跨年转换（12月31日→次年1月1日）', function() {
+    var r = convertTimezone('东京', '洛杉矶', '2024-12-31 23:00:00');
+    assert(r.success === true, '应成功');
+    // 东京 UTC+9, 洛杉矶 PST UTC-8, 时差 17 小时
+    assert(r.to.time === '2024-12-31 06:00:00', '应为 2024-12-31 06:00:00，实际 ' + r.to.time);
+  });
+
+  test('19-跨月转换（1月31日→2月）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-31 10:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 纽约冬令时 UTC-5, 时差 13 小时
+    assert(r.to.time === '2024-01-30 21:00:00', '应为 2024-01-30 21:00:00，实际 ' + r.to.time);
+  });
+
+  test('20-夏令时切换当天（US 2024 年 3 月 10 日）', function() {
+    // 2024 年 US 夏令时开始于 3 月 10 日 02:00
+    var r1 = convertTimezone('纽约', '北京', '2024-03-10 01:00:00');
+    assert(r1.success === true, '切换前应成功');
+    // 01:00 尚未切换，仍为 EST UTC-5
+    assert(r1.to.time === '2024-03-10 14:00:00', '切换前应为 14:00:00，实际 ' + r1.to.time);
+
+    var r2 = convertTimezone('纽约', '北京', '2024-03-10 03:00:00');
+    assert(r2.success === true, '切换后应成功');
+    // 03:00 已切换为 EDT UTC-4
+    assert(r2.to.time === '2024-03-10 15:00:00', '切换后应为 15:00:00，实际 ' + r2.to.time);
+  });
+
+  test('21-南半球夏令时（悉尼 2024 年 1 月）', function() {
+    var r = convertTimezone('悉尼', '北京', '2024-01-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 悉尼 AEDT UTC+11, 北京 UTC+8, 时差 3 小时
+    assert(r.to.time === '2024-01-15 07:00:00', '应为 2024-01-15 07:00:00，实际 ' + r.to.time);
+  });
+
+  test('22-南半球非夏令时（悉尼 2024 年 7 月）', function() {
+    var r = convertTimezone('悉尼', '北京', '2024-07-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 悉尼 AEST UTC+10, 北京 UTC+8, 时差 2 小时
+    assert(r.to.time === '2024-07-15 08:00:00', '应为 2024-07-15 08:00:00，实际 ' + r.to.time);
+  });
+
+  // ============ 异常输入测试 ============
+
+  test('23-无效源城市名', function() {
+    var r = convertTimezone('不存在的城市', '北京', '2024-01-15 10:00:00');
+    assert(r.success === false, '应失败');
+    assert(r.error.indexOf('未知源城市') !== -1, '错误信息应包含"未知源城市"');
+  });
+
+  test('24-无效目标城市名', function() {
+    var r = convertTimezone('北京', '不存在的城市', '2024-01-15 10:00:00');
+    assert(r.success === false, '应失败');
+    assert(r.error.indexOf('未知目标城市') !== -1, '错误信息应包含"未知目标城市"');
+  });
+
+  test('25-无效时间格式（缺少秒）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-15 10:00');
+    assert(r.success === false, '应失败');
+    assert(r.error.indexOf('无效时间格式') !== -1, '错误信息应包含"无效时间格式"');
+  });
+
+  test('26-无效时间格式（斜杠分隔）', function() {
+    var r = convertTimezone('北京', '纽约', '2024/01/15 10:00:00');
+    assert(r.success === false, '应失败');
+  });
+
+  test('27-无效日期（13 月）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-13-15 10:00:00');
+    assert(r.success === false, '应失败');
+  });
+
+  test('28-无效日期（32 日）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-32 10:00:00');
+    assert(r.success === false, '应失败');
+  });
+
+  test('29-无效日期（非闰年 2 月 29 日）', function() {
+    var r = convertTimezone('北京', '纽约', '2023-02-29 10:00:00');
+    assert(r.success === false, '应失败');
+  });
+
+  test('30-无效时间（25 点）', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-15 25:00:00');
+    assert(r.success === false, '应失败');
+  });
+
+  test('31-空字符串输入', function() {
+    var r = convertTimezone('北京', '纽约', '');
+    assert(r.success === false, '应失败');
+  });
+
+  test('32-null 输入', function() {
+    var r = convertTimezone('北京', '纽约', null);
+    assert(r.success === false, '应失败');
+  });
+
+  test('33-undefined 输入', function() {
+    var r = convertTimezone('北京', '纽约', undefined);
+    assert(r.success === false, '应失败');
+  });
+
+  test('34-对象输入', function() {
+    var r = convertTimezone('北京', '纽约', { year: 2024 });
+    assert(r.success === false, '应失败');
+  });
+
+  test('35-数组输入', function() {
+    var r = convertTimezone('北京', '纽约', [2024, 1, 15]);
+    assert(r.success === false, '应失败');
+  });
+
+  test('36-布尔输入', function() {
+    var r = convertTimezone('北京', '纽约', true);
+    assert(r.success === false, '应失败');
+  });
+
+  test('37-数字输入', function() {
+    var r = convertTimezone('北京', '纽约', 20240115);
+    assert(r.success === false, '应失败');
+  });
+
+  // ============ 精度测试 ============
+
+  test('38-秒精度保持', function() {
+    var r = convertTimezone('北京', '东京', '2024-06-15 10:30:45');
+    assert(r.success === true, '应成功');
+    assert(r.to.time === '2024-06-15 11:30:45', '秒应保持不变，实际 ' + r.to.time);
+  });
+
+  test('39-分钟精度保持', function() {
+    var r = convertTimezone('北京', '纽约', '2024-06-15 10:30:00');
+    assert(r.success === true, '应成功');
+    assert(r.to.time.indexOf(':30:00') !== -1, '分钟应保持不变，实际 ' + r.to.time);
+  });
+
+  test('40-小时精度（整点转换）', function() {
+    var r = convertTimezone('北京', '伦敦', '2024-01-15 08:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 伦敦 UTC+0, 时差 8 小时
+    assert(r.to.time === '2024-01-15 00:00:00', '应为 2024-01-15 00:00:00，实际 ' + r.to.time);
+  });
+
+  // ============ 特殊场景测试 ============
+
+  test('41-超大年份 9999', function() {
+    var r = convertTimezone('北京', '东京', '9999-12-31 23:59:59');
+    assert(r.success === true, '应成功');
+    assert(r.to.time === '9999-12-31 23:59:59' || r.to.year === 9999, '应能处理大年份');
+  });
+
+  test('42-未来年份 2050', function() {
+    var r = convertTimezone('北京', '纽约', '2050-06-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 注意：2050 年 DST 规则可能变化，此处仅验证函数能执行
+    assert(r.to.time.length === 19, '时间字符串长度应为 19');
+  });
+
+  test('43-过去年份 1900', function() {
+    var r = convertTimezone('北京', '纽约', '1900-06-15 10:00:00');
+    assert(r.success === true, '应成功（工具不区分历史规则）');
+    assert(r.to.time.length === 19, '时间字符串长度应为 19');
+  });
+
+  test('44-多城市链式转换一致性', function() {
+    // 北京 → 纽约 → 伦敦 → 北京，应回到原时间
+    var r1 = convertTimezone('北京', '纽约', '2024-06-15 10:00:00');
+    var r2 = convertTimezone('纽约', '伦敦', r1.to.time);
+    var r3 = convertTimezone('伦敦', '北京', r2.to.time);
+    assert(r3.success === true, '链式转换应成功');
+    assert(r3.to.time === '2024-06-15 10:00:00', '链式转换应回到原时间，实际 ' + r3.to.time);
+  });
+
+  test('45-UTC 中间量正确性', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-15 10:00:00');
+    assert(r.success === true, '应成功');
+    // 北京 UTC+8, 10:00 对应 UTC 02:00
+    assert(r.utc === '2024-01-15 02:00:00', 'UTC 应为 2024-01-15 02:00:00，实际 ' + r.utc);
+  });
+
+  test('46-返回值结构完整性', function() {
+    var r = convertTimezone('北京', '纽约', '2024-01-15 10:00:00');
+    assert(r.success === true, '应成功');
+    assert(typeof r.from === 'object', 'from 应为对象');
+    assert(typeof r.to === 'object', 'to 应为对象');
+    assert(typeof r.utc === 'string', 'utc 应为字符串');
+    assert(typeof r.from.offset === 'number', 'from.offset 应为数字');
+    assert(typeof r.to.offset === 'number', 'to.offset 应为数字');
+  });
+
+  test('47-失败返回值结构', function() {
+    var r = convertTimezone('不存在', '北京', '2024-01-15 10:00:00');
+    assert(r.success === false, '应失败');
+    assert(typeof r.error === 'string', 'error 应为字符串');
+    assert(r.error.length > 0, 'error 不应为空');
+  });
+
+  test('48-奥克兰夏令时（NZ 规则）', function() {
+    // 2024 年 NZ 夏令时开始于 9 月 29 日（9 月最后一个周日）
+    var r1 = convertTimezone('奥克兰', '北京', '2024-09-28 10:00:00');
+    assert(r1.success === true, '切换前应成功');
+    // 9 月 28 日尚未切换，NZST UTC+12
+    assert(r1.to.time === '2024-09-28 06:00:00', '切换前应为 06:00:00，实际 ' + r1.to.time);
+
+    var r2 = convertTimezone('奥克兰', '北京', '2024-10-01 10:00:00');
+    assert(r2.success === true, '切换后应成功');
+    // 10 月 1 日已切换为 NZDT UTC+13
+    assert(r2.to.time === '2024-10-01 05:00:00', '切换后应为 05:00:00，实际 ' + r2.to.time);
+  });
+
+  // 输出结果
+  var passed = results.filter(function(r) { return r.passed; }).length;
+  var total = results.length;
+  console.log('通过 ' + passed + ' / 共 ' + total);
+  return { passed: passed, total: total, results: results };
+}
+</script>
+
+<script>
+  // 执行核心源码（使其中的函数成为全局函数）
+  (function () {
+    var src = document.getElementById('raw-source').textContent;
+    // eval 里的 const 不外泄，显式挂到全局，供界面调用
+    var exposer = '\n;window.TIMEZONE_DATA=TIMEZONE_DATA;window.DST_RULES=DST_RULES;' +
+      'window.isLeapYear=isLeapYear;window.getDaysInMonth=getDaysInMonth;' +
+      'window.parseDateTime=parseDateTime;window.formatDateTime=formatDateTime;' +
+      'window.getTransitionDate=getTransitionDate;window.dateToNum=dateToNum;' +
+      'window.isInDST=isInDST;window.getUTCOffset=getUTCOffset;' +
+      'window.addMinutes=addMinutes;window.convertTimezone=convertTimezone;';
+    (0, eval)(src + exposer);
+  })();
+
+  // 展示源码
+  document.getElementById('source-code').textContent =
+    document.getElementById('raw-source').textContent;
+
+  // 标签页切换
+// ====== 时区换算界面逻辑（v2.1.0 新增） ======
+(function initTZ(){
+  var from=document.getElementById('tzFrom');
+  var to=document.getElementById('tzTo');
+  if(!from||!to) return;
+  var cities=Object.keys(TIMEZONE_DATA);
+  cities.forEach(function(c){
+    from.appendChild(new Option(c, c));
+    to.appendChild(new Option(c, c));
+  });
+  from.value='北京';
+  to.value='纽约';
+  // 默认填当前时间
+  var now=new Date();
+  var pad=function(n){return (n<10?'0':'')+n;};
+  var tp=document.getElementById('tzTime');
+  if(tp) tp.value=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+})();
+function tzConvert(){
+  var out=document.getElementById('tzOut'), err=document.getElementById('tzErr');
+  out.classList.remove('show'); err.classList.remove('show');
+  var fromCity=document.getElementById('tzFrom').value;
+  var toCity=document.getElementById('tzTo').value;
+  var raw=document.getElementById('tzTime').value;
+  if(!raw){ err.textContent='⚠ 请填写时间'; err.classList.add('show'); return; }
+  var str=raw.replace('T',' ');
+  if(str.length===16) str+=':00';
+  var r=convertTimezone(fromCity, toCity, str);
+  if(!r.success){ err.textContent='⚠ '+r.error; err.classList.add('show'); return; }
+  var offText=function(m){ var h=m/60; return (h>=0?'UTC+':'UTC')+h; };
+  out.innerHTML='<div><span class="city">'+r.from.city+'</span> <span class="time">'+r.from.time+'</span> <span style="color:#7f8c99;font-size:13px">('+offText(r.from.offset)+')</span></div>'+
+    '<div style="color:#7f8c99;font-size:13px">↓ 换算</div>'+
+    '<div><span class="city">'+r.to.city+'</span> <span class="time">'+r.to.time+'</span> <span style="color:#7f8c99;font-size:13px">('+offText(r.to.offset)+')</span></div>'+
+    '<div style="color:#8899aa;font-size:13px;margin-top:8px">UTC 时间：'+r.utc+'</div>';
+  out.classList.add('show');
+}
+
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 运行测试并展示结果
+  function runAndDisplayTests() {
+    try {
+      eval(document.getElementById('raw-tests').textContent);
+      var result = runAllTests();
+      var lines = result.results.map(function(r) {
+        var mark = r.passed ? '✓' : '✗';
+        var msg = r.passed ? '' : '  → ' + r.error;
+        return mark + ' ' + r.name + msg;
+      });
+      lines.push('');
+      lines.push('================================');
+      lines.push('通过 ' + result.passed + ' / 共 ' + result.total);
+      lines.push('================================');
+      document.getElementById('test-output').textContent = lines.join('\n');
+    } catch (e) {
+      document.getElementById('test-output').textContent = '测试执行出错：' + e.message + '\n' + e.stack;
+    }
+  }
+</script>
+
+</body>
+</html>

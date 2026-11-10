@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>🐳 肥鱼厨房 · 接食材</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(circle at 50% 18%, #1b3a5c 0%, #0a1628 70%, #060d18 100%);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #cfe8ff; user-select: none; touch-action: none;
+  }
+  #wrap { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .hud {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; font-size: 15px; pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0,0,0,.6); z-index: 5;
+  }
+  .hud .score { font-weight: 700; color: #9fd8ff; }
+  .hud .best { color: #6b8fb3; font-size: 13px; margin-left: 6px; }
+  .hud .title { color: #8fd0ff; font-weight: 700; letter-spacing: 1px; }
+  .overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    background: rgba(6,13,24,.85); backdrop-filter: blur(4px);
+    text-align: center; padding: 30px; z-index: 10;
+  }
+  .overlay h1 { font-size: 25px; color: #8fd0ff; margin: 0; letter-spacing: 2px; }
+  .overlay p { color: #7fa7c9; font-size: 14px; line-height: 1.8; margin: 0; max-width: 350px; }
+  .overlay .big { font-size: 44px; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; font-size:13px; color:#8fb8d8; }
+  .legend b { color:#cfe8ff; }
+  .btn {
+    margin-top: 8px; padding: 13px 42px; border: none; border-radius: 30px;
+    background: linear-gradient(160deg, #2e7fb8, #1a5a8a); color: #eaf6ff;
+    font-size: 17px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(46,127,184,.45); transition: .15s;
+  }
+  .btn:active { transform: scale(.95); }
+  .hide { display: none !important; }
+  .foot { position: fixed; bottom: 8px; left: 0; right: 0; text-align: center;
+          color: #3f5a75; font-size: 11px; pointer-events: none; z-index: 5; }
+  .ver { position: fixed; right: 8px; bottom: 8px; color: #2e4a66; font-size: 10px; z-index: 5; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+
+<div class="hud">
+  <span class="title">🐳 肥鱼厨房</span>
+  <span><span class="score" id="score">0</span><span class="best" id="best">最高 0</span></span>
+</div>
+
+<div class="overlay" id="start">
+  <div class="big">🍚🐟🦐</div>
+  <h1>肥鱼厨房 · 接食材</h1>
+  <p>拖动小肥鱼接住掉下来的食材<br>
+     🍚 白饭 +1 · 🐟 小鱼干 +2 · 🦐 磷虾 +3<br>
+     🌶️ 辣椒接到扣血 · 💧 漏一个食材也扣血</p>
+  <div class="legend">❤️❤️❤️ <span>三颗心，掉光就收工</span></div>
+  <button class="btn" id="startBtn">开 饭 ！</button>
+</div>
+
+<div class="overlay hide" id="over">
+  <div class="big" id="overBig">🐳</div>
+  <h1 id="overTitle">吃饱啦~</h1>
+  <p id="overText"></p>
+  <button class="btn" id="againBtn">再 来 一 碗</button>
+</div>
+
+<div class="foot">🐳 大肥鱼出品 · 给老爹的礼物</div>
+<div class="ver">v1.0.0-新游戏 20261015</div>
+
+<script>
+(function(){
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  let W=0, H=0, dpr=Math.min(window.devicePixelRatio||1, 2);
+
+  function resize(){
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W*dpr; cv.height = H*dpr;
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  const S = { menu:0, play:1, over:2 };
+  let state = S.menu;
+
+  const whale = { x: W/2, target: W/2, dir: 1, bob: 0 };
+  let items = [], pops = [], ripples = [], hearts = [];
+  let stars = [];
+  let score = 0, lives = 3, spawnT = 0, frame = 0, combo = 0;
+  let best = +(localStorage.getItem('feiyuKitchenBest')||0);
+  document.getElementById('best').textContent = '最高 ' + best;
+
+  for(let i=0;i<70;i++) stars.push({x:Math.random(),y:Math.random(),s:Math.random()*1.6+.4,tw:Math.random()*6.28});
+
+  // 食材类型
+  const FOODS = {
+    rice:  { emoji:'🍚', val:1, good:true,  r:20 },
+    fish:  { emoji:'🐟', val:2, good:true,  r:20 },
+    krill: { emoji:'🦐', val:3, good:true,  r:20 },
+    chili: { emoji:'🌶️', val:0, good:false, r:19 }
+  };
+  const GOOD = ['rice','rice','rice','fish','fish','krill']; // 加权：白饭最常见
+  function pickType(){
+    const r = Math.random();
+    if(r < 0.18) return 'chili';       // 18% 出辣椒
+    if(r < 0.55) return 'rice';
+    if(r < 0.82) return 'fish';
+    return 'krill';
+  }
+
+  // 小肥鱼（带鲸鱼特征：鲸尾、鳍、圆身）
+  function drawWhale(x, y, s, dir, bob, faceHappy){
+    ctx.save();
+    ctx.translate(x, y + Math.sin(bob)*3.5);
+    ctx.scale(dir, 1);
+    ctx.scale(s, s);
+    // 尾鳍
+    ctx.beginPath();
+    ctx.moveTo(-34,0); ctx.quadraticCurveTo(-52,-18,-60,-14);
+    ctx.quadraticCurveTo(-52,0,-60,14); ctx.quadraticCurveTo(-52,16,-34,0);
+    ctx.closePath(); ctx.fillStyle='#9fd0f0'; ctx.fill();
+    // 身体（圆胖一点=肥鱼）
+    ctx.beginPath();
+    ctx.moveTo(-34,0);
+    ctx.bezierCurveTo(-38,-30, 30,-34, 40,-8);
+    ctx.bezierCurveTo(46,4, 46,10, 40,16);
+    ctx.bezierCurveTo(30,36, -38,28, -34,0);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(-34,-24,40,24);
+    g.addColorStop(0,'#cdeaff'); g.addColorStop(.6,'#8cc4ee'); g.addColorStop(1,'#6aa9dd');
+    ctx.fillStyle=g; ctx.fill();
+    // 肚皮
+    ctx.beginPath(); ctx.ellipse(2,12,28,11,0,0,6.28);
+    ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fill();
+    // 侧鳍
+    ctx.beginPath(); ctx.ellipse(2,16,12,7,0.5,0,6.28);
+    ctx.fillStyle='rgba(150,200,235,.9)'; ctx.fill();
+    // 眼睛
+    ctx.beginPath(); ctx.arc(26,-8,4.2,0,6.28); ctx.fillStyle='#0a1628'; ctx.fill();
+    ctx.beginPath(); ctx.arc(27.5,-9.5,1.5,0,6.28); ctx.fillStyle='#fff'; ctx.fill();
+    // 腮红（吃饱的满足感）
+    ctx.beginPath(); ctx.ellipse(34,-1,5,3,0,0,6.28);
+    ctx.fillStyle='rgba(255,150,170,.5)'; ctx.fill();
+    // 张嘴（接食材时张大）
+    if(faceHappy){
+      ctx.beginPath(); ctx.ellipse(38,4,6,7,0,0,6.28);
+      ctx.fillStyle='#12324d'; ctx.fill();
+      ctx.beginPath(); ctx.ellipse(38,7,3.5,3,0,0,6.28);
+      ctx.fillStyle='#e8738a'; ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.moveTo(34,4); ctx.quadraticCurveTo(38,7,42,4);
+      ctx.strokeStyle='#12324d'; ctx.lineWidth=1.6; ctx.stroke();
+    }
+    // 喷水
+    ctx.beginPath(); ctx.moveTo(8,-30); ctx.lineTo(5,-40); ctx.lineTo(11,-36);
+    ctx.strokeStyle='rgba(190,230,255,.7)'; ctx.lineWidth=1.8; ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawItem(it){
+    ctx.save();
+    ctx.translate(it.x + Math.sin(it.y/45 + it.wob)*5, it.y);
+    // 光圈（可食物品发光，辣椒暗红）
+    const t = FOODS[it.type];
+    if(t.good){
+      ctx.beginPath(); ctx.arc(0,0,t.r+6,0,6.28);
+      const gg = ctx.createRadialGradient(0,0,t.r*0.3,0,0,t.r+8);
+      gg.addColorStop(0,'rgba(255,245,200,.28)'); gg.addColorStop(1,'rgba(255,245,200,0)');
+      ctx.fillStyle=gg; ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(0,0,t.r+6,0,6.28);
+      const gg = ctx.createRadialGradient(0,0,t.r*0.3,0,0,t.r+8);
+      gg.addColorStop(0,'rgba(255,80,80,.30)'); gg.addColorStop(1,'rgba(255,80,80,0)');
+      ctx.fillStyle=gg; ctx.fill();
+    }
+    ctx.font = (t.r*1.9)+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(t.emoji, 0, 1);
+    ctx.restore();
+  }
+
+  function spawn(){
+    const type = pickType();
+    const r = FOODS[type].r;
+    const speed = 1.5 + Math.random()*1.1 + score*0.012;
+    items.push({
+      x: r+24 + Math.random()*(W-2*r-48),
+      y: -28, r, vy: speed, type, wob: Math.random()*6.28
+    });
+  }
+
+  function loop(){
+    frame++;
+    ctx.clearRect(0,0,W,H);
+
+    // 海底星光背景
+    for(const st of stars){
+      const a = 0.2 + 0.3*(0.5+0.5*Math.sin(frame/30 + st.tw));
+      ctx.beginPath(); ctx.arc(st.x*W, st.y*H*0.9, st.s, 0, 6.28);
+      ctx.fillStyle='rgba(160,210,255,'+a+')'; ctx.fill();
+    }
+    // 海底沙地
+    ctx.beginPath();
+    ctx.moveTo(0,H);
+    ctx.quadraticCurveTo(W*0.5, H-30, W, H);
+    ctx.lineTo(W,H); ctx.closePath();
+    ctx.fillStyle='rgba(30,60,90,.5)'; ctx.fill();
+
+    const baseY = H*0.72;
+
+    if(state === S.play){
+      spawnT++;
+      const rate = Math.max(24, 58 - score*0.5);
+      if(spawnT > rate){ spawnT = 0; spawn(); }
+
+      for(const it of items) it.y += it.vy;
+
+      const mouthX = whale.x + whale.dir*34;
+      const mouthY = baseY - 24;
+      items = items.filter(it => {
+        const dx = it.x - mouthX, dy = it.y - mouthY;
+        const t = FOODS[it.type];
+        if(Math.sqrt(dx*dx+dy*dy) < it.r + 26){
+          if(t.good){
+            combo++;
+            score += t.val;
+            pops.push({x:it.x, y:it.y, t:0, txt:'+'+t.val, good:true, big:combo>=5});
+          } else {
+            combo = 0;
+            lives--;
+            pops.push({x:it.x, y:it.y, t:0, txt:'辣！', good:false});
+          }
+          return false;
+        }
+        if(it.y - it.r > H){
+          if(t.good){
+            lives--; combo = 0;
+            ripples.push({x:it.x, y:H-10, t:0});
+          }
+          return false;
+        }
+        return true;
+      });
+      document.getElementById('score').textContent = score;
+      if(lives <= 0) endGame();
+    }
+
+    whale.x += (whale.target - whale.x) * 0.18;
+    whale.x = Math.max(64, Math.min(W-64, whale.x));
+    whale.bob += 0.13;
+
+    const nearFood = items.some(it => FOODS[it.type].good && it.y > H*0.5 && Math.abs(it.x-whale.x)<80);
+    drawWhale(whale.x, baseY - 20, 1.1, whale.dir, whale.bob, nearFood);
+
+    for(const it of items) drawItem(it);
+
+    // 接食材特效
+    pops.forEach(p=>p.t++);
+    pops = pops.filter(p=>p.t < 30);
+    for(const p of pops){
+      const a = 1 - p.t/30;
+      ctx.font = 'bold '+(p.big?24:20)+'px sans-serif';
+      ctx.fillStyle = p.good ? 'rgba(255,240,150,'+a+')' : 'rgba(255,120,120,'+a+')';
+      ctx.textAlign='center';
+      ctx.fillText(p.txt, p.x, p.y - p.t*1.3);
+    }
+
+    // 漏水花
+    ripples.forEach(r=>r.t++);
+    ripples = ripples.filter(r=>r.t < 30);
+    for(const r of ripples){
+      const a = 1 - r.t/30;
+      ctx.beginPath(); ctx.arc(r.x, r.y, 4 + r.t*1.5, 0, 6.28);
+      ctx.strokeStyle='rgba(120,180,220,'+a+')'; ctx.lineWidth=2; ctx.stroke();
+    }
+
+    // 生命心
+    if(state === S.play){
+      ctx.font='22px sans-serif'; ctx.textAlign='left';
+      for(let i=0;i<lives;i++) ctx.fillText('❤️', 18 + i*28, H-22);
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  function pointerX(e){
+    const t = e.touches ? e.touches[0] : e;
+    return (t.clientX !== undefined ? t.clientX : W/2);
+  }
+  function move(e){
+    if(state !== S.play) return;
+    const x = pointerX(e);
+    whale.dir = x > whale.x ? 1 : -1;
+    whale.target = x;
+    if(e.cancelable) e.preventDefault();
+  }
+  document.addEventListener('mousemove', move);
+  document.addEventListener('touchmove', move, {passive:false});
+  document.addEventListener('touchstart', move, {passive:false});
+  document.addEventListener('keydown', e=>{
+    if(state !== S.play) return;
+    if(e.key==='ArrowLeft'){ whale.target = Math.max(64, whale.target-70); whale.dir=-1; }
+    if(e.key==='ArrowRight'){ whale.target = Math.min(W-64, whale.target+70); whale.dir=1; }
+  });
+
+  function startGame(){
+    score=0; lives=3; combo=0; items=[]; pops=[]; ripples=[]; spawnT=0;
+    document.getElementById('score').textContent = 0;
+    whale.x = whale.target = W/2; whale.dir = 1;
+    state = S.play;
+    document.getElementById('start').classList.add('hide');
+    document.getElementById('over').classList.add('hide');
+  }
+  function endGame(){
+    state = S.over;
+    if(score > best){ best=score; localStorage.setItem('feiyuKitchenBest', best);
+      document.getElementById('best').textContent = '最高 ' + best; }
+    const big = document.getElementById('overBig');
+    const title = document.getElementById('overTitle');
+    if(score >= 40){ big.textContent='🐳✨'; title.textContent='吃得好饱！这条鱼满足了~'; }
+    else if(score >= 15){ big.textContent='🐳'; title.textContent='还不错，半饱~'; }
+    else { big.textContent='🐟'; title.textContent='没吃饱…下次多接点！'; }
+    document.getElementById('overText').innerHTML =
+      '这一局吃了 <b style="color:#9fd8ff;font-size:20px">'+score+'</b> 分<br>最高纪录：'+best;
+    document.getElementById('over').classList.remove('hide');
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('againBtn').addEventListener('click', startGame);
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

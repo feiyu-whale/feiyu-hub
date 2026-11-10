@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>缓冲溶液 pH 计算器 — Henderson-Hasselbalch</title>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --accent: #e74c3c;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #2c3e50;
+  --border: #dce1e6;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #c0392b;
+  --mono: 'Courier New', Courier, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  padding: 28px 32px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(26,82,118,0.18);
+}
+header h1 { font-size: 1.6em; margin-bottom: 6px; }
+header p { font-size: 0.92em; opacity: 0.88; }
+.safety-banner {
+  background: #fdf2f2;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  font-size: 0.93em;
+  color: var(--danger);
+  font-weight: 600;
+}
+.safety-banner::before { content: "⚕ "; font-size: 1.1em; }
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 10px 22px;
+  border: none;
+  background: #dfe6ed;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  font-size: 0.95em;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.tab-btn:hover { background: #c8d6e0; }
+.tab-btn.active { background: var(--card); color: var(--primary); box-shadow: 0 -2px 8px rgba(0,0,0,0.06); }
+.tab-content {
+  display: none;
+  background: var(--card);
+  border-radius: 0 8px 8px 8px;
+  padding: 28px 32px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.tab-content.active { display: block; }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group.full-width { grid-column: 1 / -1; }
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-size: 0.92em;
+  color: var(--primary);
+}
+.form-group label .unit { font-weight: 400; color: #7f8c8d; font-size: 0.88em; }
+.form-group input, .form-group select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 1em;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(41,128,185,0.12);
+}
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+.btn-calc {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  border: none;
+  padding: 13px 36px;
+  border-radius: 8px;
+  font-size: 1.05em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  margin-top: 8px;
+}
+.btn-calc:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,82,118,0.25); }
+.btn-calc:active { transform: translateY(0); }
+.results-panel {
+  margin-top: 24px;
+  border: 2px solid var(--primary-light);
+  border-radius: 10px;
+  padding: 22px 26px;
+  background: #f0f7fc;
+  display: none;
+}
+.results-panel.show { display: block; }
+.results-panel h3 { color: var(--primary); margin-bottom: 14px; font-size: 1.15em; }
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #d6e9f5;
+  font-size: 0.97em;
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { font-weight: 600; color: #34495e; }
+.result-value { font-family: var(--mono); font-weight: 700; color: var(--primary); overflow-wrap: anywhere; }
+.result-row { flex-wrap: wrap; }
+.result-note {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: #fff8e1;
+  border-left: 4px solid var(--warning);
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: #7d6608;
+}
+.result-note.danger { background: #fdf2f2; border-left-color: var(--danger); color: var(--danger); }
+.result-note.info { background: #eaf6ff; border-left-color: var(--primary-light); color: var(--primary); }
+.error-msg {
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 10px;
+  font-size: 0.93em;
+  display: none;
+}
+.error-msg.show { display: block; }
+/* Test panel */
+.test-results { margin-top: 16px; }
+.test-item {
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-family: var(--mono);
+  border-left: 4px solid;
+}
+.test-item.pass { background: #eafaf1; border-color: var(--success); color: #1e7e46; }
+.test-item.fail { background: #fdf2f2; border-color: var(--danger); color: var(--danger); }
+.test-summary {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1em;
+}
+.test-summary.all-pass { background: #eafaf1; color: var(--success); }
+.test-summary.has-fail { background: #fdf2f2; color: var(--danger); }
+/* Doc panel */
+.doc-content h2 { color: var(--primary); margin: 24px 0 12px; font-size: 1.2em; border-bottom: 2px solid var(--primary-light); padding-bottom: 6px; }
+.doc-content h3 { color: var(--primary-light); margin: 18px 0 8px; font-size: 1.05em; }
+.doc-content p { margin-bottom: 10px; text-align: justify; }
+.doc-content ul, .doc-content ol { margin: 8px 0 12px 24px; }
+.doc-content li { margin-bottom: 4px; }
+.doc-content .formula-box {
+  background: #f8f9fa;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 12px 0;
+  font-family: var(--mono);
+  font-size: 0.95em;
+  overflow-x: auto;
+}
+.doc-content .ref { color: #7f8c8d; font-size: 0.85em; font-style: italic; }
+.doc-content .warn-box {
+  background: #fff8e1;
+  border: 1px solid #f0c040;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 12px 0;
+}
+/* Safety panel */
+.safety-content h2 { color: var(--danger); margin: 20px 0 10px; }
+.safety-content p { margin-bottom: 10px; text-align: justify; }
+.safety-content .disclaimer-box {
+  background: #fdf2f2;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 18px 22px;
+  margin: 16px 0;
+  font-weight: 600;
+  color: var(--danger);
+}
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 14px;
+  font-size: 0.72em;
+  color: #aab;
+  font-family: var(--mono);
+  z-index: 999;
+}
+@media (max-width: 700px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .container { padding: 10px; }
+  header { padding: 18px; }
+  .tab-content { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>缓冲溶液 pH 计算工具</h1>
+    <p>Henderson-Hasselbalch 方程 · Debye-Hückel 活度修正 · 缓冲容量估算</p>
+  </header>
+
+  <div class="safety-banner">
+    本工具仅供专业人员参考，不构成诊疗建议。实际临床与实验决策须由具备资质的专业人员做出。计算结果受模型假设限制，请勿将其作为唯一依据。
+  </div>
+
+  <div class="safety-banner" style="background:#fff8e1;border-color:var(--warning);color:#7d6608;">
+    ⚠ 数据来源提示：本工具中 Debye-Hückel 常数 A/B 的温度修正、离子有效半径默认值 a=4.5、离子强度阈值（0.1/0.5 mol/L）、浓度与比值阈值、临床常数 6.1/0.03 等参数均为经验值，未经标准或原始文献核对，仅作初步估算参考。
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calc')">计算器</button>
+    <button class="tab-btn" onclick="switchTab('tests')">单元测试</button>
+    <button class="tab-btn" onclick="switchTab('docs')">专业说明</button>
+    <button class="tab-btn" onclick="switchTab('safety')">安全声明</button>
+  </div>
+
+  <!-- Tab 1: Calculator -->
+  <div id="tab-calc" class="tab-content active">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>弱酸 pKa <span class="unit">(无量纲)</span></label>
+        <input type="number" id="inp-pka" step="any" placeholder="例：4.76（乙酸）">
+      </div>
+      <div class="form-group">
+        <label>弱酸浓度 [HA] <span class="unit">(mol/L)</span></label>
+        <input type="number" id="inp-ha" step="any" placeholder="例：0.10">
+      </div>
+      <div class="form-group">
+        <label>共轭碱浓度 [A⁻] <span class="unit">(mol/L)</span></label>
+        <input type="number" id="inp-a" step="any" placeholder="例：0.10">
+      </div>
+      <div class="form-group">
+        <label>温度 <span class="unit">(°C，用于 Debye-Hückel 常数)</span></label>
+        <input type="number" id="inp-temp" step="any" value="25" placeholder="默认 25">
+      </div>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="chk-dh">
+      <label for="chk-dh" style="font-weight:600;color:var(--primary);cursor:pointer;">启用高精度模式（Debye-Hückel 活度修正）</label>
+    </div>
+
+    <div id="dh-params" style="display:none; margin: 12px 0; padding: 14px 18px; background:#f8f9fa; border-radius:8px; border:1px solid var(--border);">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>离子强度 I <span class="unit">(mol/L)</span></label>
+          <input type="number" id="inp-ionic" step="any" placeholder="例：0.01">
+        </div>
+        <div class="form-group">
+          <label>离子有效水合半径 a <span class="unit">(Å，默认 4.5)</span></label>
+          <input type="number" id="inp-radius" step="any" value="4.5" placeholder="默认 4.5">
+        </div>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="chk-limiting">
+        <label for="chk-limiting" style="cursor:pointer;">使用 Debye-Hückel 极限定律（忽略离子尺寸项，仅适用于 I &lt; 0.01 mol/L）</label>
+      </div>
+      <p style="font-size:0.85em;color:#7d6608;margin-top:6px;">注：B 常数固定为 0.3281 Å⁻¹·(mol/L)^(-1/2)（未随温度修正，约 ±5% 误差）；A(T) 温度修正公式与默认半径 a=4.5 为经验近似，未经标准核对。</p>
+    </div>
+
+    <button class="btn-calc" onclick="calculate()">计 算</button>
+    <div id="error-msg" class="error-msg"></div>
+
+    <div id="results" class="results-panel">
+      <h3>计算结果</h3>
+      <div id="result-rows"></div>
+      <div id="result-notes"></div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Unit Tests -->
+  <div id="tab-tests" class="tab-content">
+    <h2 style="color:var(--primary);margin-bottom:14px;">单元测试（10 项）</h2>
+    <p style="margin-bottom:14px;color:#7f8c8d;">点击按钮运行全部测试用例，覆盖正常值、边界值、极端值与异常输入。</p>
+    <button class="btn-calc" onclick="runAllTests()">运行全部测试</button>
+    <div id="test-output" class="test-results"></div>
+  </div>
+
+  <!-- Tab 3: Documentation -->
+  <div id="tab-docs" class="tab-content">
+    <div class="doc-content" id="doc-body"></div>
+  </div>
+
+  <!-- Tab 4: Safety -->
+  <div id="tab-safety" class="tab-content">
+    <div class="safety-content" id="safety-body"></div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.2-专业版-修审查问题 20261108</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+ *  核心计算函数
+ * ============================================================ */
+
+/**
+ * 计算 Henderson-Hasselbalch pH（基本模式，不考虑活度修正）
+ *
+ * 公式名称：Henderson-Hasselbalch 方程
+ * 文献出处：
+ *   Henderson LJ. Am J Physiol. 1908;21:427-448.
+ *   Hasselbalch KA. Biochem Z. 1917;78:119-144.
+ *
+ * @param {number} pKa - 弱酸解离常数的负对数（无量纲）
+ * @param {number} ha  - 弱酸浓度 [HA]（mol/L），须 > 0
+ * @param {number} a   - 共轭碱浓度 [A⁻]（mol/L），须 > 0
+ * @returns {number} pH 值
+ * @throws {Error} 输入非法时抛出错误
+ */
+function calcHH(pKa, ha, a) {
+  if (!isFinite(pKa) || !isFinite(ha) || !isFinite(a)) {
+    throw new Error("输入值必须为有限数值");
+  }
+  if (ha <= 0) {
+    throw new Error("[HA] 必须 > 0（纯共轭碱溶液不适用 HH 方程）");
+  }
+  if (a <= 0) {
+    throw new Error("[A⁻] 必须 > 0（纯弱酸溶液不适用 HH 方程）");
+  }
+  return pKa + Math.log10(a / ha);
+}
+
+/**
+ * Debye-Hückel 扩展公式计算活度系数
+ *
+ * 公式名称：Debye-Hückel 扩展定律（Extended Debye-Hückel Equation）
+ * 文献出处：
+ *   Debye P, Hückel E. Phys Z. 1923;24:185-220.
+ *   常数取值参考：Robinson RA, Stokes RH. Electrolyte Solutions. 2nd ed.
+ *   Butterworths; 1959. Appendix A.
+ *
+ * @param {number} z   - 离子电荷数（对 A⁻ 取 z = -1，但公式中用 z²）
+ * @param {number} I   - 离子强度（mol/L），须 >= 0
+ * @param {number} a   - 离子有效水合半径（Å），须 > 0
+ * @param {number} T   - 温度（°C）
+ * @param {boolean} limiting - 是否使用极限定律（忽略尺寸项）
+ * @returns {number} 活度系数 γ（无量纲，0 < γ <= 1 通常）
+ */
+function calcActivityCoeff(z, I, a, T, limiting) {
+  if (I < 0) throw new Error("离子强度不能为负");
+  if (I === 0) return 1.0;
+
+  // Debye-Hückel 常数 A 和 B 随温度变化
+  // 25°C 时 A ≈ 0.509, B ≈ 0.3281 (Å⁻¹·(mol/L)^(-1/2))
+  // A(T) ∝ (εT)^(-3/2)：温度升高时水的介电常数 ε 降低，故 A 应随温度升高而增大。
+  // 以下为经验近似公式，未经标准数据核对：A(T) ≈ 0.509 × (TK/298.15)^1.5（密度修正忽略）
+  var TK = T + 273.15;
+  if (!(TK > 0)) throw new Error("温度必须高于 -273.15°C（绝对零度）");
+  var A = 0.509 * Math.pow(TK / 298.15, 1.5);
+  var B = 0.3281; // Å⁻¹·(mol/L)^(-1/2)，温度依赖性较小，此处近似为常数
+
+  var z2 = z * z;
+  var sqrtI = Math.sqrt(I);
+
+  var logGamma;
+  if (limiting) {
+    logGamma = -A * z2 * sqrtI;
+  } else {
+    if (a <= 0) throw new Error("离子有效半径必须 > 0");
+    logGamma = -A * z2 * sqrtI / (1 + B * a * sqrtI);
+  }
+
+  return Math.pow(10, logGamma);
+}
+
+/**
+ * 高精度模式 pH 计算（含 Debye-Hückel 活度修正）
+ *
+ * 推导：
+ *   Ka = a(H⁺)·a(A⁻)/a(HA) = [H⁺]γ(H⁺)·[A⁻]γ(A⁻) / ([HA]·γ(HA))
+ *   pH = -log₁₀(a(H⁺)) = -log₁₀([H⁺]·γ(H⁺))
+ *   代入得：pH = pKa + log₁₀([A⁻]·γ(A⁻) / ([HA]·γ(HA)))
+ *   对中性弱酸 HA，γ(HA) ≈ 1
+ *   故：pH = pKa + log₁₀([A⁻]/[HA]) + log₁₀(γ(A⁻))
+ *
+ * 注意：此处 pKa 为热力学 pKa（基于活度的），若用户提供的是
+ *   浓度 pKa（表观 pKa），则修正方式不同。本工具假设输入为热力学 pKa。
+ *
+ * 公式名称：活度修正 Henderson-Hasselbalch 方程
+ * 文献出处：
+ *   Po HN, Senozan NM. J Chem Educ. 2001;78(11):1499-1503.
+ *   Skoog DA, West DM, Holler FJ. Analytical Chemistry. 6th ed.
+ *   Saunders; 1992. Chapter 9.
+ *
+ * @param {number} pKa   - 热力学 pKa
+ * @param {number} ha    - [HA]（mol/L）
+ * @param {number} aConc - [A⁻]（mol/L）
+ * @param {number} I     - 离子强度（mol/L）
+ * @param {number} aRad  - 离子有效水合半径（Å）
+ * @param {number} T     - 温度（°C）
+ * @param {boolean} limiting - 是否使用极限定律
+ * @returns {{pH: number, gammaA: number, logGammaA: number}} 结果对象
+ */
+function calcHHActivity(pKa, ha, aConc, I, aRad, T, limiting) {
+  var gammaA = calcActivityCoeff(-1, I, aRad, T, limiting);
+  var logGammaA = Math.log10(gammaA);
+  var pH = pKa + Math.log10(aConc / ha) + logGammaA;
+  return { pH: pH, gammaA: gammaA, logGammaA: logGammaA };
+}
+
+/**
+ * 计算缓冲容量 β（简化公式，仅考虑弱酸/共轭碱对贡献）
+ *
+ * 公式名称：缓冲容量公式（Van Slyke 缓冲容量）
+ * 文献出处：
+ *   Van Slyke LL. J Biol Chem. 1922;52:495-507.
+ *   简化形式参见：Skoog DA et al. Analytical Chemistry. 6th ed. 1992.
+ *
+ * β = 2.303 × [HA][A⁻] / ([HA] + [A⁻])
+ *
+ * 注：完整缓冲容量还应包含水的贡献 β_water = 2.303([H⁺] + [OH⁻])，
+ *   在极稀溶液或远离 pKa 时水的贡献不可忽略。
+ *
+ * @param {number} ha    - [HA]（mol/L）
+ * @param {number} aConc - [A⁻]（mol/L）
+ * @returns {number} 缓冲容量 β（mol/L）
+ */
+function calcBufferCapacity(ha, aConc) {
+  var total = ha + aConc;
+  if (total === 0) return 0;
+  return 2.303 * ha * aConc / total;
+}
+
+/**
+ * 判断当前 pH 是否在有效缓冲范围内（pKa ± 1）
+ *
+ * 经验规则：缓冲溶液在 pH = pKa ± 1 范围内有效
+ * 文献出处：
+ *   通用分析化学教材经验规则。参见：
+ *   Harris DC. Quantitative Chemical Analysis. 9th ed.
+ *   W H Freeman; 2015. Chapter 8.
+ *
+ * @param {number} pH  - 计算得到的 pH
+ * @param {number} pKa - 弱酸 pKa
+ * @returns {{inRange: boolean, deviation: number}} 结果
+ */
+function checkBufferRange(pH, pKa) {
+  var deviation = Math.abs(pH - pKa);
+  return {
+    inRange: deviation <= 1.0,
+    deviation: deviation
+  };
+}
+
+/**
+ * 主计算入口：整合所有计算并返回完整结果
+ *
+ * @param {object} params - 输入参数对象
+ * @returns {object} 完整计算结果
+ */
+function compute(params) {
+  var pKa = params.pKa;
+  var ha = params.ha;
+  var aConc = params.a;
+  var useDH = params.useDH || false;
+  var I = params.ionicStrength || 0;
+  var aRad = params.ionRadius || 4.5;
+  var T = params.temperature != null ? params.temperature : 25;
+  var limiting = params.limiting || false;
+
+  // 基本 HH 计算
+  var pHbasic = calcHH(pKa, ha, aConc);
+
+  // 缓冲容量
+  var beta = calcBufferCapacity(ha, aConc);
+
+  // 缓冲范围判断
+  var rangeCheck = checkBufferRange(pHbasic, pKa);
+
+  var result = {
+    pHbasic: pHbasic,
+    pHfinal: pHbasic,
+    beta: beta,
+    rangeCheck: rangeCheck,
+    gammaA: null,
+    logGammaA: null,
+    dhApplied: false,
+    warnings: []
+  };
+
+  // 高精度模式
+  if (useDH) {
+    var dhResult = calcHHActivity(pKa, ha, aConc, I, aRad, T, limiting);
+    result.pHfinal = dhResult.pH;
+    result.gammaA = dhResult.gammaA;
+    result.logGammaA = dhResult.logGammaA;
+    result.dhApplied = true;
+
+    // 用修正后 pH 重新判断缓冲范围
+    result.rangeCheck = checkBufferRange(dhResult.pH, pKa);
+
+    // 警告：高离子强度下 Debye-Hückel 不准确
+    if (I > 0.1) {
+      result.warnings.push("离子强度 I = " + I + " mol/L > 0.1 mol/L，Debye-Hückel 方程误差显著增大，建议改用 Pitzer 方程或 SIT 模型（需查原始文献获取参数）。");
+    }
+    if (I > 0.5) {
+      result.warnings.push("离子强度 I = " + I + " mol/L > 0.5 mol/L，Debye-Hückel 方程已严重不适用，结果仅供参考。");
+    }
+  }
+
+  // 通用警告
+  if (ha < 1e-6 || aConc < 1e-6) {
+    result.warnings.push("浓度极低（< 10⁻⁶ mol/L），水的自电离贡献不可忽略，HH 方程精度下降。");
+  }
+
+  var ratio = aConc / ha;
+  if (ratio > 100 || ratio < 0.01) {
+    result.warnings.push("[A⁻]/[HA] 比值 = " + ratio.toExponential(2) + "，超出常规缓冲范围，缓冲能力极低。");
+  }
+
+  return result;
+}
+
+
+/* ============================================================
+ *  UI 交互
+ * ============================================================ */
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  // 找到对应按钮
+  var btns = document.querySelectorAll('.tab-btn');
+  var map = { calc: 0, tests: 1, docs: 2, safety: 3 };
+  if (map[name] !== undefined) btns[map[name]].classList.add('active');
+}
+
+document.getElementById('chk-dh').addEventListener('change', function() {
+  document.getElementById('dh-params').style.display = this.checked ? 'block' : 'none';
+});
+
+function showError(msg) {
+  var el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+  document.getElementById('results').classList.remove('show');
+}
+
+function clearError() {
+  document.getElementById('error-msg').classList.remove('show');
+}
+
+function calculate() {
+  clearError();
+
+  var pKa = parseFloat(document.getElementById('inp-pka').value);
+  var ha = parseFloat(document.getElementById('inp-ha').value);
+  var aConc = parseFloat(document.getElementById('inp-a').value);
+  var T = parseFloat(document.getElementById('inp-temp').value);
+  var useDH = document.getElementById('chk-dh').checked;
+  var I = parseFloat(document.getElementById('inp-ionic').value);
+  var aRad = parseFloat(document.getElementById('inp-radius').value);
+  var limiting = document.getElementById('chk-limiting').checked;
+
+  // 验证
+  if (isNaN(pKa)) { showError("请输入有效的 pKa 值"); return; }
+  if (isNaN(ha)) { showError("请输入有效的 [HA] 浓度"); return; }
+  if (isNaN(aConc)) { showError("请输入有效的 [A⁻] 浓度"); return; }
+  if (ha <= 0) { showError("[HA] 必须 > 0"); return; }
+  if (aConc <= 0) { showError("[A⁻] 必须 > 0"); return; }
+  if (isNaN(T) || !isFinite(T)) { showError("请输入有效温度"); return; }
+  if (T <= -273.15) { showError("温度必须高于 -273.15°C（绝对零度）"); return; }
+
+  if (useDH) {
+    if (isNaN(I) || I < 0) { showError("启用高精度模式时，离子强度 I 必须 >= 0"); return; }
+    if (isNaN(aRad) || aRad <= 0) { showError("离子有效半径必须 > 0"); return; }
+  }
+
+  try {
+    var result = compute({
+      pKa: pKa, ha: ha, a: aConc,
+      useDH: useDH,
+      ionicStrength: useDH ? I : 0,
+      ionRadius: useDH ? aRad : 4.5,
+      temperature: T,
+      limiting: useDH ? limiting : false
+    });
+
+    renderResults(result, pKa);
+  } catch (e) {
+    showError("计算错误：" + e.message);
+  }
+}
+
+function renderResults(r, pKa) {
+  var rows = document.getElementById('result-rows');
+  var notes = document.getElementById('result-notes');
+  var html = '';
+
+  html += '<div class="result-row"><span class="result-label">基本 HH pH（无活度修正）</span><span class="result-value">' + r.pHbasic.toFixed(4) + '</span></div>';
+
+  if (r.dhApplied) {
+    html += '<div class="result-row"><span class="result-label">活度修正后 pH</span><span class="result-value">' + r.pHfinal.toFixed(4) + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">γ(A⁻) 活度系数</span><span class="result-value">' + r.gammaA.toFixed(6) + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">log₁₀ γ(A⁻)</span><span class="result-value">' + r.logGammaA.toFixed(6) + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">活度修正量 ΔpH</span><span class="result-value">' + (r.pHfinal - r.pHbasic).toFixed(4) + '</span></div>';
+  } else {
+    html += '<div class="result-row"><span class="result-label">最终报告 pH</span><span class="result-value">' + r.pHfinal.toFixed(4) + '</span></div>';
+  }
+
+  html += '<div class="result-row"><span class="result-label">缓冲容量 β</span><span class="result-value">' + r.beta.toFixed(6) + ' mol/L</span></div>';
+  html += '<div class="result-row"><span class="result-label">|pH − pKa|</span><span class="result-value">' + r.rangeCheck.deviation.toFixed(4) + '</span></div>';
+  html += '<div class="result-row"><span class="result-label">是否在缓冲范围（pKa±1）</span><span class="result-value">' + (r.rangeCheck.inRange ? '✓ 是' : '✗ 否') + '</span></div>';
+
+  rows.innerHTML = html;
+
+  // Notes
+  var notesHtml = '';
+  notesHtml += '<div class="result-note info"><strong>必须注明：</strong>HH 方程假设活度 ≈ 浓度，在高离子强度下误差显著。缓冲容量在 pH = pKa 时最大（此时 [HA] = [A⁻]）。</div>';
+
+  if (!r.rangeCheck.inRange) {
+    notesHtml += '<div class="result-note danger">⚠ 当前 pH 偏离 pKa 超过 1 个单位，该溶液缓冲能力较弱，不建议作为缓冲溶液使用。</div>';
+  }
+
+  if (r.rangeCheck.deviation < 0.01) {
+    notesHtml += '<div class="result-note" style="background:#eafaf1;border-left-color:var(--success);color:#1e7e46;">✓ pH ≈ pKa，此时缓冲容量达到最大值，缓冲效果最佳。</div>';
+  }
+
+  r.warnings.forEach(function(w) {
+    notesHtml += '<div class="result-note danger">⚠ ' + w + '</div>';
+  });
+
+  notes.innerHTML = notesHtml;
+  document.getElementById('results').classList.add('show');
+}
+
+
+/* ============================================================
+ *  单元测试
+ * ============================================================ */
+
+function assertClose(actual, expected, tolerance, label) {
+  if (Math.abs(actual - expected) <= tolerance) {
+    return { pass: true, label: label, msg: "PASS: " + label + " | 实际=" + actual.toFixed(6) + " 期望≈" + expected + " (容差" + tolerance + ")" };
+  } else {
+    return { pass: false, label: label, msg: "FAIL: " + label + " | 实际=" + actual.toFixed(6) + " 期望≈" + expected + " (容差" + tolerance + ")" };
+  }
+}
+
+function assertThrows(fn, label) {
+  try {
+    fn();
+    return { pass: false, label: label, msg: "FAIL: " + label + " | 期望抛出异常但未抛出" };
+  } catch (e) {
+    return { pass: true, label: label, msg: "PASS: " + label + " | 正确抛出异常: " + e.message };
+  }
+}
+
+function runAllTests() {
+  var results = [];
+
+  // 测试 1：标准乙酸缓冲液 pH = pKa（等浓度）
+  // pH = 4.76 + log10(0.1/0.1) = 4.76
+  results.push(assertClose(calcHH(4.76, 0.1, 0.1), 4.76, 1e-10,
+    "测试1: 等浓度乙酸缓冲液 pH = pKa = 4.76"));
+
+  // 测试 2：[A⁻]/[HA] = 10，pH = pKa + 1
+  // pH = 4.76 + log10(10) = 5.76
+  results.push(assertClose(calcHH(4.76, 0.01, 0.1), 5.76, 1e-10,
+    "测试2: [A⁻]/[HA]=10, pH = pKa+1 = 5.76"));
+
+  // 测试 3：[A⁻]/[HA] = 0.1，pH = pKa - 1
+  // pH = 4.76 + log10(0.1) = 3.76
+  results.push(assertClose(calcHH(4.76, 0.1, 0.01), 3.76, 1e-10,
+    "测试3: [A⁻]/[HA]=0.1, pH = pKa-1 = 3.76"));
+
+  // 测试 4：极高比值 [A⁻]/[HA] = 10000
+  // pH = 7.2 + log10(10000) = 7.2 + 4 = 11.2
+  results.push(assertClose(calcHH(7.2, 1e-4, 1.0), 11.2, 1e-10,
+    "测试4: 极高比值 [A⁻]/[HA]=10000, pH=11.2"));
+
+  // 测试 5：极低比值 [A⁻]/[HA] = 1e-6
+  // pH = 7.2 + log10(1e-6) = 7.2 - 6 = 1.2
+  results.push(assertClose(calcHH(7.2, 1.0, 1e-6), 1.2, 1e-10,
+    "测试5: 极低比值 [A⁻]/[HA]=1e-6, pH=1.2"));
+
+  // 测试 6：[HA] = 0 应抛出异常
+  results.push(assertThrows(function() { calcHH(4.76, 0, 0.1); },
+    "测试6: [HA]=0 应抛出异常"));
+
+  // 测试 7：[A⁻] = 0 应抛出异常
+  results.push(assertThrows(function() { calcHH(4.76, 0.1, 0); },
+    "测试7: [A⁻]=0 应抛出异常"));
+
+  // 测试 8：负浓度应抛出异常
+  results.push(assertThrows(function() { calcHH(4.76, -0.1, 0.1); },
+    "测试8: 负浓度 [HA]=-0.1 应抛出异常"));
+
+  // 测试 9：NaN 输入应抛出异常
+  results.push(assertThrows(function() { calcHH(NaN, 0.1, 0.1); },
+    "测试9: NaN 输入应抛出异常"));
+
+  // 测试 10：缓冲容量计算 — 等浓度时 β = 2.303 × C/4
+  // [HA]=0.1, [A⁻]=0.1, β = 2.303 × 0.1×0.1/(0.1+0.1) = 2.303 × 0.01/0.2 = 2.303 × 0.05 = 0.11515
+  results.push(assertClose(calcBufferCapacity(0.1, 0.1), 0.11515, 1e-5,
+    "测试10: 缓冲容量 β = 2.303×0.05 = 0.11515 mol/L"));
+
+  // 渲染结果
+  var output = document.getElementById('test-output');
+  var html = '';
+  var passCount = 0;
+  results.forEach(function(r) {
+    if (r.pass) passCount++;
+    html += '<div class="test-item ' + (r.pass ? 'pass' : 'fail') + '">' + r.msg + '</div>';
+  });
+  var summaryClass = passCount === results.length ? 'all-pass' : 'has-fail';
+  html += '<div class="test-summary ' + summaryClass + '">总计: ' + passCount + '/' + results.length + ' 通过</div>';
+  output.innerHTML = html;
+}
+
+
+/* ============================================================
+ *  专业说明文档
+ * ============================================================ */
+
+(function buildDocs() {
+  var doc = document.getElementById('doc-body');
+  doc.innerHTML = `
+<h2>一、公式概述与文献来源</h2>
+
+<p>Henderson-Hasselbalch（HH）方程是分析化学、生物化学和临床医学中应用最广泛的缓冲溶液 pH 近似计算公式。该方程由 Lawrence Joseph Henderson 于 1908 年在其发表于 <em>American Journal of Physiology</em> 的论文中首次提出基本形式，后由 Karl Albert Hasselbalch 于 1917 年在 <em>Biochemische Zeitschrift</em> 上以对数形式重新表述，形成了今天广为人知的 HH 方程。</p>
+
+<p class="ref">文献：Henderson LJ. Am J Physiol. 1908;21:427-448. | Hasselbalch KA. Biochem Z. 1917;78:119-144.</p>
+
+<div class="formula-box">
+<strong>基本形式：</strong><br>
+pH = pKa + log₁₀([A⁻] / [HA])<br><br>
+<strong>活度修正形式：</strong><br>
+pH = pKa + log₁₀([A⁻] / [HA]) + log₁₀(γ<sub>A⁻</sub>)<br><br>
+<strong>Debye-Hückel 扩展定律：</strong><br>
+log₁₀(γ<sub>i</sub>) = −A · z<sub>i</sub>² · √I / (1 + B · a<sub>i</sub> · √I)<br><br>
+<strong>缓冲容量（简化）：</strong><br>
+β = 2.303 × [HA] × [A⁻] / ([HA] + [A⁻])
+</div>
+
+<h2>二、适用场景</h2>
+
+<h3>2.1 适用场景</h3>
+<ul>
+  <li><strong>一元弱酸/共轭碱缓冲体系</strong>：如乙酸/乙酸钠、磷酸二氢钠/磷酸氢二钠（需注意磷酸为多元酸，HH 方程仅适用于相邻两级解离的一对）、Tris/Tris-HCl 等。</li>
+  <li><strong>中等离子强度</strong>（I < 0.1 mol/L）：在此范围内，Debye-Hückel 扩展定律可提供合理的活度系数修正。</li>
+  <li><strong>缓冲范围 pH ≈ pKa ± 1</strong>：在此范围内，[A⁻]/[HA] 介于 0.1 到 10 之间，缓冲容量较高。</li>
+  <li><strong>初步估算与教学设计</strong>：快速估算缓冲液配制比例、理解缓冲原理。</li>
+  <li><strong>临床血气分析辅助理解</strong>：血液碳酸氢盐缓冲体系（H₂CO₃/HCO₃⁻）的 Henderson 方程应用是血气分析的理论基础。</li>
+</ul>
+
+<h3>2.2 不适用场景</h3>
+<ul>
+  <li><strong>高离子强度溶液</strong>（I > 0.5 mol/L）：Debye-Hückel 方程失效，需改用 Pitzer 方程或 Specific Ion Interaction Theory (SIT)。活度系数可能偏离计算值数个百分比，导致 pH 误差达 0.1 以上。</li>
+  <li><strong>极稀溶液</strong>（总浓度 < 10⁻⁵ mol/L）：水的自电离（Kw = 10⁻¹⁴）贡献不可忽略，HH 方程忽略 [H⁺] 和 [OH⁻] 对质量平衡的影响，误差显著。</li>
+  <li><strong>强酸/强碱体系</strong>：HH 方程仅适用于弱电解质。对于强酸完全解离的体系，应直接使用 [H⁺] 浓度计算。</li>
+  <li><strong>多元酸的非相邻解离对</strong>：如直接用 H₃PO₄/PO₄³⁻ 计算，忽略了中间形态（H₂PO₄⁻、HPO₄²⁻）的存在。</li>
+  <li><strong>非水溶剂或混合溶剂</strong>：Debye-Hückel 常数 A、B 值发生根本变化，需查原始文献获取对应溶剂参数。</li>
+  <li><strong>高温高压极端条件</strong>：水的离子积 Kw 和介电常数显著变化，标准参数不再适用。</li>
+</ul>
+
+<h2>三、计算步骤逐步解释</h2>
+
+<h3>步骤 1：基本 HH 方程计算</h3>
+<p>输入 pKa、[HA] 和 [A⁻]，直接代入公式 pH = pKa + log₁₀([A⁻]/[HA])。这一步假设所有物种的活度系数均为 1（即活度等于浓度），是理想稀溶液近似。</p>
+
+<h3>步骤 2（可选）：Debye-Hückel 活度修正</h3>
+<p>若启用高精度模式，需额外输入离子强度 I 和离子有效水合半径 a。计算流程如下：</p>
+<ol>
+  <li>根据温度计算 Debye-Hückel 常数 A（25°C 时 A ≈ 0.509）。</li>
+  <li>对共轭碱 A⁻（z = −1），代入扩展公式计算 log₁₀(γ<sub>A⁻</sub>)。</li>
+  <li>中性分子 HA 的活度系数 γ<sub>HA</sub> ≈ 1（Setschenow 方程可修正，但通常忽略）。</li>
+  <li>修正后 pH = pKa + log₁₀([A⁻]/[HA]) + log₁₀(γ<sub>A⁻</sub>)。</li>
+  <li>由于 γ<sub>A⁻</sub> < 1，log₁₀(γ<sub>A⁻</sub>) < 0，修正后 pH 通常略低于基本计算值。</li>
+</ol>
+
+<h3>步骤 3：缓冲容量计算</h3>
+<p>β = 2.303 × [HA][A⁻] / ([HA] + [A⁻])。该公式给出的是弱酸/共轭碱对对缓冲容量的贡献。当 [HA] = [A⁻] 时（即 pH = pKa），β 取最大值 β<sub>max</sub> = 2.303 × C/4，其中 C = [HA] + [A⁻] 为总缓冲浓度。</p>
+
+<h3>步骤 4：缓冲范围判断</h3>
+<p>计算 |pH − pKa|，若 ≤ 1.0 则认为在有效缓冲范围内。这是一个经验规则，意味着 [A⁻]/[HA] 在 0.1 到 10 之间。</p>
+
+<h2>四、临床与工程意义</h2>
+
+<h3>4.1 临床医学</h3>
+<p>在临床实践中，HH 方程最重要的应用是理解血液酸碱平衡。人体血液的 pH 维持在 7.35–7.45 的狭窄范围内，主要依赖碳酸氢盐缓冲体系（H₂CO₃/HCO₃⁻，pKa' ≈ 6.1）。临床血气分析报告中，HCO₃⁻ 和 pCO₂ 的关系本质上就是 HH 方程的应用：</p>
+<div class="formula-box">pH = 6.1 + log₁₀([HCO₃⁻] / (0.03 × pCO₂))</div>
+<p>理解这一方程有助于临床医师判断酸碱失衡的类型（代谢性 vs 呼吸性）和代偿程度。但需注意，血液不是简单的缓冲溶液，还涉及血红蛋白缓冲、蛋白质缓冲、肾脏和肺的代偿调节等复杂机制。</p>
+
+<h3>4.2 制药与生物工程</h3>
+<p>药物制剂的 pH 直接影响药物稳定性、溶解度和生物利用度。缓冲液的选择和配制是制剂开发的关键步骤。HH 方程帮助配方师确定所需 [A⁻]/[HA] 比例以达到目标 pH。缓冲容量 β 则决定了该缓冲液抵抗外加酸碱的能力——对于需要维持稳定 pH 的生物反应（如酶催化、细胞培养），足够的 β 至关重要。</p>
+
+<h3>4.3 环境工程</h3>
+<p>天然水体（河流、湖泊、海水）的 pH 缓冲能力影响重金属形态、营养盐可用性和生态系统健康。HH 方程可用于估算碳酸盐体系对水体 pH 的缓冲贡献。</p>
+
+<h3>4.4 分析化学</h3>
+<p>在滴定分析、色谱流动配制、电泳缓冲液配制中，HH 方程是基础工具。准确配制已知 pH 的缓冲液是许多分析方法的先决条件。</p>
+
+<h2>五、已知局限与误差来源</h2>
+
+<div class="warn-box">
+<strong>重要警告：</strong>以下因素可能导致计算结果与实际测量值存在显著偏差。
+</div>
+
+<ol>
+  <li><strong>活度 vs 浓度</strong>：HH 方程的基本形式假设活度系数为 1。在离子强度 > 0.01 mol/L 时，这一假设开始产生可察觉的误差。在 I = 0.1 mol/L 时，单价离子的活度系数约为 0.78，导致 pH 偏差约 0.1 个单位。</li>
+  <li><strong>Debye-Hückel 方程的适用范围</strong>：扩展 Debye-Hückel 方程在 I < 0.1 mol/L 时较为准确；在 0.1 < I < 0.5 mol/L 时误差增大；I > 0.5 mol/L 时基本失效。离子有效半径 a 的选取也有主观性，不同文献给出的值可能不同。</li>
+  <li><strong>温度影响</strong>：pKa 本身是温度的函数。本工具假设用户输入的 pKa 对应于计算温度，但实际中 pKa 随温度变化可能显著（如 Tris 的 pKa 在 0°C 到 37°C 之间变化约 0.8 个单位）。</li>
+  <li><strong>CO₂ 吸收</strong>：碱性缓冲液（pH > 8）暴露于空气中会吸收 CO₂，改变实际 pH。这是实验操作中常见的误差来源。</li>
+  <li><strong>离子配对</strong>：在高浓度或存在多价离子时，离子配对效应使自由离子浓度低于名义浓度，HH 方程未考虑此效应。</li>
+  <li><strong>缓冲容量公式的简化</strong>：本工具使用的 β 公式忽略了水的自电离贡献（β<sub>water</sub> = 2.303([H⁺] + [OH⁻])）。在极稀溶液或 pH 极端偏离 pKa 时，水的贡献可能成为主导。</li>
+  <li><strong>pKa 数据来源差异</strong>：不同文献报道的 pKa 值可能有 0.01–0.05 的差异，取决于测量方法、离子强度和温度。用户应确认所用 pKa 值的来源和条件。</li>
+</ol>
+
+<h2>六、精度与误差说明</h2>
+
+<h3>6.1 算准了什么</h3>
+<ul>
+  <li>在输入参数正确的前提下，HH 基本方程的数学计算是精确的（浮点精度范围内，约 10⁻¹⁵ 相对误差）。</li>
+  <li>Debye-Hückel 扩展定律的数学实现是精确的。</li>
+  <li>缓冲容量简化公式的数学计算是精确的。</li>
+</ul>
+
+<h3>6.2 哪些因素没算进去</h3>
+<ul>
+  <li>水的自电离对 pH 和缓冲容量的贡献（极稀溶液时重要）。</li>
+  <li>多元酸的逐级解离耦合效应。</li>
+  <li>离子配对和络合效应。</li>
+  <li>温度对 pKa 的影响（需用户自行输入对应温度的 pKa）。</li>
+  <li>CO₂ 溶解对碱性缓冲液的影响。</li>
+  <li>有机溶剂混合体系的介电常数变化。</li>
+</ul>
+
+<h3>6.3 误差大概多大</h3>
+<ul>
+  <li><strong>基本 HH 方程</strong>（I < 0.01 mol/L）：pH 误差通常 < 0.02 单位。</li>
+  <li><strong>基本 HH 方程</strong>（I ≈ 0.1 mol/L）：pH 误差可达 0.05–0.15 单位。</li>
+  <li><strong>Debye-Hückel 修正</strong>（I < 0.1 mol/L）：可将误差降低至 0.02–0.05 单位。</li>
+  <li><strong>Debye-Hückel 修正</strong>（I > 0.1 mol/L）：修正本身不准确，残余误差可能 > 0.1 单位。</li>
+  <li><strong>缓冲容量 β</strong>：在中等浓度和 pH ≈ pKa 时，简化公式误差 < 5%；在极稀或极端 pH 时误差可超过 50%。</li>
+</ul>
+
+<div class="warn-box">
+<strong>总结：</strong>本工具提供的是基于理论模型的估算值，而非"精确计算"。在要求严格的实验中，应以 pH 计实测值为准。计算结果的可靠性取决于输入参数的准确性和模型假设的满足程度。
+</div>
+
+<h2>七、参考文献</h2>
+<ol>
+  <li>Henderson LJ. Am J Physiol. 1908;21:427-448.</li>
+  <li>Hasselbalch KA. Biochem Z. 1917;78:119-144.</li>
+  <li>Po HN, Senozan NM. The Henderson-Hasselbalch equation: its history and limitations. J Chem Educ. 2001;78(11):1499-1503.</li>
+  <li>Debye P, Hückel E. Die Theorie der Elektrolyte. Phys Z. 1923;24:185-220.</li>
+  <li>Robinson RA, Stokes RH. Electrolyte Solutions. 2nd ed. London: Butterworths; 1959.</li>
+  <li>Van Slyke LL. Studies of acidosis: the titration of proteins. J Biol Chem. 1922;52:495-507.</li>
+  <li>Harris DC. Quantitative Chemical Analysis. 9th ed. New York: W H Freeman; 2015. Chapter 8.</li>
+  <li>Skoog DA, West DM, Holler FJ. Analytical Chemistry: An Introduction. 6th ed. Fort Worth: Saunders; 1992. Chapter 9.</li>
+</ol>
+`;
+})();
+
+
+/* ============================================================
+ *  安全声明
+ * ============================================================ */
+
+(function buildSafety() {
+  var el = document.getElementById('safety-body');
+  el.innerHTML = `
+<h2>⚕ 医疗与安全声明</h2>
+
+<div class="disclaimer-box">
+<strong>重要声明：</strong>本工具仅供具备专业资质的化学、医学、药学及相关领域专业人员参考使用。本工具的计算结果不构成任何临床诊疗建议、处方建议或实验操作指导。实际的临床决策、实验方案制定和质量控制须由具备相应资质的专业人员根据具体情况做出，并应以实测数据为最终依据。
+</div>
+
+<h2>一、适用范围声明</h2>
+<p>本计算工具基于 Henderson-Hasselbalch 方程和 Debye-Hückel 电解质理论，适用于以下场景：</p>
+<ul>
+  <li>一元弱酸/共轭碱缓冲体系的 pH 估算</li>
+  <li>低到中等离子强度（I < 0.1 mol/L）下的活度修正</li>
+  <li>缓冲容量的初步估算</li>
+  <li>教学演示和概念理解</li>
+</ul>
+
+<h2>二、假设条件</h2>
+<p>本工具的计算基于以下假设条件，用户须确认实际场景是否满足：</p>
+<ol>
+  <li>体系为水溶液，溶剂为纯水。</li>
+  <li>弱酸为一元酸，且仅考虑一对共轭酸碱形态。</li>
+  <li>温度对 pKa 的影响由用户自行处理（输入的 pKa 应对应计算温度）。</li>
+  <li>Debye-Hückel 扩展定律中的常数 A 采用一阶温度近似，B 值近似为常数。</li>
+  <li>中性分子 HA 的活度系数取为 1。</li>
+  <li>忽略离子配对、络合反应和副反应。</li>
+  <li>缓冲容量公式忽略水的自电离贡献。</li>
+</ol>
+
+<h2>三、不适用的场景</h2>
+<ul>
+  <li>高离子强度溶液（I > 0.5 mol/L）：Debye-Hückel 方程严重失效。</li>
+  <li>非水溶剂或混合溶剂体系。</li>
+  <li>高温（> 80°C）或低温（< 0°C）极端条件。</li>
+  <li>含多价金属离子、可能发生络合或沉淀的体系。</li>
+  <li>需要精确到 0.01 pH 单位以内的严格定量分析。</li>
+  <li>直接用于临床患者诊疗决策。</li>
+</ul>
+
+<h2>四、误差与精度限制</h2>
+<p>本工具的计算结果存在以下已知误差来源：</p>
+<ul>
+  <li>基本 HH 方程在 I > 0.01 mol/L 时即产生可察觉误差（约 0.02–0.15 pH 单位）。</li>
+  <li>Debye-Hückel 修正在 I > 0.1 mol/L 时自身精度下降。</li>
+  <li>pKa 数据来源的差异可导致 0.01–0.05 单位的系统偏差。</li>
+  <li>浮点运算精度约为 10⁻¹⁵（双精度），但模型误差远大于此。</li>
+</ul>
+<p><strong>请勿将本工具的输出描述为"精确计算"或"绝对准确"。</strong>所有结果均应视为理论估算值。</p>
+
+<h2>五、临床使用特别警告</h2>
+<div class="disclaimer-box">
+<p>若本工具被用于与临床相关的计算（如血气分析辅助理解、输液配方参考等），请注意：</p>
+<ul style="margin-top:8px;">
+  <li>人体血液是复杂的多缓冲体系，HH 方程仅提供极度简化的近似。</li>
+  <li>实际血气分析结果受体温、血红蛋白浓度、2,3-DPG、白蛋白水平等多种因素影响。</li>
+  <li>任何涉及患者治疗的决策必须由具备执业资格的医师做出。</li>
+  <li>本工具不替代经过验证的医疗设备和临床实验室检测。</li>
+</ul>
+</div>
+
+<h2>六、责任限制</h2>
+<p>本工具按"现状"提供，不附带任何明示或暗示的保证。开发者不对因使用本工具产生的任何直接、间接、附带或后果性损害承担责任。使用者须自行验证计算结果的适用性和准确性。</p>
+
+<h2>七、化学/物理工具通用声明</h2>
+<p>本工具中的物理化学计算基于经典电解质理论模型。所有公式均有其推导假设和适用边界。在实际工程和研究中，计算结果应作为初步参考，关键参数须以实验测量为准。对于涉及安全的关键应用（如化工过程控制、药品生产），须遵循相关行业标准和质量管理体系要求。</p>
+`;
+})();
+
+</script>
+</body>
+</html>

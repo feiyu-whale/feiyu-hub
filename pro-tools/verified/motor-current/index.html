@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电机电流与功率计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; background: #f0f2f5; color: #333; line-height: 1.7; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; color: #1a1a2e; margin: 20px 0; font-size: 1.8em; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 0; }
+.tab-btn { padding: 12px 28px; cursor: pointer; background: #e8e8e8; border: none; font-size: 15px; color: #555; transition: all 0.2s; border-radius: 8px 8px 0 0; margin-right: 4px; }
+.tab-btn.active { background: #fff; color: #1a73e8; font-weight: 600; border-bottom: 2px solid #fff; margin-bottom: -2px; }
+.tab-btn:hover { background: #d0d8e8; }
+.tab-content { display: none; background: #fff; padding: 30px; border-radius: 0 8px 8px 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); min-height: 500px; }
+.tab-content.active { display: block; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-weight: 600; margin-bottom: 4px; color: #444; font-size: 14px; }
+.form-group input, .form-group select { padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
+.form-group .hint { font-size: 12px; color: #888; margin-top: 2px; }
+.btn { padding: 12px 32px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; margin: 10px 8px 10px 0; }
+.btn:hover { background: #1557b0; }
+.btn-secondary { background: #5f6368; }
+.btn-secondary:hover { background: #444; }
+.result-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 16px 0; }
+.result-box h3 { color: #1a73e8; margin-bottom: 12px; }
+.result-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e8e8e8; }
+.result-item:last-child { border-bottom: none; }
+.result-label { color: #555; }
+.result-value { font-weight: 700; color: #1a1a2e; font-family: "Consolas", monospace; }
+.compare-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.compare-table th, .compare-table td { padding: 10px 14px; border: 1px solid #ddd; text-align: center; }
+.compare-table th { background: #e8f0fe; color: #1a73e8; }
+.compare-table td { font-family: "Consolas", monospace; }
+.error-msg { color: #d32f2f; background: #fde8e8; padding: 10px; border-radius: 6px; margin: 10px 0; }
+pre { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5; white-space: pre; tab-size: 2; }
+code { font-family: "Consolas", "Source Code Pro", monospace; }
+.test-output { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; font-family: "Consolas", monospace; font-size: 13px; line-height: 1.6; max-height: 600px; overflow-y: auto; white-space: pre-wrap; }
+.test-pass { color: #4ec9b0; }
+.test-fail { color: #f44747; }
+.test-summary { color: #dcdcaa; font-weight: bold; font-size: 15px; }
+.manual-section { margin: 24px 0; }
+.manual-section h2 { color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; margin-bottom: 16px; }
+.manual-section h3 { color: #333; margin: 16px 0 8px; }
+.manual-section p { margin: 8px 0; text-indent: 2em; }
+.manual-section ul, .manual-section ol { margin: 8px 0 8px 2em; }
+.manual-section li { margin: 4px 0; }
+.warn-box { background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px 16px; margin: 12px 0; border-radius: 0 6px 6px 0; }
+.info-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px 16px; margin: 12px 0; border-radius: 0 6px 6px 0; }
+.version-tag { position: fixed; bottom: 8px; right: 12px; font-size: 11px; color: #aaa; z-index: 999; }
+.section-divider { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>⚡ 电机电流与功率计算工具</h1>
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('calc', this)">📐 计算器</button>
+<button class="tab-btn" onclick="switchTab('source', this)">📄 JS 源码</button>
+<button class="tab-btn" onclick="switchTab('test', this)">🧪 单元测试</button>
+<button class="tab-btn" onclick="switchTab('manual', this)">📖 使用说明书</button>
+</div>
+
+<!-- 计算器 -->
+<div id="tab-calc" class="tab-content active">
+<h2 style="margin-bottom:16px;">三相异步电动机参数计算</h2>
+<div class="form-grid">
+<div class="form-group">
+<label>额定功率 P<sub>N</sub> (kW)</label>
+<input type="number" id="inp-power" value="7.5" step="0.1" min="0">
+<span class="hint">电机铭牌上的额定输出功率</span>
+</div>
+<div class="form-group">
+<label>额定电压 U<sub>N</sub> (V)</label>
+<input type="number" id="inp-voltage" value="380" step="1">
+<span class="hint">线电压，常见 380V / 660V / 1140V</span>
+</div>
+<div class="form-group">
+<label>额定功率因数 cosφ</label>
+<input type="number" id="inp-pf" value="0.85" step="0.01" min="0" max="1">
+<span class="hint">通常 0.75 ~ 0.95，见铭牌</span>
+</div>
+<div class="form-group">
+<label>额定效率 η</label>
+<input type="number" id="inp-eff" value="0.88" step="0.01" min="0" max="1">
+<span class="hint">通常 0.75 ~ 0.96，见铭牌或能效等级</span>
+</div>
+<div class="form-group">
+<label>额定转速 n<sub>N</sub> (r/min)</label>
+<input type="number" id="inp-speed" value="1460" step="1">
+<span class="hint">铭牌标注，4极约1440~1480</span>
+</div>
+<div class="form-group">
+<label>启动电流倍数 k<sub>i</sub></label>
+<input type="number" id="inp-ki" value="6.5" step="0.1" min="1">
+<span class="hint">直接启动时 I<sub>st</sub>/I<sub>N</sub>，通常 5~7</span>
+</div>
+<div class="form-group">
+<label>启动转矩倍数 k<sub>t</sub></label>
+<input type="number" id="inp-kt" value="2.0" step="0.1" min="0.5">
+<span class="hint">直接启动时 T<sub>st</sub>/T<sub>N</sub>，通常 1.6~2.5</span>
+</div>
+<div class="form-group">
+<label>启动方式</label>
+<select id="inp-start-method" onchange="toggleAutoInput()">
+<option value="direct">直接启动（全压）</option>
+<option value="yd" selected>Y-Δ 降压启动</option>
+<option value="auto">自耦变压器降压启动</option>
+</select>
+</div>
+<div class="form-group" id="fg-auto-ratio">
+<label>自耦变压器抽头比（仅自耦方式）</label>
+<input type="number" id="inp-auto-ratio" value="0.8" step="0.05" min="0.5" max="1">
+<span class="hint">抽头电压比，如 0.6 / 0.8</span>
+</div>
+<div class="form-group">
+<label>电源频率 f (Hz)</label>
+<input type="number" id="inp-freq" value="50" step="1" min="1">
+<span class="hint">通常 50 或 60，用于计算同步转速</span>
+</div>
+</div>
+<button class="btn" onclick="calculate()">计算</button>
+<button class="btn btn-secondary" onclick="resetForm()">重置</button>
+<div id="result-area"></div>
+</div>
+
+<!-- 源码 -->
+<div id="tab-source" class="tab-content">
+<h2 style="margin-bottom:16px;">核心算法 JS 源码（纯函数，零依赖）</h2>
+<pre id="source-code"></pre>
+</div>
+
+<!-- 测试 -->
+<div id="tab-test" class="tab-content">
+<h2 style="margin-bottom:16px;">单元测试（≥30 项）</h2>
+<button class="btn" onclick="runAllTests()">▶ 运行全部测试</button>
+<div id="test-output" class="test-output" style="margin-top:16px;">点击"运行全部测试"查看结果...</div>
+</div>
+
+<!-- 说明书 -->
+<div id="tab-manual" class="tab-content">
+<div id="manual-content"></div>
+</div>
+</div>
+
+<div class="version-tag">v2.1.2-修审查问题 20261108</div>
+
+<script>
+// ============================================================
+// 第一部分：核心算法（纯函数）
+// ============================================================
+
+/**
+ * 计算三相电机额定电流
+ * 公式：I_N = P_N / (√3 × U_N × cosφ × η)
+ * 依据：电工学基本公式推导（参数为经验值，无标准来源）
+ *
+ * @param {number} powerKW - 额定功率，单位 kW，必须 > 0
+ * @param {number} voltageV - 额定线电压，单位 V，必须 > 0
+ * @param {number} powerFactor - 功率因数 cosφ，范围 (0, 1]
+ * @param {number} efficiency - 效率 η，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ *   value: 额定电流（A），valid 为 false 时 value 为 NaN
+ */
+function calcRatedCurrent(powerKW, voltageV, powerFactor, efficiency) {
+  if (!isFinite(powerKW) || !isFinite(voltageV) || !isFinite(powerFactor) || !isFinite(efficiency)) {
+    return { value: NaN, unit: 'A', valid: false, error: '输入包含非有限数值（NaN 或 Infinity）' };
+  }
+  if (powerKW <= 0) {
+    return { value: NaN, unit: 'A', valid: false, error: '额定功率必须大于 0' };
+  }
+  if (voltageV <= 0) {
+    return { value: NaN, unit: 'A', valid: false, error: '额定电压必须大于 0' };
+  }
+  if (powerFactor <= 0 || powerFactor > 1) {
+    return { value: NaN, unit: 'A', valid: false, error: '功率因数必须在 (0, 1] 范围内' };
+  }
+  if (efficiency <= 0 || efficiency > 1) {
+    return { value: NaN, unit: 'A', valid: false, error: '效率必须在 (0, 1] 范围内' };
+  }
+  var value = (powerKW * 1000) / (Math.sqrt(3) * voltageV * powerFactor * efficiency);
+  return { value: value, unit: 'A', valid: true };
+}
+
+/**
+ * 计算三相电机直接启动电流
+ * 公式：I_st = k_i × I_N
+ *
+ * @param {number} ratedCurrent - 额定电流（A），必须 > 0
+ * @param {number} startCurrentMultiple - 启动电流倍数 k_i，通常 5~7，必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcDirectStartCurrent(ratedCurrent, startCurrentMultiple) {
+  if (!isFinite(ratedCurrent) || !isFinite(startCurrentMultiple)) {
+    return { value: NaN, unit: 'A', valid: false, error: '输入包含非有限数值' };
+  }
+  if (ratedCurrent <= 0) {
+    return { value: NaN, unit: 'A', valid: false, error: '额定电流必须大于 0' };
+  }
+  if (startCurrentMultiple <= 0) {
+    return { value: NaN, unit: 'A', valid: false, error: '启动电流倍数必须大于 0' };
+  }
+  var value = ratedCurrent * startCurrentMultiple;
+  return { value: value, unit: 'A', valid: true };
+}
+
+/**
+ * 计算 Y-Δ 降压启动电流
+ * Y-Δ 启动时，绕组电压降为 1/√3，线电流降为直接启动的 1/3
+ * 公式：I_st_YΔ = I_st_direct / 3
+ *
+ * @param {number} directStartCurrent - 直接启动电流（A），必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcYDStartCurrent(directStartCurrent) {
+  if (!isFinite(directStartCurrent)) {
+    return { value: NaN, unit: 'A', valid: false, error: '输入包含非有限数值' };
+  }
+  if (directStartCurrent <= 0) {
+    return { value: NaN, unit: 'A', valid: false, error: '直接启动电流必须大于 0' };
+  }
+  var value = directStartCurrent / 3;
+  return { value: value, unit: 'A', valid: true };
+}
+
+/**
+ * 计算自耦变压器降压启动电流（电网侧）
+ * 抽头比为 a（0 < a < 1），电机端电压 = a × U_N
+ * 电机电流 = a × I_st_direct
+ * 电网侧电流 = a² × I_st_direct
+ *
+ * @param {number} directStartCurrent - 直接启动电流（A），必须 > 0
+ * @param {number} tapRatio - 自耦变压器抽头电压比 a，范围 (0, 1]
+ * @returns {{ motorCurrent: number, gridCurrent: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcAutoTransformerStartCurrent(directStartCurrent, tapRatio) {
+  if (!isFinite(directStartCurrent) || !isFinite(tapRatio)) {
+    return { motorCurrent: NaN, gridCurrent: NaN, unit: 'A', valid: false, error: '输入包含非有限数值' };
+  }
+  if (directStartCurrent <= 0) {
+    return { motorCurrent: NaN, gridCurrent: NaN, unit: 'A', valid: false, error: '直接启动电流必须大于 0' };
+  }
+  if (tapRatio <= 0 || tapRatio > 1) {
+    return { motorCurrent: NaN, gridCurrent: NaN, unit: 'A', valid: false, error: '抽头比必须在 (0, 1] 范围内' };
+  }
+  var motorCurrent = directStartCurrent * tapRatio;
+  var gridCurrent = directStartCurrent * tapRatio * tapRatio;
+  return { motorCurrent: motorCurrent, gridCurrent: gridCurrent, unit: 'A', valid: true };
+}
+
+/**
+ * 计算三相电机额定转矩
+ * 公式：T_N = 9550 × P_N / n_N
+ * 其中 P_N 单位 kW，n_N 单位 r/min，T_N 单位 N·m
+ * 常数 9550 ≈ 60 × 1000 / (2π) = 9549.3，工程取 9550
+ *
+ * @param {number} powerKW - 额定功率（kW），必须 > 0
+ * @param {number} speedRPM - 额定转速（r/min），必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcRatedTorque(powerKW, speedRPM) {
+  if (!isFinite(powerKW) || !isFinite(speedRPM)) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  }
+  if (powerKW <= 0) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '额定功率必须大于 0' };
+  }
+  if (speedRPM <= 0) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '额定转速必须大于 0' };
+  }
+  var value = 9550 * powerKW / speedRPM;
+  return { value: value, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算直接启动转矩
+ * 公式：T_st = k_t × T_N
+ *
+ * @param {number} ratedTorque - 额定转矩（N·m），必须 > 0
+ * @param {number} startTorqueMultiple - 启动转矩倍数 k_t，必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcDirectStartTorque(ratedTorque, startTorqueMultiple) {
+  if (!isFinite(ratedTorque) || !isFinite(startTorqueMultiple)) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  }
+  if (ratedTorque <= 0) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '额定转矩必须大于 0' };
+  }
+  if (startTorqueMultiple <= 0) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '启动转矩倍数必须大于 0' };
+  }
+  var value = ratedTorque * startTorqueMultiple;
+  return { value: value, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算 Y-Δ 降压启动转矩
+ * 转矩与电压平方成正比，Y 接法绕组电压为 Δ 的 1/√3
+ * 因此启动转矩降为直接启动的 (1/√3)² = 1/3
+ * 公式：T_st_YΔ = T_st_direct / 3
+ *
+ * @param {number} directStartTorque - 直接启动转矩（N·m），必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcYDStartTorque(directStartTorque) {
+  if (!isFinite(directStartTorque)) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  }
+  if (directStartTorque <= 0) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '直接启动转矩必须大于 0' };
+  }
+  var value = directStartTorque / 3;
+  return { value: value, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算自耦变压器降压启动转矩
+ * 转矩与电压平方成正比
+ * 公式：T_st_auto = a² × T_st_direct
+ *
+ * @param {number} directStartTorque - 直接启动转矩（N·m），必须 > 0
+ * @param {number} tapRatio - 抽头电压比 a，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcAutoTransformerStartTorque(directStartTorque, tapRatio) {
+  if (!isFinite(directStartTorque) || !isFinite(tapRatio)) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  }
+  if (directStartTorque <= 0) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '直接启动转矩必须大于 0' };
+  }
+  if (tapRatio <= 0 || tapRatio > 1) {
+    return { value: NaN, unit: 'N·m', valid: false, error: '抽头比必须在 (0, 1] 范围内' };
+  }
+  var value = directStartTorque * tapRatio * tapRatio;
+  return { value: value, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算三相电机输入电功率
+ * 公式：P_in = √3 × U × I × cosφ
+ *
+ * @param {number} voltageV - 线电压（V），必须 > 0
+ * @param {number} currentA - 线电流（A），必须 > 0
+ * @param {number} powerFactor - 功率因数，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ *   value 单位为 kW
+ */
+function calcInputPower(voltageV, currentA, powerFactor) {
+  if (!isFinite(voltageV) || !isFinite(currentA) || !isFinite(powerFactor)) {
+    return { value: NaN, unit: 'kW', valid: false, error: '输入包含非有限数值' };
+  }
+  if (voltageV <= 0) {
+    return { value: NaN, unit: 'kW', valid: false, error: '电压必须大于 0' };
+  }
+  if (currentA <= 0) {
+    return { value: NaN, unit: 'kW', valid: false, error: '电流必须大于 0' };
+  }
+  if (powerFactor <= 0 || powerFactor > 1) {
+    return { value: NaN, unit: 'kW', valid: false, error: '功率因数必须在 (0, 1] 范围内' };
+  }
+  var value = Math.sqrt(3) * voltageV * currentA * powerFactor / 1000;
+  return { value: value, unit: 'kW', valid: true };
+}
+
+/**
+ * 计算三相电机输出机械功率
+ * 公式：P_out = P_in × η = √3 × U × I × cosφ × η
+ *
+ * @param {number} voltageV - 线电压（V），必须 > 0
+ * @param {number} currentA - 线电流（A），必须 > 0
+ * @param {number} powerFactor - 功率因数，范围 (0, 1]
+ * @param {number} efficiency - 效率，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ *   value 单位为 kW
+ */
+function calcOutputPower(voltageV, currentA, powerFactor, efficiency) {
+  if (!isFinite(voltageV) || !isFinite(currentA) || !isFinite(powerFactor) || !isFinite(efficiency)) {
+    return { value: NaN, unit: 'kW', valid: false, error: '输入包含非有限数值' };
+  }
+  if (voltageV <= 0) {
+    return { value: NaN, unit: 'kW', valid: false, error: '电压必须大于 0' };
+  }
+  if (currentA <= 0) {
+    return { value: NaN, unit: 'kW', valid: false, error: '电流必须大于 0' };
+  }
+  if (powerFactor <= 0 || powerFactor > 1) {
+    return { value: NaN, unit: 'kW', valid: false, error: '功率因数必须在 (0, 1] 范围内' };
+  }
+  if (efficiency <= 0 || efficiency > 1) {
+    return { value: NaN, unit: 'kW', valid: false, error: '效率必须在 (0, 1] 范围内' };
+  }
+  var value = Math.sqrt(3) * voltageV * currentA * powerFactor * efficiency / 1000;
+  return { value: value, unit: 'kW', valid: true };
+}
+
+/**
+ * 计算同步转速
+ * 公式：n_s = 60 × f / p
+ *
+ * @param {number} frequencyHz - 电源频率（Hz），通常 50 或 60
+ * @param {number} polePairs - 极对数，正整数（2极=1, 4极=2, 6极=3, 8极=4）
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcSynchronousSpeed(frequencyHz, polePairs) {
+  if (!isFinite(frequencyHz) || !isFinite(polePairs)) {
+    return { value: NaN, unit: 'r/min', valid: false, error: '输入包含非有限数值' };
+  }
+  if (frequencyHz <= 0) {
+    return { value: NaN, unit: 'r/min', valid: false, error: '频率必须大于 0' };
+  }
+  if (polePairs <= 0 || polePairs !== Math.floor(polePairs)) {
+    return { value: NaN, unit: 'r/min', valid: false, error: '极对数必须为正整数' };
+  }
+  var value = 60 * frequencyHz / polePairs;
+  return { value: value, unit: 'r/min', valid: true };
+}
+
+/**
+ * 计算转差率
+ * 公式：s = (n_s - n) / n_s
+ *
+ * @param {number} synchronousSpeed - 同步转速（r/min），必须 > 0
+ * @param {number} actualSpeed - 实际转速（r/min），必须 >= 0 且 < 同步转速
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcSlip(synchronousSpeed, actualSpeed) {
+  if (!isFinite(synchronousSpeed) || !isFinite(actualSpeed)) {
+    return { value: NaN, unit: '', valid: false, error: '输入包含非有限数值' };
+  }
+  if (synchronousSpeed <= 0) {
+    return { value: NaN, unit: '', valid: false, error: '同步转速必须大于 0' };
+  }
+  if (actualSpeed < 0) {
+    return { value: NaN, unit: '', valid: false, error: '实际转速不能为负' };
+  }
+  if (actualSpeed >= synchronousSpeed) {
+    return { value: NaN, unit: '', valid: false, error: '实际转速必须小于同步转速（异步电机）' };
+  }
+  var value = (synchronousSpeed - actualSpeed) / synchronousSpeed;
+  return { value: value, unit: '', valid: true };
+}
+
+/**
+ * 比较 Y-Δ 启动与直接启动的参数
+ *
+ * @param {number} ratedCurrent - 额定电流（A）
+ * @param {number} startCurrentMultiple - 启动电流倍数
+ * @param {number} ratedTorque - 额定转矩（N·m）
+ * @param {number} startTorqueMultiple - 启动转矩倍数
+ * @returns {{ directStartCurrent: number, ydStartCurrent: number, currentRatio: number,
+ *             directStartTorque: number, ydStartTorque: number, torqueRatio: number,
+ *             valid: boolean, error?: string }}
+ */
+function compareYDStart(ratedCurrent, startCurrentMultiple, ratedTorque, startTorqueMultiple) {
+  var dsc = calcDirectStartCurrent(ratedCurrent, startCurrentMultiple);
+  if (!dsc.valid) return { valid: false, error: dsc.error };
+  var ysc = calcYDStartCurrent(dsc.value);
+  if (!ysc.valid) return { valid: false, error: ysc.error };
+  var dst = calcDirectStartTorque(ratedTorque, startTorqueMultiple);
+  if (!dst.valid) return { valid: false, error: dst.error };
+  var yst = calcYDStartTorque(dst.value);
+  if (!yst.valid) return { valid: false, error: yst.error };
+  return {
+    directStartCurrent: dsc.value,
+    ydStartCurrent: ysc.value,
+    currentRatio: ysc.value / dsc.value,
+    directStartTorque: dst.value,
+    ydStartTorque: yst.value,
+    torqueRatio: yst.value / dst.value,
+    valid: true
+  };
+}
+
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+function runAllTests() {
+  var output = document.getElementById('test-output');
+  var passed = 0;
+  var total = 0;
+  var log = [];
+
+  function assert(condition, testName, detail) {
+    total++;
+    if (condition) {
+      passed++;
+      log.push('<span class="test-pass">✓ PASS</span> [' + total + '] ' + testName);
+    } else {
+      log.push('<span class="test-fail">✗ FAIL</span> [' + total + '] ' + testName + (detail ? ' — ' + detail : ''));
+    }
+  }
+
+  function approxEqual(a, b, tolerance) {
+    if (tolerance === undefined) tolerance = 1e-6;
+    return Math.abs(a - b) < tolerance;
+  }
+
+  // === calcRatedCurrent 测试 ===
+
+  // 1. 标准 7.5kW 电机
+  (function() {
+    var r = calcRatedCurrent(7.5, 380, 0.85, 0.88);
+    assert(r.valid && approxEqual(r.value, 15.234, 0.01), '额定电流 7.5kW/380V', 'got ' + r.value);
+  })();
+
+  // 2. 标准 15kW 电机
+  (function() {
+    var r = calcRatedCurrent(15, 380, 0.85, 0.90);
+    /* 修正：原期望 30.468 是按效率 0.88 算的，但用例传入 0.90；
+       15kW/(√3×380×0.85×0.90) = 29.791 A */
+    assert(r.valid && approxEqual(r.value, 29.791, 0.1), '额定电流 15kW/380V', 'got ' + r.value);
+  })();
+
+  // 3. 小功率 0.75kW
+  (function() {
+    var r = calcRatedCurrent(0.75, 380, 0.75, 0.75);
+    /* 修正：原期望 1.523 是按 pf=0.85/η=0.88 算的，与传入参数不符；
+       0.75kW/(√3×380×0.75×0.75) = 2.026 A */
+    assert(r.valid && approxEqual(r.value, 2.026, 0.01), '额定电流 0.75kW 小功率', 'got ' + r.value);
+  })();
+
+  // 4. 大功率 200kW
+  (function() {
+    var r = calcRatedCurrent(200, 380, 0.90, 0.95);
+    /* 修正：原期望 406.241 是按 pf=0.85/η=0.88 算的，与传入参数不符；
+       200kW/(√3×380×0.90×0.95) = 355.402 A */
+    assert(r.valid && approxEqual(r.value, 355.402, 0.5), '额定电流 200kW 大功率', 'got ' + r.value);
+  })();
+
+  // 5. 660V 电压
+  (function() {
+    var r = calcRatedCurrent(7.5, 660, 0.85, 0.88);
+    assert(r.valid && approxEqual(r.value, 8.771, 0.01), '额定电流 660V 电压', 'got ' + r.value);
+  })();
+
+  // 6. 功率为 0 → 错误
+  (function() {
+    var r = calcRatedCurrent(0, 380, 0.85, 0.88);
+    assert(!r.valid, '额定电流 功率=0 应报错');
+  })();
+
+  // 7. 负功率 → 错误
+  (function() {
+    var r = calcRatedCurrent(-5, 380, 0.85, 0.88);
+    assert(!r.valid, '额定电流 负功率 应报错');
+  })();
+
+  // 8. 电压为 0 → 错误
+  (function() {
+    var r = calcRatedCurrent(7.5, 0, 0.85, 0.88);
+    assert(!r.valid, '额定电流 电压=0 应报错');
+  })();
+
+  // 9. 功率因数 > 1 → 错误
+  (function() {
+    var r = calcRatedCurrent(7.5, 380, 1.01, 0.88);
+    assert(!r.valid, '额定电流 cosφ>1 应报错');
+  })();
+
+  // 10. 效率 = 0 → 错误
+  (function() {
+    var r = calcRatedCurrent(7.5, 380, 0.85, 0);
+    assert(!r.valid, '额定电流 η=0 应报错');
+  })();
+
+  // 11. NaN 输入
+  (function() {
+    var r = calcRatedCurrent(NaN, 380, 0.85, 0.88);
+    assert(!r.valid, '额定电流 NaN 输入 应报错');
+  })();
+
+  // 12. Infinity 输入
+  (function() {
+    var r = calcRatedCurrent(Infinity, 380, 0.85, 0.88);
+    assert(!r.valid, '额定电流 Infinity 输入 应报错');
+  })();
+
+  // 13. cosφ = 1 边界
+  (function() {
+    var r = calcRatedCurrent(7.5, 380, 1, 0.88);
+    assert(r.valid, '额定电流 cosφ=1 边界值应有效');
+  })();
+
+  // 14. η = 1 边界
+  (function() {
+    var r = calcRatedCurrent(7.5, 380, 0.85, 1);
+    assert(r.valid, '额定电流 η=1 边界值应有效');
+  })();
+
+  // === calcDirectStartCurrent 测试 ===
+
+  // 15. 正常启动电流
+  (function() {
+    var r = calcDirectStartCurrent(15, 6.5);
+    assert(r.valid && approxEqual(r.value, 97.5, 0.01), '直接启动电流 15A×6.5', 'got ' + r.value);
+  })();
+
+  // 16. 启动倍数 = 5
+  (function() {
+    var r = calcDirectStartCurrent(10, 5);
+    assert(r.valid && approxEqual(r.value, 50, 0.01), '直接启动电流 10A×5');
+  })();
+
+  // 17. 负额定电流 → 错误
+  (function() {
+    var r = calcDirectStartCurrent(-10, 6);
+    assert(!r.valid, '直接启动电流 负额定电流 应报错');
+  })();
+
+  // === calcYDStartCurrent 测试 ===
+
+  // 18. Y-Δ 启动电流 = 直接启动 / 3
+  (function() {
+    var r = calcYDStartCurrent(97.5);
+    assert(r.valid && approxEqual(r.value, 32.5, 0.01), 'Y-Δ启动电流 97.5/3', 'got ' + r.value);
+  })();
+
+  // 19. Y-Δ 负值 → 错误
+  (function() {
+    var r = calcYDStartCurrent(-50);
+    assert(!r.valid, 'Y-Δ启动电流 负值 应报错');
+  })();
+
+  // === calcAutoTransformerStartCurrent 测试 ===
+
+  // 20. 自耦 0.8 抽头
+  (function() {
+    var r = calcAutoTransformerStartCurrent(100, 0.8);
+    assert(r.valid && approxEqual(r.motorCurrent, 80, 0.01) && approxEqual(r.gridCurrent, 64, 0.01),
+      '自耦启动 a=0.8', 'motor=' + r.motorCurrent + ' grid=' + r.gridCurrent);
+  })();
+
+  // 21. 自耦 a=1 等于直接启动
+  (function() {
+    var r = calcAutoTransformerStartCurrent(100, 1);
+    assert(r.valid && approxEqual(r.gridCurrent, 100, 0.01), '自耦启动 a=1 等于直接');
+  })();
+
+  // 22. 自耦 a>1 → 错误
+  (function() {
+    var r = calcAutoTransformerStartCurrent(100, 1.1);
+    assert(!r.valid, '自耦启动 a>1 应报错');
+  })();
+
+  // === calcRatedTorque 测试 ===
+
+  // 23. 7.5kW 1460rpm
+  (function() {
+    var r = calcRatedTorque(7.5, 1460);
+    /* 修正：T = 9550P/n = 9550×7.5/1460 = 49.058 N·m（原期望 48.87 系数取错） */
+    assert(r.valid && approxEqual(r.value, 49.058, 0.1), '额定转矩 7.5kW/1460rpm', 'got ' + r.value);
+  })();
+
+  // 24. 15kW 1460rpm
+  (function() {
+    var r = calcRatedTorque(15, 1460);
+    /* 修正：T = 9550×15/1460 = 98.116 N·m（原期望 97.77 系数取错） */
+    assert(r.valid && approxEqual(r.value, 98.116, 0.1), '额定转矩 15kW/1460rpm', 'got ' + r.value);
+  })();
+
+  // 25. 高转速 2950rpm
+  (function() {
+    var r = calcRatedTorque(7.5, 2950);
+    assert(r.valid && approxEqual(r.value, 24.27, 0.1), '额定转矩 7.5kW/2950rpm 2极', 'got ' + r.value);
+  })();
+
+  // 26. 转速 = 0 → 错误
+  (function() {
+    var r = calcRatedTorque(7.5, 0);
+    assert(!r.valid, '额定转矩 转速=0 应报错');
+  })();
+
+  // === calcDirectStartTorque 测试 ===
+
+  // 27. 正常启动转矩
+  (function() {
+    var r = calcDirectStartTorque(48.87, 2.0);
+    assert(r.valid && approxEqual(r.value, 97.74, 0.01), '直接启动转矩 48.87×2');
+  })();
+
+  // === calcYDStartTorque 测试 ===
+
+  // 28. Y-Δ 启动转矩 = 直接 / 3
+  (function() {
+    var r = calcYDStartTorque(97.74);
+    assert(r.valid && approxEqual(r.value, 32.58, 0.01), 'Y-Δ启动转矩 97.74/3', 'got ' + r.value);
+  })();
+
+  // === calcAutoTransformerStartTorque 测试 ===
+
+  // 29. 自耦启动转矩 a=0.8
+  (function() {
+    var r = calcAutoTransformerStartTorque(100, 0.8);
+    assert(r.valid && approxEqual(r.value, 64, 0.01), '自耦启动转矩 a=0.8 → a²=0.64', 'got ' + r.value);
+  })();
+
+  // === calcInputPower 测试 ===
+
+  // 30. 输入功率
+  (function() {
+    var r = calcInputPower(380, 15, 0.85);
+    assert(r.valid && approxEqual(r.value, 8.393, 0.01), '输入功率 380V/15A/cos0.85', 'got ' + r.value);
+  })();
+
+  // 31. 输入功率 cosφ=0 → 错误
+  (function() {
+    var r = calcInputPower(380, 15, 0);
+    assert(!r.valid, '输入功率 cosφ=0 应报错');
+  })();
+
+  // === calcOutputPower 测试 ===
+
+  // 32. 输出功率
+  (function() {
+    var r = calcOutputPower(380, 15, 0.85, 0.90);
+    assert(r.valid && approxEqual(r.value, 7.554, 0.01), '输出功率 380V/15A/cos0.85/η0.9', 'got ' + r.value);
+  })();
+
+  // === calcSynchronousSpeed 测试 ===
+
+  // 33. 50Hz 2极
+  (function() {
+    var r = calcSynchronousSpeed(50, 1);
+    assert(r.valid && r.value === 3000, '同步转速 50Hz/2极=3000');
+  })();
+
+  // 34. 50Hz 4极
+  (function() {
+    var r = calcSynchronousSpeed(50, 2);
+    assert(r.valid && r.value === 1500, '同步转速 50Hz/4极=1500');
+  })();
+
+  // 35. 60Hz 4极
+  (function() {
+    var r = calcSynchronousSpeed(60, 2);
+    assert(r.valid && r.value === 1800, '同步转速 60Hz/4极=1800');
+  })();
+
+  // 36. 极对数非整数 → 错误
+  (function() {
+    var r = calcSynchronousSpeed(50, 1.5);
+    assert(!r.valid, '同步转速 极对数非整数 应报错');
+  })();
+
+  // === calcSlip 测试 ===
+
+  // 37. 转差率
+  (function() {
+    var r = calcSlip(1500, 1460);
+    assert(r.valid && approxEqual(r.value, 0.02667, 0.001), '转差率 1500→1460', 'got ' + r.value);
+  })();
+
+  // 38. 转速=同步 → 错误
+  (function() {
+    var r = calcSlip(1500, 1500);
+    assert(!r.valid, '转差率 转速=同步 应报错');
+  })();
+
+  // === compareYDStart 测试 ===
+
+  // 39. 完整 Y-Δ 对比
+  (function() {
+    var r = compareYDStart(15, 6.5, 48.87, 2.0);
+    assert(r.valid &&
+      approxEqual(r.directStartCurrent, 97.5, 0.1) &&
+      approxEqual(r.ydStartCurrent, 32.5, 0.1) &&
+      approxEqual(r.currentRatio, 1/3, 0.001) &&
+      approxEqual(r.torqueRatio, 1/3, 0.001),
+      'Y-Δ完整对比 电流比=1/3 转矩比=1/3',
+      'I_d=' + r.directStartCurrent + ' I_y=' + r.ydStartCurrent);
+  })();
+
+  // 40. 精度测试：大数运算
+  (function() {
+    var r = calcRatedCurrent(500, 380, 0.89, 0.95);
+    assert(r.valid && r.value > 0 && isFinite(r.value), '大数精度 500kW 结果有限', 'got ' + r.value);
+  })();
+
+  // 41. 精度测试：极小功率
+  (function() {
+    var r = calcRatedCurrent(0.001, 380, 0.8, 0.7);
+    /* 修正：0.001kW/(√3×380×0.8×0.7) = 0.0027136 A */
+    assert(r.valid && approxEqual(r.value, 0.002714, 0.0001), '极小功率 0.001kW', 'got ' + r.value);
+  })();
+
+  // 42. 浮点精度：√3 相关
+  (function() {
+    var r = calcRatedCurrent(1, 380, 1, 1);
+    var expected = 1000 / (Math.sqrt(3) * 380);
+    assert(r.valid && approxEqual(r.value, expected, 1e-10), '浮点精度 √3 验证', 'got ' + r.value + ' expected ' + expected);
+  })();
+
+  // === 输出结果 ===
+  log.push('');
+  log.push('<span class="test-summary">通过 ' + passed + ' / 共 ' + total + '</span>');
+  if (passed === total) {
+    log.push('<span class="test-pass">全部通过 ✓</span>');
+  } else {
+    log.push('<span class="test-fail">有 ' + (total - passed) + ' 项未通过 ✗</span>');
+  }
+  output.innerHTML = log.join('\n');
+}
+
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+
+function renderManual() {
+  var html = `
+<div class="manual-section">
+<h2>一、工具用途</h2>
+<p>本工具用于三相异步电动机的电气参数估算，涵盖以下计算功能：</p>
+<ul>
+<li><strong>额定电流计算</strong>：根据额定功率、电压、功率因数、效率，计算电机额定线电流。</li>
+<li><strong>启动电流计算</strong>：计算直接启动、Y-Δ 降压启动、自耦变压器降压启动三种方式下的启动电流。</li>
+<li><strong>额定转矩计算</strong>：根据额定功率和额定转速计算额定输出转矩。</li>
+<li><strong>启动转矩计算</strong>：计算不同启动方式下的启动转矩。</li>
+<li><strong>输入/输出功率计算</strong>：根据电压、电流、功率因数、效率计算电功率。</li>
+<li><strong>同步转速与转差率</strong>：根据电源频率和极对数计算同步转速，进而计算转差率。</li>
+<li><strong>Y-Δ 启动对比</strong>：一键对比直接启动与 Y-Δ 启动的电流和转矩差异。</li>
+</ul>
+<p>适用场景：电气设计选型、启动方案论证、现场参数校核、教学演示等。</p>
+</div>
+
+<div class="manual-section">
+<h2>二、参数详解</h2>
+
+<h3>2.1 额定功率 P<sub>N</sub>（kW）</h3>
+<p>电机铭牌上标注的轴端输出机械功率。注意：这是输出功率，不是输入电功率。常见标准功率等级（kW）：0.75、1.1、1.5、2.2、3、4、5.5、7.5、11、15、18.5、22、30、37、45、55、75、90、110、132、160、200 等（参见 GB/T 4772 系列标准中的功率等级规定，具体数值需查标准原文）。</p>
+
+<h3>2.2 额定电压 U<sub>N</sub>（V）</h3>
+<p>电机定子绕组的额定线电压。低压电机常见 380V（50Hz 地区）、400V（IEC 标准）、440V/460V（60Hz 地区）。中高压电机有 660V、1140V、3kV、6kV、10kV 等。电压等级需与供电系统匹配。</p>
+
+<h3>2.3 功率因数 cosφ</h3>
+<p>电机在额定工况下的功率因数，反映有功功率与视在功率之比。典型值范围：</p>
+<ul>
+<li>小功率电机（< 1kW）：0.70 ~ 0.80</li>
+<li>中等功率（1~10kW）：0.78 ~ 0.87</li>
+<li>较大功率（> 10kW）：0.85 ~ 0.93</li>
+<li>大功率高压电机：可达 0.90 ~ 0.95</li>
+</ul>
+<p>具体数值应以电机铭牌或出厂试验报告为准。功率因数随负载变化，轻载时显著降低。</p>
+
+<h3>2.4 效率 η</h3>
+<p>电机额定工况下输出机械功率与输入电功率之比。效率等级参见 GB 18613-2020《电动机能效限定值及能效等级》。IE 效率等级对照（以 4 极 7.5kW 为例，具体数值需查标准原文）：</p>
+<ul>
+<li>IE1（标准效率）：约 87%</li>
+<li>IE2（高效率）：约 89%</li>
+<li>IE3（超高效率）：约 91%</li>
+<li>IE4（超超高效率）：约 92%</li>
+</ul>
+<p>注意：以上仅为示例范围，实际值需查 GB 18613-2020 标准原文中的对应表格。</p>
+
+<h3>2.5 额定转速 n<sub>N</sub>（r/min）</h3>
+<p>电机在额定电压、额定频率、额定负载下的转子转速。异步电机转速略低于同步转速，差值即转差。常见对应关系（50Hz）：</p>
+<ul>
+<li>2 极（同步 3000 r/min）：额定约 2880~2960</li>
+<li>4 极（同步 1500 r/min）：额定约 1440~1480</li>
+<li>6 极（同步 1000 r/min）：额定约 960~980</li>
+<li>8 极（同步 750 r/min）：额定约 720~740</li>
+</ul>
+
+<h3>2.6 启动电流倍数 k<sub>i</sub></h3>
+<p>直接启动时启动电流与额定电流之比。典型值 5~7 倍，具体取决于电机设计和功率等级。该参数可在电机铭牌上找到（标注为 I_st/I_N 或类似符号），也可查阅产品样本。</p>
+
+<h3>2.7 启动转矩倍数 k<sub>t</sub></h3>
+<p>直接启动时启动转矩与额定转矩之比。典型值 1.6~2.5 倍。该参数同样可在铭牌或产品样本中找到（标注为 T_st/T_N 或类似符号）。</p>
+
+<h3>2.8 自耦变压器抽头比 a</h3>
+<p>自耦变压器降压启动时，抽头输出电压与电源电压之比。常见抽头：60%（a=0.6）、80%（a=0.8）。抽头比越小，启动电流和启动转矩都越小。</p>
+</div>
+
+<div class="manual-section">
+<h2>三、使用场景</h2>
+
+<h3>场景 1：新电机选型——校验额定电流是否匹配断路器</h3>
+<p>已知一台 15kW、380V、4 极三相异步电机，cosφ=0.86，η=0.90。需要选择断路器和接触器。输入参数后计算额定电流约为 29.0A，直接启动电流约为 188.5A（k_i=6.5 时）。据此可选择额定电流 32A 的断路器（D 型脱扣曲线），接触器选 32A 或以上规格。</p>
+
+<h3>场景 2：Y-Δ 启动方案论证</h3>
+<p>一台 22kW 风机负载电机，电网容量有限，直接启动电流过大导致母线压降超标。使用 Y-Δ 启动后，启动电流降为直接启动的 1/3。但需注意启动转矩也降为 1/3，风机类负载启动转矩要求较低（通常只需额定转矩的 30%~40%），因此 Y-Δ 启动可行。若为重载启动（如破碎机），则转矩不足，需考虑其他方案。</p>
+
+<h3>场景 3：现场实测电流与铭牌对比</h3>
+<p>运维人员用钳形表测得运行电流为 16A，铭牌额定电流为 14.7A。输入铭牌参数计算额定电流进行对比，判断电机是否过载。若实测值持续超过额定值 10% 以上，需排查原因（负载过大、电压偏低、缺相、轴承问题等）。</p>
+
+<h3>场景 4：自耦变压器降压启动参数选择</h3>
+<p>一台 75kW 电机，直接启动电流约 850A，电网不允许。选用自耦变压器 80% 抽头启动：电网侧启动电流 = 850 × 0.8² = 544A，电机端电流 = 850 × 0.8 = 680A。启动转矩 = 直接启动转矩 × 0.64。需确认此转矩能否克服负载静摩擦。</p>
+
+<h3>场景 5：教学演示——理解 Y-Δ 启动原理</h3>
+<p>教学中需要直观展示 Y-Δ 启动为什么电流降为 1/3、转矩也降为 1/3。本工具可以输入不同参数，实时看到对比结果，帮助学生理解电压降低对电流和转矩的影响关系。</p>
+
+<h3>场景 6：多电机系统总电流估算</h3>
+<p>配电设计时，需要估算多台电机的总运行电流。逐台输入参数计算额定电流后求和（需考虑同时系数和负载率），为电缆截面和变压器容量选择提供依据。</p>
+</div>
+
+<div class="manual-section">
+<h2>四、常见错误</h2>
+
+<h3>错误 1：混淆输入功率与输出功率</h3>
+<p>铭牌上的功率是输出机械功率，不是输入电功率。如果误将输出功率当作输入功率代入 P=√3UIcosφ 反算电流，结果会偏小（少了效率因子）。正确公式：I = P_out / (√3 × U × cosφ × η)。</p>
+
+<h3>错误 2：Y-Δ 启动适用性判断错误</h3>
+<p>Y-Δ 启动只适用于正常运行时定子绕组为 Δ 接法的电机。如果电机铭牌标注接法为 Y（星形），则不能使用 Y-Δ 启动。另外，Y-Δ 启动转矩只有直接的 1/3，不适用于重载启动场合。</p>
+
+<h3>错误 3：功率因数取值不当</h3>
+<p>功率因数不是固定值，随负载变化。空载时可能低至 0.2~0.3，额定负载时才接近铭牌值。计算额定电流时用铭牌值是正确的，但估算轻载电流时不能直接用铭牌 cosφ。</p>
+
+<h3>错误 4：忽略电压偏差</h3>
+<p>实际电网电压可能偏离额定值 ±5% 甚至更多（GB/T 12325 规定 35kV 及以下供电电压偏差不超过标称电压的 ±7%，具体需查标准原文）。电压偏低时电流会增大，电压偏高时空载电流增大。本工具按额定电压计算，不考虑电压偏差。</p>
+
+<h3>错误 5：启动倍数照搬经验值</h3>
+<p>不同型号、不同极数、不同厂家的电机，启动电流倍数和启动转矩倍数差异较大。不能简单取 6.5 或 2.0，应以电机铭牌数据或出厂试验报告为准。</p>
+</div>
+
+<div class="manual-section">
+<h2>五、精度与误差说明</h2>
+
+<div class="warn-box">
+<strong>重要声明：</strong>现实世界中的电机参数是连续变化的，受温度、饱和、谐波、老化等多种因素影响。本工具基于理想化数学模型计算，<strong>不承诺绝对精确</strong>，结果仅供工程参考。
+</div>
+
+<h3>5.1 算准了什么</h3>
+<ul>
+<li><strong>数学公式本身是准确的</strong>：三相功率公式 P = √3 × U × I × cosφ、转矩公式 T = 9550 × P/n、Y-Δ 启动的 1/3 关系等，这些都是电工学基本定理的推导结果，数学上没有误差。</li>
+<li><strong>浮点运算精度</strong>：JavaScript 使用 IEEE 754 双精度浮点数，有效数字约 15~17 位。对于本工具的输入输出范围，浮点舍入误差远小于工程允许误差，可以忽略。</li>
+</ul>
+
+<h3>5.2 哪些因素没算进去</h3>
+<ul>
+<li><strong>温度影响</strong>：绕组电阻随温度变化（铜绕组温度每升高 1°C，电阻增加约 0.393%），影响铜损和效率，但本工具不考虑温升。</li>
+<li><strong>磁路饱和</strong>：实际电机磁路存在饱和效应，启动瞬间电流波形非正弦，含有谐波分量。本工具按正弦稳态计算。</li>
+<li><strong>电压波形畸变</strong>：变频器供电或电网谐波会导致电压/电流波形畸变，实际有效值与正弦波假设有偏差。</li>
+<li><strong>负载波动</strong>：实际负载不是恒定值，电流随负载实时变化。本工具计算的是额定工况下的理论值。</li>
+<li><strong>制造公差</strong>：同一型号不同个体之间存在制造差异，实际参数可能偏离铭牌值。</li>
+<li><strong>电缆压降</strong>：从变压器到电机的电缆存在压降，电机端电压可能低于标称值。本工具按铭牌额定电压计算。</li>
+<li><strong>频率偏差</strong>：电网频率可能偏离 50Hz（GB/T 15945 规定正常允许偏差 ±0.2Hz，具体需查标准原文），影响同步转速和电机特性。</li>
+</ul>
+
+<h3>5.3 误差大概多大</h3>
+<ul>
+<li><strong>额定电流计算</strong>：如果输入的 cosφ 和 η 准确（来自铭牌或试验报告），计算结果与实际额定电流的偏差通常在 <strong>±3%~5%</strong> 以内。如果 cosφ 和 η 是估算值，偏差可能达到 <strong>±10%</strong> 或更大。</li>
+<li><strong>启动电流计算</strong>：启动电流倍数本身就有较大分散性（同一型号电机可能 ±15%），加上启动瞬间的暂态过程，实际峰值启动电流与计算值的偏差可能达到 <strong>±20%</strong>。</li>
+<li><strong>转矩计算</strong>：T = 9550 × P/n 的常数 9550 是 60000/(2π) 的工程近似（精确值 9549.296...），引入的误差约 0.007%，可忽略。但启动转矩倍数的分散性同样导致启动转矩估算偏差 <strong>±15%~25%</strong>。</li>
+<li><strong>Y-Δ 的 1/3 关系</strong>：理论上严格成立（基于正弦稳态、线性磁路假设），实际因饱和效应，Y 接法时磁路饱和程度不同，实际比值可能在 <strong>0.30~0.36</strong> 之间浮动。</li>
+</ul>
+
+<div class="info-box">
+<strong>建议：</strong>对于关键工程设计，计算结果应作为初步参考，最终参数应以电机出厂试验报告、现场实测数据为准。选型时应留有适当裕量。
+</div>
+</div>
+
+<div class="manual-section">
+<h2>六、数据依据与参考标准</h2>
+<p>本工具涉及的公式和参数范围参考以下标准和技术资料：</p>
+<ul>
+<li><strong>GB/T 1032-2012</strong>《三相异步电动机试验方法》——该标准为试验方法标准，<strong>本工具的公式与经验参数并非引自该标准</strong>，此处仅列出备查。</li>
+<li><strong>GB 18613-2020</strong>《电动机能效限定值及能效等级》——规定了中小型三相异步电动机的能效等级和限定值。</li>
+<li><strong>GB/T 12325-2008</strong>《电能质量 供电电压偏差》——规定了供电电压允许偏差。</li>
+<li><strong>GB/T 15945-2008</strong>《电能质量 电力系统频率偏差》——规定了频率允许偏差。</li>
+<li><strong>GB/T 4772</strong> 系列《旋转电机尺寸和输出功率等级》——规定了电机功率等级。</li>
+<li>《电机学》（高等教育出版社）等教材中的基本电磁关系和等效电路理论。</li>
+</ul>
+<div class="warn-box">
+<strong>注意：</strong>上述标准的具体数值、表格、限值等，请以最新发布的标准原文为准。本说明书中引用的数值范围仅为帮助理解的近似描述，不作为合规依据。<br><strong>⚠ 本工具参数为经验值，未经标准核对：</strong>k<sub>i</sub>（通常 5~7）、k<sub>t</sub>（通常 1.6~2.5）、cosφ/η 典型范围及 IE 效率等级数值均无可靠数据来源，仅供粗略参考。
+</div>
+</div>
+
+<div class="manual-section">
+<h2>七、局限性</h2>
+<ul>
+<li><strong>仅适用于三相交流异步电动机</strong>：不适用于直流电机、单相电机、同步电机、永磁电机等特殊类型。</li>
+<li><strong>仅计算稳态额定工况</strong>：不计算暂态过程（如启动过程中的电流衰减曲线、加速时间等）。</li>
+<li><strong>不考虑变频器供电</strong>：变频运行时电机参数（等效电路参数、损耗分布）与工频正弦供电有显著差异，本工具不适用。</li>
+<li><strong>不考虑软启动器</strong>：软启动器通过晶闸管调压启动，电流和转矩特性与 Y-Δ 或自耦启动不同，本工具不涵盖。</li>
+<li><strong>不做保护整定计算</strong>：计算出的电流值不能直接作为保护定值，保护整定需考虑启动时间、过载特性、配合关系等因素，应参照相关规程。</li>
+<li><strong>不做短路电流计算</strong>：本工具计算的启动电流是电机从静止到额定转速过程中的电流，不是短路电流。短路电流计算需考虑系统阻抗。</li>
+<li><strong>不替代专业软件</strong>：对于复杂工程（如大型电机启动对电网的冲击分析、多电机协调启动等），应使用 ETAP、DIgSILENT 等专业电力系统分析软件。</li>
+</ul>
+</div>
+
+<div class="manual-section">
+<h2>八、公式汇总</h2>
+<table class="compare-table">
+<tr><th>计算项</th><th>公式</th><th>说明</th></tr>
+<tr><td>额定电流</td><td>I<sub>N</sub> = P<sub>N</sub> / (√3 × U<sub>N</sub> × cosφ × η)</td><td>P<sub>N</sub> 单位 kW，U<sub>N</sub> 单位 V</td></tr>
+<tr><td>直接启动电流</td><td>I<sub>st</sub> = k<sub>i</sub> × I<sub>N</sub></td><td>k<sub>i</sub> 为启动电流倍数</td></tr>
+<tr><td>Y-Δ 启动电流</td><td>I<sub>st(YΔ)</sub> = I<sub>st</sub> / 3</td><td>线电流降为直接启动的 1/3</td></tr>
+<tr><td>自耦启动电流（电网侧）</td><td>I<sub>st(auto)</sub> = a² × I<sub>st</sub></td><td>a 为抽头电压比</td></tr>
+<tr><td>额定转矩</td><td>T<sub>N</sub> = 9550 × P<sub>N</sub> / n<sub>N</sub></td><td>P<sub>N</sub> 单位 kW，n<sub>N</sub> 单位 r/min</td></tr>
+<tr><td>直接启动转矩</td><td>T<sub>st</sub> = k<sub>t</sub> × T<sub>N</sub></td><td>k<sub>t</sub> 为启动转矩倍数</td></tr>
+<tr><td>Y-Δ 启动转矩</td><td>T<sub>st(YΔ)</sub> = T<sub>st</sub> / 3</td><td>转矩降为直接启动的 1/3</td></tr>
+<tr><td>自耦启动转矩</td><td>T<sub>st(auto)</sub> = a² × T<sub>st</sub></td><td>转矩与电压平方成正比</td></tr>
+<tr><td>输入功率</td><td>P<sub>in</sub> = √3 × U × I × cosφ</td><td>单位 kW</td></tr>
+<tr><td>输出功率</td><td>P<sub>out</sub> = √3 × U × I × cosφ × η</td><td>单位 kW</td></tr>
+<tr><td>同步转速</td><td>n<sub>s</sub> = 60f / p</td><td>f 频率 Hz，p 极对数</td></tr>
+<tr><td>转差率</td><td>s = (n<sub>s</sub> - n) / n<sub>s</sub></td><td>n 为实际转速</td></tr>
+</table>
+</div>
+`;
+  document.getElementById('manual-content').innerHTML = html;
+}
+
+// ============================================================
+// 界面逻辑
+// ============================================================
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('tab-' + tabId).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function calculate() {
+  var power = parseFloat(document.getElementById('inp-power').value);
+  var voltage = parseFloat(document.getElementById('inp-voltage').value);
+  var pf = parseFloat(document.getElementById('inp-pf').value);
+  var eff = parseFloat(document.getElementById('inp-eff').value);
+  var speed = parseFloat(document.getElementById('inp-speed').value);
+  var ki = parseFloat(document.getElementById('inp-ki').value);
+  var kt = parseFloat(document.getElementById('inp-kt').value);
+  var method = document.getElementById('inp-start-method').value;
+  var autoRatio = parseFloat(document.getElementById('inp-auto-ratio').value);
+  var freq = parseFloat(document.getElementById('inp-freq').value);
+  if (!isFinite(freq) || freq <= 0) freq = 50;
+
+  var area = document.getElementById('result-area');
+  var errors = [];
+
+  // 额定电流
+  var ratedI = calcRatedCurrent(power, voltage, pf, eff);
+  if (!ratedI.valid) errors.push('额定电流：' + ratedI.error);
+
+  // 额定转矩
+  var ratedT = calcRatedTorque(power, speed);
+  if (!ratedT.valid) errors.push('额定转矩：' + ratedT.error);
+
+  // 输入功率
+  var inputP = ratedI.valid ? calcInputPower(voltage, ratedI.value, pf) : { valid: false };
+  // 输出功率验证
+  var outputP = ratedI.valid ? calcOutputPower(voltage, ratedI.value, pf, eff) : { valid: false };
+
+  if (errors.length > 0) {
+    area.innerHTML = '<div class="error-msg"><strong>输入错误：</strong><br>' + errors.join('<br>') + '</div>';
+    return;
+  }
+
+  var html = '';
+
+  // 基本参数
+  html += '<div class="result-box"><h3>📊 基本参数</h3>';
+  html += resultItem('额定电流 I<sub>N</sub>', ratedI.value.toFixed(2) + ' A');
+  html += resultItem('额定转矩 T<sub>N</sub>', ratedT.value.toFixed(2) + ' N·m');
+  html += resultItem('输入电功率 P<sub>in</sub>', inputP.value.toFixed(3) + ' kW');
+  html += resultItem('输出机械功率 P<sub>out</sub>', outputP.value.toFixed(3) + ' kW');
+  html += '</div>';
+
+  // 启动参数
+  var directI = calcDirectStartCurrent(ratedI.value, ki);
+  var directT = calcDirectStartTorque(ratedT.value, kt);
+  var probeAuto = method === 'auto' ? calcAutoTransformerStartCurrent(1, autoRatio) : { valid: true, error: '' };
+  if (!directI.valid || !directT.valid || !probeAuto.valid) {
+    area.innerHTML = '<div class="error-msg"><strong>输入错误：</strong><br>' +
+      (directI.error ? '启动电流倍数 k<sub>i</sub>：' + directI.error + '<br>' : '') +
+      (directT.error ? '启动转矩倍数 k<sub>t</sub>：' + directT.error + '<br>' : '') +
+      (probeAuto.error ? '抽头比：' + probeAuto.error : '') + '</div>';
+    return;
+  }
+
+  html += '<div class="result-box"><h3>⚡ 直接启动参数</h3>';
+  html += resultItem('直接启动电流 I<sub>st</sub>', directI.value.toFixed(2) + ' A');
+  html += resultItem('直接启动转矩 T<sub>st</sub>', directT.value.toFixed(2) + ' N·m');
+  html += '</div>';
+
+  // 降压启动对比
+  html += '<div class="result-box"><h3>🔄 启动方式对比</h3>';
+  html += '<table class="compare-table">';
+  html += '<tr><th>参数</th><th>直接启动</th>';
+
+  if (method === 'yd') {
+    var ydI = calcYDStartCurrent(directI.value);
+    var ydT = calcYDStartTorque(directT.value);
+    html += '<th>Y-Δ 启动</th><th>比值</th></tr>';
+    html += '<tr><td>启动电流</td><td>' + directI.value.toFixed(2) + ' A</td><td>' + ydI.value.toFixed(2) + ' A</td><td>' + (ydI.value / directI.value).toFixed(4) + '</td></tr>';
+    html += '<tr><td>启动转矩</td><td>' + directT.value.toFixed(2) + ' N·m</td><td>' + ydT.value.toFixed(2) + ' N·m</td><td>' + (ydT.value / directT.value).toFixed(4) + '</td></tr>';
+  } else if (method === 'auto') {
+    var autoI = calcAutoTransformerStartCurrent(directI.value, autoRatio);
+    var autoT = calcAutoTransformerStartTorque(directT.value, autoRatio);
+    html += '<th>自耦启动 (a=' + autoRatio + ')</th><th>比值</th></tr>';
+    html += '<tr><td>启动电流（电网侧）</td><td>' + directI.value.toFixed(2) + ' A</td><td>' + autoI.gridCurrent.toFixed(2) + ' A</td><td>' + (autoI.gridCurrent / directI.value).toFixed(4) + '</td></tr>';
+    html += '<tr><td>启动电流（电机端）</td><td>' + directI.value.toFixed(2) + ' A</td><td>' + autoI.motorCurrent.toFixed(2) + ' A</td><td>' + (autoI.motorCurrent / directI.value).toFixed(4) + '</td></tr>';
+    html += '<tr><td>启动转矩</td><td>' + directT.value.toFixed(2) + ' N·m</td><td>' + autoT.value.toFixed(2) + ' N·m</td><td>' + (autoT.value / directT.value).toFixed(4) + '</td></tr>';
+  } else {
+    html += '<th>—</th></tr>';
+    html += '<tr><td colspan="3" style="color:#888;">直接启动，无降压</td></tr>';
+  }
+  html += '</table></div>';
+
+  // 同步转速与转差率
+  var polePairs = guessPolePairs(speed, freq);
+  if (polePairs > 0) {
+    var syncSpeed = calcSynchronousSpeed(freq, polePairs);
+    var slip = calcSlip(syncSpeed.value, speed);
+    html += '<div class="result-box"><h3>🔧 转速参数（频率 ' + freq + 'Hz）</h3>';
+    html += resultItem('推断极数', (polePairs * 2) + ' 极（极对数 ' + polePairs + '）');
+    html += resultItem('同步转速 n<sub>s</sub>', syncSpeed.value + ' r/min');
+    html += resultItem('转差率 s', (slip.value * 100).toFixed(2) + '%');
+    html += '</div>';
+  } else {
+    html += '<div class="warn-box"><strong>提示：</strong>无法根据转速 ' + speed + ' r/min 推断极对数（可能已达到或超过最大同步转速），转速与转差率区块已跳过。</div>';
+  }
+
+  // 误差提示
+  html += '<div class="warn-box" style="margin-top:16px;">';
+  html += '<strong>⚠ 误差提示：</strong>以上结果基于理想化公式计算，实际值受温度、磁路饱和、电压偏差、制造公差等因素影响，偏差通常在 ±5%~20%。关键工程请以实测数据为准。';
+  html += '</div>';
+
+  area.innerHTML = html;
+}
+
+function toggleAutoInput() {
+  var method = document.getElementById('inp-start-method').value;
+  var disable = method !== 'auto';
+  document.getElementById('fg-auto-ratio').style.display = disable ? 'none' : '';
+  document.getElementById('inp-auto-ratio').disabled = disable;
+}
+
+function resultItem(label, value) {
+  return '<div class="result-item"><span class="result-label">' + label + '</span><span class="result-value">' + value + '</span></div>';
+}
+
+function guessPolePairs(speed, freqHz) {
+  var syncSpeeds = [
+    { p: 1, ns: 60 * freqHz / 1 },
+    { p: 2, ns: 60 * freqHz / 2 },
+    { p: 3, ns: 60 * freqHz / 3 },
+    { p: 4, ns: 60 * freqHz / 4 },
+    { p: 5, ns: 60 * freqHz / 5 },
+    { p: 6, ns: 60 * freqHz / 6 }
+  ];
+  var best = -1;
+  var minDiff = Infinity;
+  for (var i = 0; i < syncSpeeds.length; i++) {
+    var diff = syncSpeeds[i].ns - speed;
+    if (diff > 0 && diff < minDiff) {
+      minDiff = diff;
+      best = syncSpeeds[i].p;
+    }
+  }
+  return best;
+}
+
+function resetForm() {
+  document.getElementById('inp-power').value = '7.5';
+  document.getElementById('inp-voltage').value = '380';
+  document.getElementById('inp-pf').value = '0.85';
+  document.getElementById('inp-eff').value = '0.88';
+  document.getElementById('inp-speed').value = '1460';
+  document.getElementById('inp-ki').value = '6.5';
+  document.getElementById('inp-kt').value = '2.0';
+  document.getElementById('inp-start-method').value = 'yd';
+  document.getElementById('inp-auto-ratio').value = '0.8';
+  document.getElementById('inp-freq').value = '50';
+  toggleAutoInput();
+  document.getElementById('result-area').innerHTML = '';
+}
+
+// 显示源码
+function renderSource() {
+  var sourceText = `/**
+ * 计算三相电机额定电流
+ * 公式：I_N = P_N / (√3 × U_N × cosφ × η)
+ * 依据：电工学基本公式推导（参数为经验值，无标准来源）
+ *
+ * @param {number} powerKW - 额定功率，单位 kW，必须 > 0
+ * @param {number} voltageV - 额定线电压，单位 V，必须 > 0
+ * @param {number} powerFactor - 功率因数 cosφ，范围 (0, 1]
+ * @param {number} efficiency - 效率 η，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcRatedCurrent(powerKW, voltageV, powerFactor, efficiency) {
+  if (!isFinite(powerKW) || !isFinite(voltageV) || !isFinite(powerFactor) || !isFinite(efficiency)) {
+    return { value: NaN, unit: 'A', valid: false, error: '输入包含非有限数值（NaN 或 Infinity）' };
+  }
+  if (powerKW <= 0) return { value: NaN, unit: 'A', valid: false, error: '额定功率必须大于 0' };
+  if (voltageV <= 0) return { value: NaN, unit: 'A', valid: false, error: '额定电压必须大于 0' };
+  if (powerFactor <= 0 || powerFactor > 1) return { value: NaN, unit: 'A', valid: false, error: '功率因数必须在 (0, 1] 范围内' };
+  if (efficiency <= 0 || efficiency > 1) return { value: NaN, unit: 'A', valid: false, error: '效率必须在 (0, 1] 范围内' };
+  var value = (powerKW * 1000) / (Math.sqrt(3) * voltageV * powerFactor * efficiency);
+  return { value: value, unit: 'A', valid: true };
+}
+
+/**
+ * 计算三相电机直接启动电流
+ * 公式：I_st = k_i × I_N
+ * @param {number} ratedCurrent - 额定电流（A），必须 > 0
+ * @param {number} startCurrentMultiple - 启动电流倍数 k_i，通常 5~7，必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcDirectStartCurrent(ratedCurrent, startCurrentMultiple) {
+  if (!isFinite(ratedCurrent) || !isFinite(startCurrentMultiple))
+    return { value: NaN, unit: 'A', valid: false, error: '输入包含非有限数值' };
+  if (ratedCurrent <= 0) return { value: NaN, unit: 'A', valid: false, error: '额定电流必须大于 0' };
+  if (startCurrentMultiple <= 0) return { value: NaN, unit: 'A', valid: false, error: '启动电流倍数必须大于 0' };
+  return { value: ratedCurrent * startCurrentMultiple, unit: 'A', valid: true };
+}
+
+/**
+ * 计算 Y-Δ 降压启动电流
+ * Y-Δ 启动时线电流降为直接启动的 1/3
+ * @param {number} directStartCurrent - 直接启动电流（A），必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcYDStartCurrent(directStartCurrent) {
+  if (!isFinite(directStartCurrent))
+    return { value: NaN, unit: 'A', valid: false, error: '输入包含非有限数值' };
+  if (directStartCurrent <= 0) return { value: NaN, unit: 'A', valid: false, error: '直接启动电流必须大于 0' };
+  return { value: directStartCurrent / 3, unit: 'A', valid: true };
+}
+
+/**
+ * 计算自耦变压器降压启动电流
+ * 电机电流 = a × I_st_direct，电网侧电流 = a² × I_st_direct
+ * @param {number} directStartCurrent - 直接启动电流（A），必须 > 0
+ * @param {number} tapRatio - 抽头电压比 a，范围 (0, 1]
+ * @returns {{ motorCurrent: number, gridCurrent: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcAutoTransformerStartCurrent(directStartCurrent, tapRatio) {
+  if (!isFinite(directStartCurrent) || !isFinite(tapRatio))
+    return { motorCurrent: NaN, gridCurrent: NaN, unit: 'A', valid: false, error: '输入包含非有限数值' };
+  if (directStartCurrent <= 0) return { motorCurrent: NaN, gridCurrent: NaN, unit: 'A', valid: false, error: '直接启动电流必须大于 0' };
+  if (tapRatio <= 0 || tapRatio > 1) return { motorCurrent: NaN, gridCurrent: NaN, unit: 'A', valid: false, error: '抽头比必须在 (0, 1] 范围内' };
+  return {
+    motorCurrent: directStartCurrent * tapRatio,
+    gridCurrent: directStartCurrent * tapRatio * tapRatio,
+    unit: 'A', valid: true
+  };
+}
+
+/**
+ * 计算三相电机额定转矩
+ * 公式：T_N = 9550 × P_N / n_N（P_N 单位 kW，n_N 单位 r/min）
+ * @param {number} powerKW - 额定功率（kW），必须 > 0
+ * @param {number} speedRPM - 额定转速（r/min），必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcRatedTorque(powerKW, speedRPM) {
+  if (!isFinite(powerKW) || !isFinite(speedRPM))
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  if (powerKW <= 0) return { value: NaN, unit: 'N·m', valid: false, error: '额定功率必须大于 0' };
+  if (speedRPM <= 0) return { value: NaN, unit: 'N·m', valid: false, error: '额定转速必须大于 0' };
+  return { value: 9550 * powerKW / speedRPM, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算直接启动转矩
+ * @param {number} ratedTorque - 额定转矩（N·m），必须 > 0
+ * @param {number} startTorqueMultiple - 启动转矩倍数 k_t，必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcDirectStartTorque(ratedTorque, startTorqueMultiple) {
+  if (!isFinite(ratedTorque) || !isFinite(startTorqueMultiple))
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  if (ratedTorque <= 0) return { value: NaN, unit: 'N·m', valid: false, error: '额定转矩必须大于 0' };
+  if (startTorqueMultiple <= 0) return { value: NaN, unit: 'N·m', valid: false, error: '启动转矩倍数必须大于 0' };
+  return { value: ratedTorque * startTorqueMultiple, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算 Y-Δ 降压启动转矩（降为直接启动的 1/3）
+ * @param {number} directStartTorque - 直接启动转矩（N·m），必须 > 0
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcYDStartTorque(directStartTorque) {
+  if (!isFinite(directStartTorque))
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  if (directStartTorque <= 0) return { value: NaN, unit: 'N·m', valid: false, error: '直接启动转矩必须大于 0' };
+  return { value: directStartTorque / 3, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算自耦变压器降压启动转矩
+ * 公式：T_st_auto = a² × T_st_direct
+ * @param {number} directStartTorque - 直接启动转矩（N·m），必须 > 0
+ * @param {number} tapRatio - 抽头电压比 a，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcAutoTransformerStartTorque(directStartTorque, tapRatio) {
+  if (!isFinite(directStartTorque) || !isFinite(tapRatio))
+    return { value: NaN, unit: 'N·m', valid: false, error: '输入包含非有限数值' };
+  if (directStartTorque <= 0) return { value: NaN, unit: 'N·m', valid: false, error: '直接启动转矩必须大于 0' };
+  if (tapRatio <= 0 || tapRatio > 1) return { value: NaN, unit: 'N·m', valid: false, error: '抽头比必须在 (0, 1] 范围内' };
+  return { value: directStartTorque * tapRatio * tapRatio, unit: 'N·m', valid: true };
+}
+
+/**
+ * 计算三相电机输入电功率
+ * 公式：P_in = √3 × U × I × cosφ
+ * @param {number} voltageV - 线电压（V），必须 > 0
+ * @param {number} currentA - 线电流（A），必须 > 0
+ * @param {number} powerFactor - 功率因数，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcInputPower(voltageV, currentA, powerFactor) {
+  if (!isFinite(voltageV) || !isFinite(currentA) || !isFinite(powerFactor))
+    return { value: NaN, unit: 'kW', valid: false, error: '输入包含非有限数值' };
+  if (voltageV <= 0) return { value: NaN, unit: 'kW', valid: false, error: '电压必须大于 0' };
+  if (currentA <= 0) return { value: NaN, unit: 'kW', valid: false, error: '电流必须大于 0' };
+  if (powerFactor <= 0 || powerFactor > 1) return { value: NaN, unit: 'kW', valid: false, error: '功率因数必须在 (0, 1] 范围内' };
+  return { value: Math.sqrt(3) * voltageV * currentA * powerFactor / 1000, unit: 'kW', valid: true };
+}
+
+/**
+ * 计算三相电机输出机械功率
+ * 公式：P_out = √3 × U × I × cosφ × η
+ * @param {number} voltageV - 线电压（V），必须 > 0
+ * @param {number} currentA - 线电流（A），必须 > 0
+ * @param {number} powerFactor - 功率因数，范围 (0, 1]
+ * @param {number} efficiency - 效率，范围 (0, 1]
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcOutputPower(voltageV, currentA, powerFactor, efficiency) {
+  if (!isFinite(voltageV) || !isFinite(currentA) || !isFinite(powerFactor) || !isFinite(efficiency))
+    return { value: NaN, unit: 'kW', valid: false, error: '输入包含非有限数值' };
+  if (voltageV <= 0) return { value: NaN, unit: 'kW', valid: false, error: '电压必须大于 0' };
+  if (currentA <= 0) return { value: NaN, unit: 'kW', valid: false, error: '电流必须大于 0' };
+  if (powerFactor <= 0 || powerFactor > 1) return { value: NaN, unit: 'kW', valid: false, error: '功率因数必须在 (0, 1] 范围内' };
+  if (efficiency <= 0 || efficiency > 1) return { value: NaN, unit: 'kW', valid: false, error: '效率必须在 (0, 1] 范围内' };
+  return { value: Math.sqrt(3) * voltageV * currentA * powerFactor * efficiency / 1000, unit: 'kW', valid: true };
+}
+
+/**
+ * 计算同步转速
+ * 公式：n_s = 60 × f / p
+ * @param {number} frequencyHz - 电源频率（Hz），通常 50 或 60
+ * @param {number} polePairs - 极对数，正整数
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcSynchronousSpeed(frequencyHz, polePairs) {
+  if (!isFinite(frequencyHz) || !isFinite(polePairs))
+    return { value: NaN, unit: 'r/min', valid: false, error: '输入包含非有限数值' };
+  if (frequencyHz <= 0) return { value: NaN, unit: 'r/min', valid: false, error: '频率必须大于 0' };
+  if (polePairs <= 0 || polePairs !== Math.floor(polePairs))
+    return { value: NaN, unit: 'r/min', valid: false, error: '极对数必须为正整数' };
+  return { value: 60 * frequencyHz / polePairs, unit: 'r/min', valid: true };
+}
+
+/**
+ * 计算转差率
+ * 公式：s = (n_s - n) / n_s
+ * @param {number} synchronousSpeed - 同步转速（r/min），必须 > 0
+ * @param {number} actualSpeed - 实际转速（r/min），必须 >= 0 且 < 同步转速
+ * @returns {{ value: number, unit: string, valid: boolean, error?: string }}
+ */
+function calcSlip(synchronousSpeed, actualSpeed) {
+  if (!isFinite(synchronousSpeed) || !isFinite(actualSpeed))
+    return { value: NaN, unit: '', valid: false, error: '输入包含非有限数值' };
+  if (synchronousSpeed <= 0) return { value: NaN, unit: '', valid: false, error: '同步转速必须大于 0' };
+  if (actualSpeed < 0) return { value: NaN, unit: '', valid: false, error: '实际转速不能为负' };
+  if (actualSpeed >= synchronousSpeed) return { value: NaN, unit: '', valid: false, error: '实际转速必须小于同步转速' };
+  return { value: (synchronousSpeed - actualSpeed) / synchronousSpeed, unit: '', valid: true };
+}
+
+/**
+ * 比较 Y-Δ 启动与直接启动的参数
+ * @param {number} ratedCurrent - 额定电流（A）
+ * @param {number} startCurrentMultiple - 启动电流倍数
+ * @param {number} ratedTorque - 额定转矩（N·m）
+ * @param {number} startTorqueMultiple - 启动转矩倍数
+ * @returns {{ directStartCurrent: number, ydStartCurrent: number, currentRatio: number,
+ *             directStartTorque: number, ydStartTorque: number, torqueRatio: number,
+ *             valid: boolean, error?: string }}
+ */
+function compareYDStart(ratedCurrent, startCurrentMultiple, ratedTorque, startTorqueMultiple) {
+  var dsc = calcDirectStartCurrent(ratedCurrent, startCurrentMultiple);
+  if (!dsc.valid) return { valid: false, error: dsc.error };
+  var ysc = calcYDStartCurrent(dsc.value);
+  if (!ysc.valid) return { valid: false, error: ysc.error };
+  var dst = calcDirectStartTorque(ratedTorque, startTorqueMultiple);
+  if (!dst.valid) return { valid: false, error: dst.error };
+  var yst = calcYDStartTorque(dst.value);
+  if (!yst.valid) return { valid: false, error: yst.error };
+  return {
+    directStartCurrent: dsc.value, ydStartCurrent: ysc.value,
+    currentRatio: ysc.value / dsc.value,
+    directStartTorque: dst.value, ydStartTorque: yst.value,
+    torqueRatio: yst.value / dst.value,
+    valid: true
+  };
+}`;
+
+  document.getElementById('source-code').textContent = sourceText;
+}
+
+// 初始化
+renderSource();
+renderManual();
+toggleAutoInput();
+</script>
+</body>
+</html>

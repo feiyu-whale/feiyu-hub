@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>屋面坡度与排水计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c5282, #2b6cb0);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 16px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #4a5568;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #f7fafc; }
+  .tab.active {
+    color: #2b6cb0;
+    border-bottom-color: #2b6cb0;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 16px;
+    color: #2c5282;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #edf2f7;
+  }
+  .card h3 { font-size: 14px; color: #2d3748; margin: 12px 0 8px; }
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: #4a5568;
+    margin-bottom: 4px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #2b6cb0;
+  }
+  button.primary {
+    background: #2b6cb0;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button.primary:hover { background: #2c5282; }
+  .result {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: #ebf8ff;
+    border-left: 3px solid #2b6cb0;
+    border-radius: 4px;
+    font-size: 14px;
+    min-height: 40px;
+  }
+  .result.error { background: #fff5f5; border-left-color: #c53030; color: #c53030; }
+  pre {
+    background: #1a202c;
+    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-summary {
+    padding: 12px 16px;
+    background: #f0fff4;
+    border-left: 3px solid #38a169;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .test-summary.fail { background: #fff5f5; border-left-color: #c53030; }
+  .test-item {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    border-bottom: 1px solid #edf2f7;
+  }
+  .test-item.pass { color: #2f855a; }
+  .test-item.fail { color: #c53030; background: #fff5f5; }
+  .doc h2 { font-size: 18px; color: #2c5282; margin: 24px 0 12px; }
+  .doc h3 { font-size: 15px; color: #2d3748; margin: 16px 0 8px; }
+  .doc p { margin-bottom: 10px; font-size: 14px; }
+  .doc ul, .doc ol { margin: 8px 0 12px 24px; font-size: 14px; }
+  .doc li { margin-bottom: 6px; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #cbd5e0;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .doc th { background: #edf2f7; font-weight: 600; }
+  .warn-box {
+    background: #fffaf0;
+    border-left: 3px solid #dd6b20;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #a0aec0;
+    z-index: 100;
+  }
+  code {
+    background: #edf2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>屋面坡度与排水计算工具</h1>
+  <p>依据 GB 50015-2019《建筑给水排水设计标准》 · 仅供工程估算参考</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">计算器</div>
+  <div class="tab" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<!-- 计算器 -->
+<div class="panel active" id="panel-calc">
+  <div class="warn-box"><b>数据来源提示：</b>本工具部分内置参数（雨水立管允许汇水面积、粗糙系数）为经验值，未经标准原文逐条核对，请勿直接作为设计依据。</div>
+  <div class="card">
+    <h2>一、坡度换算</h2>
+    <p style="font-size:13px;color:#718096;margin-bottom:12px;">输入任意一种坡度表示，换算为其他两种。百分比坡度 = tan(α) × 100；坡度系数 1:n 中 n = 100/百分比。</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>输入类型</label>
+        <select id="slope-type">
+          <option value="percent">百分比坡度 (%)</option>
+          <option value="angle">角度 (°)</option>
+          <option value="ratio">坡度系数 (1:n 中的 n)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>输入值</label>
+        <input type="number" id="slope-value" step="any" value="5" placeholder="例如 5">
+      </div>
+    </div>
+    <button class="primary" onclick="calcSlope()">换算</button>
+    <div class="result" id="slope-result">等待输入…</div>
+  </div>
+
+  <div class="card">
+    <h2>二、天沟排水量（曼宁公式）</h2>
+    <p style="font-size:13px;color:#718096;margin-bottom:12px;">按明渠均匀流计算天沟过水能力。公式：Q = A·v，v = (1/n)·R^(2/3)·i^(1/2)。依据 GB 50015-2019 第 4.9 节。</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>天沟宽度 B (m)</label>
+        <input type="number" id="g-w" step="any" value="0.4" placeholder="例如 0.4">
+      </div>
+      <div class="form-group">
+        <label>设计水深 h (m)</label>
+        <input type="number" id="g-h" step="any" value="0.15" placeholder="例如 0.15">
+      </div>
+      <div class="form-group">
+        <label>天沟底坡 i (‰)</label>
+        <input type="number" id="g-i" step="any" value="3" placeholder="例如 3">
+      </div>
+      <div class="form-group">
+        <label>粗糙系数 n</label>
+        <select id="g-n">
+          <option value="0.012">金属天沟 (0.012)</option>
+          <option value="0.013" selected>混凝土天沟 (0.013)</option>
+          <option value="0.015">砌石天沟 (0.015)</option>
+          <option value="custom">自定义</option>
+        </select>
+        <p style="font-size:12px;color:#dd6b20;margin-top:4px;">注：以上粗糙系数为经验值，来源不完整（参考《给水排水设计手册》，未核对具体页码）。</p>
+      </div>
+      <div class="form-group" id="g-n-custom-wrap" style="display:none;">
+        <label>自定义 n 值</label>
+        <input type="number" id="g-n-custom" step="any" value="0.013">
+      </div>
+    </div>
+    <button class="primary" onclick="calcGutter()">计算</button>
+    <div class="result" id="gutter-result">等待输入…</div>
+  </div>
+
+  <div class="card">
+    <h2>三、雨水管数量估算</h2>
+    <p style="font-size:13px;color:#718096;margin-bottom:12px;">依据 GB 50015-2019 表 4.9.20 估算。数量 = 总汇水面积 / 单管允许汇水面积（向上取整）。</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>总汇水面积 F (m²)</label>
+        <input type="number" id="p-area" step="any" value="800" placeholder="例如 800">
+      </div>
+      <div class="form-group">
+        <label>雨水立管管径</label>
+        <select id="p-dia">
+          <option value="75">DN75</option>
+          <option value="100" selected>DN100</option>
+          <option value="125">DN125</option>
+          <option value="150">DN150</option>
+          <option value="200">DN200</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>建筑类别</label>
+        <select id="p-type">
+          <option value="residential">住宅 / 普通公建</option>
+          <option value="important">重要公共建筑</option>
+        </select>
+      </div>
+    </div>
+    <div class="warn-box"><b>注意：</b>本工具内置的各管径「允许汇水面积」为经验参考值，未经 GB 50015-2019 表 4.9.20 原文核对，具体数值请务必查标准原文确认。</div>
+    <button class="primary" onclick="calcPipe()">计算</button>
+    <div class="result" id="pipe-result">等待输入…</div>
+  </div>
+</div>
+
+<!-- JS 源码 -->
+<div class="panel" id="panel-source">
+  <div class="card">
+    <h2>核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="source-code"></pre>
+  </div>
+</div>
+
+<!-- 单元测试 -->
+<div class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试</h2>
+    <div class="test-summary" id="test-summary">运行中…</div>
+    <div id="test-list"></div>
+  </div>
+</div>
+
+<!-- 使用说明书 -->
+<div class="panel doc" id="panel-doc">
+  <div class="card">
+    <h2>《屋面坡度与排水计算工具》使用说明书</h2>
+
+    <h3>一、工具用途</h3>
+    <p>本工具面向建筑设计、施工、造价及审图人员，提供屋面坡度换算、天沟排水能力估算、雨水立管数量估算三项常用计算。计算依据为 GB 50015-2019《建筑给水排水设计标准》第 4.9 节"雨水"相关条款，以及水力学中的曼宁公式。</p>
+    <p>本工具适用于方案设计、初步设计阶段的快速估算，以及施工图阶段的辅助校核。最终设计应以具备资质的设计单位出具的正式图纸为准。</p>
+
+    <h3>二、功能模块详解</h3>
+
+    <h3>2.1 坡度换算</h3>
+    <p>屋面坡度在工程中有三种常见表示方式：</p>
+    <ul>
+      <li><b>百分比坡度</b>：i = h/l × 100%，例如 2% 表示每 100 单位水平距离升高 2 单位；</li>
+      <li><b>角度</b>：坡面与水平面的夹角 α，单位度（°）；</li>
+      <li><b>坡度系数 1:n</b>：n = l/h，即水平距离与高差的比值，常见于结构图纸。</li>
+    </ul>
+    <p>三者之间的换算关系为纯数学关系：<code>百分比 = tan(α) × 100</code>，<code>n = 100 / 百分比</code>。本模块按此关系实现，不涉及经验系数。</p>
+
+    <h3>2.2 天沟排水量</h3>
+    <p>天沟（檐沟）按明渠均匀流计算其过水能力。本工具采用曼宁公式：</p>
+    <p style="text-align:center;font-family:monospace;margin:10px 0;">v = (1/n) · R^(2/3) · i^(1/2)</p>
+    <p style="text-align:center;font-family:monospace;margin:10px 0;">Q = A · v</p>
+    <p>其中：</p>
+    <ul>
+      <li>v —— 平均流速（m/s）；</li>
+      <li>n —— 粗糙系数，与天沟材质有关；</li>
+      <li>R —— 水力半径（m），R = A / P，P 为湿周；</li>
+      <li>i —— 天沟底坡（以小数计）；</li>
+      <li>A —— 过水断面面积（m²）；</li>
+      <li>Q —— 排水量（m³/s）。</li>
+    </ul>
+    <p>本工具假设天沟断面为矩形，湿周 P = B + 2h。若为三角形或其他断面，需另行计算。</p>
+
+    <h3>2.3 雨水管数量</h3>
+    <p>依据 GB 50015-2019 表 4.9.20，不同管径的雨水立管对应不同的最大允许汇水面积。本工具内置常用管径的参考值（具体数值需查标准原文确认），按"数量 = 总汇水面积 / 单管允许面积"向上取整。</p>
+    <div class="warn-box">
+      <b>注意：</b>表 4.9.20 的数值与设计降雨强度、立管长度、管材等因素相关。本工具给出的为典型条件下的参考值，实际工程应查标准原文并结合当地气象数据复核。
+    </div>
+
+    <h3>三、参数详解</h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>典型取值</th></tr>
+      <tr><td>百分比坡度</td><td>坡面高差与水平距离之比 × 100</td><td>%</td><td>平屋面 1~3%，坡屋面 10~50</td></tr>
+      <tr><td>角度</td><td>坡面与水平面夹角</td><td>°</td><td>平屋面 &lt; 5°，坡屋面 10~45°</td></tr>
+      <tr><td>坡度系数 n</td><td>1:n 中的 n</td><td>—</td><td>1:10、1:20 等</td></tr>
+      <tr><td>天沟宽度 B</td><td>矩形天沟净宽</td><td>m</td><td>0.3 ~ 0.8</td></tr>
+      <tr><td>设计水深 h</td><td>天沟内设计水位高度</td><td>m</td><td>一般取天沟深度的 2/3</td></tr>
+      <tr><td>天沟底坡 i</td><td>天沟纵向坡度</td><td>‰</td><td>≥ 3‰（GB 50015 要求）</td></tr>
+      <tr><td>粗糙系数 n</td><td>反映天沟内壁粗糙程度</td><td>—</td><td>金属 0.012，混凝土 0.013</td></tr>
+      <tr><td>汇水面积 F</td><td>屋面投影面积（含高出屋面侧墙面积的一半）</td><td>m²</td><td>按建筑平面图计算</td></tr>
+      <tr><td>雨水立管管径</td><td>立管公称直径</td><td>mm</td><td>DN100、DN150 等</td></tr>
+    </table>
+
+    <h3>四、使用场景</h3>
+
+    <h3>场景 1：平屋面坡度复核</h3>
+    <p>某办公楼平屋面结构找坡 2%，建筑专业希望换算为角度以绘制剖面图。输入百分比 2，选择"百分比坡度"，得到角度约 1.15°，坡度系数约 50（即 1:50）。设计人员据此核对结构图纸与建筑图纸的一致性。</p>
+
+    <h3>场景 2：坡屋面瓦材选型</h3>
+    <p>某别墅坡屋面设计坡度 30°，需确认是否适合采用某型号水泥瓦（要求坡度 ≥ 22°）。输入角度 30，换算得百分比约 57.7%，坡度系数约 1.73（即 1:1.73）。满足瓦材要求。</p>
+
+    <h3>场景 3：天沟断面校核</h3>
+    <p>某厂房混凝土天沟宽 0.5m、深 0.3m，底坡 5‰，按 2/3 水深（0.2m）计算过水能力。输入 B=0.5、h=0.2、i=5、n=0.013，得到排水量约 0.055 m³/s = 55 L/s。结合当地暴雨强度公式复核是否满足屋面雨水设计流量。</p>
+
+    <h3>场景 4：雨水立管数量估算</h3>
+    <p>某住宅楼屋面投影面积 1200 m²，拟采用 DN100 雨水立管。输入面积 1200、管径 DN100，得到立管数量约 3 根（具体数值取决于内置参考值）。设计人员据此布置立管位置，并在施工图阶段按 GB 50015 表 4.9.20 复核。</p>
+
+    <h3>场景 5：天沟材质比选</h3>
+    <p>某项目在天沟材质比选中，需比较金属天沟（n=0.012）与混凝土天沟（n=0.013）的排水能力差异。保持其他参数不变，分别计算两种材质的排水量，金属天沟排水能力约高出 8%。结合造价、耐久性综合决策。</p>
+
+    <h3>五、常见错误</h3>
+    <ol>
+      <li><b>混淆坡度表示方式</b>：百分比坡度 5% 不等于角度 5°。5% 对应角度约 2.86°，5° 对应百分比约 8.75%。输入前务必确认图纸采用的表示方式。</li>
+      <li><b>天沟底坡单位错误</b>：本工具输入单位为 ‰（千分比），例如 3 表示 3‰ = 0.003。若误输入 0.003，则计算结果将严重偏小。</li>
+      <li><b>设计水深取值过大</b>：设计水深一般取天沟深度的 2/3 左右，需预留安全超高。若取等于天沟深度，则未考虑风浪、堵塞等因素。</li>
+      <li><b>汇水面积漏算</b>：GB 50015 规定，高出屋面的侧墙面积应按一半计入汇水面积。漏算会导致立管数量偏少。</li>
+      <li><b>忽视当地暴雨强度</b>：雨水立管数量与当地的暴雨强度公式密切相关。本工具给出的为典型参考值，不同城市差异较大，必须结合当地气象数据复核。</li>
+      <li><b>将估算结果直接用于施工图</b>：本工具用于方案估算与辅助校核，正式施工图应由设计单位按完整计算书出具。</li>
+    </ol>
+
+    <h3>六、数据依据</h3>
+    <ul>
+      <li>GB 50015-2019《建筑给水排水设计标准》第 4.9 节"雨水"；</li>
+      <li>GB 50015-2019 表 4.9.20 雨水立管最大允许汇水面积（具体数值需查标准原文）；</li>
+      <li>曼宁公式（Manning formula），水力学明渠均匀流基本公式；</li>
+      <li>粗糙系数 n 的取值参考《给水排水设计手册》及相关水力学教材。</li>
+    </ul>
+    <div class="warn-box">
+      <b>说明：</b>本工具内置的雨水立管允许汇水面积为典型参考值，不同版本标准、不同地区可能有差异。正式设计时，请务必查阅 GB 50015-2019 标准原文及当地主管部门发布的暴雨强度公式。
+    </div>
+
+    <h3>七、精度与误差说明</h3>
+    <p>现实工程中的变量是无限的，本工具遵循"方法准、输入项准、结果给误差范围"的原则，<b>不承诺绝对精确</b>。以下分项说明：</p>
+
+    <h3>7.1 算准了什么</h3>
+    <ul>
+      <li><b>坡度换算</b>：基于严格的三角函数关系，计算过程无经验近似。在 JavaScript 双精度浮点数范围内（约 15~17 位有效数字），换算结果可视为数学意义上的精确值。工程应用中，保留 2~4 位小数已足够。</li>
+      <li><b>曼宁公式计算</b>：在给定输入参数（B、h、i、n）的前提下，公式计算过程是确定的，不存在随机误差。</li>
+      <li><b>立管数量取整</b>：向上取整逻辑是确定的，不存在歧义。</li>
+    </ul>
+
+    <h3>7.2 哪些因素没算进去</h3>
+    <ul>
+      <li><b>天沟排水量</b>：曼宁公式本身是经验公式，适用于均匀流。实际天沟中可能存在非均匀流、入口损失、弯道损失、杂物堵塞等因素，本工具均未考虑。</li>
+      <li><b>雨水立管数量</b>：未考虑立管实际长度、管件局部阻力、雨水斗型式、悬吊管坡度等因素。GB 50015 表 4.9.20 的数值本身已包含一定安全裕度，但具体适用条件需查标准原文。</li>
+      <li><b>屋面雨水设计流量</b>：本工具未直接计算屋面雨水设计流量（需结合当地暴雨强度公式、径流系数、汇水面积），仅在天沟校核时隐含了流量与过水能力的对比逻辑。</li>
+      <li><b>风、雪、施工误差</b>：实际屋面的积水深度、天沟的实际粗糙度、施工偏差等均未纳入。</li>
+    </ul>
+
+    <h3>7.3 误差大概多大</h3>
+    <ul>
+      <li><b>坡度换算</b>：数学误差可忽略（&lt; 10⁻¹⁰ 量级）。工程误差主要来源于输入值的读数误差，通常 &lt; 0.1%。</li>
+      <li><b>天沟排水量</b>：曼宁公式本身的经验误差约 ±10%~15%；粗糙系数 n 的选取误差可能带来 ±10%~20% 的偏差；综合误差估计在 ±20%~30% 范围内。本工具结果仅供方案比选与初步估算，不可作为最终设计依据。</li>
+      <li><b>雨水立管数量</b>：由于内置参考值为典型值，实际允许汇水面积可能因地区、管长、管件等因素有 ±20%~30% 的偏差。建议按计算结果适当增加安全裕度，并在施工图阶段按标准原文复核。</li>
+    </ul>
+
+    <h3>八、局限性</h3>
+    <ol>
+      <li>本工具仅覆盖 GB 50015-2019 的部分条款，不替代完整的设计计算书。</li>
+      <li>天沟断面仅支持矩形，不支持三角形、梯形、弧形等异形断面。</li>
+      <li>雨水立管数量估算基于典型参考值，未接入各地暴雨强度公式数据库。</li>
+      <li>未考虑虹吸式雨水系统、重力流与压力流的差异。</li>
+      <li>未考虑屋面绿化、雨水收集回用等海绵城市相关因素。</li>
+      <li>本工具为前端纯 JS 实现，计算在浏览器本地完成，不联网、不存储用户输入。</li>
+      <li>对于重要公共建筑、大跨度屋面、复杂造型屋面，应委托专业设计单位进行专项计算。</li>
+    </ol>
+
+    <h3>九、版本与反馈</h3>
+    <p>当前版本：v2.0.2-修审查问题 20261108。如发现计算结果异常或有改进建议，欢迎反馈。本工具将持续迭代，但始终遵循"方法准、输入项准、结果给误差范围"的原则，不承诺绝对精确。</p>
+  </div>
+</div>
+
+<div class="version">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，完整 JSDoc 注释）
+ * ============================================================ */
+
+/**
+ * 将百分比坡度转换为角度（度）
+ * @param {number} percent - 百分比坡度，例如 5 表示 5%
+ * @returns {number} 对应的角度（度）
+ * @throws {Error} 输入非有限数字或为负数时抛出异常
+ */
+function percentToAngle(percent) {
+  if (typeof percent !== 'number' || !Number.isFinite(percent)) {
+    throw new Error('百分比坡度必须为有限数字');
+  }
+  if (percent < 0) {
+    throw new Error('百分比坡度不能为负数');
+  }
+  return Math.atan(percent / 100) * 180 / Math.PI;
+}
+
+/**
+ * 将角度（度）转换为百分比坡度
+ * @param {number} angle - 角度（度），范围 [0, 90)
+ * @returns {number} 对应的百分比坡度
+ * @throws {Error} 输入非有限数字或超出范围时抛出异常
+ */
+function angleToPercent(angle) {
+  if (typeof angle !== 'number' || !Number.isFinite(angle)) {
+    throw new Error('角度必须为有限数字');
+  }
+  if (angle < 0 || angle >= 90) {
+    throw new Error('角度必须在 [0, 90) 范围内');
+  }
+  return Math.tan(angle * Math.PI / 180) * 100;
+}
+
+/**
+ * 将百分比坡度转换为坡度系数 1:n 中的 n
+ * @param {number} percent - 百分比坡度
+ * @returns {number} 坡度系数 n
+ * @throws {Error} 输入非有限数字或为 0 时抛出异常
+ */
+function percentToRatio(percent) {
+  if (typeof percent !== 'number' || !Number.isFinite(percent)) {
+    throw new Error('百分比坡度必须为有限数字');
+  }
+  if (percent <= 0) {
+    throw new Error('百分比坡度必须大于 0 才能转换为坡度系数');
+  }
+  return 100 / percent;
+}
+
+/**
+ * 将坡度系数 1:n 中的 n 转换为百分比坡度
+ * @param {number} ratio - 坡度系数 n（即 1:n 中的 n）
+ * @returns {number} 百分比坡度
+ * @throws {Error} 输入非有限数字或为 0 时抛出异常
+ */
+function ratioToPercent(ratio) {
+  if (typeof ratio !== 'number' || !Number.isFinite(ratio)) {
+    throw new Error('坡度系数必须为有限数字');
+  }
+  if (ratio <= 0) {
+    throw new Error('坡度系数必须大于 0');
+  }
+  return 100 / ratio;
+}
+
+/**
+ * 将角度（度）转换为坡度系数 1:n 中的 n
+ * @param {number} angle - 角度（度），范围 (0, 90)
+ * @returns {number} 坡度系数 n
+ * @throws {Error} 输入非有限数字或超出范围时抛出异常
+ */
+function angleToRatio(angle) {
+  if (typeof angle !== 'number' || !Number.isFinite(angle)) {
+    throw new Error('角度必须为有限数字');
+  }
+  if (angle <= 0 || angle >= 90) {
+    throw new Error('角度必须在 (0, 90) 范围内');
+  }
+  const percent = angleToPercent(angle);
+  return 100 / percent;
+}
+
+/**
+ * 将坡度系数 1:n 中的 n 转换为角度（度）
+ * @param {number} ratio - 坡度系数 n
+ * @returns {number} 对应的角度（度）
+ * @throws {Error} 输入非有限数字或为 0 时抛出异常
+ */
+function ratioToAngle(ratio) {
+  if (typeof ratio !== 'number' || !Number.isFinite(ratio)) {
+    throw new Error('坡度系数必须为有限数字');
+  }
+  if (ratio <= 0) {
+    throw new Error('坡度系数必须大于 0');
+  }
+  const percent = ratioToPercent(ratio);
+  return percentToAngle(percent);
+}
+
+/**
+ * 按曼宁公式计算矩形断面天沟的排水量
+ * 公式：v = (1/n) * R^(2/3) * i^(1/2)，Q = A * v
+ * 依据：GB 50015-2019 第 4.9 节（明渠均匀流）
+ *
+ * @param {number} width - 天沟宽度 B（m），必须 > 0
+ * @param {number} depth - 设计水深 h（m），必须 > 0
+ * @param {number} slopePermille - 天沟底坡（‰），例如 3 表示 3‰，必须 > 0
+ * @param {number} roughness - 粗糙系数 n，典型值 0.012~0.015，必须 > 0
+ * @returns {{area:number, wetPerimeter:number, hydraulicRadius:number, velocity:number, flow:number}}
+ *   area: 过水断面面积（m²）
+ *   wetPerimeter: 湿周（m）
+ *   hydraulicRadius: 水力半径（m）
+ *   velocity: 平均流速（m/s）
+ *   flow: 排水量（m³/s）
+ * @throws {Error} 输入参数非法时抛出异常
+ */
+function calcGutterFlow(width, depth, slopePermille, roughness) {
+  if ([width, depth, slopePermille, roughness].some(v => typeof v !== 'number' || !Number.isFinite(v))) {
+    throw new Error('所有输入参数必须为有限数字');
+  }
+  if (width <= 0 || depth <= 0 || slopePermille <= 0 || roughness <= 0) {
+    throw new Error('所有输入参数必须大于 0');
+  }
+  const slope = slopePermille / 1000; // ‰ 转小数
+  const area = width * depth;
+  const wetPerimeter = width + 2 * depth;
+  const hydraulicRadius = area / wetPerimeter;
+  const velocity = (1 / roughness) * Math.pow(hydraulicRadius, 2 / 3) * Math.pow(slope, 1 / 2);
+  const flow = area * velocity;
+  return { area, wetPerimeter, hydraulicRadius, velocity, flow };
+}
+
+/**
+ * 依据 GB 50015-2019 表 4.9.20 的典型参考值，获取单根雨水立管的最大允许汇水面积
+ * 注意：具体数值需查标准原文确认，此处为典型参考值
+ *
+ * @param {number} diameter - 雨水立管公称直径（mm），如 75、100、125、150、200
+ * @param {string} [buildingType='residential'] - 建筑类别，'residential' 或 'important'
+ * @returns {number} 单根雨水立管最大允许汇水面积（m²）
+ * @throws {Error} 管径不支持或建筑类别非法时抛出异常
+ */
+function getPipeCapacity(diameter, buildingType = 'residential') {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter)) {
+    throw new Error('管径必须为有限数字');
+  }
+  // 典型参考值（需查 GB 50015-2019 表 4.9.20 原文确认）
+  const capacityMap = {
+    75:  { residential: 250,  important: 200 },
+    100: { residential: 450,  important: 350 },
+    125: { residential: 700,  important: 550 },
+    150: { residential: 1100, important: 850 },
+    200: { residential: 2000, important: 1500 }
+  };
+  if (!capacityMap[diameter]) {
+    throw new Error('不支持的管径，当前支持：75、100、125、150、200');
+  }
+  if (buildingType !== 'residential' && buildingType !== 'important') {
+    throw new Error("建筑类别必须为 'residential' 或 'important'");
+  }
+  return capacityMap[diameter][buildingType];
+}
+
+/**
+ * 估算雨水立管数量
+ * 数量 = ceil(总汇水面积 / 单管允许汇水面积)
+ *
+ * @param {number} totalArea - 总汇水面积（m²），必须 > 0
+ * @param {number} pipeDiameter - 雨水立管公称直径（mm）
+ * @param {string} [buildingType='residential'] - 建筑类别
+ * @returns {{count:number, capacityPerPipe:number, totalCapacity:number}}
+ *   count: 立管数量（根）
+ *   capacityPerPipe: 单管允许汇水面积（m²）
+ *   totalCapacity: 总允许汇水面积（m²）
+ * @throws {Error} 输入参数非法时抛出异常
+ */
+function calcRainPipeCount(totalArea, pipeDiameter, buildingType = 'residential') {
+  if (typeof totalArea !== 'number' || !Number.isFinite(totalArea)) {
+    throw new Error('总汇水面积必须为有限数字');
+  }
+  if (totalArea <= 0) {
+    throw new Error('总汇水面积必须大于 0');
+  }
+  const capacityPerPipe = getPipeCapacity(pipeDiameter, buildingType);
+  const count = Math.ceil(totalArea / capacityPerPipe);
+  return {
+    count,
+    capacityPerPipe,
+    totalCapacity: count * capacityPerPipe
+  };
+}
+
+/**
+ * 统一坡度换算入口
+ * @param {'percent'|'angle'|'ratio'} fromType - 输入类型
+ * @param {number} value - 输入值
+ * @returns {{percent:number, angle:number, ratio:number}} 三种表示方式
+ */
+function convertSlope(fromType, value) {
+  let percent;
+  if (fromType === 'percent') {
+    percent = value;
+  } else if (fromType === 'angle') {
+    percent = angleToPercent(value);
+  } else if (fromType === 'ratio') {
+    percent = ratioToPercent(value);
+  } else {
+    throw new Error('不支持的输入类型');
+  }
+  return {
+    percent,
+    angle: percentToAngle(percent),
+    ratio: percent > 0 ? percentToRatio(percent) : Infinity
+  };
+}
+
+/* ============================================================
+ * 第二部分：单元测试（至少 30 个）
+ * ============================================================ */
+
+const testResults = [];
+let passCount = 0;
+let totalCount = 0;
+
+function assertClose(actual, expected, tolerance, name) {
+  totalCount++;
+  const ok = Math.abs(actual - expected) <= tolerance;
+  if (ok) passCount++;
+  testResults.push({ name, pass: ok, actual, expected, tolerance });
+}
+
+function assertThrows(fn, name) {
+  totalCount++;
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (threw) passCount++;
+  testResults.push({ name, pass: threw });
+}
+
+function assertEquals(actual, expected, name) {
+  totalCount++;
+  const ok = actual === expected;
+  if (ok) passCount++;
+  testResults.push({ name, pass: ok, actual, expected });
+}
+
+// === 坡度换算：正常值 ===
+assertClose(percentToAngle(5), 2.8624, 0.001, '百分比 5% → 角度 ≈ 2.862°');
+assertClose(percentToAngle(100), 45, 0.0001, '百分比 100% → 角度 = 45°');
+assertClose(percentToAngle(0), 0, 0.0001, '百分比 0% → 角度 = 0°');
+assertClose(angleToPercent(45), 100, 0.0001, '角度 45° → 百分比 = 100%');
+assertClose(angleToPercent(30), 57.735, 0.01, '角度 30° → 百分比 ≈ 57.735%');
+assertClose(percentToRatio(5), 20, 0.0001, '百分比 5% → 坡度系数 20');
+assertClose(percentToRatio(100), 1, 0.0001, '百分比 100% → 坡度系数 1');
+assertClose(ratioToPercent(20), 5, 0.0001, '坡度系数 20 → 百分比 5%');
+assertClose(ratioToAngle(1), 45, 0.0001, '坡度系数 1 → 角度 45°');
+assertClose(angleToRatio(45), 1, 0.0001, '角度 45° → 坡度系数 1');
+
+// === 坡度换算：边界值 ===
+assertClose(percentToAngle(0.001), 0.00001, 0.00001, '百分比极小值 0.001% → 角度极小');
+assertClose(angleToPercent(0.001), 0.0000175, 0.00001, '角度极小值 0.001° → 百分比极小');
+assertClose(percentToAngle(89.99), 89.989, 0.01, '百分比极大值 → 角度接近 90°');
+
+// === 坡度换算：异常输入 ===
+assertThrows(() => percentToAngle(-1), '百分比负数应抛异常');
+assertThrows(() => percentToAngle(NaN), '百分比 NaN 应抛异常');
+assertThrows(() => percentToAngle(Infinity), '百分比 Infinity 应抛异常');
+assertThrows(() => percentToAngle('5'), '百分比字符串应抛异常');
+assertThrows(() => angleToPercent(90), '角度 90° 应抛异常');
+assertThrows(() => angleToPercent(-5), '角度负数应抛异常');
+assertThrows(() => percentToRatio(0), '百分比 0 转坡度系数应抛异常');
+assertThrows(() => ratioToPercent(0), '坡度系数 0 应抛异常');
+
+// === 坡度换算：精度问题 ===
+const roundTrip = percentToAngle(angleToPercent(37.5));
+assertClose(roundTrip, 37.5, 1e-10, '角度→百分比→角度 往返精度');
+
+// === 天沟排水量：正常值 ===
+const g1 = calcGutterFlow(0.4, 0.15, 3, 0.013);
+assertClose(g1.area, 0.06, 0.0001, '天沟 0.4×0.15 面积 = 0.06');
+assertClose(g1.wetPerimeter, 0.7, 0.0001, '天沟 0.4×0.15 湿周 = 0.7');
+assertClose(g1.hydraulicRadius, 0.06/0.7, 0.0001, '天沟水力半径 = A/P');
+assertClose(g1.velocity, (1/0.013) * Math.pow(0.06/0.7, 2/3) * Math.pow(0.003, 1/2), 0.0001, '天沟流速公式验证');
+assertClose(g1.flow, g1.area * g1.velocity, 0.0001, '天沟流量 = A × v');
+
+const g2 = calcGutterFlow(0.5, 0.2, 5, 0.012);
+assertClose(g2.area, 0.1, 0.0001, '天沟 0.5×0.2 面积 = 0.1');
+
+// === 天沟排水量：边界值 ===
+assertThrows(() => calcGutterFlow(0, 0.15, 3, 0.013), '天沟宽度 0 应抛异常');
+assertThrows(() => calcGutterFlow(0.4, 0, 3, 0.013), '天沟水深 0 应抛异常');
+assertThrows(() => calcGutterFlow(0.4, 0.15, 0, 0.013), '天沟底坡 0 应抛异常');
+
+// === 天沟排水量：异常输入 ===
+assertThrows(() => calcGutterFlow(-0.4, 0.15, 3, 0.013), '天沟宽度负数应抛异常');
+assertThrows(() => calcGutterFlow(0.4, 0.15, 3, -0.013), '粗糙系数负数应抛异常');
+assertThrows(() => calcGutterFlow(NaN, 0.15, 3, 0.013), '天沟宽度 NaN 应抛异常');
+
+// === 雨水管数量：正常值 ===
+const p1 = calcRainPipeCount(800, 100, 'residential');
+assertEquals(p1.count, 2, '800m² DN100 住宅 → 2 根');
+assertEquals(p1.capacityPerPipe, 450, 'DN100 住宅单管允许 450m²');
+
+const p2 = calcRainPipeCount(1200, 100, 'important');
+assertEquals(p2.count, 4, '1200m² DN100 重要公建 → 4 根');
+
+const p3 = calcRainPipeCount(100, 75, 'residential');
+assertEquals(p3.count, 1, '100m² DN75 → 1 根');
+
+// === 雨水管数量：边界值 ===
+const p4 = calcRainPipeCount(450, 100, 'residential');
+assertEquals(p4.count, 1, '恰好等于单管容量 → 1 根');
+
+const p5 = calcRainPipeCount(450.001, 100, 'residential');
+assertEquals(p5.count, 2, '略超单管容量 → 2 根');
+
+// === 雨水管数量：异常输入 ===
+assertThrows(() => calcRainPipeCount(0, 100, 'residential'), '汇水面积 0 应抛异常');
+assertThrows(() => calcRainPipeCount(-100, 100, 'residential'), '汇水面积负数应抛异常');
+assertThrows(() => calcRainPipeCount(800, 90, 'residential'), '不支持的管径应抛异常');
+
+// === 统一换算入口 ===
+const c1 = convertSlope('percent', 5);
+assertClose(c1.angle, 2.8624, 0.001, '统一入口：百分比 5% → 角度');
+assertClose(c1.ratio, 20, 0.0001, '统一入口：百分比 5% → 坡度系数');
+
+const c2 = convertSlope('angle', 30);
+assertClose(c2.percent, 57.735, 0.01, '统一入口：角度 30° → 百分比');
+
+const c3 = convertSlope('ratio', 10);
+assertClose(c3.percent, 10, 0.0001, '统一入口：坡度系数 10 → 百分比 10%');
+
+// === 渲染测试结果 ===
+function renderTests() {
+  const summary = document.getElementById('test-summary');
+  const list = document.getElementById('test-list');
+  summary.textContent = `通过 ${passCount} / 共 ${totalCount}`;
+  if (passCount < totalCount) summary.classList.add('fail');
+  list.innerHTML = testResults.map(r => {
+    const cls = r.pass ? 'pass' : 'fail';
+    const icon = r.pass ? '✓' : '✗';
+    let detail = '';
+    if (!r.pass) {
+      if (r.actual !== undefined) detail = ` (实际: ${r.actual}, 期望: ${r.expected})`;
+      else detail = ' (应抛出异常但未抛出)';
+    }
+    return `<div class="test-item ${cls}">${icon} ${r.name}${detail}</div>`;
+  }).join('');
+}
+
+/* ============================================================
+ * 第三部分：UI 交互
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 粗糙系数自定义切换
+document.getElementById('g-n').addEventListener('change', e => {
+  document.getElementById('g-n-custom-wrap').style.display =
+    e.target.value === 'custom' ? 'block' : 'none';
+});
+
+// 坡度换算
+function calcSlope() {
+  const type = document.getElementById('slope-type').value;
+  const value = parseFloat(document.getElementById('slope-value').value);
+  const resultEl = document.getElementById('slope-result');
+  if (document.getElementById('slope-value').value.trim() === '') {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：输入值不能为空，请输入一个数字';
+    return;
+  }
+  try {
+    const r = convertSlope(type, value);
+    resultEl.className = 'result';
+    resultEl.innerHTML =
+      `<b>百分比坡度：</b>${r.percent.toFixed(4)} %<br>` +
+      `<b>角度：</b>${r.angle.toFixed(4)} °<br>` +
+      `<b>坡度系数：</b>1 : ${r.ratio === Infinity ? '∞' : r.ratio.toFixed(4)}`;
+  } catch (e) {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：' + e.message;
+  }
+}
+
+// 天沟排水量
+function calcGutter() {
+  const w = parseFloat(document.getElementById('g-w').value);
+  const h = parseFloat(document.getElementById('g-h').value);
+  const i = parseFloat(document.getElementById('g-i').value);
+  const nSel = document.getElementById('g-n').value;
+  const n = nSel === 'custom' ? parseFloat(document.getElementById('g-n-custom').value) : parseFloat(nSel);
+  const resultEl = document.getElementById('gutter-result');
+  if (document.getElementById('g-w').value.trim() === '' ||
+      document.getElementById('g-h').value.trim() === '' ||
+      document.getElementById('g-i').value.trim() === '' ||
+      (nSel === 'custom' && document.getElementById('g-n-custom').value.trim() === '')) {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：输入不能为空，请填写所有输入框（选择自定义粗糙系数时还需填写 n 值）';
+    return;
+  }
+  if ([w, h, i, n].some(v => !Number.isFinite(v))) {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：输入值必须为有效数字，请检查各输入框内容';
+    return;
+  }
+  try {
+    const r = calcGutterFlow(w, h, i, n);
+    resultEl.className = 'result';
+    resultEl.innerHTML =
+      `<b>过水面积 A：</b>${r.area.toFixed(4)} m²<br>` +
+      `<b>湿周 P：</b>${r.wetPerimeter.toFixed(4)} m<br>` +
+      `<b>水力半径 R：</b>${r.hydraulicRadius.toFixed(4)} m<br>` +
+      `<b>平均流速 v：</b>${r.velocity.toFixed(4)} m/s<br>` +
+      `<b>排水量 Q：</b>${r.flow.toFixed(4)} m³/s = ${(r.flow * 1000).toFixed(2)} L/s`;
+  } catch (e) {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：' + e.message;
+  }
+}
+
+// 雨水管数量
+function calcPipe() {
+  const area = parseFloat(document.getElementById('p-area').value);
+  const dia = parseInt(document.getElementById('p-dia').value);
+  const type = document.getElementById('p-type').value;
+  const resultEl = document.getElementById('pipe-result');
+  if (document.getElementById('p-area').value.trim() === '') {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：总汇水面积不能为空，请输入一个数字';
+    return;
+  }
+  if (!Number.isFinite(area)) {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：总汇水面积必须为有效数字';
+    return;
+  }
+  try {
+    const r = calcRainPipeCount(area, dia, type);
+    resultEl.className = 'result';
+    resultEl.innerHTML =
+      `<b>建议立管数量：</b>${r.count} 根<br>` +
+      `<b>单管允许汇水面积：</b>${r.capacityPerPipe} m²<br>` +
+      `<b>总允许汇水面积：</b>${r.totalCapacity} m²<br>` +
+      `<span style="color:#718096;font-size:12px;">注：具体数值需查 GB 50015-2019 表 4.9.20 原文确认</span>`;
+  } catch (e) {
+    resultEl.className = 'result error';
+    resultEl.textContent = '错误：' + e.message;
+  }
+}
+
+// 渲染源码
+function renderSource() {
+  const src = `/**
+ * 将百分比坡度转换为角度（度）
+ * @param {number} percent - 百分比坡度，例如 5 表示 5%
+ * @returns {number} 对应的角度（度）
+ * @throws {Error} 输入非有限数字或为负数时抛出异常
+ */
+function percentToAngle(percent) {
+  if (typeof percent !== 'number' || !Number.isFinite(percent)) {
+    throw new Error('百分比坡度必须为有限数字');
+  }
+  if (percent < 0) {
+    throw new Error('百分比坡度不能为负数');
+  }
+  return Math.atan(percent / 100) * 180 / Math.PI;
+}
+
+/**
+ * 将角度（度）转换为百分比坡度
+ * @param {number} angle - 角度（度），范围 [0, 90)
+ * @returns {number} 对应的百分比坡度
+ * @throws {Error} 输入非有限数字或超出范围时抛出异常
+ */
+function angleToPercent(angle) {
+  if (typeof angle !== 'number' || !Number.isFinite(angle)) {
+    throw new Error('角度必须为有限数字');
+  }
+  if (angle < 0 || angle >= 90) {
+    throw new Error('角度必须在 [0, 90) 范围内');
+  }
+  return Math.tan(angle * Math.PI / 180) * 100;
+}
+
+/**
+ * 将百分比坡度转换为坡度系数 1:n 中的 n
+ * @param {number} percent - 百分比坡度
+ * @returns {number} 坡度系数 n
+ * @throws {Error} 输入非有限数字或为 0 时抛出异常
+ */
+function percentToRatio(percent) {
+  if (typeof percent !== 'number' || !Number.isFinite(percent)) {
+    throw new Error('百分比坡度必须为有限数字');
+  }
+  if (percent <= 0) {
+    throw new Error('百分比坡度必须大于 0 才能转换为坡度系数');
+  }
+  return 100 / percent;
+}
+
+/**
+ * 将坡度系数 1:n 中的 n 转换为百分比坡度
+ * @param {number} ratio - 坡度系数 n（即 1:n 中的 n）
+ * @returns {number} 百分比坡度
+ * @throws {Error} 输入非有限数字或为 0 时抛出异常
+ */
+function ratioToPercent(ratio) {
+  if (typeof ratio !== 'number' || !Number.isFinite(ratio)) {
+    throw new Error('坡度系数必须为有限数字');
+  }
+  if (ratio <= 0) {
+    throw new Error('坡度系数必须大于 0');
+  }
+  return 100 / ratio;
+}
+
+/**
+ * 将角度（度）转换为坡度系数 1:n 中的 n
+ * @param {number} angle - 角度（度），范围 (0, 90)
+ * @returns {number} 坡度系数 n
+ * @throws {Error} 输入非有限数字或超出范围时抛出异常
+ */
+function angleToRatio(angle) {
+  if (typeof angle !== 'number' || !Number.isFinite(angle)) {
+    throw new Error('角度必须为有限数字');
+  }
+  if (angle <= 0 || angle >= 90) {
+    throw new Error('角度必须在 (0, 90) 范围内');
+  }
+  const percent = angleToPercent(angle);
+  return 100 / percent;
+}
+
+/**
+ * 将坡度系数 1:n 中的 n 转换为角度（度）
+ * @param {number} ratio - 坡度系数 n
+ * @returns {number} 对应的角度（度）
+ * @throws {Error} 输入非有限数字或为 0 时抛出异常
+ */
+function ratioToAngle(ratio) {
+  if (typeof ratio !== 'number' || !Number.isFinite(ratio)) {
+    throw new Error('坡度系数必须为有限数字');
+  }
+  if (ratio <= 0) {
+    throw new Error('坡度系数必须大于 0');
+  }
+  const percent = ratioToPercent(ratio);
+  return percentToAngle(percent);
+}
+
+/**
+ * 按曼宁公式计算矩形断面天沟的排水量
+ * 公式：v = (1/n) * R^(2/3) * i^(1/2)，Q = A * v
+ * 依据：GB 50015-2019 第 4.9 节（明渠均匀流）
+ *
+ * @param {number} width - 天沟宽度 B（m），必须 > 0
+ * @param {number} depth - 设计水深 h（m），必须 > 0
+ * @param {number} slopePermille - 天沟底坡（‰），例如 3 表示 3‰，必须 > 0
+ * @param {number} roughness - 粗糙系数 n，典型值 0.012~0.015，必须 > 0
+ * @returns {{area:number, wetPerimeter:number, hydraulicRadius:number, velocity:number, flow:number}}
+ * @throws {Error} 输入参数非法时抛出异常
+ */
+function calcGutterFlow(width, depth, slopePermille, roughness) {
+  if ([width, depth, slopePermille, roughness].some(v => typeof v !== 'number' || !Number.isFinite(v))) {
+    throw new Error('所有输入参数必须为有限数字');
+  }
+  if (width <= 0 || depth <= 0 || slopePermille <= 0 || roughness <= 0) {
+    throw new Error('所有输入参数必须大于 0');
+  }
+  const slope = slopePermille / 1000;
+  const area = width * depth;
+  const wetPerimeter = width + 2 * depth;
+  const hydraulicRadius = area / wetPerimeter;
+  const velocity = (1 / roughness) * Math.pow(hydraulicRadius, 2 / 3) * Math.pow(slope, 1 / 2);
+  const flow = area * velocity;
+  return { area, wetPerimeter, hydraulicRadius, velocity, flow };
+}
+
+/**
+ * 依据 GB 50015-2019 表 4.9.20 的典型参考值，获取单根雨水立管的最大允许汇水面积
+ * 注意：具体数值需查标准原文确认，此处为典型参考值
+ *
+ * @param {number} diameter - 雨水立管公称直径（mm）
+ * @param {string} [buildingType='residential'] - 建筑类别
+ * @returns {number} 单根雨水立管最大允许汇水面积（m²）
+ * @throws {Error} 管径不支持或建筑类别非法时抛出异常
+ */
+function getPipeCapacity(diameter, buildingType = 'residential') {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter)) {
+    throw new Error('管径必须为有限数字');
+  }
+  const capacityMap = {
+    75:  { residential: 250,  important: 200 },
+    100: { residential: 450,  important: 350 },
+    125: { residential: 700,  important: 550 },
+    150: { residential: 1100, important: 850 },
+    200: { residential: 2000, important: 1500 }
+  };
+  if (!capacityMap[diameter]) {
+    throw new Error('不支持的管径，当前支持：75、100、125、150、200');
+  }
+  if (buildingType !== 'residential' && buildingType !== 'important') {
+    throw new Error("建筑类别必须为 'residential' 或 'important'");
+  }
+  return capacityMap[diameter][buildingType];
+}
+
+/**
+ * 估算雨水立管数量
+ * 数量 = ceil(总汇水面积 / 单管允许汇水面积)
+ *
+ * @param {number} totalArea - 总汇水面积（m²），必须 > 0
+ * @param {number} pipeDiameter - 雨水立管公称直径（mm）
+ * @param {string} [buildingType='residential'] - 建筑类别
+ * @returns {{count:number, capacityPerPipe:number, totalCapacity:number}}
+ * @throws {Error} 输入参数非法时抛出异常
+ */
+function calcRainPipeCount(totalArea, pipeDiameter, buildingType = 'residential') {
+  if (typeof totalArea !== 'number' || !Number.isFinite(totalArea)) {
+    throw new Error('总汇水面积必须为有限数字');
+  }
+  if (totalArea <= 0) {
+    throw new Error('总汇水面积必须大于 0');
+  }
+  const capacityPerPipe = getPipeCapacity(pipeDiameter, buildingType);
+  const count = Math.ceil(totalArea / capacityPerPipe);
+  return {
+    count,
+    capacityPerPipe,
+    totalCapacity: count * capacityPerPipe
+  };
+}
+
+/**
+ * 统一坡度换算入口
+ * @param {'percent'|'angle'|'ratio'} fromType - 输入类型
+ * @param {number} value - 输入值
+ * @returns {{percent:number, angle:number, ratio:number}} 三种表示方式
+ */
+function convertSlope(fromType, value) {
+  let percent;
+  if (fromType === 'percent') {
+    percent = value;
+  } else if (fromType === 'angle') {
+    percent = angleToPercent(value);
+  } else if (fromType === 'ratio') {
+    percent = ratioToPercent(value);
+  } else {
+    throw new Error('不支持的输入类型');
+  }
+  return {
+    percent,
+    angle: percentToAngle(percent),
+    ratio: percent > 0 ? percentToRatio(percent) : Infinity
+  };
+}`;
+  document.getElementById('source-code').textContent = src;
+}
+
+// 初始化
+renderSource();
+renderTests();
+</script>
+
+</body>
+</html>

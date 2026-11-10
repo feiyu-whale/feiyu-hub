@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>普通螺纹尺寸查询</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  font-size: 14px;
+  line-height: 1.6;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+}
+h1 {
+  font-size: 20px;
+  text-align: center;
+  padding: 16px 0 8px;
+  color: #16213e;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+}
+select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fafbfc;
+  color: #1a1a2e;
+  appearance: auto;
+  outline: none;
+  transition: border-color 0.2s;
+}
+select:focus {
+  border-color: #4361ee;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.result-item {
+  background: #f7f8fc;
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.result-item .label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 2px;
+}
+.result-item .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4361ee;
+}
+.result-item .unit {
+  font-size: 12px;
+  color: #999;
+  font-weight: 400;
+}
+.formula-box {
+  background: #f7f8fc;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #444;
+  margin-top: 8px;
+}
+.formula-box code {
+  background: #e8ecf4;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+thead th {
+  background: #4361ee;
+  color: #fff;
+  padding: 8px 4px;
+  font-weight: 600;
+  text-align: center;
+  position: sticky;
+  top: 0;
+}
+thead th:first-child {
+  border-radius: 6px 0 0 0;
+}
+thead th:last-child {
+  border-radius: 0 6px 0 0;
+}
+tbody td {
+  padding: 7px 4px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+tbody tr:hover {
+  background: #eef1ff;
+}
+tbody tr.highlight {
+  background: #dde4ff;
+  font-weight: 700;
+}
+.note {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.source-section {
+  margin-top: 16px;
+}
+.source-section h2 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.source-section p, .source-section li {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.7;
+}
+.source-section ul {
+  padding-left: 20px;
+}
+.version {
+  position: fixed;
+  bottom: 8px;
+  right: 10px;
+  font-size: 11px;
+  color: #bbb;
+  z-index: 100;
+}
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.badge {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔩 普通螺纹尺寸查询</h1>
+  <p class="subtitle">依据 GB/T 196 计算粗牙普通螺纹基本尺寸</p>
+
+  <div class="card">
+    <div class="card-title">📐 选择螺纹规格</div>
+    <label for="threadSelect">公称直径规格（粗牙）</label>
+    <select id="threadSelect">
+      <option value="M3">M3</option>
+      <option value="M4">M4</option>
+      <option value="M5">M5</option>
+      <option value="M6" selected>M6</option>
+      <option value="M8">M8</option>
+      <option value="M10">M10</option>
+      <option value="M12">M12</option>
+      <option value="M14">M14</option>
+      <option value="M16">M16</option>
+      <option value="M18">M18</option>
+      <option value="M20">M20</option>
+      <option value="M22">M22</option>
+      <option value="M24">M24</option>
+      <option value="M27">M27</option>
+      <option value="M30">M30</option>
+    </select>
+    <div id="resultArea"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 完整对照表</div>
+    <div class="table-wrap">
+      <table id="fullTable">
+        <thead>
+          <tr>
+            <th>规格</th>
+            <th>螺距P<br>(mm)</th>
+            <th>中径d2<br>(mm)</th>
+            <th>外螺纹小径d3<br>(mm)</th>
+            <th>内螺纹小径D1<br>(mm)</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <p class="note">💡 点击表头可排序；当前选中规格高亮显示。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 计算公式</div>
+    <div class="formula-box">
+      <div>原始三角形高度：<code>H = (√3/2) × P ≈ 0.866025 × P</code></div>
+      <div>中径（外螺纹）：<code>d2 = d − 0.6495 × P</code></div>
+      <div>小径（外螺纹）：<code>d3 = d − 1.2269 × P</code></div>
+      <div>小径（内螺纹）：<code>D1 = d − 1.0825 × P</code></div>
+      <div style="margin-top:6px;color:#888;">其中 d 为公称直径（mm），P 为螺距（mm）</div>
+    </div>
+    <p class="note" style="margin-top:10px;">⚠️ 以上为基本尺寸（理论值）。实际加工公差须查 <strong>GB/T 197《普通螺纹 公差》</strong>，本工具不编造公差带数值。</p>
+  </div>
+
+  <div class="card source-section">
+    <h2>📚 数据来源</h2>
+    <ul>
+      <li><strong>GB/T 196-2003</strong>《普通螺纹 基本尺寸》—— 规定了公称直径 1~64mm 普通螺纹的基本尺寸，包括粗牙螺距系列及各直径计算公式。</li>
+      <li><strong>GB/T 197-2003</strong>《普通螺纹 公差》—— 规定了螺纹公差带、偏差等，本工具未引用具体公差数值，需查原文。</li>
+      <li>公式中系数 0.6495、1.2269、1.0825 均源自 GB/T 196 中基于原始三角形高度 H = 0.866025P 的推导。</li>
+    </ul>
+    <p class="note" style="margin-top:8px;">⚠️ 本工具仅计算基本尺寸理论值，不含公差。工程应用请以标准原文为准。</p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-普通螺纹查询 20261021</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // GB/T 196 粗牙螺距数据（公称直径 → 粗牙螺距）
+  var threadData = [
+    { spec: "M3",  d: 3,  P: 0.5  },
+    { spec: "M4",  d: 4,  P: 0.7  },
+    { spec: "M5",  d: 5,  P: 0.8  },
+    { spec: "M6",  d: 6,  P: 1.0  },
+    { spec: "M8",  d: 8,  P: 1.25 },
+    { spec: "M10", d: 10, P: 1.5  },
+    { spec: "M12", d: 12, P: 1.75 },
+    { spec: "M14", d: 14, P: 2.0  },
+    { spec: "M16", d: 16, P: 2.0  },
+    { spec: "M18", d: 18, P: 2.5  },
+    { spec: "M20", d: 20, P: 2.5  },
+    { spec: "M22", d: 22, P: 2.5  },
+    { spec: "M24", d: 24, P: 3.0  },
+    { spec: "M27", d: 27, P: 3.0  },
+    { spec: "M30", d: 30, P: 3.5  }
+  ];
+
+  function calc(item) {
+    var d = item.d;
+    var P = item.P;
+    return {
+      spec: item.spec,
+      d: d,
+      P: P,
+      H:  (0.866025 * P),
+      d2: (d - 0.6495 * P),
+      d3: (d - 1.2269 * P),
+      D1: (d - 1.0825 * P)
+    };
+  }
+
+  function fmt(v) {
+    return v.toFixed(3);
+  }
+
+  // 预计算所有数据
+  var allCalc = threadData.map(calc);
+
+  var sel = document.getElementById("threadSelect");
+  var resultArea = document.getElementById("resultArea");
+  var tableBody = document.getElementById("tableBody");
+
+  function renderResult() {
+    var spec = sel.value;
+    var item = allCalc.find(function(x) { return x.spec === spec; });
+    if (!item) return;
+
+    var html = '<div class="result-grid">';
+    html += '<div class="result-item"><div class="label">公称直径 d</div><div class="value">' + item.d + ' <span class="unit">mm</span></div></div>';
+    html += '<div class="result-item"><div class="label">粗牙螺距 P</div><div class="value">' + fmt(item.P) + ' <span class="unit">mm</span></div></div>';
+    html += '<div class="result-item"><div class="label">中径 d2</div><div class="value">' + fmt(item.d2) + ' <span class="unit">mm</span></div></div>';
+    html += '<div class="result-item"><div class="label">外螺纹小径 d3</div><div class="value">' + fmt(item.d3) + ' <span class="unit">mm</span></div></div>';
+    html += '<div class="result-item"><div class="label">内螺纹小径 D1</div><div class="value">' + fmt(item.D1) + ' <span class="unit">mm</span></div></div>';
+    html += '<div class="result-item"><div class="label">原始三角形高 H</div><div class="value">' + fmt(item.H) + ' <span class="unit">mm</span></div></div>';
+    html += '</div>';
+    html += '<p class="note" style="margin-top:10px;">📌 公差带数值需查 GB/T 197，此处仅给出基本尺寸。</p>';
+    resultArea.innerHTML = html;
+
+    // 更新表格高亮
+    var rows = tableBody.querySelectorAll("tr");
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-spec") === spec) {
+        rows[i].classList.add("highlight");
+      } else {
+        rows[i].classList.remove("highlight");
+      }
+    }
+  }
+
+  function renderTable() {
+    var html = "";
+    for (var i = 0; i < allCalc.length; i++) {
+      var item = allCalc[i];
+      html += '<tr data-spec="' + item.spec + '">';
+      html += '<td><strong>' + item.spec + '</strong></td>';
+      html += '<td>' + fmt(item.P) + '</td>';
+      html += '<td>' + fmt(item.d2) + '</td>';
+      html += '<td>' + fmt(item.d3) + '</td>';
+      html += '<td>' + fmt(item.D1) + '</td>';
+      html += '</tr>';
+    }
+    tableBody.innerHTML = html;
+  }
+
+  sel.addEventListener("change", renderResult);
+  renderTable();
+  renderResult();
+})();
+</script>
+</body>
+</html>

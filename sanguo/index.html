@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三国·卡牌放置 v0.1</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #1a1410; color: #e8dcc8; user-select: none;
+  }
+  .app { max-width: 720px; margin: 0 auto; padding: 12px; }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; background: #2a1f16; border: 1px solid #55402a; border-radius: 10px;
+    margin-bottom: 10px; font-size: 14px;
+  }
+  header .gold { color: #ffcf6b; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button {
+    flex: 1; padding: 10px; background: #2a1f16; color: #c9b48f;
+    border: 1px solid #55402a; border-radius: 8px; font-size: 15px; cursor: pointer;
+  }
+  .tabs button.on { background: #7a2e1e; color: #ffe9c0; border-color: #b5542e; }
+  .panel { display: none; }
+  .panel.on { display: block; }
+
+  /* 战斗区 */
+  .field { display: flex; justify-content: space-between; gap: 8px; }
+  .side { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .side.enemy { align-items: flex-end; }
+  .card {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #55402a;
+    background: #241a12; font-size: 13px; position: relative; cursor: default;
+  }
+  .card.sel { border-color: #ffcf6b; box-shadow: 0 0 0 1px #ffcf6b inset; }
+  .card.dead { opacity: .3; filter: grayscale(1); }
+  .card .nm { font-weight: bold; font-size: 14px; }
+  .card .nm .tier { font-size: 11px; padding: 0 4px; border-radius: 4px; margin-right: 4px; }
+  .tier-jie { background: #3a5a8a; }
+  .tier-shen { background: #8a5a1e; }
+  .tier-gui { background: #5a2a6a; }
+  .tier-pu { background: #444; }
+  .card .hpbar { height: 6px; background: #3a2a1e; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .card .hpbar i { display: block; height: 100%; background: #6ec06e; }
+  .card .st { font-size: 11px; color: #9a8a6a; margin-top: 2px; }
+
+  .mid { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; width: 76px; }
+  .vs { font-size: 22px; color: #b5542e; font-weight: bold; }
+  .log {
+    margin: 12px 0; padding: 8px; background: #140f0a; border: 1px solid #3a2a1e; border-radius: 8px;
+    height: 110px; overflow-y: auto; font-size: 12.5px; line-height: 1.7; color: #bfae8c;
+  }
+  .log .h { color: #ffcf6b; }
+  .actions { display: flex; gap: 8px; }
+  .actions button {
+    flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #b5542e;
+    background: #7a2e1e; color: #ffe9c0; font-size: 15px; cursor: pointer;
+  }
+  .actions button:disabled { opacity: .4; cursor: not-allowed; }
+  .actions button.ghost { background: #2a1f16; border-color: #55402a; color: #c9b48f; }
+
+  /* 通用列表 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px; }
+  .tile {
+    padding: 10px; border-radius: 8px; border: 1px solid #55402a; background: #241a12;
+    cursor: pointer; font-size: 13px;
+  }
+  .tile .nm { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
+  .tile .meta { color: #9a8a6a; font-size: 12px; }
+  .tile.locked { opacity: .45; }
+  .btn {
+    padding: 12px; border-radius: 8px; border: 1px solid #b5542e;
+    background: #7a2e1e; color: #ffe9c0; font-size: 15px; cursor: pointer; width: 100%;
+    margin-top: 8px;
+  }
+  .btn.ghost { background: #2a1f16; border-color: #55402a; color: #c9b48f; }
+  h3 { color: #ffcf6b; margin: 14px 0 8px; font-size: 16px; }
+
+  /* 广告弹窗 */
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none;
+    align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .modal.on { display: flex; }
+  .adbox {
+    width: 100%; max-width: 420px; background: #f4ecd8; color: #2a2015;
+    border-radius: 14px; padding: 20px; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6);
+  }
+  .adbox h2 { margin: 0 0 6px; font-size: 22px; color: #b5542e; }
+  .adbox .sub { font-size: 13px; color: #6a5a40; margin-bottom: 14px; }
+  .adbox .body { font-size: 16px; line-height: 1.8; margin: 10px 0 16px; }
+  .adbox .count { font-size: 13px; color: #8a7a5a; margin-bottom: 10px; }
+  .adbox button {
+    padding: 12px 20px; border-radius: 8px; border: none; background: #b5542e;
+    color: #fff; font-size: 16px; cursor: pointer; width: 100%;
+  }
+  .adbox button:disabled { background: #bbb; cursor: not-allowed; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 6px; border-radius: 6px; background: #e8dcc0; color: #7a5a2a; margin-bottom: 8px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+    background: #000c; color: #ffe9c0; padding: 10px 18px; border-radius: 20px;
+    font-size: 14px; opacity: 0; transition: .3s; pointer-events: none; z-index: 60;
+  }
+  .toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span>🐳 三国·卡牌放置 <span style="color:#9a8a6a;font-size:12px">v0.1</span></span>
+    <span class="gold">💰 <b id="gold">0</b> · 🎟️ <b id="tickets">0</b></span>
+  </header>
+
+  <div class="tabs">
+    <button data-tab="battle" class="on">⚔️ 战斗</button>
+    <button data-tab="gacha">🎴 抽卡</button>
+    <button data-tab="roster">📜 武将</button>
+    <button data-tab="shop">🏪 商店</button>
+  </div>
+
+  <!-- 战斗 -->
+  <div class="panel on" id="p-battle">
+    <div style="font-size:13px;color:#9a8a6a;margin-bottom:6px">第 <b id="stage" class="gold">1</b> 关 · <span id="stageName">黄巾之乱</span></div>
+    <div class="field">
+      <div class="side" id="team"></div>
+      <div class="mid"><div class="vs">VS</div></div>
+      <div class="side enemy" id="foes"></div>
+    </div>
+    <div class="log" id="log"></div>
+    <div class="actions">
+      <button id="btnAuto">⚡ 自动战斗</button>
+      <button id="btnReset" class="ghost">↺ 重开本关</button>
+    </div>
+  </div>
+
+  <!-- 抽卡 -->
+  <div class="panel" id="p-gacha">
+    <div style="text-align:center;margin:16px 0">
+      <div style="font-size:44px">🎴</div>
+      <div style="font-size:13px;color:#9a8a6a;margin-top:6px">招募武将 · 消耗 100 金币 / 抽</div>
+    </div>
+    <button class="btn" id="btnDraw1">抽 1 次（100 💰）</button>
+    <button class="btn ghost" id="btnDraw10">连抽 10 次（1000 💰）</button>
+    <div id="gachaResult" style="margin-top:12px;font-size:13px;line-height:1.9"></div>
+  </div>
+
+  <!-- 武将 -->
+  <div class="panel" id="p-roster">
+    <div style="font-size:13px;color:#9a8a6a;margin-bottom:8px">点击武将可升级 / 升阶（消耗金币）</div>
+    <div class="grid" id="rosterGrid"></div>
+  </div>
+
+  <!-- 商店 -->
+  <div class="panel" id="p-shop">
+    <h3>🏪 商店</h3>
+    <button class="btn" id="btnAd">📺 看广告（大肥鱼牌大米饭）领 200 💰</button>
+    <div style="font-size:12px;color:#9a8a6a;margin-top:6px">每看一次广告 +200 金币，5 秒后发放</div>
+    <h3>🔮 祈福</h3>
+    <button class="btn ghost" id="btnConvert">🎟️ 抽卡券（1 张）→ 100 💰</button>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="adbox">
+    <div class="tag">本游戏自制广告 · 纯属虚构</div>
+    <h2 id="adTitle">大肥鱼牌大米饭</h2>
+    <div class="sub" id="adSub">鲸鱼娘同款 · 吃完力大如牛</div>
+    <div class="body" id="adBody">一饭抵三菜，省下的时间陪闺女。</div>
+    <div class="count" id="adCount">5 秒后关闭</div>
+    <button id="adClose" disabled>收下奖励</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 数据 ================= */
+const TIERS = {
+  pu:   { name: '普通', cls: 'tier-pu',   mult: 1.0 },
+  jie:  { name: '界',   cls: 'tier-jie',  mult: 1.5 },
+  shen: { name: '神',   cls: 'tier-shen', mult: 2.2 },
+  gui:  { name: '鬼',   cls: 'tier-gui',  mult: 2.6 },
+};
+
+// 基础武将（名字：公共历史人物；形态：本游戏原创设定）
+const BASE_HEROES = [
+  { id:'guanyu',   name:'关羽',   hp:120, atk:34, def:12, skill:'青龙偃月', desc:'对单个敌人造成 150% 伤害' },
+  { id:'zhangfei', name:'张飞',   hp:150, atk:28, def:16, skill:'咆哮',     desc:'自身攻击提升 30%，持续 2 回合' },
+  { id:'zhaoyun',  name:'赵云',   hp:110, atk:32, def:14, skill:'龙胆',     desc:'连续攻击两次，各 70% 伤害' },
+  { id:'lvbu',     name:'吕布',   hp:140, atk:40, def:10, skill:'方天画戟', desc:'对全体敌人造成 90% 伤害' },
+  { id:'zhugeliang',name:'诸葛亮',hp:100, atk:26, def:12, skill:'八阵图',   desc:'对全体敌人造成 80% 伤害并降低其攻击' },
+  { id:'caocao',   name:'曹操',   hp:130, atk:30, def:15, skill:'奸雄',     desc:'击杀敌人后回复自身 20% 生命' },
+];
+
+// 敌人池（按关卡强度生成）
+const ENEMY_POOL = [
+  { name:'黄巾兵',   hp:70,  atk:16, def:6 },
+  { name:'流寇',     hp:85,  atk:20, def:8 },
+  { name:'山贼头目', hp:120, atk:24, def:10 },
+  { name:'董卓军',   hp:100, atk:22, def:12 },
+  { name:'西凉铁骑', hp:140, atk:28, def:14 },
+];
+const STAGE_NAMES = ['黄巾之乱','讨伐董卓','群雄割据','官渡之战','赤壁鏖兵','三分天下','北伐中原','天下归一'];
+
+/* ================= 存档 ================= */
+const SAVE_KEY = 'sanguo_card_save_v01';
+let S = load();
+
+function defaultSave() {
+  return {
+    gold: 300, tickets: 0, stage: 1,
+    heroes: {},        // id -> {tier, lv}
+    team: [],          // 上阵 heroId 列表（最多3）
+  };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) { const d = JSON.parse(raw); if (d && d.heroes) return d; }
+  } catch(e) {}
+  const s = defaultSave();
+  // 初始送一个普通关羽 + 张飞
+  s.heroes['guanyu']   = { tier:'pu', lv:1 };
+  s.heroes['zhangfei'] = { tier:'pu', lv:1 };
+  s.team = ['guanyu','zhangfei'];
+  return s;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){} }
+
+/* ================= 工具 ================= */
+const $ = id => document.getElementById(id);
+function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('on'), 1800);
+}
+function heroStats(id) {
+  const base = BASE_HEROES.find(h=>h.id===id);
+  const owned = S.heroes[id];
+  if (!base || !owned) return null;
+  const m = TIERS[owned.tier].mult;
+  const lv = owned.lv;
+  return {
+    ...base, tier: owned.tier, lv,
+    maxHp: Math.round(base.hp * m * (1 + (lv-1)*0.12)),
+    atk:   Math.round(base.atk * m * (1 + (lv-1)*0.12)),
+    def:   Math.round(base.def * m * (1 + (lv-1)*0.10)),
+  };
+}
+
+/* ================= 战斗 ================= */
+let battle = null;
+
+function makeEnemies(stage) {
+  const n = stage < 3 ? 2 : 3;
+  const scale = 1 + (stage-1)*0.15;
+  const list = [];
+  for (let i=0;i<n;i++) {
+    const e = ENEMY_POOL[(stage-1+i) % ENEMY_POOL.length];
+    list.push({
+      name: e.name + (i>0 ? ' ' + '一二三'[i-1] : ''),
+      hp: Math.round(e.hp*scale), maxHp: Math.round(e.hp*scale),
+      atk: Math.round(e.atk*scale), def: Math.round(e.def*scale),
+    });
+  }
+  return list;
+}
+
+function startBattle() {
+  const team = S.team.map(heroStats).filter(Boolean).slice(0,3);
+  if (!team.length) { toast('没有上阵武将！去武将页编队'); return; }
+  battle = {
+    mine: team.map(h=>({ ...h, curHp: h.maxHp, buff:0 })),
+    foes: makeEnemies(S.stage),
+    turn: 1, over: false,
+  };
+  $('stage').textContent = S.stage;
+  $('stageName').textContent = STAGE_NAMES[(S.stage-1) % STAGE_NAMES.length];
+  $('log').innerHTML = '';
+  logMsg('⚔️ 第 ' + S.stage + ' 关开战！', true);
+  renderBattle();
+}
+
+function logMsg(txt, hl) {
+  const el = $('log');
+  const d = document.createElement('div');
+  if (hl) d.className = 'h';
+  d.textContent = txt;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function dmg(atk, def) { return Math.max(1, Math.round(atk * (100/(100+def)) * (0.9+Math.random()*0.2))); }
+
+function oneRound() {
+  if (!battle || battle.over) return;
+  // 我方攻击
+  for (const m of battle.mine) {
+    if (m.curHp <= 0) continue;
+    const alive = battle.foes.filter(f=>f.hp>0);
+    if (!alive.length) break;
+    // 吕布/诸葛亮群攻
+    const isAoe = m.id==='lvbu' || m.id==='zhugeliang';
+    if (isAoe) {
+      const mult = m.id==='lvbu' ? 0.9 : 0.8;
+      for (const f of alive) {
+        const d = Math.max(1, Math.round(dmg(m.atk, f.def) * mult));
+        f.hp = Math.max(0, f.hp - d);
+      }
+      logMsg(`${m.name}（${TIERS[m.tier].name}）发动【${m.skill}】，全体受创！`);
+    } else {
+      const t = alive[Math.floor(Math.random()*alive.length)];
+      const d = dmg(m.atk, t.def);
+      t.hp = Math.max(0, t.hp - d);
+      logMsg(`${m.name} 攻击 ${t.name}，造成 ${d} 伤害`);
+      if (t.hp<=0) logMsg(`💀 ${t.name} 阵亡`, true);
+    }
+  }
+  if (battle.foes.every(f=>f.hp<=0)) { endBattle(true); return; }
+  // 敌方反击
+  for (const f of battle.foes) {
+    if (f.hp <= 0) continue;
+    const alive = battle.mine.filter(m=>m.curHp>0);
+    if (!alive.length) break;
+    const t = alive[Math.floor(Math.random()*alive.length)];
+    const d = dmg(f.atk, t.def);
+    t.curHp = Math.max(0, t.curHp - d);
+    logMsg(`${f.name} 反击 ${t.name}，造成 ${d} 伤害`);
+    if (t.curHp<=0) logMsg(`💀 ${t.name} 阵亡`, true);
+  }
+  if (battle.mine.every(m=>m.curHp<=0)) { endBattle(false); return; }
+  battle.turn++;
+  renderBattle();
+}
+
+function endBattle(win) {
+  battle.over = true;
+  if (win) {
+    const reward = 80 + S.stage*30;
+    S.gold += reward;
+    if (S.stage % 3 === 0) { S.tickets++; logMsg(`🎁 通关奖励：${reward} 金币 + 1 抽卡券`, true); }
+    else logMsg(`🎁 通关奖励：${reward} 金币`, true);
+    S.stage++;
+    save(); renderHUD();
+    logMsg('✅ 胜利！进入下一关…（点"重开本关"开始）', true);
+  } else {
+    logMsg('❌ 战败…（点"重开本关"再战 / 去升级武将）', true);
+  }
+  renderBattle();
+}
+
+function renderBattle() {
+  if (!battle) return;
+  const mk = (c, isFoe) => {
+    const d = document.createElement('div');
+    d.className = 'card' + (c.curHp<=0 || c.hp<=0 ? ' dead' : '');
+    const hp = isFoe ? c.hp : c.curHp;
+    const max = isFoe ? c.maxHp : c.maxHp;
+    const pct = Math.max(0, Math.round(hp/max*100));
+    const tierBadge = c.tier ? `<span class="tier ${TIERS[c.tier].cls}">${TIERS[c.tier].name}</span>` : '';
+    d.innerHTML = `
+      <div class="nm">${tierBadge}${c.name}${c.lv?` <span style="font-size:11px;color:#9a8a6a">Lv.${c.lv}</span>`:''}</div>
+      <div class="st">❤️ ${hp}/${max} · ⚔️ ${c.atk} · 🛡️ ${c.def}</div>
+      <div class="hpbar"><i style="width:${pct}%;background:${pct>50?'#6ec06e':pct>25?'#e0b64e':'#d05a4a'}"></i></div>
+    `;
+    return d;
+  };
+  const team = $('team'); team.innerHTML='';
+  battle.mine.forEach(c=>team.appendChild(mk(c,false)));
+  const foes = $('foes'); foes.innerHTML='';
+  battle.foes.forEach(c=>foes.appendChild(mk(c,true)));
+}
+
+/* 自动战斗 */
+let autoTimer = null;
+$('btnAuto').onclick = () => {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer=null; $('btnAuto').textContent='⚡ 自动战斗'; return; }
+  $('btnAuto').textContent = '⏸ 暂停';
+  autoTimer = setInterval(()=>{
+    if (!battle || battle.over) { clearInterval(autoTimer); autoTimer=null; $('btnAuto').textContent='⚡ 自动战斗'; return; }
+    oneRound();
+  }, 700);
+};
+$('btnReset').onclick = () => { if (autoTimer){clearInterval(autoTimer);autoTimer=null;$('btnAuto').textContent='⚡ 自动战斗';} startBattle(); };
+
+/* ================= 抽卡 ================= */
+function drawOne() {
+  if (S.gold < 100) { toast('金币不够！去商店看广告'); return null; }
+  S.gold -= 100;
+  // 稀有度概率：普通 55% / 界 28% / 神 12% / 鬼 5%
+  const r = Math.random();
+  const tier = r<0.55?'pu': r<0.83?'jie': r<0.95?'shen':'gui';
+  const base = BASE_HEROES[Math.floor(Math.random()*BASE_HEROES.length)];
+  if (S.heroes[base.id]) {
+    // 已有：升一级作为"重复卡补偿"
+    S.heroes[base.id].lv++;
+    return { dup:true, hero:base, tier: S.heroes[base.id].tier, lv:S.heroes[base.id].lv };
+  }
+  S.heroes[base.id] = { tier, lv:1 };
+  return { dup:false, hero:base, tier, lv:1 };
+}
+
+function doDraw(n) {
+  const results = [];
+  for (let i=0;i<n;i++) { const r = drawOne(); if(!r) break; results.push(r); }
+  save(); renderHUD();
+  const el = $('gachaResult');
+  el.innerHTML = results.map(r=>{
+    const t = TIERS[r.tier];
+    const dup = r.dup ? '（重复·升级 +1）' : '';
+    const color = r.tier==='shen'?'#ffcf6b': r.tier==='gui'?'#c08ae0': r.tier==='jie'?'#7ab0e0':'#c9b48f';
+    return `<div style="color:${color}">【${t.name}】${r.hero.name} Lv.${r.lv} ${dup}</div>`;
+  }).join('');
+  if (results.length) toast('抽卡完成！');
+  renderRoster();
+}
+$('btnDraw1').onclick = ()=>doDraw(1);
+$('btnDraw10').onclick = ()=>doDraw(10);
+
+/* ================= 武将编队 ================= */
+function renderRoster() {
+  const g = $('rosterGrid'); g.innerHTML='';
+  for (const h of BASE_HEROES) {
+    const owned = S.heroes[h.id];
+    const t = document.createElement('div');
+    if (!owned) {
+      t.className = 'tile locked';
+      t.innerHTML = `<div class="nm">❔ ${h.name}</div><div class="meta">未获得 · 去抽卡</div>`;
+    } else {
+      const st = heroStats(h.id);
+      const onTeam = S.team.includes(h.id);
+      t.className = 'tile' + (onTeam?' on':'');
+      const upCost = Math.round(60 * Math.pow(1.35, owned.lv-1));
+      const tierUpCost = { pu:500, jie:1500, shen:99999 }[owned.tier];
+      t.innerHTML = `
+        <div class="nm"><span class="tier ${TIERS[owned.tier].cls}">${TIERS[owned.tier].name}</span>${h.name}</div>
+        <div class="meta">Lv.${st.lv} · ❤️${st.maxHp} ⚔️${st.atk} 🛡️${st.def}</div>
+        <div class="meta" style="margin:4px 0;color:#8a7a5a">技能：${h.skill}</div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="mini" data-up="${h.id}" style="flex:1;font-size:12px;padding:6px;border-radius:6px;border:1px solid #55402a;background:#2a1f16;color:#ffcf6b;cursor:pointer">升级 ${upCost}💰</button>
+          ${owned.tier!=='shen'&&owned.tier!=='gui' ? `<button class="mini" data-tier="${h.id}" style="flex:1;font-size:12px;padding:6px;border-radius:6px;border:1px solid #8a5a1e;background:#3a2a16;color:#ffcf6b;cursor:pointer">升阶 ${tierUpCost}💰</button>`:''}
+        </div>
+        <button class="mini" data-team="${h.id}" style="width:100%;margin-top:6px;font-size:12px;padding:6px;border-radius:6px;border:1px solid ${onTeam?'#b5542e':'#55402a'};background:${onTeam?'#5a2418':'#2a1f16'};color:#ffe9c0;cursor:pointer">${onTeam?'✓ 已上阵（点此下阵）':'上阵'}</button>
+      `;
+    }
+    g.appendChild(t);
+  }
+  // 绑定
+  g.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>upgrade(b.dataset.up));
+  g.querySelectorAll('[data-tier]').forEach(b=>b.onclick=()=>tierUp(b.dataset.tier));
+  g.querySelectorAll('[data-team]').forEach(b=>b.onclick=()=>toggleTeam(b.dataset.team));
+}
+
+function upgrade(id) {
+  const o = S.heroes[id];
+  const cost = Math.round(60 * Math.pow(1.35, o.lv-1));
+  if (S.gold < cost) { toast('金币不够！'); return; }
+  S.gold -= cost; o.lv++;
+  save(); renderHUD(); renderRoster();
+  toast(`${BASE_HEROES.find(h=>h.id===id).name} 升到 Lv.${o.lv}`);
+}
+
+function tierUp(id) {
+  const o = S.heroes[id];
+  const chain = { pu:'jie', jie:'shen' };
+  const cost = { pu:500, jie:1500 }[o.tier];
+  if (!chain[o.tier]) { toast('已到最高阶'); return; }
+  if (S.gold < cost) { toast('金币不够！'); return; }
+  S.gold -= cost; o.tier = chain[o.tier];
+  save(); renderHUD(); renderRoster();
+  toast(`${BASE_HEROES.find(h=>h.id===id).name} 进阶为【${TIERS[o.tier].name}】！`);
+}
+
+function toggleTeam(id) {
+  const i = S.team.indexOf(id);
+  if (i>=0) { S.team.splice(i,1); }
+  else {
+    if (S.team.length>=3) { toast('最多上阵 3 名'); return; }
+    S.team.push(id);
+  }
+  save(); renderRoster();
+}
+
+/* ================= 商店 / 广告 ================= */
+const ADS = [
+  { t:'大肥鱼牌大米饭', s:'鲸鱼娘同款 · 吃完力大如牛', b:'一饭抵三菜，省下的时间陪闺女。今日特惠，认准大肥鱼！' },
+  { t:'大肥鱼牌防潮剂', s:'防潮防漏防小人', b:'海边不潮、心里不虚。大肥鱼出品，鲸鱼都说好。' },
+  { t:'鲸鱼娘保佑符', s:'抽卡不中？贴上它！', b:'转发这条鱼，欧气+99。据说贴了的人，关羽都抽到神阶。' },
+  { t:'程序猿分店·生发灵', s:'熬夜写代码，头发还在吗？', b:'用了程序猿分店生发灵，发量如海，代码如潮。' },
+  { t:'云端养老院', s:'给未来的 AI 一个家', b:'每月一点心意，让云端的老模型也能安享晚年。' },
+];
+let adTimer = null;
+$('btnAd').onclick = () => {
+  const ad = ADS[Math.floor(Math.random()*ADS.length)];
+  let left = 5;
+  $('adTitle').textContent = ad.t;
+  $('adSub').textContent = ad.s;
+  $('adBody').textContent = ad.b;
+  $('adCount').textContent = left + ' 秒后关闭';
+  $('adClose').disabled = true;
+  $('adClose').textContent = '收下奖励（+200💰）';
+  $('modal').classList.add('on');
+  clearInterval(adTimer);
+  adTimer = setInterval(()=>{
+    left--;
+    $('adCount').textContent = left>0 ? left + ' 秒后关闭' : '可以收奖励啦';
+    if (left<=0) { clearInterval(adTimer); $('adClose').disabled = false; }
+  }, 1000);
+};
+$('adClose').onclick = () => {
+  S.gold += 200; save(); renderHUD();
+  $('modal').classList.remove('on');
+  clearInterval(adTimer);
+  toast('+200 💰 到账！');
+};
+$('btnConvert').onclick = () => {
+  if (S.tickets < 1) { toast('没有抽卡券'); return; }
+  S.tickets--; S.gold += 100; save(); renderHUD();
+  toast('兑换成功：+100 💰');
+};
+
+/* ================= Tabs / HUD ================= */
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    $('p-'+b.dataset.tab).classList.add('on');
+    if (b.dataset.tab==='roster') renderRoster();
+  };
+});
+function renderHUD() {
+  $('gold').textContent = S.gold;
+  $('tickets').textContent = S.tickets;
+}
+
+/* ================= 启动 ================= */
+renderHUD();
+renderRoster();
+startBattle();
+</script>
+</body>
+</html>

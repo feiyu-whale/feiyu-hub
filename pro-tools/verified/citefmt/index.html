@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📚 引用格式生成</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:680px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  .f { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+  .f label { width:84px; font-size:13px; color:#c8b3ff; flex-shrink:0; }
+  .f input, .f select { flex:1; min-width:0; background:#100b1c; border:1px solid #3a3050; border-radius:9px;
+    padding:9px 10px; color:#e8e0f0; font-size:14px; font-family:inherit; }
+  .f input:focus, .f select:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .btn { background:#241a3a; border:1px solid #4a3d70; color:#c8b3ff; border-radius:9px;
+    padding:9px 14px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .btn.on { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border-color:#7a5fc0; }
+  .out { background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:12px; font-size:14px;
+    line-height:1.8; color:#d8ccff; word-break:break-word; min-height:60px; white-space:pre-wrap; font-family:ui-monospace,"PingFang SC",monospace; }
+  .tip { font-size:12px; color:#6a5f90; margin-top:7px; line-height:1.6; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>📚 引用格式生成</h1>
+  <div class="sub">APA 7 · MLA 9 · GB/T 7714 三格式一键生成</div>
+
+  <div class="card">
+    <div class="lbl">文献类型</div>
+    <select id="type" style="width:100%;background:#100b1c;border:1px solid #3a3050;border-radius:9px;padding:9px 10px;color:#e8e0f0;font-size:14px;font-family:inherit">
+      <option value="book">图书</option>
+      <option value="journal">期刊论文</option>
+      <option value="web">网页</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="lbl">文献信息</div>
+    <div class="f"><label>作者</label><input id="author" placeholder="张三, 李四（多人用逗号分隔）"></div>
+    <div class="f"><label>标题</label><input id="title" placeholder="书名 / 篇名 / 网页标题"></div>
+    <div class="f" id="fPublisher"><label>出版社</label><input id="publisher" placeholder="如：中华书局"></div>
+    <div class="f" id="fJournal"><label>期刊名</label><input id="journal" placeholder="如：中国社会科学"></div>
+    <div class="f" id="fVolume"><label>卷(期)</label><input id="volume" placeholder="如：12(3)"></div>
+    <div class="f"><label>年份</label><input id="year" placeholder="如：2024"></div>
+    <div class="f" id="fPages"><label>页码</label><input id="pages" placeholder="如：45-58"></div>
+    <div class="f" id="fUrl"><label>网址</label><input id="url" placeholder="https://..."></div>
+    <div class="f" id="fAccess"><label>访问日期</label><input id="access" placeholder="2026-10-17"></div>
+    <div class="row">
+      <button class="btn" data-fmt="apa">APA 7</button>
+      <button class="btn" data-fmt="mla">MLA 9</button>
+      <button class="btn" data-fmt="gb">GB/T 7714</button>
+      <button class="btn" id="copy">复制</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">生成结果</div>
+    <div class="out" id="out">填写上方信息后点击格式按钮</div>
+    <div class="tip">格式依通行规则：APA 7（作者. 年. 题名. 出版信息）；MLA 9；GB/T 7714（作者. 题名[文献类型]. 出版地: 出版者, 年）。字段缺失会以占位提示，不臆造。</div>
+  </div>
+  <div class="ver">v1.0.0-引用格式 20261017</div>
+</div>
+<script>
+// 【citefmt】引用格式生成（APA 7 / MLA 9 / GB/T 7714）。依赖：无（纯格式拼接）。输入：文献字段；输出：三种格式引文。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：APA 7th / MLA 9th / GB/T 7714-2015 通行著录规则。仅按输入字段拼接，缺字段标 [缺]，不臆造数据。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  function val(id){ return ($(id).value || "").trim(); }
+
+  // 作者处理：输入以逗号/顿号分隔；APA：姓, 名首字母；此处中文名原样
+  function authors(raw){
+    return raw.split(/[,，、]/).map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  function apaAuthors(list){
+    if(!list.length) return "[缺作者]";
+    if(list.length === 1) return list[0];
+    if(list.length <= 20) return list.slice(0,-1).join(", ") + ", & " + list[list.length-1];
+    return list.slice(0,19).join(", ") + ", ... " + list[list.length-1];
+  }
+  function mlaAuthors(list){
+    if(!list.length) return "[缺作者]";
+    if(list.length === 1) return list[0];
+    if(list.length === 2) return list[0] + ", and " + list[1];
+    return list[0] + " et al.";
+  }
+  function gbAuthors(list){
+    if(!list.length) return "[缺作者]";
+    if(list.length <= 3) return list.join(", ");
+    return list.slice(0,3).join(", ") + ", 等";
+  }
+  function nz(v){ return v || "[缺]"; }
+
+  function build(fmt){
+    var t = $("type").value;
+    var a = authors(val("author")), title = val("title"), year = val("year");
+    var publisher = val("publisher"), journal = val("journal"), volume = val("volume");
+    var pages = val("pages"), url = val("url"), access = val("access");
+
+    if(fmt === "apa"){
+      if(t === "book"){
+        return apaAuthors(a) + ". (" + nz(year) + "). *" + nz(title) + "*. " + nz(publisher) + ".";
+      }
+      if(t === "journal"){
+        return apaAuthors(a) + ". (" + nz(year) + "). " + nz(title) + ". *" + nz(journal) + "*, " +
+          (volume ? volume : "[缺卷(期)]") + (pages ? ", " + pages : "") + ".";
+      }
+      return apaAuthors(a) + ". (" + nz(year) + "). *" + nz(title) + "*. " +
+        (access ? "取用日期 " + access + "，" : "") + "自 " + nz(url);
+    }
+    if(fmt === "mla"){
+      if(t === "book"){
+        return mlaAuthors(a) + ". *" + nz(title) + "*. " + nz(publisher) + ", " + nz(year) + ".";
+      }
+      if(t === "journal"){
+        return mlaAuthors(a) + ". \"" + nz(title) + ".\" *" + nz(journal) + "*" +
+          (volume ? ", vol. " + volume : "") + ", " + nz(year) +
+          (pages ? ", pp. " + pages : "") + ".";
+      }
+      return mlaAuthors(a) + ". \"" + nz(title) + ".\" *" + (journal || "[缺网站名]") + "*" +
+        (access ? ", " + access : "") + ", " + nz(url) + ".";
+    }
+    // GB/T 7714-2015
+    var tag = { book:"M", journal:"J", web:"EB/OL" }[t] || "Z";
+    if(t === "book"){
+      return gbAuthors(a) + ". " + nz(title) + "[" + tag + "]. " + nz(publisher) + ", " + nz(year) + ".";
+    }
+    if(t === "journal"){
+      return gbAuthors(a) + ". " + nz(title) + "[" + tag + "]. " + nz(journal) + ", " +
+        nz(year) + (volume ? ", " + volume : "") + (pages ? ": " + pages : "") + ".";
+    }
+    var today = (function(){ var d = new Date(); return d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2); })();
+    return gbAuthors(a) + ". " + nz(title) + "[" + tag + "]. " + (access ? "(" + access + ")" : "[缺发布日期]") +
+      "[" + today + "]. " + nz(url) + ".";
+  }
+
+  var last = "";
+  document.querySelectorAll("[data-fmt]").forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll("[data-fmt]").forEach(function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      last = build(b.dataset.fmt);
+      $("out").textContent = last;
+    };
+  });
+  $("copy").onclick = function(){
+    if(!last) return;
+    navigator.clipboard && navigator.clipboard.writeText(last);
+    $("copy").textContent = "已复制";
+    setTimeout(function(){ $("copy").textContent = "复制"; }, 1200);
+  };
+  // 依类型显隐相关字段
+  function sync(){
+    var t = $("type").value;
+    $("fPublisher").style.display = t === "book" ? "flex" : "none";
+    $("fJournal").style.display = (t === "journal" || t === "web") ? "flex" : "none";
+    $("fVolume").style.display = t === "journal" ? "flex" : "none";
+    $("fPages").style.display = (t === "journal") ? "flex" : "none";
+    $("fUrl").style.display = t === "web" ? "flex" : "none";
+    $("fAccess").style.display = t === "web" ? "flex" : "none";
+  }
+  $("type").addEventListener("change", sync);
+  sync();
+})();
+</script>
+</body>
+</html>

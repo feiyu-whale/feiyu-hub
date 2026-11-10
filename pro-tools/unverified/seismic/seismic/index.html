@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>地震烈度查询 · 中国地震动参数区划说明</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6fa;
+    color: #1f2937;
+    line-height: 1.6;
+    padding: 16px 12px 80px;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    color: #fff;
+    padding: 20px 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(30,58,138,0.2);
+  }
+  header h1 {
+    font-size: 1.35rem;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+  header p {
+    font-size: 0.85rem;
+    opacity: 0.92;
+  }
+  .notice {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #78350f;
+    margin-bottom: 16px;
+  }
+  .notice strong { color: #92400e; }
+  section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  section h2 {
+    font-size: 1.05rem;
+    color: #1e3a8a;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #dbeafe;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .intensity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .intensity-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .intensity-item summary {
+    padding: 10px 12px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    user-select: none;
+    background: #f9fafb;
+  }
+  .intensity-item summary::-webkit-details-marker { display: none; }
+  .intensity-item[open] summary {
+    background: #eff6ff;
+    border-bottom: 1px solid #dbeafe;
+  }
+  .intensity-item .content {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: #374151;
+  }
+  .intensity-item .content p { margin-bottom: 4px; }
+  .intensity-item .content .label {
+    color: #6b7280;
+    font-size: 0.8rem;
+    margin-right: 4px;
+  }
+  .grade {
+    display: inline-block;
+    min-width: 42px;
+    text-align: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .g1 { background: #9ca3af; }
+  .g2 { background: #a3a3a3; }
+  .g3 { background: #84cc16; }
+  .g4 { background: #65a30d; }
+  .g5 { background: #eab308; color: #422006; }
+  .g6 { background: #f97316; }
+  .g7 { background: #ef4444; }
+  .g8 { background: #dc2626; }
+  .g9 { background: #b91c1c; }
+  .g10 { background: #7f1d1d; }
+  .g11 { background: #4c1d95; }
+  .g12 { background: #1e1b4b; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  th, td {
+    border: 1px solid #d1d5db;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  th {
+    background: #1e3a8a;
+    color: #fff;
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: #f9fafb; }
+  td.note { font-size: 0.8rem; color: #6b7280; text-align: left; }
+  .basis {
+    font-size: 0.82rem;
+    color: #4b5563;
+    line-height: 1.7;
+  }
+  .basis ol { padding-left: 20px; margin-top: 6px; }
+  .basis li { margin-bottom: 4px; }
+  .basis code {
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    color: #1e3a8a;
+  }
+  .version {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: rgba(255,255,255,0.85);
+    padding: 2px 6px;
+    border-radius: 3px;
+    z-index: 10;
+  }
+  .tag {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1e3a8a;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+  }
+  @media (max-width: 400px) {
+    html { font-size: 14px; }
+    header h1 { font-size: 1.2rem; }
+    th, td { padding: 6px 6px; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🌏 地震烈度查询</h1>
+    <p>中国地震烈度等级含义 · 抗震设防烈度与加速度对应</p>
+  </header>
+
+  <div class="notice">
+    <strong>⚠️ 重要说明：</strong>本工具仅提供烈度等级含义与加速度对应关系。<strong>具体地区的抗震设防烈度、地震动参数须查询 GB 18306-2015 区划图原文或官方查询系统</strong>，本工具不提供具体地点数据，避免给错。
+  </div>
+
+  <section>
+    <h2>📊 中国地震烈度表（I ~ XII 度）</h2>
+    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:10px;">
+      依据 <span class="tag">GB/T 17742-2020</span> 中国地震烈度表。点击展开各烈度含义。
+    </p>
+    <div class="intensity-list" id="intensityList"></div>
+  </section>
+
+  <section>
+    <h2>🏗️ 抗震设防烈度与设计基本地震加速度</h2>
+    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:10px;">
+      依据 <span class="tag">GB 50011-2010（2016年版）</span> 表 1.0.4。g 为重力加速度。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>抗震设防烈度</th>
+          <th>设计基本地震加速度值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>6 度</td><td>0.05g</td></tr>
+        <tr><td rowspan="2">7 度</td><td>0.10g</td></tr>
+        <tr><td>0.15g</td></tr>
+        <tr><td rowspan="2">8 度</td><td>0.20g</td></tr>
+        <tr><td>0.30g</td></tr>
+        <tr><td>9 度</td><td>0.40g</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="font-size:0.8rem;color:#6b7280;margin-top:8px;">
+      注：7 度、8 度各分两档，括号内为较高档（对应设计地震分组不同）。具体取值由设计基本地震加速度决定，详见 GB 50011 第 1.0.4 条及条文说明。
+    </p>
+  </section>
+
+  <section>
+    <h2>🗺️ 地震动峰值加速度分区（GB 18306-2015）</h2>
+    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:10px;">
+      GB 18306-2015《中国地震动参数区划图》以 50 年超越概率 10% 的地震动峰值加速度进行分区，主要档位如下：
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>峰值加速度 a<sub>max</sub></th>
+          <th>对应烈度参考</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>&lt; 0.05g</td><td>&lt; VI 度</td></tr>
+        <tr><td>0.05g</td><td>VI 度</td></tr>
+        <tr><td>0.10g</td><td>VII 度</td></tr>
+        <tr><td>0.15g</td><td>VII 度（较高档）</td></tr>
+        <tr><td>0.20g</td><td>VIII 度</td></tr>
+        <tr><td>0.30g</td><td>VIII 度（较高档）</td></tr>
+        <tr><td>0.40g</td><td>IX 度</td></tr>
+        <tr><td>≥ 0.80g</td><td>≥ X 度</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="font-size:0.8rem;color:#6b7280;margin-top:8px;">
+      注：烈度与加速度的对应为宏观统计关系，非严格一一对应。具体地点参数须查 GB 18306-2015 区划图 A1、A2 图或官方查询系统。
+    </p>
+  </section>
+
+  <section>
+    <h2>📚 数据依据</h2>
+    <div class="basis">
+      <ol>
+        <li><code>GB/T 17742-2020</code>《中国地震烈度表》—— I ~ XII 度烈度含义、震感与破坏描述。</li>
+        <li><code>GB 18306-2015</code>《中国地震动参数区划图》—— 地震动峰值加速度分区、反应谱特征周期分区。</li>
+        <li><code>GB 50011-2010（2016 年版）</code>《建筑抗震设计规范》第 1.0.4 条及表 1.0.4 —— 抗震设防烈度与设计基本地震加速度对应关系。</li>
+      </ol>
+      <p style="margin-top:8px;">
+        ⚠️ 烈度表的完整描述（含各类结构、地形、地表现象的详细分级）须查 <code>GB/T 17742-2020</code> 原文表 1；具体地区的设防参数须查 <code>GB 18306-2015</code> 区划图原文或官方系统。本工具仅给出核心要点，不替代标准原文。
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<div class="version">v1.0.0-地震烈度查询 20261021</div>
+
+<script>
+(function(){
+  // 烈度数据：基于 GB/T 17742-2020 核心要点，详细描述需查原文表 1
+  var data = [
+    {
+      grade: "I", cls: "g1", name: "微震",
+      feel: "无感。",
+      damage: "仅地震仪能记录，人无感觉。",
+      note: "日常不可感知。"
+    },
+    {
+      grade: "II", cls: "g2", name: "轻震",
+      feel: "室内个别静止中的人有感。",
+      damage: "无破坏。",
+      note: "仅少数静止者能察觉。"
+    },
+    {
+      grade: "III", cls: "g3", name: "少有感",
+      feel: "室内少数静止中的人有感；悬挂物微动。",
+      damage: "无破坏。",
+      note: "类似载重车辆驶过的轻微震动。"
+    },
+    {
+      grade: "IV", cls: "g4", name: "多有感",
+      feel: "室内多数人、室外少数人有感；悬挂物明显摆动，不稳定器皿作响。",
+      damage: "无破坏。",
+      note: "类似载重车辆近距离驶过。"
+    },
+    {
+      grade: "V", cls: "g5", name: "惊醒",
+      feel: "室内普遍、室外多数人有感；睡眠者惊醒；悬挂物大幅摆动。",
+      damage: "门窗、屋顶、屋架等轻微作响，抹灰可能出现细裂缝。",
+      note: "多数人明显察觉。"
+    },
+    {
+      grade: "VI", cls: "g6", name: "惊慌",
+      feel: "多数人惊慌奔逃，行走不稳；器皿翻倒。",
+      damage: "房屋轻微损坏——墙体出现裂缝，抹灰掉落，个别砖瓦掉落。",
+      note: "开始造成轻微破坏。"
+    },
+    {
+      grade: "VII", cls: "g7", name: "惊逃",
+      feel: "大多数人惊逃 outdoors；行走困难。",
+      damage: "房屋中等破坏——墙体明显裂缝，局部倒塌，烟囱轻度损坏。",
+      note: "一般房屋出现可修复破坏。"
+    },
+    {
+      grade: "VIII", cls: "g8", name: "破坏",
+      feel: "多数人摇晃颠簸，行走困难；人无法站稳。",
+      damage: "房屋严重破坏——墙体严重裂缝，部分倒塌，烟囱严重损坏。",
+      note: "一般房屋难以修复。"
+    },
+    {
+      grade: "IX", cls: "g9", name: "严重破坏",
+      feel: "人无法站立，被抛起。",
+      damage: "房屋普遍破坏，少数严重破坏或倒塌；地表出现裂缝。",
+      note: "多数房屋严重受损。"
+    },
+    {
+      grade: "X", cls: "g10", name: "毁灭",
+      feel: "人被抛起，无法自主行动。",
+      damage: "房屋普遍严重破坏或倒塌；地表出现较大裂缝，山体滑坡。",
+      note: "破坏范围广泛。"
+    },
+    {
+      grade: "XI", cls: "g11", name: "灾害",
+      feel: "——",
+      damage: "房屋普遍倒塌；地表剧烈变形，大范围滑坡、崩塌。",
+      note: "毁灭性破坏。"
+    },
+    {
+      grade: "XII", cls: "g12", name: "毁灭性",
+      feel: "——",
+      damage: "一切建筑物毁坏；地形剧烈变化，山河改观。",
+      note: "极端罕见，破坏程度超过人类工程极限。"
+    }
+  ];
+
+  var list = document.getElementById("intensityList");
+  data.forEach(function(d){
+    var details = document.createElement("details");
+    details.className = "intensity-item";
+    details.innerHTML =
+      '<summary>' +
+        '<span class="grade ' + d.cls + '">' + d.grade + '</span>' +
+        '<span>' + d.name + '</span>' +
+      '</summary>' +
+      '<div class="content">' +
+        '<p><span class="label">👥 震感：</span>' + d.feel + '</p>' +
+        '<p><span class="label">🏚️ 破坏：</span>' + d.damage + '</p>' +
+        '<p style="color:#6b7280;font-size:0.8rem;margin-top:4px;">💡 ' + d.note + '</p>' +
+      '</div>';
+    list.appendChild(details);
+  });
+})();
+</script>
+</body>
+</html>

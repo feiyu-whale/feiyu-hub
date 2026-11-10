@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>☯️ 易卦六十四</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0c0a08; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e8dcc8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#d0b060; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#8a7a58; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#221a10,#140e08); border:1px solid #5a4a30;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#c0a058; margin-bottom:10px; border-left:3px solid #c0a058; padding-left:8px; }
+  input { width:100%; background:#0e0a06; border:1px solid #5a4a30; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#e8dcC8; outline:none; font-family:inherit; }
+  input:focus { border-color:#a08840; }
+  button.go { width:100%; padding:14px; font-size:11px; font-weight:700; color:#1a1208;
+    background:linear-gradient(160deg,#e0c060,#a08040); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:2px; }
+  button.go:active { transform:scale(.98); }
+  .modes { display:flex; gap:8px; margin-bottom:10px; }
+  .modes button { flex:1; padding:9px; font-size:13px; background:#140e08; color:#c0a058;
+    border:1px solid #5a4a30; border-radius:9px; cursor:pointer; font-family:inherit; }
+  .modes button.active { background:#2a2010; color:#f0d080; border-color:#a08840; }
+  .guas { display:flex; gap:14px; justify-content:center; align-items:flex-start; margin:10px 0; }
+  .gua { display:flex; flex-direction:column-reverse; gap:7px; }
+  .yao { width:78px; height:9px; display:flex; gap:9px; }
+  .yao .b { flex:1; background:#d0b060; border-radius:2px; }
+  .yao.yin .b:first-child { margin-right:9px; } /* 阴爻断开 */
+  .yao-hole { width:78px; height:9px; }
+  .gua-title { text-align:center; font-size:12px; font-weight:800; color:#e8c860; margin:6px 0 2px; }
+  .gua-sub { text-align:center; font-size:12px; color:#a09060; }
+  .arrow { font-size:14px; color:#a08840; align-self:center; padding-top:40px; }
+  .row { display:flex; justify-content:space-between; padding:6px 0;
+    border-bottom:1px solid #2a2014; font-size:13px; gap:8px; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#8a7a58; flex-shrink:0; }
+  .row .v { color:#e8dcc8; text-align:right; }
+  .sect { font-size:13px; color:#c0a058; margin:16px 0 8px; border-left:3px solid #c0a058; padding-left:8px; }
+  .interp { font-size:13px; line-height:1.85; color:#d8ccb8; }
+  .disclaim { font-size:11px; color:#a09880; background:#1c1610; border:1px solid #3a3020;
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .interp ul { padding-left:18px; margin:8px 0; }
+  .interp li { margin-bottom:5px; }
+  .hint { text-align:center; font-size:11px; color:#6a5a44; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; font-size:10px; color:#4a3a28; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>☯️ 易 卦 六 十 四</h1>
+  <div class="sub">易经占卦 · 六十四卦 · 卦象卦辞<br>纯本地计算 · 无网络</div>
+
+  <div class="card">
+    <h3>起卦方式</h3>
+    <div class="modes">
+      <button data-m="coin" class="active">铜钱摇卦</button>
+      <button data-m="num">数字起卦</button>
+    </div>
+    <div id="numInput" style="display:none">
+      <input type="number" id="nums" placeholder="输入一个整数（如 123）" value="123" style="margin-bottom:8px">
+    </div>
+    <button class="go" id="calc">起 卦</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">易经六十四卦属传统文化经典 · 占卦为娱乐参考 🐳<br>请勿据此做重大决定</div>
+  <div class="ver">v1.0.0-易卦64 20261015</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var BAGUA = ['坤','震','坎','兑','艮','离','巽','乾']; // 000..111
+  var BAGUA_SYM = {'坤':'☷','震':'☳','坎':'☵','兑':'☱','艮':'☶','离':'☲','巽':'☴','乾':'☰'};
+  var BAGUA_NATURE = {'坤':'地','震':'雷','坎':'水','兑':'泽','艮':'山','离':'火','巽':'风','乾':'天'};
+  var GUA64 = {
+    '乾乾':'乾为天','坤坤':'坤为地','坎坎':'坎为水','离离':'离为火',
+    '震震':'震为雷','艮艮':'艮为山','巽巽':'巽为风','兑兑':'兑为泽',
+    '坤震':'地雷复','震坤':'雷地豫','坎震':'水雷屯','震坎':'雷水解',
+    '艮震':'山雷颐','震艮':'雷山小过','巽震':'风雷益','震巽':'雷风恒',
+    '兑震':'泽雷随','震兑':'雷泽归妹','离震':'火雷噬嗑','震离':'雷火丰',
+    '乾震':'天雷无妄','震乾':'雷天大壮','坤坎':'地水师','坎坤':'水地比',
+    '坤艮':'地山谦','艮坤':'山地剥','坤巽':'地风升','巽坤':'风地观',
+    '坤兑':'地泽临','兑坤':'泽地萃','坤离':'地火明夷','离坤':'火地晋',
+    '坤乾':'地天泰','乾坤':'天地否',
+    '坎艮':'水山蹇','艮坎':'山水蒙','坎巽':'水风井','巽坎':'风水涣',
+    '坎兑':'水泽节','兑坎':'泽水困','坎离':'水火既济','离坎':'火水未济',
+    '坎乾':'水天需','乾坎':'天水讼',
+    '艮巽':'山风蛊','巽艮':'风山渐','艮兑':'山泽损','兑艮':'泽山咸',
+    '艮离':'山火贲','离艮':'火山旅','艮乾':'山天大畜','乾艮':'天山遁',
+    '巽兑':'风泽中孚','兑巽':'泽风大过','巽离':'风火家人','离巽':'火风鼎',
+    '巽乾':'风天小畜','乾巽':'天风姤',
+    '兑离':'泽火革','离兑':'火泽睽','兑乾':'泽天夬','乾兑':'天泽履',
+    '离乾':'火天大有','乾离':'天火同人'
+  };
+
+  // 简易卦辞（六十四卦主旨）
+  var GUA_TEXT = {
+    '乾为天':'天行健，君子以自强不息。刚健中正，大通之象。',
+    '坤为地':'地势坤，君子以厚德载物。柔顺承天，包容之象。',
+    '水雷屯':'屯者难也。万事起头难，宜守正待时。',
+    '山水蒙':'蒙者蒙昧也。宜启蒙求知，虚心求教。',
+    '水天需':'需者待也。需待时机，不可躁进。',
+    '天水讼':'讼者争也。争执之象，宜和解退让。',
+    '地水师':'师者众也。统众行险，宜正道用人。',
+    '水地比':'比者亲也。亲比相助，宜择善而依。',
+    '风天小畜':'小畜者积也。积蓄待发，密云不雨。',
+    '天泽履':'履者礼也。如履薄冰，谨慎守礼。',
+    '地天泰':'泰者通也。天地交泰，通达安泰。',
+    '天地否':'否者塞也。天地不交，闭塞不通，宜守。',
+    '天火同人':'同人者合也。与人同心，利涉大川。',
+    '火天大有':'大有者丰也。盛大丰有，顺天休命。',
+    '地山谦':'谦者逊也。谦谦君子，有终吉。',
+    '雷地豫':'豫者悦也。顺动和乐，宜备豫防患。',
+    '泽雷随':'随者从也。随顺时势，择善而从。',
+    '山风蛊':'蛊者败也。救弊治乱，正本清源。',
+    '地泽临':'临者大也。临事莅众，宜宽厚。',
+    '风地观':'观者望也。观仰瞻仰，宜观而后动。',
+    '火雷噬嗑':'噬嗑者合也。咬合去梗，宜决断明断。',
+    '山火贲':'贲者饰也。文饰之象，宜文质相宜。',
+    '山地剥':'剥者落也。剥落之象，宜守不宜进。',
+    '地雷复':'复者返也。一阳来复，否极泰来。',
+    '天雷无妄':'无妄者诚也。不宜妄动，守正为要。',
+    '山天大畜':'大畜者聚也。大有蓄积，宜蓄德养贤。',
+    '山雷颐':'颐者养也。颐养之道，谨言慎食。',
+    '泽风大过':'大过者过也。阳大过盛，宜非常之举。',
+    '坎为水':'习坎重险。险中之险，宜守信涉险。',
+    '离为火':'离者丽也。附丽光明，宜守正持中。',
+    '泽山咸':'咸者感也。感而遂通，男女相感。',
+    '雷风恒':'恒者久也。恒久之道，宜守常不变。',
+    '天山遁':'遁者退也。遁世避时，宜退守待机。',
+    '雷天大壮':'大壮者盛也。阳刚壮盛，宜守正勿躁。',
+    '火地晋':'晋者进也。光明渐进，宜进取。',
+    '地火明夷':'明夷者伤也。明入地中，宜晦其明。',
+    '风火家人':'家人者内也。齐家之道，宜正家。',
+    '火泽睽':'睽者异也。背离之象，宜求同存异。',
+    '水山蹇':'蹇者难也。行路艰难，宜守正待援。',
+    '雷水解':'解者缓也。解难之象，宜及时解困。',
+    '山泽损':'损者减也。损下益上，宜惩忿窒欲。',
+    '风雷益':'益者增也。损上益下，宜行善受益。',
+    '泽天夬':'夬者决也。决断之象，宜明辨果决。',
+    '天风姤':'姤者遇也。不期而遇，宜慎防阴长。',
+    '泽地萃':'萃者聚也。荟萃之象，宜正聚勿滥。',
+    '地风升':'升者进也。积小成高，宜循序渐进。',
+    '泽水困':'困者穷也。困顿之象，宜守正待时。',
+    '水风井':'井者养也。井养不穷，宜养人利物。',
+    '泽火革':'革者变也。改革之象，宜顺时变革。',
+    '火风鼎':'鼎者新也。鼎新之象，宜稳固改新。',
+    '震为雷':'震者动也。震动惊惧，宜恐惧修省。',
+    '艮为山':'艮者止也。止而不行，宜适时而止。',
+    '风山渐':'渐者进也。渐进之象，宜循序不躁。',
+    '雷泽归妹':'归妹者配也。婚配之象，宜守正待时。',
+    '雷火丰':'丰者大也。丰大光明，宜守中防盛。',
+    '火山旅':'旅者客也。旅途之象，宜柔顺谨慎。',
+    '巽为风':'巽者入也。顺入之象，宜申命行事。',
+    '兑为泽':'兑者悦也。和悦之象，宜朋友讲习。',
+    '风水涣':'涣者散也。涣散之象，宜聚合人心。',
+    '水泽节':'节者止也。节制之象，宜适可而止。',
+    '风泽中孚':'中孚者信也。诚信之象，宜守信感物。',
+    '雷山小过':'小过者过也。小有过越，宜不宜大事。',
+    '水火既济':'既济者成也。事已告成，宜守成防变。',
+    '火水未济':'未济者未成也。事未成，宜慎终如始。'
+  };
+
+  var mode='coin';
+  document.querySelectorAll('.modes button').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.modes button').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active'); mode=b.dataset.m;
+      document.getElementById('numInput').style.display = mode==='num'?'block':'none';
+    });
+  });
+
+  // 2026-10-16 改用真随机源 crypto.getRandomValues（操作系统熵池），老浏览器回退 Math.random
+  // ⚠️ 只改本页随机源，不动其他逻辑！
+  function secureRand(){
+    if(window.crypto && window.crypto.getRandomValues){
+      var a=new Uint32Array(1); window.crypto.getRandomValues(a);
+      return a[0]/4294967296;
+    }
+    return Math.random();
+  }
+  // 2026-10-16 趣味彩蛋：会话内连10次一模一样 → 弹窗（纯内存，不存储）
+  // ⚠️ 只改本页展示逻辑，不动其他逻辑！
+  var _eggStreak={sig:'',n:0};
+  function streakCheck(sig){
+    if(_eggStreak.sig===sig){ _eggStreak.n++; } else { _eggStreak.sig=sig; _eggStreak.n=1; }
+    return _eggStreak.n===10 ? '你的运气过于奇特' : '';
+  }
+  function showEgg(msg){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+      mask.innerHTML='<div style="background:#28241a;border:1px solid #7a6a3a;border-radius:14px;padding:26px 30px;text-align:center;max-width:80%"><div style="font-size:12px;font-weight:700;color:#f0d060;margin-bottom:10px">'+msg+'</div><div style="font-size:13px;color:#b0a080;margin-bottom:16px">连摇 10 次一模一样的卦，天意难测啊 🌀</div><div style="font-size:12px;color:#908060">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 400);
+  }
+  function tossLine(){
+    var s=0; for(var i=0;i<3;i++) s+=secureRand()<0.5?1:0;
+    // 3正=老阳9, 2正=少阳7, 1正=少阴8, 0正=老阴6
+    return s===3?9:s===2?7:s===1?8:6;
+  }
+
+  function linesToTri(lines){ // lines 自下而上 [0/1,...] → 八卦名
+    return BAGUA[lines[0]|(lines[1]<<1)|(lines[2]<<2)];
+  }
+
+  function calc(){
+    var lines=[]; // 6 爻自下而上，每项 6/7/8/9
+    if(mode==='coin'){
+      for(var i=0;i<6;i++) lines.push(tossLine());
+    } else {
+      var n=Math.abs(parseInt(document.getElementById('nums').value,10)||123);
+      // 数字起卦：前三位与后三位之和定卦（简易梅花式）
+      var s=String(n), a=0,b=0;
+      for(var i=0;i<s.length;i++){ if(i<s.length/2) a+=+s[i]; else b+=+s[i]; }
+      var lower=a%8, upper=b%8;
+      // 转 6 爻
+      var lo=[lower&1,(lower>>1)&1,(lower>>2)&1];
+      var up=[upper&1,(upper>>1)&1,(upper>>2)&1];
+      lines=lo.concat(up).map(function(v){return v?7:8;});
+    }
+
+    var lowLines=lines.slice(0,3).map(function(v){return (v===7||v===9)?1:0;});
+    var upLines=lines.slice(3,6).map(function(v){return (v===7||v===9)?1:0;});
+    var lowGua=linesToTri(lowLines), upGua=linesToTri(upLines);
+    var guaName = GUA64[lowGua+upGua] || (BAGUA_NATURE[upGua]+BAGUA_NATURE[lowGua]+'卦');
+    var guaText = GUA_TEXT[guaName] || '（古经卦辞繁复，此卦可细参《周易》原文）';
+
+    var res=document.getElementById('result');
+    var h='';
+
+    // 卦象图
+    h+='<div class="card"><h3>卦象</h3>';
+    h+='<div class="guas">';
+    h+='<div class="gua">';
+    for(var i=0;i<6;i++){
+      var yang=(lines[i]===7||lines[i]===9);
+      var moving=(lines[i]===6||lines[i]===9);
+      h+='<div class="yao'+(yang?'':' yin')+'" style="'+(moving?'opacity:.75':'')+'">';
+      if(yang){ h+='<div class="b"></div>'; }
+      else { h+='<div class="b"></div><div class="b"></div>'; }
+      h+='</div>';
+    }
+    h+='</div>';
+    h+='</div>';
+    h+='<div class="gua-title">'+guaName+' '+BAGUA_SYM[upGua]+BAGUA_SYM[lowGua]+'</div>';
+    h+='<div class="gua-sub">上'+upGua+'('+BAGUA_NATURE[upGua]+') · 下'+lowGua+'('+BAGUA_NATURE[lowGua]+')</div>';
+    h+='</div>';
+
+    // 爻位明细
+    h+='<div class="card"><h3>六爻（自下而上）</h3>';
+    var yaoNames=['初','二','三','四','五','上'];
+    for(var i=5;i>=0;i--){
+      var v=lines[i];
+      var lbl=v===9?'老阳 ⟨○ 动⟩':v===7?'少阳 ⟨—⟩':v===8?'少阴 ⟨- -⟩':'老阴 ⟨× 动⟩';
+      h+='<div class="row"><span class="k">'+yaoNames[i]+'爻</span><span class="v">'+lbl+'</span></div>';
+    }
+    var hasMoving=lines.some(function(v){return v===6||v===9;});
+    h+='</div>';
+
+    // 解读
+    h+='<div class="sect">📖 卦辞与解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 易经六十四卦属传统文化经典，以下卦辞为简释，非科学预测，仅供娱乐参考。</div>';
+    h+='<p><b>'+guaName+'</b></p>';
+    h+='<p>'+guaText+'</p>';
+    h+='<ul>';
+    h+='<li><b>上卦</b>：'+upGua+'（'+BAGUA_NATURE[upGua]+'）——主外、主上、主未来。</li>';
+    h+='<li><b>下卦</b>：'+lowGua+'（'+BAGUA_NATURE[lowGua]+'）——主内、主下、主当下。</li>';
+    h+=(hasMoving?'<li>本次有<b>动爻</b>（老阳/老阴）——传统上动爻所在提示变化的关键位置，可细参爻辞。</li>'
+                :'<li>本次为<b>静卦</b>（无动爻）——以本卦卦辞为主来参看。</li>');
+    h+='</ul>';
+    h+='<p style="font-size:12px;color:#a09060">易经为中国传统经典，六十四卦各有卦辞爻辞，义理深广；此处给出卦象与简释，重在启思。仅供参考娱乐。</p>';
+    h+='</div>';
+
+    // 2026-10-16 趣味彩蛋：连10次一模一样（本卦+动爻）→ 弹窗
+    var _sig=guaName+'|'+(hasMoving?'动':'静');
+    var blow=streakCheck(_sig);
+    if(blow) showEgg(blow);
+
+    res.innerHTML=h;
+  }
+
+  document.getElementById('calc').addEventListener('click',calc);
+  calc();
+})();
+</script>
+</body>
+</html>

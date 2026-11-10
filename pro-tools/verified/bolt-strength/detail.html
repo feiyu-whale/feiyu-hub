@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>螺栓强度校核工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .header h1 { font-size: 24px; margin-bottom: 4px; }
+  .header p { font-size: 13px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid #e1e4e8;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab-btn {
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 15px;
+    color: #586069;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: #2a5298; }
+  .tab-btn.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+  }
+  .tab-content { display: none; padding: 32px; max-width: 1200px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+  .card {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .card h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: #1e3c72;
+    border-left: 4px solid #2a5298;
+    padding-left: 12px;
+  }
+  .card h3 {
+    font-size: 15px;
+    margin: 16px 0 8px 0;
+    color: #2a5298;
+  }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+  code {
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 13px;
+  }
+  .test-pass { color: #28a745; }
+  .test-fail { color: #dc3545; }
+  .test-summary {
+    background: #f0f7ff;
+    border: 1px solid #b3d4fc;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 16px 0;
+    font-size: 15px;
+  }
+  .test-list {
+    max-height: 500px;
+    overflow-y: auto;
+    font-size: 13px;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+  .test-item { padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+  .manual-content h2 { margin-top: 24px; }
+  .manual-content h3 { margin-top: 16px; }
+  .manual-content p { margin: 8px 0; text-align: justify; }
+  .manual-content ul, .manual-content ol { margin: 8px 0 8px 24px; }
+  .manual-content li { margin: 4px 0; }
+  .manual-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .manual-content th, .manual-content td {
+    border: 1px solid #d0d7de;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .manual-content th { background: #f6f8fa; font-weight: 600; }
+  .scenario {
+    background: #fafbfc;
+    border-left: 3px solid #2a5298;
+    padding: 12px 16px;
+    margin: 12px 0;
+  }
+  .scenario-title { font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
+  .warn {
+    background: #fff8e1;
+    border-left: 3px solid #f9a825;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .version-tag {
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  .note {
+    background: #e8f4fd;
+    border-left: 3px solid #2196f3;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>螺栓强度校核工具</h1>
+  <p>依据 GB 50017-2017《钢结构设计标准》 · 受拉 / 受剪 / 拉剪联合受力校核</p>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('source', this)">一、JS 源码</button>
+  <button class="tab-btn" onclick="switchTab('test', this)">二、单元测试</button>
+  <button class="tab-btn" onclick="switchTab('manual', this)">三、使用说明书</button>
+</div>
+
+<div id="source" class="tab-content active">
+  <div class="card">
+    <h2>核心算法源码</h2>
+    <p style="margin-bottom:12px;color:#586069;font-size:14px;">
+      纯函数实现，无外部依赖，可直接在浏览器控制台运行。所有强度设计值依据 GB 50017-2017，有效截面积依据 GB/T 3098.1-2010。
+    </p>
+    <pre><code id="sourceCode"></code></pre>
+  </div>
+</div>
+
+<div id="test" class="tab-content">
+  <div class="card">
+    <h2>单元测试结果</h2>
+    <div id="testSummary" class="test-summary"></div>
+    <div id="testList" class="test-list"></div>
+  </div>
+</div>
+
+<div id="manual" class="tab-content">
+  <div class="card manual-content" id="manualContent"></div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+   第一部分：核心算法源码
+   ============================================================ */
+const SOURCE_CODE = `
+/**
+ * 螺栓强度校核工具 - 核心算法
+ * 依据标准：
+ *   - GB 50017-2017《钢结构设计标准》
+ *   - GB/T 3098.1-2010《紧固件机械性能 螺栓、螺钉和螺柱》
+ * 
+ * 注意：强度设计值等数据需查标准原文确认，本工具提供的是常用值。
+ */
+
+/**
+ * 螺栓相关常量数据
+ * 数据来源：GB/T 3098.1-2010、GB 50017-2017
+ * 注：具体数值需查标准原文确认
+ */
+const BOLT_CONSTANTS = {
+  // 螺栓有效截面积 A_e (mm²) - 依据 GB/T 3098.1-2010 表 1
+  effectiveArea: {
+    12: 84.3,
+    16: 157,
+    20: 245,
+    22: 303,
+    24: 353,
+    27: 459,
+    30: 561
+  },
+
+  // 普通螺栓强度设计值 (N/mm²) - 依据 GB 50017-2017 表 4.4.3
+  // 注：具体数值需查标准原文确认
+  ordinaryBolt: {
+    'C': {
+      tensile: 170,   // 抗拉 f_t^b
+      shear: 140,     // 抗剪 f_v^b
+      bearing: {      // 承压 f_c^b，按钢材牌号
+        'Q235': 305,
+        'Q345': 405,
+        'Q390': 440,
+        'Q420': 470
+      }
+    },
+    'AB': {
+      tensile: 210,
+      shear: 190,
+      bearing: {
+        'Q235': 405,
+        'Q345': 510,
+        'Q390': 555,
+        'Q420': 590
+      }
+    }
+  },
+
+  // 高强度螺栓强度设计值 (N/mm²) - 依据 GB 50017-2017
+  // 注：具体数值需查标准原文确认
+  highStrengthBolt: {
+    '8.8': { tensile: 400, shear: 250 },
+    '10.9': { tensile: 500, shear: 310 }
+  },
+
+  // 高强度螺栓预拉力 P (kN) - 依据 GB 50017-2017 表 11.4.2-2
+  // 注：具体数值需查标准原文确认
+  preloadForce: {
+    '8.8':  { 16: 80,  20: 125, 22: 150, 24: 175 },
+    '10.9': { 16: 100, 20: 155, 22: 190, 24: 225 }
+  }
+};
+
+/**
+ * 获取螺栓有效截面积
+ * @param {number} d - 螺栓公称直径 (mm)，支持 12, 16, 20, 22, 24, 27, 30
+ * @returns {number} 螺栓有效截面积 A_e (mm²)
+ * @throws {Error} 当直径不是有效数字、小于等于 0、或不在支持范围内时抛出异常
+ * @example
+ * getBoltEffectiveArea(20); // 返回 245
+ * getBoltEffectiveArea(12); // 返回 84.3
+ */
+function getBoltEffectiveArea(d) {
+  if (typeof d !== 'number' || isNaN(d)) {
+    throw new Error('螺栓直径必须是有效数字');
+  }
+  if (d <= 0) {
+    throw new Error('螺栓直径必须大于 0');
+  }
+  const area = BOLT_CONSTANTS.effectiveArea[d];
+  if (area === undefined) {
+    throw new Error(
+      '不支持的螺栓直径: ' + d + 'mm，支持: 12, 16, 20, 22, 24, 27, 30'
+    );
+  }
+  return area;
+}
+
+/**
+ * 获取螺栓强度设计值
+ * @param {string} grade - 螺栓性能等级，如 '4.6', '8.8', '10.9'
+ * @param {string} boltType - 螺栓类型：'ordinary-C'(C级普通螺栓),
+ *        'ordinary-AB'(A/B级普通螺栓), 'high-strength'(高强度螺栓)
+ * @returns {Object} 包含 tensile(抗拉)、shear(抗剪) 强度设计值 (N/mm²)，
+ *          普通螺栓还包含 bearing(承压，按钢材牌号)
+ * @throws {Error} 当参数为空、等级或类型不支持时抛出异常
+ * @example
+ * getStrengthDesignValues('8.8', 'high-strength');
+ * // 返回 { tensile: 400, shear: 250 }
+ */
+function getStrengthDesignValues(grade, boltType) {
+  if (!grade || !boltType) {
+    throw new Error('螺栓等级和类型不能为空');
+  }
+  if (typeof grade !== 'string' || typeof boltType !== 'string') {
+    throw new Error('螺栓等级和类型必须是字符串');
+  }
+
+  if (boltType === 'high-strength') {
+    const values = BOLT_CONSTANTS.highStrengthBolt[grade];
+    if (!values) {
+      throw new Error(
+        '不支持的高强度螺栓等级: ' + grade + '，支持: 8.8, 10.9'
+      );
+    }
+    return { tensile: values.tensile, shear: values.shear };
+  } else if (boltType === 'ordinary-C') {
+    const v = BOLT_CONSTANTS.ordinaryBolt['C'];
+    return { tensile: v.tensile, shear: v.shear, bearing: Object.assign({}, v.bearing) };
+  } else if (boltType === 'ordinary-AB') {
+    const v = BOLT_CONSTANTS.ordinaryBolt['AB'];
+    return { tensile: v.tensile, shear: v.shear, bearing: Object.assign({}, v.bearing) };
+  } else {
+    throw new Error(
+      '不支持的螺栓类型: ' + boltType +
+      '，支持: ordinary-C, ordinary-AB, high-strength'
+    );
+  }
+}
+
+/**
+ * 获取高强度螺栓预拉力
+ * @param {string} grade - 螺栓性能等级，'8.8' 或 '10.9'
+ * @param {number} d - 螺栓公称直径 (mm)，支持 16, 20, 22, 24
+ * @returns {number} 预拉力 P (kN)
+ * @throws {Error} 当参数不支持时抛出异常
+ * @example
+ * getPreloadForce('10.9', 20); // 返回 155
+ */
+function getPreloadForce(grade, d) {
+  if (!BOLT_CONSTANTS.preloadForce[grade]) {
+    throw new Error('不支持的高强度螺栓等级: ' + grade);
+  }
+  const p = BOLT_CONSTANTS.preloadForce[grade][d];
+  if (p === undefined) {
+    throw new Error(
+      '不支持的直径: ' + d + 'mm (等级 ' + grade + ')，支持: 16, 20, 22, 24'
+    );
+  }
+  return p;
+}
+
+/**
+ * 计算单个螺栓抗拉承载力设计值
+ * 公式：N_t^b = A_e × f_t^b
+ * @param {number} d - 螺栓公称直径 (mm)
+ * @param {string} grade - 螺栓性能等级
+ * @param {string} boltType - 螺栓类型
+ * @returns {number} 抗拉承载力设计值 (kN)，保留 2 位小数
+ * @throws {Error} 当参数无效时抛出异常
+ * @example
+ * calculateTensileCapacity(20, '8.8', 'high-strength');
+ * // 返回 98 (kN) = 245 mm² × 400 N/mm² / 1000
+ */
+function calculateTensileCapacity(d, grade, boltType) {
+  const A_e = getBoltEffectiveArea(d);
+  const values = getStrengthDesignValues(grade, boltType);
+  const N_t = A_e * values.tensile / 1000;
+  return Math.round(N_t * 100) / 100;
+}
+
+/**
+ * 计算单个螺栓抗剪承载力设计值
+ * 公式：N_v^b = n_v × (π×d²/4) × f_v^b
+ * @param {number} d - 螺栓公称直径 (mm)
+ * @param {string} grade - 螺栓性能等级
+ * @param {string} boltType - 螺栓类型
+ * @param {number} nShearPlanes - 受剪面数，1=单剪，2=双剪
+ * @returns {number} 抗剪承载力设计值 (kN)，保留 2 位小数
+ * @throws {Error} 当参数无效或受剪面数不是 1 或 2 时抛出异常
+ * @example
+ * calculateShearCapacity(20, '8.8', 'high-strength', 1);
+ * // 返回 78.54 (kN)
+ */
+function calculateShearCapacity(d, grade, boltType, nShearPlanes) {
+  if (typeof nShearPlanes !== 'number' || isNaN(nShearPlanes)) {
+    throw new Error('受剪面数必须是有效数字');
+  }
+  if (nShearPlanes !== 1 && nShearPlanes !== 2) {
+    throw new Error('受剪面数必须是 1（单剪）或 2（双剪）');
+  }
+  const A = Math.PI * d * d / 4;
+  const values = getStrengthDesignValues(grade, boltType);
+  const N_v = nShearPlanes * A * values.shear / 1000;
+  return Math.round(N_v * 100) / 100;
+}
+
+/**
+ * 计算单个螺栓承压承载力设计值
+ * 公式：N_c^b = d × Σt × f_c^b
+ * @param {number} d - 螺栓公称直径 (mm)
+ * @param {number} sumT - 同一受力方向承压板件总厚度的较小值 (mm)
+ * @param {string} steelGrade - 钢材牌号，如 'Q235', 'Q345', 'Q390', 'Q420'
+ * @param {string} boltType - 螺栓类型，仅支持 'ordinary-C' 或 'ordinary-AB'
+ * @returns {number} 承压承载力设计值 (kN)，保留 2 位小数
+ * @throws {Error} 当参数无效时抛出异常
+ * @example
+ * calculateBearingCapacity(20, 10, 'Q235', 'ordinary-C');
+ * // 返回 61 (kN) = 20 × 10 × 305 / 1000
+ */
+function calculateBearingCapacity(d, sumT, steelGrade, boltType) {
+  if (typeof sumT !== 'number' || isNaN(sumT)) {
+    throw new Error('承压板件总厚度必须是有效数字');
+  }
+  if (sumT <= 0) {
+    throw new Error('承压板件总厚度必须大于 0');
+  }
+  if (!steelGrade) {
+    throw new Error('钢材牌号不能为空');
+  }
+
+  const values = getStrengthDesignValues('4.6', boltType);
+  const f_c = values.bearing[steelGrade];
+  if (!f_c) {
+    throw new Error(
+      '不支持的钢材牌号: ' + steelGrade +
+      '，支持: Q235, Q345, Q390, Q420'
+    );
+  }
+
+  const N_c = d * sumT * f_c / 1000;
+  return Math.round(N_c * 100) / 100;
+}
+
+/**
+ * 受拉螺栓强度校核
+ * 校核条件：N ≤ N_t^b
+ * @param {number} N - 单个螺栓承受的拉力设计值 (kN)
+ * @param {number} d - 螺栓公称直径 (mm)
+ * @param {string} grade - 螺栓性能等级
+ * @param {string} boltType - 螺栓类型
+ * @returns {Object} 校核结果
+ * @returns {boolean} returns.passed - 是否满足要求
+ * @returns {number} returns.ratio - 应力比 N/N_t^b
+ * @returns {number} returns.capacity - 承载力设计值 (kN)
+ * @returns {number} returns.demand - 荷载效应 (kN)
+ * @throws {Error} 当拉力为负数或参数无效时抛出异常
+ * @example
+ * checkBoltTension(80, 20, '8.8', 'high-strength');
+ * // 返回 { passed: true, ratio: 0.816, capacity: 98, demand: 80 }
+ */
+function checkBoltTension(N, d, grade, boltType) {
+  if (typeof N !== 'number' || isNaN(N)) {
+    throw new Error('拉力设计值必须是有效数字');
+  }
+  if (N < 0) {
+    throw new Error('拉力设计值不能为负数');
+  }
+  const capacity = calculateTensileCapacity(d, grade, boltType);
+  const ratio = capacity > 0 ? N / capacity : (N > 0 ? Infinity : 0);
+  return {
+    passed: N <= capacity,
+    ratio: Math.round(ratio * 1000) / 1000,
+    capacity: capacity,
+    demand: N
+  };
+}
+
+/**
+ * 受剪螺栓强度校核
+ * 校核条件：V ≤ N_v^b
+ * @param {number} V - 单个螺栓承受的剪力设计值 (kN)
+ * @param {number} d - 螺栓公称直径 (mm)
+ * @param {string} grade - 螺栓性能等级
+ * @param {string} boltType - 螺栓类型
+ * @param {number} nShearPlanes - 受剪面数
+ * @returns {Object} 校核结果
+ * @returns {boolean} returns.passed - 是否满足要求
+ * @returns {number} returns.ratio - 应力比 V/N_v^b
+ * @returns {number} returns.capacity - 承载力设计值 (kN)
+ * @returns {number} returns.demand - 荷载效应 (kN)
+ * @throws {Error} 当剪力为负数或参数无效时抛出异常
+ * @example
+ * checkBoltShear(60, 20, '8.8', 'high-strength', 1);
+ * // 返回 { passed: true, ratio: 0.764, capacity: 78.54, demand: 60 }
+ */
+function checkBoltShear(V, d, grade, boltType, nShearPlanes) {
+  if (typeof V !== 'number' || isNaN(V)) {
+    throw new Error('剪力设计值必须是有效数字');
+  }
+  if (V < 0) {
+    throw new Error('剪力设计值不能为负数');
+  }
+  const capacity = calculateShearCapacity(d, grade, boltType, nShearPlanes);
+  const ratio = capacity > 0 ? V / capacity : (V > 0 ? Infinity : 0);
+  return {
+    passed: V <= capacity,
+    ratio: Math.round(ratio * 1000) / 1000,
+    capacity: capacity,
+    demand: V
+  };
+}
+
+/**
+ * 拉剪联合受力螺栓强度校核
+ * 依据 GB 50017-2017 公式 (11.4.1-3)：
+ *   sqrt((N/N_t^b)² + (V/N_v^b)²) ≤ 1
+ * @param {number} N - 单个螺栓承受的拉力设计值 (kN)
+ * @param {number} V - 单个螺栓承受的剪力设计值 (kN)
+ * @param {number} d - 螺栓公称直径 (mm)
+ * @param {string} grade - 螺栓性能等级
+ * @param {string} boltType - 螺栓类型
+ * @param {number} nShearPlanes - 受剪面数
+ * @returns {Object} 校核结果
+ * @returns {boolean} returns.passed - 是否满足要求
+ * @returns {number} returns.ratio - 综合应力比
+ * @returns {number} returns.tensionRatio - 拉应力比 N/N_t^b
+ * @returns {number} returns.shearRatio - 剪应力比 V/N_v^b
+ * @returns {number} returns.tensionCapacity - 抗拉承载力 (kN)
+ * @returns {number} returns.shearCapacity - 抗剪承载力 (kN)
+ * @throws {Error} 当参数无效时抛出异常
+ * @example
+ * checkBoltCombined(50, 40, 20, '8.8', 'high-strength', 1);
+ */
+function checkBoltCombined(N, V, d, grade, boltType, nShearPlanes) {
+  if (typeof N !== 'number' || isNaN(N)) {
+    throw new Error('拉力设计值必须是有效数字');
+  }
+  if (typeof V !== 'number' || isNaN(V)) {
+    throw new Error('剪力设计值必须是有效数字');
+  }
+  if (N < 0) {
+    throw new Error('拉力设计值不能为负数');
+  }
+  if (V < 0) {
+    throw new Error('剪力设计值不能为负数');
+  }
+
+  const N_t = calculateTensileCapacity(d, grade, boltType);
+  const N_v = calculateShearCapacity(d, grade, boltType, nShearPlanes);
+
+  const tensionRatio = N_t > 0 ? N / N_t : (N > 0 ? Infinity : 0);
+  const shearRatio = N_v > 0 ? V / N_v : (V > 0 ? Infinity : 0);
+
+  const combinedRatio = Math.sqrt(
+    tensionRatio * tensionRatio + shearRatio * shearRatio
+  );
+
+  return {
+    passed: combinedRatio <= 1,
+    ratio: Math.round(combinedRatio * 1000) / 1000,
+    tensionRatio: Math.round(tensionRatio * 1000) / 1000,
+    shearRatio: Math.round(shearRatio * 1000) / 1000,
+    tensionCapacity: N_t,
+    shearCapacity: N_v,
+    tensionDemand: N,
+    shearDemand: V
+  };
+}
+`;
+
+// 执行源码，让函数在全局可用
+eval(SOURCE_CODE);
+
+// 显示源码
+document.getElementById('sourceCode').textContent = SOURCE_CODE.trim();
+
+/* ============================================================
+   第二部分：单元测试
+   ============================================================ */
+let testCount = 0;
+let passCount = 0;
+let failCount = 0;
+const testResults = [];
+
+function logTest(passed, message, detail) {
+  testCount++;
+  if (passed) {
+    passCount++;
+    testResults.push({ passed: true, message: message });
+  } else {
+    failCount++;
+    testResults.push({ passed: false, message: message + ' - ' + detail });
+  }
+}
+
+function assertEqual(actual, expected, message) {
+  const passed = actual === expected;
+  logTest(passed, message, '期望 ' + expected + ', 实际 ' + actual);
+}
+
+function assertApprox(actual, expected, tolerance, message) {
+  const passed = Math.abs(actual - expected) <= tolerance;
+  logTest(passed, message, '期望 ' + expected + '±' + tolerance + ', 实际 ' + actual);
+}
+
+function assertTrue(condition, message) {
+  logTest(condition === true, message, '期望 true, 实际 ' + condition);
+}
+
+function assertFalse(condition, message) {
+  logTest(condition === false, message, '期望 false, 实际 ' + condition);
+}
+
+function assertThrows(fn, message) {
+  try {
+    fn();
+    logTest(false, message, '应该抛出异常但没有');
+  } catch (e) {
+    logTest(true, message + ' (异常: ' + e.message + ')');
+  }
+}
+
+function assertType(value, type, message) {
+  const passed = typeof value === type;
+  logTest(passed, message, '期望类型 ' + type + ', 实际 ' + typeof value);
+}
+
+// ========== 测试用例 ==========
+
+// --- getBoltEffectiveArea 正常值 ---
+assertEqual(getBoltEffectiveArea(12), 84.3, 'M12 有效截面积应为 84.3 mm²');
+assertEqual(getBoltEffectiveArea(16), 157, 'M16 有效截面积应为 157 mm²');
+assertEqual(getBoltEffectiveArea(20), 245, 'M20 有效截面积应为 245 mm²');
+assertEqual(getBoltEffectiveArea(22), 303, 'M22 有效截面积应为 303 mm²');
+assertEqual(getBoltEffectiveArea(24), 353, 'M24 有效截面积应为 353 mm²');
+assertEqual(getBoltEffectiveArea(27), 459, 'M27 有效截面积应为 459 mm²');
+assertEqual(getBoltEffectiveArea(30), 561, 'M30 有效截面积应为 561 mm²');
+
+// --- getBoltEffectiveArea 异常 ---
+assertThrows(function() { getBoltEffectiveArea(15); }, '无效直径 M15 应抛异常');
+assertThrows(function() { getBoltEffectiveArea(10); }, '无效直径 M10 应抛异常');
+assertThrows(function() { getBoltEffectiveArea(null); }, 'null 输入应抛异常');
+assertThrows(function() { getBoltEffectiveArea(undefined); }, 'undefined 输入应抛异常');
+assertThrows(function() { getBoltEffectiveArea(NaN); }, 'NaN 输入应抛异常');
+assertThrows(function() { getBoltEffectiveArea(-20); }, '负数直径应抛异常');
+assertThrows(function() { getBoltEffectiveArea(0); }, '零直径应抛异常');
+assertThrows(function() { getBoltEffectiveArea('20'); }, '字符串输入应抛异常');
+assertThrows(function() { getBoltEffectiveArea(''); }, '空字符串应抛异常');
+
+// --- getStrengthDesignValues 正常值 ---
+var v1 = getStrengthDesignValues('4.6', 'ordinary-C');
+assertEqual(v1.tensile, 170, 'C级螺栓抗拉强度应为 170 N/mm²');
+assertEqual(v1.shear, 140, 'C级螺栓抗剪强度应为 140 N/mm²');
+
+var v2 = getStrengthDesignValues('8.8', 'ordinary-AB');
+assertEqual(v2.tensile, 210, 'AB级螺栓抗拉强度应为 210 N/mm²');
+assertEqual(v2.shear, 190, 'AB级螺栓抗剪强度应为 190 N/mm²');
+
+var v3 = getStrengthDesignValues('8.8', 'high-strength');
+assertEqual(v3.tensile, 400, '8.8级高强螺栓抗拉强度应为 400 N/mm²');
+assertEqual(v3.shear, 250, '8.8级高强螺栓抗剪强度应为 250 N/mm²');
+
+var v4 = getStrengthDesignValues('10.9', 'high-strength');
+assertEqual(v4.tensile, 500, '10.9级高强螺栓抗拉强度应为 500 N/mm²');
+assertEqual(v4.shear, 310, '10.9级高强螺栓抗剪强度应为 310 N/mm²');
+
+// --- getStrengthDesignValues 异常 ---
+assertThrows(function() { getStrengthDesignValues('12.9', 'high-strength'); }, '不支持的高强等级应抛异常');
+assertThrows(function() { getStrengthDesignValues('8.8', 'invalid'); }, '无效螺栓类型应抛异常');
+assertThrows(function() { getStrengthDesignValues(null, 'high-strength'); }, 'null 等级应抛异常');
+assertThrows(function() { getStrengthDesignValues('8.8', null); }, 'null 类型应抛异常');
+assertThrows(function() { getStrengthDesignValues('', 'high-strength'); }, '空字符串等级应抛异常');
+
+// --- getPreloadForce ---
+assertEqual(getPreloadForce('8.8', 20), 125, '8.8级 M20 预拉力应为 125 kN');
+assertEqual(getPreloadForce('10.9', 20), 155, '10.9级 M20 预拉力应为 155 kN');
+assertEqual(getPreloadForce('10.9', 24), 225, '10.9级 M24 预拉力应为 225 kN');
+assertThrows(function() { getPreloadForce('12.9', 20); }, '不支持的预拉力等级应抛异常');
+assertThrows(function() { getPreloadForce('10.9', 18); }, '不支持的预拉力直径应抛异常');
+
+// --- calculateTensileCapacity ---
+// M20 8.8级高强: 245 × 400 / 1000 = 98
+assertEqual(calculateTensileCapacity(20, '8.8', 'high-strength'), 98, 'M20 8.8级抗拉承载力应为 98 kN');
+// M24 10.9级高强: 353 × 500 / 1000 = 176.5
+assertEqual(calculateTensileCapacity(24, '10.9', 'high-strength'), 176.5, 'M24 10.9级抗拉承载力应为 176.5 kN');
+// M16 C级普通: 157 × 170 / 1000 = 26.69
+assertApprox(calculateTensileCapacity(16, '4.6', 'ordinary-C'), 26.69, 0.01, 'M16 C级抗拉承载力应约为 26.69 kN');
+assertThrows(function() { calculateTensileCapacity(18, '8.8', 'high-strength'); }, '无效直径计算抗拉应抛异常');
+
+// --- calculateShearCapacity ---
+// M20 8.8级高强 单剪: 1 × π×20²/4 × 250 / 1000 = 78.54
+assertApprox(calculateShearCapacity(20, '8.8', 'high-strength', 1), 78.54, 0.01, 'M20 8.8级单剪承载力应约为 78.54 kN');
+// M20 8.8级高强 双剪: 2 × π×20²/4 × 250 / 1000 = 157.08
+assertApprox(calculateShearCapacity(20, '8.8', 'high-strength', 2), 157.08, 0.01, 'M20 8.8级双剪承载力应约为 157.08 kN');
+// M24 10.9级高强 单剪: 1 × π×24²/4 × 310 / 1000 = 139.92 (约)
+assertApprox(calculateShearCapacity(24, '10.9', 'high-strength', 1), 139.92, 0.1, 'M24 10.9级单剪承载力应约为 139.92 kN');
+assertThrows(function() { calculateShearCapacity(20, '8.8', 'high-strength', 3); }, '受剪面数 3 应抛异常');
+assertThrows(function() { calculateShearCapacity(20, '8.8', 'high-strength', 0); }, '受剪面数 0 应抛异常');
+assertThrows(function() { calculateShearCapacity(20, '8.8', 'high-strength', -1); }, '负数受剪面数应抛异常');
+
+// --- calculateBearingCapacity ---
+// M20 Q235 C级: 20 × 10 × 305 / 1000 = 61
+assertEqual(calculateBearingCapacity(20, 10, 'Q235', 'ordinary-C'), 61, 'M20 Q235 C级承压应为 61 kN');
+// M24 Q345 AB级: 24 × 12 × 510 / 1000 = 146.88
+assertEqual(calculateBearingCapacity(24, 12, 'Q345', 'ordinary-AB'), 146.88, 'M24 Q345 AB级承压应为 146.88 kN');
+assertThrows(function() { calculateBearingCapacity(20, 0, 'Q235', 'ordinary-C'); }, '零厚度应抛异常');
+assertThrows(function() { calculateBearingCapacity(20, -5, 'Q235', 'ordinary-C'); }, '负厚度应抛异常');
+assertThrows(function() { calculateBearingCapacity(20, 10, 'Q460', 'ordinary-C'); }, '不支持的钢材应抛异常');
+assertThrows(function() { calculateBearingCapacity(20, 10, '', 'ordinary-C'); }, '空钢材牌号应抛异常');
+assertThrows(function() { calculateBearingCapacity(20, 10, 'Q235', 'high-strength'); }, '高强螺栓承压应抛异常');
+
+// --- checkBoltTension ---
+var r1 = checkBoltTension(80, 20, '8.8', 'high-strength');
+assertTrue(r1.passed, '80kN 拉力 M20 8.8级应通过');
+assertEqual(r1.capacity, 98, '承载力应为 98 kN');
+assertEqual(r1.demand, 80, '荷载效应应为 80 kN');
+assertApprox(r1.ratio, 0.816, 0.001, '应力比应约为 0.816');
+
+var r2 = checkBoltTension(100, 20, '8.8', 'high-strength');
+assertFalse(r2.passed, '100kN 拉力 M20 8.8级应不通过');
+assertTrue(r2.ratio > 1, '不通过时应力比应大于 1');
+
+var r3 = checkBoltTension(0, 20, '8.8', 'high-strength');
+assertTrue(r3.passed, '零拉力应通过');
+assertEqual(r3.ratio, 0, '零拉力应力比应为 0');
+
+assertThrows(function() { checkBoltTension(-10, 20, '8.8', 'high-strength'); }, '负拉力应抛异常');
+assertThrows(function() { checkBoltTension(NaN, 20, '8.8', 'high-strength'); }, 'NaN 拉力应抛异常');
+
+// --- checkBoltShear ---
+var r4 = checkBoltShear(60, 20, '8.8', 'high-strength', 1);
+assertTrue(r4.passed, '60kN 剪力 M20 8.8级单剪应通过');
+assertApprox(r4.capacity, 78.54, 0.01, '承载力应约为 78.54 kN');
+assertTrue(r4.ratio < 1, '通过时应力比应小于 1');
+
+var r5 = checkBoltShear(100, 20, '8.8', 'high-strength', 1);
+assertFalse(r5.passed, '100kN 剪力 M20 8.8级单剪应不通过');
+
+var r6 = checkBoltShear(0, 20, '8.8', 'high-strength', 1);
+assertTrue(r6.passed, '零剪力应通过');
+assertEqual(r6.ratio, 0, '零剪力应力比应为 0');
+
+assertThrows(function() { checkBoltShear(-10, 20, '8.8', 'high-strength', 1); }, '负剪力应抛异常');
+
+// --- checkBoltCombined ---
+var r7 = checkBoltCombined(50, 40, 20, '8.8', 'high-strength', 1);
+assertTrue(r7.passed, '50kN拉+40kN剪 M20 8.8级应通过');
+assertTrue(r7.ratio < 1, '通过时综合应力比应小于 1');
+assertApprox(r7.tensionRatio, 50/98, 0.001, '拉应力比应约为 0.510');
+assertApprox(r7.shearRatio, 40/78.54, 0.001, '剪应力比应约为 0.509');
+
+var r8 = checkBoltCombined(80, 60, 20, '8.8', 'high-strength', 1);
+assertFalse(r8.passed, '80kN拉+60kN剪 M20 8.8级应不通过');
+assertTrue(r8.ratio > 1, '不通过时综合应力比应大于 1');
+
+var r9 = checkBoltCombined(0, 0, 20, '8.8', 'high-strength', 1);
+assertTrue(r9.passed, '零拉零剪应通过');
+assertEqual(r9.ratio, 0, '零荷载综合应力比应为 0');
+
+assertThrows(function() { checkBoltCombined(-10, 40, 20, '8.8', 'high-strength', 1); }, '负拉力联合应抛异常');
+assertThrows(function() { checkBoltCombined(50, NaN, 20, '8.8', 'high-strength', 1); }, 'NaN 剪力联合应抛异常');
+
+// --- 精度与类型测试 ---
+var r10 = checkBoltCombined(70, 50, 20, '8.8', 'high-strength', 1);
+assertType(r10.ratio, 'number', '综合应力比应为 number 类型');
+assertTrue(!isNaN(r10.ratio), '综合应力比不应为 NaN');
+assertTrue(isFinite(r10.ratio), '综合应力比应为有限值');
+
+// --- 边界值测试 ---
+var r11 = checkBoltTension(98, 20, '8.8', 'high-strength');
+assertTrue(r11.passed, '恰好等于承载力应通过（边界）');
+assertEqual(r11.ratio, 1, '恰好等于承载力时应力比应为 1');
+
+var r12 = checkBoltTension(98.01, 20, '8.8', 'high-strength');
+assertFalse(r12.passed, '略超承载力应不通过（边界）');
+
+// --- 返回值结构测试 ---
+var r13 = checkBoltCombined(50, 40, 20, '8.8', 'high-strength', 1);
+assertType(r13.passed, 'boolean', 'passed 应为 boolean');
+assertType(r13.ratio, 'number', 'ratio 应为 number');
+assertType(r13.tensionRatio, 'number', 'tensionRatio 应为 number');
+assertType(r13.shearRatio, 'number', 'shearRatio 应为 number');
+assertType(r13.tensionCapacity, 'number', 'tensionCapacity 应为 number');
+assertType(r13.shearCapacity, 'number', 'shearCapacity 应为 number');
+
+// 渲染测试结果
+var summaryEl = document.getElementById('testSummary');
+var listEl = document.getElementById('testList');
+
+summaryEl.innerHTML =
+  '<strong>测试结果：</strong>通过 <span class="test-pass">' + passCount + '</span> / 共 ' + testCount +
+  (failCount > 0 ? '，<span class="test-fail">失败 ' + failCount + '</span>' : '，全部通过 ✓');
+
+var html = '';
+for (var i = 0; i < testResults.length; i++) {
+  var t = testResults[i];
+  html += '<div class="test-item ' + (t.passed ? 'test-pass' : 'test-fail') + '">' +
+    (i + 1) + '. ' + (t.passed ? '✓' : '✗') + ' ' + t.message + '</div>';
+}
+listEl.innerHTML = html;
+
+/* ============================================================
+   第三部分：使用说明书
+   ============================================================ */
+var manualHTML = `
+<h2>一、工具介绍</h2>
+<p>本工具用于钢结构中螺栓连接的强度校核，覆盖受拉、受剪、拉剪联合受力三种典型工况。计算依据为现行国家标准 GB 50017-2017《钢结构设计标准》以及 GB/T 3098.1-2010《紧固件机械性能 螺栓、螺钉和螺柱》。</p>
+<p>工具解决的核心问题是：给定螺栓规格、性能等级、受力状态后，快速判断单个螺栓的承载力是否满足设计要求，并给出应力比（利用率），帮助工程师判断设计是否经济合理。</p>
+<p>适用场景包括：钢结构梁柱节点螺栓校核、支撑连接螺栓校核、设备底座锚栓校核、钢平台连接螺栓复核等。工具以纯 JavaScript 实现，无任何外部依赖，可直接在浏览器中运行，也可集成到其他工程计算系统中。</p>
+
+<div class="warn">
+<strong>重要提示：</strong>本工具仅提供单个螺栓的承载力计算与校核，不涉及螺栓群的整体受力分析、连接板的强度验算、构造要求检查等。实际工程设计需由注册结构工程师依据完整的设计文件与标准进行综合判断。
+</div>
+
+<h2>二、参数详细说明</h2>
+
+<h3>2.1 螺栓公称直径 d</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>单位</td><td>mm（毫米）</td></tr>
+<tr><td>取值范围</td><td>12, 16, 20, 22, 24, 27, 30</td></tr>
+<tr><td>含义</td><td>螺栓的公称直径，即螺纹大径。本工具仅支持上述 7 种常用规格，对应 GB/T 3098.1-2010 中的有效截面积数据。</td></tr>
+<tr><td>注意事项</td><td>必须为整数，不支持 M10、M14、M18 等规格（如需使用请查标准原文获取有效截面积后自行计算）。</td></tr>
+</table>
+
+<h3>2.2 螺栓性能等级 grade</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>取值</td><td>普通螺栓：'4.6'、'8.8'（对应 C 级或 A/B 级）；高强度螺栓：'8.8'、'10.9'</td></tr>
+<tr><td>含义</td><td>性能等级的第一个数字表示公称抗拉强度（单位 100 MPa），第二个数字表示屈服强度与抗拉强度的比值。例如 8.8 级表示抗拉强度 800 MPa，屈服强度 640 MPa。</td></tr>
+<tr><td>注意事项</td><td>同一等级在不同螺栓类型（普通/高强）下对应的强度设计值不同，需配合 boltType 参数使用。</td></tr>
+</table>
+
+<h3>2.3 螺栓类型 boltType</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>取值</td><td>'ordinary-C'（C 级普通螺栓）、'ordinary-AB'（A/B 级普通螺栓）、'high-strength'（高强度螺栓）</td></tr>
+<tr><td>含义</td><td>C 级普通螺栓为粗制螺栓，加工精度低，一般用于次要连接或安装固定；A/B 级为精制螺栓；高强度螺栓经过热处理，用于主要受力连接。</td></tr>
+<tr><td>注意事项</td><td>承压计算仅适用于普通螺栓（ordinary-C 或 ordinary-AB），高强度螺栓的承压计算需按专门规定执行。</td></tr>
+</table>
+
+<h3>2.4 受剪面数 nShearPlanes</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>取值</td><td>1（单剪）或 2（双剪）</td></tr>
+<tr><td>含义</td><td>螺栓受剪时，剪切面的数量。单剪指螺栓只有一个剪切面（如两块板搭接）；双剪指螺栓有两个剪切面（如三块板连接，中间板与两侧板各形成一个剪切面）。</td></tr>
+<tr><td>注意事项</td><td>双剪连接的承载力是单剪的 2 倍。不支持 3 个及以上受剪面（实际工程中极少出现）。</td></tr>
+</table>
+
+<h3>2.5 钢材牌号 steelGrade</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>取值</td><td>'Q235'、'Q345'、'Q390'、'Q420'</td></tr>
+<tr><td>含义</td><td>被连接板件的钢材牌号，用于确定承压强度设计值 f_c^b。不同钢材牌号对应不同的承压强度。</td></tr>
+<tr><td>注意事项</td><td>仅用于承压计算。当同一受力方向有多块板件时，应取总厚度的较小值对应的钢材牌号。</td></tr>
+</table>
+
+<h3>2.6 承压板件总厚度 sumT</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>单位</td><td>mm（毫米）</td></tr>
+<tr><td>取值范围</td><td>大于 0 的正数</td></tr>
+<tr><td>含义</td><td>同一受力方向承压板件总厚度的较小值。例如两块板搭接，取较薄一侧的总厚度。</td></tr>
+<tr><td>注意事项</td><td>必须大于 0，否则无法计算承压承载力。</td></tr>
+</table>
+
+<h3>2.7 荷载效应 N / V</h3>
+<table>
+<tr><th>属性</th><th>说明</th></tr>
+<tr><td>单位</td><td>kN（千牛）</td></tr>
+<tr><td>取值范围</td><td>大于等于 0 的非负数</td></tr>
+<tr><td>含义</td><td>单个螺栓承受的拉力设计值 N 或剪力设计值 V，由整体结构分析得到，已包含荷载分项系数。</td></tr>
+<tr><td>注意事项</td><td>必须为设计值（已乘分项系数），不能直接使用标准值。不能为负数（螺栓不承受压力校核）。</td></tr>
+</table>
+
+<h2>三、实际使用场景</h2>
+
+<div class="scenario">
+<div class="scenario-title">场景 1：普通 C 级螺栓受拉校核</div>
+<p><strong>工程背景：</strong>某钢平台次要支撑连接采用 M20 C 级螺栓（4.6 级），单个螺栓承受拉力设计值 20 kN，需校核是否满足要求。</p>
+<p><strong>输入参数：</strong></p>
+<ul>
+<li>螺栓直径 d = 20 mm</li>
+<li>性能等级 grade = '4.6'</li>
+<li>螺栓类型 boltType = 'ordinary-C'</li>
+<li>拉力设计值 N = 20 kN</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>M20 有效截面积 A_e = 245 mm²</li>
+<li>C 级螺栓抗拉强度设计值 f_t^b = 170 N/mm²</li>
+<li>抗拉承载力 N_t^b = 245 × 170 / 1000 = 41.65 kN</li>
+<li>应力比 = 20 / 41.65 = 0.480</li>
+</ul>
+<p><strong>校核结果：</strong>passed = true，应力比 0.480 < 1，满足要求。承载力富余较大，可考虑减小螺栓直径以优化设计。</p>
+<p><strong>调用示例：</strong><code>checkBoltTension(20, 20, '4.6', 'ordinary-C')</code></p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景 2：高强度螺栓受剪校核（单剪）</div>
+<p><strong>工程背景：</strong>某梁柱节点采用 10.9 级 M24 高强度螺栓，单个螺栓承受剪力设计值 120 kN，单剪连接，需校核抗剪承载力。</p>
+<p><strong>输入参数：</strong></p>
+<ul>
+<li>螺栓直径 d = 24 mm</li>
+<li>性能等级 grade = '10.9'</li>
+<li>螺栓类型 boltType = 'high-strength'</li>
+<li>受剪面数 nShearPlanes = 1</li>
+<li>剪力设计值 V = 120 kN</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>螺栓杆截面积 A = π × 24² / 4 = 452.39 mm²</li>
+<li>10.9 级高强螺栓抗剪强度设计值 f_v^b = 310 N/mm²</li>
+<li>抗剪承载力 N_v^b = 1 × 452.39 × 310 / 1000 = 140.24 kN</li>
+<li>应力比 = 120 / 140.24 = 0.856</li>
+</ul>
+<p><strong>校核结果：</strong>passed = true，应力比 0.856 < 1，满足要求。利用率较高，设计较为经济。</p>
+<p><strong>调用示例：</strong><code>checkBoltShear(120, 24, '10.9', 'high-strength', 1)</code></p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景 3：高强度螺栓双剪连接校核</div>
+<p><strong>工程背景：</strong>某支撑连接采用三块板拼接，中间板与两侧板形成双剪连接，使用 8.8 级 M20 高强度螺栓，单个螺栓承受剪力设计值 140 kN。</p>
+<p><strong>输入参数：</strong></p>
+<ul>
+<li>螺栓直径 d = 20 mm</li>
+<li>性能等级 grade = '8.8'</li>
+<li>螺栓类型 boltType = 'high-strength'</li>
+<li>受剪面数 nShearPlanes = 2（双剪）</li>
+<li>剪力设计值 V = 140 kN</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>螺栓杆截面积 A = π × 20² / 4 = 314.16 mm²</li>
+<li>8.8 级高强螺栓抗剪强度设计值 f_v^b = 250 N/mm²</li>
+<li>抗剪承载力 N_v^b = 2 × 314.16 × 250 / 1000 = 157.08 kN</li>
+<li>应力比 = 140 / 157.08 = 0.891</li>
+</ul>
+<p><strong>校核结果：</strong>passed = true，应力比 0.891 < 1，满足要求。双剪连接使承载力提高一倍。</p>
+<p><strong>调用示例：</strong><code>checkBoltShear(140, 20, '8.8', 'high-strength', 2)</code></p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景 4：拉剪联合受力校核</div>
+<p><strong>工程背景：</strong>某悬挑梁端部连接螺栓同时承受拉力和剪力，采用 10.9 级 M22 高强度螺栓，单个螺栓承受拉力设计值 100 kN、剪力设计值 80 kN，单剪连接。</p>
+<p><strong>输入参数：</strong></p>
+<ul>
+<li>螺栓直径 d = 22 mm</li>
+<li>性能等级 grade = '10.9'</li>
+<li>螺栓类型 boltType = 'high-strength'</li>
+<li>受剪面数 nShearPlanes = 1</li>
+<li>拉力设计值 N = 100 kN</li>
+<li>剪力设计值 V = 80 kN</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>抗拉承载力 N_t^b = 303 × 500 / 1000 = 151.5 kN</li>
+<li>抗剪承载力 N_v^b = 1 × π × 22² / 4 × 310 / 1000 = 117.18 kN</li>
+<li>拉应力比 = 100 / 151.5 = 0.660</li>
+<li>剪应力比 = 80 / 117.18 = 0.683</li>
+<li>综合应力比 = √(0.660² + 0.683²) = √(0.4356 + 0.4665) = √0.9021 = 0.950</li>
+</ul>
+<p><strong>校核结果：</strong>passed = true，综合应力比 0.950 < 1，满足要求。但利用率较高，接近极限，建议复核荷载取值或增大螺栓直径。</p>
+<p><strong>调用示例：</strong><code>checkBoltCombined(100, 80, 22, '10.9', 'high-strength', 1)</code></p>
+</div>
+
+<div class="scenario">
+<div class="scenario-title">场景 5：普通螺栓承压校核</div>
+<p><strong>工程背景：</strong>某节点采用 M20 C 级普通螺栓连接 Q345 钢板，板厚 12 mm，单个螺栓承受的剪力设计值 50 kN，需校核承压承载力。</p>
+<p><strong>输入参数：</strong></p>
+<ul>
+<li>螺栓直径 d = 20 mm</li>
+<li>承压板件总厚度 sumT = 12 mm</li>
+<li>钢材牌号 steelGrade = 'Q345'</li>
+<li>螺栓类型 boltType = 'ordinary-C'</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>Q345 钢 C 级螺栓承压强度设计值 f_c^b = 405 N/mm²</li>
+<li>承压承载力 N_c^b = 20 × 12 × 405 / 1000 = 97.2 kN</li>
+</ul>
+<p><strong>校核结果：</strong>承压承载力 97.2 kN > 剪力设计值 50 kN，满足要求。可配合 checkBoltShear 同时校核螺栓抗剪承载力，取两者较小值作为连接承载力。</p>
+<p><strong>调用示例：</strong><code>calculateBearingCapacity(20, 12, 'Q345', 'ordinary-C')</code></p>
+</div>
+
+<h2>四、常见错误与排查</h2>
+
+<h3>4.1 "不支持的螺栓直径"</h3>
+<p><strong>原因：</strong>输入的直径不在支持列表（12, 16, 20, 22, 24, 27, 30）中。常见错误包括输入 M10、M14、M18 等规格，或输入非整数（如 20.5）。</p>
+<p><strong>解决：</strong>确认螺栓规格是否为标准规格。如需计算非标准规格，请查 GB/T 3098.1-2010 获取有效截面积后，使用 calculateTensileCapacity 等函数的手动计算方式。</p>
+
+<h3>4.2 "不支持的高强度螺栓等级"</h3>
+<p><strong>原因：</strong>高强度螺栓仅支持 8.8 级和 10.9 级。输入 12.9 级或其他等级会报错。</p>
+<p><strong>解决：</strong>确认螺栓性能等级。12.9 级螺栓在钢结构中较少使用，如需计算请查标准原文获取强度设计值。</p>
+
+<h3>4.3 "受剪面数必须是 1 或 2"</h3>
+<p><strong>原因：</strong>受剪面数输入了 0、3 或其他值。</p>
+<p><strong>解决：</strong>单剪连接（两块板搭接）输入 1；双剪连接（三块板拼接）输入 2。实际工程中不存在 3 个及以上受剪面的情况。</p>
+
+<h3>4.4 "拉力/剪力设计值不能为负数"</h3>
+<p><strong>原因：</strong>输入的荷载为负值。螺栓校核仅考虑拉力或剪力，不考虑压力。</p>
+<p><strong>解决：</strong>确认荷载方向。如果螺栓受压，则无需进行螺栓强度校核（压力由板件直接接触传递）。</p>
+
+<h3>4.5 单位混淆</h3>
+<p><strong>原因：</strong>荷载单位应为 kN（千牛），直径和厚度单位应为 mm（毫米），强度设计值单位为 N/mm²（等同于 MPa）。常见错误是将 N 当作 kN 输入，或将 m 当作 mm 输入。</p>
+<p><strong>解决：</strong>输入前统一单位。荷载以 kN 为单位，几何尺寸以 mm 为单位。</p>
+
+<h3>4.6 校核通过但应力比接近 1</h3>
+<p><strong>原因：</strong>虽然满足规范要求，但承载力富余很小，可能存在荷载取值偏小、材料强度取值偏高等风险。</p>
+<p><strong>解决：</strong>建议复核荷载组合、材料强度取值，或适当增大螺栓直径、提高性能等级。</p>
+
+<h2>五、数据来源与标准依据</h2>
+
+<table>
+<tr><th>数据项</th><th>依据标准</th><th>备注</th></tr>
+<tr><td>螺栓有效截面积 A_e</td><td>GB/T 3098.1-2010 表 1</td><td>紧固件机械性能标准</td></tr>
+<tr><td>普通螺栓强度设计值</td><td>GB 50017-2017 表 4.4.3</td><td>需查标准原文确认具体数值</td></tr>
+<tr><td>高强度螺栓强度设计值</td><td>GB 50017-2017</td><td>需查标准原文确认具体数值</td></tr>
+<tr><td>高强度螺栓预拉力</td><td>GB 50017-2017 表 11.4.2-2</td><td>需查标准原文确认具体数值</td></tr>
+<tr><td>拉剪联合校核公式</td><td>GB 50017-2017 公式 (11.4.1-3)</td><td>√((N/N_t^b)² + (V/N_v^b)²) ≤ 1</td></tr>
+<tr><td>抗拉承载力公式</td><td>GB 50017-2017 公式 (11.4.1-1)</td><td>N_t^b = A_e × f_t^b</td></tr>
+<tr><td>抗剪承载力公式</td><td>GB 50017-2017 公式 (11.4.1-2)</td><td>N_v^b = n_v × A × f_v^b</td></tr>
+<tr><td>承压承载力公式</td><td>GB 50017-2017</td><td>N_c^b = d × Σt × f_c^b</td></tr>
+</table>
+
+<div class="note">
+<strong>数据严谨性说明：</strong>本工具中的强度设计值数据来源于 GB 50017-2017 的常用取值，但具体数值可能因标准版本更新、钢材厚度分组等因素有所差异。正式工程设计中，请务必查阅标准原文确认所用数据。
+</div>
+
+<h2>六、局限性说明</h2>
+
+<p>本工具存在以下局限性，使用者应充分了解：</p>
+
+<ol>
+<li><strong>仅计算单个螺栓：</strong>工具仅校核单个螺栓的承载力，不涉及螺栓群的整体受力分析、螺栓群形心计算、偏心受力分析等。螺栓群设计需另行计算。</li>
+
+<li><strong>不涉及连接板验算：</strong>工具不验算被连接板件的强度（净截面强度、毛截面强度）、刚度、稳定性等。连接板设计需按 GB 50017-2017 相关章节另行计算。</li>
+
+<li><strong>不考虑疲劳：</strong>工具仅考虑静力强度校核，不考虑疲劳荷载作用下的螺栓疲劳验算。承受重复荷载的连接需按 GB 50017-2017 第 16 章进行疲劳验算。</li>
+
+<li><strong>不考虑温度影响：</strong>工具假设常温工作环境（-20℃ ~ +100℃）。高温或低温环境下的螺栓强度需按相关标准进行折减。</li>
+
+<li><strong>不考虑腐蚀：</strong>工具不考虑腐蚀环境对螺栓承载力的影响。腐蚀环境下的连接设计需考虑防腐措施及承载力折减。</li>
+
+<li><strong>不考虑施工偏差：</strong>工具假设螺栓安装符合规范要求，不考虑施工偏差（如螺栓孔偏差、预拉力偏差等）对承载力的影响。</li>
+
+<li><strong>高强度螺栓仅考虑承压型：</strong>本工具中高强度螺栓的校核按承压型连接计算，未涉及摩擦型连接的抗滑移系数验算。摩擦型连接需另行按 GB 50017-2017 第 11.4 节计算。</li>
+
+<li><strong>螺栓规格有限：</strong>仅支持 M12 ~ M30 的 7 种常用规格，不支持 M10、M14、M18、M33、M36 等规格。</li>
+
+<li><strong>钢材牌号有限：</strong>承压计算仅支持 Q235、Q345、Q390、Q420 四种常用钢材牌号，不支持 Q460 及以上牌号或进口钢材。</li>
+
+<li><strong>不提供构造建议：</strong>工具不提供螺栓间距、边距、端距等构造要求的检查。构造设计需按 GB 50017-2017 第 11.5 节执行。</li>
+</ol>
+
+<div class="warn">
+<strong>免责声明：</strong>本工具仅供工程技术人员参考使用，不能替代正式的结构设计计算书。所有计算结果需由具有相应资质的注册结构工程师审核确认后方可用于工程设计。因使用本工具产生的任何工程问题，工具开发者不承担责任。
+</div>
+`;
+
+document.getElementById('manualContent').innerHTML = manualHTML;
+
+/* ============================================================
+   标签页切换逻辑
+   ============================================================ */
+function switchTab(tabId, btn) {
+  var tabs = document.querySelectorAll('.tab-content');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+  }
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+  }
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+
+</body>
+</html>

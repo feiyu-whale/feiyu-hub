@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌀 神煞名录</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 14px; user-select:none; display:flex; flex-direction:column; align-items:center; }
+  .back { align-self:flex-start; text-decoration:none; color:#9a8fc0; font-size:10px; margin-bottom:6px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  .wrap { width:100%; max-width:720px; }
+  h1 { font-size:13px; color:#c8b3ff; text-align:center; font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:10px; margin-bottom:10px; line-height:1.7; }
+  .tabs { display:flex; gap:4px; margin-bottom:8px; }
+  .tab { flex:1; text-align:center; font-size:11px; color:#9a8fc0; background:#181228; border:1px solid #3a3050;
+    border-radius:9px; padding:8px 4px; cursor:pointer; }
+  .tab.on { color:#fff; background:linear-gradient(160deg,#5a4a9a,#3a2a6a); border-color:#7a6aba; }
+  .cat { background:linear-gradient(160deg,#2a2040,#1c1530); border:1px solid #4a3d70; border-radius:14px;
+    padding:10px 10px 12px; margin-bottom:8px; }
+  .cat h2 { font-size:11px; color:#c8b3ff; margin-bottom:6px; }
+  .meta { font-size:10px; color:#7a6f9a; line-height:1.7; margin-bottom:8px; padding:7px 9px;
+    background:#140f22; border-radius:8px; border-left:2px solid #4a3d70; }
+  .meta b { color:#9a8fc0; font-weight:600; }
+  .grid { display:grid; gap:4px; }
+  .grid.c1 { grid-template-columns:repeat(3,1fr); }
+  .grid.c2 { grid-template-columns:repeat(2,1fr); }
+  .cell { background:#181228; border:1px solid #3a3050; border-radius:8px; padding:6px 7px;
+    font-size:11px; line-height:1.45; overflow:hidden; }
+  .cell .n { color:#d0c0ff; font-weight:600; font-size:12px; }
+  .cell .a { color:#6a6090; font-size:10px; margin-top:2px; }
+  .cell .m { color:#8a7fb0; font-size:10px; margin-top:2px; }
+  .ji { color:#7fd4a8; border-color:#2a5040; }
+  .xiong { color:#ff9aa8; border-color:#5a2a38; }
+  .cell .tag { font-size:9px; padding:0 4px; border-radius:4px; margin-left:4px; vertical-align:middle; }
+  .cell.ji .tag { background:#1e3a2c; color:#7fd4a8; }
+  .cell.xiong .tag { background:#3a1e26; color:#ff9aa8; }
+  .grp-title { font-size:10px; color:#9a8fc0; margin:8px 0 4px; }
+  .grp-title:first-child { margin-top:0; }
+  .notice { font-size:10px; color:#6a6090; line-height:1.8; padding:9px 10px; background:#140f22;
+    border:1px dashed #3a3050; border-radius:9px; margin-top:8px; }
+  .search { width:100%; background:#0f0a1a; border:1px solid #3a3050; border-radius:9px; padding:9px 11px;
+    font-size:12px; color:#e0d8ff; font-family:inherit; outline:none; margin-bottom:8px; }
+  .search:focus { border-color:#7c6cd8; }
+  .hide { display:none; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:10px; }
+</style>
+</head>
+<body>
+<a class="back" href="../">← 回文科区</a>
+<div class="wrap">
+  <h1>🌀 神煞名录</h1>
+  <div class="sub">建除十二神 · 六曜 · 二十八宿 · 纯名录查阅</div>
+
+  <div class="tabs">
+    <div class="tab on" data-k="jianchu">📜 建除十二神</div>
+    <div class="tab" data-k="rokuyo">🌙 六曜</div>
+    <div class="tab" data-k="xiu">✨ 二十八宿</div>
+  </div>
+
+  <input class="search" id="q" placeholder="搜索名称（如：破 / 大安 / 角）" />
+
+  <div class="cat" id="panel"></div>
+
+  <div class="notice">
+    ⚠️ 本工具为<b>传统文化名录展示</b>，仅列出各神煞的名称、别名与古籍出处，供查阅了解。<br>
+    各家流派推演方法不一，本页<b>不作吉凶判断、不排盘、不预测</b>。
+  </div>
+
+  <div class="ver">v1.0.0-建除·六曜·二十八宿 20261017</div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  var KEYS = ['jianchu','rokuyo','xiu'];
+  var cur = 'jianchu';
+  var panel = document.getElementById('panel');
+  var q = document.getElementById('q');
+
+  function kw(v){ return (v||'').toString(); }
+  function match(it, s){
+    if(!s) return true;
+    return kw(it.name).indexOf(s) > -1 || kw(it.alias).indexOf(s) > -1 ||
+           kw(it.meaning).indexOf(s) > -1 || kw(it.animal).indexOf(s) > -1;
+  }
+
+  function esc(s){
+    return kw(s).replace(/[&<>"]/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+
+  function renderJianchu(d, s){
+    var items = d.items.filter(function(it){ return match(it, s); });
+    var h = '<h2>' + esc(d.title) + '</h2>';
+    h += '<div class="meta"><b>出处：</b>' + esc(d.source) + '<br><b>推演：</b>' + esc(d.rule) + '</div>';
+    if(!items.length){ h += '<div class="meta">没有匹配项</div>'; return h; }
+    h += '<div class="grid c1">';
+    items.forEach(function(it){
+      var cls = it.type === '吉' ? 'ji' : 'xiong';
+      h += '<div class="cell ' + cls + '"><span class="n">' + esc(it.name) + '</span>' +
+           '<span class="tag">' + esc(it.type) + '</span>' +
+           '<div class="a">别名：' + esc(it.alias) + '</div></div>';
+    });
+    h += '</div>';
+    return h;
+  }
+
+  function renderRokuyo(d, s){
+    var items = d.items.filter(function(it){ return match(it, s); });
+    var h = '<h2>' + esc(d.title) + '</h2>';
+    h += '<div class="meta"><b>出处：</b>' + esc(d.source) + '<br><b>算法：</b>' + esc(d.rule) + '</div>';
+    if(!items.length){ h += '<div class="meta">没有匹配项</div>'; return h; }
+    h += '<div class="grid c2">';
+    items.forEach(function(it){
+      h += '<div class="cell"><span class="n">' + esc(it.name) + '</span>' +
+           '<div class="m">' + esc(it.meaning) + '</div></div>';
+    });
+    h += '</div>';
+    return h;
+  }
+
+  function renderXiu(d, s){
+    var items = d.items.filter(function(it){ return match(it, s); });
+    var h = '<h2>' + esc(d.title) + '</h2>';
+    h += '<div class="meta"><b>出处：</b>' + esc(d.source) + '<br><b>顺序：</b>' + esc(d.rule) + '</div>';
+    if(!items.length){ h += '<div class="meta">没有匹配项</div>'; return h; }
+    var groups = ['东方苍龙','北方玄武','西方白虎','南方朱雀'];
+    groups.forEach(function(g){
+      var gs = items.filter(function(it){ return it.group === g; });
+      if(!gs.length) return;
+      h += '<div class="grp-title">' + esc(g) + '（' + gs.length + '宿）</div>';
+      h += '<div class="grid c1">';
+      gs.forEach(function(it){
+        h += '<div class="cell"><span class="n">' + esc(it.name) + '</span>' +
+             '<div class="a">配兽：' + esc(it.animal) + '</div></div>';
+      });
+      h += '</div>';
+    });
+    return h;
+  }
+
+  function render(){
+    var d = SHENSHA_DATA[cur];
+    var s = (q.value || '').trim();
+    var h = '';
+    if(cur === 'jianchu') h = renderJianchu(d, s);
+    else if(cur === 'rokuyo') h = renderRokuyo(d, s);
+    else h = renderXiu(d, s);
+    panel.innerHTML = h;
+  }
+
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('on'); });
+      t.classList.add('on');
+      cur = t.getAttribute('data-k');
+      q.value = '';
+      render();
+    });
+  });
+  q.addEventListener('input', render);
+
+  render();
+})();
+</script>
+</body>
+</html>

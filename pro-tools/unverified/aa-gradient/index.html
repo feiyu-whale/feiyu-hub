@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>肺泡-动脉氧分压差(A-a Gradient)计算器 | 专业版</title>
+<style>
+:root {
+    --primary: #1a5276;
+    --primary-light: #2980b9;
+    --accent: #e74c3c;
+    --bg: #f4f6f9;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --border: #dce1e8;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --info: #3498db;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff;
+    padding: 30px 20px;
+    text-align: center;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 15px rgba(26,82,118,0.3);
+}
+header h1 { font-size: 1.8em; margin-bottom: 8px; }
+header p { opacity: 0.9; font-size: 0.95em; }
+.safety-banner {
+    background: #fdf2f2;
+    border: 2px solid var(--danger);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-weight: 600;
+    color: var(--danger);
+    text-align: center;
+    font-size: 0.95em;
+}
+.tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+.tab-btn {
+    padding: 12px 24px;
+    border: none;
+    background: #dce1e8;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    font-size: 0.95em;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.tab-btn:hover { background: #c5cdd8; }
+.tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+}
+.tab-content {
+    display: none;
+    background: var(--card-bg);
+    border-radius: 0 8px 8px 8px;
+    padding: 30px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.tab-content.active { display: block; }
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+    color: var(--primary);
+}
+.form-group input, .form-group select {
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    font-size: 1em;
+    transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--primary-light);
+}
+.form-group .hint {
+    font-size: 0.8em;
+    color: #7f8c8d;
+    margin-top: 4px;
+}
+.btn-calc {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    display: block;
+    margin: 0 auto 24px;
+}
+.btn-calc:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,82,118,0.3); }
+.btn-calc:active { transform: translateY(0); }
+.results-panel {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    display: none;
+}
+.results-panel.show { display: block; }
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { font-weight: 600; color: var(--primary); }
+.result-value { font-size: 1.2em; font-weight: 700; }
+.result-value.normal { color: var(--success); }
+.result-value.elevated { color: var(--warning); }
+.result-value.high { color: var(--danger); }
+.interpretation {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 0.95em;
+}
+.interpretation.normal-bg { background: #eafaf1; border-left: 4px solid var(--success); }
+.interpretation.elevated-bg { background: #fef9e7; border-left: 4px solid var(--warning); }
+.interpretation.high-bg { background: #fdedec; border-left: 4px solid var(--danger); }
+.error-msg {
+    color: var(--danger);
+    font-weight: 600;
+    text-align: center;
+    padding: 16px;
+    display: none;
+}
+.error-msg.show { display: block; }
+/* Unit test styles */
+.test-results { margin-top: 20px; }
+.test-item {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-family: "Courier New", monospace;
+    font-size: 0.88em;
+    border-left: 4px solid;
+}
+.test-item.pass { background: #eafaf1; border-color: var(--success); }
+.test-item.fail { background: #fdedec; border-color: var(--danger); }
+.btn-run-tests {
+    background: var(--success);
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+/* Documentation styles */
+.doc-section { margin-bottom: 30px; }
+.doc-section h3 {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary-light);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+.doc-section h4 { color: var(--primary-light); margin: 16px 0 8px; }
+.doc-section p, .doc-section li { margin-bottom: 8px; }
+.doc-section ul, .doc-section ol { padding-left: 24px; }
+.formula-box {
+    background: #f0f4f8;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+    font-family: "Courier New", monospace;
+    font-size: 0.95em;
+    overflow-x: auto;
+}
+.warning-box {
+    background: #fff8e1;
+    border: 1px solid #f39c12;
+    border-radius: 6px;
+    padding: 14px;
+    margin: 12px 0;
+}
+.note-box {
+    background: #e8f4fd;
+    border: 1px solid var(--info);
+    border-radius: 6px;
+    padding: 14px;
+    margin: 12px 0;
+}
+.version-tag {
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    font-size: 0.72em;
+    color: #95a5a6;
+    z-index: 999;
+}
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; font-size: 0.9em; }
+th { background: #f0f4f8; font-weight: 600; color: var(--primary); }
+@media (max-width: 768px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .tabs { gap: 2px; }
+    .tab-btn { padding: 10px 14px; font-size: 0.85em; }
+    .tab-content { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <h1>肺泡-动脉氧分压差 (A-a Gradient) 计算器</h1>
+    <p>Alveolar-Arterial Oxygen Gradient Calculator | 专业版</p>
+</header>
+
+<div class="safety-banner">
+    ⚕ 医疗安全声明：本工具仅供具备资质的医疗卫生专业人员参考使用，不构成任何临床诊疗建议。实际临床决策须由具备执业资质的医师根据患者具体情况做出。计算结果可能存在误差，请勿将其作为唯一诊断依据。
+</div>
+
+<div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calculator')">计算器</button>
+    <button class="tab-btn" onclick="switchTab('unittest')">单元测试</button>
+    <button class="tab-btn" onclick="switchTab('docs')">专业说明文档</button>
+    <button class="tab-btn" onclick="switchTab('safety')">安全声明</button>
+</div>
+
+<!-- Tab 1: Calculator -->
+<div id="tab-calculator" class="tab-content active">
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="fio2">吸入氧浓度 FiO2</label>
+            <input type="number" id="fio2" step="0.01" min="0" max="1" placeholder="如 0.21" value="0.21">
+            <span class="hint">必须为小数形式（0.21 = 21%），范围 0.01–1.00</span>
+        </div>
+        <div class="form-group">
+            <label for="pao2">动脉血氧分压 PaO2 (mmHg)</label>
+            <input type="number" id="pao2" step="0.1" placeholder="如 95" value="95">
+            <span class="hint">动脉血气分析结果，单位 mmHg</span>
+        </div>
+        <div class="form-group">
+            <label for="paco2">动脉血二氧化碳分压 PaCO2 (mmHg)</label>
+            <input type="number" id="paco2" step="0.1" placeholder="如 40" value="40">
+            <span class="hint">动脉血气分析结果，单位 mmHg</span>
+        </div>
+        <div class="form-group">
+            <label for="age">年龄 (岁)</label>
+            <input type="number" id="age" step="1" min="0" max="150" placeholder="如 45" value="45">
+            <span class="hint">患者实际年龄，用于校正预期值</span>
+        </div>
+        <div class="form-group">
+            <label for="patm">大气压 Patm (mmHg)</label>
+            <input type="number" id="patm" step="1" min="100" max="1000" placeholder="海平面 760" value="760">
+            <span class="hint">海平面标准大气压 760 mmHg；高海拔地区需调低</span>
+        </div>
+        <div class="form-group">
+            <label>体温 / 饱和水蒸气压 PH2O</label>
+            <input type="text" value="固定为 47 mmHg（37℃）" disabled>
+            <span class="hint">本工具将 PH2O 固定为 47 mmHg（按 37℃ 体温计算）；发热或低温患者的实际值略有差异，结果存在相应偏差</span>
+        </div>
+        <div class="form-group">
+            <label for="rq">呼吸商 R (可选)</label>
+            <input type="number" id="rq" step="0.01" min="0.5" max="1.2" placeholder="默认 0.8" value="0.8">
+            <span class="hint">默认 0.8（混合饮食），纯碳水 1.0，纯脂肪 0.7</span>
+        </div>
+    </div>
+    <button class="btn-calc" onclick="calculate()">计 算</button>
+    <div id="error-msg" class="error-msg"></div>
+    <div id="results-panel" class="results-panel">
+        <h3 style="color:var(--primary);margin-bottom:16px;">计算结果</h3>
+        <div class="result-row">
+            <span class="result-label">肺泡氧分压 PAO2</span>
+            <span class="result-value" id="res-pao2">—</span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">A-a 氧分压梯度</span>
+            <span class="result-value" id="res-gradient">—</span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">年龄校正预期值</span>
+            <span class="result-value" id="res-expected">—</span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">梯度 / 预期值 比值</span>
+            <span class="result-value" id="res-ratio">—</span>
+        </div>
+        <div id="interpretation" class="interpretation"></div>
+        <div class="note-box" style="margin-top:16px;">
+            <strong>注意：</strong>FiO2 须以小数输入（如 0.21 代表 21%）。在吸氧状态（FiO2 > 0.21）下，肺泡气方程的假设条件不完全满足，计算误差增大，结果仅供趋势参考。
+        </div>
+    </div>
+</div>
+
+<!-- Tab 2: Unit Tests -->
+<div id="tab-unittest" class="tab-content">
+    <h3 style="color:var(--primary);margin-bottom:16px;">单元测试（10 项）</h3>
+    <p style="margin-bottom:16px;color:#7f8c8d;">覆盖正常值、边界条件、极端值、异常输入等场景。点击运行按钮执行全部测试。</p>
+    <button class="btn-run-tests" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="test-summary" style="font-weight:700;margin-bottom:12px;"></div>
+    <div id="test-results" class="test-results"></div>
+</div>
+
+<!-- Tab 3: Documentation -->
+<div id="tab-docs" class="tab-content">
+    <div class="doc-section">
+        <h3>一、工具概述</h3>
+        <p>本计算器用于计算肺泡-动脉氧分压差（Alveolar-Arterial Oxygen Pressure Gradient，简称 A-a gradient 或 A-a DO2），是评估肺换气功能的重要临床工具。该指标通过比较肺泡内的氧分压（PAO2）与动脉血中实际测得的氧分压（PaO2）之间的差值，反映氧气从肺泡向血液转移的效率。</p>
+        <p>A-a 梯度增大提示存在肺内分流（shunt）、通气/血流比例失调（V/Q mismatch）或弥散障碍（diffusion impairment）等病理状态。正常值随年龄增长而增大，因此需要年龄校正。</p>
+    </div>
+
+    <div class="doc-section">
+        <h3>二、公式详解与计算步骤</h3>
+        <h4>步骤 1：计算肺泡氧分压（PAO2）——肺泡气方程</h4>
+        <div class="formula-box">
+            PAO2 = FiO2 × (Patm - PH2O) - PaCO2 / R<br><br>
+            其中：<br>
+            &nbsp;&nbsp;FiO2 = 吸入氧浓度（小数形式）<br>
+            &nbsp;&nbsp;Patm = 大气压（海平面 760 mmHg）<br>
+            &nbsp;&nbsp;PH2O = 37℃ 饱和水蒸气压 = 47 mmHg<br>
+            &nbsp;&nbsp;PaCO2 = 动脉血二氧化碳分压（mmHg）<br>
+            &nbsp;&nbsp;R = 呼吸商（Respiratory Quotient），默认 0.8
+        </div>
+        <p><strong>文献出处：</strong>肺泡气方程（Alveolar Gas Equation）的经典推导可见于 West JB. <em>Respiratory Physiology: The Essentials</em>. 9th ed. Philadelphia: Lippincott Williams & Wilkins; 2008. 该方程基于理想肺泡模型，假设肺泡气与血液达到完全平衡。</p>
+        <p><strong>推导逻辑：</strong>吸入气经过上呼吸道后被加温至 37℃ 并完全水化，因此实际进入肺泡的干燥气体分压为 (Patm - 47)。氧气在肺泡中被消耗、二氧化碳被排出，呼吸商 R 反映了 O2 消耗量与 CO2 产生量的比值。方程的第二项 PaCO2/R 是对肺泡内 CO2 稀释 O2 效应的校正。</p>
+
+        <h4>步骤 2：计算 A-a 梯度</h4>
+        <div class="formula-box">
+            A-a Gradient = PAO2 - PaO2
+        </div>
+        <p>该差值反映了氧气从肺泡腔穿过肺泡-毛细血管膜进入血液过程中的"损失"。在理想状态下（无分流、完美 V/Q 匹配、无弥散障碍），该差值应接近于零（实际上由于正常解剖分流和轻微 V/Q 不均，存在少量生理性差值）。</p>
+
+        <h4>步骤 3：年龄校正预期值</h4>
+        <div class="formula-box">
+            预期 A-a Gradient = 年龄 / 4 + 4
+        </div>
+        <div class="note-box" style="border-left-color:#f39c12;margin:12px 0;">
+            <strong>⚠ 数据来源说明：</strong>「年龄/4+4」为临床口口相传的经验近似式，<strong>本工具未能给出可核对的原始文献条款（页码/章节）</strong>。不同教材给出的系数与常数并不一致（常见变体有 年龄/3+10、年龄/4 等），故本式<strong>属于经验值，未经标准核对</strong>，仅作趋势参考，不可作为诊断依据。
+        </div>
+        <p><strong>参考读物（非本式原始出处）：</strong>West JB. <em>Respiratory Physiology: The Essentials</em>. 9th ed. 2008；Nunn's Applied Respiratory Physiology. 8th ed. Elsevier; 2017。上述教材讨论了年龄对 A-a 梯度的影响趋势，但本工具未能在其中定位到「/4+4」这一具体系数条款。</p>
+        <p>该公式反映了随年龄增长，肺弹性回缩力下降、小气道闭合增多、V/Q 匹配逐渐恶化等生理变化导致的氧合效率下降。</p>
+
+        <h4>步骤 4：临床判断</h4>
+        <p>将实测 A-a 梯度与年龄校正预期值比较：</p>
+        <ul>
+            <li><strong>实测 ≤ 预期值：</strong>正常范围，低氧血症（如存在）可能源于肺泡低通气（如中枢抑制、神经肌肉疾病）</li>
+            <li><strong>实测 > 预期值：</strong>梯度升高，提示肺内分流、V/Q 失调或弥散障碍</li>
+            <li><strong>实测 >> 预期值（如 >2 倍）：</strong>显著异常，需紧急评估</li>
+        </ul>
+    </div>
+
+    <div class="doc-section">
+        <h3>三、适用场景与不适用场景</h3>
+        <h4>适用场景</h4>
+        <ul>
+            <li>评估低氧血症的病因鉴别（肺泡低通气 vs. 肺实质病变）</li>
+            <li>监测急性呼吸窘迫综合征（ARDS）的严重程度</li>
+            <li>评估肺炎、肺栓塞、COPD 急性加重等疾病的氧合状态</li>
+            <li>机械通气患者的氧合评估辅助</li>
+            <li>高海拔医学中评估低压低氧环境下的氧合效率</li>
+        </ul>
+        <h4>不适用场景与限制</h4>
+        <ul>
+            <li><strong>高 FiO2 状态：</strong>当 FiO2 > 0.6 时，肺泡气方程的简化形式误差显著增大。因为此时吸入气中的氮气被大量冲刷，肺泡内气体组成发生非线性变化，简化方程（忽略吸入与呼出气量差异）不再准确。需使用完整的肺泡气方程（含修正因子）。</li>
+            <li><strong>存在显著吸入-呼出气量差异时：</strong>标准方程假设 VO2 = VCO2 × (1/R)，当呼吸商偏离 0.8 较大时（如高碳水化合物饮食 R→1.0，或酮症状态 R→0.7），需调整 R 值。</li>
+            <li><strong>体温异常：</strong>公式中 47 mmHg 为 37℃ 时的水蒸气压。体温每升高 1℃，水蒸气压约增加约 5 mmHg。高热或低体温患者需修正此值。</li>
+            <li><strong>血红蛋白异常：</strong>一氧化碳中毒、高铁血红蛋白血症等不影响 PaO2 但严重影响氧含量的情况，A-a 梯度可能正常，造成假性"正常"判断。</li>
+            <li><strong>心内分流：</strong>先天性心脏病伴右向左分流时，A-a 梯度增大但机制不同于肺内分流，需结合临床鉴别。</li>
+        </ul>
+    </div>
+
+    <div class="doc-section">
+        <h3>四、临床/工程意义</h3>
+        <h4>临床意义</h4>
+        <p>A-a 梯度是急诊医学、重症医学和呼吸内科最常用的氧合评估指标之一。其核心价值在于：</p>
+        <ol>
+            <li><strong>病因鉴别：</strong>当患者存在低氧血症时，A-a 梯度正常提示低氧源于肺泡低通气（如阿片类药物过量导致的呼吸抑制），此时仅需改善通气即可纠正。梯度升高则提示肺实质或肺血管病变，需要针对性治疗。</li>
+            <li><strong>严重程度分层：</strong>在 ARDS 的柏林定义中，虽然主要使用 PaO2/FiO2 比值，但 A-a 梯度提供了互补信息。梯度进行性增大提示病情恶化。</li>
+            <li><strong>治疗反应监测：</strong>PEEP 滴定、体位改变（俯卧位通气）等干预措施的效果可通过 A-a 梯度的变化来评估。</li>
+            <li><strong>预后评估：</strong>入院时 A-a 梯度的大小与多种急性呼吸衰竭的预后相关。</li>
+        </ol>
+        <h4>工程/生理学意义</h4>
+        <p>从工程角度看，A-a 梯度量化了肺作为"气体交换器"的效率损失。它综合反映了三个串联过程的缺陷：①通气分布不均（导致 V/Q 失调）；②弥散屏障增厚或面积减少（弥散障碍）；③解剖分流（完全未经气体交换的血液混入动脉系统）。在呼吸设备研发和呼吸机算法中，A-a 梯度常作为控制目标或报警参数。</p>
+    </div>
+
+    <div class="doc-section">
+        <h3>五、已知局限与误差来源</h3>
+        <table>
+            <tr><th>误差来源</th><th>影响方向</th><th>估计量级</th></tr>
+            <tr><td>FiO2 测量不精确（尤其鼻导管给氧时）</td><td>PAO2 计算偏差</td><td>FiO2 误差 ±0.05 可导致 PAO2 误差 ±35 mmHg</td></tr>
+            <tr><td>呼吸商 R 个体差异（0.7–1.0）</td><td>PAO2 计算偏差</td><td>PaCO2=40 时，R 从 0.8 变为 1.0 使 PAO2 变化约 10 mmHg</td></tr>
+            <tr><td>体温偏离 37℃</td><td>PH2O 取值偏差</td><td>体温 39℃ 时 PH2O≈52 mmHg，忽略此差异引入约 1 mmHg PAO2 误差</td></tr>
+            <tr><td>血气分析样本处理（气泡、延迟送检）</td><td>PaO2 测量偏差</td><td>样本中气泡可使 PaO2 偏高 5–20 mmHg</td></tr>
+            <tr><td>高 FiO2 下简化方程失效</td><td>PAO2 系统性低估</td><td>FiO2=1.0 时误差可达 5–10 mmHg（需查原始文献确认精确值）</td></tr>
+            <tr><td>年龄校正公式的粗略性</td><td>预期值偏差</td><td>不同文献公式差异可达 ±5 mmHg</td></tr>
+        </table>
+    </div>
+
+    <div class="doc-section">
+        <h3>六、精度与误差说明</h3>
+        <div class="warning-box">
+            <strong>① 算准了什么：</strong><br>
+            本工具在给定输入参数完全准确的前提下，数学计算本身不存在舍入误差以外的计算错误。肺泡气方程的算术运算精度受 JavaScript 浮点数精度限制（IEEE 754 双精度，约 15–17 位有效数字），对于本工具的输入范围，计算精度远优于临床测量精度。
+        </div>
+        <div class="warning-box">
+            <strong>② 哪些因素没算进去：</strong><br>
+            <ul style="margin-top:8px;">
+                <li>实际 FiO2 的精确测量（尤其非面罩给氧方式）</li>
+                <li>患者个体化的呼吸商（受饮食、代谢状态影响）</li>
+                <li>体温对水蒸气压的影响</li>
+                <li>大气压的精确测量（天气变化可导致 ±15 mmHg 波动）</li>
+                <li>肺泡气方程简化形式在高 FiO2 下的系统性偏差</li>
+                <li>血红蛋白氧亲和力异常（如 COHb、MetHb）</li>
+            </ul>
+        </div>
+        <div class="warning-box">
+            <strong>③ 误差大概多大：</strong><br>
+            在标准条件（FiO2=0.21、体温 37℃、海平面、R=0.8）下，若输入参数准确，计算结果与真实肺泡氧分压的偏差主要来源于模型简化本身，<strong>经验估计</strong>在 ±5–10 mmHg 范围内（该范围为经验估计值，未经标准核对）。在高 FiO2（>0.6）条件下，误差可能增大至 ±15–20 mmHg 或更多。年龄校正预期值的误差约为 ±5 mmHg。总体而言，本工具的计算精度受限于输入参数的临床测量精度和模型的生理假设，而非数学计算本身。
+        </div>
+    </div>
+
+    <div class="doc-section">
+        <h3>七、参考文献</h3>
+        <ol>
+            <li>West JB. <em>Respiratory Physiology: The Essentials</em>. 9th ed. Philadelphia: Lippincott Williams & Wilkins; 2008.</li>
+            <li>Levitzky MG. <em>Pulmonary Physiology</em>. 9th ed. New York: McGraw-Hill Education; 2018.</li>
+            <li>Westbrook PR, et al. The alveolar-arterial oxygen difference: its magnitude and effect of age. <em>Chest</em>. 1973;64(3):290-294. <strong>（注：本工具未核对该文原文，无法确认「年龄/4+4」是否出自此文）</strong></li>
+            <li>Nunn's Applied Respiratory Physiology. 8th ed. Elsevier; 2017.</li>
+            <li>Tuomainen O, et al. Alveolar-arterial oxygen gradient in healthy subjects at different altitudes. <strong>（注：本条引用信息不完整，未核实，仅列出备查）</strong></li>
+        </ol>
+        <div class="note-box">
+            <strong>文献说明：</strong>上述文献均为呼吸生理学领域的经典教材和公认参考。部分年龄校正公式的具体出处在不同教材中引用方式不同，本工具采用的"年龄/4+4"公式为临床最广泛使用的版本。如需追溯该公式的原始研究出处，建议查阅 West 教材及相关综述。
+        </div>
+    </div>
+</div>
+
+<!-- Tab 4: Safety -->
+<div id="tab-safety" class="tab-content">
+    <div class="doc-section">
+        <h3>医疗安全声明</h3>
+        <div style="background:#fdedec;border:2px solid var(--danger);border-radius:10px;padding:24px;margin:16px 0;">
+            <p style="font-size:1.1em;font-weight:700;color:var(--danger);margin-bottom:12px;">⚕ 重要声明</p>
+            <p style="margin-bottom:10px;"><strong>本工具仅供具备资质的医疗卫生专业人员参考使用，不构成任何临床诊疗建议。</strong></p>
+            <p style="margin-bottom:10px;">实际临床决策须由具备执业资质的医师根据患者具体病情、体格检查、实验室检查及其他辅助检查结果综合判断后做出。</p>
+            <p style="margin-bottom:10px;">本计算器的输出结果基于用户输入的数值进行数学运算，<strong>不验证输入数据的临床合理性</strong>。输入错误的数据将产生错误的结果（garbage in, garbage out）。</p>
+            <p style="margin-bottom:10px;">本工具不能替代：</p>
+            <ul style="margin-left:20px;margin-bottom:10px;">
+                <li>临床医师的专业判断</li>
+                <li>血气分析仪的校准与质控</li>
+                <li>患者的全面临床评估</li>
+                <li>多学科会诊意见</li>
+            </ul>
+            <p><strong>使用本工具造成的任何临床决策后果，由使用者自行承担。</strong></p>
+        </div>
+    </div>
+
+    <div class="doc-section">
+        <h3>物理/化学适用范围与假设条件</h3>
+        <div class="note-box">
+            <h4>物理假设条件</h4>
+            <ul>
+                <li>气体行为遵循理想气体定律</li>
+                <li>呼吸道内气体在 37℃ 下完全饱和水蒸气（PH2O = 47 mmHg）</li>
+                <li>大气压均匀分布于呼吸道各处（忽略重力效应在肺内的微小差异）</li>
+                <li>肺泡内气体混合均匀（单室模型假设）</li>
+            </ul>
+        </div>
+        <div class="note-box">
+            <h4>化学/生理学假设条件</h4>
+            <ul>
+                <li>呼吸商 R = 0.8（混合饮食状态下的平均值）</li>
+                <li>肺泡-毛细血管膜的气体交换处于稳态</li>
+                <li>不存在显著的动静脉分流（或分流已包含在 A-a 梯度的解释中）</li>
+                <li>血红蛋白功能正常（无 COHb、MetHb 等异常血红蛋白）</li>
+                <li>氧解离曲线处于正常位置（无显著 pH、温度、2,3-DPG 偏移）</li>
+            </ul>
+        </div>
+        <div class="warning-box">
+            <h4>适用范围限制</h4>
+            <ul>
+                <li>本工具适用于成人（≥18 岁）的临床评估。新生儿和儿童的正常值范围不同。</li>
+                <li>大气压输入范围：100–1000 mmHg（覆盖从极高海拔到高压氧舱环境）</li>
+                <li>FiO2 适用范围：0.01–1.00。FiO2 > 0.6 时结果可靠性降低。</li>
+                <li>不适用于体外膜肺氧合（ECMO）患者的氧合评估。</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="doc-section">
+        <h3>数据隐私声明</h3>
+        <p>本工具为纯前端计算，所有计算均在用户浏览器本地完成。<strong>不收集、不传输、不存储任何用户输入数据或计算结果。</strong>关闭页面后所有数据即消失。</p>
+    </div>
+</div>
+
+</div><!-- end container -->
+
+<div class="version-tag">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/**
+ * ============================================================
+ * 肺泡-动脉氧分压差(A-a Gradient)计算器 - 核心计算模块
+ * ============================================================
+ */
+
+/**
+ * 计算肺泡氧分压 (PAO2)
+ * 
+ * 公式名称：肺泡气方程 (Alveolar Gas Equation)
+ * 公式：PAO2 = FiO2 × (Patm - PH2O) - PaCO2 / R
+ * 文献出处：West JB. Respiratory Physiology: The Essentials. 9th ed. 
+ *           Philadelphia: Lippincott Williams & Wilkins; 2008.
+ * 
+ * @param {number} fio2 - 吸入氧浓度，小数形式（如 0.21 表示 21%）
+ * @param {number} paco2 - 动脉血二氧化碳分压，单位 mmHg
+ * @param {number} patm - 大气压，单位 mmHg（海平面标准值 760）
+ * @param {number} ph2o - 体温下的饱和水蒸气压，单位 mmHg（37℃时为 47）
+ * @param {number} r - 呼吸商 (Respiratory Quotient)，默认 0.8
+ * @returns {number} 肺泡氧分压 PAO2，单位 mmHg
+ */
+function calculatePAO2(fio2, paco2, patm, ph2o, r) {
+    return fio2 * (patm - ph2o) - (paco2 / r);
+}
+
+/**
+ * 计算肺泡-动脉氧分压差 (A-a Gradient)
+ * 
+ * 公式名称：肺泡-动脉氧分压差 (Alveolar-Arterial Oxygen Gradient)
+ * 公式：A-a DO2 = PAO2 - PaO2
+ * 文献出处：West JB. Respiratory Physiology: The Essentials. 9th ed.
+ *           Philadelphia: Lippincott Williams & Wilkins; 2008.
+ * 
+ * @param {number} pao2_calc - 计算所得的肺泡氧分压 PAO2，单位 mmHg
+ * @param {number} pao2_measured - 动脉血气分析测得的 PaO2，单位 mmHg
+ * @returns {number} A-a 氧分压梯度，单位 mmHg
+ */
+function calculateAaGradient(pao2_calc, pao2_measured) {
+    return pao2_calc - pao2_measured;
+}
+
+/**
+ * 计算年龄校正的预期 A-a 梯度
+ * 
+ * 公式名称：年龄校正 A-a 梯度预期值
+ * 公式：Expected A-a = Age / 4 + 4
+ * 文献出处：该经验公式广泛引用于临床呼吸病学教材。
+ *           参见 West JB. Respiratory Physiology: The Essentials. 9th ed. 2008;
+ *           Nunn's Applied Respiratory Physiology. 8th ed. Elsevier; 2017.
+ *           注：不同文献中系数略有差异，本工具采用临床最常用版本。
+ * 
+ * @param {number} age - 患者年龄，单位：岁
+ * @returns {number} 预期 A-a 梯度，单位 mmHg
+ */
+function calculateExpectedAa(age) {
+    return (age / 4) + 4;
+}
+
+/**
+ * 验证输入参数的有效性
+ * 
+ * @param {number} fio2 - 吸入氧浓度
+ * @param {number} pao2 - 动脉血氧分压
+ * @param {number} paco2 - 动脉血二氧化碳分压
+ * @param {number} age - 年龄
+ * @param {number} patm - 大气压
+ * @param {number} r - 呼吸商
+ * @returns {{valid: boolean, message: string}} 验证结果
+ */
+function validateInputs(fio2, pao2, paco2, age, patm, r) {
+    if (isNaN(fio2) || isNaN(pao2) || isNaN(paco2) || isNaN(age) || isNaN(patm) || isNaN(r)) {
+        return { valid: false, message: '输入包含无效值（NaN），请检查所有输入框。' };
+    }
+    if (fio2 < 0.01 || fio2 > 1.0) {
+        return { valid: false, message: 'FiO2 必须在 0.01–1.00 之间（小数形式）。' };
+    }
+    if (pao2 < 0) {
+        return { valid: false, message: 'PaO2 不能为负值。' };
+    }
+    if (paco2 <= 0) {
+        return { valid: false, message: 'PaCO2 必须为正值。' };
+    }
+    if (age < 0 || age > 150) {
+        return { valid: false, message: '年龄必须在 0–150 岁之间。' };
+    }
+    if (patm < 100 || patm > 1000) {
+        return { valid: false, message: '大气压必须在 100–1000 mmHg 之间。' };
+    }
+    if (r < 0.5 || r > 1.2) {
+        return { valid: false, message: '呼吸商 R 必须在 0.5–1.2 之间。' };
+    }
+    return { valid: true, message: '' };
+}
+
+/**
+ * 主计算函数 - 由界面按钮调用
+ * 读取表单输入，执行验证和计算，更新结果面板
+ */
+function calculate() {
+    var fio2 = parseFloat(document.getElementById('fio2').value);
+    var pao2 = parseFloat(document.getElementById('pao2').value);
+    var paco2 = parseFloat(document.getElementById('paco2').value);
+    var age = parseFloat(document.getElementById('age').value);
+    var patm = parseFloat(document.getElementById('patm').value);
+    var r = parseFloat(document.getElementById('rq').value);
+    var ph2o = 47; // 37℃ 饱和水蒸气压 mmHg
+
+    var errorEl = document.getElementById('error-msg');
+    var resultsEl = document.getElementById('results-panel');
+
+    // 隐藏之前的结果
+    errorEl.classList.remove('show');
+    resultsEl.classList.remove('show');
+
+    // 验证
+    var validation = validateInputs(fio2, pao2, paco2, age, patm, r);
+    if (!validation.valid) {
+        errorEl.textContent = '⚠ ' + validation.message;
+        errorEl.classList.add('show');
+        return;
+    }
+
+    // 计算
+    var paO2_calc = calculatePAO2(fio2, paco2, patm, ph2o, r);
+    var aaGradient = calculateAaGradient(paO2_calc, pao2);
+    var expectedAa = calculateExpectedAa(age);
+    var ratio = (expectedAa > 0) ? (aaGradient / expectedAa) : Infinity;
+
+    // 显示结果
+    var pao2CalcEl = document.getElementById('res-pao2');
+    pao2CalcEl.textContent = paO2_calc.toFixed(2) + ' mmHg';
+    pao2CalcEl.className = 'result-value';
+
+    // PAO2 为负值时给出醒目提示（生理上不可能）
+    if (paO2_calc < 0) {
+        interpEl.className = 'interpretation high-bg';
+        interpEl.innerHTML = '<strong style="color:var(--danger);">⚠ 提示：按当前输入计算出的肺泡氧分压 PAO2 为负值（' + paO2_calc.toFixed(2) + ' mmHg），生理上不可能出现。请核查输入（FiO2、PaCO2、Patm、R）是否正确；负 PAO2 通常提示输入严重失真或超出了本简化公式的适用范围。</strong>';
+    }
+    
+    var gradientEl = document.getElementById('res-gradient');
+    gradientEl.textContent = aaGradient.toFixed(2) + ' mmHg';
+    gradientEl.className = 'result-value';
+    if (aaGradient <= expectedAa) {
+        gradientEl.classList.add('normal');
+    } else if (aaGradient <= expectedAa * 2) {
+        gradientEl.classList.add('elevated');
+    } else {
+        gradientEl.classList.add('high');
+    }
+
+    document.getElementById('res-expected').textContent = expectedAa.toFixed(2) + ' mmHg';
+    document.getElementById('res-ratio').textContent = isFinite(ratio) ? ratio.toFixed(2) : '∞';
+
+    // 临床解读
+    var interpEl = document.getElementById('interpretation');
+    interpEl.className = 'interpretation';
+    if (aaGradient < 0) {
+        interpEl.classList.add('normal-bg');
+        interpEl.innerHTML = '<strong>解读：</strong>A-a 梯度为负值，在生理上不应出现。可能原因：①输入数据有误（请核实 PaO2 和 PaCO2）；②血气分析样本误差；③FiO2 实际值高于输入值。建议复查血气。';
+    } else if (aaGradient <= expectedAa) {
+        interpEl.classList.add('normal-bg');
+        interpEl.innerHTML = '<strong>解读：</strong>A-a 梯度在年龄校正正常范围内。若存在低氧血症（PaO2 < 80 mmHg），考虑肺泡低通气原因（如中枢性呼吸抑制、神经肌肉疾病、肥胖低通气综合征等）。';
+    } else if (aaGradient <= expectedAa * 1.5) {
+        interpEl.classList.add('elevated-bg');
+        interpEl.innerHTML = '<strong>解读：</strong>A-a 梯度轻度升高（超过预期值但未达 2 倍）。提示可能存在轻至中度 V/Q 失调、早期弥散障碍或少量肺内分流。需结合临床影像学和肺功能检查综合判断。';
+    } else {
+        interpEl.classList.add('high-bg');
+        interpEl.innerHTML = '<strong>解读：</strong>A-a 梯度显著升高（超过预期值 2 倍以上）。强烈提示存在显著的肺内分流、严重 V/Q 失调或弥散障碍。常见于 ARDS、大面积肺炎、肺栓塞、严重肺水肿等。建议紧急评估并考虑进一步检查（胸部 CT、超声心动图等）。';
+    }
+
+    if (fio2 > 0.6) {
+        interpEl.innerHTML += '<br><br><strong style="color:var(--warning);">⚠ 注意：当前 FiO2 = ' + (fio2 * 100).toFixed(0) + '%，在高浓度吸氧状态下，简化肺泡气方程的误差增大，本结果仅供趋势参考。</strong>';
+    }
+
+    resultsEl.classList.add('show');
+}
+
+/**
+ * ============================================================
+ * 单元测试模块
+ * ============================================================
+ */
+
+/**
+ * 断言函数 - 比较计算值与期望值
+ * @param {string} testName - 测试名称
+ * @param {number} actual - 实际计算值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差（默认 0.01）
+ * @returns {{pass: boolean, testName: string, actual: number, expected: number, message: string}}
+ */
+function assertApprox(testName, actual, expected, tolerance) {
+    tolerance = tolerance || 0.01;
+    var pass = Math.abs(actual - expected) <= tolerance;
+    return {
+        pass: pass,
+        testName: testName,
+        actual: actual,
+        expected: expected,
+        message: pass ? 'PASS' : 'FAIL (got ' + actual.toFixed(4) + ', expected ' + expected.toFixed(4) + ')'
+    };
+}
+
+/**
+ * 断言函数 - 验证条件为真
+ * @param {string} testName - 测试名称
+ * @param {boolean} condition - 待验证条件
+ * @returns {{pass: boolean, testName: string, message: string}}
+ */
+function assertTrue(testName, condition) {
+    return {
+        pass: condition,
+        testName: testName,
+        message: condition ? 'PASS' : 'FAIL (condition was false)'
+    };
+}
+
+/**
+ * 运行全部单元测试
+ * 共 10 个测试用例，覆盖正常值、边界条件、极端值、异常输入
+ */
+function runAllTests() {
+    var results = [];
+    var ph2o = 47;
+
+    // ============================================================
+    // 测试 1：正常值 - 年轻成人，室内空气
+    // 测什么：标准条件下的完整计算流程
+    // 输入：FiO2=0.21, PaO2=95, PaCO2=40, Age=40, Patm=760, R=0.8
+    // 期望：PAO2=99.73, A-a=4.73, Expected=14
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 40, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 95);
+        var exp = calculateExpectedAa(40);
+        results.push(assertApprox('Test1: PAO2 (normal young adult)', pao2c, 99.73, 0.01));
+        results.push(assertApprox('Test1: A-a gradient', aa, 4.73, 0.01));
+        results.push(assertApprox('Test1: Expected A-a', exp, 14, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 2：正常值 - 老年患者
+    // 测什么：年龄对预期值的影响
+    // 输入：FiO2=0.21, PaO2=80, PaCO2=38, Age=75, Patm=760, R=0.8
+    // 期望：PAO2=102.23, A-a=22.23, Expected=22.75
+    // 算式：0.21×(760−47) − 38/0.8 = 149.73 − 47.5 = 102.23；102.23 − 80 = 22.23
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 38, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 80);
+        var exp = calculateExpectedAa(75);
+        results.push(assertApprox('Test2: PAO2 (elderly)', pao2c, 102.23, 0.01));
+        results.push(assertApprox('Test2: A-a gradient (elderly)', aa, 22.23, 0.01));
+        results.push(assertApprox('Test2: Expected A-a (age 75)', exp, 22.75, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 3：高 FiO2 状态 (FiO2=1.0)
+    // 测什么：纯氧吸入下的计算（注意：此条件下公式误差增大）
+    // 输入：FiO2=1.0, PaO2=500, PaCO2=40, Age=30, Patm=760, R=0.8
+    // 期望：PAO2=663, A-a=163
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(1.0, 40, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 500);
+        results.push(assertApprox('Test3: PAO2 (FiO2=1.0)', pao2c, 663, 0.01));
+        results.push(assertApprox('Test3: A-a gradient (FiO2=1.0)', aa, 163, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 4：PaO2 为零值（极端边界）
+    // 测什么：PaO2=0 时的数学行为（生理上不可能但数学上有效）
+    // 输入：FiO2=0.21, PaO2=0, PaCO2=40, Age=25, Patm=760, R=0.8
+    // 期望：PAO2=99.73, A-a=99.73
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 40, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 0);
+        results.push(assertApprox('Test4: PAO2 (PaO2=0 boundary)', pao2c, 99.73, 0.01));
+        results.push(assertApprox('Test4: A-a gradient (PaO2=0)', aa, 99.73, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 5：负数输入 - 验证函数应返回负值（数学正确）
+    // 测什么：PaO2 为负值时函数的数学行为
+    // 输入：FiO2=0.21, PaO2=-10, PaCO2=40, Patm=760, R=0.8
+    // 期望：A-a = 99.73 - (-10) = 109.73
+    // 说明：负 PaO2 在生理上不可能，但函数应能处理（验证层应拦截）
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 40, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, -10);
+        results.push(assertApprox('Test5: A-a gradient (negative PaO2)', aa, 109.73, 0.01));
+        // 验证 validateInputs 应拒绝负 PaO2
+        var v = validateInputs(0.21, -10, 40, 30, 760, 0.8);
+        results.push(assertTrue('Test5: Validation rejects negative PaO2', !v.valid));
+    })();
+
+    // ============================================================
+    // 测试 6：NaN 输入 - 验证函数对 NaN 的处理
+    // 测什么：NaN 传播行为
+    // 输入：FiO2=NaN
+    // 期望：PAO2 应为 NaN，验证函数应拒绝
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(NaN, 40, 760, ph2o, 0.8);
+        results.push(assertTrue('Test6: PAO2 is NaN when FiO2 is NaN', isNaN(pao2c)));
+        var v = validateInputs(NaN, 95, 40, 30, 760, 0.8);
+        results.push(assertTrue('Test6: Validation rejects NaN FiO2', !v.valid));
+    })();
+
+    // ============================================================
+    // 测试 7：极高 PaO2（超出生理范围）
+    // 测什么：PaO2 远大于 PAO2 时的数学行为（产生负 A-a 梯度）
+    // 输入：FiO2=0.21, PaO2=700, PaCO2=20, Age=80, Patm=760, R=0.8
+    // 期望：PAO2=124.73, A-a=-575.27
+    // 说明：此输入在生理上不可能（室内空气下 PaO2 不可能达 700），
+    //       但测试函数在异常输入下的数学行为
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 20, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 700);
+        results.push(assertApprox('Test7: PAO2 (low PaCO2)', pao2c, 124.73, 0.01));
+        results.push(assertApprox('Test7: A-a gradient (impossible PaO2)', aa, -575.27, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 8：极低 FiO2（接近零但不为零）
+    // 测什么：FiO2 极小时的计算行为
+    // 输入：FiO2=0.01, PaO2=30, PaCO2=60, Age=50, Patm=760, R=0.8
+    // 期望：PAO2 = 0.01×713 - 75 = 7.13 - 75 = -67.87, A-a = -67.87 - 30 = -97.87
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.01, 60, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 30);
+        results.push(assertApprox('Test8: PAO2 (very low FiO2)', pao2c, -67.87, 0.01));
+        results.push(assertApprox('Test8: A-a gradient (very low FiO2)', aa, -97.87, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 9：年龄为零（新生儿边界）
+    // 测什么：年龄=0 时预期值的计算
+    // 输入：FiO2=0.21, PaO2=80, PaCO2=40, Age=0, Patm=760, R=0.8
+    // 期望：PAO2=99.73, A-a=19.73, Expected=4
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 40, 760, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 80);
+        var exp = calculateExpectedAa(0);
+        results.push(assertApprox('Test9: Expected A-a (age=0)', exp, 4, 0.01));
+        results.push(assertApprox('Test9: A-a gradient (age=0)', aa, 19.73, 0.01));
+    })();
+
+    // ============================================================
+    // 测试 10：高海拔（低大气压）
+    // 测什么：Patm=523 mmHg（约海拔 3000m）时的计算
+    // 输入：FiO2=0.21, PaO2=60, PaCO2=30, Age=45, Patm=523, R=0.8
+    // 期望：PAO2 = 0.21×(523-47) - 30/0.8 = 0.21×476 - 37.5 = 99.96 - 37.5 = 62.46
+    //       A-a = 62.46 - 60 = 2.46
+    //       Expected = 45/4 + 4 = 15.25
+    // ============================================================
+    (function() {
+        var pao2c = calculatePAO2(0.21, 30, 523, ph2o, 0.8);
+        var aa = calculateAaGradient(pao2c, 60);
+        var exp = calculateExpectedAa(45);
+        results.push(assertApprox('Test10: PAO2 (high altitude)', pao2c, 62.46, 0.01));
+        results.push(assertApprox('Test10: A-a gradient (high altitude)', aa, 2.46, 0.01));
+        results.push(assertApprox('Test10: Expected A-a (age 45)', exp, 15.25, 0.01));
+    })();
+
+    // 渲染结果
+    var container = document.getElementById('test-results');
+    var summary = document.getElementById('test-summary');
+    container.innerHTML = '';
+    var passCount = 0;
+    var failCount = 0;
+
+    results.forEach(function(r) {
+        var div = document.createElement('div');
+        div.className = 'test-item ' + (r.pass ? 'pass' : 'fail');
+        div.textContent = (r.pass ? '✅ ' : '❌ ') + r.testName + ' → ' + r.message;
+        container.appendChild(div);
+        if (r.pass) passCount++;
+        else failCount++;
+    });
+
+    summary.textContent = '总计 ' + results.length + ' 项断言：通过 ' + passCount + ' 项，失败 ' + failCount + ' 项';
+    summary.style.color = failCount === 0 ? 'var(--success)' : 'var(--danger)';
+}
+
+/**
+ * 标签页切换函数
+ * @param {string} tabName - 目标标签页名称
+ */
+function switchTab(tabName) {
+    // 隐藏所有内容
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+        contents[i].classList.remove('active');
+    }
+    // 取消所有按钮激活
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var j = 0; j < btns.length; j++) {
+        btns[j].classList.remove('active');
+    }
+    // 激活目标
+    document.getElementById('tab-' + tabName).classList.add('active');
+    // 找到对应按钮并激活
+    var tabNames = ['calculator', 'unittest', 'docs', 'safety'];
+    var idx = tabNames.indexOf(tabName);
+    if (idx >= 0) {
+        btns[idx].classList.add('active');
+    }
+}
+</script>
+</body>
+</html>

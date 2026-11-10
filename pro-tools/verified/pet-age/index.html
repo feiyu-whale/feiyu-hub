@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宠物年龄换算工具 v2.0.0</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; margin: 20px 0; color: #2c3e50; font-size: 1.8em; }
+.tabs { display: flex; border-bottom: 2px solid #3498db; margin-bottom: 0; }
+.tab-btn { padding: 12px 24px; cursor: pointer; background: #ecf0f1; border: none; font-size: 15px; color: #555; transition: all 0.2s; border-radius: 6px 6px 0 0; margin-right: 4px; }
+.tab-btn.active { background: #3498db; color: #fff; font-weight: bold; }
+.tab-btn:hover:not(.active) { background: #d5dbdb; }
+.tab-content { display: none; background: #fff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); min-height: 500px; }
+.tab-content.active { display: block; }
+pre { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; white-space: pre; tab-size: 2; }
+code { font-family: "Fira Code", "Source Code Pro", Consolas, monospace; }
+.test-result { padding: 15px; border-radius: 6px; margin-top: 15px; font-weight: bold; }
+.test-pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.test-fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.test-log { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px; max-height: 400px; overflow-y: auto; font-size: 13px; font-family: monospace; white-space: pre-wrap; }
+.manual h2 { color: #2c3e50; margin: 25px 0 10px; padding-bottom: 5px; border-bottom: 2px solid #3498db; }
+.manual h3 { color: #34495e; margin: 18px 0 8px; }
+.manual p { margin: 8px 0; text-indent: 0; }
+.manual ul, .manual ol { margin: 8px 0 8px 20px; }
+.manual li { margin: 4px 0; }
+.manual table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.manual th, .manual td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+.manual th { background: #3498db; color: #fff; }
+.manual tr:nth-child(even) { background: #f9f9f9; }
+.manual .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 6px; margin: 12px 0; }
+.manual .info { background: #d1ecf1; border: 1px solid #bee5eb; padding: 12px; border-radius: 6px; margin: 12px 0; }
+.version-tag { position: fixed; bottom: 10px; right: 15px; font-size: 11px; color: #999; }
+.run-btn { background: #27ae60; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; margin: 15px 0; }
+.run-btn:hover { background: #219a52; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🐾 宠物年龄换算工具</h1>
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab(0)">JS 源码</button>
+<button class="tab-btn" onclick="switchTab(1)">单元测试</button>
+<button class="tab-btn" onclick="switchTab(2)">使用说明书</button>
+<button class="tab-btn" onclick="switchTab(3)">🧮 开始换算</button>
+</div>
+
+<div class="tab-content active" id="tab0">
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div class="tab-content" id="tab1">
+<button class="run-btn" onclick="runTests()">▶ 运行全部测试</button>
+<div id="testResult"></div>
+<div class="test-log" id="testLog"></div>
+</div>
+
+<div class="tab-content manual" id="tab2">
+<div id="manualContent"></div>
+</div>
+
+<div class="tab-content" id="tab3">
+<style>
+.pa-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:22px 24px}
+.pa-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.pa-fg{flex:1;min-width:160px}
+.pa-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:6px}
+.pa-fg input,.pa-fg select{width:100%;padding:10px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+.pa-fg input:focus,.pa-fg select:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15)}
+.pa-btn{background:#3498db;color:#fff;border:none;padding:11px 30px;border-radius:6px;font-size:15px;cursor:pointer;font-family:inherit}
+.pa-btn:hover{background:#2980b9}
+.pa-out{margin-top:18px;padding:18px 20px;background:#eaf4fd;border-radius:8px;display:none}
+.pa-out.show{display:block}
+.pa-out .big{font-size:26px;font-weight:700;color:#2471a3}
+.pa-out .lab{font-size:13px;color:#5a6a7a}
+.pa-out .row{margin-bottom:10px}
+.pa-err{margin-top:14px;padding:11px 15px;background:#fdeeee;border-left:3px solid #e06060;border-radius:4px;color:#c0392b;font-size:13px;display:none}
+.pa-err.show{display:block}
+.pa-note{margin-top:16px;font-size:12px;color:#8899aa;line-height:1.7}
+</style>
+<div class="pa-box">
+  <div class="pa-row">
+    <div class="pa-fg">
+      <label>宠物种类</label>
+      <select id="paSpecies" onchange="paToggleWeight()">
+        <option value="dog">狗</option>
+        <option value="cat">猫</option>
+      </select>
+    </div>
+    <div class="pa-fg">
+      <label>实际年龄（岁）</label>
+      <input type="number" id="paAge" step="any" min="0" placeholder="例如 3">
+    </div>
+    <div class="pa-fg" id="paWeightWrap">
+      <label>体重（kg，狗必填）</label>
+      <input type="number" id="paWeight" step="any" min="0" placeholder="例如 12">
+    </div>
+  </div>
+  <button class="pa-btn" onclick="paCalc()">换算成人类年龄</button>
+  <div class="pa-out" id="paOut"></div>
+  <div class="pa-err" id="paErr"></div>
+  <div class="pa-note">※ 换算为通行估算（AAHA / WSAVA 标准），个体差异大，不构成兽医诊断依据。</div>
+</div>
+</div>
+</div>
+
+<div class="version-tag">v2.1.0-加换算界面 20261022</div>
+
+<script>
+// ============================================================
+// 第一部分：JS 源码
+// ============================================================
+
+/**
+ * 宠物年龄换算核心模块
+ * 依据：AAHA（美国动物医院协会）犬猫生命阶段指南、
+ *       WSAVA（世界小动物兽医协会）年龄换算建议
+ * 注意：本换算为通行估算，个体差异大，不构成兽医诊断依据。
+ */
+
+/**
+ * 犬体型分类枚举
+ * @readonly
+ * @enum {string}
+ */
+const DogSize = Object.freeze({
+  SMALL: 'small',     // 小型犬 <10kg
+  MEDIUM: 'medium',   // 中型犬 10-25kg
+  LARGE: 'large',     // 大型犬 25-45kg
+  GIANT: 'giant'      // 巨型犬 >45kg
+});
+
+/**
+ * 生命阶段枚举
+ * @readonly
+ * @enum {string}
+ */
+const LifeStage = Object.freeze({
+  JUVENILE: '幼年',
+  YOUNG: '青年',
+  ADULT: '成年',
+  SENIOR: '老年'
+});
+
+/**
+ * 犬体型对应的每年老化速率（第3年起，每年增加的等效人类年龄）
+ * 数据来源：AAHA Canine Life Stages 指南中的通行估算值
+ * @type {Object.<string, number>}
+ */
+const DOG_AGING_RATE = Object.freeze({
+  [DogSize.SMALL]: 4,
+  [DogSize.MEDIUM]: 5,
+  [DogSize.LARGE]: 6,
+  [DogSize.GIANT]: 7
+});
+
+/**
+ * 犬各体型的老年起始年龄（犬龄，单位：年）
+ * 数据来源：AAHA 犬生命阶段划分
+ * @type {Object.<string, number>}
+ */
+const DOG_SENIOR_THRESHOLD = Object.freeze({
+  [DogSize.SMALL]: 11,
+  [DogSize.MEDIUM]: 10,
+  [DogSize.LARGE]: 8,
+  [DogSize.GIANT]: 7
+});
+
+/**
+ * 猫每年老化速率（第3年起）
+ * 数据来源：AAHA/AAFP 猫生命阶段指南
+ * @type {number}
+ */
+const CAT_AGING_RATE = 4;
+
+/**
+ * 猫的老年起始年龄（猫龄，单位：年）
+ * @type {number}
+ */
+const CAT_SENIOR_THRESHOLD = 10;
+
+/**
+ * 犬最大合理寿命（年）
+ * @type {number}
+ */
+const DOG_MAX_AGE = 30;
+
+/**
+ * 猫最大合理寿命（年）
+ * @type {number}
+ */
+const CAT_MAX_AGE = 35;
+
+/**
+ * 根据犬体重（kg）判断体型分类
+ *
+ * @param {number} weightKg - 犬体重，单位千克，必须 > 0
+ * @returns {string} 体型分类，值为 DogSize 枚举之一
+ * @throws {Error} 当 weightKg 不是正数时抛出
+ *
+ * @example
+ * getDogSizeByWeight(8);   // 'small'
+ * getDogSizeByWeight(10);  // 'medium'（边界归入中型）
+ * getDogSizeByWeight(25);  // 'large'（边界归入大型）
+ * getDogSizeByWeight(45);  // 'giant'（边界归入巨型）
+ * getDogSizeByWeight(60);  // 'giant'
+ */
+function getDogSizeByWeight(weightKg) {
+  if (typeof weightKg !== 'number' || !isFinite(weightKg)) {
+    throw new Error('体重必须为有限数字');
+  }
+  if (weightKg <= 0) {
+    throw new Error('体重必须为正数');
+  }
+  if (weightKg < 10) return DogSize.SMALL;
+  if (weightKg < 25) return DogSize.MEDIUM;
+  if (weightKg < 45) return DogSize.LARGE;
+  return DogSize.GIANT;
+}
+
+/**
+ * 将犬年龄换算为等效人类年龄
+ *
+ * 换算规则（依据 AAHA 通行估算）：
+ * - 第 1 年：等效人类 15 岁
+ * - 第 2 年：累计等效人类 24 岁（即第 2 年增加 9 岁）
+ * - 第 3 年起：每年按体型增加 4-7 岁
+ *   - 小型犬：每年 +4
+ *   - 中型犬：每年 +5
+ *   - 大型犬：每年 +6
+ *   - 巨型犬：每年 +7
+ *
+ * @param {number} dogAge - 犬年龄，单位年，范围 [0, 30]，支持小数
+ * @param {string} size - 体型分类，值为 DogSize 枚举之一
+ * @returns {number} 等效人类年龄（保留一位小数）
+ * @throws {Error} 当参数非法时抛出
+ *
+ * @example
+ * convertDogAgeToHuman(1, 'small');   // 15
+ * convertDogAgeToHuman(2, 'small');   // 24
+ * convertDogAgeToHuman(5, 'small');   // 36
+ * convertDogAgeToHuman(5, 'giant');   // 45
+ * convertDogAgeToHuman(0.5, 'small'); // 7.5
+ */
+function convertDogAgeToHuman(dogAge, size) {
+  if (typeof dogAge !== 'number' || !isFinite(dogAge)) {
+    throw new Error('犬年龄必须为有限数字');
+  }
+  if (dogAge < 0) {
+    throw new Error('犬年龄不能为负数');
+  }
+  if (dogAge > DOG_MAX_AGE) {
+    throw new Error('犬年龄超出合理范围（最大 ' + DOG_MAX_AGE + ' 岁）');
+  }
+  if (!Object.values(DogSize).includes(size)) {
+    throw new Error('无效的体型分类：' + size);
+  }
+
+  if (dogAge <= 1) {
+    return Math.round(dogAge * 15 * 10) / 10;
+  }
+  if (dogAge <= 2) {
+    return Math.round((15 + (dogAge - 1) * 9) * 10) / 10;
+  }
+  var rate = DOG_AGING_RATE[size];
+  var humanAge = 24 + (dogAge - 2) * rate;
+  return Math.round(humanAge * 10) / 10;
+}
+
+/**
+ * 将猫年龄换算为等效人类年龄
+ *
+ * 换算规则（依据 AAHA/AAFP 通行估算）：
+ * - 第 1 年：等效人类 15 岁
+ * - 第 2 年：累计等效人类 24 岁（即第 2 年增加 9 岁）
+ * - 第 3 年起：每年增加 4 岁
+ *
+ * @param {number} catAge - 猫年龄，单位年，范围 [0, 35]，支持小数
+ * @returns {number} 等效人类年龄（保留一位小数）
+ * @throws {Error} 当参数非法时抛出
+ *
+ * @example
+ * convertCatAgeToHuman(1);    // 15
+ * convertCatAgeToHuman(2);    // 24
+ * convertCatAgeToHuman(5);    // 36
+ * convertCatAgeToHuman(10);   // 56
+ * convertCatAgeToHuman(0.5);  // 7.5
+ */
+function convertCatAgeToHuman(catAge) {
+  if (typeof catAge !== 'number' || !isFinite(catAge)) {
+    throw new Error('猫年龄必须为有限数字');
+  }
+  if (catAge < 0) {
+    throw new Error('猫年龄不能为负数');
+  }
+  if (catAge > CAT_MAX_AGE) {
+    throw new Error('猫年龄超出合理范围（最大 ' + CAT_MAX_AGE + ' 岁）');
+  }
+
+  if (catAge <= 1) {
+    return Math.round(catAge * 15 * 10) / 10;
+  }
+  if (catAge <= 2) {
+    return Math.round((15 + (catAge - 1) * 9) * 10) / 10;
+  }
+  var humanAge = 24 + (catAge - 2) * CAT_AGING_RATE;
+  return Math.round(humanAge * 10) / 10;
+}
+
+/**
+ * 获取犬的生命阶段
+ *
+ * 划分依据（参考 AAHA 犬生命阶段指南）：
+ * - 幼年：0 - 1 岁
+ * - 青年：1 - 2 岁
+ * - 成年：2 岁 - 老年阈值（按体型不同：小型11岁、中型10岁、大型8岁、巨型7岁）
+ * - 老年：老年阈值及以上
+ *
+ * @param {number} dogAge - 犬年龄，单位年
+ * @param {string} size - 体型分类
+ * @returns {string} 生命阶段，值为 LifeStage 枚举之一
+ * @throws {Error} 当参数非法时抛出
+ *
+ * @example
+ * getDogLifeStage(0.5, 'small');  // '幼年'
+ * getDogLifeStage(1.5, 'small');  // '青年'
+ * getDogLifeStage(5, 'small');    // '成年'
+ * getDogLifeStage(12, 'small');   // '老年'
+ * getDogLifeStage(8, 'large');    // '老年'
+ */
+function getDogLifeStage(dogAge, size) {
+  if (typeof dogAge !== 'number' || !isFinite(dogAge)) {
+    throw new Error('犬年龄必须为有限数字');
+  }
+  if (dogAge < 0) {
+    throw new Error('犬年龄不能为负数');
+  }
+  if (!Object.values(DogSize).includes(size)) {
+    throw new Error('无效的体型分类：' + size);
+  }
+
+  if (dogAge < 1) return LifeStage.JUVENILE;
+  if (dogAge < 2) return LifeStage.YOUNG;
+  if (dogAge < DOG_SENIOR_THRESHOLD[size]) return LifeStage.ADULT;
+  return LifeStage.SENIOR;
+}
+
+/**
+ * 获取猫的生命阶段
+ *
+ * 划分依据（参考 AAHA/AAFP 猫生命阶段指南）：
+ * - 幼年：0 - 1 岁
+ * - 青年：1 - 3 岁
+ * - 成年：3 - 10 岁
+ * - 老年：10 岁及以上
+ *
+ * @param {number} catAge - 猫年龄，单位年
+ * @returns {string} 生命阶段，值为 LifeStage 枚举之一
+ * @throws {Error} 当参数非法时抛出
+ *
+ * @example
+ * getCatLifeStage(0.5);  // '幼年'
+ * getCatLifeStage(2);    // '青年'
+ * getCatLifeStage(5);    // '成年'
+ * getCatLifeStage(12);   // '老年'
+ */
+function getCatLifeStage(catAge) {
+  if (typeof catAge !== 'number' || !isFinite(catAge)) {
+    throw new Error('猫年龄必须为有限数字');
+  }
+  if (catAge < 0) {
+    throw new Error('猫年龄不能为负数');
+  }
+
+  if (catAge < 1) return LifeStage.JUVENILE;
+  if (catAge < 3) return LifeStage.YOUNG;
+  if (catAge < CAT_SENIOR_THRESHOLD) return LifeStage.ADULT;
+  return LifeStage.SENIOR;
+}
+
+/**
+ * 综合换算：输入宠物类型、年龄、体重（犬），返回完整结果
+ *
+ * @param {Object} params - 输入参数
+ * @param {string} params.species - 物种，'dog' 或 'cat'
+ * @param {number} params.age - 宠物年龄，单位年
+ * @param {number} [params.weightKg] - 体重（仅犬需要），单位千克
+ * @returns {Object} 换算结果
+ * @returns {number} returns.humanAge - 等效人类年龄
+ * @returns {string} returns.lifeStage - 生命阶段
+ * @returns {string} [returns.dogSize] - 体型分类（仅犬）
+ * @returns {string} returns.disclaimer - 免责声明
+ * @throws {Error} 当参数非法时抛出
+ *
+ * @example
+ * calculatePetAge({ species: 'dog', age: 5, weightKg: 8 });
+ * // { humanAge: 36, lifeStage: '成年', dogSize: 'small', disclaimer: '...' }
+ *
+ * calculatePetAge({ species: 'cat', age: 3 });
+ * // { humanAge: 28, lifeStage: '青年', disclaimer: '...' }
+ */
+function calculatePetAge(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+  var species = params.species;
+  var age = params.age;
+  var weightKg = params.weightKg;
+
+  if (species !== 'dog' && species !== 'cat') {
+    throw new Error('物种必须为 "dog" 或 "cat"');
+  }
+  if (typeof age !== 'number' || !isFinite(age)) {
+    throw new Error('年龄必须为有限数字');
+  }
+
+  var disclaimer = '换算为通行估算，个体差异大，不构成兽医诊断依据。数据来源：AAHA/WSAVA 通行标准。';
+
+  if (species === 'dog') {
+    if (typeof weightKg !== 'number' || !isFinite(weightKg)) {
+      throw new Error('犬需要体重参数（weightKg）');
+    }
+    var size = getDogSizeByWeight(weightKg);
+    var humanAge = convertDogAgeToHuman(age, size);
+    var lifeStage = getDogLifeStage(age, size);
+    return {
+      humanAge: humanAge,
+      lifeStage: lifeStage,
+      dogSize: size,
+      disclaimer: disclaimer
+    };
+  }
+
+  // cat
+  var catHumanAge = convertCatAgeToHuman(age);
+  var catLifeStage = getCatLifeStage(age);
+  return {
+    humanAge: catHumanAge,
+    lifeStage: catLifeStage,
+    disclaimer: disclaimer
+  };
+}
+
+// 导出到全局（浏览器环境）
+if (typeof window !== 'undefined') {
+  window.DogSize = DogSize;
+  window.LifeStage = LifeStage;
+  window.getDogSizeByWeight = getDogSizeByWeight;
+  window.convertDogAgeToHuman = convertDogAgeToHuman;
+  window.convertCatAgeToHuman = convertCatAgeToHuman;
+  window.getDogLifeStage = getDogLifeStage;
+  window.getCatLifeStage = getCatLifeStage;
+  window.calculatePetAge = calculatePetAge;
+}
+</script>
+
+<script>
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+var testResults = [];
+var testCount = 0;
+var passCount = 0;
+
+/**
+ * 简易断言函数
+ * @param {string} name - 测试名称
+ * @param {boolean} condition - 断言条件
+ * @param {string} [detail] - 失败时的详细信息
+ */
+function assert(name, condition, detail) {
+  testCount++;
+  if (condition) {
+    passCount++;
+    testResults.push('✅ PASS: ' + name);
+  } else {
+    testResults.push('❌ FAIL: ' + name + (detail ? ' — ' + detail : ''));
+  }
+}
+
+/**
+ * 断言两个值近似相等（浮点数比较）
+ * @param {string} name - 测试名称
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} [tolerance=0.15] - 容差
+ */
+function assertApprox(name, actual, expected, tolerance) {
+  tolerance = tolerance || 0.15;
+  var pass = Math.abs(actual - expected) <= tolerance;
+  assert(name, pass, '期望 ' + expected + '，实际 ' + actual);
+}
+
+/**
+ * 断言函数抛出异常
+ * @param {string} name - 测试名称
+ * @param {Function} fn - 要执行的函数
+ */
+function assertThrows(name, fn) {
+  var threw = false;
+  try {
+    fn();
+  } catch (e) {
+    threw = true;
+  }
+  assert(name, threw, '期望抛出异常但未抛出');
+}
+
+function runAllTests() {
+  testResults = [];
+  testCount = 0;
+  passCount = 0;
+
+  // === 犬年龄换算测试 ===
+
+  // 1. 犬 0 岁 → 人类 0 岁
+  assertApprox('犬0岁(small)→人类0岁', convertDogAgeToHuman(0, 'small'), 0);
+
+  // 2. 犬 1 岁 → 人类 15 岁
+  assertApprox('犬1岁(small)→人类15岁', convertDogAgeToHuman(1, 'small'), 15);
+
+  // 3. 犬 2 岁 → 人类 24 岁
+  assertApprox('犬2岁(small)→人类24岁', convertDogAgeToHuman(2, 'small'), 24);
+
+  // 4. 犬 3 岁(small) → 人类 28 岁 (24+4)
+  assertApprox('犬3岁(small)→人类28岁', convertDogAgeToHuman(3, 'small'), 28);
+
+  // 5. 犬 5 岁(small) → 人类 36 岁 (24+3*4)
+  assertApprox('犬5岁(small)→人类36岁', convertDogAgeToHuman(5, 'small'), 36);
+
+  // 6. 犬 10 岁(small) → 人类 56 岁 (24+8*4)
+  assertApprox('犬10岁(small)→人类56岁', convertDogAgeToHuman(10, 'small'), 56);
+
+  // 7. 犬 1 岁(medium) → 人类 15 岁
+  assertApprox('犬1岁(medium)→人类15岁', convertDogAgeToHuman(1, 'medium'), 15);
+
+  // 8. 犬 2 岁(medium) → 人类 24 岁
+  assertApprox('犬2岁(medium)→人类24岁', convertDogAgeToHuman(2, 'medium'), 24);
+
+  // 9. 犬 5 岁(medium) → 人类 39 岁 (24+3*5)
+  assertApprox('犬5岁(medium)→人类39岁', convertDogAgeToHuman(5, 'medium'), 39);
+
+  // 10. 犬 1 岁(large) → 人类 15 岁
+  assertApprox('犬1岁(large)→人类15岁', convertDogAgeToHuman(1, 'large'), 15);
+
+  // 11. 犬 3 岁(large) → 人类 30 岁 (24+1*6)
+  assertApprox('犬3岁(large)→人类30岁', convertDogAgeToHuman(3, 'large'), 30);
+
+  // 12. 犬 1 岁(giant) → 人类 15 岁
+  assertApprox('犬1岁(giant)→人类15岁', convertDogAgeToHuman(1, 'giant'), 15);
+
+  // 13. 犬 5 岁(giant) → 人类 45 岁 (24+3*7)
+  assertApprox('犬5岁(giant)→人类45岁', convertDogAgeToHuman(5, 'giant'), 45);
+
+  // 14. 犬 0.5 岁(small) → 人类 7.5 岁
+  assertApprox('犬0.5岁(small)→人类7.5岁', convertDogAgeToHuman(0.5, 'small'), 7.5);
+
+  // 15. 犬 1.5 岁(small) → 人类 19.5 岁 (15+0.5*9)
+  assertApprox('犬1.5岁(small)→人类19.5岁', convertDogAgeToHuman(1.5, 'small'), 19.5);
+
+  // 16. 犬 2.5 岁(small) → 人类 26 岁 (24+0.5*4)
+  assertApprox('犬2.5岁(small)→人类26岁', convertDogAgeToHuman(2.5, 'small'), 26);
+
+  // 17. 犬 20 岁(small) → 人类 96 岁 (24+18*4)
+  assertApprox('犬20岁(small)→人类96岁', convertDogAgeToHuman(20, 'small'), 96);
+
+  // === 猫年龄换算测试 ===
+
+  // 18. 猫 0 岁 → 人类 0 岁
+  assertApprox('猫0岁→人类0岁', convertCatAgeToHuman(0), 0);
+
+  // 19. 猫 1 岁 → 人类 15 岁
+  assertApprox('猫1岁→人类15岁', convertCatAgeToHuman(1), 15);
+
+  // 20. 猫 2 岁 → 人类 24 岁
+  assertApprox('猫2岁→人类24岁', convertCatAgeToHuman(2), 24);
+
+  // 21. 猫 5 岁 → 人类 36 岁 (24+3*4)
+  assertApprox('猫5岁→人类36岁', convertCatAgeToHuman(5), 36);
+
+  // 22. 猫 10 岁 → 人类 56 岁 (24+8*4)
+  assertApprox('猫10岁→人类56岁', convertCatAgeToHuman(10), 56);
+
+  // 23. 猫 20 岁 → 人类 96 岁 (24+18*4)
+  assertApprox('猫20岁→人类96岁', convertCatAgeToHuman(20), 96);
+
+  // 24. 猫 0.5 岁 → 人类 7.5 岁
+  assertApprox('猫0.5岁→人类7.5岁', convertCatAgeToHuman(0.5), 7.5);
+
+  // 25. 猫 1.5 岁 → 人类 19.5 岁
+  assertApprox('猫1.5岁→人类19.5岁', convertCatAgeToHuman(1.5), 19.5);
+
+  // === 异常输入测试 ===
+
+  // 26. 犬年龄为负数
+  assertThrows('犬年龄为负数应抛异常', function() { convertDogAgeToHuman(-1, 'small'); });
+
+  // 27. 犬年龄为 null
+  assertThrows('犬年龄为null应抛异常', function() { convertDogAgeToHuman(null, 'small'); });
+
+  // 28. 犬年龄为 undefined
+  assertThrows('犬年龄为undefined应抛异常', function() { convertDogAgeToHuman(undefined, 'small'); });
+
+  // 29. 犬年龄为 NaN
+  assertThrows('犬年龄为NaN应抛异常', function() { convertDogAgeToHuman(NaN, 'small'); });
+
+  // 30. 犬年龄为空串
+  assertThrows('犬年龄为空串应抛异常', function() { convertDogAgeToHuman('', 'small'); });
+
+  // 31. 犬年龄超范围
+  assertThrows('犬年龄超范围(31)应抛异常', function() { convertDogAgeToHuman(31, 'small'); });
+
+  // 32. 犬无效体型
+  assertThrows('犬无效体型应抛异常', function() { convertDogAgeToHuman(5, 'tiny'); });
+
+  // 33. 猫年龄为负数
+  assertThrows('猫年龄为负数应抛异常', function() { convertCatAgeToHuman(-1); });
+
+  // 34. 猫年龄为 null
+  assertThrows('猫年龄为null应抛异常', function() { convertCatAgeToHuman(null); });
+
+  // 35. 猫年龄超范围
+  assertThrows('猫年龄超范围(36)应抛异常', function() { convertCatAgeToHuman(36); });
+
+  // === 体重分类测试 ===
+
+  // 36. 体重 8kg → small
+  assert('体重8kg→small', getDogSizeByWeight(8) === 'small');
+
+  // 37. 体重 10kg → medium（边界）
+  assert('体重10kg→medium', getDogSizeByWeight(10) === 'medium');
+
+  // 38. 体重 25kg → large（边界）
+  assert('体重25kg→large', getDogSizeByWeight(25) === 'large');
+
+  // 39. 体重 45kg → giant（边界）
+  assert('体重45kg→giant', getDogSizeByWeight(45) === 'giant');
+
+  // 40. 体重 0 → 异常
+  assertThrows('体重0应抛异常', function() { getDogSizeByWeight(0); });
+
+  // 41. 体重负数 → 异常
+  assertThrows('体重负数应抛异常', function() { getDogSizeByWeight(-5); });
+
+  // === 生命阶段测试 ===
+
+  // 42. 犬 0.5 岁 small → 幼年
+  assert('犬0.5岁(small)→幼年', getDogLifeStage(0.5, 'small') === '幼年');
+
+  // 43. 犬 1.5 岁 small → 青年
+  assert('犬1.5岁(small)→青年', getDogLifeStage(1.5, 'small') === '青年');
+
+  // 44. 犬 5 岁 small → 成年
+  assert('犬5岁(small)→成年', getDogLifeStage(5, 'small') === '成年');
+
+  // 45. 犬 12 岁 small → 老年
+  assert('犬12岁(small)→老年', getDogLifeStage(12, 'small') === '老年');
+
+  // 46. 犬 8 岁 large → 老年（大型犬8岁即老年）
+  assert('犬8岁(large)→老年', getDogLifeStage(8, 'large') === '老年');
+
+  // 47. 犬 7 岁 large → 成年（大型犬7岁仍成年）
+  assert('犬7岁(large)→成年', getDogLifeStage(7, 'large') === '成年');
+
+  // 48. 猫 0.5 岁 → 幼年
+  assert('猫0.5岁→幼年', getCatLifeStage(0.5) === '幼年');
+
+  // 49. 猫 2 岁 → 青年
+  assert('猫2岁→青年', getCatLifeStage(2) === '青年');
+
+  // 50. 猫 5 岁 → 成年
+  assert('猫5岁→成年', getCatLifeStage(5) === '成年');
+
+  // 51. 猫 12 岁 → 老年
+  assert('猫12岁→老年', getCatLifeStage(12) === '老年');
+
+  // === 综合函数测试 ===
+
+  // 52. 综合：小型犬 5 岁 8kg
+  var r1 = calculatePetAge({ species: 'dog', age: 5, weightKg: 8 });
+  assertApprox('综合:小型犬5岁8kg→人类36岁', r1.humanAge, 36);
+  assert('综合:小型犬5岁→成年', r1.lifeStage === '成年');
+  assert('综合:小型犬8kg→small', r1.dogSize === 'small');
+
+  // 53. 综合：猫 3 岁
+  var r2 = calculatePetAge({ species: 'cat', age: 3 });
+  assertApprox('综合:猫3岁→人类28岁', r2.humanAge, 28);
+  assert('综合:猫3岁→青年', r2.lifeStage === '青年');
+
+  // 54. 综合：参数为 null
+  assertThrows('综合:参数null应抛异常', function() { calculatePetAge(null); });
+
+  // 55. 综合：无效物种
+  assertThrows('综合:无效物种应抛异常', function() { calculatePetAge({ species: 'bird', age: 5 }); });
+
+  // 56. 综合：犬缺少体重
+  assertThrows('综合:犬缺少体重应抛异常', function() { calculatePetAge({ species: 'dog', age: 5 }); });
+
+  // 57. 精度：犬 2.333 岁 small → 24 + 0.333*4 = 25.332 → 25.3
+  assertApprox('精度:犬2.333岁(small)→25.3', convertDogAgeToHuman(2.333, 'small'), 25.3, 0.05);
+
+  // 58. 边界：犬 30 岁（最大边界）
+  assertApprox('边界:犬30岁(small)→144岁', convertDogAgeToHuman(30, 'small'), 144);
+
+  // 59. 边界：猫 35 岁（最大边界）
+  assertApprox('边界:猫35岁→156岁', convertCatAgeToHuman(35), 156);
+
+  // 60. 犬年龄为字符串数字
+  assertThrows('犬年龄为字符串应抛异常', function() { convertDogAgeToHuman('5', 'small'); });
+}
+
+function runTests() {
+  runAllTests();
+  var resultDiv = document.getElementById('testResult');
+  var logDiv = document.getElementById('testLog');
+  var allPass = passCount === testCount;
+  resultDiv.className = 'test-result ' + (allPass ? 'test-pass' : 'test-fail');
+  resultDiv.textContent = '通过 ' + passCount + ' / 共 ' + testCount + (allPass ? ' ✅ 全部通过！' : ' ⚠️ 存在失败用例');
+  logDiv.textContent = testResults.join('\n');
+}
+</script>
+
+<script>
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+
+document.getElementById('manualContent').innerHTML = `
+<h2>一、工具概述</h2>
+<p>本工具用于将宠物（猫、犬）的生理年龄换算为等效人类年龄，并判断宠物当前所处的生命阶段（幼年/青年/成年/老年）。</p>
+
+<h3>1.1 解决什么问题</h3>
+<p>许多宠物主人习惯用"1 宠物年 = 7 人年"的粗略公式来估算宠物年龄，但这一说法并不准确。实际上，猫和犬在生命最初两年的发育速度远快于人类，之后才逐渐放缓，且不同体型的犬衰老速度也有显著差异。本工具采用兽医界通行的分段换算法，提供更贴近实际的估算结果。</p>
+
+<h3>1.2 适用场景</h3>
+<ul>
+<li>宠物主人了解自家宠物相当于人类什么年龄阶段</li>
+<li>根据宠物生命阶段调整喂养、运动、体检频率</li>
+<li>领养救助动物时评估其大致年龄对应的人类阶段</li>
+<li>宠物健康科普教育</li>
+</ul>
+
+<h2>二、数据来源与标准依据</h2>
+
+<div class="warning">
+<strong>⚠️ 重要声明：</strong>本换算为通行估算，个体差异大，不构成兽医诊断依据。
+</div>
+
+<div class="info">
+<strong>📋 关于国家标准：</strong>经查询，目前中国没有针对宠物年龄换算的国家标准（GB）。本工具依据的是国际兽医界通行做法。
+</div>
+
+<h3>2.1 主要参考来源</h3>
+<table>
+<tr><th>来源</th><th>内容</th><th>说明</th></tr>
+<tr><td>AAHA（美国动物医院协会）</td><td>Canine Life Stages Guidelines</td><td>犬生命阶段划分及年龄换算参考</td></tr>
+<tr><td>AAFP（美国猫科从业者协会）</td><td>Feline Life Stages Guidelines</td><td>猫生命阶段划分（与AAHA联合发布）</td></tr>
+<tr><td>WSAVA（世界小动物兽医协会）</td><td>年龄相关健康指南</td><td>全球性参考框架</td></tr>
+</table>
+
+<h3>2.2 换算公式来源说明</h3>
+<p>犬猫年龄换算公式来源于 AAHA 发布的犬猫生命阶段指南中引用的通行估算方法。该方法的核心观点是：</p>
+<ol>
+<li>猫和犬在第 1 年快速成熟，约等效人类 15 年</li>
+<li>第 2 年继续较快成熟，累计约等效人类 24 年</li>
+<li>此后每年按固定速率老化，速率因物种和体型而异</li>
+</ol>
+<p>传统"1:7"公式被 AAHA 明确指出是不准确的，因为它无法反映幼年快速成熟的事实。</p>
+
+<h2>三、参数详解</h2>
+
+<h3>3.1 物种（species）</h3>
+<table>
+<tr><th>参数</th><th>取值</th><th>说明</th></tr>
+<tr><td>species</td><td>"dog"</td><td>犬</td></tr>
+<tr><td>species</td><td>"cat"</td><td>猫</td></tr>
+</table>
+
+<h3>3.2 宠物年龄（age）</h3>
+<table>
+<tr><th>参数</th><th>范围</th><th>单位</th><th>说明</th></tr>
+<tr><td>age（犬）</td><td>0 ~ 30</td><td>年</td><td>支持小数，如 2.5 表示 2 岁半</td></tr>
+<tr><td>age（猫）</td><td>0 ~ 35</td><td>年</td><td>支持小数</td></tr>
+</table>
+<p><strong>注意：</strong>年龄上限为物种的合理最大寿命。犬 30 岁、猫 35 岁已极为罕见（吉尼斯纪录犬约 31 岁、猫约 38 岁），超出范围将报错。</p>
+
+<h3>3.3 犬体重（weightKg）</h3>
+<table>
+<tr><th>参数</th><th>范围</th><th>单位</th><th>说明</th></tr>
+<tr><td>weightKg</td><td>&gt; 0</td><td>千克（kg）</td><td>仅犬需要此参数，用于判断体型分类</td></tr>
+</table>
+
+<h3>3.4 体型分类规则</h3>
+<table>
+<tr><th>体型</th><th>体重范围</th><th>每年老化速率（第3年起）</th><th>老年起始年龄</th></tr>
+<tr><td>小型犬（small）</td><td>&lt; 10 kg</td><td>+4 人年/年</td><td>11 岁</td></tr>
+<tr><td>中型犬（medium）</td><td>10 ~ 25 kg（含10，不含25）</td><td>+5 人年/年</td><td>10 岁</td></tr>
+<tr><td>大型犬（large）</td><td>25 ~ 45 kg（含25，不含45）</td><td>+6 人年/年</td><td>8 岁</td></tr>
+<tr><td>巨型犬（giant）</td><td>≥ 45 kg</td><td>+7 人年/年</td><td>7 岁</td></tr>
+</table>
+<p><strong>边界说明：</strong>体重恰好为 10kg 归入中型，25kg 归入大型，45kg 归入巨型。这是基于 AAHA 指南中体型分类的通行做法。</p>
+
+<h2>四、换算公式详解</h2>
+
+<h3>4.1 犬年龄换算公式</h3>
+<pre style="background:#f4f4f4;color:#333;padding:12px;border-radius:4px;">
+设犬龄为 D，等效人龄为 H：
+- 当 D ≤ 1 时：H = D × 15
+- 当 1 < D ≤ 2 时：H = 15 + (D - 1) × 9
+- 当 D > 2 时：H = 24 + (D - 2) × R
+  其中 R 为体型对应速率：小型4、中型5、大型6、巨型7
+</pre>
+
+<h3>4.2 猫年龄换算公式</h3>
+<pre style="background:#f4f4f4;color:#333;padding:12px;border-radius:4px;">
+设猫龄为 C，等效人龄为 H：
+- 当 C ≤ 1 时：H = C × 15
+- 当 1 < C ≤ 2 时：H = 15 + (C - 1) × 9
+- 当 C > 2 时：H = 24 + (C - 2) × 4
+</pre>
+
+<h2>五、完整使用场景</h2>
+
+<h3>场景 1：小型犬年龄换算</h3>
+<p><strong>输入：</strong>物种 = dog，年龄 = 5 岁，体重 = 8 kg</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>体重 8kg &lt; 10kg → 体型分类为"小型犬"</li>
+<li>年龄 5 岁 &gt; 2 岁 → H = 24 + (5-2) × 4 = 24 + 12 = 36</li>
+<li>生命阶段：5 岁 &lt; 11 岁（小型犬老年阈值）→ "成年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 36 岁，生命阶段"成年"，体型"小型犬"</p>
+
+<h3>场景 2：大型犬年龄换算</h3>
+<p><strong>输入：</strong>物种 = dog，年龄 = 8 岁，体重 = 35 kg</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>体重 35kg，25 ≤ 35 &lt; 45 → 体型分类为"大型犬"</li>
+<li>年龄 8 岁 &gt; 2 岁 → H = 24 + (8-2) × 6 = 24 + 36 = 60</li>
+<li>生命阶段：8 岁 ≥ 8 岁（大型犬老年阈值）→ "老年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 60 岁，生命阶段"老年"，体型"大型犬"</p>
+
+<h3>场景 3：巨型犬年龄换算</h3>
+<p><strong>输入：</strong>物种 = dog，年龄 = 4 岁，体重 = 55 kg</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>体重 55kg ≥ 45kg → 体型分类为"巨型犬"</li>
+<li>年龄 4 岁 &gt; 2 岁 → H = 24 + (4-2) × 7 = 24 + 14 = 38</li>
+<li>生命阶段：4 岁 &lt; 7 岁（巨型犬老年阈值）→ "成年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 38 岁，生命阶段"成年"，体型"巨型犬"</p>
+
+<h3>场景 4：猫年龄换算</h3>
+<p><strong>输入：</strong>物种 = cat，年龄 = 10 岁</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>年龄 10 岁 &gt; 2 岁 → H = 24 + (10-2) × 4 = 24 + 32 = 56</li>
+<li>生命阶段：10 岁 ≥ 10 岁（猫老年阈值）→ "老年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 56 岁，生命阶段"老年"</p>
+
+<h3>场景 5：幼猫年龄换算</h3>
+<p><strong>输入：</strong>物种 = cat，年龄 = 0.5 岁（约 6 个月）</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>年龄 0.5 岁 ≤ 1 岁 → H = 0.5 × 15 = 7.5</li>
+<li>生命阶段：0.5 岁 &lt; 1 岁 → "幼年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 7.5 岁，生命阶段"幼年"</p>
+
+<h3>场景 6：刚满 1 岁的犬</h3>
+<p><strong>输入：</strong>物种 = dog，年龄 = 1 岁，体重 = 15 kg</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>体重 15kg → 中型犬</li>
+<li>年龄 1 岁 → H = 1 × 15 = 15</li>
+<li>生命阶段：1 岁 ≥ 1 岁且 &lt; 2 岁 → "青年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 15 岁，生命阶段"青年"，体型"中型犬"</p>
+
+<h3>场景 7：老年猫</h3>
+<p><strong>输入：</strong>物种 = cat，年龄 = 20 岁</p>
+<p><strong>处理过程：</strong></p>
+<ol>
+<li>年龄 20 岁 &gt; 2 岁 → H = 24 + (20-2) × 4 = 24 + 72 = 96</li>
+<li>生命阶段：20 岁 ≥ 10 岁 → "老年"</li>
+</ol>
+<p><strong>输出：</strong>等效人类年龄 96 岁，生命阶段"老年"</p>
+
+<h2>六、常见错误与排查</h2>
+
+<table>
+<tr><th>错误信息</th><th>原因</th><th>解决方法</th></tr>
+<tr><td>"年龄必须为有限数字"</td><td>传入了 null、undefined、NaN、字符串等非数字值</td><td>确保 age 参数为数字类型，如 5 而非 "5"</td></tr>
+<tr><td>"年龄不能为负数"</td><td>传入了负数</td><td>年龄最小为 0</td></tr>
+<tr><td>"年龄超出合理范围"</td><td>犬超过 30 岁或猫超过 35 岁</td><td>检查输入是否正确；如确为超高龄宠物，结果仅供参考</td></tr>
+<tr><td>"犬需要体重参数"</td><td>犬换算时未提供 weightKg</td><td>补充体重参数</td></tr>
+<tr><td>"体重必须为正数"</td><td>体重为 0 或负数</td><td>体重必须大于 0</td></tr>
+<tr><td>"无效的体型分类"</td><td>传入了非 small/medium/large/giant 的值</td><td>使用正确的体型枚举值</td></tr>
+<tr><td>"物种必须为 dog 或 cat"</td><td>传入了其他物种</td><td>本工具仅支持犬和猫</td></tr>
+<tr><td>"参数必须为对象"</td><td>calculatePetAge 未传入对象参数</td><td>传入 { species, age, weightKg } 格式的对象</td></tr>
+</table>
+
+<h2>七、生命阶段划分说明</h2>
+
+<h3>7.1 犬生命阶段</h3>
+<table>
+<tr><th>阶段</th><th>年龄范围</th><th>说明</th></tr>
+<tr><td>幼年</td><td>0 ~ 1 岁</td><td>快速生长期，相当于人类 0-15 岁</td></tr>
+<tr><td>青年</td><td>1 ~ 2 岁</td><td>性成熟完成，体型基本定型</td></tr>
+<tr><td>成年</td><td>2 岁 ~ 老年阈值</td><td>稳定期，老年阈值因体型而异</td></tr>
+<tr><td>老年</td><td>老年阈值 ~ 寿命终点</td><td>需关注老年病、关节、器官功能</td></tr>
+</table>
+
+<h3>7.2 猫生命阶段</h3>
+<table>
+<tr><th>阶段</th><th>年龄范围</th><th>说明</th></tr>
+<tr><td>幼年</td><td>0 ~ 1 岁</td><td>快速生长期</td></tr>
+<tr><td>青年</td><td>1 ~ 3 岁</td><td>完全成熟</td></tr>
+<tr><td>成年</td><td>3 ~ 10 岁</td><td>稳定期</td></tr>
+<tr><td>老年</td><td>10 岁以上</td><td>需关注肾脏、甲状腺等</td></tr>
+</table>
+
+<h2>八、局限性说明</h2>
+
+<div class="warning">
+<strong>⚠️ 以下局限性使用者必须了解：</strong>
+</div>
+
+<ol>
+<li><strong>无国家标准：</strong>经查询，中国目前没有针对宠物年龄换算的国家标准（GB/T）。本工具依据的是 AAHA、WSAVA 等国际组织的通行做法，属于行业惯例而非强制标准。</li>
+
+<li><strong>个体差异大：</strong>同一品种、同一体型的犬猫，因遗传、营养、疾病、生活环境等因素，实际衰老速度可能差异显著。本工具给出的是群体统计意义上的估算值。</li>
+
+<li><strong>品种差异未细分：</strong>犬的换算仅按体重分 4 档，未考虑具体品种。例如同样 8kg 的吉娃娃和迷你腊肠犬，衰老模式可能有差异。如需更精确的品种级数据，需查标准原文或咨询兽医。</li>
+
+<li><strong>换算公式为线性近似：</strong>实际衰老曲线并非完美线性，本工具在第 3 年后采用线性外推，是一种简化处理。部分研究提出对数模型或分段非线性模型，但尚未形成统一标准。</li>
+
+<li><strong>不精确到月：</strong>本工具不输出精确到月的等效人类年龄。对于幼年期（0-2 岁）的换算，月龄差异可能导致较大的人龄差异，但本工具仅以年为单位（支持小数年）。</li>
+
+<li><strong>最大年龄限制：</strong>犬 30 岁、猫 35 岁为合理上限。超出此范围的输入将被拒绝。实际中极少数个体可能超过此年龄，但对应的换算结果可靠性极低。</li>
+
+<li><strong>不构成兽医诊断：</strong>本工具仅供科普和参考，不能替代兽医的专业评估。宠物的实际健康状况需通过体检、血液检查等手段综合判断。</li>
+
+<li><strong>数据来源的时效性：</strong>AAHA/WSAVA 的指南可能随研究进展更新。本工具基于截至编写时的通行数据，如有更新需同步修订。</li>
+
+<li><strong>混种/杂交动物：</strong>对于混种犬猫，体重分类可能不完全适用其实际衰老模式。建议以实际体重为准，但理解结果可能有偏差。</li>
+
+<li><strong>绝育/去势影响：</strong>有研究表明绝育/去势可能影响宠物寿命和衰老速度，但本工具未纳入此因素。</li>
+</ol>
+
+<h2>九、API 接口说明</h2>
+
+<h3>9.1 calculatePetAge(params)</h3>
+<p>综合换算入口函数。</p>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>params.species</td><td>string</td><td>是</td><td>"dog" 或 "cat"</td></tr>
+<tr><td>params.age</td><td>number</td><td>是</td><td>宠物年龄（年），支持小数</td></tr>
+<tr><td>params.weightKg</td><td>number</td><td>犬必填</td><td>体重（kg），仅犬需要</td></tr>
+</table>
+<p><strong>返回值：</strong></p>
+<table>
+<tr><th>字段</th><th>类型</th><th>说明</th></tr>
+<tr><td>humanAge</td><td>number</td><td>等效人类年龄</td></tr>
+<tr><td>lifeStage</td><td>string</td><td>生命阶段（幼年/青年/成年/老年）</td></tr>
+<tr><td>dogSize</td><td>string</td><td>体型分类（仅犬返回）</td></tr>
+<tr><td>disclaimer</td><td>string</td><td>免责声明文本</td></tr>
+</table>
+
+<h3>9.2 convertDogAgeToHuman(dogAge, size)</h3>
+<p>犬年龄→人类年龄纯换算函数。</p>
+
+<h3>9.3 convertCatAgeToHuman(catAge)</h3>
+<p>猫年龄→人类年龄纯换算函数。</p>
+
+<h3>9.4 getDogSizeByWeight(weightKg)</h3>
+<p>根据体重判断犬体型分类。</p>
+
+<h3>9.5 getDogLifeStage(dogAge, size) / getCatLifeStage(catAge)</h3>
+<p>获取生命阶段。</p>
+
+<h2>十、版本信息</h2>
+<p>版本号：v2.0.0-完整版</p>
+<p>日期：2026-10-21</p>
+<p>依赖：无外部依赖，纯 JavaScript 实现，可在任何现代浏览器中运行。</p>
+`;
+
+// ============================================================
+// 页面初始化
+// ============================================================
+
+// 将源码填入第一个标签页
+document.getElementById('sourceCode').textContent = document.querySelector('#tab0 + #tab1').previousElementSibling.querySelector('script').textContent;
+
+// 实际上我们需要获取第一个 script 标签的内容
+(function() {
+  var scripts = document.querySelectorAll('script');
+  // 第一个 script 标签包含核心源码
+  var sourceScript = scripts[0];
+  document.getElementById('sourceCode').textContent = sourceScript.textContent;
+})();
+
+// ====== 换算界面逻辑（v2.1.0 新增） ======
+function paToggleWeight(){
+  var sp=document.getElementById('paSpecies').value;
+  document.getElementById('paWeightWrap').style.display = (sp==='cat')?'none':'block';
+}
+function paCalc(){
+  var err=document.getElementById('paErr'), out=document.getElementById('paOut');
+  err.classList.remove('show'); out.classList.remove('show');
+  var sp=document.getElementById('paSpecies').value;
+  var ageRaw=document.getElementById('paAge').value.trim();
+  var wRaw=document.getElementById('paWeight').value.trim();
+  if(ageRaw===''){ err.textContent='⚠ 请填写宠物的实际年龄'; err.classList.add('show'); return; }
+  var age=parseFloat(ageRaw);
+  if(isNaN(age)||age<0){ err.textContent='⚠ 年龄必须是不小于 0 的数字'; err.classList.add('show'); return; }
+  var params={species:sp, age:age};
+  if(sp==='dog'){
+    if(wRaw===''){ err.textContent='⚠ 狗的换算需要体重（体型会影响老化速度）'; err.classList.add('show'); return; }
+    var w=parseFloat(wRaw);
+    if(isNaN(w)||w<=0){ err.textContent='⚠ 体重必须是大于 0 的数字'; err.classList.add('show'); return; }
+    params.weightKg=w;
+  }
+  try{
+    var r=calculatePetAge(params);
+    var sizeText='';
+    if(r.dogSize){
+      var m={small:'小型犬',medium:'中型犬',large:'大型犬',giant:'巨型犬'};
+      sizeText='<div class="row"><span class="lab">体型判定：</span> <b>'+(m[r.dogSize]||r.dogSize)+'</b></div>';
+    }
+    out.innerHTML='<div class="row"><span class="lab">相当于人类</span></div>'+
+      '<div class="row"><span class="big">'+r.humanAge+'</span> <span class="lab">岁</span></div>'+
+      '<div class="row"><span class="lab">生命阶段：</span> <b>'+r.lifeStage+'</b></div>'+
+      sizeText+
+      '<div class="row" style="margin-top:12px;font-size:12px;color:#8899aa">'+r.disclaimer+'</div>';
+    out.classList.add('show');
+  }catch(e){ err.textContent='⚠ '+e.message; err.classList.add('show'); }
+}
+paToggleWeight();
+
+function switchTab(index) {
+  var btns = document.querySelectorAll('.tab-btn');
+  var contents = document.querySelectorAll('.tab-content');
+  btns.forEach(function(btn, i) {
+    btn.classList.toggle('active', i === index);
+  });
+  contents.forEach(function(content, i) {
+    content.classList.toggle('active', i === index);
+  });
+}
+</script>
+</body>
+</html>

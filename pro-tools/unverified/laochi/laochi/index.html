@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>老尺与市尺换算工具</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f1e8;color:#2b2b2b;font-size:15px;line-height:1.6;padding:16px 12px 60px}
+  .wrap{max-width:640px;margin:0 auto}
+  h1{font-size:20px;text-align:center;margin-bottom:4px;color:#8b3a1f}
+  .sub{text-align:center;font-size:13px;color:#666;margin-bottom:16px}
+  .card{background:#fff;border:1px solid #e0d8c4;border-radius:10px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .card h2{font-size:15px;color:#8b3a1f;margin-bottom:10px;border-left:3px solid #c0392b;padding-left:8px}
+  label{display:block;font-size:13px;color:#555;margin:8px 0 4px}
+  input,select{width:100%;padding:10px;font-size:15px;border:1px solid #cfc6b0;border-radius:6px;background:#fdfbf5;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:#c0392b;background:#fff}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .btn{display:block;width:100%;padding:11px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:15px;margin-top:12px;cursor:pointer;font-weight:600}
+  .btn:active{background:#a5301c}
+  .result{background:#fdf6e3;border:1px dashed #c0392b;border-radius:8px;padding:12px;margin-top:12px;font-size:14px}
+  .result .line{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #e0d8c4}
+  .result .line:last-child{border-bottom:none}
+  .result .val{color:#c0392b;font-weight:600}
+  .warn{background:#fff8e1;border-left:3px solid #e67e22;padding:8px 10px;font-size:13px;color:#7a5200;border-radius:4px;margin:8px 0}
+  .info{background:#eef6ff;border-left:3px solid #2980b9;padding:8px 10px;font-size:13px;color:#1a4a70;border-radius:4px;margin:8px 0}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th,td{border:1px solid #d8cfb8;padding:6px 4px;text-align:center}
+  th{background:#f0e8d0;color:#8b3a1f;font-weight:600}
+  td{background:#fdfbf5}
+  .note{font-size:12px;color:#888;margin-top:6px;line-height:1.5}
+  .basis{font-size:13px;line-height:1.7;color:#444}
+  .basis p{margin:6px 0}
+  .basis strong{color:#8b3a1f}
+  .ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#999;background:rgba(255,255,255,.8);padding:2px 6px;border-radius:4px}
+  .hint{font-size:12px;color:#888;margin-top:4px}
+  .chip{display:inline-block;background:#f0e8d0;color:#8b3a1f;padding:2px 8px;border-radius:10px;font-size:12px;margin:2px;cursor:pointer}
+  .chip:active{background:#c0392b;color:#fff}
+  @media(max-width:380px){body{font-size:14px}h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📏 老尺与市尺换算</h1>
+  <div class="sub">裁缝尺 · 市尺 · 米 · 英寸 互算</div>
+
+  <div class="card">
+    <h2>🔢 输入换算</h2>
+    <label>数值（支持"一尺八""二尺二寸"等口语）</label>
+    <input type="text" id="inVal" placeholder="例如：1.5、一尺八、二尺二">
+    <div class="hint">💡 试试点选常用口语 👇</div>
+    <div style="margin:6px 0">
+      <span class="chip" data-v="一尺八">一尺八</span>
+      <span class="chip" data-v="二尺">二尺</span>
+      <span class="chip" data-v="二尺二">二尺二</span>
+      <span class="chip" data-v="二尺三">二尺三</span>
+      <span class="chip" data-v="二尺四">二尺四</span>
+      <span class="chip" data-v="二尺五">二尺五</span>
+      <span class="chip" data-v="二尺六">二尺六</span>
+      <span class="chip" data-v="二尺七">二尺七</span>
+      <span class="chip" data-v="二尺八">二尺八</span>
+      <span class="chip" data-v="二尺九">二尺九</span>
+      <span class="chip" data-v="三尺">三尺</span>
+    </div>
+    <label>输入单位</label>
+    <select id="inUnit">
+      <option value="chi">市尺（1 市尺 = 1/3 米）</option>
+      <option value="laochi">裁缝老尺（民间尺）</option>
+      <option value="cun">市寸（1 市寸 = 1/10 市尺）</option>
+      <option value="m">米</option>
+      <option value="cm">厘米</option>
+      <option value="in">英寸（国际英寸）</option>
+    </select>
+
+    <label>裁缝老尺基准（仅当输入/输出涉及老尺时生效）</label>
+    <select id="laochiBase">
+      <option value="35.5">35.5 cm（部分地区老裁缝尺常见值）</option>
+      <option value="34.5">34.5 cm（部分地区老裁缝尺常见值）</option>
+      <option value="33.33">33.33 cm（≈ 市尺，个别地区）</option>
+      <option value="32">32.0 cm（部分老尺）</option>
+      <option value="custom">自定义（厘米）</option>
+    </select>
+    <input type="number" id="laochiCustom" placeholder="自定义老尺 1 尺 = ? 厘米" style="display:none;margin-top:6px" step="0.01">
+
+    <button class="btn" id="calcBtn">🔄 换算</button>
+
+    <div class="result" id="result" style="display:none">
+      <div class="line"><span>市尺</span><span class="val" id="rChi">—</span></div>
+      <div class="line"><span>市寸</span><span class="val" id="rCun">—</span></div>
+      <div class="line"><span>裁缝老尺</span><span class="val" id="rLao">—</span></div>
+      <div class="line"><span>米</span><span class="val" id="rM">—</span></div>
+      <div class="line"><span>厘米</span><span class="val" id="rCm">—</span></div>
+      <div class="line"><span>英寸</span><span class="val" id="rIn">—</span></div>
+      <div class="line"><span>口语读法</span><span class="val" id="rSay">—</span></div>
+    </div>
+
+    <div class="warn">⚠️ 裁缝老尺属民间器具，各地实物尺寸有差异，以实物为准。本工具所列 35.5 cm、34.5 cm 等为常见参考值，无统一国家标准。</div>
+  </div>
+
+  <div class="card">
+    <h2>📋 常用腰围对照（市尺 ↔ 厘米 ↔ 英寸）</h2>
+    <div class="note">下表按 1 市尺 = 1/3 米、1 英寸 = 2.54 厘米 计算，常用于服装尺码参考。</div>
+    <table>
+      <thead><tr><th>口语</th><th>市尺</th><th>厘米</th><th>英寸</th></tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="note">完整尺码表需查服装行业相关标准或厂商尺码表，本表仅列常见腰围口语值。</div>
+  </div>
+
+  <div class="card">
+    <h2>📖 单位说明</h2>
+    <div class="basis">
+      <p><strong>市尺</strong>：1959 年国务院统一计量制度后，1 市尺 = 1/3 米 ≈ 33.33 厘米。1 市尺 = 10 市寸。</p>
+      <p><strong>裁缝老尺（旧尺）</strong>：民间裁缝所用尺，各地实物尺寸不一，常见约 34.5 cm 或 35.5 cm 一尺，<strong>无统一国家标准</strong>，使用时应以实物尺为准。</p>
+      <p><strong>英寸</strong>：国际定义 1 英寸 = 2.54 厘米（精确值）。</p>
+      <p><strong>口语读法</strong>："一尺八"即 1.8 市尺，"二尺二寸"即 2.2 市尺。1 尺 = 10 寸 = 100 分。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📚 数据依据</h2>
+    <div class="basis">
+      <p>📘 <strong>1 市尺 = 1/3 米</strong>：依据 1959 年 6 月 25 日国务院《关于统一计量制度的命令》（及后续《中华人民共和国计量法》），市制长度以米为基准，1 米 = 3 市尺。具体条款详见该命令原文及 GB 3100-1993《国际单位制及其应用》相关说明。</p>
+      <p>📘 <strong>1 英寸 = 2.54 厘米</strong>：国际码码磅协议（1959 年）统一定义，我国法定计量单位中作为允许并用的非国际单位制单位，见 GB 3100-1993 附录。</p>
+      <p>📙 <strong>裁缝老尺</strong>：属民间器具，<strong>无国家标准</strong>。本工具所列 35.5 cm、34.5 cm 等为民间通行参考值，具体尺寸以实物为准。</p>
+      <p>📙 <strong>口语读法（"一尺八"等）</strong>：属民间通行说法，无强制标准，本工具按 1 尺 = 10 寸的十进制习惯解析。</p>
+    </div>
+  </div>
+</div>
+
+<div class="ver">v1.0.0-老尺市尺换算 20261021</div>
+
+<script>
+(function(){
+  // 中文数字映射
+  const CN={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'两':2,'壹':1,'贰':2,'叁':3,'肆':4,'伍':5,'陆':6,'柒':7,'捌':8,'玖':9};
+  function cnToNum(s){
+    if(!s) return 0;
+    // 支持简单情况：单个数字或"十X"、"X十"、"X十Y"
+    s=s.trim();
+    if(s in CN) return CN[s];
+    if(/^[\d.]+$/.test(s)) return parseFloat(s);
+    // 处理十
+    if(s.indexOf('十')>=0){
+      const parts=s.split('十');
+      let shi=(parts[0] in CN)?CN[parts[0]]:((parts[0]===''||parts[0]==='零')?(s.startsWith('十')?1:0):0);
+      if(s.startsWith('十')&&parts[0]==='') shi=1;
+      let ge=parts[1]?(parts[1] in CN?CN[parts[1]]:0):0;
+      return shi*10+ge;
+    }
+    // 单个中文字
+    if(s.length===1 && s in CN) return CN[s];
+    return NaN;
+  }
+  // 解析口语："一尺八" "二尺二寸" "三尺五" "1.5尺" "2尺3寸"
+  function parseLength(str){
+    str=str.trim().replace(/\s+/g,'');
+    if(!str) return NaN;
+    // 纯数字
+    if(/^[\d.]+$/.test(str)) return parseFloat(str);
+    // 带单位的数字：如 "1.5尺" "20cm"
+    let m=str.match(/^([\d.]+)\s*(尺|寸|分|米|厘米|cm|mm|英寸|inch|in)$/i);
+    if(m){
+      let v=parseFloat(m[1]);
+      let u=m[2].toLowerCase();
+      // 返回以"市尺"为基准
+      if(u==='尺') return v;
+      if(u==='寸') return v/10;
+      if(u==='分') return v/100;
+      if(u==='米'||u==='m') return v*3;
+      if(u==='厘米'||u==='cm') return v*3/100;
+      if(u==='mm') return v*3/1000;
+      if(u==='英寸'||u==='inch'||u==='in') return v*3*2.54/100;
+    }
+    // 中文口语：X尺Y[寸|分]
+    m=str.match(/^([零一二三四五六七八九两十壹贰叁肆伍陆柒捌玖\d]+)\s*尺\s*([零一二三四五六七八九两十壹贰叁肆伍陆陆柒捌玖\d]*)\s*(寸|分)?$/);
+    if(m){
+      let chi=cnToNum(m[1]);
+      let sub=m[2]?cnToNum(m[2]):0;
+      let unit=m[3];
+      if(unit==='分') return chi+sub/100;
+      // 默认"寸"或无单位（口语中"二尺二"即二尺二寸）
+      return chi+sub/10;
+    }
+    // 只有"X尺"
+    m=str.match(/^([零一二三四五六七八九两十壹贰叁肆伍陆柒捌玖\d]+)\s*尺$/);
+    if(m) return cnToNum(m[1]);
+    return NaN;
+  }
+  // 数字转口语：1.8 -> "一尺八"
+  function toSay(v){
+    if(isNaN(v)||v<0) return '—';
+    const DIGIT=['零','一','二','三','四','五','六','七','八','九'];
+    let chi=Math.floor(v);
+    let cun=Math.round((v-chi)*10);
+    // 处理进位
+    if(cun>=10){chi++;cun=0;}
+    let s='';
+    if(chi>=10){
+      // 简单处理：十、十一...十九、二十...
+      if(chi<20){
+        s=(chi===10?'':DIGIT[chi-10])+'十';
+      }else{
+        let shi=Math.floor(chi/10),ge=chi%10;
+        s=(shi===1?'':DIGIT[shi])+'十'+(ge?DIGIT[ge]:'');
+      }
+    }else{
+      s=DIGIT[chi];
+    }
+    s+='尺';
+    if(cun>0) s+=DIGIT[cun];
+    return s;
+  }
+  function fmt(n,d){
+    if(isNaN(n)) return '—';
+    return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d).replace(/\.?0+$/,'') || '0';
+  }
+  function getLaochiCm(){
+    const sel=document.getElementById('laochiBase').value;
+    if(sel==='custom'){
+      const v=parseFloat(document.getElementById('laochiCustom').value);
+      return isNaN(v)||v<=0?35.5:v;
+    }
+    return parseFloat(sel);
+  }
+  // 把输入值转换为"米"
+  function toMeter(val,unit){
+    const LAO=getLaochiCm()/100; // 老尺 1 尺 = ? 米
+    switch(unit){
+      case 'chi': return val/3; // 1 市尺 = 1/3 米
+      case 'laochi': return val*LAO;
+      case 'cun': return val/30; // 1 市寸 = 1/30 米
+      case 'm': return val;
+      case 'cm': return val/100;
+      case 'in': return val*0.0254;
+    }
+    return NaN;
+  }
+  function fromMeter(m,unit){
+    const LAO=getLaochiCm()/100;
+    switch(unit){
+      case 'chi': return m*3;
+      case 'laochi': return m/LAO;
+      case 'cun': return m*30;
+      case 'm': return m;
+      case 'cm': return m*100;
+      case 'in': return m/0.0254;
+    }
+    return NaN;
+  }
+  function calc(){
+    const raw=document.getElementById('inVal').value;
+    const unit=document.getElementById('inUnit').value;
+    let val;
+    // 如果单位是市尺/市寸，先尝试口语解析
+    if(unit==='chi'||unit==='cun'){
+      val=parseLength(raw);
+    }else{
+      val=parseFloat(raw);
+    }
+    if(isNaN(val)){
+      alert('无法识别的输入，请检查格式');
+      return;
+    }
+    const m=toMeter(val,unit);
+    document.getElementById('rChi').textContent=fmt(fromMeter(m,'chi'),4)+' 尺';
+    document.getElementById('rCun').textContent=fmt(fromMeter(m,'cun'),2)+' 寸';
+    document.getElementById('rLao').textContent=fmt(fromMeter(m,'laochi'),4)+' 老尺';
+    document.getElementById('rM').textContent=fmt(m,4)+' m';
+    document.getElementById('rCm').textContent=fmt(m*100,3)+' cm';
+    document.getElementById('rIn').textContent=fmt(fromMeter(m,'in'),3)+' in';
+    // 口语读法（按市尺）
+    const chiVal=fromMeter(m,'chi');
+    document.getElementById('rSay').textContent=toSay(chiVal);
+    document.getElementById('result').style.display='block';
+  }
+  // 常用腰围表
+  function buildTable(){
+    const data=[
+      ['一尺八',1.8],['一尺九',1.9],['二尺',2.0],['二尺一',2.1],
+      ['二尺二',2.2],['二尺三',2.3],['二尺四',2.4],['二尺五',2.5],
+      ['二尺六',2.6],['二尺七',2.7],['二尺八',2.8],['二尺九',2.9],
+      ['三尺',3.0],['三尺一',3.1],['三尺二',3.2]
+    ];
+    const tb=document.getElementById('tableBody');
+    tb.innerHTML='';
+    data.forEach(function(d){
+      const chi=d[1];
+      const cm=chi*100/3;
+      const inch=cm/2.54;
+      const tr=document.createElement('tr');
+      tr.innerHTML='<td>'+d[0]+'</td><td>'+chi.toFixed(1)+'</td><td>'+fmt(cm,2)+'</td><td>'+fmt(inch,2)+'</td>';
+      tb.appendChild(tr);
+    });
+  }
+  // 事件
+  document.getElementById('calcBtn').addEventListener('click',calc);
+  document.getElementById('inVal').addEventListener('keydown',function(e){if(e.key==='Enter')calc();});
+  document.getElementById('laochiBase').addEventListener('change',function(){
+    document.getElementById('laochiCustom').style.display=this.value==='custom'?'block':'none';
+  });
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.addEventListener('click',function(){
+      document.getElementById('inVal').value=this.getAttribute('data-v');
+      document.getElementById('inUnit').value='chi';
+      calc();
+    });
+  });
+  buildTable();
+  // 默认算一次示例
+  document.getElementById('inVal').value='二尺二';
+  calc();
+})();
+</script>
+</body>
+</html>

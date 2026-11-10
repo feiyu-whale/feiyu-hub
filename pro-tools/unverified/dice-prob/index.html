@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 骰子概率计算器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:#f0f4f8;color:#1e293b;font-size:14px;line-height:1.6;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:16px;padding-bottom:60px}
+header{text-align:center;margin-bottom:16px}
+header h1{font-size:22px;margin-bottom:4px}
+header p{font-size:13px;color:#64748b}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{font-size:16px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;display:flex;align-items:center;gap:6px}
+.card h3{font-size:14px;margin:12px 0 8px;color:#475569}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+.btn{padding:8px 16px;border:2px solid #cbd5e1;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;transition:all .2s;min-height:40px;font-weight:500}
+.btn:hover{border-color:#3b82f6;color:#3b82f6}
+.btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.form-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.form-row label{font-weight:500;white-space:nowrap;font-size:13px}
+.form-row input,.form-row select{padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;min-width:60px}
+.form-row input[type="number"]{width:70px}
+.form-row input[type="checkbox"]{width:18px;height:18px;accent-color:#3b82f6}
+.prob-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.prob-item{background:#f8fafc;border-radius:8px;padding:10px;text-align:center;border:1px solid #e2e8f0}
+.prob-item .emoji{font-size:20px}
+.prob-item .label{font-size:12px;color:#64748b;margin:2px 0}
+.prob-item .value{font-size:15px;font-weight:700;color:#1e293b}
+.prob-item .sub{font-size:12px;color:#94a3b8}
+.sum-table{width:100%;border-collapse:collapse;font-size:13px}
+.sum-table th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0;position:sticky;top:0}
+.sum-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
+.sum-table tr:hover{background:#f8fafc}
+.bar-cell{width:40%}
+.bar-bg{background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;min-width:40px}
+.bar-fill{background:linear-gradient(90deg,#3b82f6,#6366f1);height:100%;border-radius:4px;transition:width .3s}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:400px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px}
+.result-box{background:#f8fafc;border-radius:8px;padding:14px;margin-top:12px;border:1px solid #e2e8f0}
+.result-box.positive{background:#f0fdf4;border-color:#86efac}
+.result-box.negative{background:#fef2f2;border-color:#fca5a5}
+.result-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.result-row .label{color:#64748b}
+.result-row .val{font-weight:600}
+.result-divider{border-top:1px dashed #e2e8f0;margin:6px 0}
+.ev-display{font-size:18px;font-weight:700;text-align:center;padding:8px;margin:8px 0;border-radius:8px}
+.ev-display.positive{background:#dcfce7;color:#166534}
+.ev-display.negative{background:#fee2e2;color:#991b1b}
+.ev-display.zero{background:#fef9c3;color:#854d0e}
+.enum-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.enum-filters label{font-size:13px}
+.enum-filters select,.enum-filters input{padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px}
+.combo-table{width:100%;border-collapse:collapse;font-size:13px}
+.combo-table th{background:#f1f5f9;padding:6px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0;position:sticky;top:0;z-index:1}
+.combo-table td{padding:4px 6px;border-bottom:1px solid #f1f5f9}
+.combo-table tr.leopard{background:#fef2f2}
+.combo-table tr.straight{background:#f0fdf4}
+.combo-table tr:hover{background:#eff6ff}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600}
+.tag-leopard{background:#fecaca;color:#dc2626}
+.tag-straight{background:#bbf7d0;color:#16a34a}
+.tag-normal{background:#e2e8f0;color:#64748b}
+.basis-content{font-size:13px;line-height:1.8;color:#475569}
+.basis-content p{margin-bottom:8px}
+.basis-content .warn{color:#dc2626;font-weight:500}
+.basis-content ul{padding-left:20px;margin:4px 0}
+.basis-content li{margin-bottom:2px}
+.version{position:fixed;bottom:8px;right:12px;font-size:11px;color:#94a3b8;background:rgba(255,255,255,.9);padding:2px 8px;border-radius:4px}
+.calc-btn{padding:10px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;min-height:40px;transition:background .2s}
+.calc-btn:hover{background:#2563eb}
+.summary-stat{display:inline-block;background:#eff6ff;padding:4px 10px;border-radius:6px;font-size:13px;margin:2px 4px 2px 0;color:#1e40af}
+.fair-odds{font-size:12px;color:#64748b;margin-top:4px;text-align:center}
+@media(max-width:400px){.prob-grid{grid-template-columns:1fr}.btn{padding:6px 12px;font-size:13px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>🎲 骰子概率计算器</h1>
+<p>支持 2~5 颗骰子 · 概率分析 · 下注计算 · 组合枚举</p>
+</header>
+
+<section class="card">
+<h2>⚙️ 基本设置</h2>
+<div class="form-row">
+<label>骰子数量：</label>
+<div class="btn-group" id="diceBtns">
+<button class="btn" data-v="2">2 颗</button>
+<button class="btn active" data-v="3">3 颗</button>
+<button class="btn" data-v="4">4 颗</button>
+<button class="btn" data-v="5">5 颗</button>
+</div>
+</div>
+</section>
+
+<section class="card">
+<h2>📊 概率概览</h2>
+<div id="summaryStats"></div>
+<div class="prob-grid" id="probGrid"></div>
+<h3>📈 点数和分布</h3>
+<div class="table-wrap" id="sumDistWrap"></div>
+</section>
+
+<section class="card">
+<h2>💰 下注计算器</h2>
+<div class="form-row">
+<label>下注类型：</label>
+<select id="betType" style="flex:1;min-width:140px">
+<option value="big">大（和 > 中位值，排除豹子）</option>
+<option value="small">小（和 ≤ 中位值，排除豹子）</option>
+<option value="leopard">豹子（全部相同）</option>
+<option value="specificLeopard">特定豹子（如全1）</option>
+<option value="straight">顺子（连续点数）</option>
+<option value="specificSum">特定点数和</option>
+<option value="sumRange">自定义范围和</option>
+<option value="specificNumber">特定点数出现（≥1颗）</option>
+</select>
+</div>
+<div id="betParams"></div>
+<div class="form-row">
+<label>赔率（x:1）：</label>
+<input type="number" id="payout" value="1" min="0" step="0.1" style="width:80px">
+<button class="calc-btn" id="calcBtn">计算</button>
+</div>
+<div id="betResult"></div>
+</section>
+
+<section class="card">
+<h2>📋 组合枚举</h2>
+<div id="enumSummary"></div>
+<div class="enum-filters" id="enumFilters">
+<label>类型：</label>
+<select id="filterType">
+<option value="all">全部</option>
+<option value="leopard">豹子</option>
+<option value="straight">顺子</option>
+<option value="normal">普通</option>
+</select>
+<label>和范围：</label>
+<input type="number" id="filterMin" placeholder="最小" style="width:55px">
+<span>~</span>
+<input type="number" id="filterMax" placeholder="最大" style="width:55px">
+</div>
+<div class="table-wrap" style="max-height:360px" id="enumTableWrap"></div>
+</section>
+
+<section class="card">
+<h2>📖 数据依据</h2>
+<div class="basis-content" id="basisContent"></div>
+</section>
+</div>
+
+<div class="version">v1.0.0-骰子概率计算 20261021</div>
+
+<script>
+(function(){
+"use strict";
+
+// ===== Math Core =====
+function factorial(n){if(n<=1)return 1;let r=1;for(let i=2;i<=n;i++)r*=i;return r}
+
+function sumDistribution(n){
+const maxS=6*n;
+let dp=new Array(maxS+1).fill(0);
+for(let f=1;f<=6;f++)dp[f]=1;
+for(let d=2;d<=n;d++){
+const nd=new Array(maxS+1).fill(0);
+for(let s=d;s<=6*d;s++){
+for(let f=1;f<=6;f++){
+if(s-f>=0&&dp[s-f]>0)nd[s]+=dp[s-f];
+}}
+dp=nd;
+}
+const res={};
+for(let s=n;s<=maxS;s++)if(dp[s]>0)res[s]=dp[s];
+return res;
+}
+
+function getStraightCount(n){return(7-n)*factorial(n)}
+
+function getBigSmall(n){
+const dist=sumDistribution(n);
+const total=Math.pow(6,n);
+const mid=Math.floor(7*n/2);
+let smallW=0,bigW=0;
+for(const s in dist){
+const sv=parseInt(s);
+if(sv<=mid)smallW+=dist[s];else bigW+=dist[s];
+}
+let lSmall=0,lBig=0;
+for(let v=1;v<=6;v++){
+if(n*v<=mid)lSmall++;else lBig++;
+}
+return{small:smallW-lSmall,big:bigW-lBig,leopard:6,total:total,mid:mid};
+}
+
+function enumerateCombos(n){
+const results=[];
+function gen(combo,sv){
+if(combo.length===n){
+const sum=combo.reduce((a,b)=>a+b,0);
+const counts={};combo.forEach(v=>{counts[v]=(counts[v]||0)+1});
+let denom=1;for(const c of Object.values(counts))denom*=factorial(c);
+const perms=factorial(n)/denom;
+const isLep=combo.every(v=>v===combo[0]);
+let isStr=true;
+const sorted=[...new Set(combo)].sort((a,b)=>a-b);
+if(sorted.length!==n)isStr=false;
+else for(let i=1;i<sorted.length;i++)if(sorted[i]!==sorted[i-1]+1){isStr=false;break;}
+results.push({combo:[...combo],sum,perms,prob:perms/Math.pow(6,n),isLep,isStr});
+return;
+}
+for(let v=sv;v<=6;v++){combo.push(v);gen(combo,v);combo.pop();}
+}
+gen([],1);
+return results;
+}
+
+// ===== State =====
+let S={dice:3,betType:'big',payout:1,combos:[],filters:{type:'all',min:null,max:null}};
+
+function refreshCombos(){S.combos=enumerateCombos(S.dice)}
+
+// ===== Render =====
+function render(){
+renderOverview();
+renderSumDist();
+renderBetParams();
+renderEnum();
+renderBasis();
+}
+
+function renderOverview(){
+const n=S.dice;
+const total=Math.pow(6,n);
+const dist=sumDistribution(n);
+const bs=getBigSmall(n);
+const str=getStraightCount(n);
+const minS=n,maxS=6*n;
+let modeS=0,modeW=0;
+for(const s in dist)if(dist[s]>modeW){modeW=dist[s];modeS=parseInt(s);}
+
+document.getElementById('summaryStats').innerHTML=
+`<span class="summary-stat">总结果数：${total}</span>`+
+`<span class="summary-stat">和范围：${minS}~${maxS}</span>`+
+`<span class="summary-stat">最可能和：${modeS}（${modeW}种）</span>`+
+`<span class="summary-stat">去重组合：${S.combos.length}种</span>`;
+
+const items=[
+{emoji:'🎯',label:'豹子（全同）',w:bs.leopard,t:total},
+{emoji:'📏',label:'顺子（连续）',w:str,t:total},
+{emoji:'🔽',label:'小（≤'+bs.mid+'）',w:bs.small,t:total},
+{emoji:'🔼',label:'大（>'+bs.mid+'）',w:bs.big,t:total}
+];
+document.getElementById('probGrid').innerHTML=items.map(it=>{
+const p=it.w/it.t;
+return`<div class="prob-item"><div class="emoji">${it.emoji}</div><div class="label">${it.label}</div><div class="value">${(p*100).toFixed(2)}%</div><div class="sub">${it.w}/${it.t}</div></div>`;
+}).join('');
+}
+
+function renderSumDist(){
+const n=S.dice;
+const dist=sumDistribution(n);
+const total=Math.pow(6,n);
+let maxW=0;
+for(const s in dist)if(dist[s]>maxW)maxW=dist[s];
+let html='<table class="sum-table"><thead><tr><th>和</th><th>方案数</th><th>概率</th><th class="bar-cell">分布</th></tr></thead><tbody>';
+for(let s=n;s<=6*n;s++){
+const w=dist[s]||0;
+const p=w/total;
+const bw=maxW>0?(w/maxW*100):0;
+html+=`<tr><td><b>${s}</b></td><td>${w}</td><td>${(p*100).toFixed(2)}%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${bw}%"></div></div></td></tr>`;
+}
+html+='</tbody></table>';
+document.getElementById('sumDistWrap').innerHTML=html;
+}
+
+function renderBetParams(){
+const n=S.dice;
+const type=S.betType;
+let html='';
+switch(type){
+case'specificLeopard':
+html=`<div class="form-row"><label>特定值（1-6）：</label><input type="number" id="bp1" min="1" max="6" value="1"></div>`;
+break;
+case'specificSum':
+html=`<div class="form-row"><label>目标和（${n}~${6*n}）：</label><input type="number" id="bp1" min="${n}" max="${6*n}" value="${Math.floor(7*n/2)+1}"></div>`;
+break;
+case'sumRange':
+html=`<div class="form-row"><label>最小和：</label><input type="number" id="bp1" min="${n}" max="${6*n}" value="${n}"><label>最大和：</label><input type="number" id="bp2" min="${n}" max="${6*n}" value="${6*n}"></div><div class="form-row"><label><input type="checkbox" id="bpExLep"> 排除豹子</label></div>`;
+break;
+case'specificNumber':
+html=`<div class="form-row"><label>特定点数（1-6）：</label><input type="number" id="bp1" min="1" max="6" value="1"></div>`;
+break;
+default:html='';
+}
+document.getElementById('betParams').innerHTML=html;
+}
+
+function calcBet(){
+const n=S.dice;
+const type=S.betType;
+const total=Math.pow(6,n);
+const dist=sumDistribution(n);
+const bs=getBigSmall(n);
+const payout=parseFloat(document.getElementById('payout').value)||0;
+let winW=0,desc='';
+
+switch(type){
+case'big':
+winW=bs.big;desc=`大：和 > ${bs.mid}，排除豹子`;break;
+case'small':
+winW=bs.small;desc=`小：和 ≤ ${bs.mid}，排除豹子`;break;
+case'leopard':
+winW=6;desc='豹子：全部相同';break;
+case'specificLeopard':{
+const v=parseInt(document.getElementById('bp1').value)||1;
+if(v<1||v>6){showBetError('请输入1~6的值');return;}
+winW=1;desc=`特定豹子：全部为 ${v}`;break;
+}
+case'straight':
+winW=getStraightCount(n);desc='顺子：所有骰子连续';break;
+case'specificSum':{
+const sv=parseInt(document.getElementById('bp1').value)||0;
+if(sv<n||sv>6*n){showBetError(`和范围应为 ${n}~${6*n}`);return;}
+winW=dist[sv]||0;desc=`特定点数和：${sv}`;break;
+}
+case'sumRange':{
+const mn=parseInt(document.getElementById('bp1').value)||n;
+const mx=parseInt(document.getElementById('bp2').value)||(6*n);
+const exLep=document.getElementById('bpExLep')?.checked||false;
+if(mn>mx){showBetError('最小和不能大于最大和');return;}
+for(let s=Math.max(mn,n);s<=Math.min(mx,6*n);s++){
+winW+=(dist[s]||0);
+}
+if(exLep){
+for(let v=1;v<=6;v++){
+const ls=n*v;
+if(ls>=mn&&ls<=mx)winW--;
+}
+}
+desc=`范围和：${mn}~${mx}`+(exLep?'（排除豹子）':'');
+break;
+}
+case'specificNumber':{
+const fv=parseInt(document.getElementById('bp1').value)||1;
+if(fv<1||fv>6){showBetError('请输入1~6的值');return;}
+winW=total-Math.pow(5,n);
+desc=`至少一颗显示 ${fv}`;break;
+}
+}
+
+const loseW=total-winW;
+const p=winW/total;
+const ev=p*payout-(1-p);
+const rtp=p*(payout+1);
+const fairPayout=winW>0?(loseW/winW):Infinity;
+
+let cls=ev>0.0001?'positive':(ev<-0.0001?'negative':'zero');
+let evLabel=ev>0?'玩家优势':'庄家优势';
+let edge=Math.abs(ev)*100;
+
+let html=`<div class="result-box ${cls}">`;
+html+=`<div style="font-weight:600;margin-bottom:8px">📊 ${desc}</div>`;
+html+=`<div class="result-row"><span class="label">总结果数</span><span class="val">${total}</span></div>`;
+html+=`<div class="result-row"><span class="label">获胜结果数</span><span class="val">${winW}</span></div>`;
+html+=`<div class="result-row"><span class="label">失败结果数</span><span class="val">${loseW}</span></div>`;
+html+=`<div class="result-divider"></div>`;
+html+=`<div class="result-row"><span class="label">胜率</span><span class="val">${(p*100).toFixed(4)}%（${winW}/${total}）</span></div>`;
+html+=`<div class="result-row"><span class="label">败率</span><span class="val">${((1-p)*100).toFixed(4)}%</span></div>`;
+html+=`<div class="result-divider"></div>`;
+html+=`<div class="result-row"><span class="label">赔率</span><span class="val">${payout}:1</span></div>`;
+html+=`<div class="ev-display ${cls}">期望值 EV = ${ev>=0?'+':''}${ev.toFixed(6)}</div>`;
+html+=`<div class="result-row"><span class="label">每投1元平均回收</span><span class="val">${rtp.toFixed(4)}元</span></div>`;
+html+=`<div class="result-row"><span class="label">${evLabel}</span><span class="val">${edge.toFixed(4)}%</span></div>`;
+if(fairPayout!==Infinity&&fairPayout>0){
+html+=`<div class="fair-odds">💡 公平赔率（EV=0）：${fairPayout.toFixed(4)}:1</div>`;
+}else if(winW===0){
+html+=`<div class="fair-odds">⚠️ 获胜结果数为0，此下注不可能赢</div>`;
+}
+html+=`</div>`;
+document.getElementById('betResult').innerHTML=html;
+}
+
+function showBetError(msg){
+document.getElementById('betResult').innerHTML=`<div class="result-box negative"><div style="color:#dc2626;font-weight:600">⚠️ ${msg}</div></div>`;
+}
+
+function renderEnum(){
+const n=S.dice;
+const total=Math.pow(6,n);
+const combos=S.combos;
+const lepCount=combos.filter(c=>c.isLep).length;
+const strCount=combos.filter(c=>c.isStr).length;
+const totalPerms=combos.reduce((s,c)=>s+c.perms,0);
+
+document.getElementById('enumSummary').innerHTML=
+`<span class="summary-stat">去重组合：${combos.length}</span>`+
+`<span class="summary-stat">排列总数：${totalPerms}</span>`+
+`<span class="summary-stat">豹子组合：${lepCount}</span>`+
+`<span class="summary-stat">顺子组合：${strCount}</span>`;
+
+const ft=S.filters.type;
+const fmin=S.filters.min;
+const fmax=S.filters.max;
+
+let filtered=combos.filter(c=>{
+if(ft==='leopard'&&!c.isLep)return false;
+if(ft==='straight'&&!c.isStr)return false;
+if(ft==='normal'&&(c.isLep||c.isStr))return false;
+if(fmin!==null&&c.sum<fmin)return false;
+if(fmax!==null&&c.sum>fmax)return false;
+return true;
+});
+
+let html='<table class="combo-table"><thead><tr><th>#</th><th>组合</th><th>和</th><th>类型</th><th>排列数</th><th>概率</th></tr></thead><tbody>';
+filtered.forEach((c,i)=>{
+const rowCls=c.isLep?'leopard':(c.isStr?'straight':'');
+const tag=c.isLep?'<span class="tag tag-leopard">豹子</span>':(c.isStr?'<span class="tag tag-straight">顺子</span>':'<span class="tag tag-normal">普通</span>');
+html+=`<tr class="${rowCls}"><td>${i+1}</td><td>${c.combo.join('-')}</td><td>${c.sum}</td><td>${tag}</td><td>${c.perms}</td><td>${(c.prob*100).toFixed(3)}%</td></tr>`;
+});
+html+='</tbody></table>';
+if(filtered.length===0)html='<div style="text-align:center;padding:20px;color:#94a3b8">无匹配组合</div>';
+document.getElementById('enumTableWrap').innerHTML=html;
+}
+
+function renderBasis(){
+document.getElementById('basisContent').innerHTML=`
+<p><b>本工具所有计算基于经典数学理论，无涉及国家标准（GB）。</b></p>
+<p><b>1. 数学基础：</b></p>
+<ul>
+<li>古典概率（拉普拉斯定义）：P(A) = |A| / |Ω|</li>
+<li>组合数学：排列、组合、多重集排列</li>
+<li>动态规划：用于计算点数和分布</li>
+</ul>
+<p><b>2. 点数和分布算法：</b></p>
+<p>设 f(d,s) = d 颗骰子点数和为 s 的方案数</p>
+<p>递推：f(d,s) = Σᵢ₌₁⁶ f(d-1, s-i)</p>
+<p>初始：f(1,i) = 1（i=1,2,...,6）</p>
+<p>等价公式（容斥原理）：f(n,s) = Σₖ₌₀^⌊(s-n)/6⌋ (-1)^k × C(n,k) × C(s-6k-1, n-1)</p>
+<p><b>3. 豹子（全同）：</b></p>
+<p>n 颗骰子全部显示相同点数，共 6 种。P(豹子) = 6/6ⁿ</p>
+<p><b>4. 顺子（连续）：</b></p>
+<p>所有骰子显示连续点数，方案数 = (7-n) × n!</p>
+<p class="warn">⚠️ 顺子定义属民间通行说法，无强制标准。不同场景对"顺子"的定义可能不同。</p>
+<p><b>5. 大/小：</b></p>
+<p>中位值 = ⌊7n/2⌋。小：和 ≤ 中位值（排除豹子）；大：和 > 中位值（排除豹子）。</p>
+<p class="warn">⚠️ 大小规则属博彩行业（骰宝/Sic Bo）通行规则，无国家强制标准。不同赌场规则可能不同。3颗骰子时：小=4~10，大=11~17（均排除豹子）。</p>
+<p><b>6. 赔率与期望值：</b></p>
+<p>赔率由用户自行输入，本工具不提供标准赔率。期望值 EV = p × 赔率 - (1-p)。实际赔率因平台/赌场而异。</p>
+<p><b>7. 组合枚举：</b></p>
+<p>使用多重集组合（去重），数量 = C(n+5, n)。2颗: 21种 | 3颗: 56种 | 4颗: 126种 | 5颗: 252种</p>
+`;
+}
+
+// ===== Events =====
+document.getElementById('diceBtns').addEventListener('click',function(e){
+const btn=e.target.closest('.btn');
+if(!btn)return;
+document.querySelectorAll('#diceBtns .btn').forEach(b=>b.classList.remove('active'));
+btn.classList.add('active');
+S.dice=parseInt(btn.dataset.v);
+refreshCombos();
+render();
+});
+
+document.getElementById('betType').addEventListener('change',function(){
+S.betType=this.value;
+renderBetParams();
+document.getElementById('betResult').innerHTML='';
+});
+
+document.getElementById('calcBtn').addEventListener('click',calcBet);
+
+document.getElementById('filterType').addEventListener('change',function(){
+S.filters.type=this.value;
+renderEnum();
+});
+document.getElementById('filterMin').addEventListener('input',function(){
+S.filters.min=this.value===''?null:parseInt(this.value);
+renderEnum();
+});
+document.getElementById('filterMax').addEventListener('input',function(){
+S.filters.max=this.value===''?null:parseInt(this.value);
+renderEnum();
+});
+
+// ===== Init =====
+refreshCombos();
+render();
+
+})();
+</script>
+</body>
+</html>

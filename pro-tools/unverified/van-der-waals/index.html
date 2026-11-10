@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>范德华方程真实气体压强计算器 v2.0.2-修审查问题 20261108</title>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --accent: #e74c3c;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #2c3e50;
+  --border: #dce1e8;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #c0392b;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+.header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: #fff;
+  padding: 24px 32px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.header h1 { font-size: 1.6em; font-weight: 700; letter-spacing: 1px; }
+.header p { font-size: 0.9em; opacity: 0.85; margin-top: 4px; }
+.tab-nav {
+  display: flex;
+  background: var(--card);
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.tab-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 14px 18px;
+  border: none;
+  background: transparent;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #7f8c8d;
+  cursor: pointer;
+  transition: all 0.25s;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--primary); background: #f0f4f8; }
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: #eaf2f8;
+}
+.tab-content { display: none; padding: 28px 32px; max-width: 1100px; margin: 0 auto; }
+.tab-content.active { display: block; }
+.card {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+}
+.card h2 {
+  font-size: 1.2em;
+  color: var(--primary);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+}
+.card h3 { font-size: 1.05em; color: var(--primary-light); margin: 16px 0 8px; }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+  font-size: 0.88em;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 5px;
+}
+.form-group label span.unit { font-weight: 400; color: #999; }
+.form-group input, .form-group select {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 1em;
+  transition: border-color 0.2s;
+  background: #fafbfc;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(41,128,185,0.12);
+}
+.btn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,82,118,0.3); }
+.btn-secondary {
+  background: #ecf0f1;
+  color: var(--text);
+  margin-left: 10px;
+}
+.btn-secondary:hover { background: #dfe6e9; }
+.result-box {
+  background: #eaf7ed;
+  border: 1.5px solid #a3d9b1;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+.result-box.error {
+  background: #fdecea;
+  border-color: #f5b7b1;
+}
+.result-box.warning {
+  background: #fef9e7;
+  border-color: #f9e79f;
+}
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed #d5dbdb;
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { font-weight: 600; color: #555; }
+.result-value { font-family: "JetBrains Mono", "Fira Code", monospace; font-size: 1.05em; font-weight: 700; color: var(--primary); }
+.result-value.negative { color: var(--danger); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.92em;
+}
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+th { background: #eaf2f8; font-weight: 600; color: var(--primary); }
+tr:nth-child(even) { background: #f9fafb; }
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.6;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  max-height: 600px;
+  overflow-y: auto;
+}
+.test-item {
+  padding: 12px 16px;
+  margin: 8px 0;
+  border-radius: 6px;
+  border-left: 4px solid #ccc;
+  background: #fafbfc;
+}
+.test-item.pass { border-left-color: var(--success); background: #eafaf1; }
+.test-item.fail { border-left-color: var(--danger); background: #fdedec; }
+.test-title { font-weight: 700; font-size: 0.95em; }
+.test-detail { font-size: 0.88em; color: #666; margin-top: 4px; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.78em;
+  font-weight: 700;
+  margin-left: 8px;
+}
+.badge-pass { background: #d5f5e3; color: #1e8449; }
+.badge-fail { background: #fadbd8; color: #922b21; }
+.alert-box {
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 0.93em;
+}
+.alert-danger { background: #fdedec; border: 1.5px solid #f5b7b1; color: #922b21; }
+.alert-warning { background: #fef9e7; border: 1.5px solid #f9e79f; color: #7d6608; }
+.alert-info { background: #eaf2f8; border: 1.5px solid #aed6f1; color: #1a5276; }
+.doc-section { margin-bottom: 24px; }
+.doc-section p { margin-bottom: 10px; text-align: justify; }
+.formula-block {
+  background: #f0f4f8;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+  font-family: "Times New Roman", serif;
+  font-size: 1.15em;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.72em;
+  color: #aaa;
+  z-index: 999;
+  font-family: monospace;
+}
+.safety-box {
+  background: linear-gradient(135deg, #fdedec 0%, #fef9e7 100%);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 24px;
+  margin: 16px 0;
+}
+.safety-box h3 { color: var(--danger); }
+@media (max-width: 768px) {
+  .tab-btn { padding: 10px 12px; font-size: 0.85em; min-width: 80px; }
+  .tab-content { padding: 16px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .header h1 { font-size: 1.2em; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>范德华方程真实气体压强计算器</h1>
+  <p>Van der Waals Equation of State — Real Gas Pressure Calculator</p>
+</div>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('calculator')">📐 计算工具</button>
+  <button class="tab-btn" onclick="switchTab('source')">📄 源码</button>
+  <button class="tab-btn" onclick="switchTab('tests')">🧪 单元测试</button>
+  <button class="tab-btn" onclick="switchTab('docs')">📖 专业说明</button>
+  <button class="tab-btn" onclick="switchTab('safety')">⚠️ 安全声明</button>
+</nav>
+
+<!-- ==================== TAB 1: CALCULATOR ==================== -->
+<div id="tab-calculator" class="tab-content active">
+  <div class="card">
+    <h2>输入参数</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>气体种类（预设常数）</label>
+        <select id="gasSelect" onchange="loadGasPreset()">
+          <option value="custom">— 自定义 —</option>
+          <option value="He">He（氦气）</option>
+          <option value="N2">N₂（氮气）</option>
+          <option value="O2">O₂（氧气）</option>
+          <option value="CO2" selected>CO₂（二氧化碳）</option>
+          <option value="H2O">H₂O（水蒸气）</option>
+          <option value="CH4">CH₄（甲烷）</option>
+          <option value="NH3">NH₃（氨气）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>物质的量 n <span class="unit">(mol)</span></label>
+        <input type="number" id="inputN" value="1" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>体积 V <span class="unit">(L)</span></label>
+        <input type="number" id="inputV" value="1" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>温度 T <span class="unit">(K)</span></label>
+        <input type="number" id="inputT" value="300" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>范德华常数 a <span class="unit">(atm·L²/mol²)</span></label>
+        <input type="number" id="inputA" value="3.592" step="any" min="0">
+      </div>
+      <div class="form-group">
+        <label>范德华常数 b <span class="unit">(L/mol)</span></label>
+        <input type="number" id="inputB" value="0.04267" step="any" min="0">
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:8px;">
+      <button class="btn btn-primary" onclick="calculate()">计 算</button>
+      <button class="btn btn-secondary" onclick="resetForm()">重 置</button>
+    </div>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <div class="card">
+    <h2>内置气体范德华常数表</h2>
+    <p style="font-size:0.88em;color:#777;margin-bottom:10px;">数据来源：CRC Handbook of Chemistry and Physics, 100th Edition, Section 5; van der Waals JD. Over de Continuïteit van den Gas- en Vloeistoftoestand. 1873.</p>
+    <div class="alert-box alert-warning" style="margin-bottom:10px;"><strong>⚠️ 来源未核验提示：</strong>本表 a、b、Tc、Pc 数值仅声称引自上述手册，未经逐项核对原文献，亦无独立来源佐证。Tc、Pc 列同样未核验（本工具计算中未使用 Tc、Pc，仅供对照）。本工具参数为经验值，未经标准核对，使用前请自行查证。</div>
+    <table>
+      <thead>
+        <tr><th>气体</th><th>分子式</th><th>a (atm·L²/mol²)</th><th>b (L/mol)</th><th>临界温度 Tc (K)</th><th>临界压强 Pc (atm)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>氦气</td><td>He</td><td>0.0346</td><td>0.0238</td><td>5.19</td><td>2.27</td></tr>
+        <tr><td>氮气</td><td>N₂</td><td>1.390</td><td>0.03913</td><td>126.2</td><td>33.9</td></tr>
+        <tr><td>氧气</td><td>O₂</td><td>1.360</td><td>0.03183</td><td>154.6</td><td>50.4</td></tr>
+        <tr><td>二氧化碳</td><td>CO₂</td><td>3.592</td><td>0.04267</td><td>304.1</td><td>73.8</td></tr>
+        <tr><td>水蒸气</td><td>H₂O</td><td>5.464</td><td>0.03049</td><td>647.1</td><td>218.3</td></tr>
+        <tr><td>甲烷</td><td>CH₄</td><td>2.253</td><td>0.04278</td><td>190.6</td><td>45.99</td></tr>
+        <tr><td>氨气</td><td>NH₃</td><td>4.170</td><td>0.03707</td><td>405.5</td><td>112.8</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== TAB 2: SOURCE CODE ==================== -->
+<div id="tab-source" class="tab-content">
+  <div class="card">
+    <h2>核心计算函数源码（JavaScript）</h2>
+    <p style="font-size:0.88em;color:#777;margin-bottom:12px;">以下为完整 JSDoc 注释的核心函数。所有公式均标注文献出处。</p>
+    <pre id="sourceCode"></pre>
+  </div>
+</div>
+
+<!-- ==================== TAB 3: UNIT TESTS ==================== -->
+<div id="tab-tests" class="tab-content">
+  <div class="card">
+    <h2>单元测试（10 项）</h2>
+    <p style="font-size:0.88em;color:#777;margin-bottom:12px;">覆盖正常值、零值、负数、极高值、极低值、NaN、除零边界等场景。点击运行查看结果。</p>
+    <button class="btn btn-primary" onclick="runAllTests()" style="margin-bottom:16px;">▶ 运行全部测试</button>
+    <div id="testSummary" style="margin-bottom:12px;font-weight:700;"></div>
+    <div id="testResults"></div>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: DOCUMENTATION ==================== -->
+<div id="tab-docs" class="tab-content">
+  <div class="card">
+    <h2>专业说明文档</h2>
+
+    <div class="doc-section">
+      <h3>一、公式概述与文献来源</h3>
+      <p>范德华方程（van der Waals equation）由荷兰物理学家 Johannes Diderik van der Waals 于 1873 年在其博士论文《Over de Continuïteit van den Gas- en Vloeistoftoestand》（论气体和液体状态的连续性）中提出。该方程是对理想气体状态方程 PV = nRT 的最早修正之一，通过引入两个经验常数 a 和 b 来分别描述分子间吸引力和分子自身体积对气体行为的影响。van der Waals 因此项工作获得 1910 年诺贝尔物理学奖。</p>
+      <div class="formula-block">
+        (P + a·n²/V²) · (V − n·b) = n·R·T
+      </div>
+      <p>整理后得到压强的显式表达式：</p>
+      <div class="formula-block">
+        P = n·R·T / (V − n·b) − a·n² / V²
+      </div>
+      <p>其中：P 为气体压强（atm），V 为容器体积（L），T 为热力学温度（K），n 为气体的物质的量（mol），R = 0.08206 L·atm/(mol·K) 为通用气体常数，a 为衡量分子间吸引力的范德华常数（atm·L²/mol²），b 为衡量分子自身体积的范德华常数（L/mol）。</p>
+      <p>气体常数 a、b 的数值来源于 CRC Handbook of Chemistry and Physics（第 100 版，第 5 节），这些数值通过拟合实验 PVT 数据获得。每种气体的 a、b 值也可通过临界参数计算：a = 27R²Tc²/(64Pc)，b = RTc/(8Pc)。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>二、计算步骤逐步解释</h3>
+      <p><strong>步骤 1：验证输入合法性。</strong>检查 n ≥ 0、V > 0、T ≥ 0、a ≥ 0、b ≥ 0。若 n = 0，则 P = 0（无气体分子则无压强）。若 V ≤ 0 或 T < 0，返回错误。若 V = n·b（即自由体积为零），则分母为零，方程无物理意义，返回错误。</p>
+      <p><strong>步骤 2：计算理想气体压强。</strong>P_ideal = nRT/V。这是基准对照值，假设分子无体积、无相互作用力。</p>
+      <p><strong>步骤 3：计算排斥修正项。</strong>有效自由体积 V_free = V − nb。由于分子占据一定空间，实际可用于分子运动的体积小于容器体积。当 V 接近 nb 时，V_free 趋近于零，压强急剧上升。这一项使 P_vdw 的分子运动贡献部分大于 P_ideal。</p>
+      <p><strong>步骤 4：计算吸引修正项。</strong>P_attraction = an²/V²。分子间的范德华吸引力使气体对容器壁的碰撞力减弱，等效于降低了压强。这一项从总压强中减去。</p>
+      <p><strong>步骤 5：合成真实气体压强。</strong>P_vdw = nRT/(V−nb) − an²/V²。第一项（排斥修正）使压强增大，第二项（吸引修正）使压强减小，两者竞争决定最终结果。</p>
+      <p><strong>步骤 6：计算偏差。</strong>偏差百分比 = (P_vdw − P_ideal) / P_ideal × 100%。正值表示真实压强大于理想预测（排斥效应主导），负值表示真实压强小于理想预测（吸引效应主导）。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>三、适用场景与不适用场景</h3>
+      <p><strong>适用场景：</strong></p>
+      <p>① 中等压强（约 1–50 atm）和中等温度（高于临界温度或远离临界点）条件下的工程估算。在此范围内，范德华方程能定性正确地预测真实气体偏离理想行为的趋势。</p>
+      <p>② 教学演示：用于说明分子间作用力和分子体积对气体宏观性质的影响机制。</p>
+      <p>③ 初步筛选：在化工流程设计的早期阶段，快速估算气体压缩因子 Z = PV/(nRT) 的大致范围。</p>
+      <p>④ 定性分析：判断在给定条件下气体是表现为"排斥主导"（Z > 1）还是"吸引主导"（Z < 1）。</p>
+      <p><strong>不适用场景：</strong></p>
+      <p>① 高压条件（>100 atm）：范德华方程的定量精度显著下降。在极高压力下，分子间排斥力的实际行为远比简单的 (V−nb) 修正复杂，方程可能给出不切实际的压强值。</p>
+      <p>② 临界点附近：在临界温度 Tc 和临界压强 Pc 附近，气体的 PVT 行为极为复杂，范德华方程虽然能定性描述气液相变的某些特征（如 van der Waals 环），但定量预测临界指数与实验值不符（平均场理论局限）。</p>
+      <p>③ 低温液化区域：当温度低于临界温度且压强较高时，气体可能发生液化。范德华方程不能正确描述气液两相共存区域的行为（需要 Maxwell 等面积构造）。</p>
+      <p>④ 强极性分子或缔合分子：如 HF、H₂SO₄ 蒸气等，分子间存在氢键等强相互作用，简单的两参数范德华方程无法准确描述。</p>
+      <p>⑤ 量子气体：在极低温下，He 等轻气体表现出显著的量子效应（如 He-4 的超流转变），经典范德华方程完全不适用。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>四、临床/工程意义</h3>
+      <p><strong>临床医学领域：</strong>在呼吸医学和麻醉学中，理解真实气体行为至关重要。例如：① 高压氧治疗（HBOT）中，舱内氧分压可达 2–3 atm，此时 O₂ 的真实行为与理想气体有可测量的偏差，影响溶解氧量的计算。② 麻醉气体（如 N₂O、 sevoflurane 蒸气）在高压钢瓶中的储存量估算需要考虑真实气体效应。③ 深潜医学中，潜水员呼吸的混合气体在深水高压下偏离理想行为，影响减压病的风险评估。④ CO₂ 在腹腔镜手术中用于建立气腹，其高压行为影响腹腔内压的精确控制。</p>
+      <p><strong>化学工程领域：</strong>① 气体压缩机的设计需要准确预测不同级间压强下气体的 PVT 行为。② 天然气管道输送中，CH₄ 在高压下的压缩因子直接影响流量计量。③ 超临界流体萃取技术（如超临界 CO₂ 萃取）中，操作条件通常在临界点附近，需要更精确的状态方程。④ 化工反应器设计中，气相反应的平衡计算需要真实气体的逸度系数。</p>
+      <p><strong>物理与材料科学：</strong>① 气体液化工艺（如 Linde 过程）的设计依赖对真实气体节流膨胀行为的准确理解。② 临界现象研究虽然已超越范德华方程的定量能力，但其定性框架仍是理解相变理论的起点。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>五、已知局限与误差来源</h3>
+      <p>① <strong>模型简化：</strong>范德华方程假设分子间吸引力与距离的关系可以简化为与密度成正比的平均场修正（an²/V²），而实际分子间势能（如 Lennard-Jones 6-12 势）远比这复杂。</p>
+      <p>② <strong>硬球排斥模型：</strong>参数 b 将分子视为不可压缩的硬球，但实际分子的排斥势是渐变的，且与温度有关。</p>
+      <p>③ <strong>两参数局限：</strong>仅用 a、b 两个参数无法同时准确拟合 PVT 表面和蒸气压数据。更精确的方程如 Peng-Robinson（1976）引入温度依赖的吸引力项，Soave-Redlich-Kwong（1972）引入偏心因子，三参数对应态原理显著提高精度。</p>
+      <p>④ <strong>误差量级：</strong>在远离临界点的温和条件下（T > 2Tc，P < 10 atm），范德华方程对压缩因子 Z 的预测误差通常在 5–15%。在临界点附近，误差可达 20–50% 或更高。对于极性分子（如 H₂O），误差更大。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>六、精度与误差说明</h3>
+      <div class="alert-box alert-info">
+        <strong>① 算准了什么：</strong>本工具严格按照范德华方程的数学公式进行计算，在给定 a、b 参数和 n、V、T 输入的前提下，数值计算本身不存在公式实现错误。浮点运算精度受 IEEE 754 双精度限制（约 15–16 位有效数字），在常规输入范围内数值误差可忽略。
+      </div>
+      <div class="alert-box alert-warning">
+        <strong>② 哪些因素没算进去：</strong>本工具仅实现范德华方程这一特定模型。未考虑：温度对 a、b 的修正；多组分混合气体的交叉项（混合规则）；气液相变行为；量子效应；分子内部自由度（振动、转动）对热力学性质的贡献；实际气体在极端条件下的离解或电离。
+      </div>
+      <div class="alert-box alert-danger">
+        <strong>③ 误差大概多大：</strong>范德华方程本身是近似模型。在温和条件下（低压、高温），对压强的预测误差约 5–15%。在临界点附近或高压低温条件下，误差可超过 50%。对于精确工程计算，应使用 Peng-Robinson、Soave-Redlich-Kwong 或更高级的多参数状态方程（如 GERG-2008）。本工具的计算结果<strong>不应作为最终工程设计或安全决策的唯一依据</strong>。<br><br>
+        <strong>注：</strong>本框中「5–15%」「超过 50%」等误差数字为经验估计，<strong>无文献来源，未经标准核对</strong>，仅供参考。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 5: SAFETY ==================== -->
+<div id="tab-safety" class="tab-content">
+  <div class="card">
+    <h2>安全声明与使用限制</h2>
+
+    <div class="safety-box">
+      <h3>⚕️ 医疗相关声明</h3>
+      <p style="font-size:1.05em;font-weight:700;color:#922b21;margin:12px 0;">
+        本工具仅供具备专业资质的物理、化学、工程及医学专业人员参考使用，不构成任何诊疗建议、处方建议或临床决策依据。涉及患者安全的实际决策须由具备相应资质的医师或临床物理师做出。
+      </p>
+      <p>在呼吸治疗、高压氧医学、麻醉气体管理等临床场景中，气体压强的精确计算直接关系到患者安全。本工具基于范德华方程这一简化模型，其结果存在已知的方法学局限（详见专业说明文档），不可直接用于临床剂量计算或设备参数设定。</p>
+    </div>
+
+    <div class="alert-box alert-warning">
+      <h3>⚗️ 物理/化学适用范围声明</h3>
+      <p><strong>适用条件：</strong>本工具适用于单组分纯气体在气相状态下的压强估算。输入参数须满足：n ≥ 0 mol，V > 0 L，T ≥ 0 K，a ≥ 0 atm·L²/mol²，b ≥ 0 L/mol。此外须满足 V > nb（自由体积为正）。</p>
+      <p><strong>假设条件：</strong>① 气体为纯组分，非混合物；② 气体处于热力学平衡态；③ 气体未发生相变（未液化或凝固）；④ 范德华常数 a、b 在计算温度范围内视为常数（实际与温度弱相关）。</p>
+      <p><strong>不适用条件：</strong>① 临界点附近的精确计算；② 高压（>100 atm）条件下的工程设计；③ 等离子体或电离气体；④ 量子简并气体（如极低温 He）；⑤ 化学反应中的非平衡态气体。</p>
+    </div>
+
+    <div class="alert-box alert-info">
+      <h3>📋 数据溯源声明</h3>
+      <p>① 范德华方程：van der Waals JD. Over de Continuïteit van den Gas- en Vloeistoftoestand. Doctoral thesis, University of Leiden. 1873.</p>
+      <p>② 气体常数 a、b 数据：CRC Handbook of Chemistry and Physics, 100th Edition (2019-2020), Section 5: Thermodynamics, Electrochemistry, and Kinetics. 具体数值可查该手册"van der Waals Constants"表格。</p>
+      <p>③ 通用气体常数 R = 0.08206 L·atm/(mol·K)：CODATA 推荐值（2018），对应 R = 8.314462618 J/(mol·K)。</p>
+      <p>④ 精确计算建议参考：Peng DY, Robinson DB. Ind Eng Chem Fundam. 1976;15(1):59-64.（Peng-Robinson 方程）；Soave G. Chem Eng Sci. 1972;27(6):1197-1203.（Soave-Redlich-Kwong 方程）。</p>
+    </div>
+
+    <div class="alert-box alert-danger">
+      <h3>🚫 免责条款</h3>
+      <p>本工具开发者不对因使用本工具计算结果而导致的任何直接、间接、附带或后果性损失承担责任。使用者须自行验证计算结果的适用性，并在专业判断的基础上做出决策。在涉及人身安全、环境保护或重大经济利益的场景中，必须使用经过验证的专业软件或咨询相关领域专家。</p>
+    </div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/**
+ * ============================================================
+ * 范德华方程真实气体压强计算器 - 核心计算模块
+ * ============================================================
+ *
+ * 公式：P = nRT/(V - nb) - an²/V²
+ * 文献：van der Waals JD. Over de Continuïteit van den Gas- en
+ *       Vloeistoftoestand. Doctoral thesis, University of Leiden. 1873.
+ *
+ * 气体常数数据来源：CRC Handbook of Chemistry and Physics,
+ *       100th Edition, Section 5.
+ *
+ * @version 2.0.2-修审查问题 20261108
+ */
+
+/**
+ * 内置气体范德华常数表
+ * 数据来源：CRC Handbook of Chemistry and Physics, 100th Edition, Section 5
+ * 文献：van der Waals JD. 1873; CRC Handbook of Chemistry and Physics.
+ *
+ * @constant {Object.<string, {a: number, b: number, name: string, formula: string, Tc: number, Pc: number}>}
+ */
+const GAS_CONSTANTS = {
+  He:  { a: 0.0346,  b: 0.0238,  name: '氦气',   formula: 'He',  Tc: 5.19,   Pc: 2.27   },
+  N2:  { a: 1.390,   b: 0.03913, name: '氮气',   formula: 'N₂',  Tc: 126.2,  Pc: 33.9   },
+  O2:  { a: 1.360,   b: 0.03183, name: '氧气',   formula: 'O₂',  Tc: 154.6,  Pc: 50.4   },
+  CO2: { a: 3.592,   b: 0.04267, name: '二氧化碳', formula: 'CO₂', Tc: 304.1,  Pc: 73.8   },
+  H2O: { a: 5.464,   b: 0.03049, name: '水蒸气',  formula: 'H₂O', Tc: 647.1,  Pc: 218.3  },
+  CH4: { a: 2.253,   b: 0.04278, name: '甲烷',   formula: 'CH₄', Tc: 190.6,  Pc: 45.99  },
+  NH3: { a: 4.170,   b: 0.03707, name: '氨气',   formula: 'NH₃', Tc: 405.5,  Pc: 112.8  }
+};
+
+/**
+ * 通用气体常数 R
+ * 单位：L·atm/(mol·K)
+ * 来源：CODATA 2018 recommended value, R = 8.314462618 J/(mol·K)
+ *       换算：R = 8.314462618 / 101.325 = 0.0820573... ≈ 0.08206
+ *
+ * @constant {number}
+ */
+const R = 0.08206;
+
+/**
+ * 计算范德华方程真实气体压强
+ *
+ * 公式名称：范德华状态方程 (van der Waals Equation of State)
+ * 公式：P = nRT/(V - nb) - an²/V²
+ * 文献：van der Waals JD. Over de Continuïteit van den Gas- en
+ *       Vloeistoftoestand. Doctoral thesis, University of Leiden. 1873.
+ *
+ * @param {number} n - 物质的量 (mol)，须 ≥ 0
+ * @param {number} V - 体积 (L)，须 > 0
+ * @param {number} T - 热力学温度 (K)，须 ≥ 0
+ * @param {number} a - 范德华引力常数 (atm·L²/mol²)，须 ≥ 0
+ * @param {number} b - 范德华体积常数 (L/mol)，须 ≥ 0
+ * @returns {{success: boolean, P_vdw: number|null, P_ideal: number|null, deviation: number|null, error: string|null, warnings: string[]}}
+ *          计算结果对象，包含范德华压强、理想气体压强、偏差百分比及可能的警告信息
+ */
+function calcVanDerWaals(n, V, T, a, b) {
+  var warnings = [];
+
+  // 输入验证
+  if (typeof n !== 'number' || typeof V !== 'number' || typeof T !== 'number' ||
+      typeof a !== 'number' || typeof b !== 'number') {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '输入参数必须为数值类型', warnings: warnings };
+  }
+  if (isNaN(n) || isNaN(V) || isNaN(T) || isNaN(a) || isNaN(b)) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '输入参数包含 NaN（非数值），请检查输入', warnings: warnings };
+  }
+  if (!isFinite(n) || !isFinite(V) || !isFinite(T) || !isFinite(a) || !isFinite(b)) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '输入参数包含无穷大值，超出计算范围', warnings: warnings };
+  }
+  if (n < 0) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '物质的量 n 不能为负值（n = ' + n + ' mol）', warnings: warnings };
+  }
+  if (V <= 0) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '体积 V 必须为正值（当前 V = ' + V + ' L）', warnings: warnings };
+  }
+  if (T < 0) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '热力学温度 T 不能为负值（当前 T = ' + T + ' K）', warnings: warnings };
+  }
+  if (a < 0) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '范德华常数 a 不能为负值', warnings: warnings };
+  }
+  if (b < 0) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '范德华常数 b 不能为负值', warnings: warnings };
+  }
+
+  // n = 0 的特殊情况：无气体分子，压强为零
+  if (n === 0) {
+    return { success: true, P_vdw: 0, P_ideal: 0, deviation: 0,
+             error: null, warnings: ['n = 0 mol，无气体分子，压强为零'] };
+  }
+
+  // 检查自由体积 V - nb
+  var Vfree = V - n * b;
+  if (Vfree <= 0) {
+    return { success: false, P_vdw: null, P_ideal: null, deviation: null,
+             error: '自由体积 V − nb = ' + Vfree.toFixed(6) + ' L ≤ 0，' +
+                    '分子排除体积 nb = ' + (n * b).toFixed(6) + ' L ≥ 容器体积 V = ' + V + ' L，' +
+                    '方程无物理意义。请增大体积或减少物质的量。',
+             warnings: warnings };
+  }
+
+  // 计算理想气体压强
+  // 公式：P_ideal = nRT/V
+  // 文献：理想气体状态方程 (Ideal Gas Law), Clapeyron E. 1834
+  var P_ideal = n * R * T / V;
+
+  // 计算范德华压强
+  // 公式：P_vdw = nRT/(V - nb) - an²/V²
+  // 文献：van der Waals JD. 1873
+  var P_vdw = (n * R * T) / Vfree - a * n * n / (V * V);
+
+  // 计算偏差百分比
+  var deviation = 0;
+  if (P_ideal !== 0) {
+    deviation = ((P_vdw - P_ideal) / P_ideal) * 100;
+  }
+
+  // 生成警告
+  if (P_vdw < 0) {
+    warnings.push('⚠ 计算得到的范德华压强为负值（P = ' + P_vdw.toFixed(4) + ' atm），' +
+                  '这在物理上通常不合理，表明在当前条件下范德华方程失效。' +
+                  '可能原因：温度过低或体积过小，吸引修正项超过排斥修正项。');
+  }
+  if (P_ideal > 100) {
+    warnings.push('⚠ 理想气体压强超过 100 atm，在此高压条件下范德华方程的定量精度显著下降，' +
+                  '建议使用 Peng-Robinson 或 Soave-Redlich-Kwong 方程。' +
+                  '文献：Peng DY, Robinson DB. Ind Eng Chem Fundam. 1976;15(1):59-64.');
+  }
+
+  return {
+    success: true,
+    P_vdw: P_vdw,
+    P_ideal: P_ideal,
+    deviation: deviation,
+    error: null,
+    warnings: warnings
+  };
+}
+
+/**
+ * 加载预设气体常数到输入框
+ * 当用户从下拉菜单选择气体时，自动填充对应的 a、b 值
+ *
+ * @returns {void}
+ */
+function loadGasPreset() {
+  var sel = document.getElementById('gasSelect').value;
+  if (sel !== 'custom' && GAS_CONSTANTS[sel]) {
+    document.getElementById('inputA').value = GAS_CONSTANTS[sel].a;
+    document.getElementById('inputB').value = GAS_CONSTANTS[sel].b;
+  }
+}
+
+/**
+ * 执行计算并渲染结果到页面
+ * 从输入框读取参数，调用 calcVanDerWaals，将结果格式化显示
+ *
+ * @returns {void}
+ */
+function calculate() {
+  var n = parseFloat(document.getElementById('inputN').value);
+  var V = parseFloat(document.getElementById('inputV').value);
+  var T = parseFloat(document.getElementById('inputT').value);
+  var a = parseFloat(document.getElementById('inputA').value);
+  var b = parseFloat(document.getElementById('inputB').value);
+
+  var result = calcVanDerWaals(n, V, T, a, b);
+  var area = document.getElementById('resultArea');
+
+  if (!result.success) {
+    area.innerHTML =
+      '<div class="card"><div class="result-box error">' +
+      '<h3 style="color:#922b21;margin-bottom:8px;">❌ 计算错误</h3>' +
+      '<p>' + result.error + '</p>' +
+      '</div></div>';
+    return;
+  }
+
+  var html = '<div class="card"><div class="result-box">';
+  html += '<h3 style="color:#1e8449;margin-bottom:12px;">✅ 计算结果</h3>';
+
+  html += '<div class="result-row"><span class="result-label">理想气体压强 P_ideal</span>' +
+          '<span class="result-value">' + result.P_ideal.toFixed(6) + ' atm</span></div>';
+
+  var vdwClass = result.P_vdw < 0 ? 'result-value negative' : 'result-value';
+  html += '<div class="result-row"><span class="result-label">范德华压强 P_vdw</span>' +
+          '<span class="' + vdwClass + '">' + result.P_vdw.toFixed(6) + ' atm</span></div>';
+
+  var devColor = Math.abs(result.deviation) > 20 ? '#c0392b' :
+                 Math.abs(result.deviation) > 5 ? '#e67e22' : '#27ae60';
+  html += '<div class="result-row"><span class="result-label">偏差 (P_vdw − P_ideal)/P_ideal</span>' +
+          '<span class="result-value" style="color:' + devColor + '">' +
+          result.deviation.toFixed(4) + ' %</span></div>';
+
+  // 压缩因子 Z
+  var Z = (result.P_vdw * V) / (n * R * T);
+  html += '<div class="result-row"><span class="result-label">压缩因子 Z = PV/(nRT)</span>' +
+          '<span class="result-value">' + Z.toFixed(6) + '</span></div>';
+
+  // Z < 0 时物理上不合理，补充警告（报告条目④）
+  if (Z < 0) {
+    html += '<div class="alert-box alert-warning" style="margin-top:12px;">' +
+            '<strong>⚠️ 警告：</strong>压缩因子 Z 为负值（Z = ' + Z.toFixed(4) + '），物理上不合理，' +
+            '表明当前条件下吸引项主导、范德华方程失效，结果仅供参考。</div>';
+  }
+
+  // 自由体积
+  var Vfree = V - n * b;
+  html += '<div class="result-row"><span class="result-label">自由体积 V − nb</span>' +
+          '<span class="result-value">' + Vfree.toFixed(6) + ' L</span></div>';
+
+  // 排斥修正项
+  var repTerm = (n * R * T) / Vfree;
+  html += '<div class="result-row"><span class="result-label">排斥修正项 nRT/(V−nb)</span>' +
+          '<span class="result-value">' + repTerm.toFixed(6) + ' atm</span></div>';
+
+  // 吸引修正项
+  var attTerm = a * n * n / (V * V);
+  html += '<div class="result-row"><span class="result-label">吸引修正项 an²/V²</span>' +
+          '<span class="result-value">' + attTerm.toFixed(6) + ' atm</span></div>';
+
+  html += '</div>';
+
+  // 警告信息
+  if (result.warnings.length > 0) {
+    html += '<div class="result-box warning" style="margin-top:12px;">';
+    html += '<h3 style="color:#7d6608;margin-bottom:8px;">⚠️ 警告</h3>';
+    for (var i = 0; i < result.warnings.length; i++) {
+      html += '<p style="margin:6px 0;">' + result.warnings[i] + '</p>';
+    }
+    html += '</div>';
+  }
+
+  // 模型局限性提示
+  html += '<div class="alert-box alert-info" style="margin-top:12px;font-size:0.88em;">' +
+          '<strong>模型局限性提示：</strong>范德华方程是近似模型，在高压低温下误差增大。' +
+          '精确计算须使用 Peng-Robinson 或 Soave-Redlich-Kwong 等高级状态方程。' +
+          '文献：Peng DY, Robinson DB. Ind Eng Chem Fundam. 1976;15(1):59-64.' +
+          '</div>';
+
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+/**
+ * 重置表单到默认值
+ *
+ * @returns {void}
+ */
+function resetForm() {
+  document.getElementById('gasSelect').value = 'CO2';
+  document.getElementById('inputN').value = '1';
+  document.getElementById('inputV').value = '1';
+  document.getElementById('inputT').value = '300';
+  document.getElementById('inputA').value = '3.592';
+  document.getElementById('inputB').value = '0.04267';
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+/**
+ * 标签页切换函数
+ *
+ * @param {string} tabId - 目标标签页的 ID 后缀（如 'calculator', 'source', 'tests', 'docs', 'safety'）
+ * @returns {void}
+ */
+function switchTab(tabId) {
+  var tabs = document.querySelectorAll('.tab-content');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+  }
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var j = 0; j < btns.length; j++) {
+    btns[j].classList.remove('active');
+  }
+  document.getElementById('tab-' + tabId).classList.add('active');
+  // 找到对应的按钮
+  var tabNames = ['calculator', 'source', 'tests', 'docs', 'safety'];
+  var idx = tabNames.indexOf(tabId);
+  if (idx >= 0 && btns[idx]) {
+    btns[idx].classList.add('active');
+  }
+}
+
+/**
+ * ============================================================
+ * 单元测试模块
+ * ============================================================
+ * 纯 JS 实现，无外部依赖
+ * 覆盖：正常值、零值、负数、极高值、极低值、NaN、除零边界
+ * ============================================================
+ */
+
+/**
+ * 断言辅助函数：检查条件是否为真
+ *
+ * @param {boolean} condition - 待检查的条件
+ * @param {string} message - 断言失败时的描述信息
+ * @returns {{pass: boolean, message: string}}
+ */
+function assert(condition, message) {
+  return { pass: !!condition, message: message };
+}
+
+/**
+ * 近似相等断言：检查两个数值是否在容差范围内相等
+ *
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差（绝对值）
+ * @param {string} message - 断言描述
+ * @returns {{pass: boolean, message: string}}
+ */
+function assertApprox(actual, expected, tolerance, message) {
+  var diff = Math.abs(actual - expected);
+  return {
+    pass: diff <= tolerance,
+    message: message + ' (实际=' + actual + ', 期望=' + expected + ', 差=' + diff + ', 容差=' + tolerance + ')'
+  };
+}
+
+/**
+ * 运行全部单元测试并渲染结果
+ * 共 10 个测试用例，覆盖各种边界条件
+ *
+ * @returns {void}
+ */
+function runAllTests() {
+  var tests = [];
+  var passCount = 0;
+  var failCount = 0;
+
+  // ---- 测试 1：正常条件（CO2, 1 mol, 1 L, 300 K）----
+  (function() {
+    var r = calcVanDerWaals(1, 1, 300, 3.592, 0.04267);
+    // P_ideal = 1 * 0.08206 * 300 / 1 = 24.618
+    // Vfree = 1 - 0.04267 = 0.95733
+    // P_vdw = 24.618 / 0.95733 - 3.592 * 1 / 1 = 25.7148... - 3.592 = 22.1228...
+    var expectedIdeal = 24.618;
+    var expectedVdw = 24.618 / 0.95733 - 3.592;
+    var a1 = assertApprox(r.P_ideal, expectedIdeal, 0.001, 'P_ideal 应约为 24.618 atm');
+    var a2 = assertApprox(r.P_vdw, expectedVdw, 0.001, 'P_vdw 应约为 ' + expectedVdw.toFixed(4) + ' atm');
+    var a3 = assert(r.success === true, '应成功返回');
+    var a4 = assert(r.P_vdw < r.P_ideal, 'CO2 在此条件下 P_vdw 应小于 P_ideal（吸引主导）');
+    var pass = a1.pass && a2.pass && a3.pass && a4.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 1：正常条件（CO₂, 1 mol, 1 L, 300 K）',
+      desc: '验证基本计算正确性。输入 n=1, V=1, T=300, a=3.592, b=0.04267。期望 P_ideal≈24.618, P_vdw≈22.123。',
+      pass: pass,
+      details: [a1, a2, a3, a4]
+    });
+  })();
+
+  // ---- 测试 2：零物质的量（n = 0）----
+  (function() {
+    var r = calcVanDerWaals(0, 1, 300, 3.592, 0.04267);
+    var a1 = assert(r.success === true, 'n=0 应成功返回');
+    var a2 = assert(r.P_vdw === 0, 'n=0 时 P_vdw 应为 0');
+    var a3 = assert(r.P_ideal === 0, 'n=0 时 P_ideal 应为 0');
+    var pass = a1.pass && a2.pass && a3.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 2：零物质的量（n = 0 mol）',
+      desc: '无气体分子时压强应为零。输入 n=0, V=1, T=300。期望 P_vdw=0, P_ideal=0。',
+      pass: pass,
+      details: [a1, a2, a3]
+    });
+  })();
+
+  // ---- 测试 3：负物质的量（n = -1）----
+  (function() {
+    var r = calcVanDerWaals(-1, 1, 300, 3.592, 0.04267);
+    var a1 = assert(r.success === false, 'n<0 应返回失败');
+    var a2 = assert(r.error !== null && r.error.indexOf('负') >= 0, '错误信息应包含"负"字');
+    var pass = a1.pass && a2.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 3：负物质的量（n = -1 mol）',
+      desc: '负物质的量无物理意义，应返回错误。输入 n=-1。期望 success=false，错误信息含"负"。',
+      pass: pass,
+      details: [a1, a2]
+    });
+  })();
+
+  // ---- 测试 4：极高温度（T = 10000 K）----
+  (function() {
+    var r = calcVanDerWaals(1, 1, 10000, 3.592, 0.04267);
+    // P_ideal = 820.6
+    // P_vdw = 820.6 / 0.95733 - 3.592 = 857.17 - 3.592 = 853.58
+    var expectedIdeal = 820.6;
+    var expectedVdw = 820.6 / 0.95733 - 3.592;
+    var a1 = assert(r.success === true, '极高温度应成功返回');
+    var a2 = assertApprox(r.P_ideal, expectedIdeal, 0.1, 'P_ideal 应约为 820.6');
+    var a3 = assertApprox(r.P_vdw, expectedVdw, 0.1, 'P_vdw 应约为 ' + expectedVdw.toFixed(2));
+    var a4 = assert(r.warnings.length > 0, '高压下应有警告信息');
+    var pass = a1.pass && a2.pass && a3.pass && a4.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 4：极高温度（T = 10000 K）',
+      desc: '验证极端高温下的计算。输入 T=10000。期望 P_ideal≈820.6, P_vdw≈853.6，且触发高压警告。',
+      pass: pass,
+      details: [a1, a2, a3, a4]
+    });
+  })();
+
+  // ---- 测试 5：极低温度（T = 1 K）----
+  (function() {
+    var r = calcVanDerWaals(1, 1, 1, 3.592, 0.04267);
+    // P_ideal = 0.08206
+    // P_vdw = 0.08206 / 0.95733 - 3.592 = 0.08572 - 3.592 = -3.506
+    var a1 = assert(r.success === true, '极低温度应成功返回（数学上可计算）');
+    var a2 = assert(r.P_vdw < 0, '极低温下 P_vdw 应为负值（物理上不合理，但数学上可算）');
+    var a3 = assert(r.warnings.length > 0, '负压强应触发警告');
+    var pass = a1.pass && a2.pass && a3.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 5：极低温度（T = 1 K）',
+      desc: '验证极端低温下的行为。输入 T=1。期望 P_vdw 为负值（吸引项主导），触发负压警告。',
+      pass: pass,
+      details: [a1, a2, a3]
+    });
+  })();
+
+  // ---- 测试 6：极小体积（接近 nb 边界）----
+  (function() {
+    // CO2: b=0.04267, n=1, nb=0.04267
+    // V=0.043, Vfree=0.00033
+    var r = calcVanDerWaals(1, 0.043, 300, 3.592, 0.04267);
+    var a1 = assert(r.success === true, '极小体积（但 V>nb）应成功返回');
+    var a2 = assert(r.P_vdw > 1000, '极小体积下压强应极大');
+    var pass = a1.pass && a2.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 6：极小体积（V = 0.043 L，接近 nb = 0.04267 L）',
+      desc: '验证接近排除体积边界时的行为。Vfree 极小，压强应极大。期望 P_vdw > 1000 atm。',
+      pass: pass,
+      details: [a1, a2]
+    });
+  })();
+
+  // ---- 测试 7：NaN 输入 ----
+  (function() {
+    var r = calcVanDerWaals(NaN, 1, 300, 3.592, 0.04267);
+    var a1 = assert(r.success === false, 'NaN 输入应返回失败');
+    var a2 = assert(r.error !== null && r.error.indexOf('NaN') >= 0, '错误信息应包含"NaN"');
+    var pass = a1.pass && a2.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 7：NaN 输入（n = NaN）',
+      desc: '验证 NaN 输入的容错处理。期望 success=false，错误信息含"NaN"。',
+      pass: pass,
+      details: [a1, a2]
+    });
+  })();
+
+  // ---- 测试 8：零体积（V = 0）----
+  (function() {
+    var r = calcVanDerWaals(1, 0, 300, 3.592, 0.04267);
+    var a1 = assert(r.success === false, 'V=0 应返回失败');
+    var a2 = assert(r.error !== null && r.error.indexOf('正') >= 0, '错误信息应提示体积须为正值');
+    var pass = a1.pass && a2.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 8：零体积（V = 0 L）',
+      desc: '零体积导致除零错误，应被输入验证拦截。期望 success=false，错误信息含"正"。',
+      pass: pass,
+      details: [a1, a2]
+    });
+  })();
+
+  // ---- 测试 9：极大体积（V = 10000 L，应趋近理想气体）----
+  (function() {
+    var r = calcVanDerWaals(1, 10000, 300, 3.592, 0.04267);
+    // P_ideal = 0.0024618
+    // P_vdw ≈ P_ideal（偏差极小）
+    var a1 = assert(r.success === true, '极大体积应成功返回');
+    var a2 = assert(Math.abs(r.deviation) < 1, '极大体积下偏差应小于 1%（趋近理想气体）');
+    var a3 = assertApprox(r.P_ideal, 0.0024618, 0.0001, 'P_ideal 应约为 0.0024618');
+    var pass = a1.pass && a2.pass && a3.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 9：极大体积（V = 10000 L，趋近理想气体极限）',
+      desc: '大体积下分子间作用力和分子体积可忽略，P_vdw 应趋近 P_ideal。期望偏差 < 1%。',
+      pass: pass,
+      details: [a1, a2, a3]
+    });
+  })();
+
+  // ---- 测试 10：V = nb 精确相等（除零边界）----
+  (function() {
+    // n=1, b=0.04267, V=0.04267 => Vfree = 0
+    var r = calcVanDerWaals(1, 0.04267, 300, 3.592, 0.04267);
+    var a1 = assert(r.success === false, 'V=nb 时自由体积为零，应返回失败');
+    var a2 = assert(r.error !== null, '应有错误信息');
+    var pass = a1.pass && a2.pass;
+    if (pass) passCount++; else failCount++;
+    tests.push({
+      name: '测试 10：V = nb 精确相等（V = 0.04267 L = nb，除零边界）',
+      desc: '当 V = nb 时自由体积为零，分母为零，方程无物理意义。期望 success=false。',
+      pass: pass,
+      details: [a1, a2]
+    });
+  })();
+
+  // 渲染结果
+  var summaryEl = document.getElementById('testSummary');
+  summaryEl.innerHTML = '总计 ' + tests.length + ' 项 | ' +
+    '<span style="color:#27ae60;">通过 ' + passCount + '</span> | ' +
+    '<span style="color:#c0392b;">失败 ' + failCount + '</span>';
+
+  var resultsEl = document.getElementById('testResults');
+  var html = '';
+  for (var i = 0; i < tests.length; i++) {
+    var t = tests[i];
+    var cls = t.pass ? 'pass' : 'fail';
+    var badge = t.pass ? '<span class="badge badge-pass">PASS</span>' : '<span class="badge badge-fail">FAIL</span>';
+    html += '<div class="test-item ' + cls + '">';
+    html += '<div class="test-title">' + t.name + badge + '</div>';
+    html += '<div class="test-detail">' + t.desc + '</div>';
+    for (var j = 0; j < t.details.length; j++) {
+      var d = t.details[j];
+      var icon = d.pass ? '✅' : '❌';
+      html += '<div class="test-detail" style="margin-left:16px;">' + icon + ' ' + d.message + '</div>';
+    }
+    html += '</div>';
+  }
+  resultsEl.innerHTML = html;
+}
+
+/**
+ * 初始化：加载预设气体、填充源码显示
+ */
+(function init() {
+  loadGasPreset();
+
+  // 填充源码显示
+  var sourceEl = document.getElementById('sourceCode');
+  if (sourceEl) {
+    var sourceText =
+      '/**\n' +
+      ' * 通用气体常数 R = 0.08206 L·atm/(mol·K)\n' +
+      ' * 来源：CODATA 2018\n' +
+      ' */\n' +
+      'var R = 0.08206;\n\n' +
+      '/**\n' +
+      ' * 内置气体范德华常数表\n' +
+      ' * 数据来源：CRC Handbook of Chemistry and Physics, 100th Edition, Section 5\n' +
+      ' * 文献：van der Waals JD. 1873; CRC Handbook of Chemistry and Physics.\n' +
+      ' */\n' +
+      'var GAS_CONSTANTS = {\n' +
+      '  He:  { a: 0.0346,  b: 0.0238,  name: \'氦气\',   formula: \'He\',  Tc: 5.19,   Pc: 2.27   },\n' +
+      '  N2:  { a: 1.390,   b: 0.03913, name: \'氮气\',   formula: \'N₂\',  Tc: 126.2,  Pc: 33.9   },\n' +
+      '  O2:  { a: 1.360,   b: 0.03183, name: \'氧气\',   formula: \'O₂\',  Tc: 154.6,  Pc: 50.4   },\n' +
+      '  CO2: { a: 3.592,   b: 0.04267, name: \'二氧化碳\', formula: \'CO₂\', Tc: 304.1,  Pc: 73.8   },\n' +
+      '  H2O: { a: 5.464,   b: 0.03049, name: \'水蒸气\',  formula: \'H₂O\', Tc: 647.1,  Pc: 218.3  },\n' +
+      '  CH4: { a: 2.253,   b: 0.04278, name: \'甲烷\',   formula: \'CH₄\', Tc: 190.6,  Pc: 45.99  },\n' +
+      '  NH3: { a: 4.170,   b: 0.03707, name: \'氨气\',   formula: \'NH₃\', Tc: 405.5,  Pc: 112.8  }\n' +
+      '};\n\n' +
+      '/**\n' +
+      ' * 计算范德华方程真实气体压强\n' +
+      ' *\n' +
+      ' * 公式名称：范德华状态方程 (van der Waals Equation of State)\n' +
+      ' * 公式：P = nRT/(V - nb) - an²/V²\n' +
+      ' * 文献：van der Waals JD. Over de Continuïteit van den Gas- en\n' +
+      ' *       Vloeistoftoestand. Doctoral thesis, University of Leiden. 1873.\n' +
+      ' *\n' +
+      ' * @param {number} n - 物质的量 (mol)，须 ≥ 0\n' +
+      ' * @param {number} V - 体积 (L)，须 > 0\n' +
+      ' * @param {number} T - 热力学温度 (K)，须 ≥ 0\n' +
+      ' * @param {number} a - 范德华引力常数 (atm·L²/mol²)，须 ≥ 0\n' +
+      ' * @param {number} b - 范德华体积常数 (L/mol)，须 ≥ 0\n' +
+      ' * @returns {Object} { success, P_vdw, P_ideal, deviation, error, warnings }\n' +
+      ' */\n' +
+      'function calcVanDerWaals(n, V, T, a, b) {\n' +
+      '  var warnings = [];\n\n' +
+      '  // 输入验证\n' +
+      '  if (typeof n !== \'number\' || typeof V !== \'number\' || typeof T !== \'number\' ||\n' +
+      '      typeof a !== \'number\' || typeof b !== \'number\') {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'输入参数必须为数值类型\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (isNaN(n) || isNaN(V) || isNaN(T) || isNaN(a) || isNaN(b)) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'输入参数包含 NaN（非数值），请检查输入\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (!isFinite(n) || !isFinite(V) || !isFinite(T) || !isFinite(a) || !isFinite(b)) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'输入参数包含无穷大值，超出计算范围\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (n < 0) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'物质的量 n 不能为负值（n = \' + n + \' mol）\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (V <= 0) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'体积 V 必须为正值（当前 V = \' + V + \' L）\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (T < 0) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'热力学温度 T 不能为负值（当前 T = \' + T + \' K）\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (a < 0) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'范德华常数 a 不能为负值\', warnings: warnings };\n' +
+      '  }\n' +
+      '  if (b < 0) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'范德华常数 b 不能为负值\', warnings: warnings };\n' +
+      '  }\n\n' +
+      '  // n = 0 的特殊情况：无气体分子，压强为零\n' +
+      '  if (n === 0) {\n' +
+      '    return { success: true, P_vdw: 0, P_ideal: 0, deviation: 0,\n' +
+      '             error: null, warnings: [\'n = 0 mol，无气体分子，压强为零\'] };\n' +
+      '  }\n\n' +
+      '  // 检查自由体积 V - nb\n' +
+      '  var Vfree = V - n * b;\n' +
+      '  if (Vfree <= 0) {\n' +
+      '    return { success: false, P_vdw: null, P_ideal: null, deviation: null,\n' +
+      '             error: \'自由体积 V − nb = \' + Vfree.toFixed(6) + \' L ≤ 0，\' +\n' +
+      '                    \'分子排除体积 nb = \' + (n * b).toFixed(6) + \' L ≥ 容器体积 V = \' + V + \' L，\' +\n' +
+      '                    \'方程无物理意义。请增大体积或减少物质的量。\', warnings: warnings };\n' +
+      '  }\n\n' +
+      '  // 理想气体压强：P_ideal = nRT/V\n' +
+      '  var P_ideal = n * R * T / V;\n\n' +
+      '  // 范德华压强：P_vdw = nRT/(V - nb) - an²/V²\n' +
+      '  var P_vdw = (n * R * T) / Vfree - a * n * n / (V * V);\n\n' +
+      '  // 偏差百分比\n' +
+      '  var deviation = 0;\n' +
+      '  if (P_ideal !== 0) {\n' +
+      '    deviation = ((P_vdw - P_ideal) / P_ideal) * 100;\n' +
+      '  }\n\n' +
+      '  // 生成警告\n' +
+      '  if (P_vdw < 0) {\n' +
+      '    warnings.push(\'⚠ 计算得到的范德华压强为负值（P = \' + P_vdw.toFixed(4) + \' atm），\' +\n' +
+      '                  \'这在物理上通常不合理，表明在当前条件下范德华方程失效。\');\n' +
+      '  }\n' +
+      '  if (P_ideal > 100) {\n' +
+      '    warnings.push(\'⚠ 理想气体压强超过 100 atm，在此高压条件下范德华方程的定量精度显著下降。\');\n' +
+      '  }\n\n' +
+      '  return {\n' +
+      '    success: true,\n' +
+      '    P_vdw: P_vdw,\n' +
+      '    P_ideal: P_ideal,\n' +
+      '    deviation: deviation,\n' +
+      '    error: null,\n' +
+      '    warnings: warnings\n' +
+      '  };\n' +
+      '}\n';
+    sourceEl.textContent = sourceText;
+  }
+})();
+</script>
+
+</body>
+</html>

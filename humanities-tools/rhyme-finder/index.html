@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎵 押韵助手</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:640px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .tabs button { padding:10px 4px; font-size:13.5px; font-weight:600; color:#9a8fc0; background:#181228;
+    border:1px solid #3a3050; border-radius:10px; cursor:pointer; font-family:inherit; }
+  .tabs button.on { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border-color:#7a5fc0; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  input[type=text] { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px;
+    color:#e8e0f0; font-size:16px; font-family:inherit; text-align:center; letter-spacing:4px; }
+  input:focus { outline:none; border-color:#7a5fc0; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .chip { font-size:15px; color:#c8b3ff; background:#241a3a; border:1px solid #4a3d70; border-radius:8px;
+    padding:5px 10px; cursor:pointer; }
+  .chip:active { background:#3a2d70; }
+  .rhymes { font-size:15.5px; line-height:2.2; color:#b8a0ff; word-break:break-all; }
+  .none { color:#6a5f90; padding:10px; text-align:center; font-size:13px; }
+  .info { font-size:12px; color:#8a7fb0; margin-top:8px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>🎵 押韵助手</h1>
+  <div class="sub">输入一个字 → 列出同韵部的所有字（挑韵脚用）</div>
+
+  <div class="tabs" id="tabs">
+    <button data-m="pingshui" class="on">平水韵</button>
+    <button data-m="cilin">词林正韵</button>
+    <button data-m="xinyun">中华新韵</button>
+  </div>
+
+  <div class="card">
+    <div class="lbl">输入字（查它同韵的字）</div>
+    <input type="text" id="cha" maxlength="4" placeholder="如 东">
+    <div class="chips" id="yuns"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">同韵字</div>
+    <div class="rhymes" id="out"></div>
+  </div>
+  <div class="ver">v1.0.0-押韵助手 20261016</div>
+</div>
+<script>
+// 【rhyme-finder】押韵助手（字→同韵部所有字）。依赖：韵表数据(MIT)。输入：一个字；输出：同韵字列表。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：charlesix59/chinese_word_rhyme (MIT, (c) 2023 Charles 闵)
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var DATA = {}, cur = "pingshui";
+
+  function load(name){
+    if(DATA[name]) return Promise.resolve(DATA[name]);
+    return fetch("../rhyme/data/"+name+".js.json").then(function(r){return r.json();}).then(function(j){ DATA[name]=j; return j; });
+  }
+
+  function render(){
+    var c = $("cha").value.trim();
+    $("yuns").innerHTML = "";
+    if(!c){ $("out").innerHTML = "<div class='none'>输入一个字后显示</div>"; return; }
+    load(cur).then(function(rd){
+      var yuns = rd.map[c];
+      if(!yuns || !yuns.length){ $("out").innerHTML = "<div class='none'>「"+c+"」在该韵书中未收录</div>"; return; }
+      // 若一字属多韵部，列出按钮
+      $("yuns").innerHTML = yuns.map(function(y){ return '<span class="chip" data-y="'+y+'">'+y+'</span>'; }).join("");
+      showYun(rd, yuns[0]);
+      Array.prototype.forEach.call($("yuns").children, function(ch){
+        ch.onclick = function(){ showYun(rd, ch.dataset.y); };
+      });
+    });
+  }
+  function showYun(rd, y){
+    var chars = rd.groups[y] || [];
+    $("out").innerHTML = chars.map(function(x){ return x; }).join("　") +
+      '<div class="info">「'+y+'」共 '+chars.length+' 字</div>';
+  }
+
+  $("tabs").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    cur = b.dataset.m;
+    Array.prototype.forEach.call($("tabs").children, function(x){ x.classList.toggle("on", x===b); });
+    render();
+  });
+  $("cha").addEventListener("input", render);
+})();
+</script>
+</body>
+</html>

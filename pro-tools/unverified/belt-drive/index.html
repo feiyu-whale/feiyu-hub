@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>V带传动计算工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:#f4f6f8;
+  color:#222;
+  font-size:14px;
+  line-height:1.6;
+  padding:16px;
+  padding-bottom:60px;
+}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-size:20px;text-align:center;margin-bottom:8px;color:#1a4d8f}
+.subtitle{text-align:center;color:#666;font-size:13px;margin-bottom:16px}
+.card{
+  background:#fff;
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:14px;
+  box-shadow:0 2px 6px rgba(0,0,0,.06);
+}
+.card h2{
+  font-size:15px;
+  color:#1a4d8f;
+  margin-bottom:12px;
+  padding-bottom:6px;
+  border-bottom:2px solid #e8eef5;
+}
+.field{margin-bottom:12px}
+.field label{
+  display:block;
+  font-size:13px;
+  color:#444;
+  margin-bottom:4px;
+}
+.field .hint{font-size:12px;color:#888;margin-left:4px}
+.field input{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid #ccd3db;
+  border-radius:6px;
+  font-size:14px;
+  background:#fafbfc;
+}
+.field input:focus{
+  outline:none;
+  border-color:#1a4d8f;
+  background:#fff;
+}
+.btn{
+  width:100%;
+  padding:12px;
+  background:#1a4d8f;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:4px;
+}
+.btn:active{background:#143a6d}
+.result{
+  background:#f0f6ff;
+  border-left:4px solid #1a4d8f;
+  padding:10px 12px;
+  margin-bottom:8px;
+  border-radius:4px;
+}
+.result .label{font-size:13px;color:#555}
+.result .value{font-size:18px;font-weight:700;color:#1a4d8f;margin-top:2px}
+.result .unit{font-size:13px;color:#666;font-weight:400;margin-left:4px}
+.warn{
+  background:#fff8e1;
+  border-left:4px solid #f5a623;
+  color:#7a5a00;
+  padding:8px 12px;
+  border-radius:4px;
+  font-size:13px;
+  margin-top:8px;
+}
+.formula{
+  background:#fafbfc;
+  border:1px dashed #ccd3db;
+  padding:10px 12px;
+  border-radius:6px;
+  font-size:13px;
+  color:#333;
+  margin-bottom:8px;
+  font-family:"Courier New",monospace;
+  line-height:1.8;
+}
+.source{
+  font-size:12px;
+  color:#666;
+  line-height:1.7;
+}
+.source p{margin-bottom:6px}
+.version{
+  position:fixed;
+  right:8px;
+  bottom:6px;
+  font-size:11px;
+  color:#999;
+  background:rgba(255,255,255,.8);
+  padding:2px 6px;
+  border-radius:4px;
+}
+.row2{display:flex;gap:10px}
+.row2 .field{flex:1}
+@media(max-width:420px){
+  .row2{flex-direction:column;gap:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚙️ V带传动计算</h1>
+  <p class="subtitle">依据 GB/T 13575《普通和窄V带传动》</p>
+  <div class="warn" style="margin-bottom:14px">⚠️ 提示：本工具中带速范围 5~25 m/s、包角要求 α₁≥120°（特殊 ≥90°）为经验参考值，未经标准条款核对；本工具未收录 GB/T 13575.1 基准长度系列表值及 P₀、K<sub>A</sub>、K<sub>α</sub>、K<sub>L</sub> 等数据，选型合规性请查标准原文。</div>
+
+  <div class="card">
+    <h2>📥 输入参数</h2>
+    <div class="row2">
+      <div class="field">
+        <label>小带轮基准直径 d₁ <span class="hint">(mm)</span></label>
+        <input type="number" id="d1" value="125" min="1" step="0.1">
+      </div>
+      <div class="field">
+        <label>大带轮基准直径 d₂ <span class="hint">(mm，d₂&lt;d₁ 为增速传动)</span></label>
+        <input type="number" id="d2" value="280" min="1" step="0.1">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>小带轮转速 n₁ <span class="hint">(r/min)</span></label>
+        <input type="number" id="n1" value="1450" min="1" step="1">
+      </div>
+      <div class="field">
+        <label>中心距 a <span class="hint">(mm)</span></label>
+        <input type="number" id="a" value="600" min="1" step="0.1">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>弹性滑动率 ε <span class="hint">(0~0.05，经验值通常 0.01~0.02)</span></label>
+        <input type="number" id="eps" value="0.015" min="0" max="0.05" step="0.001">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>带型 <span class="hint">(A/B/C/D/E，本工具不做带型选型判断)</span></label>
+        <input type="text" id="btype" value="A" placeholder="如 A">
+      </div>
+      <div class="field">
+        <label>传递功率 P <span class="hint">(kW)</span></label>
+        <input type="number" id="p" value="5" min="0" step="0.1">
+      </div>
+    </div>
+    <div class="field">
+      <label>带根数 z <span class="hint">(根)</span></label>
+      <input type="number" id="z" value="1" min="1" step="1">
+    </div>
+    <button class="btn" onclick="calc()">🔍 计算</button>
+  </div>
+
+  <div class="warn" style="margin-bottom:14px">⚠️ 提示：本工具未收录工况系数 K<sub>A</sub>、包角系数 K<sub>α</sub>、长度系数 K<sub>L</sub> 及 P₀ 数据（均无来源），故仅计算几何参数，不做功率/根数选型校核，相关系数请查标准原文。</div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>📊 计算结果</h2>
+    <div class="result">
+      <div class="label">传动比 i（已计入弹性滑动 ε）</div>
+      <div class="value" id="r_i">-</div>
+    </div>
+    <div class="result">
+      <div class="label">带速 v</div>
+      <div class="value" id="r_v">-</div>
+    </div>
+    <div class="result">
+      <div class="label">小带轮包角 α₁</div>
+      <div class="value" id="r_alpha">-</div>
+    </div>
+    <div class="result">
+      <div class="label">带基准长度 L（计算值）</div>
+      <div class="value" id="r_L">-</div>
+    </div>
+    <div class="result">
+      <div class="label">输入工况（带型 / P / z）</div>
+      <div class="value" id="r_case" style="font-size:14px">-</div>
+    </div>
+    <div id="warnBox"></div>
+  </div>
+
+  <div class="card">
+    <h2>📐 计算公式</h2>
+    <div class="formula">
+      传动比：i = d₂ / [d₁·(1−ε)]，ε 为弹性滑动率（ε 为经验值，未经标准核对）<br>
+      带速：v = π·d₁·n₁ / 60000 &nbsp;(m/s)<br>
+      小带轮包角：α₁ ≈ 180° − (d₂−d₁)·57.3° / a<br>
+      带基准长度：L ≈ 2a + π(d₁+d₂)/2 + (d₂−d₁)²/(4a)
+    </div>
+    <p style="font-size:12px;color:#666">
+      注：包角公式为近似式，适用于中心距 a 较大、两轮直径差较小的情况；精确值需按几何关系求解。带长 L 为开口传动近似计算值，实际选用应按 GB/T 13575.1 规定的基准长度系列就近圆整（具体系列表值需查标准原文）。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>📚 数据来源</h2>
+    <div class="source">
+      <p>① GB/T 13575.1-2008 《普通和窄V带传动 第1部分：基准宽度制》</p>
+      <p>② GB/T 13575.2-2008 《普通和窄V带传动 第2部分：有效宽度制》</p>
+      <p>③ 濮良贵、陈国定、吴立伟 主编，《机械设计》（高等教育出版社），带传动章节公式。</p>
+      <p>④ 带速推荐范围 5~25 m/s、包角要求 α₁ ≥ 120°（特殊 ≥90°）：审查判定为无来源（仅正文提及、无条款号），本工具仅作经验参考使用。</p>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.2-带传动计算 20261021-修审查问题 20261108</div>
+
+<script>
+function calc(){
+  const d1=parseFloat(document.getElementById('d1').value);
+  const d2=parseFloat(document.getElementById('d2').value);
+  const n1=parseFloat(document.getElementById('n1').value);
+  const a=parseFloat(document.getElementById('a').value);
+  const warnBox=document.getElementById('warnBox');
+  warnBox.innerHTML='';
+
+  if(!(d1>0&&d2>0&&n1>0&&a>0)){
+    alert('请输入有效的正数参数');
+    return;
+  }
+  const eps=parseFloat(document.getElementById('eps').value);
+  if(!(eps>=0&&eps<=0.05)){
+    alert('请输入有效的弹性滑动率 ε（0 ≤ ε ≤ 0.05，经验值通常 0.01~0.02）');
+    return;
+  }
+  if(a<(d1+d2)/2){
+    alert('中心距 a 应不小于 (d₁+d₂)/2，否则无法构成开口传动');
+    return;
+  }
+  const i=d2/(d1*(1-eps));
+  const v=Math.PI*d1*n1/60000;
+  if(d2<d1){
+    alert('提示：当前 d₂ < d₁，为增速传动（i<1），属合法工况，请确认是否符合设计意图。');
+  }
+  const alpha=180-(d2-d1)*57.3/a;
+  if(!(alpha>0&&alpha<=180)){
+    alert('计算得小带轮包角 α₁='+alpha.toFixed(2)+'°，超出 (0°, 180°] 有效范围，请调整 d₁、d₂ 或 a（若为增速传动请确认直径输入未颠倒）');
+    return;
+  }
+  const L=2*a+Math.PI*(d1+d2)/2+Math.pow(d2-d1,2)/(4*a);
+
+  document.getElementById('r_i').innerHTML=i.toFixed(3);
+  document.getElementById('r_v').innerHTML=v.toFixed(2)+'<span class="unit">m/s</span>';
+  document.getElementById('r_alpha').innerHTML=alpha.toFixed(2)+'<span class="unit">°</span>';
+  document.getElementById('r_L').innerHTML=L.toFixed(1)+'<span class="unit">mm</span>';
+  const btype=document.getElementById('btype').value.trim();
+  const p=parseFloat(document.getElementById('p').value);
+  const z=parseInt(document.getElementById('z').value,10);
+  document.getElementById('r_case').innerHTML=(btype||'未填')+' / '+(p>0?p+' kW':'-')+' / '+(z>0?z+' 根':'-');
+
+  const warns=[];
+  if(v<5||v>25){
+    warns.push('⚠️ 带速 v 超出常用范围 5~25 m/s（经验值，无标准条款来源），建议调整参数。');
+  }
+  if(alpha<120){
+    warns.push('⚠️ 小带轮包角 α₁ < 120°（经验阈值，无标准条款来源），一般要求 α₁ ≥ 120°，请增大中心距或减小直径差。');
+  }
+  warns.push('📏 计算带长 L 为近似值，实际选型应按 GB/T 13575.1 基准长度系列就近选取（具体表值需查标准原文）。');
+
+  warnBox.innerHTML=warns.map(w=>'<div class="warn">'+w+'</div>').join('');
+  document.getElementById('resultCard').style.display='block';
+  document.getElementById('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+window.addEventListener('load',calc);
+</script>
+</body>
+</html>

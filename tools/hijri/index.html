@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌙 回历（伊斯兰历）</title>
+<link rel="stylesheet" href="../../assets/themes/skins.css">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:var(--bg); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--text);
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; position:relative; }
+  #wrap { width:100%; max-width:520px; position:relative; z-index:1; }
+  h1 { font-size:12px; color:var(--accent); margin-bottom:4px; text-align:center; letter-spacing:3px;
+    text-shadow:0 0 18px rgba(212,175,55,.28); }
+  .sub { color:var(--text-mute); font-size:12px; margin-bottom:18px; text-align:center; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; color:var(--text-dim); margin-bottom:10px; font-weight:700; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:14px; border-bottom:1px solid var(--border); }
+  .row:last-child { border-bottom:none; }
+  .k { color:var(--text-mute); } .v { color:var(--text); font-weight:600; }
+  .big { font-size:12px; font-weight:800; color:var(--accent); letter-spacing:1px; }
+  .ctrls { display:flex; gap:8px; margin-bottom:12px; }
+  button { flex:1; padding:11px; font-size:14px; font-weight:700; color:var(--text); background:rgba(0,0,0,.25);
+    border:1px solid var(--border); border-radius:10px; cursor:pointer; font-family:inherit; }
+  button:active { transform:scale(.96); }
+  button.go { background:linear-gradient(160deg,#0e5a3a,#08301f); color:#fff; border-color:#3fb37a; }
+  input[type=date],input[type=text],input[type=number],select { width:100%; background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:9px; padding:10px;
+    font-size:15px; color:var(--text); outline:none; font-family:inherit; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button { flex:1; }
+  .tabs button.on { background:#0e5a3a; border-color:#3fb37a; color:#fff; }
+  .hint { color:var(--text-mute); font-size:11px; margin-top:6px; line-height:1.7; }
+  .ver { color:var(--text-mute); font-size:10px; margin-top:10px; text-align:center; opacity:.6; }
+  .err { color:#ff9f9f; font-size:13px; padding:8px 0; }
+  .ar { font-size:14px; color:var(--accent); font-weight:800; text-align:center; margin:6px 0; direction:rtl; }
+</style>
+</head>
+<body class="theme-islamic">
+<div id="wrap">
+  <h1>🌙 回 历</h1>
+  <div class="sub">伊斯兰历 · 希吉来历 · 公历 ↔ 回历双向 · 零依赖原生换算</div>
+
+  <div class="tabs">
+    <button id="tabG2H" class="on">公历 → 回历</button>
+    <button id="tabH2G">回历 → 公历</button>
+  </div>
+
+  <div id="panelG2H">
+    <div class="card">
+      <h3>选一个公历日期</h3>
+      <input type="date" id="gDate">
+      <div class="ctrls" style="margin-top:10px">
+        <button id="todayBtn" class="go">📍 今天</button>
+        <button id="convBtn" class="go">换算 →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panelH2G" style="display:none">
+    <div class="card">
+      <h3>输入回历日期（年 · 月 · 日）</h3>
+      <div style="display:flex;gap:8px">
+        <input type="number" id="hY" placeholder="年" min="1">
+        <input type="number" id="hM" placeholder="月" min="1" max="12">
+        <input type="number" id="hD" placeholder="日" min="1" max="30">
+      </div>
+      <div class="ctrls" style="margin-top:10px">
+        <button id="convBtn2" class="go">换算 →</button>
+      </div>
+      <div class="hint">回历月份 1-12，日期 1-30（回历月 29 或 30 天）</div>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint" style="text-align:center;margin-top:14px">
+    采用沙特官方乌姆库拉历（islamic-umalqura）口径 · 浏览器原生 Intl 换算<br>
+    回历为纯太阴历，一年约 354 天，每年比公历提前约 11 天
+  </div>
+  <div class="ver">v1.0.0-回历 20261016</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  // ============================================================
+  // 回历（伊斯兰历 / 希吉来历）换算
+  // 零库零依赖：用浏览器原生 Intl.DateTimeFormat 的 islamic-umalqura 口径
+  // 【口径说明】回历有多套算法（civil/tbla/umalqura…），同一天能差 1~2 天（看月定月）
+  //   本工具采用 islamic-umalqura（沙特麦加官方历，国际最主流）
+  // ============================================================
+  var CAL = 'islamic-umalqura';
+
+  var HIJRI_MONTHS = ['穆哈兰姆（禁月）','萨法尔','赖比欧·敖外鲁','赖比欧·阿色尼',
+                      '珠马达·敖外鲁','珠马达·阿色尼','赖哲卜（禁月）','舍尔邦',
+                      '赖买丹（斋月）','闪瓦鲁','则尔·盖达','则尔·希哲（朝觐月）'];
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  // 用 Intl 把公历 Date → 回历 {y,m,d}
+  function gregToHijri(date){
+    var parts = {};
+    var fmt = new Intl.DateTimeFormat('en-u-ca-' + CAL, {year:'numeric', month:'numeric', day:'numeric'});
+    fmt.formatToParts(date).forEach(function(p){ if(p.type!=='literal') parts[p.type] = p.value; });
+    return {year: parseInt(parts.year,10), month: parseInt(parts.month,10), day: parseInt(parts.day,10)};
+  }
+
+  // 用 Intl 校验一个日期是否是某回历日期（用于反查）
+  function hijriToGreg(hy, hm, hd){
+    // 以回历纪元(1-1-1 ≈ 公历622年)为起点，按年均354.367天估算，再逐日微调
+    var approxJulian = 1948084 + Math.floor((hy-1)*354.367 + (hm-1)*29.53 + (hd-1));
+    // 转成公历 Date 粗略定位
+    var approx = jdnToDate(approxJulian);
+    var g = new Date(approx.getTime());
+    // 前后各搜 60 天，找精确匹配
+    for(var delta=-60; delta<=60; delta++){
+      var test = new Date(g.getTime() + delta*86400000);
+      var h = gregToHijri(test);
+      if(h.year===hy && h.month===hm && h.day===hd){
+        return {date:test, exact:true};
+      }
+    }
+    // 精确匹配不到时，返回最接近的一天
+    var best=null, bestDiff=1e9;
+    for(var delta=-60; delta<=60; delta++){
+      var test = new Date(g.getTime() + delta*86400000);
+      var h = gregToHijri(test);
+      var diff = Math.abs((h.year-hy)*354.367) + Math.abs((h.month-hm)*29.53) + Math.abs(h.day-hd);
+      if(diff<bestDiff){ bestDiff=diff; best={date:test, exact:false}; }
+    }
+    return best;
+  }
+
+  // JDN → 公历 Date（用于定位）
+  function jdnToDate(jdn){
+    var a,b,c,d,e,m,day,month,year;
+    if(jdn>=2299161){ a=jdn+32044; b=Math.floor((4*a+3)/146097); c=a-Math.floor((146097*b)/4); }
+    else { b=0; c=jdn+32082; }
+    d=Math.floor((4*c+3)/1461); e=c-Math.floor((1461*d)/4);
+    m=Math.floor((5*e+2)/153); day=e-Math.floor((153*m+2)/5)+1;
+    month=m+3-12*Math.floor(m/10); year=100*b+d-4800+Math.floor(m/10);
+    return new Date(Date.UTC(year, month-1, day));
+  }
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtG(d){ return d.getUTCFullYear()+' 年 '+(d.getUTCMonth()+1)+' 月 '+d.getUTCDate()+' 日'; }
+
+  function render(gDate, hij){
+    var h = '';
+    h += '<div class="card"><h3>📅 公历</h3>';
+    h += '<div class="row"><span class="k">公历</span><span class="v">'+fmtG(gDate)+'</span></div>';
+    h += '<div class="row"><span class="k">星期</span><span class="v">'+['日','一','二','三','四','五','六'][gDate.getUTCDay()]+'</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>🌙 回历（AH）</h3>';
+    h += '<div class="ar">' + hij.year + ' · ' + hij.month + ' · ' + hij.day + '</div>';
+    h += '<div class="row"><span class="k">回历纪年</span><span class="v big">'+hij.year+' AH</span></div>';
+    h += '<div class="row"><span class="k">月份</span><span class="v">'+hij.month+' 月 · '+(HIJRI_MONTHS[hij.month-1]||'')+'</span></div>';
+    h += '<div class="row"><span class="k">日期</span><span class="v">'+hij.day+' 日</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>💡 白话解读</h3><div style="font-size:13px;color:#9fb0d8;line-height:1.8">';
+    h += '<p>回历（伊斯兰历）是<b>纯太阴历</b>：以月亮绕地球一圈为一个月，12 个月为一年。</p>';
+    h += '<p><b>· 一年约 354 天</b>，比公历（365 天）少约 11 天——所以回历日期<b>每年都会"提前"约 11 天</b>，跟季节完全对不上（这也是斋月会逐年往前挪的原因）。</p>';
+    h += '<p><b>· 起点</b>：回历元年（1 AH）= 公元 622 年，即先知穆罕默德从麦加迁徙到麦地那（希吉拉）那年。</p>';
+    h += '<p><b>· 月份</b>：第 9 月"赖买丹"是<b>斋月</b>（日出到日落禁食）；第 12 月是<b>朝觐月</b>。</p>';
+    h += '<p><b>· 月长</b>：回历每个月 29 或 30 天，靠<b>观测新月</b>确定——所以不同地区可能差一天。</p>';
+    h += '<p style="color:#5b6a99;font-size:12px;margin-top:6px">※ 本工具采用沙特官方乌姆库拉历（islamic-umalqura）口径，为国际最主流标准；部分地区实际观月结果可能相差 1 天。仅供参考。</p>';
+    h += '</div></div>';
+    return h;
+  }
+
+  function convertG2H(){
+    var v = $('gDate').value;
+    if(!v){ $('result').innerHTML = '<div class="err">请选一个公历日期</div>'; return; }
+    var p = v.split('-').map(Number);
+    var d = new Date(Date.UTC(p[0], p[1]-1, p[2]));
+    var hij = gregToHijri(d);
+    $('result').innerHTML = render(d, hij);
+  }
+
+  function convertH2G(){
+    var y = parseInt($('hY').value,10), m = parseInt($('hM').value,10), d = parseInt($('hD').value,10);
+    if(isNaN(y)||isNaN(m)||isNaN(d)){ $('result').innerHTML = '<div class="err">请填回历年、月、日</div>'; return; }
+    if(m<1||m>12||d<1||d>30){ $('result').innerHTML = '<div class="err">月份 1-12、日期 1-30</div>'; return; }
+    var r = hijriToGreg(y, m, d);
+    if(!r){ $('result').innerHTML = '<div class="err">该回历日期无对应公历（可能超出范围）</div>'; return; }
+    var hij = {year:y, month:m, day:d};
+    $('result').innerHTML = render(r.date, hij);
+  }
+
+  // 初始化
+  var now = new Date();
+  $('gDate').value = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate());
+  $('tabG2H').addEventListener('click', function(){ $('tabG2H').classList.add('on'); $('tabH2G').classList.remove('on'); $('panelG2H').style.display=''; $('panelH2G').style.display='none'; });
+  $('tabH2G').addEventListener('click', function(){ $('tabH2G').classList.add('on'); $('tabG2H').classList.remove('on'); $('panelH2G').style.display=''; $('panelG2H').style.display='none'; });
+  $('todayBtn').addEventListener('click', function(){ $('gDate').value = new Date().getFullYear()+'-'+pad(new Date().getMonth()+1)+'-'+pad(new Date().getDate()); convertG2H(); });
+  $('convBtn').addEventListener('click', convertG2H);
+  $('convBtn2').addEventListener('click', convertH2G);
+  $('gDate').addEventListener('change', convertG2H);
+
+  convertG2H();
+})();
+</script>
+</body>
+</html>

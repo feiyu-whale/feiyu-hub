@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>板材规格与厚度查询工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:#f5f5f5;color:#333;font-size:14px;line-height:1.6;padding-bottom:40px}
+.container{max-width:640px;margin:0 auto;padding:12px}
+h1{font-size:20px;text-align:center;padding:16px 0 8px;color:#1a5276}
+h2{font-size:16px;color:#1a5276;margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid #2980b9}
+h3{font-size:14px;color:#2c3e50;margin:12px 0 6px}
+.card{background:#fff;border-radius:8px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tab-btn{padding:6px 12px;border:1px solid #2980b9;background:#fff;color:#2980b9;border-radius:4px;cursor:pointer;font-size:13px;transition:all .2s}
+.tab-btn.active{background:#2980b9;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+th,td{border:1px solid #ddd;padding:6px 8px;text-align:center}
+th{background:#eaf2f8;font-weight:600}
+tr:nth-child(even){background:#fafafa}
+.note{font-size:12px;color:#7f8c8d;margin:6px 0;padding:8px;background:#fef9e7;border-left:3px solid #f39c12;border-radius:0 4px 4px 0}
+.warn{font-size:12px;color:#922b21;margin:6px 0;padding:8px;background:#fdedec;border-left:3px solid #e74c3c;border-radius:0 4px 4px 0}
+.info{font-size:12px;color:#1a5276;margin:6px 0;padding:8px;background:#eaf2f8;border-left:3px solid #2980b9;border-radius:0 4px 4px 0}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#2c3e50}
+.form-group input,.form-group select{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:14px}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.2)}
+.btn{display:block;width:100%;padding:10px;background:#2980b9;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px}
+.btn:hover{background:#1a6da0}
+.result-box{margin-top:12px;padding:12px;background:#eafaf1;border:1px solid #27ae60;border-radius:6px;display:none}
+.result-box.show{display:block}
+.result-item{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.result-item .label{color:#555}
+.result-item .value{font-weight:700;color:#1a5276}
+.spec-list{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.spec-tag{padding:4px 10px;background:#eaf2f8;border:1px solid #aed6f1;border-radius:4px;font-size:13px}
+.version{position:fixed;bottom:4px;right:8px;font-size:11px;color:#999}
+.row-flex{display:flex;gap:8px;flex-wrap:wrap}
+.row-flex .form-group{flex:1;min-width:120px}
+.subtitle{font-size:12px;color:#7f8c8d;margin-top:-4px;margin-bottom:10px}
+.highlight{color:#e74c3c;font-weight:700}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📐 板材规格与厚度查询</h1>
+<p class="subtitle" style="text-align:center">家具用人造板常用规格、厚度偏差与用量计算</p>
+
+<!-- 厚度系列与允许偏差 -->
+<div class="card">
+<h2>📋 人造板厚度系列与允许偏差</h2>
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('mdf')">中密度纤维板</button>
+<button class="tab-btn" onclick="switchTab('pb')">刨花板</button>
+<button class="tab-btn" onclick="switchTab('ply')">普通胶合板</button>
+</div>
+
+<div id="tab-mdf" class="tab-content active">
+<h3>GB/T 11718-2009 中密度纤维板</h3>
+<p style="font-size:13px;margin:4px 0"><strong>公称厚度系列(mm)：</strong>2, 2.5, 3, 4, 5, 6, 8, 9, 12, 15, 16, 18, 20, 25, 30, 35, 40</p>
+<p style="font-size:13px;margin:4px 0"><strong>常用家具厚度：</strong>3, 5, 9, 12, 15, 18, 25 mm</p>
+<h3>厚度允许偏差（标准表4，优等品）</h3>
+<table>
+<tr><th>公称厚度 (mm)</th><th>允许偏差 (mm)</th></tr>
+<tr><td>≤5</td><td>±0.3</td></tr>
+<tr><td>&gt;5～12</td><td>±0.4</td></tr>
+<tr><td>&gt;12～25</td><td>±0.5</td></tr>
+<tr><td>&gt;25～40</td><td>±0.7</td></tr>
+</table>
+<div class="note">⚠️ 以上为优等品偏差值。一等品、合格品允许偏差更大，具体表值需查 GB/T 11718-2009 表4原文。完整厚度系列亦见该标准。</div>
+</div>
+
+<div id="tab-pb" class="tab-content">
+<h3>GB/T 4897-2015 刨花板</h3>
+<p style="font-size:13px;margin:4px 0"><strong>公称厚度系列(mm)：</strong>5, 6, 7, 8, 9, 10, 12, 15, 16, 18, 20, 25, 30, 35, 40 等</p>
+<p style="font-size:13px;margin:4px 0"><strong>常用家具厚度：</strong>5, 9, 12, 15, 18, 25 mm</p>
+<h3>厚度允许偏差（标准表5，P2型-家具及室内装修用）</h3>
+<table>
+<tr><th>公称厚度 (mm)</th><th>允许偏差 (mm)</th></tr>
+<tr><td>≤10</td><td>±0.3</td></tr>
+<tr><td>&gt;10～20</td><td>±0.4</td></tr>
+<tr><td>&gt;20～30</td><td>±0.5</td></tr>
+<tr><td>&gt;30</td><td>±0.7</td></tr>
+</table>
+<div class="note">⚠️ 以上为 P2 型（干燥状态家具用）偏差值。其他类型（P1、P3～P6）允许偏差不同，具体表值需查 GB/T 4897-2015 表5原文。</div>
+</div>
+
+<div id="tab-ply" class="tab-content">
+<h3>GB/T 9846-2015 普通胶合板</h3>
+<p style="font-size:13px;margin:4px 0"><strong>公称厚度系列(mm)：</strong>2.5, 3, 4, 5, 6, 9, 12, 15, 18, 21, 25 等</p>
+<p style="font-size:13px;margin:4px 0"><strong>常用家具厚度：</strong>3, 5, 9, 12, 15, 18, 25 mm</p>
+<h3>厚度允许偏差</h3>
+<div class="info">ℹ️ 胶合板厚度允许偏差与公称厚度及面板等级有关，按 GB/T 9846-2015 表3 规定执行。具体表值需查标准原文。</div>
+<div class="note">⚠️ 胶合板因层叠结构特性，厚度偏差通常大于同厚度纤维板/刨花板。实际采购时建议向供应商确认实测偏差。</div>
+</div>
+</div>
+
+<!-- 常见规格 -->
+<div class="card">
+<h2>📏 常见板材幅面规格</h2>
+<table>
+<tr><th>规格 (mm)</th><th>俗称</th><th>单张面积 (m²)</th><th>备注</th></tr>
+<tr><td>1220 × 2440</td><td>4×8尺</td><td>2.977</td><td>最常用标准规格</td></tr>
+<tr><td>915 × 1830</td><td>3×6尺</td><td>1.674</td><td>小规格，便于搬运</td></tr>
+<tr><td>1220 × 3050</td><td>4×10尺</td><td>3.721</td><td>大规格，减少拼缝</td></tr>
+<tr><td>1250 × 2500</td><td>—</td><td>3.125</td><td>部分进口板规格</td></tr>
+</table>
+<div class="note">⚠️ 以上为常见商品规格。各标准规定的公称幅面尺寸详见对应标准原文。实际可用尺寸需扣除裁切余量。</div>
+</div>
+
+<!-- 用量计算 -->
+<div class="card">
+<h2>🧮 板材用量计算</h2>
+<p style="font-size:13px;color:#555;margin-bottom:10px">根据展开面积计算所需板材张数（含裁切损耗）</p>
+
+<div class="form-group">
+<label>📐 展开面积 (m²)</label>
+<input type="number" id="area" placeholder="输入需要覆盖的总面积" min="0" step="0.01">
+</div>
+
+<div class="row-flex">
+<div class="form-group">
+<label>📏 板材长度 (mm)</label>
+<input type="number" id="boardL" value="2440" min="100" step="1">
+</div>
+<div class="form-group">
+<label>📏 板材宽度 (mm)</label>
+<input type="number" id="boardW" value="1220" min="100" step="1">
+</div>
+</div>
+
+<div class="form-group">
+<label>⚙️ 预设规格（点击填入）</label>
+<div class="spec-list">
+<span class="spec-tag" onclick="setSpec(2440,1220)">1220×2440</span>
+<span class="spec-tag" onclick="setSpec(1830,915)">915×1830</span>
+<span class="spec-tag" onclick="setSpec(3050,1220)">1220×3050</span>
+<span class="spec-tag" onclick="setSpec(2500,1250)">1250×2500</span>
+</div>
+</div>
+
+<div class="form-group">
+<label>📊 损耗率 (%)</label>
+<select id="waste">
+<option value="5">5%（简单裁切，规则形状）</option>
+<option value="8" selected>8%（一般家具，常规裁切）</option>
+<option value="10">10%（复杂造型，异形件多）</option>
+<option value="15">15%（大量异形件/曲面）</option>
+<option value="custom">自定义...</option>
+</select>
+</div>
+
+<div class="form-group" id="customWasteGroup" style="display:none">
+<label>自定义损耗率 (%)</label>
+<input type="number" id="customWaste" value="10" min="0" max="50" step="1">
+</div>
+
+<button class="btn" onclick="calculate()">🔢 计算所需张数</button>
+
+<div class="result-box" id="resultBox">
+<h3 style="margin-bottom:8px">📊 计算结果</h3>
+<div class="result-item"><span class="label">单张板材面积：</span><span class="value" id="rSingleArea">-</span></div>
+<div class="result-item"><span class="label">含损耗总面积：</span><span class="value" id="rTotalArea">-</span></div>
+<div class="result-item"><span class="label">理论最少张数：</span><span class="value" id="rTheory">-</span></div>
+<div class="result-item"><span class="label">建议采购张数：</span><span class="value highlight" id="rFinal">-</span></div>
+<div class="note" style="margin-top:8px">💡 计算公式：采购张数 = ⌈展开面积 × (1 + 损耗率) ÷ 单张面积⌉（向上取整）。实际排版优化后用量可能更少，建议结合排版软件精确计算。</div>
+</div>
+</div>
+
+<!-- 数据依据 -->
+<div class="card">
+<h2>📚 数据依据</h2>
+<table>
+<tr><th>标准号</th><th>标准名称</th><th>引用内容</th></tr>
+<tr><td>GB/T 11718-2009</td><td>中密度纤维板</td><td>厚度系列、表4厚度允许偏差</td></tr>
+<tr><td>GB/T 4897-2015</td><td>刨花板</td><td>厚度系列、表5厚度允许偏差</td></tr>
+<tr><td>GB/T 9846-2015</td><td>普通胶合板</td><td>厚度系列、表3厚度允许偏差</td></tr>
+</table>
+<div class="warn">⚠️ 声明：本工具所列厚度允许偏差数据为常用等级参考值，完整数据（含各等级、各类型的详细偏差要求）需查阅上述标准原文。板材实际厚度偏差还受生产工艺、存储条件等因素影响，采购时应以实际检测报告为准。</div>
+<div class="info">ℹ️ 用量计算公式为通用数学公式，非标准规定内容。损耗率为经验值，属行业通行做法，无强制标准规定具体数值。</div>
+</div>
+
+</div>
+
+<div class="version">v1.0.0-板材规格查询 20261021</div>
+
+<script>
+function switchTab(type){
+document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+document.getElementById('tab-'+type).classList.add('active');
+const btns=document.querySelectorAll('.tab-btn');
+const map={mdf:0,pb:1,ply:2};
+btns[map[type]].classList.add('active');
+}
+
+function setSpec(l,w){
+document.getElementById('boardL').value=l;
+document.getElementById('boardW').value=w;
+}
+
+document.getElementById('waste').addEventListener('change',function(){
+document.getElementById('customWasteGroup').style.display=this.value==='custom'?'block':'none';
+});
+
+function calculate(){
+const area=parseFloat(document.getElementById('area').value);
+const bL=parseFloat(document.getElementById('boardL').value);
+const bW=parseFloat(document.getElementById('boardW').value);
+const wasteSelect=document.getElementById('waste').value;
+let wasteRate;
+if(wasteSelect==='custom'){
+wasteRate=parseFloat(document.getElementById('customWaste').value);
+}else{
+wasteRate=parseFloat(wasteSelect);
+}
+if(isNaN(area)||area<=0){alert('请输入有效的展开面积');return;}
+if(isNaN(bL)||isNaN(bW)||bL<=0||bW<=0){alert('请输入有效的板材尺寸');return;}
+if(isNaN(wasteRate)||wasteRate<0){alert('请输入有效的损耗率');return;}
+
+const singleArea=(bL/1000)*(bW/1000);
+const totalArea=area*(1+wasteRate/100);
+const theoryNum=totalArea/singleArea;
+const finalNum=Math.ceil(theoryNum);
+
+document.getElementById('rSingleArea').textContent=singleArea.toFixed(3)+' m²';
+document.getElementById('rTotalArea').textContent=totalArea.toFixed(2)+' m²';
+document.getElementById('rTheory').textContent=theoryNum.toFixed(2)+' 张';
+document.getElementById('rFinal').textContent=finalNum+' 张';
+document.getElementById('resultBox').classList.add('show');
+}
+</script>
+</body>
+</html>

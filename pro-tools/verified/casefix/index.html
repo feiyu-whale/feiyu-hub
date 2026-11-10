@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔠 大小写·空格处理</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:660px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:15px; font-family:inherit; resize:vertical; min-height:110px; line-height:1.8; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btn { background:#241a3a; border:1px solid #4a3d70; color:#c8b3ff; border-radius:9px;
+    padding:8px 12px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .btn:active { background:#3a2d70; }
+  .tip { font-size:12px; color:#6a5f90; margin-top:7px; line-height:1.6; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>🔠 大小写 · 空格处理</h1>
+  <div class="sub">英文大小写转换 + 空格规整</div>
+
+  <div class="card">
+    <div class="lbl">输入</div>
+    <textarea id="in" placeholder="粘贴英文文本或单词…"></textarea>
+    <div class="row">
+      <button class="btn" data-op="upper">全部大写</button>
+      <button class="btn" data-op="lower">全部小写</button>
+      <button class="btn" data-op="title">每词首字母大写</button>
+      <button class="btn" data-op="sentence">句首大写</button>
+      <button class="btn" data-op="capitalize">仅首字母大写</button>
+      <button class="btn" data-op="toggle">大小写互换</button>
+    </div>
+    <div class="row">
+      <button class="btn" data-op="collapse">合并连续空格</button>
+      <button class="btn" data-op="trimall">去首尾空格</button>
+      <button class="btn" data-op="nospace">去所有空格</button>
+      <button class="btn" data-op="snake">蛇形命名</button>
+      <button class="btn" data-op="camel">驼峰命名</button>
+      <button class="btn" data-op="clr">清空</button>
+    </div>
+    <div class="tip">「句首大写」按 . ! ? 断句；「蛇形/驼峰」用于变量命名</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <textarea id="out" readonly></textarea>
+  </div>
+  <div class="ver">v1.0.0-大小写空格 20261017</div>
+</div>
+<script>
+// 【casefix】英文大小写转换 + 空格规整。依赖：无（纯字符串处理）。输入：文本；输出：处理后文本。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：Unicode/ASCII 大小写映射；命名转换按常见驼峰/蛇形约定。零外部数据。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  function run(op){
+    var s = $("in").value;
+    if(op === "clr"){ $("in").value = ""; $("out").value = ""; return; }
+    var r = s;
+    if(op === "upper") r = s.toUpperCase();
+    else if(op === "lower") r = s.toLowerCase();
+    else if(op === "title") r = s.replace(/\b([a-z])(\w*)/gi, function(m, a, b){ return a.toUpperCase() + b.toLowerCase(); });
+    else if(op === "capitalize") r = s.charAt(0).toUpperCase() + s.slice(1);
+    else if(op === "sentence") r = s.replace(/(^\s*|[.!?]\s+)([a-z])/g, function(m, p, c){ return p + c.toUpperCase(); });
+    else if(op === "toggle") r = s.replace(/[a-zA-Z]/g, function(c){
+      return c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase();
+    });
+    else if(op === "collapse") r = s.replace(/[ \t]+/g, " ");
+    else if(op === "trimall") r = s.split("\n").map(function(l){ return l.trim(); }).join("\n");
+    else if(op === "nospace") r = s.replace(/[ \t]+/g, "");
+    else if(op === "snake") r = s.trim().replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/[\s\-]+/g, "_").toLowerCase();
+    else if(op === "camel") r = s.trim().replace(/[\s_\-]+([a-zA-Z])/g, function(m, c){ return c.toUpperCase(); }).replace(/^(.)/, function(m, c){ return c.toLowerCase(); });
+    $("out").value = r;
+  }
+  document.querySelectorAll("[data-op]").forEach(function(b){
+    b.onclick = function(){ run(b.dataset.op); };
+  });
+})();
+</script>
+</body>
+</html>

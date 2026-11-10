@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>订单详情 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { padding-bottom:80px; }
+  .status-hero { background:linear-gradient(135deg,#1e3a5f,#312e81); padding:20px 14px; }
+  .status-hero h2 { font-size:18px; display:flex; align-items:center; gap:8px; }
+  .status-hero p { font-size:11.5px; color:#a5b4fc; margin-top:6px; }
+
+  .blk { margin:11px; background:var(--card); border:1px solid var(--line);
+         border-radius:11px; padding:13px; }
+  .blk-t { font-size:12.5px; font-weight:600; margin-bottom:10px; }
+  .row { display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; color:#b6c8dc; }
+  .row span:first-child { color:var(--dim); }
+
+  /* 时间线 */
+  .tl { position:relative; padding-left:22px; }
+  .tl::before { content:''; position:absolute; left:6px; top:6px; bottom:6px;
+                width:2px; background:var(--line); }
+  .tl-item { position:relative; padding-bottom:16px; }
+  .tl-item:last-child { padding-bottom:0; }
+  .tl-dot { position:absolute; left:-22px; top:3px; width:14px; height:14px;
+            border-radius:50%; background:var(--bg2); border:2px solid var(--line); }
+  .tl-item.done .tl-dot { background:var(--green); border-color:var(--green); }
+  .tl-item.cur .tl-dot { background:var(--cyan); border-color:var(--cyan);
+                         box-shadow:0 0 0 4px rgba(34,211,238,.18); }
+  .tl-t { font-size:12.5px; color:var(--txt); }
+  .tl-item:not(.done):not(.cur) .tl-t { color:#475569; }
+  .tl-time { font-size:10.5px; color:#64748b; margin-top:2px; }
+
+  .actbar { position:fixed; left:0; right:0; bottom:0; z-index:56;
+            background:rgba(20,32,52,.98); backdrop-filter:blur(9px);
+            border-top:1px solid var(--line);
+            padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+            display:flex; gap:8px; }
+  .actbar button { flex:1; }
+</style>
+</head>
+<body data-tab="orders">
+
+<div class="topbar">
+  <a href="orders.html" style="font-size:16px">←</a>
+  <div class="logo">订单详情</div>
+  <div style="flex:1"></div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div id="main"></div>
+<div class="actbar" id="actbar" style="display:none"></div>
+
+<div class="version" id="ver"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+const params = new URLSearchParams(location.search);
+const oid = params.get('id');
+
+let order = S.orders.find(o => o.id === oid);
+
+/* 状态对应的提示文案 */
+const STATUS_TIP = {
+  pending:   '等待打手接单，通常 1-3 分钟内响应',
+  accepted:  '打手已接单，正在准备中',
+  running:   '服务进行中，完成后请及时确认',
+  delivered: '打手已提交交付，请确认或发起争议',
+  done:      '订单已完成，感谢使用',
+  cancelled: '订单已取消，白饭已退回',
+  disputed:  '订单争议中，等待管理员处理'
+};
+
+if (!order) {
+  document.getElementById('main').innerHTML =
+    '<div class="empty" style="padding-top:100px"><span class="icon">❓</span>订单不存在</div>';
+} else {
+  render();
+}
+
+
+function render() {
+  const st = order.status;
+  const names = (order.addons || []).map(a =>
+    (YC.ADDONS.find(x => x.id === a) || {}).name).filter(Boolean);
+
+  document.getElementById('main').innerHTML = `
+    <div class="status-hero">
+      <h2>
+        <span style="color:${YCStatus.COLOR[st]}">●</span>
+        ${YCStatus.LABEL[st]}
+      </h2>
+      <p>${STATUS_TIP[st] || ''}</p>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">服务信息</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:9px">
+        <div style="width:46px;height:46px;border-radius:11px;flex-shrink:0;
+                    background:linear-gradient(135deg,#1e3a5f,#312e81);
+                    display:flex;align-items:center;justify-content:center;font-size:23px">
+          ${YCUtil.gameIcon(order.gid)}</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;font-weight:600">${order.service}</div>
+          <div style="font-size:11px;color:#7d93ad;margin-top:2px">${YCUtil.gameName(order.gid)}</div>
+        </div>
+        <div class="price">${order.price}<small>白饭</small></div>
+      </div>
+      <div class="row"><span>打手</span><span>${order.workerAvatar} ${order.workerName}</span></div>
+      ${names.length ? `<div class="row"><span>增值服务</span><span>${names.join('、')}</span></div>` : ''}
+      ${order.note ? `<div class="row"><span>备注</span><span style="max-width:62%;text-align:right">${YCSec.esc(order.note)}</span></div>` : ''}
+      <div class="row"><span>下单时间</span><span>${YCUtil.time(order.createdAt)}</span></div>
+      <div class="row"><span>订单号</span><span style="font-family:ui-monospace,monospace">${order.id}</span></div>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">订单进度</div>
+      <div class="tl">${renderTimeline()}</div>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">费用明细</div>
+      <div class="row"><span>服务费用</span><span>${order.priceBase - (order.priceBase - order.price)} 白饭</span></div>
+      <div class="row" style="border-top:1px dashed #1e2f4a;margin-top:6px;padding-top:8px">
+        <span>实付</span><span style="color:#fbbf24;font-size:15px;font-weight:700">${order.price} 白饭</span>
+      </div>
+    </div>
+
+    ${order.rated ? `
+      <div class="blk">
+        <div class="blk-t">我的评价</div>
+        <div style="color:#fbbf24;font-size:15px">${'★'.repeat(order.ratedStars)}${'☆'.repeat(5 - order.ratedStars)}</div>
+        <div style="font-size:12.5px;color:#b6c8dc;margin-top:6px">
+          ${YCSec.esc((S.reviews[order.workerId] || []).filter(r => r.orderId === order.id).map(r => r.text || '（未填写）')[0] || '')}
+        </div>
+      </div>` : ''}
+  `;
+
+  renderActions();
+}
+
+function renderTimeline() {
+  const st = order.status;
+  const hist = order.history || [];
+  const findAt = (s) => {
+    const h = hist.find(x => x.to === s);
+    return h ? YCUtil.time(h.at) : '';
+  };
+
+  const steps = [
+    { k: YCStatus.PENDING,   n: '提交订单' },
+    { k: YCStatus.ACCEPTED,  n: '打手接单' },
+    { k: YCStatus.RUNNING,   n: '服务进行中' },
+    { k: YCStatus.DELIVERED, n: '打手已交付' },
+    { k: YCStatus.DONE,      n: '订单完成' }
+  ];
+
+  if (st === YCStatus.CANCELLED) {
+    return `<div class="tl-item done"><div class="tl-dot"></div>
+      <div class="tl-t">订单已取消</div>
+      <div class="tl-time">${findAt(YCStatus.CANCELLED)}</div></div>`;
+  }
+  if (st === YCStatus.DISPUTED) {
+    return steps.slice(0, 4).map(s => `
+      <div class="tl-item done"><div class="tl-dot"></div>
+        <div class="tl-t">${s.n}</div><div class="tl-time">${findAt(s.k)}</div></div>`).join('') +
+      `<div class="tl-item cur"><div class="tl-dot"></div>
+        <div class="tl-t">争议处理中</div><div class="tl-time">${findAt(YCStatus.DISPUTED)}</div></div>`;
+  }
+
+  const idx = steps.findIndex(s => s.k === st);
+  return steps.map((s, i) => {
+    const cls = i < idx ? 'done' : i === idx ? 'cur' : '';
+    return `<div class="tl-item ${cls}">
+      <div class="tl-dot"></div>
+      <div class="tl-t">${s.n}</div>
+      <div class="tl-time">${i <= idx ? findAt(s.k) : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderActions() {
+  const role = S.role;
+  const st = order.status;
+  const bar = document.getElementById('actbar');
+  const acts = [];
+
+  if (role === 'boss') {
+    acts.push({ t: '联系打手', cls: 'btn-ghost', fn: () => YCApp.toast('演示系统：消息不会真的发出') });
+    if (st === YCStatus.PENDING) acts.push({ t: '取消订单', cls: 'btn-danger', fn: cancelOrder });
+    if (st === YCStatus.RUNNING) acts.push({ t: '举报', cls: 'btn-danger', fn: () => location.href = 'report.html?order=' + order.id });
+    if (st === YCStatus.DELIVERED) {
+      acts.push({ t: '申请争议', cls: 'btn-ghost', fn: () => location.href = 'report.html?order=' + order.id });
+      acts.push({ t: '确认完成', fn: confirmDone });
+    }
+    if (st === YCStatus.DONE && !order.rated) acts.push({ t: '去评价', cls: 'btn-gold', fn: () => location.href = 'orders.html' });
+  } else if (role === 'worker') {
+    if (st === YCStatus.PENDING && order.workerId === S.workerId) acts.push({ t: '接单', fn: () => transit(YCStatus.ACCEPTED) });
+    if (st === YCStatus.ACCEPTED) acts.push({ t: '开始服务', fn: () => transit(YCStatus.RUNNING) });
+    if (st === YCStatus.RUNNING) acts.push({ t: '提交交付', fn: () => transit(YCStatus.DELIVERED) });
+  } else {
+    acts.push({ t: '处理举报', cls: 'btn-danger', fn: () => location.href = 'admin.html' });
+  }
+
+  if (!acts.length) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  bar.innerHTML = acts.map((a, i) =>
+    `<button class="btn ${a.cls || ''}" data-i="${i}">${a.t}</button>`).join('');
+  bar.querySelectorAll('[data-i]').forEach(b => {
+    b.onclick = () => acts[+b.dataset.i].fn();
+  });
+}
+
+function transit(to) {
+  const r = YCStatus.apply(S, order.id, to);
+  if (!r.ok) { YCApp.toast(r.msg, true); return; }
+  YCApp.save();
+  YCApp.toast('已更新为「' + YCStatus.LABEL[to] + '」');
+  order = S.orders.find(o => o.id === order.id);
+  render();
+}
+
+function confirmDone() {
+  YCApp.modal('确认完成', `
+    <p style="font-size:12.5px;color:#7d93ad;line-height:1.7">
+      确认后订单将结束，白饭不再退回。<br>
+      如果服务有问题，请先点「申请争议」。
+    </p>`, [
+    { t: '确认完成', fn: () => {
+        const r = YCStatus.apply(S, order.id, YCStatus.DONE);
+        if (!r.ok) { YCApp.toast(r.msg, true); return; }
+        YCApp.save();
+        order = S.orders.find(o => o.id === order.id);
+        render();
+        setTimeout(() => location.href = 'orders.html', 500);
+      }},
+    { t: '再想想', cls: 'btn-ghost' }
+  ]);
+}
+
+function cancelOrder() {
+  YCApp.modal('取消订单', '<p style="font-size:12.5px;color:#7d93ad">取消后 ' + order.price + ' 白饭将全额退回。</p>', [
+    { t: '确认取消', cls: 'btn-danger', fn: () => {
+        const r = YCStatus.apply(S, order.id, YCStatus.CANCELLED);
+        if (!r.ok) { YCApp.toast(r.msg, true); return; }
+        S.baofan += order.price;
+        YCApp.save();
+        order = S.orders.find(o => o.id === order.id);
+        YCApp.toast('已取消，白饭已退回');
+        render();
+      }},
+    { t: '再想想', cls: 'btn-ghost' }
+  ]);
+}
+</script>
+</body>
+</html>

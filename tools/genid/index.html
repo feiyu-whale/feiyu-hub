@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎲 随机生成</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #14283a 0%, #0a1622 60%, #060a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:6px 6px 12px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#6b8fb3; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #22384c; border-radius:20px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:16px; }
+  .tabs { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:14px; }
+  .tabs button { padding:10px 4px; font-size:14px; font-weight:600; color:#8fb3cf; background:#111a24;
+    border:1px solid #24384c; border-radius:10px; cursor:pointer; font-family:inherit; }
+  .tabs button.on { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border-color:#4d8fc9; }
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:7px; letter-spacing:1px; }
+  .opt { display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:13.5px; color:#b9d4ea; }
+  .opt input[type=range] { flex:1; }
+  .opt input[type=checkbox] { width:16px; height:16px; }
+  .len { color:#9fe0ff; font-weight:700; min-width:28px; text-align:right; }
+  .out { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:15px; color:#8fe0c0; word-break:break-all;
+    background:#060a10; border-radius:9px; padding:13px; line-height:1.7; min-height:48px; }
+  .row { display:flex; gap:8px; margin-top:12px; }
+  button.act { flex:1; background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border:1px solid #4d8fc9;
+    border-radius:9px; padding:11px 16px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  button.act:active { transform:scale(.97); }
+  button.g { background:#132638; border-color:#2e5f8e; color:#9fe0ff; }
+  .bar { height:6px; border-radius:4px; background:#1a2c3c; margin-top:8px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; transition:.25s; }
+  .tips { font-size:12px; color:#5b7a99; margin-top:8px; line-height:1.6; }
+  .ver { text-align:center; color:#22383c; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回工具区</a>
+  <h1>🎲 随机生成</h1>
+  <div class="sub">UUID · 高强度密码（crypto 安全随机）</div>
+
+  <div class="tabs" id="tabs">
+    <button data-m="uuid" class="on">UUID</button>
+    <button data-m="pwd">密码</button>
+  </div>
+
+  <div class="card" id="pwdCard" style="display:none">
+    <div class="lbl">选项</div>
+    <div class="opt">长度 <input type="range" id="len" min="4" max="64" value="16"><span class="len" id="lenV">16</span></div>
+    <div class="opt"><input type="checkbox" id="cUp" checked> 大写 A-Z</div>
+    <div class="opt"><input type="checkbox" id="cLow" checked> 小写 a-z</div>
+    <div class="opt"><input type="checkbox" id="cNum" checked> 数字 0-9</div>
+    <div class="opt"><input type="checkbox" id="cSym" checked> 符号 !@#$%^&*</div>
+    <div class="opt" style="margin-bottom:0"><input type="checkbox" id="cNoAmb"> 排除易混字符 (0O1lI)</div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="tips" id="tips"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" id="outLbl">生成结果</div>
+    <div class="out" id="out"></div>
+    <div class="row">
+      <button class="act" id="gen">🎲 再生成</button>
+      <button class="act g" id="cp">复制</button>
+    </div>
+  </div>
+  <div class="ver">v1.0.0-随机生成 20261016</div>
+</div>
+<script>
+// 依据：UUID v4 (RFC 4122)；随机数用 crypto.getRandomValues + 拒绝采样（无模偏差）。
+const $ = id => document.getElementById(id);
+let mode = "uuid";
+
+// 复制（稳妥版：先试 clipboard API → 兑底 execCommand → 全失败如实报错）
+function doCopy(text){
+  return new Promise(function(resolve, reject){
+    function fallback(){
+      try{
+        var ta=document.createElement('textarea');
+        ta.value=text;
+        ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0';
+        ta.setAttribute('readonly','');
+        document.body.appendChild(ta);
+        ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+        var ok=false;
+        try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+        document.body.removeChild(ta);
+        ok?resolve():reject(new Error('复制不受支持'));
+      }catch(e){ reject(e); }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(resolve).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+}
+
+function rnd(n){ // 无模偏差的安全随机整数 [0,n)
+  const max = Math.floor(256/n)*n;
+  const buf = new Uint8Array(1);
+  let x;
+  do { crypto.getRandomValues(buf); x = buf[0]; } while(x >= max);
+  return x % n;
+}
+
+function uuid(){
+  // RFC4122 v4
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map(x => x.toString(16).padStart(2,"0"));
+  return h.slice(0,4).join("")+"-"+h.slice(4,6).join("")+"-"+h.slice(6,8).join("")+"-"+h.slice(8,10).join("")+"-"+h.slice(10,16).join("");
+}
+
+function genPwd(){
+  let pool = "";
+  if($("cUp").checked) pool += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  if($("cLow").checked) pool += "abcdefghijklmnopqrstuvwxyz";
+  if($("cNum").checked) pool += "0123456789";
+  if($("cSym").checked) pool += "!@#$%^&*()-_=+[]{};:,.?";
+  if($("cNoAmb").checked) pool = pool.replace(/[0O1lI]/g,"");
+  if(!pool){ $("out").textContent = "至少选一类字符"; return ""; }
+  const len = +$("len").value;
+  let s = "";
+  for(let i=0;i<len;i++) s += pool[rnd(pool.length)];
+  return s;
+}
+
+function strength(p){
+  if(!p) return 0;
+  let sets = 0;
+  if(/[a-z]/.test(p)) sets++;
+  if(/[A-Z]/.test(p)) sets++;
+  if(/[0-9]/.test(p)) sets++;
+  if(/[^a-zA-Z0-9]/.test(p)) sets++;
+  const bits = p.length * Math.log2(sets * 26 || 1);
+  return Math.min(100, Math.round(bits / 1.28)); // 128bit≈100
+}
+
+function refresh(){
+  let v = mode === "uuid" ? uuid() : genPwd();
+  $("out").textContent = v;
+  if(mode === "pwd"){
+    const st = strength(v);
+    const bar = $("bar");
+    bar.style.width = st + "%";
+    bar.style.background = st < 40 ? "#e07a5f" : st < 70 ? "#e0c05f" : "#5fe08a";
+    $("tips").textContent = "强度：" + st + "%" + (st<40?"（偏弱）":st<70?"（尚可）":"（很强）");
+  }
+}
+
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  mode = b.dataset.m;
+  [...$("tabs").children].forEach(x => x.classList.toggle("on", x===b));
+  $("pwdCard").style.display = mode === "pwd" ? "block" : "none";
+  $("outLbl").textContent = mode === "uuid" ? "UUID v4" : "生成结果";
+  refresh();
+});
+$("gen").onclick = refresh;
+$("cp").onclick = () => { doCopy($("out").textContent).then(()=>{
+  $("cp").textContent = "已复制"; setTimeout(()=>$("cp").textContent="复制",1200);
+}).catch(()=>{ $("cp").textContent = "复制失败"; setTimeout(()=>$("cp").textContent="复制",1500); }); };
+["len","cUp","cLow","cNum","cSym","cNoAmb"].forEach(id => $(id).addEventListener("input", () => {
+  $("lenV").textContent = $("len").value;
+  if(mode === "pwd") refresh();
+}));
+
+refresh();
+</script>
+</body>
+</html>

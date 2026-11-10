@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>RC / RL / LC 电路计算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; padding: 20px; color: #222; background: #f7f8fa; line-height: 1.6; }
+  h1 { margin: 0 0 10px; font-size: 22px; }
+  .tabs { display: flex; border-bottom: 2px solid #e3e6eb; margin-bottom: 16px; }
+  .tab { padding: 10px 18px; cursor: pointer; border: 1px solid transparent; border-bottom: none; background: #eef0f4; border-radius: 6px 6px 0 0; margin-right: 4px; font-size: 14px; }
+  .tab.active { background: #fff; border-color: #e3e6eb; font-weight: 600; color: #1a73e8; }
+  .panel { display: none; background: #fff; padding: 20px; border: 1px solid #e3e6eb; border-radius: 0 6px 6px 6px; }
+  .panel.active { display: block; }
+  pre { background: #1e1e1e; color: #f8f8f2; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  code.inline { background: #eef0f4; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
+  th, td { border: 1px solid #d0d4db; padding: 8px 10px; text-align: left; }
+  th { background: #f0f2f6; }
+  .test-result { padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; }
+  .pass { background: #e6f7ea; color: #1b7a32; }
+  .fail { background: #fdecea; color: #b71c1c; }
+  button.run { background: #1a73e8; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  button.run:hover { background: #155bbf; }
+  .version { position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #999; }
+  h2 { font-size: 17px; margin-top: 24px; border-left: 4px solid #1a73e8; padding-left: 8px; }
+  h3 { font-size: 15px; margin-top: 16px; }
+  .warn { background: #fff8e1; border-left: 4px solid #f5b400; padding: 10px 14px; margin: 10px 0; font-size: 13.5px; }
+  .info { background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 10px 14px; margin: 10px 0; font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<h1>RC / RL / LC 电路计算工具</h1>
+<div class="tabs">
+  <div class="tab active" data-tab="calc">🧮 计算器</div>
+  <div class="tab" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明</div>
+</div>
+
+<!-- v3.0.0 新增：计算器面板（社区 #220 反馈：只有源码没有输入界面） -->
+<div class="panel active" id="panel-calc">
+  <div class="info">输入 R / L / C / f 四个量，按需选计算项。单位：Ω / H / F / Hz（支持科学计数法，如 1e-6 = 1μF）。</div>
+
+  <h3>① 时间常数 / 谐振频率</h3>
+  <table>
+    <tr><td style="width:130px">电阻 R（Ω）</td><td><input type="number" id="inR" value="1000" step="any" style="width:160px"></td>
+        <td style="width:130px">电容 C（F）</td><td><input type="number" id="inC" value="0.000001" step="any" style="width:160px"></td></tr>
+    <tr><td>电感 L（H）</td><td><input type="number" id="inL" value="0.01" step="any" style="width:160px"></td>
+        <td>频率 f（Hz）</td><td><input type="number" id="inF" value="50" step="any" style="width:160px"></td></tr>
+  </table>
+  <button class="run" onclick="calcAll()">▶ 计算全部</button>
+  <div id="calcResult" style="margin-top:14px"></div>
+
+  <h3>② 单项计算</h3>
+  <table>
+    <tr><td>RC 时间常数 τ=RC</td><td><button class="run" style="padding:4px 14px" onclick="doRC()">计算</button></td><td id="outRC" style="font-family:monospace">—</td></tr>
+    <tr><td>RL 时间常数 τ=L/R</td><td><button class="run" style="padding:4px 14px" onclick="doRL()">计算</button></td><td id="outRL" style="font-family:monospace">—</td></tr>
+    <tr><td>LC 谐振频率 f₀</td><td><button class="run" style="padding:4px 14px" onclick="doLC()">计算</button></td><td id="outLC" style="font-family:monospace">—</td></tr>
+    <tr><td>RC 串联阻抗</td><td><button class="run" style="padding:4px 14px" onclick="doZ('RC')">计算</button></td><td id="outRCZ" style="font-family:monospace">—</td></tr>
+    <tr><td>RL 串联阻抗</td><td><button class="run" style="padding:4px 14px" onclick="doZ('RL')">计算</button></td><td id="outRLZ" style="font-family:monospace">—</td></tr>
+    <tr><td>RLC 串联阻抗</td><td><button class="run" style="padding:4px 14px" onclick="doZ('RLC')">计算</button></td><td id="outRLCZ" style="font-family:monospace">—</td></tr>
+  </table>
+</div>
+
+<!-- ================= 第一部分：源码 ================= -->
+<div class="panel" id="panel-source">
+<h2>核心算法源码（纯函数，无外部依赖）</h2>
+<pre id="sourceCode"></pre>
+</div>
+
+<!-- ================= 第二部分：测试 ================= -->
+<div class="panel" id="panel-test">
+<h2>单元测试（纯 JS 实现，≥30 用例）</h2>
+<button class="run" onclick="runAllTests()">▶ 运行全部测试</button>
+<div id="testResult" class="test-result" style="margin-top:12px;">点击按钮运行测试…</div>
+<pre id="testCode" style="margin-top:16px;"></pre>
+</div>
+
+<!-- ================= 第三部分：说明书 ================= -->
+<div class="panel" id="panel-doc">
+<div id="docContent"></div>
+</div>
+
+<div class="version">v3.0.0-加计算器 20261025</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法（纯函数）
+ * ============================================================ */
+const RCCalculator = (function () {
+  'use strict';
+
+  /**
+   * 校验输入是否为有限正数
+   * @param {number} v - 待校验值
+   * @param {string} name - 参数名（用于错误信息）
+   * @throws {TypeError|RangeError} 类型或范围错误
+   */
+  function assertPositive(v, name) {
+    if (v === null || v === undefined) throw new TypeError(name + ' 不能为 null/undefined');
+    if (typeof v !== 'number') throw new TypeError(name + ' 必须是 number');
+    if (Number.isNaN(v)) throw new RangeError(name + ' 不能为 NaN');
+    if (!Number.isFinite(v)) throw new RangeError(name + ' 必须为有限数');
+    if (v <= 0) throw new RangeError(name + ' 必须 > 0');
+  }
+
+  /**
+   * 校验频率（允许 0 表示直流）
+   * @param {number} f - 频率 Hz
+   * @throws {TypeError|RangeError}
+   */
+  function assertFrequency(f) {
+    if (f === null || f === undefined) throw new TypeError('f 不能为 null/undefined');
+    if (typeof f !== 'number') throw new TypeError('f 必须是 number');
+    if (Number.isNaN(f)) throw new RangeError('f 不能为 NaN');
+    if (!Number.isFinite(f)) throw new RangeError('f 必须为有限数');
+    if (f < 0) throw new RangeError('f 不能为负数');
+  }
+
+  /**
+   * 计算 RC 电路时间常数 τ = R × C
+   * @param {number} R - 电阻，单位欧姆 (Ω)，必须 > 0
+   * @param {number} C - 电容，单位法拉 (F)，必须 > 0
+   * @returns {number} 时间常数 τ，单位秒 (s)
+   * @throws {TypeError|RangeError} 参数非法时抛出
+   * @example calcRCTimeConstant(1000, 1e-6) // => 0.001 (1 ms)
+   * @example calcRCTimeConstant(10e3, 100e-9) // => 0.001
+   */
+  function calcRCTimeConstant(R, C) {
+    assertPositive(R, 'R');
+    assertPositive(C, 'C');
+    return R * C;
+  }
+
+  /**
+   * 计算 RL 电路时间常数 τ = L / R
+   * @param {number} R - 电阻，单位欧姆 (Ω)，必须 > 0
+   * @param {number} L - 电感，单位亨利 (H)，必须 > 0
+   * @returns {number} 时间常数 τ，单位秒 (s)
+   * @throws {TypeError|RangeError} 参数非法时抛出
+   * @example calcRLTimeConstant(100, 0.01) // => 0.0001 (100 μs)
+   */
+  function calcRLTimeConstant(R, L) {
+    assertPositive(R, 'R');
+    assertPositive(L, 'L');
+    return L / R;
+  }
+
+  /**
+   * 计算 LC 谐振频率 f₀ = 1 / (2π√(LC))
+   * @param {number} L - 电感，单位亨利 (H)，必须 > 0
+   * @param {number} C - 电容，单位法拉 (F)，必须 > 0
+   * @returns {number} 谐振频率 f₀，单位赫兹 (Hz)
+   * @throws {TypeError|RangeError} 参数非法时抛出
+   * @example calcLCResonance(10e-3, 100e-9) // ≈ 159154.94 Hz
+   */
+  function calcLCResonance(L, C) {
+    assertPositive(L, 'L');
+    assertPositive(C, 'C');
+    return 1 / (2 * Math.PI * Math.sqrt(L * C));
+  }
+
+  /**
+   * 计算容抗 Xc = 1 / (2πfC)
+   * @param {number} f - 频率 Hz，必须 ≥ 0（0 时返回 Infinity）
+   * @param {number} C - 电容 F，必须 > 0
+   * @returns {number} 容抗绝对值 |Xc|，单位欧姆
+   * @throws {TypeError|RangeError}
+   * @example calcCapacitiveReactance(50, 10e-6) // ≈ 318.31 Ω
+   */
+  function calcCapacitiveReactance(f, C) {
+    assertFrequency(f);
+    assertPositive(C, 'C');
+    if (f === 0) return Infinity;
+    return 1 / (2 * Math.PI * f * C);
+  }
+
+  /**
+   * 计算感抗 Xl = 2πfL
+   * @param {number} f - 频率 Hz，必须 ≥ 0
+   * @param {number} L - 电感 H，必须 > 0
+   * @returns {number} 感抗 Xl，单位欧姆
+   * @throws {TypeError|RangeError}
+   * @example calcInductiveReactance(50, 0.1) // ≈ 31.416 Ω
+   */
+  function calcInductiveReactance(f, L) {
+    assertFrequency(f);
+    assertPositive(L, 'L');
+    return 2 * Math.PI * f * L;
+  }
+
+  /**
+   * 计算 RC 串联阻抗 |Z| = √(R² + Xc²)
+   * @param {number} R - 电阻 Ω，> 0
+   * @param {number} C - 电容 F，> 0
+   * @param {number} f - 频率 Hz，≥ 0
+   * @returns {{Z:number, Xc:number, phase:number}} 阻抗模、容抗、相位角(弧度，负值)
+   * @throws {TypeError|RangeError}
+   * @example calcRCImpedance(1000, 1e-6, 159.155) // Z≈1414.2
+   */
+  function calcRCImpedance(R, C, f) {
+    assertPositive(R, 'R');
+    assertPositive(C, 'C');
+    assertFrequency(f);
+    const Xc = calcCapacitiveReactance(f, C);
+    const Z = Math.sqrt(R * R + Xc * Xc);
+    const phase = -Math.atan(Xc / R);
+    return { Z: Z, Xc: Xc, phase: phase };
+  }
+
+  /**
+   * 计算 RL 串联阻抗 |Z| = √(R² + Xl²)
+   * @param {number} R - 电阻 Ω，> 0
+   * @param {number} L - 电感 H，> 0
+   * @param {number} f - 频率 Hz，≥ 0
+   * @returns {{Z:number, Xl:number, phase:number}} 阻抗模、感抗、相位角(弧度，正值)
+   * @throws {TypeError|RangeError}
+   */
+  function calcRLImpedance(R, L, f) {
+    assertPositive(R, 'R');
+    assertPositive(L, 'L');
+    assertFrequency(f);
+    const Xl = calcInductiveReactance(f, L);
+    const Z = Math.sqrt(R * R + Xl * Xl);
+    const phase = Math.atan(Xl / R);
+    return { Z: Z, Xl: Xl, phase: phase };
+  }
+
+  /**
+   * 计算 RLC 串联阻抗 |Z| = √(R² + (Xl - Xc)²)
+   * @param {number} R - 电阻 Ω，> 0
+   * @param {number} L - 电感 H，> 0
+   * @param {number} C - 电容 F，> 0
+   * @param {number} f - 频率 Hz，> 0
+   * @returns {{Z:number, Xl:number, Xc:number, phase:number}}
+   * @throws {TypeError|RangeError}
+   */
+  function calcRLCImpedance(R, L, C, f) {
+    assertPositive(R, 'R');
+    assertPositive(L, 'L');
+    assertPositive(C, 'C');
+    assertFrequency(f);
+    if (f === 0) throw new RangeError('RLC 计算要求 f > 0');
+    const Xl = calcInductiveReactance(f, L);
+    const Xc = calcCapacitiveReactance(f, C);
+    const X = Xl - Xc;
+    const Z = Math.sqrt(R * R + X * X);
+    const phase = Math.atan(X / R);
+    return { Z: Z, Xl: Xl, Xc: Xc, phase: phase };
+  }
+
+  return {
+    calcRCTimeConstant: calcRCTimeConstant,
+    calcRLTimeConstant: calcRLTimeConstant,
+    calcLCResonance: calcLCResonance,
+    calcCapacitiveReactance: calcCapacitiveReactance,
+    calcInductiveReactance: calcInductiveReactance,
+    calcRCImpedance: calcRCImpedance,
+    calcRLImpedance: calcRLImpedance,
+    calcRLCImpedance: calcRLCImpedance,
+    _internals: { assertPositive: assertPositive, assertFrequency: assertFrequency }
+  };
+})();
+
+/* ============================================================
+ * 第二部分：单元测试（≥30 用例）
+ * ============================================================ */
+/* ═══ v3.0.0 计算器交互 ═══ */
+function num(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  if (!isFinite(v)) throw new TypeError('请输入有效数字');
+  return v;
+}
+function fmtNum(v, unit) {
+  if (!isFinite(v)) return '∞ ' + (unit || '');
+  const a = Math.abs(v);
+  if (a === 0) return '0 ' + (unit || '');
+  if (a >= 1e6 || a < 1e-3) return v.toExponential(4) + ' ' + (unit || '');
+  return parseFloat(v.toFixed(6)) + ' ' + (unit || '');
+}
+function setOut(id, txt) { document.getElementById(id).textContent = txt; }
+function setOutErr(id, e) { document.getElementById(id).textContent = '✗ ' + e.message; }
+
+function doRC() {
+  try { setOut('outRC', fmtNum(RCCalculator.calcRCTimeConstant(num('inR'), num('inC')), 's')); }
+  catch (e) { setOutErr('outRC', e); }
+}
+function doRL() {
+  try { setOut('outRL', fmtNum(RCCalculator.calcRLTimeConstant(num('inR'), num('inL')), 's')); }
+  catch (e) { setOutErr('outRL', e); }
+}
+function doLC() {
+  try { setOut('outLC', fmtNum(RCCalculator.calcLCResonance(num('inL'), num('inC')), 'Hz')); }
+  catch (e) { setOutErr('outLC', e); }
+}
+function doZ(kind) {
+  const map = { RC: 'outRCZ', RL: 'outRLZ', RLC: 'outRLCZ' };
+  try {
+    const R = num('inR'), C = num('inC'), L = num('inL'), f = num('inF');
+    let r;
+    if (kind === 'RC') r = RCCalculator.calcRCImpedance(R, C, f);
+    else if (kind === 'RL') r = RCCalculator.calcRLImpedance(R, L, f);
+    else r = RCCalculator.calcRLCImpedance(R, L, C, f);
+    setOut(map[kind], '|Z|=' + fmtNum(r.Z, 'Ω') + '  相位=' + (r.phase * 180 / Math.PI).toFixed(2) + '°');
+  } catch (e) { setOutErr(map[kind], e); }
+}
+
+function calcAll() {
+  const box = document.getElementById('calcResult');
+  try {
+    const R = num('inR'), C = num('inC'), L = num('inL'), f = num('inF');
+    const rows = [];
+    rows.push(['RC 时间常数 τ = R·C', fmtNum(RCCalculator.calcRCTimeConstant(R, C), 's')]);
+    rows.push(['RL 时间常数 τ = L/R', fmtNum(RCCalculator.calcRLTimeConstant(R, L), 's')]);
+    rows.push(['LC 谐振频率 f₀ = 1/(2π√LC)', fmtNum(RCCalculator.calcLCResonance(L, C), 'Hz')]);
+    if (f > 0) {
+      rows.push(['容抗 Xc = 1/(2πfC)', fmtNum(RCCalculator.calcCapacitiveReactance(f, C), 'Ω')]);
+      rows.push(['感抗 Xl = 2πfL', fmtNum(RCCalculator.calcInductiveReactance(f, L), 'Ω')]);
+      const zrc = RCCalculator.calcRCImpedance(R, C, f);
+      rows.push(['RC 串联阻抗 |Z|', fmtNum(zrc.Z, 'Ω') + '（相位 ' + (zrc.phase * 180 / Math.PI).toFixed(2) + '°）']);
+      const zrl = RCCalculator.calcRLImpedance(R, L, f);
+      rows.push(['RL 串联阻抗 |Z|', fmtNum(zrl.Z, 'Ω') + '（相位 ' + (zrl.phase * 180 / Math.PI).toFixed(2) + '°）']);
+      const zrlc = RCCalculator.calcRLCImpedance(R, L, C, f);
+      rows.push(['RLC 串联阻抗 |Z|', fmtNum(zrlc.Z, 'Ω') + '（相位 ' + (zrlc.phase * 180 / Math.PI).toFixed(2) + '°）']);
+      if (Math.abs(zrlc.Xl - zrlc.Xc) < 1e-6 * Math.max(1, zrlc.Xl)) {
+        rows.push(['⚡ 提示', '当前频率接近谐振点，Xl ≈ Xc，阻抗最小']);
+      }
+    } else {
+      rows.push(['交流部分', '频率为 0 时跳过（直流下容抗无穷大），要看交流量请输入 f > 0']);
+    }
+    box.innerHTML = '<table>' + rows.map(r =>
+      '<tr><td style="width:230px">' + r[0] + '</td><td style="font-family:monospace;font-weight:600">' + r[1] + '</td></tr>'
+    ).join('') + '</table>';
+  } catch (e) {
+    box.innerHTML = '<div class="warn">✗ ' + e.message + '</div>';
+  }
+}
+
+function runAllTests() {
+  const C = RCCalculator;
+  let passed = 0, failed = 0, total = 0;
+  const log = [];
+
+  function approx(a, b, eps) {
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return a === b;
+    if (b === 0) return Math.abs(a) < eps;
+    return Math.abs(a - b) / Math.max(1, Math.abs(b)) < eps;
+  }
+
+  function test(name, fn) {
+    total++;
+    try {
+      fn();
+      passed++;
+      log.push('✓ ' + name);
+    } catch (e) {
+      failed++;
+      log.push('✗ ' + name + '  →  ' + e.message);
+    }
+  }
+
+  function expectThrow(fn, errType) {
+    let threw = false, got = null;
+    try { fn(); } catch (e) { threw = true; got = e; }
+    if (!threw) throw new Error('期望抛出异常但未抛出');
+    if (errType && !(got instanceof errType)) throw new Error('期望 ' + errType.name + '，实际 ' + got.constructor.name);
+  }
+
+  // ---------- RC 时间常数 ----------
+  test('RC: 1kΩ × 1μF = 1ms', () => {
+    if (!approx(C.calcRCTimeConstant(1000, 1e-6), 0.001, 1e-12)) throw new Error('结果不符');
+  });
+  test('RC: 10kΩ × 100nF = 1ms', () => {
+    if (!approx(C.calcRCTimeConstant(10e3, 100e-9), 0.001, 1e-12)) throw new Error('结果不符');
+  });
+  test('RC: 1Ω × 1F = 1s', () => {
+    if (!approx(C.calcRCTimeConstant(1, 1), 1, 1e-12)) throw new Error('结果不符');
+  });
+  test('RC: 极小值 1e-9 × 1e-12', () => {
+    if (!approx(C.calcRCTimeConstant(1e-9, 1e-12), 1e-21, 1e-30)) throw new Error('结果不符');
+  });
+  test('RC: 极大值 1e9 × 1e6', () => {
+    if (!approx(C.calcRCTimeConstant(1e9, 1e6), 1e15, 1e6)) throw new Error('结果不符');
+  });
+  test('RC: R=0 抛 RangeError', () => { expectThrow(() => C.calcRCTimeConstant(0, 1e-6), RangeError); });
+  test('RC: C<0 抛 RangeError', () => { expectThrow(() => C.calcRCTimeConstant(100, -1), RangeError); });
+  test('RC: R=null 抛 TypeError', () => { expectThrow(() => C.calcRCTimeConstant(null, 1e-6), TypeError); });
+  test('RC: C=undefined 抛 TypeError', () => { expectThrow(() => C.calcRCTimeConstant(100, undefined), TypeError); });
+  test('RC: R=NaN 抛 RangeError', () => { expectThrow(() => C.calcRCTimeConstant(NaN, 1e-6), RangeError); });
+  test('RC: C=Infinity 抛 RangeError', () => { expectThrow(() => C.calcRCTimeConstant(100, Infinity), RangeError); });
+  test('RC: R=字符串 抛 TypeError', () => { expectThrow(() => C.calcRCTimeConstant('100', 1e-6), TypeError); });
+
+  // ---------- RL 时间常数 ----------
+  test('RL: L=10mH, R=100Ω → 100μs', () => {
+    if (!approx(C.calcRLTimeConstant(100, 0.01), 0.0001, 1e-12)) throw new Error('结果不符');
+  });
+  test('RL: L=1H, R=1Ω → 1s', () => {
+    if (!approx(C.calcRLTimeConstant(1, 1), 1, 1e-12)) throw new Error('结果不符');
+  });
+  test('RL: L=100μH, R=10Ω → 10μs', () => {
+    if (!approx(C.calcRLTimeConstant(10, 100e-6), 1e-5, 1e-15)) throw new Error('结果不符');
+  });
+  test('RL: R=0 抛 RangeError', () => { expectThrow(() => C.calcRLTimeConstant(0, 0.01), RangeError); });
+  test('RL: L=NaN 抛 RangeError', () => { expectThrow(() => C.calcRLTimeConstant(100, NaN), RangeError); });
+  test('RL: R=空字符串 抛 TypeError', () => { expectThrow(() => C.calcRLTimeConstant('', 0.01), TypeError); });
+
+  // ---------- LC 谐振 ----------
+  test('LC: 10mH, 100nF → ≈159154.94 Hz', () => {
+    if (!approx(C.calcLCResonance(10e-3, 100e-9), 159154.9431, 1e-6)) throw new Error('结果不符');
+  });
+  test('LC: 1H, 1F → 1/(2π) Hz', () => {
+    if (!approx(C.calcLCResonance(1, 1), 1 / (2 * Math.PI), 1e-12)) throw new Error('结果不符');
+  });
+  test('LC: 1mH, 1μF → ≈5032.92 Hz', () => {
+    if (!approx(C.calcLCResonance(1e-3, 1e-6), 5032.9212, 1e-5)) throw new Error('结果不符');
+  });
+  test('LC: L=0 抛 RangeError', () => { expectThrow(() => C.calcLCResonance(0, 1e-6), RangeError); });
+  test('LC: C=null 抛 TypeError', () => { expectThrow(() => C.calcLCResonance(1e-3, null), TypeError); });
+
+  // ---------- 电抗 ----------
+  test('Xc: 50Hz, 10μF → ≈318.31 Ω', () => {
+    if (!approx(C.calcCapacitiveReactance(50, 10e-6), 318.3099, 1e-4)) throw new Error('结果不符');
+  });
+  test('Xc: f=0 → Infinity', () => {
+    if (C.calcCapacitiveReactance(0, 1e-6) !== Infinity) throw new Error('应为 Infinity');
+  });
+  test('Xl: 50Hz, 0.1H → ≈31.416 Ω', () => {
+    if (!approx(C.calcInductiveReactance(50, 0.1), 31.4159, 1e-4)) throw new Error('结果不符');
+  });
+  test('Xl: f=0 → 0', () => {
+    if (C.calcInductiveReactance(0, 0.1) !== 0) throw new Error('应为 0');
+  });
+  test('Xl: f<0 抛 RangeError', () => { expectThrow(() => C.calcInductiveReactance(-50, 0.1), RangeError); });
+
+  // ---------- 阻抗 ----------
+  test('RC阻抗: 1kΩ, 1μF, 159.155Hz → Z≈1414.2', () => {
+    const r = C.calcRCImpedance(1000, 1e-6, 159.155);
+    if (!approx(r.Z, 1414.21, 1e-3)) throw new Error('Z 不符: ' + r.Z);
+    if (r.phase >= 0) throw new Error('RC 相位应为负');
+  });
+  test('RL阻抗: 100Ω, 0.1H, 50Hz → Z≈104.9', () => {
+    const r = C.calcRLImpedance(100, 0.1, 50);
+    if (!approx(r.Z, 104.89, 1e-3)) throw new Error('Z 不符: ' + r.Z);
+    if (r.phase <= 0) throw new Error('RL 相位应为正');
+  });
+  test('RLC阻抗: 谐振时 Z=R', () => {
+    const L = 10e-3, Cc = 100e-9;
+    const f0 = C.calcLCResonance(L, Cc);
+    const r = C.calcRLCImpedance(50, L, Cc, f0);
+    if (!approx(r.Z, 50, 1e-9)) throw new Error('谐振时 Z 应等于 R: ' + r.Z);
+  });
+  test('RLC: f=0 抛 RangeError', () => { expectThrow(() => C.calcRLCImpedance(50, 1e-3, 1e-6, 0), RangeError); });
+
+  // ---------- 浮点精度 ----------
+  test('精度: 0.1+0.2 类浮点误差可控', () => {
+    const r = C.calcRCTimeConstant(0.1, 0.2);
+    if (!approx(r, 0.02, 1e-15)) throw new Error('浮点误差过大: ' + r);
+  });
+
+  const summary = '通过 ' + passed + ' / 共 ' + total + '  （失败 ' + failed + '）';
+  const box = document.getElementById('testResult');
+  box.textContent = summary + '\n\n' + log.join('\n');
+  box.className = 'test-result ' + (failed === 0 ? 'pass' : 'fail');
+}
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+const DOC_HTML = `
+<h2>一、工具简介</h2>
+<p>本工具用于计算线性时不变（LTI）一阶/二阶无源电路的核心参数，覆盖以下四类计算：</p>
+<ul>
+  <li><b>RC 时间常数</b> τ = R × C，用于描述 RC 充放电速度。</li>
+  <li><b>RL 时间常数</b> τ = L / R，用于描述 RL 电流建立/衰减速度。</li>
+  <li><b>LC 谐振频率</b> f₀ = 1 / (2π√(LC))，用于 LC 谐振回路设计。</li>
+  <li><b>阻抗计算</b>：RC / RL / RLC 串联阻抗模值与相位。</li>
+</ul>
+<p>适用对象：电子工程师、电气工程师、自动化专业师生、硬件调试人员。解决"给定元件参数，快速得到时间常数、谐振频率、阻抗"的重复性计算问题，避免手算出错。</p>
+
+<div class="info">本工具基于理想元件模型（纯 R、纯 L、纯 C），不考虑寄生参数、温度漂移、非线性、饱和效应。</div>
+
+<h2>二、参数说明</h2>
+<table>
+  <tr><th>参数</th><th>符号</th><th>单位</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>电阻</td><td>R</td><td>Ω（欧姆）</td><td>&gt; 0，有限正数</td><td>线性电阻值。0 或负数无物理意义，将抛出异常。</td></tr>
+  <tr><td>电容</td><td>C</td><td>F（法拉）</td><td>&gt; 0，有限正数</td><td>线性电容值。常用 μF / nF / pF，需换算为 F 输入。</td></tr>
+  <tr><td>电感</td><td>L</td><td>H（亨利）</td><td>&gt; 0，有限正数</td><td>线性电感值。常用 mH / μH，需换算为 H 输入。</td></tr>
+  <tr><td>频率</td><td>f</td><td>Hz（赫兹）</td><td>≥ 0（RLC 要求 &gt; 0）</td><td>正弦激励频率。f=0 表示直流。</td></tr>
+</table>
+
+<h3>单位换算提示</h3>
+<ul>
+  <li>1 mF = 10⁻³ F，1 μF = 10⁻⁶ F，1 nF = 10⁻⁹ F，1 pF = 10⁻¹² F</li>
+  <li>1 mH = 10⁻³ H，1 μH = 10⁻⁶ H</li>
+  <li>1 kΩ = 10³ Ω，1 MΩ = 10⁶ Ω</li>
+</ul>
+
+<h2>三、公式与物理意义</h2>
+<h3>3.1 RC 时间常数</h3>
+<p>τ = R × C。物理含义：电容电压从 0 充电至稳态值的 (1 − 1/e) ≈ 63.2% 所需时间。工程上认为经过 5τ 后充放电基本完成（达到 99.3%）。</p>
+
+<h3>3.2 RL 时间常数</h3>
+<p>τ = L / R。物理含义：电流从 0 上升至稳态值的 63.2% 所需时间。同样 5τ 视为稳态。</p>
+
+<h3>3.3 LC 谐振频率</h3>
+<p>f₀ = 1 / (2π√(LC))。在 f₀ 处，感抗 Xl = 2πfL 与容抗 Xc = 1/(2πfC) 相等，串联回路阻抗最小（理想时为 0），并联回路阻抗最大。</p>
+
+<h3>3.4 阻抗</h3>
+<ul>
+  <li>RC 串联：|Z| = √(R² + Xc²)，相位 φ = −arctan(Xc/R)（电流超前电压）</li>
+  <li>RL 串联：|Z| = √(R² + Xl²)，相位 φ = +arctan(Xl/R)（电压超前电流）</li>
+  <li>RLC 串联：|Z| = √(R² + (Xl − Xc)²)，相位 φ = arctan((Xl − Xc)/R)</li>
+</ul>
+
+<h2>四、实际使用场景（5 例）</h2>
+
+<h3>场景 1：单片机复位电路设计</h3>
+<p><b>需求</b>：上电后 RST 引脚保持低电平至少 20 ms，使用 10 μF 电容，求所需电阻。</p>
+<p><b>输入</b>：目标 τ ≈ 20 ms / 5 = 4 ms（按 5τ 估算），C = 10e-6 F。</p>
+<p><b>计算</b>：R = τ / C = 0.004 / 10e-6 = 400 Ω。取标准值 390 Ω 或 470 Ω。</p>
+<p><b>验证</b>：调用 <code class="inline">calcRCTimeConstant(390, 10e-6)</code> 返回 0.0039 s = 3.9 ms，5τ = 19.5 ms，满足要求。</p>
+
+<h3>场景 2：继电器线圈续流回路</h3>
+<p><b>需求</b>：继电器线圈 L = 50 mH，直流电阻 R = 100 Ω，断电后电流衰减到 1% 需要多久？</p>
+<p><b>输入</b>：R = 100，L = 0.05。</p>
+<p><b>计算</b>：<code class="inline">calcRLTimeConstant(100, 0.05)</code> = 0.0005 s = 0.5 ms。衰减到 1% 约需 4.6τ ≈ 2.3 ms。</p>
+
+<h3>场景 3：FM 收音机 LC 调谐</h3>
+<p><b>需求</b>：调谐到 100 MHz，使用 2.5 μH 电感，求所需电容。</p>
+<p><b>反推</b>：C = 1 / ((2πf)² L) = 1 / ((2π × 1e8)² × 2.5e-6) ≈ 1.013 pF。</p>
+<p><b>验证</b>：<code class="inline">calcLCResonance(2.5e-6, 1.013e-12)</code> ≈ 100 MHz。</p>
+
+<h3>场景 4：工频滤波 RC 低通</h3>
+<p><b>需求</b>：50 Hz 工频下，R = 10 kΩ，C = 0.1 μF，求阻抗与相位。</p>
+<p><b>输入</b>：<code class="inline">calcRCImpedance(10000, 1e-7, 50)</code></p>
+<p><b>结果</b>：Xc ≈ 31831 Ω，|Z| ≈ 33381 Ω，相位 ≈ −72.3°。说明该 RC 在 50 Hz 下呈强容性。</p>
+
+<h3>场景 5：开关电源输出滤波 RLC</h3>
+<p><b>需求</b>：L = 10 μH，C = 22 μF，R（ESR）= 0.05 Ω，开关频率 500 kHz，求阻抗。</p>
+<p><b>输入</b>：<code class="inline">calcRLCImpedance(0.05, 10e-6, 22e-6, 500000)</code></p>
+<p><b>结果</b>：Xl ≈ 31.4 Ω，Xc ≈ 0.0145 Ω，X = Xl − Xc ≈ 31.4 Ω，|Z| ≈ 31.4 Ω，相位 ≈ +89.9°。呈强感性，符合高频滤波预期。</p>
+
+<h2>五、常见错误与排查</h2>
+<table>
+  <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+  <tr><td>TypeError: R 不能为 null/undefined</td><td>参数未传入或为 null</td><td>检查调用代码，确保参数已赋值</td></tr>
+  <tr><td>RangeError: R 必须 &gt; 0</td><td>传入 0 或负数</td><td>电阻/电容/电感物理上必须为正</td></tr>
+  <tr><td>结果数量级明显错误</td><td>单位未换算（如把 μF 当 F 输入）</td><td>严格按 F / H / Ω 输入，参考第二节换算表</td></tr>
+  <tr><td>RLC 谐振时 Z 不等于 R</td><td>频率未精确等于 f₀</td><td>先用 calcLCResonance 算出 f₀ 再代入</td></tr>
+  <tr><td>f=0 时 RLC 报错</td><td>RLC 要求 f&gt;0（否则 Xc=∞）</td><td>直流场景请使用 RC 或 RL 单独计算</td></tr>
+  <tr><td>浮点结果末尾出现 0.000000001</td><td>IEEE 754 双精度固有误差</td><td>使用 toFixed 或相对误差比较，不要直接 ===</td></tr>
+</table>
+
+<h2>六、数据来源与标准依据</h2>
+<ul>
+  <li>基础公式来源于电路理论通用推导，与 IEC 60050（国际电工术语）中关于阻抗、时间常数、谐振频率的定义一致。</li>
+  <li>标准正弦稳态分析参考：邱关源《电路》（第 5 版），高等教育出版社。</li>
+  <li>元件标称值系列参考 GB/T 12474-2008（等同 IEC 60063）电阻标称值系列、GB/T 3102.5-1993 电学量和单位。</li>
+  <li>工频 50 Hz 参考 GB/T 156-2007《标准电压》。</li>
+  <li>本工具<b>不</b>包含电磁兼容（EMC）、绝缘耐压、温升等计算，相关需求请查阅 GB/T 17626 系列、GB 4943.1-2022 等标准原文。</li>
+</ul>
+<div class="warn">注：上述标准号基于公开信息列出，具体条款以最新官方发布文本为准。如需精确合规设计，请查标准原文。</div>
+
+<h2>七、局限性与不能做的事</h2>
+<ol>
+  <li><b>仅支持理想元件</b>：不考虑电容 ESR/ESL、电感直流电阻 DCR、磁芯饱和、介电损耗。实际高频/大功率场景需使用厂商 SPICE 模型。</li>
+  <li><b>仅支持串联拓扑</b>：并联、混联、桥式、T/Π 型网络需自行化简后调用。</li>
+  <li><b>仅支持正弦稳态</b>：不支持瞬态波形、阶跃响应、脉冲响应的时域绘图（仅提供时间常数供估算）。</li>
+  <li><b>不支持非线性</b>：如二极管、铁氧体饱和、压敏电阻等非线性元件不在本工具范围内。</li>
+  <li><b>不支持分布参数</b>：传输线、微波频段（波长与尺寸可比拟时）需使用传输线理论，本工具结果无效。</li>
+  <li><b>精度限制</b>：JavaScript 使用 IEEE 754 双精度浮点（约 15–17 位有效数字），极端大/小数值可能产生舍入误差。</li>
+  <li><b>不做安全校核</b>：不判断电压/电流/功率是否超出元件额定值，不做安规判断。</li>
+  <li><b>不做温度/老化补偿</b>：元件参数随温度、寿命变化，本工具使用标称值计算。</li>
+</ol>
+
+<h2>八、版本与反馈</h2>
+<p>当前版本：v2.0.0-完整版 20261021。如发现计算结果异常，请核对输入单位与参数范围；如确认为工具缺陷，请提供输入参数与期望结果以便复现。</p>
+`;
+document.getElementById('docContent').innerHTML = DOC_HTML;
+
+/* ============================================================
+ * 渲染源码与测试代码到页面
+ * ============================================================ */
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+// 取当前 <script> 标签之前的源码（即 RCCalculator 定义）
+const allScripts = document.querySelectorAll('script');
+const mainScript = allScripts[0].textContent;
+document.getElementById('sourceCode').textContent = mainScript;
+// 测试代码取 runAllTests 函数
+const testSrc = runAllTests.toString();
+document.getElementById('testCode').textContent = '// 测试入口\n' + testSrc;
+
+/* ============================================================
+ * 标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公制英制螺纹与底孔查询工具 v2.0.3-修审查问题 20261108</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 24px; margin-bottom: 4px; }
+  header p { font-size: 13px; opacity: 0.9; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 20px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 24px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: #555;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #f0f4f8; color: #1e3c72; }
+  .tab.active {
+    color: #1e3c72;
+    border-bottom-color: #1e3c72;
+    font-weight: 600;
+  }
+  .panel {
+    background: #fff;
+    padding: 24px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: none;
+  }
+  .panel.active { display: block; }
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .toolbar input, .toolbar select {
+    padding: 8px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+  }
+  .toolbar input:focus, .toolbar select:focus { border-color: #1e3c72; }
+  .toolbar label { font-size: 13px; color: #555; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #eaecef;
+  }
+  th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: #24292f;
+    position: sticky;
+    top: 0;
+  }
+  tr:hover td { background: #f8fafc; }
+  .table-wrap {
+    max-height: 600px;
+    overflow: auto;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+  }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .calc-field label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .calc-field input, .calc-field select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .result-box {
+    background: #f0f7ff;
+    border-left: 4px solid #1e3c72;
+    padding: 16px 20px;
+    border-radius: 4px;
+    margin-top: 16px;
+  }
+  .result-box h3 { font-size: 15px; margin-bottom: 10px; color: #1e3c72; }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #c8ddf0;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .label { color: #555; }
+  .result-row .value { font-weight: 600; color: #1e3c72; font-family: "Consolas", monospace; }
+  .warn-box {
+    background: #fff8e1;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: #7c5a00;
+  }
+  .info-box {
+    background: #e8f5e9;
+    border-left: 4px solid #10b981;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: #065f46;
+  }
+  .doc h2 { font-size: 18px; margin: 24px 0 12px; color: #1e3c72; border-bottom: 2px solid #eaecef; padding-bottom: 6px; }
+  .doc h3 { font-size: 15px; margin: 18px 0 10px; color: #2a5298; }
+  .doc p { margin: 8px 0; font-size: 14px; }
+  .doc ul, .doc ol { margin: 8px 0 8px 24px; font-size: 14px; }
+  .doc li { margin: 4px 0; }
+  .doc code {
+    background: #f0f4f8;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .doc table { margin: 12px 0; font-size: 13px; }
+  .doc table th { background: #f6f8fa; }
+  .scene {
+    background: #f8fafc;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 12px 0;
+  }
+  .scene h4 { color: #1e3c72; margin-bottom: 8px; }
+  .test-output {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "Consolas", monospace;
+    font-size: 12px;
+    max-height: 500px;
+    overflow: auto;
+    white-space: pre-wrap;
+  }
+  .test-pass { color: #4ec9b0; }
+  .test-fail { color: #f48771; }
+  .test-summary {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 6px;
+  }
+  .test-summary.all-pass { background: #d1fae5; color: #065f46; }
+  .test-summary.has-fail { background: #fee2e2; color: #991b1b; }
+  .btn {
+    padding: 8px 16px;
+    background: #1e3c72;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .btn:hover { background: #2a5298; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .highlight { background: #fff3cd; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>公制英制螺纹与底孔查询工具</h1>
+  <p>依据 GB/T 196、GB/T 193、GB/T 7307、ASME B1.1 等标准 · 覆盖 M1~M64 公制螺纹及常用英制螺纹</p>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-panel="metric">公制螺纹</button>
+    <button class="tab" data-panel="imperial">英制螺纹</button>
+    <button class="tab" data-panel="calculator">底孔计算器</button>
+    <button class="tab" data-panel="source">JS 源码</button>
+    <button class="tab" data-panel="tests">单元测试</button>
+    <button class="tab" data-panel="docs">使用说明书</button>
+  </div>
+
+  <!-- 公制螺纹 -->
+  <div class="panel active" id="panel-metric">
+    <div class="warn-box">⚠ 底孔尺寸为经验公式计算值（底孔公式仅泛称工艺手册，无具体标准来源），实际加工请以工艺手册为准。不同材料（钢/铝/铸铁）底孔尺寸有差异。</div>
+    <div class="toolbar">
+      <label>搜索规格：</label>
+      <input type="text" id="metricSearch" placeholder="如 M10 或 M12x1.25">
+      <label>显示细牙：</label>
+      <select id="metricFineFilter">
+        <option value="all">全部</option>
+        <option value="coarse">仅粗牙</option>
+        <option value="fine">仅细牙</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table id="metricTable">
+        <thead>
+          <tr>
+            <th>规格</th>
+            <th>公称直径 (mm)</th>
+            <th>粗牙螺距 (mm)</th>
+            <th>细牙螺距 (mm)</th>
+            <th>粗牙底孔 (mm)</th>
+            <th>细牙底孔 (mm)</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 英制螺纹 -->
+  <div class="panel" id="panel-imperial">
+    <div class="warn-box">⚠ 英制螺纹底孔按 D - 1/TPI × 25.4 计算，实际加工请以工艺手册为准。G/NPT 管螺纹（尤其 NPT 锥管螺纹）底孔算法与普通螺纹不同，表中底孔仅为粗略近似，务必查管螺纹专用手册。</div>
+    <div class="toolbar">
+      <label>类型：</label>
+      <select id="imperialType">
+        <option value="all">全部</option>
+        <option value="UNC">UNC 统一粗牙</option>
+        <option value="UNF">UNF 统一细牙</option>
+        <option value="G">G 管螺纹 (BSPP)</option>
+        <option value="NPT">NPT 锥管螺纹</option>
+      </select>
+      <label>搜索：</label>
+      <input type="text" id="imperialSearch" placeholder="如 1/4、3/8">
+    </div>
+    <div class="table-wrap">
+      <table id="imperialTable">
+        <thead>
+          <tr>
+            <th>规格</th>
+            <th>类型</th>
+            <th>每英寸牙数 (TPI)</th>
+            <th>螺距 (mm)</th>
+            <th>大径 (mm)</th>
+            <th>底孔 (mm)</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 底孔计算器 -->
+  <div class="panel" id="panel-calculator">
+    <div class="info-box">💡 本计算器支持公制与英制螺纹底孔计算，可切换丝锥类型与材料系数。<br>⚠ 本工具的材料系数（0.95~1.05）与旋合率系数（0.8/1.0/1.13）为经验估算值，无标准来源，未经标准核对，仅供估算参考。</div>
+    <div class="calc-grid">
+      <div class="calc-field">
+        <label>螺纹制式</label>
+        <select id="calcSystem">
+          <option value="metric">公制 (mm)</option>
+          <option value="imperial">英制 (inch)</option>
+        </select>
+      </div>
+      <div class="calc-field">
+        <label>公称直径</label>
+        <input type="number" id="calcDiameter" step="0.01" min="0" placeholder="如 10">
+      </div>
+      <div class="calc-field">
+        <label>螺距 / 每英寸牙数</label>
+        <input type="number" id="calcPitch" step="0.01" min="0" placeholder="公制填螺距mm，英制填TPI">
+      </div>
+      <div class="calc-field">
+        <label>丝锥类型</label>
+        <select id="calcTapType">
+          <option value="cutting">切削丝锥</option>
+          <option value="forming">挤压丝锥</option>
+        </select>
+      </div>
+      <div class="calc-field">
+        <label>材料</label>
+        <select id="calcMaterial">
+          <option value="steel">钢 (系数 1.0)</option>
+          <option value="aluminum">铝合金 (系数 0.95)</option>
+          <option value="castiron">铸铁 (系数 1.05)</option>
+          <option value="stainless">不锈钢 (系数 0.98)</option>
+          <option value="copper">铜合金 (系数 0.97)</option>
+        </select>
+      </div>
+      <div class="calc-field">
+        <label>螺纹旋合率</label>
+        <select id="calcEngagement">
+          <option value="75">75% (标准)</option>
+          <option value="60">60% (轻载)</option>
+          <option value="85">85% (重载)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" id="calcBtn">计算底孔</button>
+    <div class="result-box" id="calcResult" style="display:none;">
+      <h3>计算结果</h3>
+      <div id="calcResultContent"></div>
+    </div>
+    <div class="warn-box" style="margin-top:16px;">
+      ⚠ 切削丝锥底孔公式：D_drill = D - P × 旋合率系数 × 材料系数<br>
+      ⚠ 挤压丝锥底孔公式：D_drill ≈ D - P × 0.5 × 材料系数（近似，需查手册）<br>
+      ⚠ 英制需先将 TPI 转换为螺距：P(mm) = 25.4 / TPI
+    </div>
+  </div>
+
+  <!-- JS 源码 -->
+  <div class="panel" id="panel-source">
+    <div class="info-box">📄 以下为完整 JS 源码，纯函数实现，无外部依赖。每个函数均有完整 JSDoc 注释。</div>
+    <pre class="test-output" id="sourceCode"></pre>
+  </div>
+
+  <!-- 单元测试 -->
+  <div class="panel" id="panel-tests">
+    <button class="btn" id="runTestsBtn">运行全部测试</button>
+    <div id="testSummary" class="test-summary" style="display:none;"></div>
+    <pre class="test-output" id="testOutput" style="margin-top:12px;"></pre>
+  </div>
+
+  <!-- 使用说明书 -->
+  <div class="panel" id="panel-docs">
+    <div class="doc" id="docContent"></div>
+  </div>
+</div>
+
+<div class="version">v2.0.3-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码 - 公制英制螺纹与底孔查询核心算法
+ * 依据：GB/T 196、GB/T 193、GB/T 7307、ASME B1.1
+ * ============================================================ */
+
+/**
+ * 公制粗牙螺距数据表（依据 GB/T 193-2005《普通螺纹 直径与螺距系列》）
+ * 键：公称直径 (mm)，值：粗牙螺距 (mm)
+ * @type {Object.<number, number>}
+ */
+const METRIC_COARSE_PITCH = {
+  1: 0.25, 1.2: 0.25, 1.4: 0.3, 1.6: 0.35, 1.8: 0.35,
+  2: 0.4, 2.2: 0.45, 2.5: 0.45, 3: 0.5, 3.5: 0.6,
+  4: 0.7, 5: 0.8, 6: 1.0, 7: 1.0, 8: 1.25,
+  9: 1.25, 10: 1.5, 11: 1.5, 12: 1.75, 14: 2.0,
+  16: 2.0, 18: 2.5, 20: 2.5, 22: 2.5, 24: 3.0,
+  27: 3.0, 30: 3.5, 33: 3.5, 36: 4.0, 39: 4.0,
+  42: 4.5, 45: 4.5, 48: 5.0, 52: 5.0, 56: 5.5,
+  60: 5.5, 64: 6.0
+};
+
+/**
+ * 公制细牙螺距数据表（依据 GB/T 193-2005，仅列出常用规格）
+ * 键：公称直径 (mm)，值：细牙螺距数组 (mm)，按从大到小排列
+ * @type {Object.<number, number[]>}
+ */
+const METRIC_FINE_PITCH = {
+  8: [1.0, 0.75],
+  10: [1.25, 1.0, 0.75, 0.5],
+  12: [1.5, 1.25, 1.0],
+  14: [1.5, 1.25, 1.0],
+  16: [1.5, 1.0],
+  18: [2.0, 1.5, 1.0],
+  20: [2.0, 1.5, 1.0],
+  22: [2.0, 1.5, 1.0],
+  24: [2.0, 1.5, 1.0],
+  27: [2.0, 1.5, 1.0],
+  30: [2.0, 1.5, 1.0],
+  33: [2.0, 1.5],
+  36: [3.0, 2.0, 1.5],
+  39: [3.0, 2.0, 1.5],
+  42: [3.0, 2.0, 1.5],
+  45: [3.0, 2.0, 1.5],
+  48: [3.0, 2.0, 1.5],
+  52: [3.0, 2.0],
+  56: [4.0, 3.0, 2.0],
+  60: [4.0, 3.0],
+  64: [4.0, 3.0]
+};
+
+/**
+ * UNC 统一粗牙螺纹数据（依据 ASME B1.1-2019）
+ * 每项：{ size: 规格字符串, tpi: 每英寸牙数, majorDiameter: 大径(英寸) }
+ * @type {Array<{size:string, tpi:number, majorDiameter:number}>}
+ */
+const UNC_THREADS = [
+  { size: '#0-80', tpi: 80, majorDiameter: 0.060 },
+  { size: '#1-64', tpi: 64, majorDiameter: 0.073 },
+  { size: '#2-56', tpi: 56, majorDiameter: 0.086 },
+  { size: '#3-48', tpi: 48, majorDiameter: 0.099 },
+  { size: '#4-40', tpi: 40, majorDiameter: 0.112 },
+  { size: '#5-40', tpi: 40, majorDiameter: 0.125 },
+  { size: '#6-32', tpi: 32, majorDiameter: 0.138 },
+  { size: '#8-32', tpi: 32, majorDiameter: 0.164 },
+  { size: '#10-24', tpi: 24, majorDiameter: 0.190 },
+  { size: '#12-24', tpi: 24, majorDiameter: 0.216 },
+  { size: '1/4-20', tpi: 20, majorDiameter: 0.250 },
+  { size: '5/16-18', tpi: 18, majorDiameter: 0.3125 },
+  { size: '3/8-16', tpi: 16, majorDiameter: 0.375 },
+  { size: '7/16-14', tpi: 14, majorDiameter: 0.4375 },
+  { size: '1/2-13', tpi: 13, majorDiameter: 0.500 },
+  { size: '9/16-12', tpi: 12, majorDiameter: 0.5625 },
+  { size: '5/8-11', tpi: 11, majorDiameter: 0.625 },
+  { size: '3/4-10', tpi: 10, majorDiameter: 0.750 },
+  { size: '7/8-9', tpi: 9, majorDiameter: 0.875 },
+  { size: '1-8', tpi: 8, majorDiameter: 1.000 },
+  { size: '1-1/8-7', tpi: 7, majorDiameter: 1.125 },
+  { size: '1-1/4-7', tpi: 7, majorDiameter: 1.250 },
+  { size: '1-3/8-6', tpi: 6, majorDiameter: 1.375 },
+  { size: '1-1/2-6', tpi: 6, majorDiameter: 1.500 },
+  { size: '1-3/4-5', tpi: 5, majorDiameter: 1.750 },
+  { size: '2-4.5', tpi: 4.5, majorDiameter: 2.000 }
+];
+
+/**
+ * UNF 统一细牙螺纹数据（依据 ASME B1.1-2019）
+ * @type {Array<{size:string, tpi:number, majorDiameter:number}>}
+ */
+const UNF_THREADS = [
+  { size: '#0-80', tpi: 80, majorDiameter: 0.060 },
+  { size: '#1-72', tpi: 72, majorDiameter: 0.073 },
+  { size: '#2-64', tpi: 64, majorDiameter: 0.086 },
+  { size: '#3-56', tpi: 56, majorDiameter: 0.099 },
+  { size: '#4-48', tpi: 48, majorDiameter: 0.112 },
+  { size: '#5-44', tpi: 44, majorDiameter: 0.125 },
+  { size: '#6-40', tpi: 40, majorDiameter: 0.138 },
+  { size: '#8-36', tpi: 36, majorDiameter: 0.164 },
+  { size: '#10-32', tpi: 32, majorDiameter: 0.190 },
+  { size: '#12-28', tpi: 28, majorDiameter: 0.216 },
+  { size: '1/4-28', tpi: 28, majorDiameter: 0.250 },
+  { size: '5/16-24', tpi: 24, majorDiameter: 0.3125 },
+  { size: '3/8-24', tpi: 24, majorDiameter: 0.375 },
+  { size: '7/16-20', tpi: 20, majorDiameter: 0.4375 },
+  { size: '1/2-20', tpi: 20, majorDiameter: 0.500 },
+  { size: '9/16-18', tpi: 18, majorDiameter: 0.5625 },
+  { size: '5/8-18', tpi: 18, majorDiameter: 0.625 },
+  { size: '3/4-16', tpi: 16, majorDiameter: 0.750 },
+  { size: '7/8-14', tpi: 14, majorDiameter: 0.875 },
+  { size: '1-12', tpi: 12, majorDiameter: 1.000 },
+  { size: '1-1/8-12', tpi: 12, majorDiameter: 1.125 },
+  { size: '1-1/4-12', tpi: 12, majorDiameter: 1.250 },
+  { size: '1-3/8-12', tpi: 12, majorDiameter: 1.375 },
+  { size: '1-1/2-12', tpi: 12, majorDiameter: 1.500 }
+];
+
+/**
+ * G 管螺纹数据（依据 GB/T 7307-2001《55°非密封管螺纹》）
+ * 每项：{ size: 规格, tpi: 每英寸牙数, majorDiameter: 大径(mm) }
+ * @type {Array<{size:string, tpi:number, majorDiameter:number}>}
+ */
+const G_THREADS = [
+  { size: 'G1/16', tpi: 28, majorDiameter: 7.723 },
+  { size: 'G1/8', tpi: 28, majorDiameter: 9.728 },
+  { size: 'G1/4', tpi: 19, majorDiameter: 13.157 },
+  { size: 'G3/8', tpi: 19, majorDiameter: 16.662 },
+  { size: 'G1/2', tpi: 14, majorDiameter: 20.955 },
+  { size: 'G5/8', tpi: 14, majorDiameter: 22.911 },
+  { size: 'G3/4', tpi: 14, majorDiameter: 26.441 },
+  { size: 'G7/8', tpi: 14, majorDiameter: 30.201 },
+  { size: 'G1', tpi: 11, majorDiameter: 33.249 },
+  { size: 'G1-1/8', tpi: 11, majorDiameter: 37.897 },
+  { size: 'G1-1/4', tpi: 11, majorDiameter: 41.910 },
+  { size: 'G1-3/8', tpi: 11, majorDiameter: 44.323 },
+  { size: 'G1-1/2', tpi: 11, majorDiameter: 47.803 },
+  { size: 'G1-3/4', tpi: 11, majorDiameter: 53.740 },
+  { size: 'G2', tpi: 11, majorDiameter: 59.614 }
+];
+
+/**
+ * NPT 锥管螺纹数据（依据 ANSI/ASME B1.20.1）
+ * 每项：{ size: 规格, tpi: 每英寸牙数, majorDiameter: 大径端外径(mm) }
+ * @type {Array<{size:string, tpi:number, majorDiameter:number}>}
+ */
+const NPT_THREADS = [
+  { size: '1/16-27', tpi: 27, majorDiameter: 7.938 },
+  { size: '1/8-27', tpi: 27, majorDiameter: 10.287 },
+  { size: '1/4-18', tpi: 18, majorDiameter: 13.716 },
+  { size: '3/8-18', tpi: 18, majorDiameter: 17.145 },
+  { size: '1/2-14', tpi: 14, majorDiameter: 21.336 },
+  { size: '3/4-14', tpi: 14, majorDiameter: 26.670 },
+  { size: '1-11.5', tpi: 11.5, majorDiameter: 33.401 },
+  { size: '1-1/4-11.5', tpi: 11.5, majorDiameter: 42.164 },
+  { size: '1-1/2-11.5', tpi: 11.5, majorDiameter: 48.286 },
+  { size: '2-11.5', tpi: 11.5, majorDiameter: 60.094 }
+];
+
+/**
+ * 材料系数表（用于底孔计算的经验修正）
+ * 系数含义：相对于钢材料底孔的修正比例
+ * @type {Object.<string, number>}
+ */
+const MATERIAL_FACTOR = {
+  steel: 1.0,
+  aluminum: 0.95,
+  castiron: 1.05,
+  stainless: 0.98,
+  copper: 0.97
+};
+
+/**
+ * 材料中文名映射（用于结果展示，避免直接显示英文键名）
+ * @type {Object.<string, string>}
+ */
+const MATERIAL_NAME = {
+  steel: '钢',
+  aluminum: '铝合金',
+  castiron: '铸铁',
+  stainless: '不锈钢',
+  copper: '铜合金'
+};
+
+/**
+ * 旋合率系数表
+ * 75% 为标准旋合率，60% 用于轻载，85% 用于重载
+ * @type {Object.<number, number>}
+ */
+const ENGAGEMENT_FACTOR = {
+  60: 0.8,
+  75: 1.0,
+  85: 1.13
+};
+
+/**
+ * 校验输入数值是否为有效正数
+ * @param {*} value - 待校验值
+ * @param {string} name - 参数名称（用于错误信息）
+ * @returns {number} 校验通过后的数值
+ * @throws {Error} 当值不是有限正数时抛出
+ * @example
+ * validatePositiveNumber(10, '直径'); // 返回 10
+ * validatePositiveNumber(-1, '直径'); // 抛出 Error
+ */
+function validatePositiveNumber(value, name) {
+  if (value === null || value === undefined || value === '') {
+    throw new Error(`${name} 不能为空`);
+  }
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    throw new Error(`${name} 必须是数字`);
+  }
+  if (!Number.isFinite(num)) {
+    throw new Error(`${name} 必须是有限数值`);
+  }
+  if (num <= 0) {
+    throw new Error(`${name} 必须大于 0`);
+  }
+  return num;
+}
+
+/**
+ * 校验公制公称直径是否在有效范围内
+ * @param {number} diameter - 公称直径 (mm)
+ * @returns {number} 校验通过的直径
+ * @throws {Error} 当直径不在 M1~M64 范围时抛出
+ * @example
+ * validateMetricDiameter(10); // 返回 10
+ * validateMetricDiameter(0.5); // 抛出 Error
+ */
+function validateMetricDiameter(diameter) {
+  const d = validatePositiveNumber(diameter, '公称直径');
+  if (d < 1 || d > 64) {
+    throw new Error(`公制公称直径必须在 1~64 mm 范围内，当前值：${d}`);
+  }
+  return d;
+}
+
+/**
+ * 获取公制粗牙螺距
+ * @param {number} diameter - 公称直径 (mm)，必须是标准直径
+ * @returns {number} 粗牙螺距 (mm)
+ * @throws {Error} 当直径不是标准直径时抛出
+ * @example
+ * getMetricCoarsePitch(10); // 返回 1.5
+ * getMetricCoarsePitch(12); // 返回 1.75
+ */
+function getMetricCoarsePitch(diameter) {
+  const d = validateMetricDiameter(diameter);
+  if (!METRIC_COARSE_PITCH.hasOwnProperty(d)) {
+    throw new Error(`直径 ${d} mm 不是标准公制粗牙直径，需查标准原文`);
+  }
+  return METRIC_COARSE_PITCH[d];
+}
+
+/**
+ * 获取公制细牙螺距列表
+ * @param {number} diameter - 公称直径 (mm)
+ * @returns {number[]} 细牙螺距数组 (mm)，按从大到小排列；若无细牙规格返回空数组
+ * @throws {Error} 当直径不在有效范围时抛出
+ * @example
+ * getMetricFinePitches(10); // 返回 [1.25, 1.0, 0.75, 0.5]
+ * getMetricFinePitches(3);  // 返回 []
+ */
+function getMetricFinePitches(diameter) {
+  const d = validateMetricDiameter(diameter);
+  return METRIC_FINE_PITCH[d] || [];
+}
+
+/**
+ * 计算公制螺纹底孔直径（切削丝锥）
+ * 公式：D_drill = D - P × engagementFactor × materialFactor
+ * @param {number} diameter - 公称直径 (mm)
+ * @param {number} pitch - 螺距 (mm)
+ * @param {string} [material='steel'] - 材料类型：steel/aluminum/castiron/stainless/copper
+ * @param {number} [engagement=75] - 旋合率：60/75/85
+ * @returns {number} 底孔直径 (mm)，保留 3 位小数
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * calculateMetricCuttingDrill(10, 1.5); // 返回 8.5
+ * calculateMetricCuttingDrill(10, 1.5, 'aluminum', 75); // 返回 8.575
+ */
+function calculateMetricCuttingDrill(diameter, pitch, material = 'steel', engagement = 75) {
+  const d = validateMetricDiameter(diameter);
+  const p = validatePositiveNumber(pitch, '螺距');
+  if (!MATERIAL_FACTOR.hasOwnProperty(material)) {
+    throw new Error(`未知材料类型：${material}`);
+  }
+  if (!ENGAGEMENT_FACTOR.hasOwnProperty(engagement)) {
+    throw new Error(`未知旋合率：${engagement}，可选 60/75/85`);
+  }
+  const mf = MATERIAL_FACTOR[material];
+  const ef = ENGAGEMENT_FACTOR[engagement];
+  const drill = d - p * ef * mf;
+  return Math.round(drill * 1000) / 1000;
+}
+
+/**
+ * 计算公制螺纹底孔直径（挤压丝锥）
+ * 公式：D_drill ≈ D - P × 0.5 × materialFactor（经验公式，需查手册）
+ * @param {number} diameter - 公称直径 (mm)
+ * @param {number} pitch - 螺距 (mm)
+ * @param {string} [material='steel'] - 材料类型
+ * @returns {number} 底孔直径 (mm)，保留 3 位小数
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * calculateMetricFormingDrill(10, 1.5); // 返回 9.25
+ */
+function calculateMetricFormingDrill(diameter, pitch, material = 'steel') {
+  const d = validateMetricDiameter(diameter);
+  const p = validatePositiveNumber(pitch, '螺距');
+  if (!MATERIAL_FACTOR.hasOwnProperty(material)) {
+    throw new Error(`未知材料类型：${material}`);
+  }
+  const mf = MATERIAL_FACTOR[material];
+  const drill = d - p * 0.5 * mf;
+  return Math.round(drill * 1000) / 1000;
+}
+
+/**
+ * 将英制 TPI（每英寸牙数）转换为螺距 (mm)
+ * 公式：P(mm) = 25.4 / TPI
+ * @param {number} tpi - 每英寸牙数
+ * @returns {number} 螺距 (mm)，保留 4 位小数
+ * @throws {Error} 当 TPI 无效时抛出
+ * @example
+ * tpiToPitchMm(20); // 返回 1.27
+ * tpiToPitchMm(16); // 返回 1.5875
+ */
+function tpiToPitchMm(tpi) {
+  const t = validatePositiveNumber(tpi, 'TPI');
+  return Math.round((25.4 / t) * 10000) / 10000;
+}
+
+/**
+ * 将英寸转换为毫米
+ * @param {number} inch - 英寸值
+ * @returns {number} 毫米值，保留 4 位小数
+ * @throws {Error} 当输入无效时抛出
+ * @example
+ * inchToMm(1); // 返回 25.4
+ * inchToMm(0.25); // 返回 6.35
+ */
+function inchToMm(inch) {
+  const i = validatePositiveNumber(inch, '英寸值');
+  return Math.round(i * 25.4 * 10000) / 10000;
+}
+
+/**
+ * 计算英制螺纹底孔直径
+ * 公式：D_drill = D - P × engagementFactor × materialFactor
+ * @param {number} majorDiameterInch - 大径 (英寸)
+ * @param {number} tpi - 每英寸牙数
+ * @param {string} [material='steel'] - 材料类型
+ * @param {number} [engagement=75] - 旋合率
+ * @returns {{drillInch: number, drillMm: number}} 底孔直径（英寸和毫米）
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * calculateImperialDrill(0.25, 20); // 返回 {drillInch: 0.2, drillMm: 5.08}
+ */
+function calculateImperialDrill(majorDiameterInch, tpi, material = 'steel', engagement = 75) {
+  const d = validatePositiveNumber(majorDiameterInch, '大径');
+  const t = validatePositiveNumber(tpi, 'TPI');
+  if (!MATERIAL_FACTOR.hasOwnProperty(material)) {
+    throw new Error(`未知材料类型：${material}`);
+  }
+  if (!ENGAGEMENT_FACTOR.hasOwnProperty(engagement)) {
+    throw new Error(`未知旋合率：${engagement}`);
+  }
+  const pitchInch = 1 / t;
+  const mf = MATERIAL_FACTOR[material];
+  const ef = ENGAGEMENT_FACTOR[engagement];
+  const drillInch = d - pitchInch * ef * mf;
+  const drillMm = drillInch * 25.4;
+  return {
+    drillInch: Math.round(drillInch * 10000) / 10000,
+    drillMm: Math.round(drillMm * 1000) / 1000
+  };
+}
+
+/**
+ * 查询 UNC 螺纹信息
+ * @param {string} size - 规格字符串，如 '1/4-20'
+ * @returns {{size:string, tpi:number, majorDiameter:number, pitchMm:number}|null} 螺纹信息，未找到返回 null
+ * @throws {Error} 当 size 不是字符串时抛出
+ * @example
+ * findUNCThread('1/4-20'); // 返回 {size:'1/4-20', tpi:20, majorDiameter:0.25, pitchMm:1.27}
+ */
+function findUNCThread(size) {
+  if (typeof size !== 'string') {
+    throw new Error('规格必须是字符串');
+  }
+  const found = UNC_THREADS.find(t => t.size === size.trim());
+  if (!found) return null;
+  return { ...found, pitchMm: tpiToPitchMm(found.tpi) };
+}
+
+/**
+ * 查询 UNF 螺纹信息
+ * @param {string} size - 规格字符串
+ * @returns {{size:string, tpi:number, majorDiameter:number, pitchMm:number}|null}
+ * @throws {Error} 当 size 不是字符串时抛出
+ * @example
+ * findUNFThread('1/4-28'); // 返回对应信息
+ */
+function findUNFThread(size) {
+  if (typeof size !== 'string') {
+    throw new Error('规格必须是字符串');
+  }
+  const found = UNF_THREADS.find(t => t.size === size.trim());
+  if (!found) return null;
+  return { ...found, pitchMm: tpiToPitchMm(found.tpi) };
+}
+
+/**
+ * 查询 G 管螺纹信息
+ * @param {string} size - 规格字符串，如 'G1/4'
+ * @returns {{size:string, tpi:number, majorDiameter:number, pitchMm:number}|null}
+ * @throws {Error} 当 size 不是字符串时抛出
+ * @example
+ * findGThread('G1/4'); // 返回对应信息
+ */
+function findGThread(size) {
+  if (typeof size !== 'string') {
+    throw new Error('规格必须是字符串');
+  }
+  const found = G_THREADS.find(t => t.size === size.trim());
+  if (!found) return null;
+  return { ...found, pitchMm: tpiToPitchMm(found.tpi) };
+}
+
+/**
+ * 查询 NPT 锥管螺纹信息
+ * @param {string} size - 规格字符串，如 '1/4-18'
+ * @returns {{size:string, tpi:number, majorDiameter:number, pitchMm:number}|null}
+ * @throws {Error} 当 size 不是字符串时抛出
+ * @example
+ * findNPTThread('1/4-18'); // 返回对应信息
+ */
+function findNPTThread(size) {
+  if (typeof size !== 'string') {
+    throw new Error('规格必须是字符串');
+  }
+  const found = NPT_THREADS.find(t => t.size === size.trim());
+  if (!found) return null;
+  return { ...found, pitchMm: tpiToPitchMm(found.tpi) };
+}
+
+/**
+ * 格式化数字，保留指定小数位
+ * @param {number} num - 数值
+ * @param {number} [digits=3] - 小数位数
+ * @returns {string} 格式化后的字符串
+ * @example
+ * formatNumber(3.14159, 2); // 返回 '3.14'
+ */
+function formatNumber(num, digits = 3) {
+  if (typeof num !== 'number' || Number.isNaN(num)) return '-';
+  return num.toFixed(digits);
+}
+
+/**
+ * 生成公制螺纹完整数据行
+ * @param {number} diameter - 公称直径 (mm)
+ * @returns {{diameter:number, coarsePitch:number|null, finePitches:number[], coarseDrill:number|null, fineDrills:number[]}}
+ * @example
+ * buildMetricRow(10);
+ */
+function buildMetricRow(diameter) {
+  const coarse = METRIC_COARSE_PITCH[diameter] || null;
+  const fines = METRIC_FINE_PITCH[diameter] || [];
+  const coarseDrill = coarse ? calculateMetricCuttingDrill(diameter, coarse) : null;
+  const fineDrills = fines.map(p => calculateMetricCuttingDrill(diameter, p));
+  return { diameter, coarsePitch: coarse, finePitches: fines, coarseDrill, fineDrills };
+}
+
+/* ============================================================
+ * 第二部分：单元测试框架与测试用例
+ * ============================================================ */
+
+const testResults = [];
+let testCount = 0;
+let passCount = 0;
+
+/**
+ * 断言函数 - 判断值是否相等
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} message - 测试描述
+ */
+function assertEqual(actual, expected, message) {
+  testCount++;
+  const pass = actual === expected;
+  if (pass) {
+    passCount++;
+    testResults.push({ pass: true, message });
+  } else {
+    testResults.push({ pass: false, message, actual, expected });
+  }
+}
+
+/**
+ * 断言函数 - 判断数值近似相等（考虑浮点精度）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @param {string} message - 测试描述
+ */
+function assertApprox(actual, expected, tolerance, message) {
+  testCount++;
+  const pass = Math.abs(actual - expected) <= tolerance;
+  if (pass) {
+    passCount++;
+    testResults.push({ pass: true, message });
+  } else {
+    testResults.push({ pass: false, message, actual, expected, tolerance });
+  }
+}
+
+/**
+ * 断言函数 - 判断是否抛出异常
+ * @param {Function} fn - 待测函数
+ * @param {string} message - 测试描述
+ */
+function assertThrows(fn, message) {
+  testCount++;
+  try {
+    fn();
+    testResults.push({ pass: false, message, reason: '未抛出异常' });
+  } catch (e) {
+    passCount++;
+    testResults.push({ pass: true, message });
+  }
+}
+
+/**
+ * 断言函数 - 判断值是否为 null
+ * @param {*} actual - 实际值
+ * @param {string} message - 测试描述
+ */
+function assertNull(actual, message) {
+  testCount++;
+  const pass = actual === null;
+  if (pass) {
+    passCount++;
+    testResults.push({ pass: true, message });
+  } else {
+    testResults.push({ pass: false, message, actual });
+  }
+}
+
+/**
+ * 断言函数 - 判断数组长度
+ * @param {Array} arr - 数组
+ * @param {number} len - 期望长度
+ * @param {string} message - 测试描述
+ */
+function assertArrayLength(arr, len, message) {
+  testCount++;
+  const pass = Array.isArray(arr) && arr.length === len;
+  if (pass) {
+    passCount++;
+    testResults.push({ pass: true, message });
+  } else {
+    testResults.push({ pass: false, message, actual: arr ? arr.length : 'not array', expected: len });
+  }
+}
+
+/**
+ * 运行全部单元测试
+ * @returns {{total:number, passed:number, results:Array}}
+ */
+function runAllTests() {
+  testResults.length = 0;
+  testCount = 0;
+  passCount = 0;
+
+  // === 1. validatePositiveNumber 测试 ===
+  assertEqual(validatePositiveNumber(10, 'x'), 10, 'validatePositiveNumber: 正常正整数');
+  assertEqual(validatePositiveNumber(3.14, 'x'), 3.14, 'validatePositiveNumber: 正常浮点数');
+  assertThrows(() => validatePositiveNumber(null, 'x'), 'validatePositiveNumber: null 抛异常');
+  assertThrows(() => validatePositiveNumber(undefined, 'x'), 'validatePositiveNumber: undefined 抛异常');
+  assertThrows(() => validatePositiveNumber('', 'x'), 'validatePositiveNumber: 空串抛异常');
+  assertThrows(() => validatePositiveNumber('abc', 'x'), 'validatePositiveNumber: 非数字字符串抛异常');
+  assertThrows(() => validatePositiveNumber(NaN, 'x'), 'validatePositiveNumber: NaN 抛异常');
+  assertThrows(() => validatePositiveNumber(0, 'x'), 'validatePositiveNumber: 0 抛异常');
+  assertThrows(() => validatePositiveNumber(-5, 'x'), 'validatePositiveNumber: 负数抛异常');
+  assertThrows(() => validatePositiveNumber(Infinity, 'x'), 'validatePositiveNumber: Infinity 抛异常');
+
+  // === 2. validateMetricDiameter 测试 ===
+  assertEqual(validateMetricDiameter(1), 1, 'validateMetricDiameter: 最小值 1');
+  assertEqual(validateMetricDiameter(64), 64, 'validateMetricDiameter: 最大值 64');
+  assertEqual(validateMetricDiameter(10), 10, 'validateMetricDiameter: 中间值 10');
+  assertThrows(() => validateMetricDiameter(0.5), 'validateMetricDiameter: 小于 1 抛异常');
+  assertThrows(() => validateMetricDiameter(65), 'validateMetricDiameter: 大于 64 抛异常');
+  assertThrows(() => validateMetricDiameter(-1), 'validateMetricDiameter: 负数抛异常');
+
+  // === 3. getMetricCoarsePitch 测试 ===
+  assertEqual(getMetricCoarsePitch(1), 0.25, 'getMetricCoarsePitch: M1');
+  assertEqual(getMetricCoarsePitch(6), 1.0, 'getMetricCoarsePitch: M6');
+  assertEqual(getMetricCoarsePitch(10), 1.5, 'getMetricCoarsePitch: M10');
+  assertEqual(getMetricCoarsePitch(12), 1.75, 'getMetricCoarsePitch: M12');
+  assertEqual(getMetricCoarsePitch(24), 3.0, 'getMetricCoarsePitch: M24');
+  assertEqual(getMetricCoarsePitch(64), 6.0, 'getMetricCoarsePitch: M64');
+  assertThrows(() => getMetricCoarsePitch(13), 'getMetricCoarsePitch: 非标准直径 13 抛异常');
+
+  // === 4. getMetricFinePitches 测试 ===
+  assertArrayLength(getMetricFinePitches(10), 4, 'getMetricFinePitches: M10 有 4 个细牙');
+  assertEqual(getMetricFinePitches(10)[0], 1.25, 'getMetricFinePitches: M10 第一个细牙 1.25');
+  assertArrayLength(getMetricFinePitches(3), 0, 'getMetricFinePitches: M3 无细牙');
+  assertArrayLength(getMetricFinePitches(64), 2, 'getMetricFinePitches: M64 有 2 个细牙');
+
+  // === 5. calculateMetricCuttingDrill 测试 ===
+  assertApprox(calculateMetricCuttingDrill(10, 1.5), 8.5, 0.001, 'calculateMetricCuttingDrill: M10 粗牙标准');
+  assertApprox(calculateMetricCuttingDrill(12, 1.75), 10.25, 0.001, 'calculateMetricCuttingDrill: M12 粗牙标准');
+  assertApprox(calculateMetricCuttingDrill(6, 1.0), 5.0, 0.001, 'calculateMetricCuttingDrill: M6 粗牙标准');
+  assertApprox(calculateMetricCuttingDrill(10, 1.5, 'aluminum'), 8.575, 0.001, 'calculateMetricCuttingDrill: 铝材料');
+  assertApprox(calculateMetricCuttingDrill(10, 1.5, 'castiron'), 8.425, 0.001, 'calculateMetricCuttingDrill: 铸铁材料');
+  assertThrows(() => calculateMetricCuttingDrill(10, 1.5, 'unknown'), 'calculateMetricCuttingDrill: 未知材料抛异常');
+  assertThrows(() => calculateMetricCuttingDrill(10, 1.5, 'steel', 50), 'calculateMetricCuttingDrill: 无效旋合率抛异常');
+  assertThrows(() => calculateMetricCuttingDrill(10, 0), 'calculateMetricCuttingDrill: 螺距 0 抛异常');
+  assertThrows(() => calculateMetricCuttingDrill(10, -1), 'calculateMetricCuttingDrill: 负螺距抛异常');
+
+  // === 6. calculateMetricFormingDrill 测试 ===
+  assertApprox(calculateMetricFormingDrill(10, 1.5), 9.25, 0.001, 'calculateMetricFormingDrill: M10 标准');
+  assertApprox(calculateMetricFormingDrill(10, 1.5, 'aluminum'), 9.2875, 0.001, 'calculateMetricFormingDrill: 铝材料');
+
+  // === 7. tpiToPitchMm 测试 ===
+  assertApprox(tpiToPitchMm(20), 1.27, 0.0001, 'tpiToPitchMm: 20 TPI');
+  assertApprox(tpiToPitchMm(16), 1.5875, 0.0001, 'tpiToPitchMm: 16 TPI');
+  assertApprox(tpiToPitchMm(28), 0.9071, 0.0001, 'tpiToPitchMm: 28 TPI');
+  assertThrows(() => tpiToPitchMm(0), 'tpiToPitchMm: 0 抛异常');
+  assertThrows(() => tpiToPitchMm(-10), 'tpiToPitchMm: 负数抛异常');
+
+  // === 8. inchToMm 测试 ===
+  assertApprox(inchToMm(1), 25.4, 0.0001, 'inchToMm: 1 inch');
+  assertApprox(inchToMm(0.25), 6.35, 0.0001, 'inchToMm: 0.25 inch');
+  assertThrows(() => inchToMm(0), 'inchToMm: 0 抛异常');
+
+  // === 9. calculateImperialDrill 测试 ===
+  const imperialResult = calculateImperialDrill(0.25, 20);
+  assertApprox(imperialResult.drillInch, 0.2000, 0.001, 'calculateImperialDrill: 1/4-20 英寸');
+  assertApprox(imperialResult.drillMm, 5.0800, 0.01, 'calculateImperialDrill: 1/4-20 毫米');
+
+  // === 10. findUNCThread 测试 ===
+  const unc1 = findUNCThread('1/4-20');
+  assertEqual(unc1.tpi, 20, 'findUNCThread: 1/4-20 TPI');
+  assertEqual(unc1.majorDiameter, 0.25, 'findUNCThread: 1/4-20 大径');
+  assertApprox(unc1.pitchMm, 1.27, 0.0001, 'findUNCThread: 1/4-20 螺距mm');
+  assertNull(findUNCThread('not-exist'), 'findUNCThread: 不存在的规格返回 null');
+  assertThrows(() => findUNCThread(123), 'findUNCThread: 非字符串抛异常');
+
+  // === 11. findUNFThread 测试 ===
+  const unf1 = findUNFThread('1/4-28');
+  assertEqual(unf1.tpi, 28, 'findUNFThread: 1/4-28 TPI');
+  assertNull(findUNFThread('not-exist'), 'findUNFThread: 不存在返回 null');
+
+  // === 12. findGThread 测试 ===
+  const g1 = findGThread('G1/4');
+  assertEqual(g1.tpi, 19, 'findGThread: G1/4 TPI');
+  assertApprox(g1.majorDiameter, 13.157, 0.001, 'findGThread: G1/4 大径');
+  assertNull(findGThread('G999'), 'findGThread: 不存在返回 null');
+
+  // === 13. findNPTThread 测试 ===
+  const npt1 = findNPTThread('1/4-18');
+  assertEqual(npt1.tpi, 18, 'findNPTThread: 1/4-18 TPI');
+  assertNull(findNPTThread('not-exist'), 'findNPTThread: 不存在返回 null');
+
+  // === 14. formatNumber 测试 ===
+  assertEqual(formatNumber(3.14159, 2), '3.14', 'formatNumber: 保留 2 位');
+  assertEqual(formatNumber(3.14159, 0), '3', 'formatNumber: 保留 0 位');
+  assertEqual(formatNumber(NaN, 2), '-', 'formatNumber: NaN 返回 -');
+  assertEqual(formatNumber('abc', 2), '-', 'formatNumber: 非数字返回 -');
+
+  // === 15. buildMetricRow 测试 ===
+  const row = buildMetricRow(10);
+  assertEqual(row.diameter, 10, 'buildMetricRow: 直径');
+  assertEqual(row.coarsePitch, 1.5, 'buildMetricRow: 粗牙螺距');
+  assertArrayLength(row.finePitches, 4, 'buildMetricRow: 细牙数量');
+  assertApprox(row.coarseDrill, 8.5, 0.001, 'buildMetricRow: 粗牙底孔');
+
+  return { total: testCount, passed: passCount, results: testResults };
+}
+
+/* ============================================================
+ * UI 渲染与交互
+ * ============================================================ */
+
+function renderMetricTable() {
+  const tbody = document.querySelector('#metricTable tbody');
+  const search = document.getElementById('metricSearch').value.trim().toUpperCase();
+  const filter = document.getElementById('metricFineFilter').value;
+  tbody.innerHTML = '';
+  const diameters = Object.keys(METRIC_COARSE_PITCH).map(Number).sort((a, b) => a - b);
+  diameters.forEach(d => {
+    const row = buildMetricRow(d);
+    if (search) {
+      // 支持 M10 与 M12x1.25 两种格式：后者按「直径 + 螺距（粗牙或细牙）」匹配
+      const m = search.match(/^M(\d+(?:\.\d+)?)(?:X(\d+(?:\.\d+)?))?$/);
+      if (!m) return;
+      const sd = parseFloat(m[1]);
+      if (sd !== d) return;
+      if (m[2]) {
+        const sp = parseFloat(m[2]);
+        if (row.coarsePitch !== sp && !row.finePitches.includes(sp)) return;
+      }
+    }
+    if (filter === 'fine' && row.finePitches.length === 0) return;
+    if (filter === 'coarse' && row.coarsePitch === null) return;
+    const tr = document.createElement('tr');
+    const finePitchStr = row.finePitches.length ? row.finePitches.join(', ') : '-';
+    const fineDrillStr = row.fineDrills.length ? row.fineDrills.map(v => formatNumber(v, 3)).join(', ') : '-';
+    const note = row.finePitches.length === 0 ? '无细牙规格' : '';
+    tr.innerHTML = `
+      <td><strong>M${d}</strong></td>
+      <td>${d}</td>
+      <td>${row.coarsePitch !== null ? formatNumber(row.coarsePitch, 2) : '-'}</td>
+      <td>${finePitchStr}</td>
+      <td>${row.coarseDrill !== null ? formatNumber(row.coarseDrill, 3) : '-'}</td>
+      <td>${fineDrillStr}</td>
+      <td>${note}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderImperialTable() {
+  const tbody = document.querySelector('#imperialTable tbody');
+  const type = document.getElementById('imperialType').value;
+  const search = document.getElementById('imperialSearch').value.trim();
+  tbody.innerHTML = '';
+  const allThreads = [];
+  if (type === 'all' || type === 'UNC') UNC_THREADS.forEach(t => allThreads.push({ ...t, type: 'UNC' }));
+  if (type === 'all' || type === 'UNF') UNF_THREADS.forEach(t => allThreads.push({ ...t, type: 'UNF' }));
+  if (type === 'all' || type === 'G') G_THREADS.forEach(t => allThreads.push({ ...t, type: 'G' }));
+  if (type === 'all' || type === 'NPT') NPT_THREADS.forEach(t => allThreads.push({ ...t, type: 'NPT' }));
+  allThreads.forEach(t => {
+    if (search && !t.size.includes(search)) return;
+    const pitchMm = tpiToPitchMm(t.tpi);
+    const majorMm = t.type === 'G' || t.type === 'NPT' ? t.majorDiameter : inchToMm(t.majorDiameter);
+    // G/NPT 的 majorDiameter 存的是毫米，calculateImperialDrill 按英寸入参 → 先换算，否则底孔整列放大 25.4 倍
+    const isMetricMajor = t.type === 'G' || t.type === 'NPT';
+    const majorInch = isMetricMajor ? t.majorDiameter / 25.4 : t.majorDiameter;
+    const drillResult = calculateImperialDrill(majorInch, t.tpi);
+    const drillDisplay = isMetricMajor ? formatNumber(drillResult.drillMm, 3) : `${formatNumber(drillResult.drillInch, 4)} (${formatNumber(drillResult.drillMm, 3)})`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${t.size}</strong></td>
+      <td>${t.type}</td>
+      <td>${t.tpi}</td>
+      <td>${formatNumber(pitchMm, 4)}</td>
+      <td>${formatNumber(majorMm, 3)}</td>
+      <td>${drillDisplay}</td>
+      <td>${t.type === 'NPT' ? '锥管螺纹，底孔公式不适用，仅供参考，需查管螺纹手册' : (t.type === 'G' ? '管螺纹，底孔仅为近似，需查管螺纹手册' : '')}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function handleCalc() {
+  const system = document.getElementById('calcSystem').value;
+  const diameter = parseFloat(document.getElementById('calcDiameter').value);
+  const pitch = parseFloat(document.getElementById('calcPitch').value);
+  const tapType = document.getElementById('calcTapType').value;
+  const material = document.getElementById('calcMaterial').value;
+  const engagement = parseInt(document.getElementById('calcEngagement').value);
+  const resultBox = document.getElementById('calcResult');
+  const content = document.getElementById('calcResultContent');
+  try {
+    if (isNaN(diameter) || isNaN(pitch)) throw new Error('请输入有效的直径和螺距/TPI');
+    let html = '';
+    if (system === 'metric') {
+      // 校验螺距是否为该直径的标准螺距（粗牙或细牙）
+      const stdCoarse = METRIC_COARSE_PITCH[diameter];
+      const stdFines = METRIC_FINE_PITCH[diameter] || [];
+      if (stdCoarse === undefined) {
+        throw new Error(`直径 ${diameter} mm 不是标准公制直径，请查 GB/T 193 标准直径系列`);
+      }
+      if (stdCoarse !== pitch && !stdFines.includes(pitch)) {
+        throw new Error(`螺距 ${pitch} mm 不是 M${diameter} 的标准螺距（粗牙 ${stdCoarse}${stdFines.length ? '；细牙 ' + stdFines.join('/') : '；无细牙'}）`);
+      }
+      let drill;
+      if (tapType === 'cutting') {
+        drill = calculateMetricCuttingDrill(diameter, pitch, material, engagement);
+      } else {
+        drill = calculateMetricFormingDrill(diameter, pitch, material);
+      }
+      html = `
+        <div class="result-row"><span class="label">螺纹制式</span><span class="value">公制</span></div>
+        <div class="result-row"><span class="label">公称直径</span><span class="value">${diameter} mm</span></div>
+        <div class="result-row"><span class="label">螺距</span><span class="value">${pitch} mm</span></div>
+        <div class="result-row"><span class="label">丝锥类型</span><span class="value">${tapType === 'cutting' ? '切削丝锥' : '挤压丝锥'}</span></div>
+        <div class="result-row"><span class="label">材料</span><span class="value">${MATERIAL_NAME[material] || material} (系数 ${MATERIAL_FACTOR[material]})</span></div>
+        <div class="result-row"><span class="label">旋合率</span><span class="value">${engagement}%</span></div>
+        <div class="result-row"><span class="label">推荐底孔直径</span><span class="value">${formatNumber(drill, 3)} mm</span></div>
+      `;
+    } else {
+      const drill = calculateImperialDrill(diameter, pitch, material, engagement);
+      // 挤压丝锥底孔按公制近似公式（D - 0.5P）换算，避免英制面板误标成挤压却用切削公式
+      let formingNote = '';
+      let formingDrillMm = null;
+      if (tapType === 'forming') {
+        formingDrillMm = diameter * 25.4 - tpiToPitchMm(pitch) * 0.5 * MATERIAL_FACTOR[material];
+        formingNote = `<div class="result-row"><span class="label">挤压丝锥底孔（近似）</span><span class="value">${formatNumber(formingDrillMm, 3)} mm / ${formatNumber(formingDrillMm / 25.4, 4)} inch</span></div>`;
+      }
+      html = `
+        <div class="result-row"><span class="label">螺纹制式</span><span class="value">英制</span></div>
+        <div class="result-row"><span class="label">大径</span><span class="value">${diameter} inch (${formatNumber(inchToMm(diameter), 3)} mm)</span></div>
+        <div class="result-row"><span class="label">每英寸牙数</span><span class="value">${pitch} TPI</span></div>
+        <div class="result-row"><span class="label">螺距</span><span class="value">${formatNumber(tpiToPitchMm(pitch), 4)} mm</span></div>
+        <div class="result-row"><span class="label">丝锥类型</span><span class="value">${tapType === 'cutting' ? '切削丝锥' : '挤压丝锥（按近似公式）'}</span></div>
+        <div class="result-row"><span class="label">材料</span><span class="value">${MATERIAL_NAME[material] || material} (系数 ${MATERIAL_FACTOR[material]})</span></div>
+        ${tapType === 'cutting' ? `<div class="result-row"><span class="label">推荐底孔直径（切削）</span><span class="value">${formatNumber(drill.drillInch, 4)} inch / ${formatNumber(drill.drillMm, 3)} mm</span></div>` : ''}
+        ${formingNote}
+      `;
+    }
+    content.innerHTML = html;
+    resultBox.style.display = 'block';
+  } catch (e) {
+    content.innerHTML = `<div style="color:#c00;">❌ 计算错误：${e.message}</div>`;
+    resultBox.style.display = 'block';
+  }
+}
+
+function renderTests() {
+  const result = runAllTests();
+  const output = document.getElementById('testOutput');
+  const summary = document.getElementById('testSummary');
+  let html = '';
+  result.results.forEach((r, i) => {
+    const icon = r.pass ? '✓' : '✗';
+    const cls = r.pass ? 'test-pass' : 'test-fail';
+    html += `<span class="${cls}">[${String(i + 1).padStart(2, '0')}] ${icon} ${r.message}</span>\n`;
+    if (!r.pass) {
+      html += `    实际: ${JSON.stringify(r.actual)}  期望: ${JSON.stringify(r.expected)}\n`;
+    }
+  });
+  output.innerHTML = html;
+  summary.style.display = 'block';
+  if (result.passed === result.total) {
+    summary.className = 'test-summary all-pass';
+    summary.textContent = `✓ 全部通过：${result.passed} / ${result.total}`;
+  } else {
+    summary.className = 'test-summary has-fail';
+    summary.textContent = `✗ 部分失败：通过 ${result.passed} / 共 ${result.total}（失败 ${result.total - result.passed} 个）`;
+  }
+}
+
+function renderSource() {
+  const src = document.getElementById('sourceCode');
+  const scripts = document.querySelectorAll('script');
+  let code = '';
+  scripts.forEach(s => {
+    if (s.id !== 'sourceCode' && s.textContent.includes('METRIC_COARSE_PITCH')) {
+      code = s.textContent;
+    }
+  });
+  src.textContent = code;
+}
+
+function renderDocs() {
+  const doc = document.getElementById('docContent');
+  doc.innerHTML = `
+    <h2>一、工具简介</h2>
+    <p>「公制英制螺纹与底孔查询工具」是一款面向机械加工、模具设计、维修装配等场景的在线查询工具。它整合了公制普通螺纹（M 系列）、英制统一螺纹（UNC/UNF）、英制管螺纹（G、NPT）的常用规格数据，并提供底孔钻头直径的计算功能。</p>
+    <p>本工具解决的核心问题：</p>
+    <ul>
+      <li>快速查询任意公制规格（M1~M64）的粗牙/细牙螺距</li>
+      <li>根据螺纹规格计算攻丝前底孔直径，避免查手册翻书</li>
+      <li>区分切削丝锥与挤压丝锥的底孔差异</li>
+      <li>考虑不同材料（钢/铝/铸铁/不锈钢/铜）对底孔的影响</li>
+      <li>英制螺纹 TPI 与螺距 mm 的换算</li>
+    </ul>
+
+    <h2>二、参数详解</h2>
+    <h3>2.1 公称直径 (D)</h3>
+    <ul>
+      <li><strong>单位</strong>：公制为 mm，英制为 inch</li>
+      <li><strong>范围</strong>：公制 M1~M64；英制 #0~2 inch</li>
+      <li><strong>含义</strong>：螺纹的大径（外螺纹的最大直径），是螺纹规格的主要标识</li>
+      <li><strong>注意</strong>：公制直径必须是标准系列值（如 M10 可以，M10.3 不可以）</li>
+    </ul>
+
+    <h3>2.2 螺距 (P) / 每英寸牙数 (TPI)</h3>
+    <ul>
+      <li><strong>螺距</strong>：相邻两牙在中径线上对应两点间的轴向距离，单位 mm</li>
+      <li><strong>TPI</strong>：Threads Per Inch，每英寸长度内的牙数</li>
+      <li><strong>换算</strong>：P(mm) = 25.4 / TPI</li>
+      <li><strong>粗牙 vs 细牙</strong>：同一公称直径下，粗牙螺距最大，细牙螺距较小。细牙螺纹自锁性好、强度高，但加工难度略大</li>
+    </ul>
+
+    <h3>2.3 丝锥类型</h3>
+    <ul>
+      <li><strong>切削丝锥</strong>：通过切削去除材料形成螺纹，底孔 = D - P × 系数。适用范围广，可加工各种材料</li>
+      <li><strong>挤压丝锥</strong>：通过塑性变形形成螺纹，无切屑，底孔比切削丝锥大（约 D - P/2）。适用于塑性好的材料（铝、铜、低碳钢），螺纹强度更高</li>
+    </ul>
+
+    <h3>2.4 材料系数</h3>
+    <table>
+      <tr><th>材料</th><th>系数</th><th>说明</th></tr>
+      <tr><td>钢</td><td>1.0</td><td>基准材料</td></tr>
+      <tr><td>铝合金</td><td>0.95</td><td>塑性较好，底孔略小</td></tr>
+      <tr><td>铸铁</td><td>1.05</td><td>脆性材料，底孔略大</td></tr>
+      <tr><td>不锈钢</td><td>0.98</td><td>加工硬化严重</td></tr>
+      <tr><td>铜合金</td><td>0.97</td><td>塑性好</td></tr>
+    </table>
+
+    <h3>2.5 旋合率</h3>
+    <ul>
+      <li><strong>60%</strong>：轻载场合，底孔较大，攻丝扭矩小</li>
+      <li><strong>75%</strong>：标准旋合率，最常用</li>
+      <li><strong>85%</strong>：重载场合，底孔较小，螺纹强度高但攻丝扭矩大</li>
+    </ul>
+
+    <h2>三、使用场景</h2>
+
+    <div class="scene">
+      <h4>场景 1：在钢板上攻 M10 粗牙螺纹</h4>
+      <p><strong>输入</strong>：公称直径 10 mm，螺距 1.5 mm（M10 粗牙），材料钢，旋合率 75%，切削丝锥</p>
+      <p><strong>计算</strong>：底孔 = 10 - 1.5 × 1.0 × 1.0 = 8.5 mm</p>
+      <p><strong>结果</strong>：选用 φ8.5 mm 钻头先钻孔，再用 M10×1.5 切削丝锥攻丝</p>
+    </div>
+
+    <div class="scene">
+      <h4>场景 2：在铝合金壳体上攻 M8 细牙螺纹</h4>
+      <p><strong>输入</strong>：公称直径 8 mm，螺距 1.0 mm（M8 细牙），材料铝合金，旋合率 75%，切削丝锥</p>
+      <p><strong>计算</strong>：底孔 = 8 - 1.0 × 1.0 × 0.95 = 7.05 mm</p>
+      <p><strong>结果</strong>：选用 φ7.05 mm 钻头（或最接近的 φ7.0 mm），再攻丝</p>
+    </div>
+
+    <div class="scene">
+      <h4>场景 3：在铸铁件上攻 M12 粗牙螺纹</h4>
+      <p><strong>输入</strong>：公称直径 12 mm，螺距 1.75 mm，材料铸铁，旋合率 75%，切削丝锥</p>
+      <p><strong>计算</strong>：底孔 = 12 - 1.75 × 1.0 × 1.05 = 10.1625 mm ≈ 10.16 mm</p>
+      <p><strong>结果</strong>：选用 φ10.2 mm 钻头</p>
+    </div>
+
+    <div class="scene">
+      <h4>场景 4：用挤压丝锥在铝件上攻 M10 螺纹</h4>
+      <p><strong>输入</strong>：公称直径 10 mm，螺距 1.5 mm，材料铝，挤压丝锥</p>
+      <p><strong>计算</strong>：底孔 ≈ 10 - 1.5 × 0.5 × 0.95 = 9.2875 mm ≈ 9.29 mm</p>
+      <p><strong>结果</strong>：选用 φ9.25 或 φ9.3 mm 钻头，再用 M10 挤压丝锥</p>
+      <p><strong>注意</strong>：挤压丝锥底孔公式为经验近似，实际需查丝锥厂商手册</p>
+    </div>
+
+    <div class="scene">
+      <h4>场景 5：加工 1/4-20 UNC 英制螺纹</h4>
+      <p><strong>输入</strong>：大径 0.25 inch，TPI 20，材料钢，旋合率 75%</p>
+      <p><strong>计算</strong>：螺距 = 25.4 / 20 = 1.27 mm；底孔 = 0.25 - (1/20) × 1.0 × 1.0 = 0.2 inch = 5.08 mm</p>
+      <p><strong>结果</strong>：选用 φ5.1 mm 钻头（或 #7 钻头 0.201 inch）</p>
+    </div>
+
+    <div class="scene">
+      <h4>场景 6：查询 G1/2 管螺纹底孔</h4>
+      <p><strong>输入</strong>：在英制螺纹表中筛选 G 类型，找到 G1/2</p>
+      <p><strong>数据</strong>：G1/2，TPI 14，大径 20.955 mm，螺距 1.814 mm</p>
+      <p><strong>底孔</strong>：约 18.5 mm（具体需查管螺纹加工手册，管螺纹底孔计算与普螺纹略有差异）</p>
+    </div>
+
+    <h2>四、常见错误与排查</h2>
+    <ul>
+      <li><strong>错误 1：输入非标准直径或非标准螺距</strong>。例如输入 M10.3，系统会提示「不是标准公制直径」；输入 M12x1.5 这类非标准螺距组合，系统也会提示并给出该直径的标准螺距。解决：必须使用 GB/T 193 规定的标准直径与螺距系列。</li>
+      <li><strong>错误 2：螺距填成 TPI</strong>。公制填螺距 mm，英制填 TPI，两者不能混用。</li>
+      <li><strong>错误 3：挤压丝锥用于脆性材料</strong>。挤压丝锥仅适用于塑性好的材料（铝、铜、低碳钢），铸铁、淬硬钢不可用。</li>
+      <li><strong>错误 4：忽略材料差异</strong>。不同材料底孔差异可达 5%~10%，必须按实际材料选择系数。</li>
+      <li><strong>错误 5：底孔过小导致丝锥折断</strong>。首次加工建议先试件验证，或选择稍大的底孔。</li>
+      <li><strong>错误 6：英制规格写错</strong>。如 '1/4-20' 不能写成 '1/4×20' 或 '0.25-20'，必须与表中完全一致。</li>
+    </ul>
+
+    <h2>五、数据来源与标准依据</h2>
+    <ul>
+      <li><strong>GB/T 196-2003</strong>《普通螺纹 基本尺寸》：公制螺纹基本尺寸</li>
+      <li><strong>GB/T 193-2005</strong>《普通螺纹 直径与螺距系列》：公制螺纹直径与螺距对应关系</li>
+      <li><strong>GB/T 7307-2001</strong>《55°非密封管螺纹》：G 管螺纹数据</li>
+      <li><strong>ASME B1.1-2019</strong>：统一英制螺纹（UNC/UNF）标准</li>
+      <li><strong>ANSI/ASME B1.20.1</strong>：NPT 锥管螺纹标准</li>
+      <li><strong>底孔计算公式</strong>：经验公式，参考《机械加工工艺手册》《模具设计师手册》等</li>
+    </ul>
+
+    <h2>六、局限性说明</h2>
+    <ul>
+      <li><strong>数据非完整</strong>：公制细牙仅列出常用规格，完整细牙系列需查 GB/T 193 原文；英制螺纹仅列出常用规格，完整系列需查 ASME B1.1 原文。</li>
+      <li><strong>底孔为经验值</strong>：本工具底孔基于经验公式计算，不同丝锥厂商、不同加工条件（切削速度、冷却液、机床刚性）下底孔可能不同。<strong>实际加工请以丝锥厂商推荐值和工艺手册为准</strong>。</li>
+      <li><strong>挤压丝锥公式为近似</strong>：挤压丝锥底孔受材料塑性、润滑条件影响很大，本工具给出的仅为粗略估算。</li>
+      <li><strong>管螺纹底孔差异</strong>：G、NPT 管螺纹的底孔计算与普通螺纹不同，本工具给出的仅供参考，需查管螺纹专用手册。</li>
+      <li><strong>未涵盖特殊螺纹</strong>：梯形螺纹、锯齿形螺纹、球面螺纹等特殊螺纹未包含。</li>
+      <li><strong>未考虑公差</strong>：本工具仅给出基本尺寸，未考虑螺纹公差等级（如 6g/6H）的影响。</li>
+      <li><strong>材料系数为经验值</strong>：不同牌号材料（如 45# 钢与 Q235）加工性能差异较大，本工具使用统一系数，仅供参考。</li>
+      <li><strong>不替代工艺文件</strong>：本工具用于快速查询和估算，正式生产必须依据工艺文件和工艺验证。</li>
+    </ul>
+
+    <h2>七、免责声明</h2>
+    <p>本工具提供的数据与计算结果仅供学习、参考和初步估算使用，不构成任何加工建议。实际加工中，请务必以最新版国家标准、行业标准、丝锥厂商技术资料以及经过验证的工艺文件为准。因使用本工具数据导致的任何损失，工具作者不承担责任。</p>
+  `;
+}
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+// 初始化
+document.getElementById('metricSearch').addEventListener('input', renderMetricTable);
+document.getElementById('metricFineFilter').addEventListener('change', renderMetricTable);
+document.getElementById('imperialType').addEventListener('change', renderImperialTable);
+document.getElementById('imperialSearch').addEventListener('input', renderImperialTable);
+document.getElementById('calcBtn').addEventListener('click', handleCalc);
+document.getElementById('runTestsBtn').addEventListener('click', renderTests);
+
+renderMetricTable();
+renderImperialTable();
+renderSource();
+renderDocs();
+</script>
+
+</body>
+</html>

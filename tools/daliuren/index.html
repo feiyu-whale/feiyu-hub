@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🪷 大六壬</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0a0810; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e8dce8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:600px; }
+  h1 { font-size:12px; text-align:center; color:#c9a0e0; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#8a7099; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#1a1226,#0f0a17); border:1px solid #46305e;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#b088d0; margin-bottom:10px; border-left:3px solid #b088d0; padding-left:8px; }
+  input, select { width:100%; background:#0d0814; border:1px solid #46305e; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#eadcf5; outline:none; font-family:inherit; }
+  input:focus, select:focus { border-color:#9a6ec0; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .lbl { font-size:11px; color:#8a7099; margin-bottom:4px; display:block; }
+  button.go { width:100%; padding:13px; font-size:11px; font-weight:700; color:#150a1e;
+    background:linear-gradient(160deg,#c9a0e0,#7a4fa0); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px; }
+  button.go:active { transform:scale(.98); }
+  .err { color:#e08080; text-align:center; padding:20px; }
+  /* 天地盘：4x4 外圈 + 中央 2x2（传统方圆盘布局） */
+  .tplate { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+  .tcell { background:#150e20; border:1px solid #3a2850; border-radius:9px; padding:6px 5px;
+    min-height:78px; position:relative; text-align:center; }
+  .tcell .jp { font-size:10px; color:#8a7099; }
+  .tcell .tz { font-size:11px; font-weight:700; color:#e8d0f8; line-height:1.2; }
+  .tcell .tj { font-size:12px; color:#c9a0e0; }
+  .tcell .dz { font-size:11px; color:#7a8899; }
+  .tcell.center { background:#1e1430; border-color:#6a4a90; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; }
+  .tcell.center .big { font-size:13px; color:#d0b0f0; line-height:1.5; }
+  .tz-label { font-size:9px; color:#6a5878; }
+  /* 四课 */
+  .sk { display:flex; gap:6px; }
+  .skcol { flex:1; text-align:center; background:#150e20; border:1px solid #3a2850;
+    border-radius:8px; padding:8px 4px; }
+  .skcol .pos { font-size:10px; color:#8a7099; }
+  .skcol .up { font-size:11px; font-weight:700; color:#f0d0a0; }
+  .skcol .down { font-size:15px; color:#c0d0e0; }
+  .skcol .rel { font-size:10px; color:#9a80b0; margin-top:3px; }
+  .skcol .jc { font-size:11px; color:#c9a0e0; }
+  /* 三传 */
+  .sc { display:flex; gap:6px; }
+  .sccol { flex:1; text-align:center; background:#1a1226; border:1px solid #6a4a90;
+    border-radius:9px; padding:10px 4px; }
+  .sccol .pos { font-size:11px; color:#c9a0e0; margin-bottom:4px; }
+  .sccol .dz { font-size:12px; font-weight:700; color:#f0e0b0; }
+  .sccol .tj { font-size:13px; color:#c9a0e0; }
+  .sccol .lq { font-size:11px; color:#90b0a0; }
+  .sccol .kong { font-size:10px; color:#e08080; }
+  .info-row { display:flex; justify-content:space-between; padding:5px 0;
+    border-bottom:1px solid #2a1e3a; font-size:13px; }
+  .info-row:last-child { border-bottom:none; }
+  .info-row .k { color:#8a7099; }
+  .info-row .v { color:#e0d0f0; text-align:right; }
+  .geju { text-align:center; font-size:16px; color:#f0d0a0; padding:8px; font-weight:700;
+    background:#1e1430; border-radius:9px; margin-top:6px; }
+  .shensha { display:flex; flex-wrap:wrap; gap:6px; }
+  .ss-item { background:#150e20; border:1px solid #3a2850; border-radius:8px;
+    padding:5px 9px; font-size:12px; color:#c9b0e0; }
+  .ss-item b { color:#f0d0a0; font-weight:700; }
+  .sect { font-size:13px; color:#b088d0; margin:16px 0 8px; border-left:3px solid #b088d0; padding-left:8px; }
+  .interp { font-size:13px; line-height:1.85; color:#d0c0e0; }
+  .disclaim { font-size:11px; color:#a08080; background:#20151a; border:1px solid #503040;
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .interp ul { padding-left:18px; margin:8px 0; }
+  .interp li { margin-bottom:5px; }
+  .hint { text-align:center; font-size:11px; color:#6a5878; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; font-size:10px; color:#4a3a58; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🪷 大 六 壬</h1>
+  <div class="sub">三式之一 · 天地盘 · 四课三传 · 神煞<br>纯本地计算 · 引擎 mingpan（Apache-2.0）</div>
+
+  <div class="card">
+    <div class="line">
+      <div><span class="lbl">日期</span><input type="date" id="date"></div>
+      <div><span class="lbl">时间（当地）</span><input type="time" id="time" value="12:00"></div>
+    </div>
+    <button class="go" id="calc">起 课</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">大六壬由 mingpan（Apache-2.0）计算 · 传统文化参考 🐳<br>属传统术数，非科学结论，仅供娱乐参考</div>
+  <div class="ver">v1.0.0-大六壬 20261015</div>
+</div>
+
+<script src="lib/lunar.js"></script>
+<script src="lib/daliuren.js"></script>
+<script>
+(function(){
+  'use strict';
+  var D = window.DaLiuRen;
+  if(!D){ document.getElementById('result').innerHTML='<div class="err">引擎加载失败</div>'; return; }
+  var svc = new D.DaliurenService();
+  var TJ_FULL = D.constants.TIAN_JIANG_FULL;
+
+  function tjName(short){ return TJ_FULL[short] || short; }
+
+  // 顺时针十二地支序（用于天盘环形/网格布局：从寅起，传统子居北）
+  var ZHI_ORDER = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+  function calc(){
+    var res = document.getElementById('result');
+    var d = document.getElementById('date').value;
+    var t = document.getElementById('time').value;
+    if(!d || !t){ res.innerHTML = '<div class="err">日期时间要填</div>'; return; }
+
+    var parts = d.split('-').map(Number);
+    var tp = t.split(':').map(Number);
+    var chart;
+    try {
+      chart = svc.calculateFromTime({ year:parts[0], month:parts[1], day:parts[2], hour:tp[0], minute:tp[1]||0 });
+    } catch(e){ res.innerHTML = '<div class="err">起课失败：'+(e.message||e)+'</div>'; return; }
+
+    var h = '';
+
+    // ===== 基本信息 =====
+    var bi = chart.basicInfo;
+    h += '<div class="card"><h3>基本信息</h3>';
+    h += '<div class="info-row"><span class="k">公历</span><span class="v">'+d+' '+t+'</span></div>';
+    h += '<div class="info-row"><span class="k">节气 / 农历</span><span class="v">'+bi.jieqi+' / '+bi.lunarMonth+'</span></div>';
+    h += '<div class="info-row"><span class="k">日干支 / 时干支</span><span class="v">'+bi.dayGanZhi+' 日 / '+bi.hourGanZhi+' 时</span></div>';
+    h += '<div class="info-row"><span class="k">月将</span><span class="v">'+chart.tianDiPan.yueJiang+'（'+chart.tianDiPan.yueJiangName+'）</span></div>';
+    h += '<div class="info-row"><span class="k">昼夜</span><span class="v">'+bi.dayNight+'（贵人分昼夜）</span></div>';
+    h += '</div>';
+
+    // ===== 天地盘（4x4 网格，外圈12地支顺时针，中央2x2汇总）=====
+    var dt = chart.tianDiPan;
+    // 布局顺序：按方位摆（传统地盘安放）
+    //   巳 午 未 申
+    //   辰 [中央] 酉
+    //   卯 [中央] 戌
+    //   寅 丑 子 亥
+    var OUTER = ['巳','午','未','申','酉','戌','亥','子','丑','寅','卯','辰'];
+    // 网格 pos: 采用固定方位数组
+    var grid = [
+      '巳','午','未','申',
+      '辰', null, null, '酉',
+      '卯', null, null, '戌',
+      '寅','丑','子','亥'
+    ];
+    h += '<div class="card"><h3>天地盘（天盘·天将 / 地盘）</h3><div class="tplate">';
+    for(var i=0;i<grid.length;i++){
+      var gz = grid[i];
+      if(gz === null){
+        // 中央合并格（只在第一个 null 处输出一次大格）
+        if(i === 5){
+          h += '<div class="tcell center" style="grid-column:2/4;grid-row:2/4;">';
+          h += '<div class="big">月将 '+dt.yueJiang+'</div>';
+          h += '<div class="big">'+dt.yueJiangName+'</div>';
+          h += '<div class="tz-label">加时起盘</div>';
+          h += '</div>';
+        }
+        continue;
+      }
+      var tian = dt.diToTian[gz];
+      var jiang = dt.diToJiang[gz];
+      h += '<div class="tcell">';
+      h += '<div class="jp">'+gz+'宫</div>';
+      h += '<div class="tz">'+(tian||'—')+'</div>';
+      h += '<div class="tj">'+tjName(jiang)+'</div>';
+      h += '<div class="dz">地盘'+gz+'</div>';
+      h += '</div>';
+    }
+    h += '</div><div class="hint" style="margin-top:8px">上字为天盘地支 · 中间为天将 · 下字为地盘</div></div>';
+
+    // ===== 四课 =====
+    h += '<div class="card"><h3>四课</h3><div class="sk">';
+    var sk = chart.siKe;
+    for(var j=0;j<sk.list.length;j++){
+      var c = sk.list[j];
+      h += '<div class="skcol">';
+      h += '<div class="pos">'+c.position+'课</div>';
+      h += '<div class="up">'+(c.shangShen||'—')+'</div>';
+      h += '<div class="down">'+c.xiaShen+'</div>';
+      h += '<div class="jc">'+tjName(c.tianJiang)+'</div>';
+      h += '<div class="rel">'+c.relation+'</div>';
+      h += '</div>';
+    }
+    h += '</div>';
+    h += '<div class="info-row" style="margin-top:8px"><span class="k">日干寄宫</span><span class="v">'+sk.dayGan+' 寄 '+sk.dayGanJiGong+'</span></div>';
+    h += '</div>';
+
+    // ===== 三传 =====
+    h += '<div class="card"><h3>三传</h3><div class="sc">';
+    var sc = chart.sanChuan;
+    var chuan = [sc.chuChuan, sc.zhongChuan, sc.moChuan];
+    for(var k=0;k<chuan.length;k++){
+      var cc = chuan[k];
+      h += '<div class="sccol">';
+      h += '<div class="pos">'+cc.position+'</div>';
+      h += '<div class="dz">'+cc.diZhi+'</div>';
+      h += '<div class="tj">'+tjName(cc.tianJiang)+'</div>';
+      h += '<div class="lq">'+cc.liuQin+'</div>';
+      if(cc.xunKong) h += '<div class="kong">旬空 '+cc.xunKong+'</div>';
+      h += '</div>';
+    }
+    h += '</div>';
+    var gj = typeof sc.geJu === 'string' ? sc.geJu : JSON.stringify(sc.geJu);
+    h += '<div class="geju">格局 · '+gj+'</div>';
+    h += '</div>';
+
+    // ===== 神煞 =====
+    var ss = chart.shenSha;
+    h += '<div class="card"><h3>神煞</h3><div class="shensha">';
+    var ssList = [['日马',ss.riMa],['月马',ss.yueMa],['丁马',ss.dingMa],['华盖',ss.huaGai],['闪电',ss.shanDian]];
+    for(var s=0;s<ssList.length;s++){
+      if(ssList[s][1]) h += '<div class="ss-item">'+ssList[s][0]+' <b>'+ssList[s][1]+'</b></div>';
+    }
+    h += '</div></div>';
+
+    // ===== 解读 =====
+    h += '<div class="sect">📖 解读</div><div class="interp">';
+    h += '<div class="disclaim">⚠️ 大六壬为传统术数（三式之一），以下为传统说法，非科学结论，仅供娱乐参考。</div>';
+    h += '<p>本课以 <b>'+bi.jieqi+'</b> 节气、<b>'+bi.dayGanZhi+'</b> 日、<b>'+bi.hourGanZhi+'</b> 时起盘，月将为 <b>'+dt.yueJiang+'（'+dt.yueJiangName+'）</b>。</p>';
+    h += '<ul>';
+    h += '<li><b>天地盘</b>：以月将加时辰，旋转天盘覆于地盘之上；天盘随时间流转，地盘固定十二支。</li>';
+    h += '<li><b>天将</b>：贵人（'+tjName('貴')+'）为首，分昼夜顺逆布十二将——螣蛇、朱雀、六合、勾陈、青龙、天空、白虎、太常、玄武、太阴、天后。</li>';
+    h += '<li><b>四课</b>：由日干、日支推演一至四课，看上下神生克（比和/上克下/下贼上/上生下/下生上），为发用之基。</li>';
+    h += '<li><b>三传</b>：由四课按九宗门（贼克、比用、涉害、返吟、伏吟等）发用，定初传、中传、末传——初主事始，中主事中，末主事终。</li>';
+    h += '<li><b>格局</b>：本课为 <b>'+gj+'</b> 课，六亲（父母/兄弟/子孙/妻财/官鬼）示人事属性。</li>';
+    h += '<li><b>神煞</b>：驿马主动、华盖主孤高文墨、旬空主虚；辅助断课。</li>';
+    h += '</ul>';
+    // ===== 白话解读（看得懂版）=====
+    var cc1=sc.chuChuan, cc2=sc.zhongChuan, cc3=sc.moChuan;
+    function lqPlain(lq){var m={'父母':'长辈、长辈事、文书房产','兄弟':'同辈、朋友、竞争、破财','子孙':'晚辈、子女、福气、解忧','妻财':'钱财、妻妾、收获','官鬼':'事业、官职、疾病、阻力'};return m[lq]||lq;}
+    function lyPlain(dz){var m={'子':'水·北方·夜深','丑':'土·近东北·积蓄','寅':'木·东北·开端','卯':'木·东方·生长','辰':'土·东南·库墓','巳':'火·南偏东·炽热','午':'火·正南·明朗','未':'土·西南·缓和','申':'金·西南·变动','酉':'金·正西·收成','戌':'土·西北·戍守','亥':'水·西北·潜藏'};return m[dz]||'';}
+    h += '<div class="sect" style="margin-top:14px">💡 白话解读</div><div class="interp">';
+    h += '<p><b>一句话：</b>这件事的"开头—过程—结果"，传统上这样读——开头看<b>初传'+cc1.diZhi+'</b>，中间看<b>中传'+cc2.diZhi+'</b>，最后看<b>末传'+cc3.diZhi+'</b>。</p>';
+    h += '<ul>';
+    h += '<li><b>初传（事之始）· '+(cc1.diZhi||'—')+'：</b>底子是"'+lqPlain(cc1.liuQin)+'"（'+cc1.liuQin+'），配天将'+tjName(cc1.tianJiang)+'。'+(cc1.diZhi?'地支'+cc1.diZhi+'属'+lyPlain(cc1.diZhi)+'。':'')+(cc1.xunKong?'<b>带旬空</b>——开头这股劲儿偏虚、容易落空。':'')+'</li>';
+    h += '<li><b>中传（事之中）· '+(cc2.diZhi||'—')+'：</b>过程走向"'+lqPlain(cc2.liuQin)+'"（'+cc2.liuQin+'），天将'+tjName(cc2.tianJiang)+'。'+(cc2.diZhi?'地支'+cc2.diZhi+'属'+lyPlain(cc2.diZhi)+'。':'')+(cc2.xunKong?'<b>带旬空</b>——中途易生变、使不上劲。':'')+'</li>';
+    h += '<li><b>末传（事之终）· '+(cc3.diZhi||'—')+'：</b>落脚在"'+lqPlain(cc3.liuQin)+'"（'+cc3.liuQin+'），天将'+tjName(cc3.tianJiang)+'。'+(cc3.diZhi?'地支'+cc3.diZhi+'属'+lyPlain(cc3.diZhi)+'。':'')+(cc3.xunKong?'<b>带旬空</b>——结局偏空，别抱太大期待。':'')+'</li>';
+    h += '</ul>';
+    h += '<p><b>格局「'+gj+'」提示：</b>'+((/伏吟/.test(gj))?'伏吟课——事情"原地打转、停滞不前"，传统主宜静不宜动、慢工出细活。':(/返吟/.test(gj))?'返吟课——事情"来回反复、去而复返"，主变动多、难一次到位。':(/贼克|元首/.test(gj))?'贼克/元首课——事情"有明确对头/主次分明"，一般主"一鼓作气可成"。':'课体格局主事情的缓急轻重，配合三传一起看。')+'</p>';
+    h += '<p style="font-size:12px;color:#a090b0">※ 白话解读为"看懂版"提示，帮你看明白盘面术语；大六壬断课流派极多（贵人起法/昼夜界定/发用取法各家不一），深断请咨询专业人士。仅供参考娱乐。</p>';
+    h += '</div>';
+    h += '</div>';
+
+    res.innerHTML = h;
+  }
+
+  document.getElementById('calc').addEventListener('click', calc);
+  var now = new Date(), pad = function(n){ return String(n).padStart(2,'0'); };
+  document.getElementById('date').value = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  document.getElementById('time').value = pad(now.getHours())+':'+pad(now.getMinutes());
+  calc();
+})();
+</script>
+</body>
+</html>

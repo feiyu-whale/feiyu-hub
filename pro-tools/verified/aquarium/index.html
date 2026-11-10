@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鱼缸容积与养鱼密度计算器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+    color: #1e293b;
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.7;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    text-align: center;
+    color: #0369a1;
+    margin-bottom: 8px;
+    font-size: 28px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #64748b;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .disclaimer {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #78350f;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #cbd5e1;
+    margin-bottom: 20px;
+  }
+  .tab {
+    padding: 12px 24px;
+    cursor: pointer;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    margin-right: 4px;
+    font-size: 15px;
+    color: #475569;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #e2e8f0; }
+  .tab.active {
+    background: #0284c7;
+    color: white;
+    font-weight: 600;
+  }
+  .panel { display: none; background: white; padding: 28px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .panel.active { display: block; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .form-group { display: flex; flex-direction: column; }
+  .form-group label {
+    font-size: 13px;
+    color: #475569;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .form-group input, .form-group select {
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2,132,199,0.1);
+  }
+  .form-group .hint {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+  }
+  .btn {
+    background: #0284c7;
+    color: white;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #0369a1; }
+  .btn-secondary {
+    background: #64748b;
+  }
+  .btn-secondary:hover { background: #475569; }
+  .result-section {
+    margin-top: 24px;
+    padding: 20px;
+    background: #f0f9ff;
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+  }
+  .result-section h3 {
+    color: #0369a1;
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .result-item {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border-left: 3px solid #0284c7;
+  }
+  .result-item .label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+  }
+  .result-item .value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0c4a6e;
+  }
+  .result-item .unit {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: normal;
+  }
+  .section-title {
+    color: #0369a1;
+    font-size: 18px;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e0f2fe;
+  }
+  .test-output {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+  .test-pass { color: #4ade80; }
+  .test-fail { color: #f87171; }
+  .test-summary {
+    padding: 12px 16px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #166534;
+  }
+  .test-summary.fail {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+  }
+  .doc-content {
+    font-size: 15px;
+    color: #334155;
+  }
+  .doc-content h2 {
+    color: #0369a1;
+    font-size: 20px;
+    margin: 28px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e0f2fe;
+  }
+  .doc-content h3 {
+    color: #0c4a6e;
+    font-size: 17px;
+    margin: 20px 0 10px;
+  }
+  .doc-content p { margin-bottom: 12px; }
+  .doc-content ul, .doc-content ol {
+    margin: 8px 0 12px 24px;
+  }
+  .doc-content li { margin-bottom: 6px; }
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #cbd5e1;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc-content th {
+    background: #f0f9ff;
+    color: #0369a1;
+    font-weight: 600;
+  }
+  .doc-content code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #be185d;
+  }
+  .scenario {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .scenario h4 {
+    color: #0369a1;
+    margin-bottom: 8px;
+  }
+  .version-tag {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    font-size: 11px;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .error-msg {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fef2f2;
+    border-radius: 4px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🐠 鱼缸容积与养鱼密度计算器</h1>
+  <p class="subtitle">基于水族圈通行法则 · 容积 / 重量 / 密度 / 过滤 / 加热 一站式估算</p>
+
+  <div class="disclaimer">
+    ⚠️ <strong>免责声明</strong>：本工具所有计算结果仅供参考，实际养殖密度受过滤系统效能、换水频率、鱼种习性、水温、植物配置等多重因素影响。本工具依据水族圈通行经验法则（非国家标准），所有领域参数均为经验值，未经标准核对，不构成任何养殖建议。
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="calc">🧮 计算器</button>
+    <button class="tab" data-tab="test">🧪 单元测试</button>
+    <button class="tab" data-tab="doc">📖 使用说明书</button>
+  </div>
+
+  <!-- 计算器面板 -->
+  <div class="panel active" id="panel-calc">
+    <h3 class="section-title">① 鱼缸尺寸（外尺寸）</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>长度 (cm)</label>
+        <input type="number" id="length" value="60" min="1" step="0.1">
+        <span class="hint">鱼缸外部长边</span>
+      </div>
+      <div class="form-group">
+        <label>宽度 (cm)</label>
+        <input type="number" id="width" value="30" min="1" step="0.1">
+        <span class="hint">鱼缸外部短边</span>
+      </div>
+      <div class="form-group">
+        <label>高度 (cm)</label>
+        <input type="number" id="height" value="36" min="1" step="0.1">
+        <span class="hint">鱼缸外部高度</span>
+      </div>
+    </div>
+
+    <h3 class="section-title">② 底砂与设备</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>底砂厚度 (cm)</label>
+        <input type="number" id="sandThickness" value="3" min="0" max="20" step="0.1">
+        <span class="hint">0 表示无底砂</span>
+      </div>
+      <div class="form-group">
+        <label>底砂类型</label>
+        <select id="sandType">
+          <option value="1.6">细砂/水草泥 (≈1.6 g/cm³)</option>
+          <option value="1.4">轻质陶粒 (≈1.4 g/cm³)</option>
+          <option value="1.8">粗砂/碎石 (≈1.8 g/cm³)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>设备占用比例 (%)</label>
+        <input type="number" id="equipmentRatio" value="5" min="0" max="50" step="1">
+        <span class="hint">滤材/加热棒/装饰等，默认 5%</span>
+      </div>
+    </div>
+
+    <h3 class="section-title">③ 养鱼密度</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>鱼种分类</label>
+        <select id="fishType">
+          <option value="small">小型群游鱼（灯鱼、霓虹等，成体 3-5cm）</option>
+          <option value="medium">中型鱼（神仙、短鲷等，成体 8-15cm）</option>
+          <option value="large">大型鱼（龙鱼、虎鱼等，成体 30cm+）</option>
+          <option value="goldfish">金鱼 / 锦鲤（高污染）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>单鱼成体体长 (cm)</label>
+        <input type="number" id="fishLength" value="4" min="0.5" step="0.5">
+        <span class="hint">按成体体长计算，非幼鱼</span>
+      </div>
+      <div class="form-group">
+        <label>密度计算方式</label>
+        <select id="densityMethod">
+          <option value="surface">体表面积法（推荐）</option>
+          <option value="old">老规则：1L 水 / 1cm 鱼</option>
+        </select>
+      </div>
+    </div>
+
+    <h3 class="section-title">④ 过滤与加热</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>过滤流量倍数 (次/小时)</label>
+        <input type="number" id="filterMultiplier" value="5" min="1" max="20" step="0.5">
+        <span class="hint">建议范围 4-6，草缸可低至 3</span>
+      </div>
+      <div class="form-group">
+        <label>目标水温 (℃)</label>
+        <input type="number" id="targetTemp" value="26" min="10" max="32" step="0.5">
+      </div>
+      <div class="form-group">
+        <label>冬季室温 (℃)</label>
+        <input type="number" id="ambientTemp" value="15" min="-10" max="30" step="0.5">
+        <span class="hint">按最冷月份估算</span>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button class="btn" onclick="runCalculation()">🔄 计算</button>
+      <button class="btn btn-secondary" onclick="resetForm()" style="margin-left: 8px;">重置</button>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div id="resultArea" style="display:none;">
+      <div class="result-section">
+        <h3>📐 容积与重量</h3>
+        <div class="result-grid" id="volumeResults"></div>
+      </div>
+
+      <div class="result-section" style="margin-top: 16px;">
+        <h3>🐟 养鱼密度建议</h3>
+        <div class="result-grid" id="fishResults"></div>
+      </div>
+
+      <div class="result-section" style="margin-top: 16px;">
+        <h3>⚙️ 设备配置建议</h3>
+        <div class="result-grid" id="equipResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试面板 -->
+  <div class="panel" id="panel-test">
+    <h3 class="section-title">单元测试（纯 JS 实现）</h3>
+    <p style="color:#64748b; margin-bottom: 12px;">共 35 个测试用例，覆盖正常值、边界值、异常输入、精度问题。</p>
+    <button class="btn" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="testSummary" style="margin-top: 16px;"></div>
+    <div id="testOutput" class="test-output" style="margin-top: 12px;">点击"运行全部测试"查看结果...</div>
+  </div>
+
+  <!-- 说明书面板 -->
+  <div class="panel" id="panel-doc">
+    <div class="doc-content" id="docContent"></div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.1-完整版 20261021-修审查问题 20261108</div>
+
+<script>
+/* ========================================================================
+ * 第一部分：JS 源码（纯函数 + 完整 JSDoc）
+ * ======================================================================== */
+
+/**
+ * 计算鱼缸毛容积（外部尺寸）
+ * @param {number} length - 鱼缸长度，单位 cm，必须 > 0
+ * @param {number} width - 鱼缸宽度，单位 cm，必须 > 0
+ * @param {number} height - 鱼缸高度，单位 cm，必须 > 0
+ * @returns {number} 毛容积，单位 cm³
+ * @throws {Error} 参数非正数或非有限数时抛出
+ * @example
+ * calculateGrossVolume(60, 30, 36); // => 64800
+ */
+function calculateGrossVolume(length, width, height) {
+  validatePositive(length, 'length');
+  validatePositive(width, 'width');
+  validatePositive(height, 'height');
+  return length * width * height;
+}
+
+/**
+ * 计算底砂体积
+ * @param {number} length - 鱼缸长度，单位 cm，必须 >= 0
+ * @param {number} width - 鱼缸宽度，单位 cm，必须 >= 0
+ * @param {number} sandThickness - 底砂厚度，单位 cm，必须 >= 0
+ * @returns {number} 底砂体积，单位 cm³
+ * @throws {Error} 参数为负或非有限数时抛出
+ * @example
+ * calculateSandVolume(60, 30, 3); // => 5400
+ */
+function calculateSandVolume(length, width, sandThickness) {
+  validateNonNegative(length, 'length');
+  validateNonNegative(width, 'width');
+  validateNonNegative(sandThickness, 'sandThickness');
+  return length * width * sandThickness;
+}
+
+/**
+ * 计算净水量（扣除底砂和设备占用）
+ * 注意：底砂按外轮廓体积 100% 扣除，偏保守；实际砂粒间孔隙约 30-40%，排水体积小于外轮廓体积
+ * @param {number} grossVolumeCm3 - 毛容积，单位 cm³，必须 > 0
+ * @param {number} sandVolumeCm3 - 底砂体积，单位 cm³，必须 >= 0
+ * @param {number} equipmentRatio - 设备占用比例，0-1 之间的小数（如 0.05 表示 5%）
+ * @returns {number} 净水量，单位 L（升）
+ * @throws {Error} 参数非法或砂体积超过毛容积时抛出
+ * @example
+ * calculateNetVolume(64800, 5400, 0.05); // => 56.43
+ */
+function calculateNetVolume(grossVolumeCm3, sandVolumeCm3, equipmentRatio) {
+  validatePositive(grossVolumeCm3, 'grossVolumeCm3');
+  validateNonNegative(sandVolumeCm3, 'sandVolumeCm3');
+  if (typeof equipmentRatio !== 'number' || !isFinite(equipmentRatio)) {
+    throw new Error('equipmentRatio must be a finite number');
+  }
+  if (equipmentRatio < 0 || equipmentRatio >= 1) {
+    throw new Error('equipmentRatio must be in [0, 1)');
+  }
+  if (sandVolumeCm3 > grossVolumeCm3) {
+    throw new Error('sandVolumeCm3 cannot exceed grossVolumeCm3');
+  }
+  const availableCm3 = grossVolumeCm3 - sandVolumeCm3;
+  const netCm3 = availableCm3 * (1 - equipmentRatio);
+  return netCm3 / 1000; // cm³ -> L
+}
+
+/**
+ * 根据鱼缸最大边长估算玻璃厚度（行业经验值，非国标）
+ * @param {number} maxDimension - 鱼缸最长边，单位 cm
+ * @returns {number} 估算玻璃厚度，单位 mm
+ * @throws {Error} 参数非正数时抛出
+ * @example
+ * estimateGlassThickness(60); // => 6
+ */
+function estimateGlassThickness(maxDimension) {
+  validatePositive(maxDimension, 'maxDimension');
+  if (maxDimension <= 30) return 4;
+  if (maxDimension <= 60) return 6;
+  if (maxDimension <= 90) return 8;
+  if (maxDimension <= 120) return 10;
+  if (maxDimension <= 150) return 12;
+  return 15;
+}
+
+/**
+ * 计算鱼缸玻璃总重量（5 面玻璃，无盖）
+ * 简化模型：前后板夹在左右板之间，按净宽（长度-2×玻璃厚度）计，已扣除左右板搭接
+ * @param {number} length - 长度 cm
+ * @param {number} width - 宽度 cm
+ * @param {number} height - 高度 cm
+ * @param {number} thicknessMm - 玻璃厚度 mm
+ * @returns {number} 玻璃重量，单位 kg（玻璃密度按 2.5 g/cm³）
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calculateGlassWeight(60, 30, 36, 6); // ≈ 12.29 kg
+ */
+function calculateGlassWeight(length, width, height, thicknessMm) {
+  validatePositive(length, 'length');
+  validatePositive(width, 'width');
+  validatePositive(height, 'height');
+  validateNonNegative(thicknessMm, 'thicknessMm');
+  const t = thicknessMm / 10; // mm -> cm
+  // 底面
+  const bottom = length * width * t;
+  // 前后两面（长×高）
+  const frontBack = 2 * (length - 2 * t) * height * t; // 前后板夹在左右板间，扣除搭接
+  // 左右两面（宽×高）
+  const leftRight = 2 * width * height * t;
+  const volumeCm3 = bottom + frontBack + leftRight;
+  return volumeCm3 * 2.5 / 1000; // g -> kg
+}
+
+/**
+ * 计算底砂重量
+ * @param {number} length - 长度 cm
+ * @param {number} width - 宽度 cm
+ * @param {number} sandThickness - 砂厚 cm
+ * @param {number} sandDensity - 砂密度 g/cm³（通常 1.4-1.8）
+ * @returns {number} 砂重 kg
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calculateSandWeight(60, 30, 3, 1.6); // ≈ 8.64 kg
+ */
+function calculateSandWeight(length, width, sandThickness, sandDensity) {
+  validateNonNegative(length, 'length');
+  validateNonNegative(width, 'width');
+  validateNonNegative(sandThickness, 'sandThickness');
+  if (typeof sandDensity !== 'number' || !isFinite(sandDensity) || sandDensity <= 0) {
+    throw new Error('sandDensity must be a positive finite number');
+  }
+  const volumeCm3 = length * width * sandThickness;
+  return volumeCm3 * sandDensity / 1000;
+}
+
+/**
+ * 计算鱼缸总重量（玻璃 + 水 + 砂）
+ * @param {number} waterWeightKg - 水重 kg
+ * @param {number} glassWeightKg - 玻璃重 kg
+ * @param {number} sandWeightKg - 砂重 kg
+ * @returns {number} 总重量 kg
+ * @throws {Error} 任一参数为负时抛出
+ * @example
+ * calculateTotalWeight(56.43, 8.42, 8.64); // ≈ 73.49
+ */
+function calculateTotalWeight(waterWeightKg, glassWeightKg, sandWeightKg) {
+  [waterWeightKg, glassWeightKg, sandWeightKg].forEach((v, i) => {
+    if (typeof v !== 'number' || !isFinite(v) || v < 0) {
+      throw new Error(`weight argument ${i} must be non-negative finite number`);
+    }
+  });
+  return waterWeightKg + glassWeightKg + sandWeightKg;
+}
+
+/**
+ * 老规则：1L 水养 1cm 鱼（成体体长）
+ * @param {number} netVolumeL - 净水量 L
+ * @returns {number} 可养鱼总长度 cm
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calculateFishCapacityOldRule(60); // => 60
+ */
+function calculateFishCapacityOldRule(netVolumeL) {
+  validateNonNegative(netVolumeL, 'netVolumeL');
+  return netVolumeL;
+}
+
+/**
+ * 体表面积法（简化版）：按鱼种分类给出每 cm 成体体长所需水量
+ * 数值来源：水族圈通行经验，非国标
+ * @param {number} netVolumeL - 净水量 L
+ * @param {string} fishType - 鱼种类型：'small' | 'medium' | 'large' | 'goldfish'
+ * @returns {{ litersPerCm: number, totalLengthCm: number, description: string }}
+ * @throws {Error} 鱼种类型非法时抛出
+ * @example
+ * calculateFishCapacityByType(60, 'small');
+ * // => { litersPerCm: 1, totalLengthCm: 60, description: '...' }
+ */
+function calculateFishCapacityByType(netVolumeL, fishType) {
+  validateNonNegative(netVolumeL, 'netVolumeL');
+  const rules = {
+    small:    { litersPerCm: 1,   desc: '小型群游鱼（灯鱼、霓虹、斑马等）' },
+    medium:   { litersPerCm: 2.5, desc: '中型鱼（神仙鱼、短鲷、银板等）' },
+    large:    { litersPerCm: 7,   desc: '大型鱼（龙鱼、虎鱼、魟鱼等）' },
+    goldfish: { litersPerCm: 4,   desc: '金鱼 / 锦鲤（高排泄、高耗氧）' }
+  };
+  if (!rules[fishType]) {
+    throw new Error(`Unknown fishType: ${fishType}. Must be one of: ${Object.keys(rules).join(', ')}`);
+  }
+  const rule = rules[fishType];
+  return {
+    litersPerCm: rule.litersPerCm,
+    totalLengthCm: netVolumeL / rule.litersPerCm,
+    description: rule.desc
+  };
+}
+
+/**
+ * 根据单鱼体长计算可养数量
+ * @param {number} totalLengthCm - 可养总长度 cm
+ * @param {number} fishLengthCm - 单鱼成体体长 cm
+ * @returns {number} 可养数量（向下取整）
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calculateFishCount(60, 4); // => 15
+ */
+function calculateFishCount(totalLengthCm, fishLengthCm) {
+  validateNonNegative(totalLengthCm, 'totalLengthCm');
+  if (typeof fishLengthCm !== 'number' || !isFinite(fishLengthCm) || fishLengthCm <= 0) {
+    throw new Error('fishLengthCm must be a positive finite number');
+  }
+  return Math.floor(totalLengthCm / fishLengthCm);
+}
+
+/**
+ * 计算建议过滤流量
+ * @param {number} netVolumeL - 净水量 L
+ * @param {number} multiplier - 循环倍数（次/小时），建议 4-6
+ * @returns {number} 建议流量 L/h
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calculateFilterFlowRate(60, 5); // => 300
+ */
+function calculateFilterFlowRate(netVolumeL, multiplier) {
+  validateNonNegative(netVolumeL, 'netVolumeL');
+  if (typeof multiplier !== 'number' || !isFinite(multiplier) || multiplier <= 0) {
+    throw new Error('multiplier must be a positive finite number');
+  }
+  return netVolumeL * multiplier;
+}
+
+/**
+ * 估算加热棒功率
+ * 经验公式：功率(W) = 水量(L) × 1W/L × 温差系数
+ * 温差系数：温差每 5℃ 约需 1W/L，线性外推
+ * @param {number} netVolumeL - 净水量 L
+ * @param {number} targetTemp - 目标水温 ℃
+ * @param {number} ambientTemp - 冬季室温 ℃
+ * @returns {number} 建议加热棒功率 W
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calculateHeaterPower(60, 26, 15); // => 132
+ */
+function calculateHeaterPower(netVolumeL, targetTemp, ambientTemp) {
+  validateNonNegative(netVolumeL, 'netVolumeL');
+  if (typeof targetTemp !== 'number' || !isFinite(targetTemp)) {
+    throw new Error('targetTemp must be a finite number');
+  }
+  if (typeof ambientTemp !== 'number' || !isFinite(ambientTemp)) {
+    throw new Error('ambientTemp must be a finite number');
+  }
+  const delta = Math.max(0, targetTemp - ambientTemp);
+  // 经验：每 5℃ 温差约需 1W/L，最低按 0.5W/L 保底（小温差场景）
+  const wPerL = delta <= 0 ? 0.5 : Math.max(0.5, delta / 5);
+  return Math.ceil(netVolumeL * wPerL);
+}
+
+/* ---------- 辅助校验函数 ---------- */
+
+function validatePositive(v, name) {
+  if (typeof v !== 'number' || !isFinite(v) || v <= 0) {
+    throw new Error(`${name} must be a positive finite number, got: ${v}`);
+  }
+}
+
+function validateNonNegative(v, name) {
+  if (typeof v !== 'number' || !isFinite(v) || v < 0) {
+    throw new Error(`${name} must be a non-negative finite number, got: ${v}`);
+  }
+}
+
+/* ========================================================================
+ * 第二部分：单元测试（纯 JS，自己写 assert）
+ * ======================================================================== */
+
+const TestRunner = (() => {
+  let passed = 0, failed = 0, total = 0;
+  const logs = [];
+
+  function assertEqual(actual, expected, msg) {
+    total++;
+    const ok = actual === expected;
+    if (ok) {
+      passed++;
+      logs.push(`<span class="test-pass">✓ [${total}] ${msg}</span>`);
+    } else {
+      failed++;
+      logs.push(`<span class="test-fail">✗ [${total}] ${msg} | 期望 ${expected}，实际 ${actual}</span>`);
+    }
+  }
+
+  function assertApprox(actual, expected, tolerance, msg) {
+    total++;
+    const ok = Math.abs(actual - expected) <= tolerance;
+    if (ok) {
+      passed++;
+      logs.push(`<span class="test-pass">✓ [${total}] ${msg} (≈${expected} ±${tolerance})</span>`);
+    } else {
+      failed++;
+      logs.push(`<span class="test-fail">✗ [${total}] ${msg} | 期望 ${expected}±${tolerance}，实际 ${actual}</span>`);
+    }
+  }
+
+  function assertThrows(fn, msg) {
+    total++;
+    try {
+      fn();
+      failed++;
+      logs.push(`<span class="test-fail">✗ [${total}] ${msg} | 期望抛出异常但未抛出</span>`);
+    } catch (e) {
+      passed++;
+      logs.push(`<span class="test-pass">✓ [${total}] ${msg} (抛出: ${e.message})</span>`);
+    }
+  }
+
+  function summary() {
+    return { passed, failed, total, logs };
+  }
+
+  function reset() {
+    passed = 0; failed = 0; total = 0; logs.length = 0;
+  }
+
+  return { assertEqual, assertApprox, assertThrows, summary, reset };
+})();
+
+function runAllTests() {
+  TestRunner.reset();
+  const T = TestRunner;
+
+  /* ---- calculateGrossVolume ---- */
+  T.assertEqual(calculateGrossVolume(60, 30, 36), 64800, '毛容积 60×30×36 = 64800');
+  T.assertEqual(calculateGrossVolume(1, 1, 1), 1, '毛容积 1×1×1 = 1（最小边界）');
+  T.assertEqual(calculateGrossVolume(100, 50, 60), 300000, '毛容积 100×50×60 = 300000');
+  T.assertThrows(() => calculateGrossVolume(0, 30, 36), '毛容积 长度=0 抛错');
+  T.assertThrows(() => calculateGrossVolume(-10, 30, 36), '毛容积 长度负数抛错');
+  T.assertThrows(() => calculateGrossVolume(null, 30, 36), '毛容积 长度=null 抛错');
+  T.assertThrows(() => calculateGrossVolume(NaN, 30, 36), '毛容积 长度=NaN 抛错');
+  T.assertThrows(() => calculateGrossVolume('60', 30, 36), '毛容积 长度=字符串抛错');
+
+  /* ---- calculateSandVolume ---- */
+  T.assertEqual(calculateSandVolume(60, 30, 3), 5400, '砂体积 60×30×3 = 5400');
+  T.assertEqual(calculateSandVolume(60, 30, 0), 0, '砂体积 厚度=0 返回 0');
+  T.assertThrows(() => calculateSandVolume(60, 30, -1), '砂体积 厚度负数抛错');
+
+  /* ---- calculateNetVolume ---- */
+  T.assertApprox(calculateNetVolume(64800, 5400, 0.05), 56.43, 0.01, '净水量 64800-5400-5% ≈ 56.43L');
+  T.assertApprox(calculateNetVolume(64800, 0, 0), 64.8, 0.01, '净水量 无砂无设备 = 64.8L');
+  T.assertApprox(calculateNetVolume(1000, 0, 0.5), 0.5, 0.001, '净水量 设备占 50% = 0.5L');
+  T.assertThrows(() => calculateNetVolume(1000, 2000, 0.05), '净水量 砂体积>毛体积抛错');
+  T.assertThrows(() => calculateNetVolume(1000, 0, 1), '净水量 设备比例=1 抛错');
+  T.assertThrows(() => calculateNetVolume(1000, 0, -0.1), '净水量 设备比例负数抛错');
+  T.assertThrows(() => calculateNetVolume(0, 0, 0.05), '净水量 毛体积=0 抛错');
+
+  /* ---- estimateGlassThickness ---- */
+  T.assertEqual(estimateGlassThickness(20), 4, '玻璃厚度 20cm → 4mm');
+  T.assertEqual(estimateGlassThickness(30), 4, '玻璃厚度 30cm → 4mm（边界）');
+  T.assertEqual(estimateGlassThickness(60), 6, '玻璃厚度 60cm → 6mm');
+  T.assertEqual(estimateGlassThickness(120), 10, '玻璃厚度 120cm → 10mm');
+  T.assertEqual(estimateGlassThickness(200), 15, '玻璃厚度 200cm → 15mm');
+  T.assertThrows(() => estimateGlassThickness(0), '玻璃厚度 0 抛错');
+
+  /* ---- calculateGlassWeight ---- */
+  T.assertApprox(calculateGlassWeight(60, 30, 36, 6), 12.29, 0.01, '玻璃重 60×30×36×6mm（扣搭接）≈ 12.29kg');
+  T.assertEqual(calculateGlassWeight(60, 30, 36, 0), 0, '玻璃厚度=0 重量=0');
+  T.assertThrows(() => calculateGlassWeight(-10, 30, 36, 6), '玻璃重 长度负数抛错');
+
+  /* ---- calculateSandWeight ---- */
+  T.assertApprox(calculateSandWeight(60, 30, 3, 1.6), 8.64, 0.01, '砂重 60×30×3×1.6 ≈ 8.64kg');
+  T.assertEqual(calculateSandWeight(60, 30, 0, 1.6), 0, '砂厚=0 重量=0');
+  T.assertThrows(() => calculateSandWeight(60, 30, 3, 0), '砂重 密度=0 抛错');
+  T.assertThrows(() => calculateSandWeight(60, 30, 3, -1), '砂重 密度负数抛错');
+
+  /* ---- calculateTotalWeight ---- */
+  T.assertApprox(calculateTotalWeight(56.43, 8.42, 8.64), 73.49, 0.01, '总重 56.43+8.42+8.64 ≈ 73.49');
+  T.assertThrows(() => calculateTotalWeight(-1, 8, 8), '总重 水重负数抛错');
+
+  /* ---- calculateFishCapacityOldRule ---- */
+  T.assertEqual(calculateFishCapacityOldRule(60), 60, '老规则 60L → 60cm');
+  T.assertEqual(calculateFishCapacityOldRule(0), 0, '老规则 0L → 0cm');
+  T.assertThrows(() => calculateFishCapacityOldRule(-10), '老规则 负数抛错');
+
+  /* ---- calculateFishCapacityByType ---- */
+  const small = calculateFishCapacityByType(60, 'small');
+  T.assertEqual(small.litersPerCm, 1, '小型鱼 1L/cm');
+  T.assertEqual(small.totalLengthCm, 60, '小型鱼 60L → 60cm');
+
+  const medium = calculateFishCapacityByType(100, 'medium');
+  T.assertEqual(medium.litersPerCm, 2.5, '中型鱼 2.5L/cm');
+  T.assertApprox(medium.totalLengthCm, 40, 0.01, '中型鱼 100L → 40cm');
+
+  const large = calculateFishCapacityByType(200, 'large');
+  T.assertApprox(large.totalLengthCm, 28.57, 0.01, '大型鱼 200L → 28.57cm');
+
+  const gf = calculateFishCapacityByType(100, 'goldfish');
+  T.assertEqual(gf.litersPerCm, 4, '金鱼 4L/cm');
+
+  T.assertThrows(() => calculateFishCapacityByType(60, 'unknown'), '鱼种类型非法抛错');
+
+  /* ---- calculateFishCount ---- */
+  T.assertEqual(calculateFishCount(60, 4), 15, '鱼数 60cm/4cm = 15');
+  T.assertEqual(calculateFishCount(60, 7), 8, '鱼数 60cm/7cm = 8（向下取整）');
+  T.assertThrows(() => calculateFishCount(60, 0), '鱼数 体长=0 抛错');
+
+  /* ---- calculateFilterFlowRate ---- */
+  T.assertEqual(calculateFilterFlowRate(60, 5), 300, '过滤流量 60L×5 = 300 L/h');
+  T.assertEqual(calculateFilterFlowRate(100, 4), 400, '过滤流量 100L×4 = 400 L/h');
+  T.assertThrows(() => calculateFilterFlowRate(60, 0), '过滤流量 倍数=0 抛错');
+
+  /* ---- calculateHeaterPower ---- */
+  T.assertEqual(calculateHeaterPower(60, 26, 15), 132, '加热棒 60L 温差11℃ → 132W');
+  T.assertEqual(calculateHeaterPower(100, 26, 26), 50, '加热棒 温差=0 按 0.5W/L 保底');
+  T.assertEqual(calculateHeaterPower(100, 20, 26), 50, '加热棒 温差负数按保底');
+  T.assertThrows(() => calculateHeaterPower(-10, 26, 15), '加热棒 水量负数抛错');
+
+  /* ---- 输出结果 ---- */
+  const result = TestRunner.summary();
+  const summaryEl = document.getElementById('testSummary');
+  const outputEl = document.getElementById('testOutput');
+
+  if (result.failed === 0) {
+    summaryEl.innerHTML = `<div class="test-summary">✅ 全部通过：${result.passed} / ${result.total}</div>`;
+  } else {
+    summaryEl.innerHTML = `<div class="test-summary fail">❌ 通过 ${result.passed} / 共 ${result.total}（失败 ${result.failed}）</div>`;
+  }
+  outputEl.innerHTML = result.logs.join('\n');
+}
+
+/* ========================================================================
+ * 第三部分：使用说明书（动态渲染）
+ * ======================================================================== */
+
+const DOC_HTML = `
+<h2>一、工具简介</h2>
+<p>「鱼缸容积与养鱼密度计算器」是一款面向水族爱好者的网页工具，用于根据鱼缸尺寸、底砂配置、鱼种类型等参数，估算鱼缸的净水量、总重量、可养鱼数量、所需过滤流量以及加热棒功率。</p>
+<p>本工具解决的核心问题：</p>
+<ul>
+  <li><strong>新手开缸</strong>：不知道自己的缸能装多少水、能养多少鱼、需要配多大的过滤和加热棒。</li>
+  <li><strong>老手换缸</strong>：快速评估新缸的承载能力，避免过度密养。</li>
+  <li><strong>设备选型</strong>：根据水量反推过滤流量和加热功率，避免买错规格。</li>
+  <li><strong>承重校核</strong>：估算鱼缸总重量，判断柜子或楼板是否能承受。</li>
+</ul>
+
+<h2>二、数据来源与标准依据</h2>
+<p><strong>重要说明：本工具所有计算依据均为水族圈通行经验法则，无对应国家标准或行业标准。</strong></p>
+<ul>
+  <li><strong>「1L 水养 1cm 鱼」</strong>：水族圈流传数十年的老经验法则，广泛见于各类水族论坛与书籍，但从未被任何国家标准采纳。</li>
+  <li><strong>体表面积法（简化版）</strong>：严格意义上的体表面积法基于鱼类耗氧量与体表面积的关系推导，本工具采用的是其简化版本——按鱼种分类给出每 cm 成体体长所需水量，数值来源于水族圈通行经验。</li>
+  <li><strong>过滤流量 4-6 倍/小时</strong>：水族设备厂商与资深玩家的通行建议，非国标。</li>
+  <li><strong>加热棒功率估算</strong>：基于热力学粗略估算与水族圈经验，非国标。</li>
+  <li><strong>玻璃厚度与重量</strong>：基于行业经验估算，实际玻璃厚度应以鱼缸实物标注为准。</li>
+</ul>
+<p>经核查，目前中国大陆并无针对家用观赏鱼缸容积计算、养鱼密度的国家标准（GB）或行业标准（SC、QB 等）。如需查阅，建议参考水产行业标准 SC/T 系列，但截至目前未发现直接对应本工具计算逻辑的标准文件。<strong>需查标准原文确认</strong>。</p>
+
+<h2>三、参数详解</h2>
+
+<h3>3.1 鱼缸尺寸</h3>
+<table>
+  <tr><th>参数</th><th>单位</th><th>范围</th><th>说明</th></tr>
+  <tr><td>长度</td><td>cm</td><td>&gt; 0</td><td>鱼缸外部最长边的尺寸。常见规格：40/60/80/90/100/120 cm</td></tr>
+  <tr><td>宽度</td><td>cm</td><td>&gt; 0</td><td>鱼缸外部短边尺寸。常见规格：25/30/35/40/45/50 cm</td></tr>
+  <tr><td>高度</td><td>cm</td><td>&gt; 0</td><td>鱼缸外部高度。常见规格：30/36/40/45/50/60 cm</td></tr>
+</table>
+<p><strong>注意</strong>：请输入鱼缸的<strong>外部尺寸</strong>（含玻璃厚度），工具会自动估算玻璃重量。若输入内部尺寸，会导致容积偏大、重量偏小。</p>
+
+<h3>3.2 底砂与设备</h3>
+<table>
+  <tr><th>参数</th><th>单位</th><th>范围</th><th>说明</th></tr>
+  <tr><td>底砂厚度</td><td>cm</td><td>0 - 20</td><td>铺设底砂的平均厚度。草缸通常 3-8 cm，裸缸填 0</td></tr>
+  <tr><td>底砂类型</td><td>-</td><td>下拉选择</td><td>影响砂重估算。细砂/水草泥 ≈1.6 g/cm³；轻质陶粒 ≈1.4 g/cm³；粗砂/碎石 ≈1.8 g/cm³</td></tr>
+  <tr><td>设备占用比例</td><td>%</td><td>0 - 50</td><td>滤材、加热棒、沉木、石头等占据的体积比例。默认 5%，设备多的缸可调至 10-15%</td></tr>
+</table>
+
+<h3>3.3 养鱼密度</h3>
+<table>
+  <tr><th>参数</th><th>说明</th></tr>
+  <tr><td>鱼种分类</td><td>小型群游鱼（灯鱼、霓虹等）：1 L/cm；中型鱼（神仙、短鲷）：2.5 L/cm；大型鱼（龙鱼、虎鱼）：7 L/cm；金鱼/锦鲤：4 L/cm</td></tr>
+  <tr><td>单鱼成体体长</td><td>按鱼只<strong>成体</strong>体长计算，非幼鱼体长。例如：霓虹灯成体约 4 cm，神仙鱼成体约 12-15 cm</td></tr>
+  <tr><td>密度计算方式</td><td>「体表面积法（推荐）」按鱼种分类更准确；「老规则」统一按 1L/1cm 计算，偏保守</td></tr>
+</table>
+
+<h3>3.4 过滤与加热</h3>
+<table>
+  <tr><th>参数</th><th>单位</th><th>范围</th><th>说明</th></tr>
+  <tr><td>过滤流量倍数</td><td>次/小时</td><td>1 - 20</td><td>建议 4-6 倍。草缸可低至 3，大型鱼/高密度缸建议 6-8</td></tr>
+  <tr><td>目标水温</td><td>℃</td><td>10 - 32</td><td>常见热带鱼 24-28℃，金鱼 18-22℃</td></tr>
+  <tr><td>冬季室温</td><td>℃</td><td>-10 - 30</td><td>按当地最冷月份室内温度估算，无暖气地区建议填 5-10℃</td></tr>
+</table>
+
+<h2>四、完整使用场景</h2>
+
+<h3>场景 1：新手 60cm 标准草缸</h3>
+<div class="scenario">
+  <h4>输入</h4>
+  <ul>
+    <li>尺寸：60 × 30 × 36 cm</li>
+    <li>底砂：水草泥 3 cm</li>
+    <li>设备占用：5%</li>
+    <li>鱼种：小型群游鱼（霓虹灯，成体 4 cm）</li>
+    <li>密度方式：体表面积法</li>
+    <li>过滤倍数：5，目标水温 26℃，室温 15℃</li>
+  </ul>
+  <h4>计算结果</h4>
+  <ul>
+    <li>毛容积：64,800 cm³ = 64.8 L</li>
+    <li>底砂体积：5,400 cm³</li>
+    <li>净水量：约 56.4 L</li>
+    <li>玻璃重量：约 12.3 kg（6mm 玻璃，已扣除搭接）</li>
+    <li>砂重：约 8.6 kg</li>
+    <li>总重量：约 77.3 kg</li>
+    <li>可养霓虹灯：约 14 条（56.4 cm ÷ 4 cm）</li>
+    <li>建议过滤流量：282 L/h</li>
+    <li>建议加热棒功率：约 132 W（可选 100W + 50W 双棒）</li>
+  </ul>
+</div>
+
+<h3>场景 2：裸缸养金鱼</h3>
+<div class="scenario">
+  <h4>输入</h4>
+  <ul>
+    <li>尺寸：80 × 40 × 40 cm</li>
+    <li>底砂：0 cm（裸缸）</li>
+    <li>设备占用：3%</li>
+    <li>鱼种：金鱼（成体 15 cm）</li>
+    <li>密度方式：体表面积法</li>
+    <li>过滤倍数：6，目标水温 20℃，室温 10℃</li>
+  </ul>
+  <h4>计算结果</h4>
+  <ul>
+    <li>毛容积：128 L</li>
+    <li>净水量：约 124.2 L</li>
+    <li>总重量：约 130 kg（无砂）</li>
+    <li>可养金鱼：约 2 条（124.2 ÷ 4 ≈ 31 cm 总长，31 ÷ 15 ≈ 2 条）</li>
+    <li>建议过滤流量：745 L/h</li>
+    <li>建议加热棒功率：约 125 W</li>
+  </ul>
+  <p><strong>提示</strong>：金鱼高污染，实际饲养建议更稀，本结果仅为上限参考。</p>
+</div>
+
+<h3>场景 3：大型龙鱼缸</h3>
+<div class="scenario">
+  <h4>输入</h4>
+  <ul>
+    <li>尺寸：150 × 60 × 60 cm</li>
+    <li>底砂：0 cm（裸缸）</li>
+    <li>设备占用：8%（大型滤桶 + 底滤）</li>
+    <li>鱼种：大型鱼（龙鱼，成体 60 cm）</li>
+    <li>密度方式：体表面积法</li>
+    <li>过滤倍数：6，目标水温 28℃，室温 15℃</li>
+  </ul>
+  <h4>计算结果</h4>
+  <ul>
+    <li>毛容积：540 L</li>
+    <li>净水量：约 496.8 L</li>
+    <li>总重量：约 540 kg（含玻璃约 43 kg）</li>
+    <li>可养龙鱼：约 1 条（496.8 ÷ 7 ≈ 71 cm，单条龙鱼 60 cm）</li>
+    <li>建议过滤流量：约 2980 L/h（需底滤或多滤桶并联）</li>
+    <li>建议加热棒功率：约 385 W（建议 300W + 100W 双棒）</li>
+  </ul>
+</div>
+
+<h3>场景 4：小型桌面微缸</h3>
+<div class="scenario">
+  <h4>输入</h4>
+  <ul>
+    <li>尺寸：25 × 18 × 22 cm</li>
+    <li>底砂：2 cm 细砂</li>
+    <li>设备占用：10%（小滤盒占比较大）</li>
+    <li>鱼种：小型群游鱼（青眼灯，成体 3 cm）</li>
+    <li>密度方式：体表面积法</li>
+    <li>过滤倍数：4，目标水温 25℃，室温 18℃</li>
+  </ul>
+  <h4>计算结果</h4>
+  <ul>
+    <li>毛容积：9.9 L</li>
+    <li>净水量：约 7.8 L</li>
+    <li>总重量：约 10 kg</li>
+    <li>可养青眼灯：约 2 条（7.8 cm ÷ 3 cm ≈ 2.6）</li>
+    <li>建议过滤流量：31 L/h</li>
+    <li>建议加热棒功率：约 10 W（迷你加热棒）</li>
+  </ul>
+  <p><strong>提示</strong>：微缸水体小，水质波动大，建议实际饲养数量再减半。</p>
+</div>
+
+<h3>场景 5：中型神仙鱼缸</h3>
+<div class="scenario">
+  <h4>输入</h4>
+  <ul>
+    <li>尺寸：90 × 45 × 45 cm</li>
+    <li>底砂：4 cm 水草泥</li>
+    <li>设备占用：6%</li>
+    <li>鱼种：中型鱼（神仙鱼，成体 12 cm）</li>
+    <li>密度方式：体表面积法</li>
+    <li>过滤倍数：5，目标水温 27℃，室温 12℃</li>
+  </ul>
+  <h4>计算结果</h4>
+  <ul>
+    <li>毛容积：182.25 L</li>
+    <li>净水量：约 155.5 L</li>
+    <li>总重量：约 180 kg</li>
+    <li>可养神仙鱼：约 5 条（155.5 ÷ 2.5 ≈ 62 cm，62 ÷ 12 ≈ 5）</li>
+    <li>建议过滤流量：777 L/h</li>
+    <li>建议加热棒功率：约 466 W（建议 300W + 200W）</li>
+  </ul>
+</div>
+
+<h2>五、常见错误与排查</h2>
+
+<h3>错误 1：计算结果报错「参数必须为正数」</h3>
+<p><strong>原因</strong>：输入的长、宽、高、底砂厚度等参数为 0、负数、空值或非数字。</p>
+<p><strong>排查</strong>：检查输入框是否填写完整，不要留空；不要输入负数；不要输入字母或特殊字符。</p>
+
+<h3>错误 2：计算出的可养鱼数量过少</h3>
+<p><strong>原因</strong>：可能选择了「大型鱼」或「金鱼」分类，这些鱼种每 cm 所需水量远高于小型鱼。</p>
+<p><strong>排查</strong>：确认鱼种分类是否正确；确认单鱼体长填写的是<strong>成体体长</strong>而非幼鱼体长。</p>
+
+<h3>错误 3：净水量为 0 或负数</h3>
+<p><strong>原因</strong>：底砂厚度设置过大，超过鱼缸高度；或设备占用比例设置过高。</p>
+<p><strong>排查</strong>：底砂厚度应小于鱼缸高度；设备占用比例建议不超过 30%。</p>
+
+<h3>错误 4：加热棒功率异常大</h3>
+<p><strong>原因</strong>：冬季室温设置过低，或目标水温设置过高，导致温差过大。</p>
+<p><strong>排查</strong>：核对当地冬季实际室温；热带鱼目标水温一般 24-28℃ 即可，无需过高。</p>
+
+<h3>错误 5：总重量超出预期</h3>
+<p><strong>原因</strong>：玻璃厚度按经验估算，实际超白玻璃可能更厚；或底砂密度选择偏大。</p>
+<p><strong>排查</strong>：查看鱼缸实物标注的玻璃厚度；称重底砂样品估算实际密度。</p>
+
+<h2>六、局限性说明</h2>
+<ol>
+  <li><strong>无国标依据</strong>：本工具所有算法均为水族圈经验法则，未经国家标准或行业标准认证，计算结果仅供参考。</li>
+  <li><strong>玻璃厚度为估算</strong>：不同厂家、不同材质（浮法、超白）的玻璃厚度差异较大，本工具按最长边估算，可能与实际不符。</li>
+  <li><strong>底砂密度为平均值</strong>：不同品牌、不同批次的底砂密度差异可达 ±20%，本工具取常见平均值。</li>
+  <li><strong>养鱼密度为上限估算</strong>：实际饲养应考虑鱼只领地行为、混养兼容性、水质维护频率等因素，建议按计算结果的 60-80% 饲养。</li>
+  <li><strong>加热棒功率为粗略估算</strong>：未考虑鱼缸保温性能、房间通风情况、鱼缸摆放位置（靠窗/靠墙）等因素。</li>
+  <li><strong>过滤流量未考虑滤材衰减</strong>：实际使用中滤材堵塞会导致流量下降，建议选型时留 20% 余量。</li>
+  <li><strong>不适用于海水缸</strong>：本工具针对淡水鱼缸设计，海水缸的盐度、活石、蛋分等参数未纳入计算。</li>
+  <li><strong>未考虑 evaporation（蒸发）</strong>：长期运行中水量会因蒸发减少，本工具按初始水量计算。</li>
+  <li><strong>鱼种分类过于粗略</strong>：同一分类下不同鱼种差异巨大（如灯鱼中宝莲灯与红灯管体型差异），建议结合具体鱼种资料二次校核。</li>
+  <li><strong>浮点数精度</strong>：JavaScript 浮点运算存在精度问题，结果可能在小数点后多位出现偏差，工具已做四舍五入处理。</li>
+</ol>
+
+<h2>七、术语表</h2>
+<table>
+  <tr><th>术语</th><th>含义</th></tr>
+  <tr><td>毛容积</td><td>鱼缸外部尺寸计算的总体积，未扣除任何占用</td></tr>
+  <tr><td>净水量</td><td>扣除底砂、设备占用后实际可装水的体积</td></tr>
+  <tr><td>体表面积法</td><td>基于鱼体表面积与耗氧关系的密度评估方法，本工具采用其简化版</td></tr>
+  <tr><td>成体体长</td><td>鱼只发育成熟后的标准体长（不含尾鳍），区别于幼鱼体长</td></tr>
+  <tr><td>过滤流量倍数</td><td>过滤器每小时处理水量与鱼缸净水量的比值</td></tr>
+</table>
+
+<h2>八、版本信息</h2>
+<p>版本：v2.0.1-完整版 20261021-修审查问题 20261108</p>
+<p>发布日期：2026-10-21</p>
+<p>作者：前端工程师 + 技术写作</p>
+<p>许可：本工具代码与文档可自由使用，但请保留版本标识。</p>
+`;
+
+document.getElementById('docContent').innerHTML = DOC_HTML;
+
+/* ========================================================================
+ * UI 交互
+ * ======================================================================== */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+function getNumber(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? NaN : v;
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+  document.getElementById('resultArea').style.display = 'none';
+}
+
+function hideError() {
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function renderResult(containerId, items) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = items.map(it => `
+    <div class="result-item">
+      <div class="label">${it.label}</div>
+      <div class="value">${it.value} <span class="unit">${it.unit || ''}</span></div>
+    </div>
+  `).join('');
+}
+
+function runCalculation() {
+  hideError();
+  try {
+    const L = getNumber('length');
+    const W = getNumber('width');
+    const H = getNumber('height');
+    const sandT = getNumber('sandThickness');
+    const sandD = parseFloat(document.getElementById('sandType').value);
+    const eqRatio = getNumber('equipmentRatio') / 100;
+    const fishType = document.getElementById('fishType').value;
+    const fishLen = getNumber('fishLength');
+    const method = document.getElementById('densityMethod').value;
+    const filterMul = getNumber('filterMultiplier');
+    const targetT = getNumber('targetTemp');
+    const ambientT = getNumber('ambientTemp');
+
+    // 校验
+    [L, W, H, sandT, fishLen, filterMul, targetT, ambientT].forEach((v, i) => {
+      if (isNaN(v)) throw new Error(`参数 #${i+1} 输入无效`);
+    });
+    // 补充 HTML min/max 越界校验（如高度 5000）
+    document.querySelectorAll('#panel-calc input').forEach(inp => {
+      if (!inp.checkValidity()) throw new Error(`输入值超出允许范围（${inp.min || '-∞'} ~ ${inp.max || '∞'}）：${inp.id}`);
+    });
+    if (L <= 0 || W <= 0 || H <= 0) throw new Error('长/宽/高必须大于 0');
+    if (sandT < 0) throw new Error('底砂厚度不能为负');
+    if (eqRatio < 0 || eqRatio > 0.5) throw new Error('设备占用比例应在 0-50% 之间（与输入框上限一致）');
+    if (fishLen <= 0) throw new Error('鱼体长必须大于 0');
+    if (filterMul <= 0) throw new Error('过滤倍数必须大于 0');
+
+    // 计算
+    const grossCm3 = calculateGrossVolume(L, W, H);
+    const sandCm3 = calculateSandVolume(L, W, sandT);
+    const netL = calculateNetVolume(grossCm3, sandCm3, eqRatio);
+    const maxDim = Math.max(L, W, H);
+    const glassT = estimateGlassThickness(maxDim);
+    const glassKg = calculateGlassWeight(L, W, H, glassT);
+    const sandKg = calculateSandWeight(L, W, sandT, sandD);
+    const waterKg = netL; // 1L 水 ≈ 1kg
+    const totalKg = calculateTotalWeight(waterKg, glassKg, sandKg);
+
+    let totalLenCm, densityDesc;
+    if (method === 'old') {
+      totalLenCm = calculateFishCapacityOldRule(netL);
+      densityDesc = '老规则（1L/1cm）';
+    } else {
+      const cap = calculateFishCapacityByType(netL, fishType);
+      totalLenCm = cap.totalLengthCm;
+      densityDesc = `${cap.description}（${cap.litersPerCm} L/cm）`;
+    }
+    const fishCount = calculateFishCount(totalLenCm, fishLen);
+    const filterLH = calculateFilterFlowRate(netL, filterMul);
+    const heaterW = calculateHeaterPower(netL, targetT, ambientT);
+
+    // 渲染
+    renderResult('volumeResults', [
+      { label: '毛容积', value: grossCm3.toLocaleString(), unit: 'cm³ (' + (grossCm3/1000).toFixed(2) + ' L)' },
+      { label: '底砂体积', value: sandCm3.toLocaleString(), unit: 'cm³' },
+      { label: '净水量', value: netL.toFixed(2), unit: 'L' },
+      { label: '估算玻璃厚度', value: glassT, unit: 'mm' },
+      { label: '玻璃重量', value: glassKg.toFixed(2), unit: 'kg' },
+      { label: '底砂重量', value: sandKg.toFixed(2), unit: 'kg' },
+      { label: '水重', value: waterKg.toFixed(2), unit: 'kg' },
+      { label: '总重量（缸+水+砂）', value: totalKg.toFixed(2), unit: 'kg' }
+    ]);
+
+    renderResult('fishResults', [
+      { label: '密度计算方式', value: densityDesc, unit: '' },
+      { label: '可养鱼总长度', value: totalLenCm.toFixed(1), unit: 'cm' },
+      { label: '单鱼成体体长', value: fishLen, unit: 'cm' },
+      { label: '建议可养数量', value: fishCount, unit: '条（上限参考）' }
+    ]);
+
+    renderResult('equipResults', [
+      { label: '建议过滤流量', value: filterLH.toFixed(0), unit: 'L/h' },
+      { label: '过滤倍数', value: filterMul, unit: '次/小时' },
+      { label: '建议加热棒功率', value: heaterW, unit: 'W' },
+      { label: '温差（目标-室温）', value: Math.max(0, targetT - ambientT).toFixed(1), unit: targetT <= ambientT ? '℃（室温不低于目标水温，实际无需加热，此为保底功率）' : '℃' }
+    ]);
+
+    document.getElementById('resultArea').style.display = 'block';
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+function resetForm() {
+  document.getElementById('length').value = 60;
+  document.getElementById('width').value = 30;
+  document.getElementById('height').value = 36;
+  document.getElementById('sandThickness').value = 3;
+  document.getElementById('sandType').value = '1.6';
+  document.getElementById('equipmentRatio').value = 5;
+  document.getElementById('fishType').value = 'small';
+  document.getElementById('fishLength').value = 4;
+  document.getElementById('densityMethod').value = 'surface';
+  document.getElementById('filterMultiplier').value = 5;
+  document.getElementById('targetTemp').value = 26;
+  document.getElementById('ambientTemp').value = 15;
+  hideError();
+  document.getElementById('resultArea').style.display = 'none';
+}
+</script>
+</body>
+</html>

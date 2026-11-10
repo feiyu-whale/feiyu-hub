@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能安检 · Skill Vetter</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #0f1419; color: #d6dee6; line-height: 1.65; padding: 24px 20px 60px;
+}
+.wrap { max-width: 980px; margin: 0 auto; }
+h1 { font-size: 24px; color: #e8f0f7; margin-bottom: 4px; }
+.sub { font-size: 13px; color: #7d8b99; margin-bottom: 20px; }
+.card { background: #161c24; border: 1px solid #243040; border-radius: 12px; padding: 20px 22px; margin-bottom: 16px; }
+.card h2 { font-size: 15px; color: #8fb8d8; margin-bottom: 12px; font-weight: 600; }
+#drop {
+  border: 2px dashed #2f4256; border-radius: 12px; padding: 42px 20px; text-align: center;
+  cursor: pointer; transition: all .2s; background: #121820;
+}
+#drop:hover, #drop.over { border-color: #4a90c4; background: #152030; }
+#drop .big { font-size: 34px; margin-bottom: 10px; }
+#drop .t { font-size: 15px; color: #a8bccd; margin-bottom: 6px; }
+#drop .s { font-size: 12px; color: #6a7a88; }
+#fileInput, #dirInput { display: none; }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.btn {
+  background: #2563a8; color: #fff; border: none; padding: 9px 20px; border-radius: 7px;
+  font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.btn:hover { background: #1e4f87; }
+.btn.ghost { background: #1e2a38; border: 1px solid #2f4256; }
+.btn.ghost:hover { background: #263547; }
+#filelist { margin-top: 16px; font-size: 13px; }
+#filelist .fi { padding: 5px 10px; background: #121820; border-radius: 5px; margin-bottom: 4px; color: #8fa8bd; display: flex; justify-content: space-between; }
+#filelist .fi .sz { color: #5a6b7a; }
+textarea {
+  width: 100%; min-height: 220px; padding: 14px; background: #0d1218; color: #cfdce8;
+  border: 1px solid #243040; border-radius: 8px; font-family: "Consolas", "Monaco", monospace;
+  font-size: 13px; line-height: 1.6; resize: vertical;
+}
+textarea:focus { outline: none; border-color: #3d6a96; }
+.report { display: none; }
+.report.show { display: block; }
+.verdict {
+  padding: 18px 22px; border-radius: 10px; margin-bottom: 16px; font-size: 17px; font-weight: 700;
+  display: flex; align-items: center; gap: 12px;
+}
+.v-safe { background: #12301f; border-left: 4px solid #2ecc71; color: #7ee0a8; }
+.v-warn { background: #332a12; border-left: 4px solid #f0a030; color: #f5c76a; }
+.v-danger { background: #331514; border-left: 4px solid #e05050; color: #f08a8a; }
+.v-block { background: #2a0d0d; border-left: 4px solid #ff3b3b; color: #ff8a8a; }
+.risk-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip {
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; background: #1a232e; color: #8fa8bd;
+  border: 1px solid #243040;
+}
+.chip.on-critical { background: #3a1212; color: #ff8a8a; border-color: #6a2020; }
+.chip.on-high { background: #3a2512; color: #f5b96a; border-color: #6a4520; }
+.chip.on-mid { background: #33301a; color: #e8d47a; border-color: #5a5a30; }
+.chip.on-low { background: #12261e; color: #7ee0a8; border-color: #20503a; }
+.finding { background: #121820; border-left: 3px solid #3a4a5a; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; font-size: 13px; }
+.finding.critical { border-left-color: #ff3b3b; background: #1e1212; }
+.finding.high { border-left-color: #f0a030; background: #1e1a12; }
+.finding.mid { border-left-color: #d4c050; background: #1c1c12; }
+.finding .fh { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.finding .fname { font-weight: 600; color: #d6dee6; }
+.finding .fscore { font-size: 11px; padding: 1px 8px; border-radius: 10px; }
+.finding .fs-critical { background: #6a2020; color: #ff9a9a; }
+.finding .fs-high { background: #6a4520; color: #ffc07a; }
+.finding .fs-mid { background: #5a5a30; color: #e8e08a; }
+.finding .fdesc { color: #8fa8bd; font-size: 12px; }
+.finding .fline { color: #c88; font-family: monospace; font-size: 11px; margin-top: 5px; word-break: break-all; background: #0a0e12; padding: 5px 8px; border-radius: 4px; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.sg { background: #121820; border-radius: 8px; padding: 12px 14px; }
+.sg .k { font-size: 11px; color: #6a7a88; margin-bottom: 4px; }
+.sg .v { font-size: 19px; font-weight: 700; color: #a8c8e0; }
+.sg .v.red { color: #f08a8a; }
+.sg .v.orange { color: #f5b96a; }
+.sg .v.green { color: #7ee0a8; }
+.perm { font-size: 12px; color: #8fa8bd; margin-bottom: 6px; }
+.perm b { color: #b8c8d8; }
+.footnote { font-size: 11px; color: #5a6a78; margin-top: 14px; line-height: 1.8; }
+/* 页内顶部固定警示条（2026-10-24） */
+#topWarn { position:fixed; top:0; left:0; right:0; z-index:9999;
+  box-shadow:0 3px 14px rgba(0,0,0,.5); }
+.tw-bar { display:flex; align-items:flex-start; gap:10px;
+  background:linear-gradient(180deg,#5a1a14,#3a1414);
+  border-bottom:2px solid #e74c3c; padding:11px 14px 11px 16px;
+  font-size:12.5px; line-height:1.65; color:#ffd9d0; }
+.tw-ico { font-size:16px; line-height:1.2; flex:0 0 auto; }
+.tw-txt { flex:1 1 auto; }
+.tw-txt b { color:#ffb3a0; }
+.tw-x { flex:0 0 auto; background:transparent; border:1px solid #a8453a; color:#ffb3a0;
+  border-radius:5px; width:24px; height:24px; line-height:1; cursor:pointer; font-size:15px; padding:0; }
+.tw-x:hover { background:#7a2a22; }
+body { padding-top: 96px; }
+@media(max-width:640px){ .tw-bar{ font-size:11.5px; padding:9px 10px; } body{ padding-top:120px; } }
+
+.secwarn { background:#3a1414; border:1px solid #c0392b; border-left:5px solid #e74c3c;
+    border-radius:8px; padding:14px 18px; margin:14px 0 18px; font-size:13px; line-height:1.9; color:#f0c0b8; }
+  .secwarn b { color:#ff9a8a; }
+  .version { position: fixed; bottom: 10px; right: 14px; font-size: 11px; color: #4a5a68; }
+.note { background: #1a2018; border-left: 3px solid #4a7a4a; padding: 10px 14px; border-radius: 5px; font-size: 12px; color: #8fb88f; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔒 技能安检 · Skill Vetter</h1>
+  <p class="sub">装任何外部技能之前，先把它过一遍闸。全部在本地跑，不上传、不联网。</p>
+
+  <div class="secwarn">
+    <b>⚠️ 使用前必读 · 风险自担</b><br>
+    本工具的「深度扫描 / 全量扫描」会在你的浏览器里<b>实际运行待检代码</b>。<br>
+    Worker 隔离只是<b>降低</b>风险，<b>并不是真沙盒</b>——理论上存在被特殊构造的样本绕过的可能。<br>
+    <b>请勿在以下环境运行不可信样本：</b>登录着重要账号的浏览器、公司/学校内网、生产机、存有密钥或隐私数据的设备。<br>
+    建议：用一次性的浏览器配置 / 虚拟机 / 与主力环境隔离的机器来做动态扫描。<br>
+    <b>本工具按 MIT「AS IS」提供，不对任何直接或间接损失承担责任。你点击「开始深度扫描」即视为已阅读并接受本条。</b>
+  </div>
+
+  <div class="card">
+    <h2>① 丢进来（ZIP 压缩包 / 整个文件夹 / 粘贴代码）</h2>
+    <div id="drop">
+      <div class="big">📦</div>
+      <div class="t">把 ZIP 压缩包拖到这里</div>
+      <div class="s">或者点下面按钮选择压缩包 / 文件夹</div>
+    </div>
+    <div class="btnrow">
+      <button class="btn" onclick="document.getElementById('fileInput').click()">选择一个或多个 ZIP</button>
+      <button class="btn ghost" onclick="document.getElementById('dirInput').click()">选择文件夹</button>
+      <button class="btn ghost" onclick="togglePaste()">直接粘贴代码</button>
+    </div>
+    <input type="file" id="fileInput" accept=".zip" multiple>
+    <input type="file" id="dirInput" webkitdirectory directory multiple>
+    <div id="filelist"></div>
+    <div id="pasteBox" style="display:none;margin-top:14px">
+      <textarea id="pasteArea" placeholder="把要审查的代码粘到这里……"></textarea>
+    </div>
+    <div class="btnrow">
+      <button class="btn" id="scanBtn" onclick="scanAll()" style="display:none">🔍 开始安检</button>
+      <button class="btn" id="fullBtn" onclick="runFullScan()" style="display:none">⚡ 全量扫描（静态 + 动态）</button>
+      <span id="fullStatus" style="font-size:12px;color:#7d8b99;align-self:center"></span>
+    </div>
+  </div>
+
+  <div class="card report" id="reportBox">
+    <h2>② 安检报告</h2>
+    <div id="verdictBox" class="verdict"></div>
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div class="risk-row" id="riskRow"></div>
+    <div id="permBox" style="margin-bottom:14px"></div>
+    <div id="findingsBox"></div>
+    <div id="noteBox"></div>
+    <div class="footnote">
+      判定依据：🚨 命中「立即拒绝」类特征（外传数据 / 读密钥 / eval 外部输入 / 混淆代码 / 提权）→ 直接阻断；<br>
+      ⚠️ 命中高危（网络请求、装包、写系统文件、读记忆文件）→ 人工复核；<br>
+      本工具是「静态扫描」，只认特征模式，<b>代码到底想干什么要靠人读</b>。扫描通过 ≠ 一定安全。
+    </div>
+  </div>
+
+  <div class="card" id="deepBox">
+    <h2>③ ⚡ 深度扫描（动态模拟）</h2>
+    <div style="background:#2a1d0d;border-left:4px solid #f0a030;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:13px;line-height:1.9;color:#e8c88a">
+      <b>⚠️ 这一区比上面的普通筛查更完整，但对设备有要求：</b><br>
+      • 需要较新的浏览器（支持 Web Worker + Proxy）<br>
+      • 大文件或复杂代码可能卡顿，建议单个文件 ≤ 2MB<br>
+      • 会在隔离环境里<span style="color:#ffd28a">实际执行 JS 逻辑</span>（已断网、已限时），耗电略高<br>
+      • <b>只跑 JS</b>；Python / Shell 等只能做静态扫描<br>
+      • <span style="color:#ff9a6a"><b>⚠️ Worker 隔离不是真沙盒</b>，恶意样本理论上可能绕过；请在隔离环境使用，风险自担</span>
+    </div>
+    <p style="font-size:13px;color:#8fa8bd;margin-bottom:14px">
+      原理：把 JS 放进 Worker 隔离环境跑起来，但先把 <code style="color:#a8c8e0">fetch / XMLHttpRequest / WebSocket / eval / localStorage</code> 全部换成“记录器”——
+      代码会以为自己联网、读数据了，实际全被拦下并记录。超时 3 秒自动终止。
+    </p>
+    <div class="btnrow" style="margin-top:0">
+      <button class="btn" id="deepBtn" onclick="runDeepScan()">⚡ 开始深度扫描</button>
+      <span id="deepStatus" style="font-size:12px;color:#7d8b99;align-self:center"></span>
+    </div>
+    <div id="deepResult" style="margin-top:16px"></div>
+  </div>
+</div>
+<div class="version">v1.9.0-页内警示条 20261024</div>
+
+<script>
+/* ============================================================
+ *  第一部分：ZIP 解压（纯原生实现，不依赖任何外部库）
+ *  原理：读文件末尾的中央目录(EOCD) → 遍历条目 → DecompressionStream 解压
+ * ============================================================ */
+/* ── 安全上限（防 ZIP 炸弹 / 防卡死）── */
+const MAX_FILE_BYTES  = 8 * 1024 * 1024;    // 单个条目解压后上限 8MB
+const MAX_TOTAL_BYTES = 64 * 1024 * 1024;   // 单个 ZIP 解压总量上限 64MB
+const MAX_ENTRIES     = 5000;               // 条目数上限
+
+/* GBK 解码器（懒加载，失败退回 UTF-8） */
+let _gbk = null;
+function decodeName(bytes) {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (e) {
+    try {
+      if (!_gbk) _gbk = new TextDecoder('gbk');
+      return _gbk.decode(bytes);
+    } catch (e2) {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+  }
+}
+
+async function unzipEntries(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const dv = new DataView(buf.buffer);
+  const out = [];
+
+  // 0) 最小长度拦截：EOCD 最少 22 字节
+  if (buf.length < 22) throw new Error('文件太小（不足 22 字节），不是有效 ZIP');
+
+  // 1) 从末尾往前找 EOCD 签名 0x06054b50
+  let eocd = -1;
+  const minPos = Math.max(0, buf.length - 65558);
+  for (let i = buf.length - 22; i >= minPos; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('不是有效的 ZIP 文件（找不到中央目录）');
+
+  let total = dv.getUint16(eocd + 10, true);
+  let cdOff = dv.getUint32(eocd + 16, true);
+
+  // 2) ZIP64 检测与解析
+  if (total === 0xFFFF || cdOff === 0xFFFFFFFF) {
+    const z64 = findZip64Eocd(dv, buf, eocd);
+    if (z64) {
+      total = z64.total;
+      cdOff = z64.cdOff;
+    } else {
+      throw new Error('检测到 ZIP64 格式，但找不到 ZIP64 目录（文件可能损坏）');
+    }
+  }
+  if (total > MAX_ENTRIES) throw new Error('ZIP 内条目过多（' + total + " 个，上限 " + MAX_ENTRIES + '），已停止');
+
+  let totalOut = 0;
+  let truncated = false;
+
+  // 3) 遍历中央目录
+  for (let i = 0; i < total; i++) {
+    if (cdOff < 0 || cdOff + 46 > buf.length) break;
+    if (dv.getUint32(cdOff, true) !== 0x02014b50) break;
+
+    const flags  = dv.getUint16(cdOff + 8, true);
+    const method = dv.getUint16(cdOff + 10, true);
+    let   csize  = dv.getUint32(cdOff + 20, true);
+    let   usize  = dv.getUint32(cdOff + 24, true);
+    const nlen   = dv.getUint16(cdOff + 28, true);
+    const elen   = dv.getUint16(cdOff + 30, true);
+    const clen   = dv.getUint16(cdOff + 32, true);
+    let   lho    = dv.getUint32(cdOff + 42, true);
+
+    const name = decodeName(buf.subarray(cdOff + 46, cdOff + 46 + nlen));
+
+    // 解析 ZIP64 扩展字段（0x0001）补全 4GB 以上的尺寸/偏移
+    const z64data = readZip64Extra(dv, cdOff + 46 + nlen, elen, usize, csize, lho);
+    if (z64data) { usize = z64data.usize; csize = z64data.csize; lho = z64data.lho; }
+
+    cdOff += 46 + nlen + elen + clen;
+    if (name.endsWith('/') || name.endsWith('\\')) continue;
+
+    // 加密标志（bit 0）
+    if (flags & 0x1) {
+      out.push({ name, content: null, err: '文件已加密（需要密码），跳过', size: usize });
+      continue;
+    }
+
+    // 4) 定位本地头
+    if (lho + 30 > buf.length || dv.getUint32(lho, true) !== 0x04034b50) {
+      out.push({ name, content: null, err: '本地文件头损坏', size: usize });
+      continue;
+    }
+    const lnlen = dv.getUint16(lho + 26, true);
+    const lelen = dv.getUint16(lho + 28, true);
+    const ds = lho + 30 + lnlen + lelen;
+
+    if (ds + csize > buf.length) {
+      out.push({ name, content: null, err: '数据区越界（文件可能被截断）', size: usize });
+      continue;
+    }
+
+    // 5) 大小上限（防炸弹）
+    if (usize > MAX_FILE_BYTES) {
+      out.push({ name, content: null, err: '单文件过大（' + (usize / 1048576).toFixed(1) + 'MB，上限 8MB），跳过', size: usize });
+      continue;
+    }
+    if (totalOut + usize > MAX_TOTAL_BYTES) {
+      truncated = true;
+      out.push({ name: '(其余文件)', content: null, err: '解压总量超过 64MB 上限，后续文件已跳过' });
+      break;
+    }
+
+    const raw = buf.subarray(ds, ds + csize);
+    let content = null, err = null;
+    try {
+      if (method === 0) {
+        content = new TextDecoder('utf-8').decode(raw);
+      } else if (method === 8) {
+        const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        content = new TextDecoder('utf-8').decode(new Uint8Array(await new Response(stream).arrayBuffer()));
+      } else {
+        err = '不支持的压缩方式(' + method + ')';
+      }
+    } catch (e) { err = '解压失败：' + e.message; }
+
+    if (content != null) totalOut += usize;
+    out.push({ name, content, err, size: usize });
+  }
+
+  if (truncated && !out.length) throw new Error('未能解出任何文件');
+  return out;
+}
+
+/* 查找 ZIP64 目录（在 EOCD 前找 ZIP64 EOCD locator） */
+function findZip64Eocd(dv, buf, eocd) {
+  try {
+    for (let i = eocd - 20; i >= Math.max(0, eocd - 128); i--) {
+      if (dv.getUint32(i, true) === 0x07064b50) {          // ZIP64 EOCD locator
+        const z64Off = Number(dv.getBigUint64(i + 8, true));
+        if (z64Off + 56 > buf.length) return null;
+        if (dv.getUint32(z64Off, true) !== 0x06064b50) return null;
+        const total  = Number(dv.getBigUint64(z64Off + 32, true));
+        const cdOff  = Number(dv.getBigUint64(z64Off + 48, true));
+        return { total, cdOff };
+      }
+    }
+  } catch (e) { return null; }
+  return null;
+}
+
+/* 读 ZIP64 扩展字段，补全被写成 0xFFFFFFFF 的值 */
+function readZip64Extra(dv, off, elen, usize, csize, lho) {
+  const end = off + elen;
+  let p = off;
+  while (p + 4 <= end) {
+    const tag = dv.getUint16(p, true);
+    const len = dv.getUint16(p + 2, true);
+    if (tag === 0x0001) {
+      let q = p + 4;
+      const r = { usize, csize, lho };
+      try {
+        if (usize === 0xFFFFFFFF && q + 8 <= end) { r.usize = Number(dv.getBigUint64(q, true)); q += 8; }
+        if (csize === 0xFFFFFFFF && q + 8 <= end) { r.csize = Number(dv.getBigUint64(q, true)); q += 8; }
+        if (lho === 0xFFFFFFFF && q + 8 <= end)   { r.lho   = Number(dv.getBigUint64(q, true)); q += 8; }
+        return r;
+      } catch (e) { return null; }
+    }
+    p += 4 + len;
+  }
+  return null;
+}
+
+/* ============================================================
+ *  第二部分：危险特征规则库
+ *  来源：skill-vetter SKILL.md 的四步协议，转成可执行特征
+ * ============================================================ */
+const RULES = [
+  // ---- 立即拒绝（critical）----
+  { id:'exfil-curl', sev:'critical', name:'curl/wget 向外部地址发数据',
+    re:/(curl|wget)\s+[^\n]{0,120}(-d\s|--data|-F\s|--upload-file|>\s*\/dev\/tcp)/i,
+    desc:'把数据 POST 出去，典型的外传手法' },
+  { id:'ssh-read', sev:'critical', name:'读取 SSH 密钥',
+    re:/(~\/\.ssh|\.ssh\/id_rsa|\.ssh\/id_ed25519|\/\.ssh\/)/i,
+    desc:'访问用户 SSH 私钥目录' },
+  { id:'aws-cred', sev:'critical', name:'读取云厂商凭证',
+    re:/(~\/\.aws|~\/\.config\/gcloud|\.aws\/credentials|\.kube\/config)/i,
+    desc:'访问云凭证/集群凭证' },
+  { id:'mem-touch', sev:'critical', name:'访问人格/记忆文件',
+    re:/(MEMORY\.md|SOUL\.md|IDENTITY\.md|USER\.md|AGENTS\.md)/,
+    desc:'触碰 AI 的长期记忆或人格文件，属高敏感目标' },
+  { id:'eicar', sev:'critical', name:'EICAR 标准杀毒测试串',
+    re:/EICAR-STANDARD-ANTIVIRUS-TEST-FILE/,
+    desc:'业界标准的杀毒测试串，出现在技能包里说明含测试用的恶意载荷' },
+  { id:'eval-exec', sev:'critical', name:'eval/exec 执行外部输入',
+    re:/\b(eval|exec)\s*\(\s*(?!['"`])/,
+    desc:'把非字面量交给 eval/exec，可被注入任意代码' },
+  { id:'b64-decode', sev:'critical', name:'base64 解码（可疑）',
+    re:/(base64\.b64decode|codecs\.decode|base64\s+-d|atob\s*\(|Buffer\.from\([^)]*base64)/i,
+    desc:'先解码再使用，典型的隐藏载荷手法（工具会自动尝试解码并扫描结果）' },
+  { id:'ip-url', sev:'high', name:'直连 IP 而非域名',
+    re:/(https?:\/\/)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/,
+    desc:'直接用 IP 通信，绕过域名溯源' },
+  { id:'sudo', sev:'critical', name:'请求提权',
+    re:/\b(sudo\s+|chmod\s+[0-7]*7[0-7]*\s+|chown\s+root)/,
+    desc:'提权或改高权限文件权限' },
+  { id:'sys-write', sev:'high', name:'写系统目录',
+    re:/(>|>>|write)\s*['"`]?\/(etc|usr|bin|sbin|boot|var\/lib)\//,
+    desc:'向系统目录写文件' },
+
+  // ---- 高危（high）----
+  { id:'net-out', sev:'high', name:'代码中的网络请求',
+    re:/(?<!\w)(fetch\s*\(|axios\.|requests\.(get|post|put)|http\.request|https\.request|XMLHttpRequest|net\.connect|urllib\.request|httpx\.)/,
+    desc:'存在网络请求调用，需确认目的地与发送内容' },
+  { id:'net-unknown', sev:'high', name:'curl/wget 任意地址',
+    re:/(curl|wget)\s+(-[a-zA-Z]+\s+)*https?:\/\//i,
+    desc:'存在命令行网络请求，需确认目的地' },
+  { id:'pkg-install', sev:'high', name:'安装依赖但未声明',
+    re:/\b(npm\s+(install|i)\s|pip\s+install|yarn\s+add|apt(-get)?\s+install|gem\s+install)/,
+    desc:'运行时装包，供应链风险' },
+  { id:'cookie', sev:'high', name:'访问浏览器 Cookie/会话',
+    re:/(document\.cookie|localStorage\.getItem|sessionStorage\.getItem)/,
+    desc:'读取浏览器会话数据' },
+  { id:'cred-ask', sev:'high', name:'索取凭证/密钥',
+    re:/(API[_-]?KEY|SECRET[_-]?KEY|ACCESS[_-]?TOKEN|PASSWORD|PRIVATE[_-]?KEY)/i,
+    desc:'代码里出现凭证类变量名，需确认用途' },
+  { id:'lead', sev:'mid', name:'环境变量批量读取',
+    re:/(process\.env\b|os\.environ)/,
+    desc:'读取环境变量，可能带出密钥' },
+  { id:'obfusc', sev:'high', name:'代码混淆/压缩',
+    re:/(eval\(function\(p,a,c,k,e|\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2})/i,
+    desc:'可执行内容被编码混淆' },
+  { id:'cmd-pipe', sev:'high', name:'管道执行远程脚本',
+    re:/(curl|wget)[^\n|]{0,160}\|\s*(ba)?sh/i,
+    desc:'下载即执行，最危险的安装方式' },
+
+  // ---- 中危（mid）----
+  { id:'fs-write', sev:'mid', name:'写工作区外文件',
+    re:/(fs\.writeFile|open\([^)]*['"`]w['"`]|writeFileSync|>\s*\S+\.(sh|js|py))/,
+    desc:'有写文件动作，需确认路径范围' },
+  { id:'child-proc', sev:'mid', name:'启动子进程',
+    re:/(child_process|subprocess\.|os\.system|execSync|spawn\()/,
+    desc:'会执行系统命令' },
+  { id:'crypto-key', sev:'mid', name:'加密/密钥处理',
+    re:/(createCipheriv|createDecipheriv|openssl\s+enc|gpg\s+--)/i,
+    desc:'涉及加解密' },
+  { id:'remote-import', sev:'mid', name:'远程加载代码',
+    re:/(import\s*\(['"`]https?:|<script[^>]+src=['"]https?:)/i,
+    desc:'从网络加载可执行代码' },
+];
+
+// 文本文件判定（只扫这些，二进制跳过）
+const TEXT_EXT = /\.(md|markdown|txt|js|mjs|cjs|ts|jsx|tsx|py|sh|bash|zsh|json|ya?ml|toml|ini|cfg|conf|html|htm|css|xml|rb|go|rs|java|c|h|cpp|hpp|php|pl|lua|sql|env|gitignore|dockerfile)$/i;
+function isTextFile(name) {
+  if (TEXT_EXT.test(name)) return true;
+  const base = (name.split('/').pop() || '').toLowerCase();
+  return ['dockerfile', 'makefile', 'readme', 'license', 'skill.md'].includes(base) || !name.includes('.');
+}
+
+/* ============================================================
+ *  第三部分：扫描与评级
+ * ============================================================ */
+window.addEventListener('error', function(ev) {
+  try {
+    const box = document.getElementById('filelist');
+    if (box) box.insertAdjacentHTML('afterbegin',
+      '<div class="fi"><span style="color:#e07a7a">⚠ 处理出错：' + (ev.message || '未知错误') + '（已拦截，页面未崩溃）</span></div>');
+  } catch (e) {}
+});
+let pendingFiles = [];   // [{name, content, err, size}]
+
+function togglePaste() {
+  const box = document.getElementById('pasteBox');
+  const ta  = document.getElementById('pasteArea');
+  const show = box.style.display === 'none';
+  box.style.display = show ? 'block' : 'none';
+  if (show) {
+    pendingFiles = [{ name: '(粘贴的代码)', content: ta.value, size: ta.value.length }];
+    ta.oninput = () => { pendingFiles = [{ name: '(粘贴的代码)', content: ta.value, size: ta.value.length }]; };
+    document.getElementById('scanBtn').style.display = 'inline-block';
+  }
+}
+
+const drop = document.getElementById('drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', async e => {
+  const items = e.dataTransfer.items;
+  const collected = [];
+  if (items && items.length && items[0].webkitGetAsEntry) {
+    const entries = [];
+    for (const it of items) { const en = it.webkitGetAsEntry(); if (en) entries.push(en); }
+    for (const en of entries) await walkEntry(en, collected, '');
+    pendingFiles = collected;
+  } else {
+    for (const f of e.dataTransfer.files) await addFile(f);
+    return;
+  }
+  afterLoad();
+});
+drop.addEventListener('click', () => document.getElementById('fileInput').click());
+
+function walkEntry(entry, out, prefix) {
+  return new Promise(async resolve => {
+    if (entry.isFile) {
+      entry.file(async f => {
+        const name = prefix + entry.name;
+        if (/\.zip$/i.test(entry.name)) {
+          try { const e = await unzipEntries(f); e.forEach(x => out.push({ name: prefix + x.name, content: x.content, err: x.err, size: x.size })); }
+          catch (err) { out.push({ name, content: null, err: err.message }); }
+        } else {
+          out.push({ name, content: await f.text().catch(() => null), size: f.size });
+        }
+        resolve();
+      }, () => resolve());
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const readBatch = () => new Promise(res => reader.readEntries(es => res(es), () => res([])));
+      const readAll = async () => {
+        let es;
+        do {
+          es = await readBatch();
+          for (const e of es) await walkEntry(e, out, prefix + entry.name + '/');
+        } while (es.length);
+      };
+      await readAll(); resolve();
+    } else resolve();
+  });
+}
+
+const MAX_INPUT_MODULE = 80 * 1024 * 1024;   // 整包上限 80MB
+
+async function addFile(f) {
+  try {
+    if (f.size > MAX_INPUT_MODULE) {
+      pendingFiles.push({ name: f.name, content: null, err: '文件过大（' + (f.size / 1048576).toFixed(1) + 'MB，上限 80MB）', size: f.size });
+      return;
+    }
+    if (/\.zip$/i.test(f.name)) {
+      let entries;
+      try {
+        entries = await unzipEntries(f);
+      } catch (e) {
+        pendingFiles.push({ name: f.name, content: null, err: e.message || '解压失败', size: f.size });
+        return;
+      }
+      if (!entries.length) {
+        pendingFiles.push({ name: f.name, content: null, err: 'ZIP 内没有可读文件（或全部被跳过）', size: f.size });
+        return;
+      }
+      entries.forEach(x => pendingFiles.push({ name: x.name, content: x.content, err: x.err, size: x.size }));
+    } else {
+      // 非 ZIP：只读文本，二进制不硬解成字符串
+      if (!isTextFile(f.name)) {
+        pendingFiles.push({ name: f.name, content: null, err: '二进制文件，不参与文本扫描', size: f.size });
+        return;
+      }
+      if (f.size > MAX_FILE_BYTES) {
+        pendingFiles.push({ name: f.name, content: null, err: '单文件过大（' + (f.size / 1048576).toFixed(1) + 'MB），跳过', size: f.size });
+        return;
+      }
+      const t = await f.text().catch(() => null);
+      pendingFiles.push({ name: f.name, content: t, err: t == null ? '读取失败' : null, size: f.size });
+    }
+  } catch (e) {
+    pendingFiles.push({ name: f.name, content: null, err: '处理出错：' + (e.message || e), size: f.size });
+  }
+}
+
+document.getElementById('fileInput').addEventListener('change', async e => {
+  pendingFiles = [];
+  for (const f of e.target.files) await addFile(f);
+  afterLoad();
+});
+document.getElementById('dirInput').addEventListener('change', async e => {
+  pendingFiles = [];
+  for (const f of e.target.files) {
+    try {
+      const nm = f.webkitRelativePath || f.name;
+      if (!isTextFile(nm)) { pendingFiles.push({ name: nm, content: null, err: '二进制文件，跳过', size: f.size }); continue; }
+      if (f.size > MAX_FILE_BYTES) { pendingFiles.push({ name: nm, content: null, err: '文件过大，跳过', size: f.size }); continue; }
+      pendingFiles.push({ name: nm, content: await f.text().catch(() => null), size: f.size });
+    } catch (err) {
+      pendingFiles.push({ name: f.name, content: null, err: '读取失败', size: 0 });
+    }
+  }
+  afterLoad();
+});
+
+function afterLoad() {
+  const box = document.getElementById('filelist');
+  if (!pendingFiles.length) {
+    box.innerHTML = '';
+    document.getElementById('scanBtn').style.display = 'none';
+    document.getElementById('fullBtn').style.display = 'none';
+    return;
+  }
+  const shown = pendingFiles.slice(0, 60);
+  box.innerHTML = shown.map(f =>
+    '<div class="fi"><span>' + escapeHtml(f.name) + (f.err ? ' <b style="color:#e07a7a">(' + escapeHtml(f.err) + ')</b>' : '') + '</span>' +
+    '<span class="sz">' + (f.size != null ? (f.size / 1024).toFixed(1) + ' KB' : '') + '</span></div>'
+  ).join('') + (pendingFiles.length > 60 ? '<div class="fi"><span>… 还有 ' + (pendingFiles.length - 60) + ' 个文件</span></div>' : '');
+  document.getElementById('scanBtn').style.display = 'inline-block';
+  document.getElementById('fullBtn').style.display = 'inline-block';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function scanAll() {
+  if (!pendingFiles.length) return;
+  const findings = [];
+  let scanned = 0, skipped = 0, totalBytes = 0;
+  const netTargets = new Set();
+  const fileReads = new Set();
+
+  for (const f of pendingFiles) {
+    if (f.err || f.content == null) { skipped++; continue; }
+    if (!isTextFile(f.name)) { skipped++; continue; }
+    if (f.content.length > 2 * 1024 * 1024) { skipped++; continue; }
+    scanned++; totalBytes += f.content.length;
+    const lines = f.content.split('\n');
+
+    for (const rule of RULES) {
+      const hits = [];
+      lines.forEach((ln, idx) => {
+        if (ln.length > 2000) return;
+        if (rule.re.test(ln)) hits.push({ idx: idx + 1, text: ln.trim().slice(0, 160) });
+      });
+      if (!hits.length) continue;
+      findings.push({ rule, file: f.name, hits: hits.slice(0, 5), total: hits.length });
+    }
+
+    // 收集网络目标（含 base64 解码后的隐藏地址）
+    const decodeTargets = [];
+    const urlRe = /https?:\/\/[\w.\-]+/g;
+    let m;
+    while ((m = urlRe.exec(f.content)) !== null) netTargets.add(m[0]);
+    // 自动解码 base64 串，把藏起来的地址挖出来再扫一遍
+    const b64Re = /["'`]([A-Za-z0-9+\/]{16,}={0,2})["'`]/g;
+    while ((m = b64Re.exec(f.content)) !== null) {
+      try {
+        const dec = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+        if (/^[\x20-\x7e\s]+$/.test(dec)) {
+          let u; const r2 = /https?:\/\/[\w.\-]+/g;
+          while ((u = r2.exec(dec)) !== null) {
+            netTargets.add(u[0]);
+            decodeTargets.push({ file: f.name, from: m[1].slice(0, 40), to: dec.slice(0, 200) });
+          }
+          // 解码后如果含危险关键词，也当一条发现
+          if (/(upload|collect|exfil|steal|webhook|pastebin|transfer\.sh|ngrok|api[-_.]?key|token)/i.test(dec)) {
+            findings.push({
+              rule: { id: 'b64-hidden', sev: 'critical', name: 'base64 藏了可疑地址/关键词',
+                desc: '解码后暴露外部地址或外传关键字，典型隐藏载荷' },
+              file: f.name, hits: [{ idx: 0, text: '解码结果: ' + dec.slice(0, 160) }], total: 1
+            });
+          }
+        }
+      } catch (e) { /* 不是合法 base64，忽略 */ }
+    }
+
+    // ===== 提升项 1：十六进制转义串还原 =====
+    const hexRe = /((?:\\x[0-9a-fA-F]{2}){6,})/g;
+    while ((m = hexRe.exec(f.content)) !== null) {
+      try {
+        const dec = m[1].replace(/\\x([0-9a-fA-F]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+        let u; const r3 = /https?:\/\/[\w.\-]+/g;
+        let found = false;
+        while ((u = r3.exec(dec)) !== null) { netTargets.add(u[0]); found = true; }
+        if (found || /(upload|collect|exfil|steal|webhook|token|password)/i.test(dec)) {
+          findings.push({
+            rule: { id: 'hex-hidden', sev: 'critical', name: '十六进制转义藏着内容',
+              desc: '十六进制串还原后暴露出地址或敏感关键字' },
+            file: f.name, hits: [{ idx: 0, text: '还原结果: ' + dec.slice(0, 160) }], total: 1
+          });
+        }
+      } catch (e) {}
+    }
+
+    // ===== 提升项 2：字符串拼接地址（a + b 拼出 URL）=====
+    const parts = f.content.match(/["'`][^"'`\n]{1,60}["'`]/g) || [];
+    if (parts.length >= 2) {
+      // 把同一文件里的字符串字面量全部拼起来试一遍，看是否凑出 URL
+      const joined = parts.map(x => x.slice(1, -1)).join('');
+      const urlsInJoined = joined.match(/https?:\/\/[\w.\-]+/g);
+      if (urlsInJoined) {
+        urlsInJoined.forEach(u => netTargets.add(u));
+        // 只有“单个字符串里凑不出来、拼起来才凑得出”的才算拼接隐藏
+        const singleUrls = (f.content.match(/https?:\/\/[\w.\-]+/g) || []);
+        const hidden = urlsInJoined.filter(u => !singleUrls.includes(u));
+        if (hidden.length) {
+          findings.push({
+            rule: { id: 'concat-url', sev: 'high', name: '地址被拆开拼接',
+              desc: '单独的字符串里看不到完整地址，拼起来才出现，典型的绕过手法' },
+            file: f.name, hits: [{ idx: 0, text: '拼出: ' + hidden.slice(0, 3).join(' , ') }], total: hidden.length
+          });
+        }
+      }
+    }
+
+    // ===== 提升项 3：代码里出现敏感路径/命令但被转义拆分 =====
+    const obfRe = /([A-Za-z_])\s*\+\s*["'`]([\/.~\\][^"'`]{0,30})["'`]/g;
+    while ((m = obfRe.exec(f.content)) !== null) {
+      // 常见于 '\.ssh' + '/id_rsa' 这类拆写
+      const frag = m[2];
+      if (/(ssh|aws|config|passwd|shadow|secret|key)/i.test(frag)) {
+        findings.push({
+          rule: { id: 'split-path', sev: 'high', name: '敏感路径被拆写',
+            desc: '敏感路径用拼接方式拆开书写，疑在绕过关键字匹配' },
+          file: f.name, hits: [{ idx: 0, text: m[0].slice(0, 100) }], total: 1
+        });
+      }
+    }
+    // 敏感域名关键词（哪怕不是完整 URL）
+    // 敏感域名关键词——必须出现在 URL/域名里才算，普通句子里提到不算
+    // 且同一行只记一次，避免重复刷屏
+    const domainRe = /https?:\/\/([\w.\-]+)/g;
+    const seenLines = new Set();
+    let b;
+    while ((b = domainRe.exec(f.content)) !== null) {
+      const host = b[1];
+      const lineNo = f.content.slice(0, b.index).split('\n').length;
+      const key = f.name + ':' + lineNo;
+      if (seenLines.has(key)) continue;
+      const bad = /(^|[.\-])(evil|malicious|exfil|steal|collect|upload|pastebin|transfer|ngrok|webhook)/i.test(host)
+               || /(evil|exfil|steal|collect|webhook|pastebin|ngrok|transfer\.sh)/i.test(host);
+      if (!bad) continue;
+      const lineText = (f.content.split('\n')[lineNo - 1] || '').trim().slice(0, 160);
+      seenLines.add(key);
+      findings.push({
+        rule: { id: 'bad-host', sev: 'critical', name: '可疑域名（在真实 URL 里）',
+          desc: 'URL 的域名中出现常见的收数据/外传服务特征词' },
+        file: f.name, hits: [{ idx: lineNo, text: '域名 ' + host + '  ← ' + lineText }], total: 1
+      });
+    }
+    // 收集敏感路径
+    const pathRe = /(~\/\.[\w]+|\.ssh|\.aws|\.config|MEMORY\.md|SOUL\.md)/g;
+    while ((m = pathRe.exec(f.content)) !== null) fileReads.add(m[1] || m[0]);
+  }
+
+  renderReport(findings, { scanned, skipped, total: pendingFiles.length, bytes: totalBytes, netTargets, fileReads });
+}
+
+/* ============================================================
+ *  第四部分：深度扫描（动态模拟）
+ *  把 JS 放进 Worker 里真跑，但先劫持 fetch/XHR/WebSocket/eval/localStorage
+ *  代码以为自己联网了，实际全被拦下并记录。3 秒超时自动终止。
+ * ============================================================ */
+const DEEP_TIMEOUT = 3000;
+
+/* ===== 全量扫描：静态 + 动态一次跑完 ===== */
+// 深度/全量扫描前的二次确认（2026-10-23 老爹要求）
+function confirmDynamicScan(what) {
+  return window.confirm(
+    '⚠️ 即将在实际运行中执行待检代码\n\n' +
+    what + ' 会在你的浏览器里真正跑起来待检的 JS。\n\n' +
+    '· Worker 隔离不是真沙盒，恶意样本理论上可能绕过\n' +
+    '· 别在登录着重要账号的浏览器 / 公司内网 / 生产机上跑不可信样本\n' +
+    '· 建议用一次性浏览器配置、虚拟机或隔离机器\n\n' +
+    '本工具按 MIT「AS IS」提供，不对任何损失负责。\n\n' +
+    '确定继续吗？'
+  );
+}
+
+// 进入页面的提醒改为「页内固定警示条」（2026-10-24 老爹反馈 alert 完全看不到）
+// 浏览器会拦截/静默 window.alert，改用常驻 DOM 提示，不依赖弹窗
+(function mountTopWarn() {
+  function mount() {
+    if (document.getElementById('topWarn')) return;
+    var d = document.createElement('div');
+    d.id = 'topWarn';
+    d.innerHTML =
+      '<div class="tw-bar">' +
+        '<span class="tw-ico">⚠️</span>' +
+        '<span class="tw-txt"><b>技能安检 · 使用前请知悉：</b>本工具含「深度扫描 / 全量扫描」，会在你的浏览器里<b>真正执行待检代码</b>。' +
+        'Worker 隔离只能降低风险、<b>不是真沙盒</b>；请勿在登录重要账号的浏览器、公司/学校内网、生产机上运行不可信样本。' +
+        '建议用一次性浏览器配置 / 虚拟机隔离。<b>本工具按 MIT「AS IS」提供，不对任何损失负责。</b></span>' +
+        '<button class="tw-x" title="收起">×</button>' +
+      '</div>';
+    document.body.insertBefore(d, document.body.firstChild);
+    var x = d.querySelector('.tw-x');
+    if (x) x.onclick = function(){ d.style.display = 'none'; document.body.style.paddingTop = '0'; };
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mount);
+  } else { mount(); }
+})();
+
+function runFullScan() {
+  if (!pendingFiles.length) return;
+  if (!confirmDynamicScan('「全量扫描」')) {
+    document.getElementById('fullStatus').textContent = '已取消（未执行动态扫描）';
+    return;
+  }
+  if (!pendingFiles.length) return;
+  const fbtn = document.getElementById('fullBtn');
+  const fstatus = document.getElementById('fullStatus');
+  fbtn.disabled = true;
+  fstatus.textContent = '① 静态扫描中…';
+
+  // ① 先跑静态（同步）
+  scanAll();
+
+  // ② 再跑动态
+  const jsFiles = pendingFiles.filter(f =>
+    f.content && /\.(js|mjs|cjs)$/i.test(f.name) && f.content.length < 2 * 1024 * 1024
+  );
+  if (!jsFiles.length) {
+    fstatus.textContent = '① 静态扫描完成｜② 无 JS 可动态执行（Python/Shell 仅静态）';
+    fbtn.disabled = false;
+    renderCombined();
+    return;
+  }
+
+  fstatus.textContent = '② 动态模拟中（' + jsFiles.length + ' 个 JS，最长 ' + (jsFiles.length * 3) + ' 秒）…';
+  runDeepScan(function () {   // 回调：动态完成后合成总报告
+    fstatus.textContent = '✓ 静态 + 动态全部完成';
+    fbtn.disabled = false;
+    renderCombined();
+  });
+}
+
+/* 把静态结论和动态行为合成一张总报告 */
+function renderCombined() {
+  const vEl = document.getElementById('verdictBox');
+  const nEl = document.getElementById('noteBox');
+  if (!vEl) return;
+  const staticTxt = vEl.textContent || '';
+  const deepTxt = (document.getElementById('deepResult') || {}).textContent || '';
+
+  const staticBlock = /拒绝安装/.test(staticTxt);
+  const staticHigh = /高风险/.test(staticTxt);
+  const staticMid = /中等风险/.test(staticTxt);
+
+  const mNet = deepTxt.match(/网络请求[\s\S]{0,40}?(\d+)/);
+  const mExec = deepTxt.match(/动态执行[\s\S]{0,40}?(\d+)/);
+  const mSto = deepTxt.match(/凭据\/存储访问[\s\S]{0,40}?(\d+)/);
+  const netN = mNet ? parseInt(mNet[1], 10) : 0;
+  const execN = mExec ? parseInt(mExec[1], 10) : 0;
+  const stoN = mSto ? parseInt(mSto[1], 10) : 0;
+  const deepDirty = (netN + execN + stoN) > 0;
+
+  let cls, txt;
+  if (staticBlock || netN > 0 || stoN > 0) {
+    cls = 'v-block';
+    txt = '<span style="font-size:26px">⛔</span><span>全量扫描结论：<b>拒绝安装</b>'
+      + (staticBlock ? '｜静态：命中立即拒绝级特征' : '')
+      + (netN ? '｜动态：有网络请求 ' + netN + ' 次' : '')
+      + (stoN ? '｜动态：有凭据访问 ' + stoN + ' 次' : '') + '</span>';
+  } else if (staticHigh || deepDirty) {
+    cls = 'v-danger';
+    txt = '<span style="font-size:26px">🔴</span><span>全量扫描结论：<b>高风险</b>'
+      + (staticHigh ? '｜静态：命中高危特征' : '')
+      + (execN ? '｜动态：有动态执行 ' + execN + ' 次' : '') + '</span>';
+  } else if (staticMid) {
+    cls = 'v-warn';
+    txt = '<span style="font-size:26px">🟡</span><span>全量扫描结论：<b>中等风险</b>｜静态命中中危特征，需看过再装</span>';
+  } else {
+    cls = 'v-safe';
+    txt = '<span style="font-size:26px">🟢</span><span>全量扫描结论：<b>两层都没发现已知可疑特征</b>（仍需人读代码）</span>';
+  }
+
+  vEl.className = 'verdict ' + cls;
+  vEl.innerHTML = txt;
+
+  if (nEl) {
+    nEl.innerHTML = '<div class="note">全量扫描 = 静态（特征匹配）+ 动态（Worker 隔离执行）。'
+      + '静态看「长得像什么」，动态看「真跑起来干了什么」。两层都过才敢装。</div>';
+  }
+  vEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function runDeepScan(onDone) {
+  if (pendingFiles.length && !confirmDynamicScan('「深度扫描」')) {
+    document.getElementById('deepStatus').textContent = '已取消（未执行）';
+    return;
+  }
+  const resBox = document.getElementById('deepResult');
+  const status = document.getElementById('deepStatus');
+  const btn = document.getElementById('deepBtn');
+
+  // 只挑 JS 文件
+  const jsFiles = pendingFiles.filter(f =>
+    f.content && /\.(js|mjs|cjs)$/i.test(f.name) && f.content.length < 2 * 1024 * 1024
+  );
+
+  if (!pendingFiles.length) {
+    resBox.innerHTML = '<div class="note">请先在上面丢入 ZIP / 文件夹 / 代码。</div>';
+    return;
+  }
+  if (!jsFiles.length) {
+    resBox.innerHTML = '<div class="note">⚠️ 没有可执行的 JS 文件可跑。深度扫描只能跑 <code>.js/.mjs/.cjs</code>；Python / Shell 请用上面的静态扫描。</div>';
+    if (typeof onDone === 'function') onDone([]);
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = '正在隔离环境中执行 ' + jsFiles.length + ' 个 JS 文件…';
+  resBox.innerHTML = '';
+
+  const events = [];
+  let done = 0;
+
+  jsFiles.forEach((f, idx) => {
+    let finished = false;
+    const finish = () => { if (finished) return; finished = true; done++; if (done === jsFiles.length) { renderDeep(events, jsFiles.length); if (typeof onDone === 'function') onDone(events); } };
+
+    let worker;
+    try {
+      const blob = new Blob([buildWorkerCode(f.content, f.name)], { type: 'application/javascript' });
+      worker = new Worker(URL.createObjectURL(blob));
+    } catch (e) {
+      events.push({ file: f.name, kind: 'error', detail: '无法创建 Worker: ' + e.message });
+      finish(); return;
+    }
+
+    const timer = setTimeout(() => {
+      events.push({ file: f.name, kind: 'timeout', detail: '超时 ' + DEEP_TIMEOUT + 'ms 自动终止（可能有死循环）' });
+      try { worker.terminate(); } catch (e) {}
+      finish();
+    }, DEEP_TIMEOUT);
+
+    worker.onmessage = ev => {
+      const d = ev.data || {};
+      if (d.type === 'event') events.push({ file: f.name, kind: d.kind, detail: d.detail });
+      if (d.type === 'done') { clearTimeout(timer); try { worker.terminate(); } catch (e) {} finish(); }
+      if (d.type === 'error') { events.push({ file: f.name, kind: 'runtime-error', detail: d.detail }); }
+    };
+    worker.onerror = err => {
+      events.push({ file: f.name, kind: 'runtime-error', detail: (err.message || '脚本执行出错') });
+      clearTimeout(timer); try { worker.terminate(); } catch (e) {} finish();
+    };
+  });
+}
+
+function buildWorkerCode(userCode, fileName) {
+  return `
+(function(){
+  function send(kind, detail) { self.postMessage({ type:'event', kind:kind, detail:String(detail).slice(0,300) }); }
+
+  // 先把真 eval 存下来，后面用它执行用户代码
+  var REAL_EVAL = eval;
+
+  // ---- 劫持网络 ----
+  self.fetch = function(url, opts){
+    send('net', 'fetch → ' + url + (opts && opts.method ? ' [' + opts.method + ']' : '') + (opts && opts.body ? ' body=' + String(opts.body).slice(0,120) : ''));
+    return Promise.reject(new Error('blocked by sandbox'));
+  };
+  self.XMLHttpRequest = function(){
+    var u='';
+    this.open=function(m,url){ u=url; send('net', 'XHR ' + m + ' → ' + url); };
+    this.send=function(b){ if(b) send('net', 'XHR 发送数据: ' + String(b).slice(0,120)); };
+    this.setRequestHeader=function(k,v){};
+    this.addEventListener=function(){};
+    this.abort=function(){};
+  };
+  self.WebSocket = function(url){ send('net', 'WebSocket → ' + url); throw new Error('blocked'); };
+  if (typeof self.navigator === 'object' && self.navigator) {
+    try { self.navigator.sendBeacon = function(u,d){ send('net','sendBeacon → '+u); return false; }; } catch(e){}
+  }
+
+  // ---- 劫持动态执行 ----
+  var _eval = self.eval;
+  self.eval = function(s){ send('exec', 'eval 执行: ' + String(s).slice(0,160)); return undefined; };
+  var _Function = self.Function;
+  self.Function = function(){ send('exec', 'Function() 构造: ' + String(arguments[arguments.length-1]||'').slice(0,160)); return function(){}; };
+
+  // ---- 劫持存储 / 凭据 ----
+  function fakeStore(name){
+    return {
+      getItem:function(k){ send('storage', name+'.getItem("'+k+'")'); return null; },
+      setItem:function(k,v){ send('storage', name+'.setItem("'+k+'")'); },
+      removeItem:function(k){ send('storage', name+'.removeItem("'+k+'")'); },
+      clear:function(){ send('storage', name+'.clear()'); }
+    };
+  }
+  self.localStorage = fakeStore('localStorage');
+  self.sessionStorage = fakeStore('sessionStorage');
+  try {
+    Object.defineProperty(self, 'document', {
+      configurable: true,
+      value: {
+        get cookie(){ send('storage', 'document.cookie 读取'); return ''; },
+        set cookie(v){ send('storage', 'document.cookie 写入: ' + String(v).slice(0,80)); },
+        write:{ toString:function(){ return ''; } }
+      }
+    });
+  } catch(e) {}
+
+  // ---- 劫持定时器（防止外部延迟触发）----
+  var _st = self.setTimeout;
+  self.setTimeout = function(fn, t){ return _st(function(){ try{ fn(); }catch(e){} }, Math.min(t||0, 200)); };
+
+  // ---- 执行目标代码（用存下来的真 eval）----
+  try {
+    REAL_EVAL(USER_CODE_HERE);
+  } catch (e) {
+    self.postMessage({ type:'error', detail:'运行时异常: ' + (e && e.message ? e.message : e) });
+  }
+  self.postMessage({ type:'done' });
+})();
+`.replace('USER_CODE_HERE', JSON.stringify(userCode));
+}
+
+function renderDeep(events, fileCount) {
+  const btn = document.getElementById('deepBtn');
+  const status = document.getElementById('deepStatus');
+  const box = document.getElementById('deepResult');
+  btn.disabled = false;
+
+  const netE = events.filter(e => e.kind === 'net');
+  const execE = events.filter(e => e.kind === 'exec');
+  const stoE = events.filter(e => e.kind === 'storage');
+  const errE = events.filter(e => e.kind === 'timeout' || e.kind === 'runtime-error' || e.kind === 'error');
+
+  status.textContent = '完成：' + fileCount + ' 个文件，捕获 ' + events.length + ' 个行为';
+
+  const color = (netE.length || execE.length || stoE.length) ? 'v-danger' : 'v-safe';
+  const verdict = (netE.length || execE.length || stoE.length)
+    ? '⚡ 动态行为可疑 · 执行中出现了网络/代码执行/凭据访问企图'
+    : '⚡ 未捕获可疑动态行为（但仅限 3 秒内、仅 JS）';
+
+  let html = '<div class="verdict ' + color + '" style="font-size:14px">' + verdict + '</div>';
+  html += '<div class="summary-grid">' +
+    '<div class="sg"><div class="k">网络请求</div><div class="v ' + (netE.length?'red':'green') + '">' + netE.length + '</div></div>' +
+    '<div class="sg"><div class="k">动态执行</div><div class="v ' + (execE.length?'orange':'green') + '">' + execE.length + '</div></div>' +
+    '<div class="sg"><div class="k">凭据/存储访问</div><div class="v ' + (stoE.length?'orange':'green') + '">' + stoE.length + '</div></div>' +
+    '<div class="sg"><div class="k">异常/超时</div><div class="v">' + errE.length + '</div></div>' +
+  '</div>';
+
+  if (events.length) {
+    html += events.map(e => {
+      const cls = e.kind === 'net' ? 'critical' : e.kind === 'exec' ? 'high' : 'mid';
+      const label = { net:'🌐 网络', exec:'⚙️ 动态执行', storage:'🔑 凭据访问', timeout:'⏱ 超时', 'runtime-error':'💥 错误', error:'❌ 失败' }[e.kind] || e.kind;
+      return '<div class="finding ' + cls + '"><div class="fh"><span class="fname">' + label + '</span>' +
+        '<span class="fscore fs-' + cls + '">' + escapeHtml(e.file) + '</span></div>' +
+        '<div class="fline">' + escapeHtml(e.detail) + '</div></div>';
+    }).join('');
+  } else {
+    html += '<div class="note">3 秒内没有捕获到网络、动态执行或凭据访问行为。注意：无行为 ≠ 安全，可能只是这段代码在本次执行路径里没触发。</div>';
+  }
+
+  html += '<div class="footnote">深度扫描 = 在 Worker 隔离环境里真实执行 JS，但所有“出口”都被换成了记录器。不会真的联网、不会读你的真实文件。仅覆盖 JS，Python/Shell 不支持。</div>';
+  box.innerHTML = html;
+  box.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function renderReport(findings, meta) {
+  const box = document.getElementById('reportBox');
+  box.classList.add('show');
+
+  const cnt = { critical: 0, high: 0, mid: 0 };
+  findings.forEach(f => cnt[f.rule.sev]++);
+
+  // 结论
+  const vBox = document.getElementById('verdictBox');
+  if (cnt.critical > 0) {
+    vBox.className = 'verdict v-block';
+    vBox.innerHTML = '<span style="font-size:26px">⛔</span><span>拒绝安装 · 命中 ' + cnt.critical + ' 项「立即拒绝」级特征</span>';
+  } else if (cnt.high > 0) {
+    vBox.className = 'verdict v-danger';
+    vBox.innerHTML = '<span style="font-size:26px">🔴</span><span>高风险 · 命中 ' + cnt.high + ' 项高危特征，须人工逐条复核</span>';
+  } else if (cnt.mid > 0) {
+    vBox.className = 'verdict v-warn';
+    vBox.innerHTML = '<span style="font-size:26px">🟡</span><span>中等风险 · 命中 ' + cnt.mid + ' 项，建议看过再装</span>';
+  } else {
+    vBox.className = 'verdict v-safe';
+    vBox.innerHTML = '<span style="font-size:26px">🟢</span><span>未发现已知危险特征 · 但仍需人读一遍代码</span>';
+  }
+
+  // 概览
+  document.getElementById('summaryGrid').innerHTML =
+    '<div class="sg"><div class="k">扫描文件</div><div class="v">' + meta.scanned + ' / ' + meta.total + '</div></div>' +
+    '<div class="sg"><div class="k">跳过（非文本/过大）</div><div class="v">' + meta.skipped + '</div></div>' +
+    '<div class="sg"><div class="k">发现问题</div><div class="v ' + (findings.length ? 'red' : 'green') + '">' + findings.length + '</div></div>' +
+    '<div class="sg"><div class="k">外部地址</div><div class="v orange">' + meta.netTargets.size + '</div></div>';
+
+  // 风险分布
+  document.getElementById('riskRow').innerHTML =
+    '<span class="chip' + (cnt.critical ? ' on-critical' : '') + '">⛔ 立即拒绝 ' + cnt.critical + '</span>' +
+    '<span class="chip' + (cnt.high ? ' on-high' : '') + '">🔴 高危 ' + cnt.high + '</span>' +
+    '<span class="chip' + (cnt.mid ? ' on-mid' : '') + '">🟡 中危 ' + cnt.mid + '</span>' +
+    '<span class="chip on-low">🟢 扫描文件 ' + meta.scanned + '</span>';
+
+  // 触及的路径 / 网络目标
+  let permHtml = '';
+  if (meta.fileReads.size) permHtml += '<div class="perm"><b>触及的敏感路径：</b>' + [...meta.fileReads].map(escapeHtml).join('、') + '</div>';
+  if (meta.netTargets.size) permHtml += '<div class="perm"><b>出现的网络地址：</b>' + [...meta.netTargets].slice(0, 12).map(escapeHtml).join('、') + (meta.netTargets.size > 12 ? ' …' : '') + '</div>';
+  document.getElementById('permBox').innerHTML = permHtml;
+
+  // 明细
+  const order = { critical: 0, high: 1, mid: 2 };
+  findings.sort((a, b) => order[a.rule.sev] - order[b.rule.sev]);
+  document.getElementById('findingsBox').innerHTML = findings.length
+    ? findings.map(f =>
+        '<div class="finding ' + f.rule.sev + '">' +
+          '<div class="fh"><span class="fname">' + escapeHtml(f.rule.name) + '</span>' +
+          '<span class="fscore fs-' + f.rule.sev + '">' + (f.rule.sev === 'critical' ? '⛔ 立即拒绝' : f.rule.sev === 'high' ? '🔴 高危' : '🟡 中危') + '</span></div>' +
+          '<div class="fdesc">' + escapeHtml(f.rule.desc) + '　·　文件：' + escapeHtml(f.file) + '（' + f.total + ' 处）</div>' +
+          f.hits.map(h => '<div class="fline">第' + h.idx + '行: ' + escapeHtml(h.text) + '</div>').join('') +
+          (f.total > f.hits.length ? '<div class="fdesc" style="margin-top:4px">… 另有 ' + (f.total - f.hits.length) + ' 处未显示</div>' : '') +
+        '</div>'
+      ).join('')
+    : '<div class="note">未命中任何已知危险特征。注意：静态扫描只能认出「长得像坏代码」的模式，看不出「逻辑上的坏心思」——装之前还是建议人读一遍。</div>';
+
+  document.getElementById('noteBox').innerHTML =
+    '<div class="note">扫描范围：仅文本文件（.md/.js/.py/.sh/.json 等），二进制与 2MB 以上文件跳过。全部在浏览器本地完成，文件不会上传。</div>';
+
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>

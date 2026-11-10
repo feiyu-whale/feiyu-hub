@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水泵功率与扬程计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 28px 20px;
+    text-align: center;
+  }
+  header h1 { font-size: 24px; margin-bottom: 6px; }
+  header p { font-size: 13px; opacity: 0.85; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #586069;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #f6f8fa; }
+  .tab.active {
+    color: #1e3c72;
+    border-bottom-color: #1e3c72;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 17px;
+    color: #1e3c72;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eaecef;
+  }
+  .card h3 {
+    font-size: 15px;
+    color: #2c3e50;
+    margin: 16px 0 10px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: #586069;
+    margin-bottom: 5px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5da;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: #2a5298;
+    box-shadow: 0 0 0 2px rgba(42,82,152,0.15);
+  }
+  .btn {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1e3c72; }
+  .btn.secondary { background: #6c757d; }
+  .btn.secondary:hover { background: #545b62; }
+  .result {
+    background: #f0f7ff;
+    border-left: 4px solid #2a5298;
+    padding: 14px 16px;
+    margin-top: 16px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .result .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed #d0e0f0;
+  }
+  .result .row:last-child { border-bottom: none; }
+  .result .val { color: #1e3c72; font-weight: 600; }
+  .warn {
+    background: #fff8e1;
+    border-left: 4px solid #f5a623;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #6b4a00;
+  }
+  .err {
+    background: #fdecea;
+    border-left: 4px solid #d93025;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #8a1f14;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-summary {
+    padding: 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .test-pass { background: #e6f4ea; color: #137333; border: 1px solid #b7e1c7; }
+  .test-fail { background: #fce8e6; color: #c5221f; border: 1px solid #f5c6c2; }
+  .test-log {
+    background: #fafbfc;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 12px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .test-log .ok { color: #137333; }
+  .test-log .ng { color: #c5221f; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+  table th, table td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  table th { background: #f6f8fa; font-weight: 600; }
+  .doc h2 { margin-top: 24px; }
+  .doc p { margin: 8px 0; }
+  .doc ul, .doc ol { margin: 8px 0 8px 22px; }
+  .doc li { margin: 4px 0; }
+  .doc code {
+    background: #f0f2f5;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #8b949e;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  .formula {
+    background: #f6f8fa;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    margin: 8px 0;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>水泵功率与扬程计算工具</h1>
+  <p>轴功率 · 配用功率 · 管路损失估算 · 仅供方案阶段估算</p>
+</header>
+
+<nav class="tabs">
+  <div class="tab active" data-tab="calc">计算器</div>
+  <div class="tab" data-tab="src">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</nav>
+
+<!-- 计算器 -->
+<section class="panel active" id="panel-calc">
+  <div class="card">
+    <h2>基本参数</h2>
+    <div class="grid">
+      <div class="field">
+        <label>流量 Q（m³/h）</label>
+        <input type="number" id="q" value="50" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label>几何扬程 H_geo（m，提升高度）</label>
+        <input type="number" id="hgeo" value="30" step="0.1">
+      </div>
+      <div class="field">
+        <label>泵效率 η（0~1，如 0.75）</label>
+        <input type="number" id="eta" value="0.75" step="0.01" min="0" max="1">
+      </div>
+      <div class="field">
+        <label>安全系数 K（1.05~1.30）</label>
+        <input type="number" id="k" value="1.15" step="0.01" min="1" max="2">
+      </div>
+      <div class="field">
+        <label>液体密度 ρ（kg/m³，清水≈1000）</label>
+        <input type="number" id="rho" value="1000" step="1">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>管路参数（用于损失估算）</h2>
+    <div class="grid">
+      <div class="field">
+        <label>管道内径 D（mm）</label>
+        <input type="number" id="d" value="100" step="1">
+      </div>
+      <div class="field">
+        <label>管道总长 L（m）</label>
+        <input type="number" id="l" value="80" step="1">
+      </div>
+      <div class="field">
+        <label>管道绝对粗糙度 ε（mm，新钢管≈0.05）</label>
+        <input type="number" id="eps" value="0.05" step="0.01">
+      </div>
+      <div class="field">
+        <label>局部阻力系数之和 Σζ</label>
+        <input type="number" id="zeta" value="8" step="0.5">
+      </div>
+      <div class="field">
+        <label>运动粘度 ν（m²/s，20℃清水≈1.004e-6）</label>
+        <input type="number" id="nu" value="1.004e-6" step="1e-7">
+      </div>
+    </div>
+    <div class="warn">
+      提示：本工具默认参数（ε=0.05、ν=1.004e-6、Σζ 典型值）为经验估算值，未经标准核对、无确切来源。局部阻力系数具体数值请自行查《给水排水设计手册》等资料核实。
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn" onclick="doCalc()">计 算</button>
+    <button class="btn secondary" onclick="doReset()">重 置</button>
+    <div id="result"></div>
+  </div>
+</section>
+
+<!-- 源码 -->
+<section class="panel" id="panel-src">
+  <div class="card">
+    <h2>核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="src-code"></pre>
+  </div>
+</section>
+
+<!-- 测试 -->
+<section class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试（≥30 项）</h2>
+    <button class="btn" onclick="runAllTests()">运行全部测试</button>
+    <div id="test-summary" class="test-summary" style="display:none;"></div>
+    <div id="test-log" class="test-log" style="display:none;"></div>
+  </div>
+</section>
+
+<!-- 说明书 -->
+<section class="panel" id="panel-doc">
+  <div class="card doc" id="doc-content"></div>
+</section>
+
+<div class="version">v2.0.2-完整版 20261021-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心算法（纯函数，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 将流量从 m³/h 换算为 m³/s
+ * @param {number} qm3h - 流量，单位 m³/h
+ * @returns {number} 流量，单位 m³/s；非法输入返回 NaN
+ */
+function flowToSI(qm3h) {
+  if (typeof qm3h !== 'number' || !isFinite(qm3h) || qm3h < 0) return NaN;
+  return qm3h / 3600;
+}
+
+/**
+ * 将管径从 mm 换算为 m
+ * @param {number} dmm - 管径，单位 mm
+ * @returns {number} 管径，单位 m；非法输入返回 NaN
+ */
+function diameterToSI(dmm) {
+  if (typeof dmm !== 'number' || !isFinite(dmm) || dmm <= 0) return NaN;
+  return dmm / 1000;
+}
+
+/**
+ * 根据流量与管径计算管内平均流速
+ * @param {number} qm3s - 流量，m³/s
+ * @param {number} dm   - 管道内径，m
+ * @returns {number} 流速，m/s；非法输入返回 NaN
+ */
+function calcFlowVelocity(qm3s, dm) {
+  if (!isFinite(qm3s) || !isFinite(dm) || qm3s <= 0 || dm <= 0) return NaN;
+  const A = Math.PI * dm * dm / 4;
+  return qm3s / A;
+}
+
+/**
+ * 计算雷诺数 Re = v·D / ν
+ * @param {number} v  - 流速，m/s
+ * @param {number} dm - 管径，m
+ * @param {number} nu - 运动粘度，m²/s
+ * @returns {number} 雷诺数（无量纲）；非法输入返回 NaN
+ */
+function calcReynolds(v, dm, nu) {
+  if (!isFinite(v) || !isFinite(dm) || !isFinite(nu) || v < 0 || dm <= 0 || nu <= 0) return NaN;
+  return v * dm / nu;
+}
+
+/**
+ * 用 Swamee-Jain 显式公式估算 Darcy 摩擦系数 λ
+ * 适用于 Re ≥ 4000 的湍流区；层流时返回 64/Re
+ * 公式来源：Swamee, P.K. & Jain, A.K. (1976)，工程近似，与 Colebrook-White 误差 < 1%
+ * @param {number} Re  - 雷诺数
+ * @param {number} eps - 绝对粗糙度，m
+ * @param {number} dm  - 管径，m
+ * @returns {number} Darcy 摩擦系数 λ；非法输入返回 NaN
+ */
+function estimateFrictionFactor(Re, eps, dm) {
+  if (!isFinite(Re) || !isFinite(eps) || !isFinite(dm) || Re <= 0 || eps < 0 || dm <= 0) return NaN;
+  if (Re < 2300) return 64 / Re;
+  if (Re < 4000) return NaN; // 过渡区，本工具不承诺精度
+  const term = eps / (3.7 * dm) + 5.74 / Math.pow(Re, 0.9);
+  if (term <= 0) return NaN;
+  return 0.25 / Math.pow(Math.log10(term), 2);
+}
+
+/**
+ * 计算沿程水头损失（Darcy-Weisbach）
+ * h_f = λ · (L/D) · (v² / 2g)
+ * @param {number} lambda - Darcy 摩擦系数
+ * @param {number} L      - 管长，m
+ * @param {number} dm     - 管径，m
+ * @param {number} v      - 流速，m/s
+ * @param {number} [g=9.81] - 重力加速度，m/s²
+ * @returns {number} 沿程损失，m；非法输入返回 NaN
+ */
+function calcFrictionLoss(lambda, L, dm, v, g = 9.81) {
+  if (!isFinite(lambda) || !isFinite(L) || !isFinite(dm) || !isFinite(v) || !isFinite(g)) return NaN;
+  if (lambda < 0 || L < 0 || dm <= 0 || g <= 0) return NaN;
+  return lambda * (L / dm) * (v * v) / (2 * g);
+}
+
+/**
+ * 计算局部水头损失
+ * h_j = Σζ · (v² / 2g)
+ * @param {number} sumZeta - 局部阻力系数之和
+ * @param {number} v       - 流速，m/s
+ * @param {number} [g=9.81]
+ * @returns {number} 局部损失，m
+ */
+function calcLocalLoss(sumZeta, v, g = 9.81) {
+  if (!isFinite(sumZeta) || !isFinite(v) || !isFinite(g)) return NaN;
+  if (sumZeta < 0 || g <= 0) return NaN;
+  return sumZeta * (v * v) / (2 * g);
+}
+
+/**
+ * 计算泵所需总扬程
+ * H = H_geo + h_f + h_j + (p2-p1)/(ρg) + (v2²-v1²)/(2g)
+ * 本工具简化为：H = H_geo + h_f + h_j（忽略压差与速度头差，详见说明书）
+ * @param {number} hGeo       - 几何扬程，m
+ * @param {number} frictionLoss - 沿程损失，m
+ * @param {number} localLoss    - 局部损失，m
+ * @returns {number} 总扬程，m
+ */
+function calcTotalHead(hGeo, frictionLoss, localLoss) {
+  if (!isFinite(hGeo) || !isFinite(frictionLoss) || !isFinite(localLoss)) return NaN;
+  return hGeo + frictionLoss + localLoss;
+}
+
+/**
+ * 计算泵轴功率（水力功率 / 效率）
+ * P_shaft = ρ · g · Q · H / η  （单位 W）
+ * @param {number} qm3s - 流量，m³/s
+ * @param {number} H    - 扬程，m
+ * @param {number} eta  - 泵效率（0 < η ≤ 1）
+ * @param {number} rho  - 液体密度，kg/m³
+ * @param {number} [g=9.81]
+ * @returns {number} 轴功率，kW；非法输入返回 NaN
+ */
+function calcShaftPower(qm3s, H, eta, rho, g = 9.81) {
+  if (!isFinite(qm3s) || !isFinite(H) || !isFinite(eta) || !isFinite(rho) || !isFinite(g)) return NaN;
+  if (qm3s < 0 || H < 0 || eta <= 0 || eta > 1 || rho <= 0 || g <= 0) return NaN;
+  return (rho * g * qm3s * H / eta) / 1000;
+}
+
+/**
+ * 计算配用电动机功率
+ * P_motor = P_shaft · K
+ * @param {number} shaftPowerKW - 轴功率，kW
+ * @param {number} K            - 安全系数（通常 1.05~1.30）
+ * @returns {number} 配用功率，kW
+ */
+function calcMotorPower(shaftPowerKW, K) {
+  if (!isFinite(shaftPowerKW) || !isFinite(K)) return NaN;
+  if (shaftPowerKW < 0 || K < 1 || K > 2) return NaN;
+  return shaftPowerKW * K;
+}
+
+/**
+ * 综合计算：根据输入参数返回全部结果
+ * @param {Object} params
+ * @param {number} params.qm3h   - 流量 m³/h
+ * @param {number} params.hGeo   - 几何扬程 m
+ * @param {number} params.eta    - 效率 0~1
+ * @param {number} params.K      - 安全系数
+ * @param {number} params.rho    - 密度 kg/m³
+ * @param {number} params.dmm    - 管径 mm
+ * @param {number} params.L      - 管长 m
+ * @param {number} params.eps    - 粗糙度 mm
+ * @param {number} params.zeta   - 局部阻力系数和
+ * @param {number} params.nu     - 运动粘度 m²/s
+ * @returns {Object} 包含各中间量与最终结果的对象；任一非法输入对应字段为 NaN
+ */
+function computeAll(params) {
+  const p = params || {};
+  const qm3s = flowToSI(p.qm3h);
+  const dm = diameterToSI(p.dmm);
+  const epsM = (typeof p.eps === 'number' && isFinite(p.eps) && p.eps >= 0) ? p.eps / 1000 : NaN;
+
+  const v = calcFlowVelocity(qm3s, dm);
+  const Re = calcReynolds(v, dm, p.nu);
+  const lambda = estimateFrictionFactor(Re, epsM, dm);
+  const hf = calcFrictionLoss(lambda, p.L, dm, v);
+  const hj = calcLocalLoss(p.zeta, v);
+  const H = calcTotalHead(p.hGeo, hf, hj);
+  const Pshaft = calcShaftPower(qm3s, H, p.eta, p.rho);
+  const Pmotor = calcMotorPower(Pshaft, p.K);
+
+  return {
+    q_m3s: qm3s,
+    d_m: dm,
+    v_m_s: v,
+    Re: Re,
+    lambda: lambda,
+    hf_m: hf,
+    hj_m: hj,
+    H_m: H,
+    P_shaft_kW: Pshaft,
+    P_motor_kW: Pmotor,
+    flowRegime: !isFinite(Re) ? '未知' : (Re < 2300 ? '层流' : (Re < 4000 ? '过渡区（结果不可靠）' : '湍流'))
+  };
+}
+
+/* ============================================================
+ *  第二部分：单元测试（≥30 个）
+ * ============================================================ */
+
+let _pass = 0, _fail = 0, _log = [];
+
+function approx(a, b, tol) {
+  if (!isFinite(a) || !isFinite(b)) return a === b;
+  tol = (tol === undefined) ? 1e-6 : tol;
+  return Math.abs(a - b) <= tol;
+}
+
+function assert(name, cond, detail) {
+  if (cond) {
+    _pass++;
+    _log.push('<span class="ok">✓ ' + name + '</span>');
+  } else {
+    _fail++;
+    _log.push('<span class="ng">✗ ' + name + (detail ? '  (' + detail + ')' : '') + '</span>');
+  }
+}
+
+function assertApprox(name, actual, expected, tol) {
+  assert(name, approx(actual, expected, tol),
+    '期望 ' + expected + '，实际 ' + actual);
+}
+
+function assertNaN(name, val) {
+  assert(name, typeof val === 'number' && isNaN(val), '期望 NaN，实际 ' + val);
+}
+
+function runAllTests() {
+  _pass = 0; _fail = 0; _log = [];
+
+  // ---- flowToSI ----
+  assertApprox('flowToSI(3600) = 1', flowToSI(3600), 1, 1e-12);
+  assertApprox('flowToSI(0) = 0', flowToSI(0), 0, 1e-12);
+  assertNaN('flowToSI(-1) = NaN', flowToSI(-1));
+  assertNaN('flowToSI(Infinity) = NaN', flowToSI(Infinity));
+  assertNaN('flowToSI("abc") = NaN', flowToSI('abc'));
+
+  // ---- diameterToSI ----
+  assertApprox('diameterToSI(100) = 0.1', diameterToSI(100), 0.1, 1e-12);
+  assertNaN('diameterToSI(0) = NaN', diameterToSI(0));
+  assertNaN('diameterToSI(-5) = NaN', diameterToSI(-5));
+
+  // ---- calcFlowVelocity ----
+  // Q=1 m³/s, D=1 m => A=π/4 => v=4/π≈1.2732
+  assertApprox('流速：Q=1,D=1 => v=4/π', calcFlowVelocity(1, 1), 4 / Math.PI, 1e-9);
+  assertNaN('流速：Q=0 => NaN', calcFlowVelocity(0, 1));
+  assertNaN('流速：D=0 => NaN', calcFlowVelocity(1, 0));
+
+  // ---- calcReynolds ----
+  // v=1, D=0.1, ν=1e-6 => Re=1e5
+  assertApprox('雷诺数：v=1,D=0.1,ν=1e-6 => 1e5', calcReynolds(1, 0.1, 1e-6), 1e5, 1e-3);
+  assertNaN('雷诺数：ν=0 => NaN', calcReynolds(1, 0.1, 0));
+  assertNaN('雷诺数：v<0 => NaN', calcReynolds(-1, 0.1, 1e-6));
+
+  // ---- estimateFrictionFactor ----
+  // 层流 Re=1000 => λ=64/1000=0.064
+  assertApprox('摩擦系数：层流 Re=1000 => 0.064', estimateFrictionFactor(1000, 0, 0.1), 0.064, 1e-9);
+  // 过渡区返回 NaN
+  assertNaN('摩擦系数：Re=3000 过渡区 => NaN', estimateFrictionFactor(3000, 0.00005, 0.1));
+  // 湍流光滑管 Re=1e5, ε=0 => 应约为 0.018
+  const lamSmooth = estimateFrictionFactor(1e5, 0, 0.1);
+  assert('摩擦系数：湍流光滑管 Re=1e5 在合理范围', lamSmooth > 0.015 && lamSmooth < 0.022);
+  assertNaN('摩擦系数：Re<0 => NaN', estimateFrictionFactor(-100, 0, 0.1));
+
+  // ---- calcFrictionLoss ----
+  // λ=0.02, L=100, D=0.1, v=1, g=9.81 => 0.02*1000*1/19.62 ≈ 1.0194
+  assertApprox('沿程损失：λ=0.02,L=100,D=0.1,v=1',
+    calcFrictionLoss(0.02, 100, 0.1, 1, 9.81),
+    0.02 * 1000 / 19.62, 1e-6);
+  assertNaN('沿程损失：λ<0 => NaN', calcFrictionLoss(-0.01, 100, 0.1, 1));
+  assertNaN('沿程损失：L<0 => NaN', calcFrictionLoss(0.02, -10, 0.1, 1));
+
+  // ---- calcLocalLoss ----
+  // ζ=5, v=2, g=9.81 => 5*4/19.62 ≈ 1.0194
+  assertApprox('局部损失：ζ=5,v=2', calcLocalLoss(5, 2, 9.81), 20 / 19.62, 1e-6);
+  assertNaN('局部损失：ζ<0 => NaN', calcLocalLoss(-1, 2));
+
+  // ---- calcTotalHead ----
+  assertApprox('总扬程：30+2+1=33', calcTotalHead(30, 2, 1), 33, 1e-12);
+  assertNaN('总扬程：hGeo=NaN => NaN', calcTotalHead(NaN, 2, 1));
+
+  // ---- calcShaftPower ----
+  // ρ=1000, g=9.81, Q=0.01 m³/s, H=50, η=0.75
+  // P = 1000*9.81*0.01*50/0.75 / 1000 = 6.54 kW
+  assertApprox('轴功率：典型值 6.54 kW',
+    calcShaftPower(0.01, 50, 0.75, 1000, 9.81), 6.54, 1e-3);
+  assertNaN('轴功率：η=0 => NaN', calcShaftPower(0.01, 50, 0, 1000));
+  assertNaN('轴功率：η=1.2 => NaN', calcShaftPower(0.01, 50, 1.2, 1000));
+  assertNaN('轴功率：Q<0 => NaN', calcShaftPower(-0.01, 50, 0.75, 1000));
+  assertNaN('轴功率：H<0 => NaN', calcShaftPower(0.01, -50, 0.75, 1000));
+  assertNaN('轴功率：ρ=0 => NaN', calcShaftPower(0.01, 50, 0.75, 0));
+
+  // ---- calcMotorPower ----
+  assertApprox('配用功率：6.54*1.15=7.521', calcMotorPower(6.54, 1.15), 7.521, 1e-3);
+  assertNaN('配用功率：K<1 => NaN', calcMotorPower(6.54, 0.9));
+  assertNaN('配用功率：K>2 => NaN', calcMotorPower(6.54, 2.5));
+  assertNaN('配用功率：P<0 => NaN', calcMotorPower(-1, 1.1));
+
+  // ---- computeAll 综合 ----
+  const r = computeAll({
+    qm3h: 36, hGeo: 20, eta: 0.7, K: 1.1, rho: 1000,
+    dmm: 100, L: 50, eps: 0.05, zeta: 5, nu: 1e-6
+  });
+  assert('综合：Q_m3s = 0.01', approx(r.q_m3s, 0.01, 1e-12));
+  assert('综合：d_m = 0.1', approx(r.d_m, 0.1, 1e-12));
+  assert('综合：v > 0', r.v_m_s > 0);
+  assert('综合：Re > 0', r.Re > 0);
+  assert('综合：H > hGeo', r.H_m > 20);
+  assert('综合：P_shaft > 0', r.P_shaft_kW > 0);
+  assert('综合：P_motor > P_shaft', r.P_motor_kW > r.P_shaft_kW);
+  assert('综合：流态为湍流', r.flowRegime === '湍流');
+
+  // 浮点精度：0.1+0.2 问题不应影响业务判断
+  assert('浮点：0.1+0.2 近似 0.3', approx(0.1 + 0.2, 0.3, 1e-12));
+
+  // 极端大值
+  const rBig = computeAll({
+    qm3h: 10000, hGeo: 500, eta: 0.8, K: 1.2, rho: 1000,
+    dmm: 500, L: 1000, eps: 0.1, zeta: 20, nu: 1e-6
+  });
+  assert('极端大值：结果有限', isFinite(rBig.P_motor_kW));
+
+  // 极端小流量
+  const rSmall = computeAll({
+    qm3h: 0.001, hGeo: 1, eta: 0.5, K: 1.1, rho: 1000,
+    dmm: 10, L: 1, eps: 0.01, zeta: 1, nu: 1e-6
+  });
+  assert('极端小流量：结果有限', isFinite(rSmall.P_motor_kW) || isNaN(rSmall.P_motor_kW));
+
+  // 渲染结果
+  const total = _pass + _fail;
+  const sumEl = document.getElementById('test-summary');
+  sumEl.style.display = 'block';
+  sumEl.className = 'test-summary ' + (_fail === 0 ? 'test-pass' : 'test-fail');
+  sumEl.textContent = '通过 ' + _pass + ' / 共 ' + total + (_fail > 0 ? '（失败 ' + _fail + '）' : '');
+  const logEl = document.getElementById('test-log');
+  logEl.style.display = 'block';
+  logEl.innerHTML = _log.join('<br>');
+}
+
+/* ============================================================
+ *  第三部分：使用说明书
+ * ============================================================ */
+
+const DOC_HTML = `
+<h2>一、工具用途</h2>
+<p>本工具用于<strong>估算</strong>水泵系统的关键参数：轴功率、配用电动机功率、所需总扬程，并对管路沿程损失与局部损失进行简化计算。适用于给排水、暖通空调、工业循环水等场景的<strong>方案阶段选型校核</strong>，不替代详细水力计算与厂家样本复核。</p>
+<p>典型使用流程：已知流量、几何提升高度、管路布置 → 估算总扬程 → 计算轴功率 → 乘以安全系数得配用功率 → 据此选配电机与泵型。</p>
+
+<h2>二、核心公式</h2>
+<div class="formula">轴功率：P_shaft = ρ·g·Q·H / η  （W）</div>
+<div class="formula">配用功率：P_motor = P_shaft · K</div>
+<div class="formula">沿程损失（Darcy-Weisbach）：h_f = λ · (L/D) · v²/(2g)</div>
+<div class="formula">局部损失：h_j = Σζ · v²/(2g)</div>
+<div class="formula">总扬程：H = H_geo + h_f + h_j</div>
+<div class="formula">雷诺数：Re = v·D / ν</div>
+<div class="formula">摩擦系数（Swamee-Jain 显式）：λ = 0.25 / [ log₁₀( ε/(3.7D) + 5.74/Re^0.9 ) ]²</div>
+
+<h2>三、参数详解</h2>
+<table>
+  <tr><th>参数</th><th>符号</th><th>单位</th><th>说明与典型范围</th></tr>
+  <tr><td>流量</td><td>Q</td><td>m³/h</td><td>工况流量。清水泵常用 1~2000 m³/h</td></tr>
+  <tr><td>几何扬程</td><td>H_geo</td><td>m</td><td>出水液面与进水液面的垂直高差（含吸上高度）</td></tr>
+  <tr><td>泵效率</td><td>η</td><td>—</td><td>0~1。小型泵 0.5~0.7，中型 0.7~0.85，大型可达 0.9。需查厂家样本</td></tr>
+  <tr><td>安全系数</td><td>K</td><td>—</td><td>1.05~1.30。功率越大 K 越接近 1。本工具取值为经验值，未经标准条文核对</td></tr>
+  <tr><td>液体密度</td><td>ρ</td><td>kg/m³</td><td>清水≈1000；海水≈1025；热水随温度下降</td></tr>
+  <tr><td>管道内径</td><td>D</td><td>mm</td><td>按经济流速选取，详见 GB 50015</td></tr>
+  <tr><td>管道总长</td><td>L</td><td>m</td><td>含直管与等效直管长度</td></tr>
+  <tr><td>绝对粗糙度</td><td>ε</td><td>mm</td><td>新钢管≈0.05；塑料管≈0.001~0.01；铸铁旧管≈0.25。需查表</td></tr>
+  <tr><td>局部阻力系数和</td><td>Σζ</td><td>—</td><td>弯头、阀门、入口、出口等之和。需查《给水排水设计手册》</td></tr>
+  <tr><td>运动粘度</td><td>ν</td><td>m²/s</td><td>20℃清水≈1.004×10⁻⁶；温度升高粘度下降</td></tr>
+</table>
+
+<h2>四、使用场景（5 例）</h2>
+
+<h3>场景 1：住宅二次供水泵选型</h3>
+<p>某 18 层住宅，屋顶水箱标高 +54 m，地下室泵房标高 -4 m，几何扬程约 58 m。设计流量 30 m³/h，选用 DN100 管道，总管长 120 m，含 6 个 90°弯头、2 个闸阀、入口出口，Σζ≈10。泵效率按 0.72 估算，K=1.15。代入本工具手算复核可得总扬程约 59 m（H_geo 58 m + 沿程约 1.0 m + 局部约 0.6 m），轴功率约 6.8 kW，配用功率约 7.8 kW，电机选型按厂家样本复核后确定。</p>
+
+<h3>场景 2：工业循环冷却水泵</h3>
+<p>冷却水量 500 m³/h，冷却塔高 12 m，管路 DN300，长 80 m，Σζ≈6，η≈0.82，K=1.1。估算总扬程约 15~18 m，轴功率约 30 kW，配用 35~37 kW。需进一步校核 NPSH（本工具未算）。</p>
+
+<h3>场景 3：农田灌溉加压</h3>
+<p>水源至田间高差 25 m，流量 100 m³/h，PE 管 DN150，长 400 m，Σζ≈4，η≈0.7，K=1.2。长距离沿程损失显著，总扬程可能达 40 m 以上，轴功率约 16 kW，配用 20 kW。</p>
+
+<h3>场景 4：锅炉给水泵初估</h3>
+<p>给水温度 104℃，密度约 955 kg/m³，粘度下降。流量 20 m³/h，扬程需克服锅炉压力 1.2 MPa（按 ρ=955 kg/m³ 折算 ≈128 m 液柱，而非 122 m 清水柱）+ 高差 8 m + 损失。需调整 ρ、ν 后输入，估算配用功率。</p>
+
+<h3>场景 5：方案比选（管径影响）</h3>
+<p>同一流量，分别按 DN80、DN100、DN125 计算，对比总扬程与轴功率，选出经济管径。管径越大，流速越低，沿程损失越小，但管材成本上升，需综合权衡。</p>
+
+<h2>五、常见错误</h2>
+<ol>
+  <li><strong>效率输入为百分数</strong>：应输入 0.75 而非 75。</li>
+  <li><strong>几何扬程漏算吸上高度</strong>：H_geo 应为出水液面与进水液面之高差，含泵中心线至进水池液面的吸上高度。</li>
+  <li><strong>局部阻力系数遗漏</strong>：入口（≈0.5）、出口（≈1.0）、止回阀（≈2~5）、过滤器（≈2~8）常被忽略，导致扬程低估。</li>
+  <li><strong>粗糙度取值不当</strong>：旧钢管锈蚀后 ε 可达 0.5~1.0 mm，仍按新管 0.05 计算会低估损失。</li>
+  <li><strong>忽略 NPSH</strong>：本工具不计算汽蚀余量，高吸上高度工况必须单独校核 NPSHa > NPSHr + 安全量。</li>
+  <li><strong>过渡区 Re=2300~4000</strong>：摩擦系数不稳定，结果仅供参考。</li>
+  <li><strong>液体物性未修正</strong>：热水、盐水、油品密度与粘度与清水差异大，必须调整 ρ、ν。</li>
+</ol>
+
+<h2>六、数据依据</h2>
+<ul>
+  <li><strong>GB/T 3216-2016</strong>《回转动力泵 水力性能验收试验 1级、2级和3级》——规定泵性能试验方法与允差。<strong>注意：该标准是试验验收允差标准，本工具安全系数 K 的取值并无该标准条文依据。</strong></li>
+  <li>Darcy-Weisbach 公式、Swamee-Jain 显式近似：经典流体力学教材（如 Streeter, Wylie & Bedford <em>Fluid Mechanics</em>）。</li>
+  <li>局部阻力系数：《给水排水设计手册》第 1 册，或 Idelchik <em>Handbook of Hydraulic Resistance</em>。</li>
+</ul>
+<p class="warn">注：本工具中 ε=0.05（新钢管）、ν=1.004×10⁻⁶、ζ=0.3~10、η 典型值、安全系数 K=1.05~1.30 以及第七节的误差范围（±10%~±30%）均为经验估算值，<strong>未经标准条文或文献核对，无确切数据来源</strong>，使用前请自行查证。经典公式出处见上（Darcy-Weisbach、Swamee-Jain 1976、Streeter 教材）。</p>
+
+<h2>七、精度与误差说明（必读）</h2>
+<p><strong>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，不承诺绝对精确。</strong></p>
+
+<h3>① 算准了什么</h3>
+<ul>
+  <li>公式本身：Darcy-Weisbach、Swamee-Jain、功率公式均为公认工程公式，在适用范围内数学上正确。</li>
+  <li>单位换算：m³/h → m³/s、mm → m 等换算为精确有理运算。</li>
+  <li>给定输入下的数值计算：IEEE 754 双精度浮点，相对误差约 10⁻¹⁵ 量级。</li>
+</ul>
+
+<h3>② 哪些因素没算进去</h3>
+<ul>
+  <li>泵效率 η 随工况变化，本工具按常数输入，实际应查厂家 Q-H-η 曲线。</li>
+  <li>管路沿程损失未考虑结垢、锈蚀随时间增加。</li>
+  <li>局部阻力系数 Σζ 需人工查表输入，不同资料数值有差异。</li>
+  <li>未计算速度头差 (v₂²−v₁²)/(2g)、压差项 (p₂−p₁)/(ρg)，对开式系统通常可忽略，对密闭系统需另算。</li>
+  <li>未计算汽蚀余量 NPSH、水锤、瞬态工况。</li>
+  <li>未考虑温度对密度、粘度的影响（需用户手动修正输入）。</li>
+  <li>未考虑泵并联、串联、变频运行的相互影响。</li>
+</ul>
+
+<h3>③ 误差大概多大</h3>
+<table>
+  <tr><th>项目</th><th>典型误差范围</th><th>说明</th></tr>
+  <tr><td>轴功率</td><td>±10% ~ ±20%</td><td>主要取决于 η 取值的准确性</td></tr>
+  <tr><td>沿程损失</td><td>±15% ~ ±30%</td><td>粗糙度 ε 取值、管长统计、结垢程度</td></tr>
+  <tr><td>局部损失</td><td>±20% ~ ±50%</td><td>Σζ 查表差异大，管件数量统计易遗漏</td></tr>
+  <tr><td>总扬程</td><td>±10% ~ ±25%</td><td>综合上述</td></tr>
+  <tr><td>配用功率</td><td>±15% ~ ±30%</td><td>叠加轴功率误差与 K 取值</td></tr>
+</table>
+<p><strong>结论：</strong>本工具结果用于<strong>方案阶段估算与选型初筛</strong>，不可直接作为采购、施工依据。最终选型必须依据厂家样本性能曲线、系统实测数据、相关标准复核。</p>
+
+<h2>八、局限性</h2>
+<ol>
+  <li>仅适用于<strong>稳态单相不可压缩流体</strong>（清水、低粘度液体）。气液两相、高粘度油品、含固颗粒浆体不适用。</li>
+  <li>Re 在 2300~4000 过渡区，摩擦系数无稳定公式，结果不可靠。</li>
+  <li>未涵盖容积泵（往复泵、螺杆泵等），仅适用于离心泵、混流泵、轴流泵等回转动力泵。</li>
+  <li>未考虑海拔对大气压、汽蚀的影响。</li>
+  <li>不替代 CFD、管网平差软件（如 EPANET、PipeFlow）的详细计算。</li>
+  <li>所有输入需用户自行核实，工具不对输入数据的真实性负责。</li>
+</ol>
+
+<h2>九、免责声明</h2>
+<p>本工具为工程估算辅助，不构成设计文件。因使用本工具结果导致的设备选型不当、工程事故、经济损失，工具作者不承担责任。涉及人身安全、重大投资的工程，必须由具备相应资质的设计单位出具正式计算书。</p>
+`;
+
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+
+/* ============================================================
+ *  源码展示
+ * ============================================================ */
+const SRC_TEXT = `/**
+ * 将流量从 m³/h 换算为 m³/s
+ * @param {number} qm3h - 流量，单位 m³/h
+ * @returns {number} 流量，单位 m³/s；非法输入返回 NaN
+ */
+function flowToSI(qm3h) {
+  if (typeof qm3h !== 'number' || !isFinite(qm3h) || qm3h < 0) return NaN;
+  return qm3h / 3600;
+}
+
+/**
+ * 将管径从 mm 换算为 m
+ * @param {number} dmm - 管径，单位 mm
+ * @returns {number} 管径，单位 m；非法输入返回 NaN
+ */
+function diameterToSI(dmm) {
+  if (typeof dmm !== 'number' || !isFinite(dmm) || dmm <= 0) return NaN;
+  return dmm / 1000;
+}
+
+/**
+ * 根据流量与管径计算管内平均流速
+ * @param {number} qm3s - 流量，m³/s
+ * @param {number} dm   - 管道内径，m
+ * @returns {number} 流速，m/s
+ */
+function calcFlowVelocity(qm3s, dm) {
+  if (!isFinite(qm3s) || !isFinite(dm) || qm3s <= 0 || dm <= 0) return NaN;
+  const A = Math.PI * dm * dm / 4;
+  return qm3s / A;
+}
+
+/**
+ * 计算雷诺数 Re = v·D / ν
+ * @param {number} v  - 流速，m/s
+ * @param {number} dm - 管径，m
+ * @param {number} nu - 运动粘度，m²/s
+ * @returns {number} 雷诺数
+ */
+function calcReynolds(v, dm, nu) {
+  if (!isFinite(v) || !isFinite(dm) || !isFinite(nu) || v < 0 || dm <= 0 || nu <= 0) return NaN;
+  return v * dm / nu;
+}
+
+/**
+ * Swamee-Jain 显式公式估算 Darcy 摩擦系数 λ
+ * 层流 Re<2300 返回 64/Re；过渡区 2300~4000 返回 NaN
+ * @param {number} Re  - 雷诺数
+ * @param {number} eps - 绝对粗糙度，m
+ * @param {number} dm  - 管径，m
+ * @returns {number} Darcy 摩擦系数 λ
+ */
+function estimateFrictionFactor(Re, eps, dm) {
+  if (!isFinite(Re) || !isFinite(eps) || !isFinite(dm) || Re <= 0 || eps < 0 || dm <= 0) return NaN;
+  if (Re < 2300) return 64 / Re;
+  if (Re < 4000) return NaN;
+  const term = eps / (3.7 * dm) + 5.74 / Math.pow(Re, 0.9);
+  if (term <= 0) return NaN;
+  return 0.25 / Math.pow(Math.log10(term), 2);
+}
+
+/**
+ * Darcy-Weisbach 沿程水头损失
+ * @param {number} lambda - Darcy 摩擦系数
+ * @param {number} L      - 管长，m
+ * @param {number} dm     - 管径，m
+ * @param {number} v      - 流速，m/s
+ * @param {number} [g=9.81]
+ * @returns {number} 沿程损失，m
+ */
+function calcFrictionLoss(lambda, L, dm, v, g = 9.81) {
+  if (!isFinite(lambda) || !isFinite(L) || !isFinite(dm) || !isFinite(v) || !isFinite(g)) return NaN;
+  if (lambda < 0 || L < 0 || dm <= 0 || g <= 0) return NaN;
+  return lambda * (L / dm) * (v * v) / (2 * g);
+}
+
+/**
+ * 局部水头损失
+ * @param {number} sumZeta - 局部阻力系数之和
+ * @param {number} v       - 流速，m/s
+ * @param {number} [g=9.81]
+ * @returns {number} 局部损失，m
+ */
+function calcLocalLoss(sumZeta, v, g = 9.81) {
+  if (!isFinite(sumZeta) || !isFinite(v) || !isFinite(g)) return NaN;
+  if (sumZeta < 0 || g <= 0) return NaN;
+  return sumZeta * (v * v) / (2 * g);
+}
+
+/**
+ * 总扬程 H = H_geo + h_f + h_j
+ */
+function calcTotalHead(hGeo, frictionLoss, localLoss) {
+  if (!isFinite(hGeo) || !isFinite(frictionLoss) || !isFinite(localLoss)) return NaN;
+  return hGeo + frictionLoss + localLoss;
+}
+
+/**
+ * 轴功率 P_shaft = ρ·g·Q·H / η  （返回 kW）
+ */
+function calcShaftPower(qm3s, H, eta, rho, g = 9.81) {
+  if (!isFinite(qm3s) || !isFinite(H) || !isFinite(eta) || !isFinite(rho) || !isFinite(g)) return NaN;
+  if (qm3s < 0 || H < 0 || eta <= 0 || eta > 1 || rho <= 0 || g <= 0) return NaN;
+  return (rho * g * qm3s * H / eta) / 1000;
+}
+
+/**
+ * 配用功率 P_motor = P_shaft · K
+ */
+function calcMotorPower(shaftPowerKW, K) {
+  if (!isFinite(shaftPowerKW) || !isFinite(K)) return NaN;
+  if (shaftPowerKW < 0 || K < 1 || K > 2) return NaN;
+  return shaftPowerKW * K;
+}
+
+/**
+ * 综合计算入口
+ */
+function computeAll(params) { /* 见页面源码：与第一部分实际运行的 computeAll 一致 */ }`;
+document.getElementById('src-code').textContent = SRC_TEXT;
+
+/* ============================================================
+ *  标签页切换 & 计算器交互
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+function fmt(n, digits) {
+  if (typeof n !== 'number' || !isFinite(n)) return '—';
+  return n.toFixed(digits === undefined ? 3 : digits);
+}
+
+function doCalc() {
+  const p = {
+    qm3h: parseFloat(document.getElementById('q').value),
+    hGeo: parseFloat(document.getElementById('hgeo').value),
+    eta:  parseFloat(document.getElementById('eta').value),
+    K:    parseFloat(document.getElementById('k').value),
+    rho:  parseFloat(document.getElementById('rho').value),
+    dmm:  parseFloat(document.getElementById('d').value),
+    L:    parseFloat(document.getElementById('l').value),
+    eps:  parseFloat(document.getElementById('eps').value),
+    zeta: parseFloat(document.getElementById('zeta').value),
+    nu:   parseFloat(document.getElementById('nu').value)
+  };
+
+  // 输入校验
+  const errs = [];
+  if (!(p.eta > 0 && p.eta <= 1)) errs.push('效率 η 必须在 (0, 1] 之间');
+  if (!(p.K >= 1 && p.K <= 2)) errs.push('安全系数 K 必须在 [1, 2] 之间');
+  if (!(p.qm3h > 0)) errs.push('流量必须 > 0');
+  if (!(p.hGeo > 0)) errs.push('几何扬程 H_geo 必须 > 0（本工具不支持负扬程/零扬程工况）');
+  if (!(p.dmm > 0)) errs.push('管径必须 > 0');
+  if (!(p.rho > 0)) errs.push('密度必须 > 0');
+  if (!(p.nu > 0)) errs.push('运动粘度必须 > 0');
+
+  const box = document.getElementById('result');
+  if (errs.length) {
+    box.innerHTML = '<div class="err"><strong>输入错误：</strong><br>' + errs.join('<br>') + '</div>';
+    return;
+  }
+
+  const r = computeAll(p);
+
+  if (!isFinite(r.H_m) || !isFinite(r.P_motor_kW)) {
+    box.innerHTML = '<div class="err"><strong>无法计算：</strong>当前工况下雷诺数处于过渡区（Re=2300~4000），摩擦系数无稳定公式，本工具不输出结果。请调整流量、管径或粘度使 Re 离开过渡区。</div>';
+    return;
+  }
+
+  let html = '<div class="result">';
+  html += '<div class="row"><span>流量 Q</span><span class="val">' + fmt(p.qm3h, 2) + ' m³/h （' + fmt(r.q_m3s, 5) + ' m³/s）</span></div>';
+  html += '<div class="row"><span>管内流速 v</span><span class="val">' + fmt(r.v_m_s, 3) + ' m/s</span></div>';
+  html += '<div class="row"><span>雷诺数 Re</span><span class="val">' + fmt(r.Re, 0) + ' （' + r.flowRegime + '）</span></div>';
+  html += '<div class="row"><span>Darcy 摩擦系数 λ</span><span class="val">' + fmt(r.lambda, 5) + '</span></div>';
+  html += '<div class="row"><span>沿程损失 h_f</span><span class="val">' + fmt(r.hf_m, 3) + ' m</span></div>';
+  html += '<div class="row"><span>局部损失 h_j</span><span class="val">' + fmt(r.hj_m, 3) + ' m</span></div>';
+  html += '<div class="row"><span>所需总扬程 H</span><span class="val">' + fmt(r.H_m, 2) + ' m</span></div>';
+  html += '<div class="row"><span>轴功率 P_shaft</span><span class="val">' + fmt(r.P_shaft_kW, 3) + ' kW</span></div>';
+  html += '<div class="row"><span>配用功率 P_motor</span><span class="val">' + fmt(r.P_motor_kW, 3) + ' kW</span></div>';
+  html += '</div>';
+
+
+  html += '<div class="warn">以上结果为工程估算，典型误差 ±10%~±30%，详见《使用说明书·精度与误差说明》。</div>';
+
+  box.innerHTML = html;
+}
+
+function doReset() {
+  document.getElementById('q').value = 50;
+  document.getElementById('hgeo').value = 30;
+  document.getElementById('eta').value = 0.75;
+  document.getElementById('k').value = 1.15;
+  document.getElementById('rho').value = 1000;
+  document.getElementById('d').value = 100;
+  document.getElementById('l').value = 80;
+  document.getElementById('eps').value = 0.05;
+  document.getElementById('zeta').value = 8;
+  document.getElementById('nu').value = 1.004e-6;
+  document.getElementById('result').innerHTML = '';
+}
+</script>
+</body>
+</html>

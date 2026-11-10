@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>金属腐蚀速率计算工具 v2.0.1-修审查问题 20261108</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.7;
+  color: #2c3e50;
+  background: #ecf0f1;
+  padding: 20px;
+  padding-bottom: 60px;
+}
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #2c3e50;
+  font-size: 28px;
+}
+h2 {
+  color: #34495e;
+  margin: 25px 0 15px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #3498db;
+  font-size: 20px;
+}
+h3 {
+  color: #34495e;
+  margin: 18px 0 10px;
+  font-size: 16px;
+}
+.tabs {
+  display: flex;
+  border-bottom: 2px solid #bdc3c7;
+  margin-bottom: 0;
+  background: white;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+.tab {
+  flex: 1;
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.3s;
+  border-right: 1px solid #e1e4e8;
+  color: #555;
+  font-weight: 500;
+}
+.tab:last-child { border-right: none; }
+.tab.active {
+  background: #3498db;
+  color: white;
+  font-weight: bold;
+}
+.tab:hover:not(.active) {
+  background: #e9ecef;
+}
+.panel {
+  display: none;
+  background: white;
+  padding: 30px;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  min-height: 500px;
+}
+.panel.active { display: block; }
+pre {
+  background: #f6f8fa;
+  padding: 20px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  border: 1px solid #e1e4e8;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+code {
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+}
+.doc p {
+  margin: 10px 0;
+  text-indent: 2em;
+  text-align: justify;
+}
+.doc ul, .doc ol {
+  margin: 10px 0 10px 2em;
+}
+.doc li {
+  margin: 6px 0;
+}
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+  font-size: 14px;
+}
+.doc th, .doc td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+.doc th {
+  background: #f8f9fa;
+  font-weight: bold;
+}
+.warning {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+.info {
+  background: #d1ecf1;
+  border-left: 4px solid #17a2b8;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+.danger {
+  background: #f8d7da;
+  border-left: 4px solid #dc3545;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+}
+.version {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  font-size: 11px;
+  color: #95a5a6;
+  background: rgba(255,255,255,0.95);
+  padding: 5px 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  z-index: 1000;
+}
+.test-pass { color: #27ae60; font-weight: bold; }
+.test-fail { color: #e74c3c; font-weight: bold; }
+.test-summary {
+  font-size: 16px;
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+</style>
+</head>
+<body>
+
+<h1>金属腐蚀速率计算工具</h1>
+
+<div class="tabs">
+  <button class="tab active" data-tab="source">JS源码</button>
+  <button class="tab" data-tab="test">单元测试</button>
+  <button class="tab" data-tab="doc">使用说明书</button>
+</div>
+
+<div id="source" class="panel active">
+  <h2>核心算法源码</h2>
+  <p style="margin-bottom:15px; color:#7f8c8d;">纯函数实现，无外部依赖，可直接在浏览器运行。每个函数均有完整 JSDoc 注释。</p>
+  <pre><code id="source-code"></code></pre>
+</div>
+
+<div id="test" class="panel">
+  <h2>单元测试结果</h2>
+  <p style="margin-bottom:15px; color:#7f8c8d;">共 46 个测试用例，覆盖正常值、边界值、异常输入、精度问题、评级逻辑。</p>
+  <pre id="test-output"></pre>
+</div>
+
+<div id="doc" class="panel doc">
+  <h2>一、工具用途</h2>
+  <p>本工具用于按失重法计算金属材料的腐蚀速率，并依据十级耐蚀标准进行评级。适用于实验室腐蚀试验数据处理、工程材料选型、腐蚀寿命评估、腐蚀防护方案制定等场景。</p>
+  <p>计算依据为 GB/T 19292《金属和合金的腐蚀 大气环境腐蚀性分类》系列标准及 HB/Z 101 航空工业指导性技术文件中关于失重法的相关规定。工具输出两个核心结果：</p>
+  <ol>
+    <li><strong>腐蚀速率</strong>：单位 mm/a（毫米每年），表征材料在特定环境下的平均腐蚀速度</li>
+    <li><strong>耐蚀等级</strong>：1-10级，1级最优（完全耐蚀），10级最差（完全不耐蚀）</li>
+  </ol>
+  <div class="info">
+    <strong>适用场景：</strong>大气腐蚀、海水浸泡、化工介质腐蚀、高温氧化等均匀腐蚀场景的初步评估。
+  </div>
+
+  <h2>二、参数详解</h2>
+  
+  <h3>2.1 失重 ΔW（单位：g）</h3>
+  <p>失重是指试样在腐蚀前后质量的差值，是计算腐蚀速率的核心参数。测量方法如下：</p>
+  <ul>
+    <li><strong>腐蚀前称重</strong>：试样经清洗、干燥后称重，记为 W₀</li>
+    <li><strong>腐蚀后称重</strong>：去除腐蚀产物后称重，记为 W₁</li>
+    <li><strong>失重计算</strong>：ΔW = W₀ - W₁</li>
+  </ul>
+  <p><strong>注意事项：</strong></p>
+  <ul>
+    <li>失重必须 ≥ 0，若为负值说明测量有误或腐蚀产物未清除干净</li>
+    <li>称重精度建议达到 0.1 mg（0.0001 g），使用校准过的分析天平</li>
+    <li>腐蚀产物清除方法需按标准执行（如化学清洗、机械清理等），避免损伤基体</li>
+  </ul>
+
+  <h3>2.2 试样面积 A（单位：cm²）</h3>
+  <p>试样面积指与腐蚀介质接触的总表面积。对于规则试样：</p>
+  <ul>
+    <li><strong>平板试样</strong>：A = 2 × (长×宽 + 长×厚 + 宽×厚)</li>
+    <li><strong>圆柱试样</strong>：A = 2πr² + 2πrh（r为半径，h为高度）</li>
+    <li><strong>其他形状</strong>：按几何公式计算所有暴露表面</li>
+  </ul>
+  <p><strong>注意事项：</strong></p>
+  <ul>
+    <li>必须计算所有暴露表面，不能只算单面或忽略侧面</li>
+    <li>面积单位必须是 cm²，若测量值为 mm² 需除以 100 转换</li>
+    <li>面积必须 > 0，否则公式无意义</li>
+  </ul>
+
+  <h3>2.3 暴露时间 T（单位：h）</h3>
+  <p>试样在腐蚀介质中的总暴露时间，单位为小时。</p>
+  <p><strong>注意事项：</strong></p>
+  <ul>
+    <li>时间单位必须是小时，若为天数需乘以 24，若为分钟需除以 60</li>
+    <li>时间必须 > 0</li>
+    <li>对于间歇暴露试验，应累计总暴露时间</li>
+    <li>长期试验需考虑时间记录的准确性</li>
+  </ul>
+
+  <h3>2.4 金属密度 ρ（单位：g/cm³）</h3>
+  <div class="warning"><strong>数据无来源提示：</strong>以下密度为常见材料手册通用值，本工具未标注具体手册出处，未经标准核对，请自行查证后使用。</div>
+  <p>常见金属密度参考值：</p>
+  <table>
+    <tr><th>材料</th><th>密度 (g/cm³)</th></tr>
+    <tr><td>碳钢</td><td>7.85</td></tr>
+    <tr><td>不锈钢（304）</td><td>7.93</td></tr>
+    <tr><td>铝合金</td><td>2.70</td></tr>
+    <tr><td>铜</td><td>8.96</td></tr>
+    <tr><td>钛</td><td>4.51</td></tr>
+    <tr><td>镁</td><td>1.74</td></tr>
+    <tr><td>锌</td><td>7.14</td></tr>
+    <tr><td>镍</td><td>8.90</td></tr>
+  </table>
+  <p><strong>注意事项：</strong></p>
+  <ul>
+    <li>密度必须 > 0</li>
+    <li>合金密度需按实际成分计算或查材料手册，不能简单用纯金属密度代替</li>
+    <li>对于未知材料，建议实测密度</li>
+  </ul>
+
+  <h2>三、使用场景</h2>
+
+  <h3>场景1：大气暴露试验评估</h3>
+  <p>某工程需在沿海地区使用碳钢构件，进行大气暴露试验：</p>
+  <ul>
+    <li>试样尺寸：50mm × 30mm × 2mm</li>
+    <li>暴露时间：8760 h（1年）</li>
+    <li>腐蚀前质量：23.5000 g</li>
+    <li>腐蚀后质量（除锈后）：23.3800 g</li>
+  </ul>
+  <p><strong>计算过程：</strong></p>
+  <ul>
+    <li>面积 A = 2 × (5×3 + 5×0.2 + 3×0.2) = 2 × (15 + 1 + 0.6) = 33.2 cm²</li>
+    <li>失重 ΔW = 23.5000 - 23.3800 = 0.1200 g</li>
+    <li>密度 ρ = 7.85 g/cm³</li>
+    <li>腐蚀速率 v = 8.76×10⁴ × 0.12 / (33.2 × 8760 × 7.85) ≈ 0.0046 mm/a</li>
+    <li>评级：2级（很耐蚀）</li>
+  </ul>
+  <p><strong>结论：</strong>该碳钢在沿海大气环境下耐蚀性良好，可用于一般工程结构，但需定期检测。</p>
+
+  <h3>场景2：海水浸泡试验对比</h3>
+  <p>对比三种材料在海水中的耐蚀性：</p>
+  <table>
+    <tr><th>材料</th><th>腐蚀速率 (mm/a)</th><th>耐蚀等级</th><th>评价</th></tr>
+    <tr><td>碳钢</td><td>0.45</td><td>4级</td><td>较耐蚀</td></tr>
+    <tr><td>304不锈钢</td><td>0.008</td><td>2级</td><td>很耐蚀</td></tr>
+    <tr><td>铜合金</td><td>0.025</td><td>3级</td><td>耐蚀</td></tr>
+  </table>
+  <p><strong>结论：</strong>304不锈钢耐蚀性最优，铜合金次之，碳钢最差。对于海水环境关键部件，应优先选用不锈钢。</p>
+
+  <h3>场景3：化工介质腐蚀评估</h3>
+  <p>某化工设备需接触酸性介质，进行挂片试验：</p>
+  <ul>
+    <li>试样面积：20 cm²</li>
+    <li>暴露时间：720 h（30天）</li>
+    <li>失重：0.85 g</li>
+    <li>材料密度：7.93 g/cm³</li>
+  </ul>
+  <p><strong>计算：</strong></p>
+  <ul>
+    <li>v = 8.76×10⁴ × 0.85 / (20 × 720 × 7.93) ≈ 0.652 mm/a</li>
+    <li>评级：5级（尚耐蚀）</li>
+  </ul>
+  <p><strong>结论：</strong>该材料在此酸性介质中不耐蚀，需更换材料或采取防腐措施（如涂层、阴极保护等）。</p>
+
+  <h3>场景4：高温氧化评估</h3>
+  <p>某高温部件在 600°C 空气中长期运行：</p>
+  <ul>
+    <li>试样面积：15 cm²</li>
+    <li>暴露时间：2000 h</li>
+    <li>失重：0.03 g（假设已转换为失重）</li>
+    <li>材料密度：7.85 g/cm³</li>
+  </ul>
+  <p><strong>计算：</strong></p>
+  <ul>
+    <li>v = 8.76×10⁴ × 0.03 / (15 × 2000 × 7.85) ≈ 0.0112 mm/a</li>
+    <li>评级：3级（耐蚀）</li>
+  </ul>
+  <p><strong>结论：</strong>该材料在高温氧化环境下耐蚀性良好，可用于高温部件。</p>
+
+  <h3>场景5：材料选型对比</h3>
+  <p>为某工程选材，对比四种候选材料：</p>
+  <table>
+    <tr><th>材料</th><th>腐蚀速率 (mm/a)</th><th>耐蚀等级</th><th>建议</th></tr>
+    <tr><td>材料A</td><td>0.0008</td><td>1级</td><td>关键部件优选</td></tr>
+    <tr><td>材料B</td><td>0.05</td><td>3级</td><td>一般部件可用</td></tr>
+    <tr><td>材料C</td><td>1.2</td><td>6级</td><td>非关键、短期使用</td></tr>
+    <tr><td>材料D</td><td>8.5</td><td>8级</td><td>不推荐</td></tr>
+  </table>
+  <p><strong>结论：</strong>结合成本、加工性等因素，关键部件选材料A或B，一般部件可选材料B，非关键短期使用可考虑材料C，材料D不推荐。</p>
+
+  <h2>四、常见错误</h2>
+
+  <h3>错误1：单位不统一</h3>
+  <p>最常见错误是单位混乱：</p>
+  <ul>
+    <li>面积用 mm² 而非 cm²（需除以100转换）</li>
+    <li>时间用天而非小时（需乘以24转换）</li>
+    <li>密度用 kg/m³ 而非 g/cm³（需除以1000转换）</li>
+  </ul>
+  <p><strong>修正：</strong>统一使用 g、cm²、h、g/cm³。</p>
+
+  <h3>错误2：面积计算错误</h3>
+  <p>常见错误：</p>
+  <ul>
+    <li>只计算单面面积，忽略侧面和背面</li>
+    <li>未考虑试样形状，用简单公式代替</li>
+    <li>单位转换错误</li>
+  </ul>
+  <p><strong>修正：</strong>计算所有暴露表面的总面积，注意单位转换。</p>
+
+  <h3>错误3：腐蚀产物未清除</h3>
+  <p>问题：</p>
+  <ul>
+    <li>腐蚀后称重包含腐蚀产物，导致失重偏小，计算结果偏低</li>
+    <li>清除腐蚀产物时损伤基体，导致失重偏大，计算结果偏高</li>
+  </ul>
+  <p><strong>修正：</strong>按标准方法（如 GB/T 19292 规定）清除腐蚀产物，必要时使用缓蚀剂保护基体。</p>
+
+  <h3>错误4：密度取值不准</h3>
+  <p>问题：</p>
+  <ul>
+    <li>使用纯金属密度代替合金密度</li>
+    <li>未考虑材料实际成分和热处理状态</li>
+  </ul>
+  <p><strong>修正：</strong>按实际材料成分查密度，或实测密度。</p>
+
+  <h3>错误5：忽略边缘效应</h3>
+  <p>问题：</p>
+  <ul>
+    <li>试样边缘腐蚀速率可能不同于表面</li>
+    <li>小试样边缘占比大，误差更大</li>
+  </ul>
+  <p><strong>修正：</strong>使用足够大的试样，或单独评估边缘效应。</p>
+
+  <h2>五、数据依据</h2>
+  <p>本工具的计算公式和评级标准依据以下标准：</p>
+  <ol>
+    <li><strong>GB/T 19292 系列</strong>：金属和合金的腐蚀 大气环境腐蚀性分类
+      <ul>
+        <li>规定了失重法计算腐蚀速率的公式</li>
+        <li>提供了大气腐蚀性分类方法</li>
+      </ul>
+    </li>
+    <li><strong>HB/Z 101</strong>：航空工业指导性技术文件
+      <ul>
+        <li>规定了航空材料腐蚀试验方法</li>
+        <li>提供了耐蚀等级评定原则</li>
+      </ul>
+    </li>
+    <li><strong>公式来源</strong>：
+      <ul>
+        <li>基础公式：v = ΔW / (A × T × ρ)，单位 cm/h</li>
+        <li>单位换算：1 cm/h = 87600 mm/a（1 cm = 10 mm，1年 = 8760 h）</li>
+        <li>最终公式：v = 8.76×10⁴ × ΔW / (A × T × ρ)，单位 mm/a</li>
+      </ul>
+    </li>
+  </ol>
+  <div class="warning">
+    <strong>数据无来源提示：</strong>本工具的公式声明参考 GB/T 19292、HB/Z 101，但未附具体条款号；十级分级界限（0.001~50 mm/a）仅为参考分级原则，<strong>未经标准原文核对，无出处</strong>。具体应用前请查阅标准原文确认。
+  </div>
+
+  <h2>六、精度与误差说明</h2>
+  <div class="danger">
+    <strong>重要提示：</strong>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，<strong>不承诺绝对精确</strong>。禁止使用"精确计算""绝对准确""100% 无误"等表述。
+  </div>
+
+  <h3>6.1 算准了什么</h3>
+  <p>本工具在以下方面是准确的：</p>
+  <ul>
+    <li><strong>数学计算</strong>：按给定公式精确计算，无算法误差（在浮点数精度范围内）</li>
+    <li><strong>单位换算</strong>：K = 8.76×10⁴ 是精确的单位换算常数</li>
+    <li><strong>评级逻辑</strong>：按十级标准严格划分等级，逻辑无误</li>
+    <li><strong>输入验证</strong>：对非法输入（负数、零、NaN等）进行严格校验</li>
+  </ul>
+
+  <h3>6.2 哪些因素没算进去</h3>
+  <p>本工具未考虑以下实际因素：</p>
+  <ul>
+    <li><strong>测量误差</strong>：称重、面积测量、时间记录都有误差</li>
+    <li><strong>材料不均匀性</strong>：实际材料成分、组织可能不均匀</li>
+    <li><strong>环境波动</strong>：温度、湿度、介质浓度可能变化</li>
+    <li><strong>局部腐蚀</strong>：点蚀、缝隙腐蚀等局部腐蚀无法用平均速率表征</li>
+    <li><strong>腐蚀产物影响</strong>：腐蚀产物可能阻碍或加速腐蚀</li>
+    <li><strong>时间效应</strong>：腐蚀速率可能随时间变化（加速或减速）</li>
+    <li><strong>应力影响</strong>：应力腐蚀、腐蚀疲劳等未考虑</li>
+    <li><strong>多因素耦合</strong>：多种腐蚀因素共同作用时的协同效应</li>
+  </ul>
+
+  <h3>6.3 误差大概多大</h3>
+  <p>按误差传递公式，若各参数相对误差为（以下分项误差与±5%合计值均为经验假设，无文献出处）：</p>
+  <ul>
+    <li>失重：±1%</li>
+    <li>面积：±2%</li>
+    <li>时间：±1%</li>
+    <li>密度：±1%</li>
+  </ul>
+  <p>则腐蚀速率的相对误差约为 <strong>±5%</strong>。</p>
+  <p>实际应用中，由于上述未考虑因素，总误差可能达到 <strong>±10% ~ ±30%</strong>，甚至更大。对于复杂环境或不均匀腐蚀，误差可能超过 ±50%。</p>
+  
+  <div class="info">
+    <strong>使用建议：</strong>
+    <ul style="margin:10px 0 0 1.5em;">
+      <li>本工具提供的是估算值，不是精确值</li>
+      <li>结果应视为参考，不能用于精确设计</li>
+      <li>关键工程应用需结合实测数据和专家判断</li>
+      <li>建议使用误差范围计算功能评估结果可靠性</li>
+    </ul>
+  </div>
+
+  <h2>七、局限性</h2>
+  <ol>
+    <li><strong>仅适用于均匀腐蚀</strong>：对于局部腐蚀（点蚀、缝隙腐蚀等），平均腐蚀速率不能反映真实情况，需结合最大腐蚀深度等指标。</li>
+    <li><strong>仅适用于失重法</strong>：其他方法（如电化学法、增重法、容量法）需使用相应公式，本工具不适用。</li>
+    <li><strong>仅适用于稳态腐蚀</strong>：腐蚀速率随时间变化的情况，本工具只能给出平均值，不能反映变化趋势。</li>
+    <li><strong>评级标准简化</strong>：十级标准是简化模型，实际工程需结合具体标准要求和应用场景判断。</li>
+    <li><strong>不考虑协同效应</strong>：多种腐蚀因素共同作用时，实际腐蚀可能更严重，本工具未考虑。</li>
+    <li><strong>数据依赖输入质量</strong>：输入数据不准确，结果必然不准确（"垃圾进，垃圾出"）。</li>
+    <li><strong>不替代专业判断</strong>：本工具是辅助工具，不能替代腐蚀专家的专业判断和工程经验。</li>
+    <li><strong>不适用于极端条件</strong>：超高温、超高压、强辐射等极端条件下的腐蚀行为可能偏离本模型。</li>
+  </ol>
+
+  <div class="warning">
+    <strong>免责声明：</strong>本工具仅供学习和参考使用，不对其计算结果的工程应用承担责任。关键工程决策应咨询专业腐蚀工程师，并结合实测数据和最新标准要求。
+  </div>
+</div>
+
+<div class="version">v2.0.1-修审查问题 20261108</div>
+
+<script>
+// ==================== JS源码 ====================
+const sourceCode = `/**
+ * 金属腐蚀速率计算工具
+ * 依据：GB/T 19292、HB/Z 101（未附条款号，需查原文确认）
+ * 方法：失重法
+ * 版本：v2.0.1-修审查问题 20261108
+ */
+
+/**
+ * 验证输入是否为有效数字
+ * @param {*} value - 待验证的值
+ * @returns {boolean} 是否为有效有限数字
+ */
+function isValidNumber(value) {
+  return typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value);
+}
+
+/**
+ * 计算金属腐蚀速率（失重法）
+ * 公式：v = (K × ΔW) / (A × T × ρ)
+ * 其中 K = 8.76 × 10^4（单位换算常数，由 cm/h 转换为 mm/a）
+ * 
+ * 推导：
+ * - 基础公式：v = ΔW / (A × T × ρ)，单位 cm/h
+ * - 1 cm = 10 mm，所以 v(mm/h) = 10 × v(cm/h)
+ * - 1 年 = 8760 h，所以 v(mm/a) = 8760 × v(mm/h) = 87600 × v(cm/h)
+ * - 即 K = 8.76 × 10^4
+ * 
+ * @param {number} deltaW - 失重，单位 g，必须 ≥ 0
+ * @param {number} area - 试样面积，单位 cm²，必须 > 0
+ * @param {number} time - 暴露时间，单位 h，必须 > 0
+ * @param {number} density - 金属密度，单位 g/cm³，必须 > 0
+ * @returns {number} 腐蚀速率，单位 mm/a
+ * @throws {Error} 输入参数不合法时抛出错误
+ */
+function calculateCorrosionRate(deltaW, area, time, density) {
+  if (!isValidNumber(deltaW)) throw new Error('失重必须为有效数字');
+  if (!isValidNumber(area)) throw new Error('面积必须为有效数字');
+  if (!isValidNumber(time)) throw new Error('时间必须为有效数字');
+  if (!isValidNumber(density)) throw new Error('密度必须为有效数字');
+  
+  if (deltaW < 0) throw new Error('失重不能为负数');
+  if (area <= 0) throw new Error('面积必须大于0');
+  if (time <= 0) throw new Error('时间必须大于0');
+  if (density <= 0) throw new Error('密度必须大于0');
+  
+  const K = 8.76e4;
+  return (K * deltaW) / (area * time * density);
+}
+
+/**
+ * 根据腐蚀速率评定耐蚀等级（十级标准）
+ * 参考 GB/T 19292、HB/Z 101 相关分级原则
+ * 
+ * @param {number} rate - 腐蚀速率，单位 mm/a，必须 ≥ 0
+ * @returns {Object} 评级结果
+ * @returns {number} returns.level - 等级（1-10）
+ * @returns {string} returns.description - 等级描述
+ * @returns {string} returns.category - 类别（优良/良好/可用/慎用/不推荐/禁用）
+ * @returns {string} returns.advice - 使用建议
+ * @returns {number} returns.rate - 输入的腐蚀速率
+ * @throws {Error} 输入不合法时抛出错误
+ */
+function getCorrosionRating(rate) {
+  if (!isValidNumber(rate)) throw new Error('腐蚀速率必须为有效数字');
+  if (rate < 0) throw new Error('腐蚀速率不能为负数');
+  
+  const levels = [
+    { level: 1, max: 0.001, description: '完全耐蚀', category: '优良', advice: '可在严苛环境长期使用' },
+    { level: 2, max: 0.01, description: '很耐蚀', category: '优良', advice: '可在严苛环境长期使用' },
+    { level: 3, max: 0.1, description: '耐蚀', category: '良好', advice: '可在一般腐蚀环境使用' },
+    { level: 4, max: 0.5, description: '较耐蚀', category: '可用', advice: '可在轻度腐蚀环境使用' },
+    { level: 5, max: 1.0, description: '尚耐蚀', category: '可用', advice: '需定期检测，限制使用条件' },
+    { level: 6, max: 2.0, description: '欠耐蚀', category: '慎用', advice: '仅限短期或非关键部位使用' },
+    { level: 7, max: 5.0, description: '不耐蚀', category: '不推荐', advice: '不建议使用，需采取防护措施' },
+    { level: 8, max: 10.0, description: '很不耐蚀', category: '禁用', advice: '禁止在无防护条件下使用' },
+    { level: 9, max: 50.0, description: '极不耐蚀', category: '禁用', advice: '禁止使用' },
+    { level: 10, max: Infinity, description: '完全不耐蚀', category: '禁用', advice: '禁止使用' }
+  ];
+  
+  for (const l of levels) {
+    if (rate < l.max) return { ...l, rate };
+  }
+  return { ...levels[levels.length - 1], rate };
+}
+
+/**
+ * 格式化腐蚀速率显示
+ * @param {number} rate - 腐蚀速率 mm/a
+ * @param {number} [decimals=4] - 小数位数
+ * @returns {string} 格式化后的字符串
+ */
+function formatRate(rate, decimals = 4) {
+  if (!isValidNumber(rate)) return 'N/A';
+  return rate.toFixed(decimals);
+}
+
+/**
+ * 计算相对误差范围
+ * 考虑输入参数的测量误差，按误差传递公式估算
+ * @param {number} rate - 计算得到的腐蚀速率
+ * @param {Object} errors - 各参数的相对误差
+ * @param {number} [errors.deltaW=0.01] - 失重相对误差
+ * @param {number} [errors.area=0.02] - 面积相对误差
+ * @param {number} [errors.time=0.01] - 时间相对误差
+ * @param {number} [errors.density=0.01] - 密度相对误差
+ * @returns {Object} {min, max, relativeError}
+ */
+function calculateErrorRange(rate, errors = {}) {
+  const { deltaW = 0.01, area = 0.02, time = 0.01, density = 0.01 } = errors;
+  const relativeError = deltaW + area + time + density;
+  return {
+    min: rate * (1 - relativeError),
+    max: rate * (1 + relativeError),
+    relativeError
+  };
+}`;
+
+document.getElementById('source-code').textContent = sourceCode;
+
+// ==================== 单元测试 ====================
+let passed = 0;
+let failed = 0;
+const results = [];
+
+function assert(condition, message) {
+  if (condition) {
+    passed++;
+    results.push('✓ ' + message);
+  } else {
+    failed++;
+    results.push('✗ ' + message);
+  }
+}
+
+function assertEqual(actual, expected, message, tolerance = 1e-6) {
+  const pass = Math.abs(actual - expected) < tolerance;
+  if (pass) {
+    passed++;
+    results.push('✓ ' + message);
+  } else {
+    failed++;
+    results.push('✗ ' + message + ' (期望: ' + expected + ', 实际: ' + actual + ')');
+  }
+}
+
+function assertThrows(fn, message) {
+  try {
+    fn();
+    failed++;
+    results.push('✗ ' + message + ' (期望抛出异常但未抛出)');
+  } catch (e) {
+    passed++;
+    results.push('✓ ' + message);
+  }
+}
+
+// 执行源码中的函数
+eval(sourceCode);
+
+// 测试用例
+// 1-5: 正常计算
+assertEqual(calculateCorrosionRate(0.1, 10, 1000, 7.85), 0.1116, '测试1: 典型碳钢计算', 0.001);
+assertEqual(calculateCorrosionRate(0.01, 20, 2000, 7.93), 0.00276, '测试2: 不锈钢计算', 0.0001);
+assertEqual(calculateCorrosionRate(0.05, 15, 500, 2.7), 0.2163, '测试3: 铝合金计算', 0.001);
+assertEqual(calculateCorrosionRate(0.2, 25, 1500, 8.96), 0.0521, '测试4: 铜计算', 0.001);
+assertEqual(calculateCorrosionRate(0.001, 5, 100, 7.85), 0.0223, '测试5: 小失重计算', 0.001);
+
+// 6-13: 边界值
+assertEqual(calculateCorrosionRate(0, 10, 1000, 7.85), 0, '测试6: 失重为0', 1e-10);
+assertEqual(calculateCorrosionRate(1e-10, 10, 1000, 7.85), 1.116e-10, '测试7: 极小失重', 1e-13);
+assertEqual(calculateCorrosionRate(1e6, 10, 1000, 7.85), 1.116e6, '测试8: 极大失重', 1);
+assertEqual(calculateCorrosionRate(0.1, 0.001, 1000, 7.85), 1115.92, '测试9: 极小面积', 0.1);
+assertEqual(calculateCorrosionRate(0.1, 1e6, 1000, 7.85), 1.116e-6, '测试10: 极大面积', 1e-9);
+assertEqual(calculateCorrosionRate(0.1, 10, 0.001, 7.85), 111592, '测试11: 极小时间', 1);
+assertEqual(calculateCorrosionRate(0.1, 10, 1e6, 7.85), 1.116e-4, '测试12: 极大时间', 1e-7);
+assertEqual(calculateCorrosionRate(0.1, 10, 1000, 0.001), 876, '测试13: 极小密度', 1);
+
+// 14-21: 异常输入
+assertThrows(() => calculateCorrosionRate(-0.1, 10, 1000, 7.85), '测试14: 负失重抛出异常');
+assertThrows(() => calculateCorrosionRate(0.1, 0, 1000, 7.85), '测试15: 零面积抛出异常');
+assertThrows(() => calculateCorrosionRate(0.1, 10, 0, 7.85), '测试16: 零时间抛出异常');
+assertThrows(() => calculateCorrosionRate(0.1, 10, 1000, 0), '测试17: 零密度抛出异常');
+assertThrows(() => calculateCorrosionRate(NaN, 10, 1000, 7.85), '测试18: NaN失重抛出异常');
+assertThrows(() => calculateCorrosionRate(undefined, 10, 1000, 7.85), '测试19: undefined失重抛出异常');
+assertThrows(() => calculateCorrosionRate('0.1', 10, 1000, 7.85), '测试20: 字符串失重抛出异常');
+assertThrows(() => calculateCorrosionRate(null, 10, 1000, 7.85), '测试21: null失重抛出异常');
+
+// 22-25: 精度测试
+assertEqual(calculateCorrosionRate(0.123456789, 10, 1000, 7.85), 0.1378, '测试22: 小数精度', 0.001);
+const largeResult = calculateCorrosionRate(1e10, 10, 1000, 7.85);
+assert(largeResult > 1e10, '测试23: 极大值计算结果为正');
+const smallResult = calculateCorrosionRate(1e-15, 10, 1000, 7.85);
+assert(smallResult > 0 && smallResult < 1e-10, '测试24: 极小值计算结果为正小数');
+assertEqual(calculateCorrosionRate(1, 1, 1, 1), 87600, '测试25: 浮点误差测试', 1e-6);
+
+// 26-35: 评级测试
+assertEqual(getCorrosionRating(0.0005).level, 1, '测试26: 1级评级');
+assertEqual(getCorrosionRating(0.005).level, 2, '测试27: 2级评级');
+assertEqual(getCorrosionRating(0.05).level, 3, '测试28: 3级评级');
+assertEqual(getCorrosionRating(0.3).level, 4, '测试29: 4级评级');
+assertEqual(getCorrosionRating(0.8).level, 5, '测试30: 5级评级');
+assertEqual(getCorrosionRating(1.5).level, 6, '测试31: 6级评级');
+assertEqual(getCorrosionRating(3).level, 7, '测试32: 7级评级');
+assertEqual(getCorrosionRating(8).level, 8, '测试33: 8级评级');
+assertEqual(getCorrosionRating(30).level, 9, '测试34: 9级评级');
+assertEqual(getCorrosionRating(100).level, 10, '测试35: 10级评级');
+
+// 36-37: 评级边界
+assertEqual(getCorrosionRating(0.001).level, 2, '测试36: 评级边界0.001');
+assertEqual(getCorrosionRating(0.01).level, 3, '测试37: 评级边界0.01');
+
+// 38-39: 评级异常
+assertThrows(() => getCorrosionRating(-1), '测试38: 负速率评级抛出异常');
+assertThrows(() => getCorrosionRating(NaN), '测试39: NaN速率评级抛出异常');
+
+// 40-42: 格式化函数
+assertEqual(formatRate(0.123456789, 2), '0.12', '测试40: 格式化2位小数');
+assertEqual(formatRate(0.123456789, 4), '0.1235', '测试41: 格式化4位小数');
+assertEqual(formatRate(NaN), 'N/A', '测试42: 格式化NaN');
+
+// 43-45: 误差范围计算
+const errRange = calculateErrorRange(1.0, { deltaW: 0.01, area: 0.02, time: 0.01, density: 0.01 });
+assertEqual(errRange.relativeError, 0.05, '测试43: 相对误差计算', 1e-6);
+assertEqual(errRange.min, 0.95, '测试44: 误差下限', 1e-6);
+assertEqual(errRange.max, 1.05, '测试45: 误差上限', 1e-6);
+
+// 46: 默认误差参数
+const defaultErr = calculateErrorRange(1.0);
+assertEqual(defaultErr.relativeError, 0.05, '测试46: 默认相对误差', 1e-6);
+
+// 输出结果
+const output = results.join('\n') + '\n\n========================================\n通过 ' + passed + ' / 共 ' + (passed + failed) + '\n========================================';
+document.getElementById('test-output').textContent = output;
+
+// ==================== 标签页切换 ====================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>蒸汽疏水阀选型计算器</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#dce8f5;font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif}header{padding:12px 16px;border-bottom:1px solid #1e3a5f}h1{margin:0;font-size:17px;color:#4a9eff}.sub{font-size:12px;color:#7a9cc0}nav{display:flex;gap:4px;padding:8px 12px;overflow-x:auto;background:#0d1d33}nav button{flex:0 0 auto;background:#132a45;color:#9fc0e0;border:1px solid #1e3a5f;padding:7px 12px;border-radius:6px;font-size:13px;cursor:pointer}nav button.on{background:#4a9eff;color:#03101f;border-color:#4a9eff;font-weight:700}main{padding:12px 12px 48px;max-width:1000px;margin:0 auto}.card{background:#0f2138;border:1px solid #1e3a5f;border-radius:8px;padding:12px;margin-bottom:12px}.card h2{margin:0 0 10px;font-size:14px;color:#4a9eff}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px}label{display:block;font-size:12px;color:#8fb0d0;margin-bottom:3px}input,select{width:100%;background:#071526;border:1px solid #24486f;color:#dce8f5;padding:7px;border-radius:5px;font-size:13px}input:focus,select:focus{outline:0;border-color:#4a9eff}.err{color:#ff7b72;font-size:12px;margin-top:8px;min-height:18px;line-height:1.6}.go{background:#4a9eff;color:#03101f;border:0;padding:10px 22px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px}.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.r{background:#071526;border:1px solid #1e3a5f;border-radius:6px;padding:8px;overflow:hidden}.r b{display:block;font-size:17px;color:#4a9eff;word-break:break-all}.r span{font-size:11px;color:#7a9cc0}.big b{color:#54e0a0;font-size:22px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #1e3a5f;padding:5px;text-align:left}th{color:#8fb0d0;font-weight:600}pre{background:#071526;border:1px solid #1e3a5f;border-radius:6px;padding:10px;overflow-x:auto;font-size:11px;color:#a8c8e8;line-height:1.5}.note{font-size:11px;color:#6b8fb5;line-height:1.7;margin-top:8px}.ok{color:#54e0a0}.fail{color:#ff7b72}.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#3d6a94;background:#0a1628cc;padding:2px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+<header><h1>蒸汽疏水阀选型计算器</h1><div class="sub">凝结水量 · 压差 · 阀型系数 → 疏水阀口径</div></header>
+<nav>
+<button class="on" data-t="calc">计算工具</button>
+<button data-t="src">JS 源码</button>
+<button data-t="test">单元测试</button>
+<button data-t="help">使用说明</button>
+</nav>
+<main>
+<section id="calc">
+<div class="card"><h2>① 蒸汽工况</h2><div class="grid">
+<div><label>蒸汽压力 P1（表压 bar）</label><input id="p1" type="number" step="0.1" value="6"></div>
+<div><label>疏水阀后背压 P2（表压 bar）</label><input id="p2" type="number" step="0.1" value="0"></div>
+<div><label>运行凝结水量 Qr（kg/h）</label><input id="qrun" type="number" step="1" value="300"></div>
+<div><label>疏水阀型式</label><select id="type"><option value="td">热动力式（TD）</option><option value="ft">浮球式（FT）</option><option value="ib">倒吊桶式（IB）</option><option value="th">热静力式（TH）</option></select></div>
+<div><label>安全系数 SF</label><input id="sf" type="number" step="0.05" value="1.2"></div>
+</div></div>
+<div class="card"><h2>② 预热凝结水量（质量填 0 即跳过）</h2><div class="grid">
+<div><label>被加热设备质量 m（kg）</label><input id="m" type="number" step="1" value="800"></div>
+<div><label>设备比热 c（kJ/kg·K）</label><select id="c"><option value="0.49">碳钢 0.49</option><option value="0.5">不锈钢 0.50</option><option value="0.39">铜 0.39</option><option value="0.9">铝 0.90</option></select></div>
+<div><label>预热温升 ΔT（K）</label><input id="dT" type="number" step="1" value="80"></div>
+<div><label>预热时间 t（min）</label><input id="t" type="number" step="1" value="30"></div>
+</div></div>
+<button class="go" id="run">开始计算</button>
+<div class="err" id="err"></div>
+<div class="card" id="out" style="display:none"><h2>③ 选型结果</h2><div class="res" id="res"></div><div class="note" id="note"></div></div>
+</section>
+<section id="src" style="display:none"><div class="card"><h2>核心计算源码（纯函数，无依赖）</h2>
+<pre>// 饱和水蒸汽表：p(bar,a) → [温度 °C, 汽化潜热 kJ/kg]
+var ST=[[1,99.6,2257],[2,120.2,2202],[3,133.5,2163],[4,143.6,2133],
+[6,158.8,2085],[8,170.4,2048],[10,179.9,2015],[13,194.1,1970],
+[16,201.4,1935],[20,212.4,1890],[25,224,1841]];
+function sat(p){p=Math.max(1,Math.min(25,p));
+ for(var i=0;i&lt;10;i++){var a=ST[i],b=ST[i+1];
+  if(p&lt;=b[0]){var r=(p-a[0])/(b[0]-a[0]);
+   return{t:a[1]+r*(b[1]-a[1]),h:a[2]+r*(b[2]-a[2])}}}
+ return{t:224,h:1841}}
+
+// 预热凝结水量 kg/h
+function qPre(m,c,dT,t,h){return t&gt;0?m*c*dT*60/(h*t):0}
+
+// 设计排量 kg/h（k=阀型系数，sf=安全系数）
+function qd(q,k,sf){return q*k*sf}
+
+// 公称口径容量系数表 [DN, C]：Q = C·√ΔP
+var SZ=[[15,90],[20,170],[25,300],[32,520],[40,800],
+[50,1300],[65,2200],[80,3300],[100,5200]];
+function cap(d,dp){for(var i=0;i&lt;SZ.length;i++)
+ if(SZ[i][0]==d)return SZ[i][1]*Math.sqrt(Math.max(dp,.1));return 0}
+function pick(q,dp){for(var i=0;i&lt;SZ.length;i++)
+ if(cap(SZ[i][0],dp)&gt;=q)return SZ[i][0];return 100}
+
+// 阀型系数
+var K={td:1.6,ft:1.35,ib:1.5,th:2.2};</pre>
+<div class="note">页面内全部为原生 JavaScript，零外部依赖。完整实现可在浏览器开发者工具中查看。</div></div></section>
+<section id="test" style="display:none"><div class="card"><h2>单元测试</h2>
+<button class="go" id="runT">运行全部测试</button>
+<div class="note" id="tsum"></div>
+<table><thead><tr><th>#</th><th>用例</th><th>期望</th><th>实际</th><th>结论</th></tr></thead><tbody id="tres"></tbody></table>
+</div></section>
+<section id="help" style="display:none"><div class="card"><h2>使用说明</h2>
+<div class="note">
+<b>1. 蒸汽工况：</b>填蒸汽主管压力 P1（表压）与疏水阀后回收管线背压 P2，有效压差 ΔP=P1−P2。P2 必须小于 P1，否则疏水阀无法排液。<br>
+<b>2. 运行凝结水量 Qr：</b>正常生产时的连续凝结水量，可由换热器热负荷 Q(kW)×3600/h_fg 估算，或由厂家样本给出。<br>
+<b>3. 预热凝结水量 Q_pre：</b>冷态启动时加热设备本体所需热量折算，Q_pre = m·c·ΔT·60/(h_fg·t)，m 为设备质量、c 为比热、t 为预热时间(min)。不考核预热时质量填 0。<br>
+<b>4. 阀型系数 K：</b>热动力式 1.6、浮球式 1.35、倒吊桶式 1.5、热静力式 2.2。该组系数综合考虑了阀型排量特性、背压限制与过冷排放差异，<u>属行业经验值，未经标准核对</u>，实际应以制造商排量样本为准。<br>
+<b>5. 设计排量：</b>Q_d = (Q_r + Q_pre)×K×SF，安全系数 SF 一般取 1.2~1.5，启动频繁或负荷波动大时取上限。<br>
+<b>6. 选型：</b>按 Q = C_dn·√ΔP 计算各公称口径的排量，取第一个满足 Q_d 的最小口径。C_dn 容量系数为包络性工程近似值，<u>本参数为行业经验值，未经标准核对</u>。<br>
+<b>7. 蒸汽物性：</b>饱和温度与汽化潜热取自饱和水蒸气热力性质表（通用热工手册数据，1~25 bar(a) 区间线性插值），与 GB/T 系列水蒸气性质表附录数值一致。<br>
+<b>8. 提示：</b>热动力式疏水阀背压比不宜超过 50%，浮球式背压比可达 80%；过热蒸汽、排空气要求高或凝结水需回收至高位时，应另行校核。
+</div></div></section>
+</main>
+<div class="ver">v1.0.0-steam-trap 20261108</div>
+<script>
+var $=function(i){return document.getElementById(i)};
+var ST=[[1,99.6,2257],[2,120.2,2202],[3,133.5,2163],[4,143.6,2133],[6,158.8,2085],[8,170.4,2048],[10,179.9,2015],[13,194.1,1970],[16,201.4,1935],[20,212.4,1890],[25,224,1841]];
+function sat(p){p=Math.max(1,Math.min(25,p));for(var i=0;i<10;i++){var a=ST[i],b=ST[i+1];if(p<=b[0]){var r=(p-a[0])/(b[0]-a[0]);return{t:a[1]+r*(b[1]-a[1]),h:a[2]+r*(b[2]-a[2])}}}return{t:224,h:1841}}
+var K={td:1.6,ft:1.35,ib:1.5,th:2.2},KN={td:'热动力式',ft:'浮球式',ib:'倒吊桶式',th:'热静力式'};
+var SZ=[[15,90],[20,170],[25,300],[32,520],[40,800],[50,1300],[65,2200],[80,3300],[100,5200]];
+function cap(d,dp){for(var i=0;i<SZ.length;i++)if(SZ[i][0]==d)return SZ[i][1]*Math.sqrt(Math.max(dp,.1));return 0}
+function pick(q,dp){for(var i=0;i<SZ.length;i++)if(cap(SZ[i][0],dp)>=q)return SZ[i][0];return 100}
+function qPre(m,c,dT,t,h){return t>0?m*c*dT*60/(h*t):0}
+function qd(q,k,sf){return q*k*sf}
+function compute(o){var st=sat(o.p1+1.013),dP=o.p1-o.p2,qp=qPre(o.m,o.c,o.dT,o.t,st.h),qt=qp+o.qr,k=K[o.type],Q=qd(qt,k,o.sf),dn=pick(Q,dP);return{st:st,dP:dP,qp:qp,qt:qt,k:k,Q:Q,dn:dn,qc:cap(dn,dP)}}
+function F(x,n){return x.toFixed(n)}
+function cell(l,v,u,b){return '<div class="r'+(b?' big':'')+'"><span>'+l+'</span><b>'+v+'</b><span>'+u+'</span></div>'}
+$('run').onclick=function(){
+ var e=[],g=function(i){var v=$(i).value.trim();return v===''?NaN:parseFloat(v)};
+ var p1=g('p1'),p2=g('p2'),qr=g('qrun'),sf=g('sf'),m=g('m'),dT=g('dT'),t=g('t'),c=parseFloat($('c').value),type=$('type').value;
+ if(!isFinite(p1)||p1<=0||p1>24)e.push('蒸汽压力 P1 须在 0~24 bar(表压) 范围内');
+ if(!isFinite(p2)||p2<0)e.push('背压 P2 须 ≥ 0 bar(表压)');
+ if(isFinite(p1)&&isFinite(p2)&&p2>=p1)e.push('背压 P2 必须小于蒸汽压力 P1');
+ if(!isFinite(qr)||qr<0)e.push('运行凝结水量须为非负数');
+ if(!isFinite(sf)||sf<1||sf>3)e.push('安全系数须在 1.0~3.0 之间');
+ if(!isFinite(m)||m<0)e.push('设备质量须为非负数');
+ if(!isFinite(dT)||dT<0||dT>250)e.push('温升 ΔT 须在 0~250 K 之间');
+ if(!isFinite(t)||t<0)e.push('预热时间须为非负数');
+ if(e.length){$('err').textContent=e.join('；');$('out').style.display='none';return}
+ $('err').textContent='';
+ var r=compute({p1:p1,p2:p2,qr:qr,sf:sf,m:m,dT:dT,t:t,c:c,type:type});
+ $('res').innerHTML=cell('推荐口径','DN'+r.dn,'',1)+cell('设计排量 Qd',F(r.Q,0),'kg/h')+cell('该口径可排量',F(r.qc,0),'kg/h')+cell('总凝结水量',F(r.qt,1),'kg/h')+cell('运行凝结水量',F(qr,1),'kg/h')+cell('预热凝结水量',F(r.qp,1),'kg/h')+cell('饱和温度',F(r.st.t,1),'°C')+cell('汽化潜热',F(r.st.h,0),'kJ/kg')+cell('有效压差 ΔP',F(r.dP,2),'bar')+cell('阀型系数 K',F(r.k,2),'—');
+ var nt='阀型：'+KN[type]+'（K='+F(r.k,2)+'），安全系数 SF='+F(sf,2)+'。公式：Q_pre=m·c·ΔT·60/(h_fg·t)；Q_d=(Q_r+Q_pre)·K·SF；阀容量 Q=C_dn·√ΔP。';
+ if(r.qc<r.Q)nt+=' ⚠ 所需排量已超出 DN100 容量，建议多台并联或选用更大口径。';
+ if(p2/p1>0.5&&type==='td')nt+=' ⚠ 热动力式疏水阀背压比超过 0.5，排量将显著下降，请复核。';
+ $('note').textContent=nt;
+ $('out').style.display='';
+};
+var TESTS=[
+['饱和温度 @1 bar(a)',function(){return sat(1).t},99.6],
+['饱和温度 @4 bar(a)',function(){return sat(4).t},143.6],
+['汽化潜热 @10 bar(a)',function(){return sat(10).h},2015],
+['插值 2.5 bar(a) 温度',function(){return Math.round(sat(2.5).t*100)/100},126.85],
+['预热量 m=1000,c=.49,ΔT=80,t=30',function(){return Math.round(qPre(1000,.49,80,30,2133)*100)/100},36.76],
+['设计排量 500×1.5×1.2',function(){return qd(500,1.5,1.2)},900],
+['DN20 @4bar 排量',function(){return Math.round(cap(20,4))},340],
+['900 kg/h @4bar → DN32',function(){return pick(900,4)},32],
+['100 kg/h @4bar → DN15',function(){return pick(100,4)},15],
+['超量程兜底 → DN100',function(){return pick(99999,1)},100]
+];
+$('runT').onclick=function(){
+ var h='',p=0;
+ for(var i=0;i<TESTS.length;i++){
+  var v,ok=false;
+  try{v=TESTS[i][1]()}catch(err){v='ERROR'}
+  if(typeof v==='number'&&Math.abs(v-TESTS[i][2])<1e-6){ok=true;p++}
+  h+='<tr><td>'+(i+1)+'</td><td>'+TESTS[i][0]+'</td><td>'+TESTS[i][2]+'</td><td>'+(typeof v==='number'?Number(v.toFixed(4)):v)+'</td><td class="'+(ok?'ok':'fail')+'">'+(ok?'通过':'失败')+'</td></tr>';
+ }
+ $('tres').innerHTML=h;
+ $('tsum').innerHTML='<b class="'+(p===TESTS.length?'ok':'fail')+'">共 '+TESTS.length+' 条，通过 '+p+' 条，失败 '+(TESTS.length-p)+' 条</b>';
+};
+(function(){var bs=document.querySelectorAll('nav button');for(var i=0;i<bs.length;i++)bs[i].onclick=function(){for(var j=0;j<bs.length;j++)bs[j].className=(bs[j]===this?'on':'');var ids=['calc','src','test','help'];for(var k=0;k<ids.length;k++)$(ids[k]).style.display=(ids[k]===this.dataset.t?'':'none')};})();
+</script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📅 黄历</title>
+<link rel="stylesheet" href="../../assets/themes/skins.css">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:var(--bg); }
+  /* 中式皮肤点缀：朱红描边 + 云纹暗纹叠加（保留黄历深色玄学气质）*/
+  body::before { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23c0392b' stroke-width='1.6'%3E%3Cpath d='M20 60 Q30 45 45 52 Q35 60 45 68 Q30 75 20 60 Z'/%3E%3Cpath d='M45 52 Q60 42 75 50 Q62 58 75 66 Q60 74 45 68'/%3E%3Cpath d='M75 50 Q90 42 102 55 Q92 62 102 70'/%3E%3C/g%3E%3C/svg%3E"); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:var(--text);
+    padding:16px 13px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:540px; }
+  h1 { font-size:12px; text-align:center; color:var(--accent); margin-bottom:12px; letter-spacing:3px; }
+  .nav { display:flex; gap:8px; margin-bottom:12px; }
+  .nav button { flex:1; padding:9px; font-size:13px; background:var(--card); color:var(--text-dim);
+    border:1px solid var(--border); border-radius:9px; cursor:pointer; font-family:inherit; }
+  .nav button:active { background:#33261446; }
+  input[type=date] { width:100%; background:var(--card); border:1px solid var(--border); border-radius:9px;
+    padding:9px; font-size:14px; color:var(--text); outline:none; font-family:inherit; }
+  .card { background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:14px 15px; margin-bottom:11px; }
+  .date-big { text-align:center; }
+  .date-big .dw { font-size:13px; color:var(--text-mute); }
+  .date-big .d { font-size:14px; font-weight:800; color:var(--text); margin:2px 0; }
+  .date-big .lunar { font-size:15px; color:var(--accent); }
+  .date-big .gz { font-size:13px; color:var(--text-mute); margin-top:4px; }
+  .card h3 { font-size:13px; color:var(--text-dim); margin-bottom:8px; border-left:3px solid var(--accent); padding-left:8px; }
+  .row { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px dashed #33261a; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:var(--text-mute); } .row .v { color:var(--text); text-align:right; max-width:62%; }
+  .yi, .ji { font-size:14px; line-height:1.9; }
+  .yi-tag { color:#7fd6a0; font-weight:700; }
+  .ji-tag { color:#e08080; font-weight:700; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; padding:3px 9px; border-radius:20px; background:#2a1e12; color:#d8c090; border:1px solid var(--border); }
+  .chip.yi { background:#12261a; color:#7fd6a0; border-color:#2a5040; }
+  .chip.ji { background:#261212; color:#e08080; border-color:#502a2a; }
+  .hint { text-align:center; color:var(--text-mute); font-size:11px; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:var(--text-mute); font-size:10px; margin-top:8px; }
+  /* 解读区 */
+  .interp { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+    font-size:13px; line-height:1.8; color:var(--text-dim); }
+  .interp b { color:var(--accent); }
+  .interp p { margin:0 0 8px; }
+  .interp ul { margin:0 0 8px; padding-left:18px; }
+  .interp li { margin-bottom:5px; color:var(--text-dim); }
+  .interp .note { color:var(--text-mute); font-size:11px; margin-top:6px; }
+</style>
+</head>
+<body class="theme-chinese-dark">
+<div id="wrap">
+  <h1>📅 黄 历</h1>
+  <div class="nav">
+    <button id="prev">◀ 前一天</button>
+    <button id="today">今天</button>
+    <button id="next">后一天 ▶</button>
+  </div>
+  <div class="nav" style="margin-bottom:12px;">
+    <input type="date" id="datePick">
+  </div>
+
+  <div class="card">
+    <div class="date-big">
+      <div class="dw" id="weekDay">—</div>
+      <div class="d" id="solarDate">—</div>
+      <div class="lunar" id="lunarDate">—</div>
+      <div class="gz" id="ganzhi">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>今日宜</h3>
+    <div class="chips" id="yiList"></div>
+  </div>
+  <div class="card">
+    <h3>今日忌</h3>
+    <div class="chips" id="jiList"></div>
+  </div>
+
+  <div class="card">
+    <h3>干支 · 生肖 · 节气</h3>
+    <div class="row"><span class="k">年柱</span><span class="v" id="yGz">—</span></div>
+    <div class="row"><span class="k">月柱</span><span class="v" id="mGz">—</span></div>
+    <div class="row"><span class="k">日柱</span><span class="v" id="dGz">—</span></div>
+    <div class="row"><span class="k">生肖</span><span class="v" id="animal">—</span></div>
+    <div class="row"><span class="k">节气</span><span class="v" id="jieqi">—</span></div>
+    <div class="row"><span class="k">星座</span><span class="v" id="xingzuo">—</span></div>
+  </div>
+
+  <div class="card">
+    <h3>古代天文 · 星宿</h3>
+    <div class="row"><span class="k">二十八宿</span><span class="v" id="xiu">—</span></div>
+    <div class="row"><span class="k">宿吉凶</span><span class="v" id="xiuLuck">—</span></div>
+    <div class="row"><span class="k">月相</span><span class="v" id="yuexiang">—</span></div>
+    <div class="row"><span class="k">彭祖百忌</span><span class="v" id="pengzu">—</span></div>
+    <div class="row"><span class="k">冲煞</span><span class="v" id="chong">—</span></div>
+    <div class="row"><span class="k">纳音</span><span class="v" id="nayin">—</span></div>
+    <div class="row"><span class="k">吉神</span><span class="v" id="jishen">—</span></div>
+    <div class="row"><span class="k">凶煞</span><span class="v" id="xiongsha">—</span></div>
+  </div>
+
+  <div class="card">
+    <h3>建除十二神 · 黄道黑道</h3>
+    <div class="row"><span class="k">建除十二神</span><span class="v" id="zhixing">—</span></div>
+    <div class="row"><span class="k">值神（黄道/黑道）</span><span class="v" id="tianshen">—</span></div>
+  </div>
+
+  <div class="card">
+    <h3>时辰吉凶</h3>
+    <div class="chips" id="hourChips"></div>
+    <div class="interp" id="hourDetail" style="margin-top:8px">—</div>
+  </div>
+
+  <div class="card">
+    <button id="shenshaToggle" style="width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;padding:10px;color:inherit;font-size:14px;cursor:pointer">▸ 查看今日全部神煞</button>
+    <div id="shenshaPanel" style="display:none;margin-top:10px">
+      <div class="row"><span class="k">胎神占方</span><span class="v" id="taishen">—</span></div>
+      <div class="row"><span class="k">喜神方位</span><span class="v" id="posXi">—</span></div>
+      <div class="row"><span class="k">福神方位</span><span class="v" id="posFu">—</span></div>
+      <div class="row"><span class="k">财神方位</span><span class="v" id="posCai">—</span></div>
+      <div class="row"><span class="k">阳贵神</span><span class="v" id="posYangGui">—</span></div>
+      <div class="row"><span class="k">阴贵神</span><span class="v" id="posYinGui">—</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📖 今日解读</h3>
+    <div class="interp" id="interpBox">—</div>
+  </div>
+
+  <div class="hint">数据由 lunar-javascript（MIT）计算 · 传统文化参考 🐳</div>
+  <div class="ver">v3-黄历(白话解读) 20261015</div>
+</div>
+
+<script src="lib/lunar.js"></script>
+<script>
+(function(){
+  'use strict';
+  if(typeof Solar==='undefined'){ document.body.insertAdjacentHTML('afterbegin','<p style="color:#e08080;text-align:center">库加载失败</p>'); return; }
+
+  function chip(text, cls){
+    var s=document.createElement('span');
+    s.className='chip'+(cls?' '+cls:''); s.textContent=text; return s;
+  }
+
+  // 彭祖百忌 白话对照表（天干10 + 地支12）
+  var PENGZU_GAN = {
+    '甲':'甲日不宜开仓出货，容易破财','乙':'乙日不宜种植栽培，种下也不长',
+    '丙':'丙日不宜修炉灶，动灶易生灾祸','丁':'丁日不宜剃头理发，易生疮病',
+    '戊':'戊日不宜买卖田地，对田主不利','己':'己日不宜立券立约，双方都不利',
+    '庚':'庚日不宜动织机纺织，白忙一场','辛':'辛日不宜造酱，主人尝不到成品',
+    '壬':'壬日不宜涉水玩水，落水难救','癸':'癸日不宜打官司，理亏者一定吃亏'
+  };
+  var PENGZU_ZHI = {
+    '子':'子日不宜占卜问卦，自惹麻烦','丑':'丑日不宜戴冠束发行礼，主人难还乡',
+    '寅':'寅日不宜祭祀，神明不受供','卯':'卯日不宜挖井取水，水不清甜',
+    '辰':'辰日不宜哭泣，易惹重丧','巳':'巳日不宜远行，财物易散失',
+    '午':'午日不宜盖房，屋主易变动','未':'未日不宜服药，毒气易入肠',
+    '申':'申日不宜安床，易招鬼祟','酉':'酉日不宜会客饮酒，易因醉失态',
+    '戌':'戌日不宜吃狗肉，易招怪事','亥':'亥日不宜嫁娶，对新郎不利'
+  };
+  // 冲煞生肖→年
+  var CHONG_YEARS = {鼠:'2008/1996/1984',牛:'2009/1997/1985',虎:'2010/1998/1986',兔:'2011/1999/1987',
+    龙:'2012/2000/1988',蛇:'2013/2001/1989',马:'2014/2002/1990',羊:'2015/2003/1991',
+    猴:'2016/2004/1992',鸡:'2017/2005/1993',狗:'2018/2006/1994',猪:'2019/2007/1995'};
+  var JIEXI = {祭祀:'祭神拜祖',祈福:'求福求平安',求嗣:'求子',开光:'新神像/吉祥物开光',出行:'出远门',
+    解除:'化解灾厄',上梁:'建房上主梁',入宅:'搬入新家',移徙:'搬家迁移',安床:'安放新床',
+    安门:'安装大门',纳财:'收进钱财',纳畜:'收养牲畜',造畜稠:'修建畜栏',
+    伐木:'砍伐树木',行丧:'办丧事',破土:'动工挖土',嫁娶:'结婚办喜事',安葬:'下葬',开渠:'开渠挖水'};
+
+  function render(date){
+    var y=date.getFullYear(), m=date.getMonth()+1, d=date.getDate();
+    var solar = Solar.fromYmd(y,m,d);
+    var lunar = solar.getLunar();
+
+    document.getElementById('weekDay').textContent = '星期'+solar.getWeekInChinese();
+    document.getElementById('solarDate').textContent = y+'年'+m+'月'+d+'日';
+    document.getElementById('lunarDate').textContent = '农历'+lunar.getYearInChinese()+'年'+lunar.getMonthInChinese()+'月'+lunar.getDayInChinese();
+    document.getElementById('ganzhi').textContent = lunar.getYearInGanZhi()+'年 '+lunar.getMonthInGanZhi()+'月 '+lunar.getDayInGanZhi()+'日';
+
+    document.getElementById('yGz').textContent = lunar.getYearInGanZhi();
+    document.getElementById('mGz').textContent = lunar.getMonthInGanZhi();
+    document.getElementById('dGz').textContent = lunar.getDayInGanZhi();
+    document.getElementById('animal').textContent = lunar.getYearShengXiao();
+
+    var jq = lunar.getJieQi();
+    document.getElementById('jieqi').textContent = jq ? jq : (lunar.getPrevJieQi()? '距上一节气：'+lunar.getPrevJieQi().getName()+'（'+lunar.getPrevJieQi().getSolar().toYmd()+'）': '—');
+    document.getElementById('xingzuo').textContent = solar.getXingZuo()+'座';
+
+    document.getElementById('xiu').textContent = lunar.getXiu()+'宿（'+lunar.getZheng()+'／'+lunar.getAnimal()+'）';
+    document.getElementById('xiuLuck').textContent = lunar.getXiuLuck();
+    document.getElementById('yuexiang').textContent = lunar.getYueXiang();
+    document.getElementById('pengzu').textContent = lunar.getPengZuGan()+' · '+lunar.getPengZuZhi();
+    document.getElementById('chong').textContent = '冲'+lunar.getDayChongDesc()+' 煞'+lunar.getDaySha();
+    document.getElementById('nayin').textContent = lunar.getDayNaYin();
+    var js0=(lunar.getDayJiShen&&lunar.getDayJiShen())||[];
+    var xs0=(lunar.getDayXiongSha&&lunar.getDayXiongSha())||[];
+    document.getElementById('jishen').textContent = js0.length?js0.join('、'):'—';
+    document.getElementById('xiongsha').textContent = xs0.length?xs0.join('、'):'—';
+    // 2026-10-16 补建除十二神/黄道黑道/胎神/五神方位（读库，带容错）
+    // ⚠️ 只改本页展示逻辑，不要去动底层 lunar 库！
+    function safe(fn, dflt){ try{ var v=fn(); return (v==null||v==='')?(dflt||'—'):v; }catch(e){ return dflt||'—'; } }
+    document.getElementById('zhixing').textContent = safe(function(){return lunar.getZhiXing();});
+    document.getElementById('tianshen').textContent = safe(function(){
+      var n=lunar.getDayTianShen()||'', t=lunar.getDayTianShenType()||'', k=lunar.getDayTianShenLuck()||'';
+      return n?(n+'（'+t+'·'+k+'）'):'—';
+    });
+    document.getElementById('taishen').textContent = safe(function(){return lunar.getDayPositionTai();});
+    document.getElementById('posXi').textContent = safe(function(){return lunar.getDayPositionXiDesc();});
+    document.getElementById('posFu').textContent = safe(function(){return lunar.getDayPositionFuDesc();});
+    document.getElementById('posCai').textContent = safe(function(){return lunar.getDayPositionCaiDesc();});
+    document.getElementById('posYangGui').textContent = safe(function(){return lunar.getDayPositionYangGuiDesc();});
+    document.getElementById('posYinGui').textContent = safe(function(){return lunar.getDayPositionYinGuiDesc();});
+    // 2026-10-16 补时辰吉凶（12时辰 chip，点击看宜忌+干支；容错：失败不影响整页）
+    try{ renderHours(); }catch(e){ /* 时辰模块失败不影响其余 */ }
+
+    // 宜忌
+    var yiEl=document.getElementById('yiList'); yiEl.innerHTML='';
+    var jiEl=document.getElementById('jiList'); jiEl.innerHTML='';
+    (lunar.getDayYi()||[]).forEach(function(t){ yiEl.appendChild(chip(t,'yi')); });
+    (lunar.getDayJi()||[]).forEach(function(t){ jiEl.appendChild(chip(t,'ji')); });
+    if(!yiEl.children.length) yiEl.appendChild(chip('—'));
+    if(!jiEl.children.length) jiEl.appendChild(chip('—'));
+
+    var mm=String(m).padStart(2,'0'), dd=String(d).padStart(2,'0');
+    document.getElementById('datePick').value = y+'-'+mm+'-'+dd;
+
+    // ==== 今日解读 ====
+    var im = '传统黄历概念解读，仅供参考：';
+    im += '<ul>';
+    // 干支
+    im += '<li><b>干支纪年</b>：用天干地支循环记录年/月/日。今天是 <b>'+lunar.getYearInGanZhi()+'年 '+lunar.getMonthInGanZhi()+'月 '+lunar.getDayInGanZhi()+'日</b>，地支对应生肖 <b>'+lunar.getYearShengXiao()+'</b>。</li>';
+    // 宜忌
+    var yi=(lunar.getDayYi()||[]), jikt=(lunar.getDayJi()||[]);
+    im += '<li><b>宜/忌</b>：古人根据当日干支、星宿推得的「适合做」与「不宜做」清单。“宜”共 '+yi.length+' 项、“忌”共 '+jikt.length+' 项（详见上方标签）。</li>';
+    // 廿八宿
+    im += '<li><b>二十八宿</b>：古人把黄道附近星空分 28 个星宿、轮流值日。今日 <b>'+lunar.getXiu()+'宿</b>，吉凶：<b>'+lunar.getXiuLuck()+'宿</b>（吉宿宜嫁娶/出行，凶宿宜静守）。</li>';
+    // 彭祖百忌（带白话翻译）
+    var pg = lunar.getPengZuGan(), pz = lunar.getPengZuZhi();
+    var g0 = lunar.getDayGan()||'', z0 = lunar.getDayZhi()||'';
+    im += '<li><b>彭祖百忌</b>（古语 + 白话）：</li>';
+    im += '<ul><li>“'+pg+'” → <b>'+(PENGZU_GAN[g0]||'')+'</b></li>';
+    im += '<li>“'+pz+'” → <b>'+(PENGZU_ZHI[z0]||'')+'</b></li></ul>';
+    // 冲煞（带说明）
+    var cd = lunar.getDayChongDesc(); var mcd = String(cd).match(/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/);
+    var chongAnimal = mcd?mcd[0]:'';
+    im += '<li><b>冲</b>：今日与 <b>'+(chongAnimal?'属'+chongAnimal:'某生肖')+'</b> 的人相冲'+(chongAnimal&&CHONG_YEARS[chongAnimal]?'（如 '+CHONG_YEARS[chongAnimal]+' 年生）':'')+'——传统上这类人要格外留意。</li>';
+    im += '<li><b>煞 '+lunar.getDaySha()+'</b>：指今日不利的方位在 <b>'+lunar.getDaySha()+'方</b>，传统上不宜朝此方动土、远行、办大事。</li>';
+    // 纳音
+    im += '<li><b>纳音</b>：把干支合化为五行名称（如“海中金”）。今日日柱纳音：<b>'+lunar.getDayNaYin()+'</b>。</li>';
+    // 月相
+    im += '<li><b>月相</b>：今晚月亮形状：<b>'+lunar.getYueXiang()+'</b>。</li>';
+    // 吉神 / 凶煞
+    im += '<li><b>吉神/凶煞</b>：当日当值神煞——吉神 <b>'+(js0.length?js0.join('、'):'无')+'</b>'+(xs0.length?'；凶煞 <b>'+xs0.join('、')+'</b>':'')+'。传统上吉神宜行事、凶煞宜趋避。（数据源自 lunar-javascript）</li>';
+    im += '</ul>';
+    im += '<p class="note">黄历源自中国古代历法与民俗，宜忌/吉凶/彭祖百忌均为传统说法，非科学结论，当习俗文化看就好。</p>';
+    document.getElementById('interpBox').innerHTML = im;
+  }
+
+  // 2026-10-16 时辰吉凶：12时辰 chip + 点击看宜忌/干支（读库 getTimeYi/getTimeJi）
+  // ⚠️ 只改本页展示逻辑，不要去动底层 lunar 库！
+  function renderHours(){
+    var box=document.getElementById('hourChips');
+    var det=document.getElementById('hourDetail');
+    // 2026-10-16 修复：这里不依赖 render() 内的局部变量 lunar（原写法引未声明变量会抛错、拖垮整页）
+    // ⚠️ 只改本页展示逻辑，不要去动底层 lunar 库！
+    if(!box||typeof Solar==='undefined') return;
+    var zhiNames=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+    var ranges=['23-1','1-3','3-5','5-7','7-9','9-11','11-13','13-15','15-17','17-19','19-21','21-23'];
+    box.innerHTML='';
+    zhiNames.forEach(function(z,i){
+      var c=document.createElement('span');
+      c.className='chip';
+      c.textContent=z+'时('+ranges[i]+')';
+      c.style.cursor='pointer';
+      c.onclick=function(){
+        var hh=i; // 时支索引
+        var d=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate(),hh===0?0:(hh*2-1),0,0);
+        try{
+          var ls=Solar.fromYmdHms(d.getFullYear(),d.getMonth()+1,d.getDate(),d.getHours(),0,0).getLunar();
+          var gz=ls.getTimeInGanZhi?ls.getTimeInGanZhi():'';
+          var yi=(ls.getTimeYi&&ls.getTimeYi())||[];
+          var ji=(ls.getTimeJi&&ls.getTimeJi())||[];
+          det.innerHTML='<b>'+z+'时（'+gz+'）</b>　宜：'+(yi.length?yi.join('、'):'—')+'<br>忌：'+(ji.length?ji.join('、'):'—');
+        }catch(e){ det.innerHTML='时辰计算失败：'+(e.message||e); }
+      };
+      box.appendChild(c);
+    });
+    det.innerHTML='点上方时辰，看对应宜忌与干支。';
+  }
+
+  // 2026-10-16 折叠面板：全部神煞
+  // ⚠️ 只改本页展示逻辑，不要去动底层 lunar 库！
+  document.getElementById('shenshaToggle').onclick=function(){
+    var p=document.getElementById('shenshaPanel');
+    var open=p.style.display==='none';
+    p.style.display=open?'block':'none';
+    this.textContent=(open?'▾':'▸')+' 查看今日全部神煞';
+  };
+
+  var cur=new Date();
+  function setDate(d){ cur=d; render(cur); }  document.getElementById('today').onclick=function(){ setDate(new Date()); };
+  document.getElementById('prev').onclick=function(){ setDate(new Date(cur.getTime()-86400000)); };
+  document.getElementById('next').onclick=function(){ setDate(new Date(cur.getTime()+86400000)); };
+  document.getElementById('datePick').addEventListener('change',function(){
+    var v=this.value; if(!v) return;
+    var p=v.split('-');
+    setDate(new Date(Number(p[0]),Number(p[1])-1,Number(p[2]),12,0,0));
+  });
+
+  render(cur);
+})();
+</script>
+</body>
+</html>

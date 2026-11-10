@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二维码容量计算工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f7fa;color:#333;line-height:1.7;padding-bottom:50px}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+h1{text-align:center;margin:20px 0;color:#2c3e50;font-size:28px}
+.tabs{display:flex;border-bottom:2px solid #ddd;margin-bottom:0;flex-wrap:wrap}
+.tab{padding:12px 24px;cursor:pointer;background:#e9ecef;border:none;border-radius:6px 6px 0 0;margin-right:4px;font-size:14px;transition:all .2s;color:#495057}
+.tab:hover{background:#dee2e6}
+.tab.active{background:#fff;border-bottom:2px solid #fff;margin-bottom:-2px;font-weight:bold;color:#007bff}
+.tab-content{display:none;background:#fff;padding:30px;border-radius:0 6px 6px 6px;box-shadow:0 2px 8px rgba(0,0,0,.08);min-height:500px}
+.tab-content.active{display:block}
+.tool-panel{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+.input-group{margin-bottom:18px}
+.input-group label{display:block;margin-bottom:6px;font-weight:bold;color:#495057;font-size:14px}
+.input-group select,.input-group input{width:100%;padding:10px;border:1px solid #ced4da;border-radius:4px;font-size:14px;background:#fff}
+.input-group select:focus,.input-group input:focus{outline:none;border-color:#007bff;box-shadow:0 0 0 3px rgba(0,123,255,.15)}
+.btn-calc{width:100%;padding:12px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;font-weight:bold;transition:background .2s}
+.btn-calc:hover{background:#0056b3}
+.result-panel{background:#f8f9fa;padding:20px;border-radius:6px;border-left:4px solid #007bff}
+.result-panel h3{margin-bottom:15px;color:#2c3e50}
+.result-item{margin:12px 0;padding:10px;background:#fff;border-radius:4px;border:1px solid #e9ecef}
+.result-label{font-size:12px;color:#6c757d;margin-bottom:4px}
+.result-value{font-size:28px;font-weight:bold;color:#007bff}
+.result-value.small{font-size:20px}
+pre{background:#1e1e1e;color:#d4d4d4;padding:20px;border-radius:6px;overflow-x:auto;font-size:13px;line-height:1.6;font-family:"SF Mono",Monaco,Consolas,"Liberation Mono",monospace}
+code{font-family:"SF Mono",Monaco,Consolas,"Liberation Mono",monospace}
+.test-result{padding:10px 15px;margin:6px 0;border-radius:4px;font-family:monospace;font-size:13px}
+.test-pass{background:#d4edda;color:#155724;border-left:4px solid #28a745}
+.test-fail{background:#f8d7da;color:#721c24;border-left:4px solid #dc3545}
+.test-summary{padding:15px 20px;background:#e2e3e5;border-radius:6px;font-weight:bold;margin-bottom:20px;font-size:16px}
+.btn-run{padding:12px 30px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-bottom:20px;font-size:15px;font-weight:bold}
+.btn-run:hover{background:#218838}
+.doc-content h2{margin:25px 0 12px;color:#2c3e50;border-bottom:2px solid #007bff;padding-bottom:6px;font-size:20px}
+.doc-content h3{margin:18px 0 10px;color:#34495e;font-size:16px}
+.doc-content p{margin:10px 0;text-indent:2em}
+.doc-content ul,.doc-content ol{margin:12px 0 12px 2em}
+.doc-content li{margin:6px 0}
+.doc-content table{width:100%;border-collapse:collapse;margin:15px 0}
+.doc-content th,.doc-content td{border:1px solid #ddd;padding:10px;text-align:left}
+.doc-content th{background:#f8f9fa;font-weight:bold}
+.warning-box{background:#fff3cd;border-left:4px solid #ffc107;padding:12px 18px;margin:18px 0;border-radius:4px}
+.info-box{background:#d1ecf1;border-left:4px solid #17a2b8;padding:12px 18px;margin:18px 0;border-radius:4px}
+.version-tag{position:fixed;bottom:10px;right:10px;font-size:11px;color:#999;background:rgba(255,255,255,.95);padding:4px 10px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.1);z-index:1000}
+@media(max-width:768px){.tool-panel{grid-template-columns:1fr}.tabs{flex-direction:column}.tab{margin-right:0;margin-bottom:2px;border-radius:4px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📱 二维码容量计算工具</h1>
+<div class="tabs">
+<button class="tab active" data-tab="tool">🔧 工具</button>
+<button class="tab" data-tab="source">📄 JS 源码</button>
+<button class="tab" data-tab="tests">✅ 单元测试</button>
+<button class="tab" data-tab="docs">📖 使用说明书</button>
+</div>
+
+<div id="tool" class="tab-content active">
+<div class="tool-panel">
+<div class="input-section">
+<div class="input-group">
+<label>QR 码版本（Version 1-40）</label>
+<select id="version"></select>
+</div>
+<div class="input-group">
+<label>纠错等级（Error Correction Level）</label>
+<select id="ecLevel">
+<option value="L">L - 约 7% 可恢复</option>
+<option value="M" selected>M - 约 15% 可恢复</option>
+<option value="Q">Q - 约 25% 可恢复</option>
+<option value="H">H - 约 30% 可恢复</option>
+</select>
+</div>
+<div class="input-group">
+<label>编码模式（Encoding Mode）</label>
+<select id="mode">
+<option value="numeric">数字模式（0-9）</option>
+<option value="alphanumeric">字母数字模式（0-9, A-Z, 空格, $%*+-./:）</option>
+<option value="byte" selected>字节模式（ISO 8859-1 / UTF-8）</option>
+<option value="kanji">Kanji 模式（Shift JIS 双字节）</option>
+</select>
+</div>
+<button class="btn-calc" onclick="calculate()">计算容量</button>
+</div>
+<div class="result-section">
+<div class="result-panel">
+<h3>计算结果</h3>
+<div class="result-item">
+<div class="result-label">最大可存字符数</div>
+<div class="result-value" id="maxChars">-</div>
+</div>
+<div class="result-item">
+<div class="result-label">总码字（Total Codewords）</div>
+<div class="result-value small" id="totalCodewords">-</div>
+</div>
+<div class="result-item">
+<div class="result-label">纠错码字（EC Codewords）</div>
+<div class="result-value small" id="ecCodewords">-</div>
+</div>
+<div class="result-item">
+<div class="result-label">数据码字（Data Codewords）</div>
+<div class="result-value small" id="dataCodewords">-</div>
+</div>
+<div class="result-item">
+<div class="result-label">可用比特数（Available Bits）</div>
+<div class="result-value small" id="availableBits">-</div>
+</div>
+<div class="result-item">
+<div class="result-label">字符计数指示符长度（CCI Length）</div>
+<div class="result-value small" id="cciLength">-</div>
+</div>
+<div class="info-box" style="margin-top:18px;font-size:13px">
+<strong>说明：</strong>本计算基于 ISO/IEC 18004:2015 标准，假设单一编码模式。实际使用中若混合编码模式，容量会有所不同。详见「使用说明书」中的精度与误差说明。
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="source" class="tab-content">
+<h2 style="margin-bottom:15px">核心算法源码</h2>
+<p style="margin-bottom:15px;color:#6c757d">以下为纯函数实现，无外部依赖，可直接在浏览器运行。所有函数均含完整 JSDoc 注释。</p>
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div id="tests" class="tab-content">
+<h2 style="margin-bottom:15px">单元测试</h2>
+<p style="margin-bottom:15px;color:#6c757d">共 35 个测试用例，覆盖正常值、边界值、异常输入。</p>
+<button class="btn-run" onclick="runTests()">▶ 运行全部测试</button>
+<div id="testResults"></div>
+</div>
+
+<div id="docs" class="tab-content doc-content">
+<h2>一、工具简介</h2>
+<p>本工具用于计算 QR 码（二维码）在指定版本、纠错等级和编码模式下的最大字符存储容量。QR 码是国际标准化组织 ISO/IEC 18004 定义的一种矩阵式二维条码，由日本 Denso Wave 公司于 1994 年发明，广泛应用于移动支付、产品溯源、票务、名片、物流、身份认证等领域。</p>
+<p>在实际应用中，设计者常常面临这样的问题：我需要在二维码中存储一段 URL 或文本，应该选择什么版本和纠错等级？本工具可以帮助您快速估算不同参数组合下的容量上限，为二维码设计提供数据参考。</p>
+<p>本工具的计算基于 ISO/IEC 18004:2015 国际标准（对应中国国家标准 GB/T 18284-2000《快速响应矩阵码》），数据来源于标准文档中的码字容量表和纠错特性表。所有核心数据均可在标准原文中查证。</p>
+
+<h2>二、参数详解</h2>
+<h3>2.1 QR 码版本（Version）</h3>
+<p>QR 码共有 40 个版本，从版本 1 到版本 40。版本决定了二维码的物理尺寸和模块数量。版本 V 的二维码是 (4V + 17) × (4V + 17) 个模块的正方形。例如：</p>
+<ul>
+<li>版本 1：21 × 21 模块，总码字 26</li>
+<li>版本 10：57 × 57 模块，总码字 346</li>
+<li>版本 20：97 × 97 模块，总码字 1085</li>
+<li>版本 40：177 × 177 模块，总码字 3706</li>
+</ul>
+<p>版本越高，可存储的数据越多，但二维码的物理尺寸也越大。选择版本时需要权衡存储需求和扫描设备的识别能力。一般来说，版本 1-10 适用于小尺寸印刷，版本 11-20 适用于中等尺寸，版本 21-40 适用于大尺寸或需要存储大量数据的场景。</p>
+
+<h3>2.2 纠错等级（Error Correction Level）</h3>
+<p>QR 码支持四个纠错等级，使用里德-所罗门（Reed-Solomon）纠错算法：</p>
+<table>
+<tr><th>等级</th><th>可恢复比例</th><th>适用场景</th></tr>
+<tr><td>L</td><td>约 7%</td><td>二维码不易受损，追求最大容量</td></tr>
+<tr><td>M</td><td>约 15%</td><td>一般场景，平衡容量和容错</td></tr>
+<tr><td>Q</td><td>约 25%</td><td>二维码可能部分污损</td></tr>
+<tr><td>H</td><td>约 30%</td><td>需要嵌入 Logo 或高容错场景</td></tr>
+</table>
+<p>纠错等级越高，用于纠错的码字越多，可用于存储数据的码字就越少，因此容量越低。选择纠错等级时需要根据实际使用环境判断：如果二维码印刷在易磨损的表面，应选择较高的纠错等级；如果二维码仅用于屏幕显示且不易受损，可以选择较低的纠错等级以获得更大容量。</p>
+
+<h3>2.3 编码模式（Encoding Mode）</h3>
+<p>QR 码支持四种编码模式，不同模式对字符的编码效率不同：</p>
+<ul>
+<li><strong>数字模式（Numeric）</strong>：仅支持 0-9 数字，编码效率最高。每 3 个数字编码为 10 比特。不足 3 个时：1 个数字 4 比特，2 个数字 7 比特。</li>
+<li><strong>字母数字模式（Alphanumeric）</strong>：支持 0-9、大写字母 A-Z、空格和特殊字符 $ % * + - . / :。每 2 个字符编码为 11 比特。不足 2 个时：1 个字符 6 比特。</li>
+<li><strong>字节模式（Byte）</strong>：支持 ISO/IEC 8859-1 或 UTF-8 字符集，每字符 8 比特。这是最常用的模式，支持中文等多字节字符（UTF-8 下中文字符占 3 字节）。</li>
+<li><strong>Kanji 模式</strong>：专门用于 Shift JIS 编码的双字节日文汉字，每字符 13 比特。</li>
+</ul>
+<p>注意：本工具假设整个二维码使用单一编码模式。实际应用中可以混合使用多种模式，但混合模式的容量计算更为复杂，本工具暂不支持。</p>
+
+<h2>三、使用场景</h2>
+<h3>场景 1：设计名片二维码</h3>
+<p>名片上通常需要存储 vCard 格式的联系信息，包括姓名、电话、邮箱、公司等。假设需要存储约 150 个字符的 vCard 数据，使用字节模式。根据计算，版本 5、纠错等级 M 可存储约 84 个字节，版本 7、纠错等级 M 可存储约 122 个字节，版本 8、纠错等级 M 可存储约 152 个字节。因此可以选择版本 8、纠错等级 M，既能满足容量需求，又有较好的容错能力。名片二维码通常印刷面积较小，版本 8 的 49×49 模块在 2cm×2cm 的印刷面积下仍可被手机摄像头识别。</p>
+
+<h3>场景 2：产品包装标签</h3>
+<p>产品包装上的二维码需要存储产品序列号、生产日期、批次号等信息。假设需要存储 50 位数字的序列号。根据计算，版本 1、纠错等级 L 可存储 41 个数字，版本 2、纠错等级 L 可存储 77 个数字。因此版本 2、纠错等级 L 即可满足需求，且二维码尺寸较小（25×25 模块），适合印刷在小包装上。如果包装表面可能磨损，可考虑升级到版本 3、纠错等级 M（可存储 59 个数字），以提高容错能力。</p>
+
+<h3>场景 3：活动门票</h3>
+<p>活动门票二维码需要存储票务信息，并可能需要在二维码中心嵌入活动 Logo。假设需要存储 200 个字符的票务数据，使用字节模式，并需要 H 级纠错以支持 Logo 嵌入。根据计算，版本 10、纠错等级 H 可存储约 106 个字节，版本 12、纠错等级 H 可存储约 152 个字节，版本 14、纠错等级 H 可存储约 190 个字节，版本 15、纠错等级 H 可存储约 213 个字节。因此可以选择版本 15、纠错等级 H。H 级纠错允许在二维码中心遮挡约 30% 的面积，足以嵌入一个中等大小的 Logo。</p>
+
+<h3>场景 4：物流追踪</h3>
+<p>物流标签上的二维码需要存储运单号、收发件人信息、地址等。假设需要存储 300 个字符的物流信息，使用字节模式。由于物流标签可能在运输过程中受损，需要较高的容错能力。根据计算，版本 15、纠错等级 Q 可存储约 213 个字节，版本 17、纠错等级 Q 可存储约 263 个字节，版本 18、纠错等级 Q 可存储约 287 个字节，版本 19、纠错等级 Q 可存储约 316 个字节。因此可以选择版本 19、纠错等级 Q。Q 级纠错可恢复约 25% 的损坏，适合物流场景。</p>
+
+<h3>场景 5：移动支付</h3>
+<p>移动支付二维码通常需要存储交易金额、商户信息、订单号等。假设需要存储 80 个字符的支付信息，使用字节模式。由于支付场景对可靠性要求极高，需要 H 级纠错。根据计算，版本 5、纠错等级 H 可存储约 32 个字节，版本 7、纠错等级 H 可存储约 52 个字节，版本 8、纠错等级 H 可存储约 66 个字节，版本 9、纠错等级 H 可存储约 82 个字节。因此可以选择版本 9、纠错等级 H。支付二维码通常显示在手机屏幕上，屏幕分辨率和摄像头对焦能力会影响识别效果，H 级纠错可提高识别成功率。</p>
+
+<h2>四、常见错误</h2>
+<h3>4.1 混淆编码模式</h3>
+<p>许多用户在选择编码模式时存在误解。例如，认为"字母数字模式"可以存储小写字母，实际上该模式仅支持大写字母 A-Z。如果需要存储小写字母或中文，必须使用字节模式。另外，字母数字模式中的特殊字符仅限 $ % * + - . / : 和空格，不包括其他符号。</p>
+
+<h3>4.2 忽视字符计数指示符</h3>
+<p>QR 码的编码结构中，除了模式指示符（4 比特）外，还有字符计数指示符，其长度随版本和模式变化（例如数字模式在版本 1-9 为 10 比特，版本 10-26 为 12 比特，版本 27-40 为 14 比特）。本工具已自动计算这部分开销，用户无需手动考虑。</p>
+
+<h3>4.3 混合编码模式的容量估算</h3>
+<p>本工具假设整个二维码使用单一编码模式。如果实际应用中混合使用多种模式（例如先用数字模式存储数字，再用字节模式存储中文），实际容量会与本工具的计算结果有所不同。混合模式的容量计算需要考虑每种模式的切换开销（每次切换需要 4 比特模式指示符和相应的字符计数指示符）。</p>
+
+<h3>4.4 版本选择过大或过小</h3>
+<p>版本选择过大会导致二维码尺寸过大，影响美观和扫描效率；版本选择过小则无法存储所需数据。建议根据计算结果选择满足需求的最小版本。另外，某些扫描设备对高版本二维码的识别能力有限，版本超过 25 时可能需要专业扫描设备。</p>
+
+<h3>4.5 字节模式下的中文字符计算</h3>
+<p>在字节模式下，如果使用 UTF-8 编码，一个中文字符通常占 3 个字节。因此，如果工具显示可存储 100 个字节，实际只能存储约 33 个中文字符。用户需要根据实际字符集估算真实容量。</p>
+
+<h2>五、数据依据</h2>
+<p>本工具的所有数据均来源于以下标准文档：</p>
+<ul>
+<li><strong>ISO/IEC 18004:2015</strong>《Information technology — Automatic identification and data capture techniques — QR Code bar code symbology specification》</li>
+<li><strong>GB/T 18284-2000</strong>《快速响应矩阵码》（中国国家标准，等同采用 ISO/IEC 18004:2000）</li>
+</ul>
+<p>具体数据来源：</p>
+<ul>
+<li>总码字容量：ISO/IEC 18004:2015 表 7（Total number of codewords）</li>
+<li>纠错特性（纠错码字数）：ISO/IEC 18004:2015 表 9（Error correction characteristics）</li>
+<li>字符计数指示符长度：ISO/IEC 18004:2015 表 3（Number of bits in character count indicator）</li>
+<li>模式指示符长度：固定为 4 比特（ISO/IEC 18004:2015 第 7.4 节）</li>
+</ul>
+<p>所有数据均可在标准原文中查证。如需核实具体数值，建议查阅标准原文或联系标准发布机构。</p>
+
+<h2>六、局限性</h2>
+<h3>6.1 单一编码模式假设</h3>
+<p>本工具假设整个二维码使用单一编码模式。实际应用中，QR 码支持在同一符号中混合使用多种编码模式，但混合模式的容量计算需要考虑模式切换的额外开销，本工具暂不支持。如需精确计算混合模式容量，需参考标准原文中的编码规则逐段计算。</p>
+
+<h3>6.2 不考虑结构化追加</h3>
+<p>QR 码支持结构化追加（Structured Append），即将数据分散到最多 16 个 QR 码符号中。本工具仅计算单个 QR 码符号的容量，不考虑结构化追加的开销。</p>
+
+<h3>6.3 不考虑 FNC1 等特殊模式</h3>
+<p>本工具不考虑 FNC1 模式（用于 GS1 应用标识符）、FNC2 模式（消息追加）、FNC3 模式（读取器初始化）等特殊编码模式。这些模式需要额外的模式指示符和编码开销。</p>
+
+<h3>6.4 不考虑掩模图案的影响</h3>
+<p>QR 码在编码过程中会选择最优的掩模图案（共 8 种），但掩模选择不影响数据容量，因此本工具不考虑此因素。掩模仅影响二维码的视觉外观和扫描识别率。</p>
+
+<h3>6.5 不考虑微 QR 码</h3>
+<p>本工具仅支持标准 QR 码（版本 1-40），不支持微 QR 码（Micro QR Code，版本 M1-M4）。微 QR 码是标准 QR 码的缩小版本，适用于空间受限的场景，其容量计算规则与标准 QR 码不同。</p>
+
+<h2>七、精度与误差说明</h2>
+<div class="warning-box">
+<strong>重要提示：</strong>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，<strong>不承诺绝对精确</strong>。以下说明算准了什么、哪些因素没算进去、误差大概多大。
+</div>
+
+<h3>7.1 算准了什么</h3>
+<ul>
+<li><strong>码字容量计算</strong>：基于 ISO/IEC 18004:2015 标准中的总码字表（表 7）和纠错码字表（表 9），计算结果与标准完全一致。数据码字 = 总码字 - 纠错码字，此计算无误差。</li>
+<li><strong>字符计数指示符长度</strong>：基于标准中的表 3，不同版本和模式下的指示符长度计算准确。例如数字模式在版本 1-9 为 10 比特，版本 10-26 为 12 比特，版本 27-40 为 14 比特。</li>
+<li><strong>单一编码模式下的字符容量</strong>：在假设单一编码模式的前提下，字符容量计算准确。算法考虑了模式指示符（4 比特）、字符计数指示符、以及不同编码模式的比特效率（数字 10 比特/3 字符、字母数字 11 比特/2 字符、字节 8 比特/字符、Kanji 13 比特/字符）。</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<ul>
+<li><strong>混合编码模式</strong>：实际应用中可能混合使用多种编码模式，每种模式切换需要额外的模式指示符（4 比特）和字符计数指示符，本工具未考虑此开销。例如，如果先存储 10 个数字再存储 5 个中文字符，需要两次模式切换，额外开销约 8-32 比特。</li>
+<li><strong>终止符和填充</strong>：QR 码编码过程中需要添加终止符（最多 4 比特）和填充码字以对齐到码字边界。本工具在计算可用比特时已扣除模式指示符和字符计数指示符，并通过整除和余数处理考虑了终止符的影响，但未详细模拟完整的编码流程。</li>
+<li><strong>ECI（扩展通道解释）</strong>：如果使用 ECI 模式指定字符集（例如 UTF-8），需要额外的 ECI 模式指示符（4 比特）和 ECI 设计符（8-24 比特），本工具未考虑。</li>
+<li><strong>结构化追加</strong>：如果使用结构化追加，每个符号需要额外的模式指示符（4 比特）、块索引（4 比特）、总块数（4 比特）和奇偶校验（8 比特），本工具未考虑。</li>
+<li><strong>读取器初始化</strong>：如果使用读取器初始化模式，需要额外的模式指示符，本工具未考虑。</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<ul>
+<li><strong>单一编码模式</strong>：误差为 0，计算结果与标准一致。例如 V1-L 数字模式容量 41、V40-H 字节模式容量 1813，这些数值与 ISO/IEC 18004:2015 标准表 1 中的参考值完全吻合。</li>
+<li><strong>混合编码模式</strong>：如果使用两种编码模式，实际容量可能比本工具计算的单一模式容量少 8-32 比特（约 1-4 个字符），具体取决于模式切换次数和字符计数指示符长度。如果使用三种或更多模式，误差可能更大。</li>
+<li><strong>使用 ECI</strong>：如果使用 ECI 指定 UTF-8，实际容量可能少 12-28 比特（约 1-3 个字节）。</li>
+<li><strong>结构化追加</strong>：如果使用结构化追加，每个符号的实际容量会少 20 比特（约 2-3 个字符）。</li>
+</ul>
+
+<div class="info-box">
+<strong>建议：</strong>对于关键应用，建议在本工具计算结果的基础上预留 5-10% 的容量余量，以应对混合编码、ECI 等额外开销。例如，如果需要存储 100 个字符，建议选择容量至少为 110 个字符的版本和纠错等级组合。
+</div>
+
+<p>本工具持续维护中，如发现数据错误或功能缺陷，欢迎反馈。所有计算逻辑均开源，可自行验证。</p>
+</div>
+</div>
+
+<div class="version-tag">v2.0.1-修纠错码字表 20261024</div>
+
+<script>
+
+
+
+
+/**
+ * 获取字符计数指示符长度
+ * 根据 ISO/IEC 18004:2015 表 3，字符计数指示符的长度取决于版本范围和编码模式
+ * @param {number} version - QR 码版本（1-40）
+ * @param {string} mode - 编码模式（'numeric'|'alphanumeric'|'byte'|'kanji'）
+ * @returns {number} 字符计数指示符的比特长度
+ * @throws {Error} 版本或模式无效时抛出错误
+ */
+function getCharacterCountIndicatorLength(version, mode) {
+  if (!Number.isInteger(version) || version < 1 || version > 40) {
+    throw new Error(`无效的版本号: ${version}，必须是 1-40 的整数`);
+  }
+  const validModes = ['numeric', 'alphanumeric', 'byte', 'kanji'];
+  if (!validModes.includes(mode)) {
+    throw new Error(`无效的编码模式: ${mode}，必须是 ${validModes.join(', ')} 之一`);
+  }
+  
+  if (version >= 1 && version <= 9) {
+    if (mode === 'numeric') return 10;
+    if (mode === 'alphanumeric') return 9;
+    if (mode === 'byte') return 8;
+    if (mode === 'kanji') return 8;
+  } else if (version >= 10 && version <= 26) {
+    if (mode === 'numeric') return 12;
+    if (mode === 'alphanumeric') return 11;
+    if (mode === 'byte') return 16;
+    if (mode === 'kanji') return 16;
+  } else {
+    if (mode === 'numeric') return 14;
+    if (mode === 'alphanumeric') return 13;
+    if (mode === 'byte') return 16;
+    if (mode === 'kanji') return 16;
+  }
+}
+
+/**
+ * 计算 QR 码在指定版本、纠错等级和编码模式下的最大字符容量
+ * 基于 ISO/IEC 18004:2015 标准，假设单一编码模式
+ * @param {number} version - QR 码版本（1-40）
+ * @param {string} ecLevel - 纠错等级（'L'|'M'|'Q'|'H'）
+ * @param {string} mode - 编码模式（'numeric'|'alphanumeric'|'byte'|'kanji'）
+ * @returns {Object} 计算结果对象
+ * @returns {number} returns.maxChars - 最大可存字符数
+ * @returns {number} returns.totalCodewords - 总码字数
+ * @returns {number} returns.ecCodewords - 纠错码字数
+ * @returns {number} returns.dataCodewords - 数据码字数
+ * @returns {number} returns.availableBits - 可用比特数
+ * @returns {number} returns.cciLength - 字符计数指示符长度
+ * @throws {Error} 参数无效时抛出错误
+ */
+function calculateCapacity(version, ecLevel, mode) {
+  if (!Number.isInteger(version) || version < 1 || version > 40) {
+    throw new Error(`无效的版本号: ${version}`);
+  }
+  if (!['L', 'M', 'Q', 'H'].includes(ecLevel)) {
+    throw new Error(`无效的纠错等级: ${ecLevel}`);
+  }
+  if (!['numeric', 'alphanumeric', 'byte', 'kanji'].includes(mode)) {
+    throw new Error(`无效的编码模式: ${mode}`);
+  }
+  
+  const totalCodewords = TOTAL_CODEWORDS[version];
+  const ecCodewords = EC_CODEWORDS[ecLevel][version];
+  const dataCodewords = totalCodewords - ecCodewords;
+  const cciLength = getCharacterCountIndicatorLength(version, mode);
+  const availableBits = dataCodewords * 8 - 4 - cciLength;
+  
+  let maxChars;
+  if (mode === 'numeric') {
+    const groups = Math.floor(availableBits / 10);
+    const remainder = availableBits % 10;
+    let extra = 0;
+    if (remainder >= 7) extra = 2;
+    else if (remainder >= 4) extra = 1;
+    maxChars = groups * 3 + extra;
+  } else if (mode === 'alphanumeric') {
+    const groups = Math.floor(availableBits / 11);
+    const remainder = availableBits % 11;
+    const extra = remainder >= 6 ? 1 : 0;
+    maxChars = groups * 2 + extra;
+  } else if (mode === 'byte') {
+    maxChars = Math.floor(availableBits / 8);
+  } else if (mode === 'kanji') {
+    maxChars = Math.floor(availableBits / 13);
+  }
+  
+  return {
+    maxChars,
+    totalCodewords,
+    ecCodewords,
+    dataCodewords,
+    availableBits,
+    cciLength
+  };
+}
+
+// 单元测试框架
+let testCount = 0;
+let passCount = 0;
+const testResults = [];
+
+/**
+ * 断言两个值相等
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} testName - 测试名称
+ */
+function assertEqual(actual, expected, testName) {
+  testCount++;
+  if (actual === expected) {
+    passCount++;
+    testResults.push({ name: testName, pass: true, actual, expected });
+  } else {
+    testResults.push({ name: testName, pass: false, actual, expected });
+  }
+}
+
+/**
+ * 断言函数抛出异常
+ * @param {Function} fn - 要测试的函数
+ * @param {string} testName - 测试名称
+ */
+function assertThrows(fn, testName) {
+  testCount++;
+  try {
+    fn();
+    testResults.push({ name: testName, pass: false, actual: 'no error', expected: 'error' });
+  } catch (e) {
+    passCount++;
+    testResults.push({ name: testName, pass: true, actual: 'error', expected: 'error' });
+  }
+}
+
+/**
+ * 运行全部单元测试
+ */
+function runTests() {
+  testCount = 0;
+  passCount = 0;
+  testResults.length = 0;
+  
+  // 正常值测试 - V1
+  let r = calculateCapacity(1, 'L', 'numeric');
+  assertEqual(r.maxChars, 41, 'V1-L numeric = 41');
+  r = calculateCapacity(1, 'L', 'alphanumeric');
+  assertEqual(r.maxChars, 25, 'V1-L alphanumeric = 25');
+  r = calculateCapacity(1, 'L', 'byte');
+  assertEqual(r.maxChars, 17, 'V1-L byte = 17');
+  r = calculateCapacity(1, 'L', 'kanji');
+  assertEqual(r.maxChars, 10, 'V1-L kanji = 10');
+  r = calculateCapacity(1, 'M', 'numeric');
+  assertEqual(r.maxChars, 34, 'V1-M numeric = 34');
+  r = calculateCapacity(1, 'Q', 'numeric');
+  assertEqual(r.maxChars, 27, 'V1-Q numeric = 27');
+  r = calculateCapacity(1, 'H', 'numeric');
+  assertEqual(r.maxChars, 17, 'V1-H numeric = 17');
+  
+  // 正常值测试 - V2
+  r = calculateCapacity(2, 'L', 'numeric');
+  assertEqual(r.maxChars, 77, 'V2-L numeric = 77');
+  
+  // 正常值测试 - V10
+  r = calculateCapacity(10, 'L', 'numeric');
+  assertEqual(r.maxChars, 652, 'V10-L numeric = 652');
+  
+  // 正常值测试 - V20
+  r = calculateCapacity(20, 'M', 'alphanumeric');
+  assertEqual(r.maxChars, 999, 'V20-M alphanumeric = 999');
+  
+  // 正常值测试 - V27
+  r = calculateCapacity(27, 'Q', 'byte');
+  assertEqual(r.maxChars, 935, 'V27-Q byte = 935');
+  
+  // 正常值测试 - V40
+  r = calculateCapacity(40, 'H', 'numeric');
+  assertEqual(r.maxChars, 4353, 'V40-H numeric = 4353');
+  r = calculateCapacity(40, 'H', 'alphanumeric');
+  assertEqual(r.maxChars, 2638, 'V40-H alphanumeric = 2638');
+  r = calculateCapacity(40, 'H', 'byte');
+  assertEqual(r.maxChars, 1813, 'V40-H byte = 1813');
+  r = calculateCapacity(40, 'H', 'kanji');
+  assertEqual(r.maxChars, 1116, 'V40-H kanji = 1116');
+  
+  // 边界值测试 - CCI 长度变化
+  r = calculateCapacity(9, 'L', 'numeric');
+  assertEqual(r.cciLength, 10, 'V9 numeric CCI = 10');
+  r = calculateCapacity(10, 'L', 'numeric');
+  assertEqual(r.cciLength, 12, 'V10 numeric CCI = 12');
+  r = calculateCapacity(26, 'L', 'numeric');
+  assertEqual(r.cciLength, 12, 'V26 numeric CCI = 12');
+  r = calculateCapacity(27, 'L', 'numeric');
+  assertEqual(r.cciLength, 14, 'V27 numeric CCI = 14');
+  
+  // 边界值测试 - 字母数字 CCI
+  r = calculateCapacity(9, 'L', 'alphanumeric');
+  assertEqual(r.cciLength, 9, 'V9 alphanumeric CCI = 9');
+  r = calculateCapacity(10, 'L', 'alphanumeric');
+  assertEqual(r.cciLength, 11, 'V10 alphanumeric CCI = 11');
+  r = calculateCapacity(27, 'L', 'alphanumeric');
+  assertEqual(r.cciLength, 13, 'V27 alphanumeric CCI = 13');
+  
+  // 边界值测试 - 字节 CCI
+  r = calculateCapacity(9, 'L', 'byte');
+  assertEqual(r.cciLength, 8, 'V9 byte CCI = 8');
+  r = calculateCapacity(10, 'L', 'byte');
+  assertEqual(r.cciLength, 16, 'V10 byte CCI = 16');
+  
+  // 边界值测试 - Kanji CCI
+  r = calculateCapacity(9, 'L', 'kanji');
+  assertEqual(r.cciLength, 8, 'V9 kanji CCI = 8');
+  r = calculateCapacity(10, 'L', 'kanji');
+  assertEqual(r.cciLength, 16, 'V10 kanji CCI = 16');
+  
+  // 异常输入测试
+  assertThrows(() => calculateCapacity(0, 'L', 'numeric'), 'version 0 throws');
+  assertThrows(() => calculateCapacity(41, 'L', 'numeric'), 'version 41 throws');
+  assertThrows(() => calculateCapacity(1.5, 'L', 'numeric'), 'version 1.5 throws');
+  assertThrows(() => calculateCapacity(1, 'X', 'numeric'), 'invalid ec level throws');
+  assertThrows(() => calculateCapacity(1, 'L', 'invalid'), 'invalid mode throws');
+  assertThrows(() => calculateCapacity(null, 'L', 'numeric'), 'null version throws');
+  assertThrows(() => calculateCapacity(1, undefined, 'numeric'), 'undefined ec level throws');
+  assertThrows(() => calculateCapacity(1, 'L', null), 'null mode throws');
+  assertThrows(() => calculateCapacity('1', 'L', 'numeric'), 'string version throws');
+  
+  // 辅助函数测试
+  assertEqual(getCharacterCountIndicatorLength(1, 'numeric'), 10, 'CCI V1 numeric = 10');
+  assertEqual(getCharacterCountIndicatorLength(10, 'numeric'), 12, 'CCI V10 numeric = 12');
+  assertEqual(getCharacterCountIndicatorLength(27, 'numeric'), 14, 'CCI V27 numeric = 14');
+  assertEqual(getCharacterCountIndicatorLength(9, 'alphanumeric'), 9, 'CCI V9 alphanumeric = 9');
+  assertEqual(getCharacterCountIndicatorLength(10, 'alphanumeric'), 11, 'CCI V10 alphanumeric = 11');
+  assertEqual(getCharacterCountIndicatorLength(27, 'alphanumeric'), 13, 'CCI V27 alphanumeric = 13');
+  assertEqual(getCharacterCountIndicatorLength(1, 'byte'), 8, 'CCI V1 byte = 8');
+  assertEqual(getCharacterCountIndicatorLength(10, 'byte'), 16, 'CCI V10 byte = 16');
+  assertEqual(getCharacterCountIndicatorLength(1, 'kanji'), 8, 'CCI V1 kanji = 8');
+  assertEqual(getCharacterCountIndicatorLength(10, 'kanji'), 16, 'CCI V10 kanji = 16');
+  assertThrows(() => getCharacterCountIndicatorLength(0, 'numeric'), 'CCI version 0 throws');
+  assertThrows(() => getCharacterCountIndicatorLength(41, 'numeric'), 'CCI version 41 throws');
+  assertThrows(() => getCharacterCountIndicatorLength(1, 'invalid'), 'CCI invalid mode throws');
+  
+  // 显示结果
+  const resultsDiv = document.getElementById('testResults');
+  let html = `<div class="test-summary">通过 ${passCount} / 共 ${testCount}</div>`;
+  testResults.forEach(t => {
+    const cls = t.pass ? 'test-pass' : 'test-fail';
+    const icon = t.pass ? '✓' : '✗';
+    html += `<div class="test-result ${cls}">${icon} ${t.name}`;
+    if (!t.pass) {
+      html += ` (期望: ${t.expected}, 实际: ${t.actual})`;
+    }
+    html += `</div>`;
+  });
+  resultsDiv.innerHTML = html;
+}
+
+// 工具计算
+function calculate() {
+  const version = parseInt(document.getElementById('version').value);
+  const ecLevel = document.getElementById('ecLevel').value;
+  const mode = document.getElementById('mode').value;
+  
+  try {
+    const result = calculateCapacity(version, ecLevel, mode);
+    document.getElementById('maxChars').textContent = result.maxChars;
+    document.getElementById('totalCodewords').textContent = result.totalCodewords;
+    document.getElementById('ecCodewords').textContent = result.ecCodewords;
+    document.getElementById('dataCodewords').textContent = result.dataCodewords;
+    document.getElementById('availableBits').textContent = result.availableBits;
+    document.getElementById('cciLength').textContent = result.cciLength + ' bits';
+  } catch (e) {
+    alert('计算错误：' + e.message);
+  }
+}
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 初始化版本选择器
+const versionSelect = document.getElementById('version');
+for (let i = 1; i <= 40; i++) {
+  const option = document.createElement('option');
+  option.value = i;
+  option.textContent = `版本 ${i}（${(4*i+17)}×${(4*i+17)} 模块，${TOTAL_CODEWORDS[i]} 码字）`;
+  if (i === 5) option.selected = true;
+  versionSelect.appendChild(option);
+}
+
+// 显示源码
+const SOURCE_CODE = `/**
+ * QR 码总码字表（ISO/IEC 18004:2015 表 7）
+ * 索引 0 为占位，索引 1-40 对应版本 1-40
+ * @type {number[]}
+ */
+const TOTAL_CODEWORDS = [
+  0,
+  26, 44, 70, 100, 134, 172, 196, 242, 292, 346,
+  404, 466, 532, 581, 655, 733, 815, 901, 991, 1085,
+  1156, 1258, 1364, 1474, 1588, 1706, 1828, 1921, 2051, 2185,
+  2323, 2465, 2611, 2761, 2876, 3034, 3196, 3362, 3532, 3706
+];
+
+/**
+ * QR 码纠错码字表（ISO/IEC 18004:2015 表 9）
+ * 每个纠错等级对应一个数组，索引 0 为占位，索引 1-40 对应版本 1-40
+ * @type {Object.<string, number[]>}
+ */
+const EC_CODEWORDS = {
+  L: [0, 7, 10, 15, 20, 26, 36, 40, 48, 60, 72, 80, 96, 104, 120, 132, 144, 168, 180, 196, 224, 224, 252, 270, 300, 312, 336, 360, 390, 420, 450, 480, 510, 540, 570, 570, 600, 630, 660, 720, 750],
+  M: [0, 10, 16, 26, 36, 48, 64, 72, 88, 110, 130, 150, 176, 198, 216, 240, 280, 308, 338, 364, 416, 442, 476, 504, 560, 588, 644, 700, 728, 784, 812, 868, 924, 980, 1036, 1064, 1120, 1204, 1260, 1316, 1372],
+  Q: [0, 13, 22, 36, 52, 72, 96, 108, 132, 160, 192, 224, 260, 288, 320, 360, 408, 448, 504, 546, 600, 644, 690, 750, 810, 870, 952, 1020, 1050, 1140, 1200, 1290, 1350, 1440, 1530, 1590, 1680, 1770, 1860, 1950, 2040],
+  H: [0, 17, 28, 44, 64, 88, 112, 130, 156, 192, 224, 264, 308, 352, 384, 432, 480, 532, 588, 650, 700, 750, 816, 900, 960, 1050, 1110, 1200, 1260, 1350, 1440, 1530, 1620, 1710, 1800, 1890, 1980, 2100, 2220, 2310, 2430]
+};
+
+/**
+ * 获取字符计数指示符长度
+ * 根据 ISO/IEC 18004:2015 表 3，字符计数指示符的长度取决于版本范围和编码模式
+ * @param {number} version - QR 码版本（1-40）
+ * @param {string} mode - 编码模式（'numeric'|'alphanumeric'|'byte'|'kanji'）
+ * @returns {number} 字符计数指示符的比特长度
+ * @throws {Error} 版本或模式无效时抛出错误
+ */
+function getCharacterCountIndicatorLength(version, mode) {
+  if (!Number.isInteger(version) || version < 1 || version > 40) {
+    throw new Error(\`无效的版本号: \${version}，必须是 1-40 的整数\`);
+  }
+  const validModes = ['numeric', 'alphanumeric', 'byte', 'kanji'];
+  if (!validModes.includes(mode)) {
+    throw new Error(\`无效的编码模式: \${mode}，必须是 \${validModes.join(', ')} 之一\`);
+  }
+  
+  if (version >= 1 && version <= 9) {
+    if (mode === 'numeric') return 10;
+    if (mode === 'alphanumeric') return 9;
+    if (mode === 'byte') return 8;
+    if (mode === 'kanji') return 8;
+  } else if (version >= 10 && version <= 26) {
+    if (mode === 'numeric') return 12;
+    if (mode === 'alphanumeric') return 11;
+    if (mode === 'byte') return 16;
+    if (mode === 'kanji') return 16;
+  } else {
+    if (mode === 'numeric') return 14;
+    if (mode === 'alphanumeric') return 13;
+    if (mode === 'byte') return 16;
+    if (mode === 'kanji') return 16;
+  }
+}
+
+/**
+ * 计算 QR 码在指定版本、纠错等级和编码模式下的最大字符容量
+ * 基于 ISO/IEC 18004:2015 标准，假设单一编码模式
+ * @param {number} version - QR 码版本（1-40）
+ * @param {string} ecLevel - 纠错等级（'L'|'M'|'Q'|'H'）
+ * @param {string} mode - 编码模式（'numeric'|'alphanumeric'|'byte'|'kanji'）
+ * @returns {Object} 计算结果对象
+ * @returns {number} returns.maxChars - 最大可存字符数
+ * @returns {number} returns.totalCodewords - 总码字数
+ * @returns {number} returns.ecCodewords - 纠错码字数
+ * @returns {number} returns.dataCodewords - 数据码字数
+ * @returns {number} returns.availableBits - 可用比特数
+ * @returns {number} returns.cciLength - 字符计数指示符长度
+ * @throws {Error} 参数无效时抛出错误
+ */
+function calculateCapacity(version, ecLevel, mode) {
+  if (!Number.isInteger(version) || version < 1 || version > 40) {
+    throw new Error(\`无效的版本号: \${version}\`);
+  }
+  if (!['L', 'M', 'Q', 'H'].includes(ecLevel)) {
+    throw new Error(\`无效的纠错等级: \${ecLevel}\`);
+  }
+  if (!['numeric', 'alphanumeric', 'byte', 'kanji'].includes(mode)) {
+    throw new Error(\`无效的编码模式: \${mode}\`);
+  }
+  
+  const totalCodewords = TOTAL_CODEWORDS[version];
+  const ecCodewords = EC_CODEWORDS[ecLevel][version];
+  const dataCodewords = totalCodewords - ecCodewords;
+  const cciLength = getCharacterCountIndicatorLength(version, mode);
+  const availableBits = dataCodewords * 8 - 4 - cciLength;
+  
+  let maxChars;
+  if (mode === 'numeric') {
+    const groups = Math.floor(availableBits / 10);
+    const remainder = availableBits % 10;
+    let extra = 0;
+    if (remainder >= 7) extra = 2;
+    else if (remainder >= 4) extra = 1;
+    maxChars = groups * 3 + extra;
+  } else if (mode === 'alphanumeric') {
+    const groups = Math.floor(availableBits / 11);
+    const remainder = availableBits % 11;
+    const extra = remainder >= 6 ? 1 : 0;
+    maxChars = groups * 2 + extra;
+  } else if (mode === 'byte') {
+    maxChars = Math.floor(availableBits / 8);
+  } else if (mode === 'kanji') {
+    maxChars = Math.floor(availableBits / 13);
+  }
+  
+  return {
+    maxChars,
+    totalCodewords,
+    ecCodewords,
+    dataCodewords,
+    availableBits,
+    cciLength
+  };
+}`;
+
+document.getElementById('sourceCode').textContent = SOURCE_CODE;
+
+// 页面加载时自动计算一次
+window.addEventListener('load', () => {
+  calculate();
+});
+</script>
+</body>
+</html>

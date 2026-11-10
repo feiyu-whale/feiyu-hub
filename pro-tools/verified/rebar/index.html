@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>钢筋理论重量计算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6f8;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    padding: 14px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #586069;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #2c3e50; background: #f6f8fa; }
+  .tab.active {
+    color: #0366d6;
+    border-bottom-color: #0366d6;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px 32px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 17px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eaecef;
+    color: #24292e;
+  }
+  .card h3 { font-size: 15px; margin: 16px 0 10px; color: #24292e; }
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: #586069;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d1d5da;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #0366d6;
+    box-shadow: 0 0 0 3px rgba(3,102,214,0.1);
+  }
+  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-primary { background: #0366d6; color: #fff; }
+  .btn-primary:hover { background: #0256b9; }
+  .btn-secondary { background: #eaecef; color: #24292e; }
+  .btn-secondary:hover { background: #d1d5da; }
+  .result-box {
+    background: #f1f8ff;
+    border: 1px solid #c8e1ff;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    font-size: 14px;
+  }
+  .result-box .big {
+    font-size: 24px;
+    font-weight: 600;
+    color: #0366d6;
+    margin: 6px 0;
+  }
+  .result-box .sub { color: #586069; font-size: 13px; }
+  .error-box {
+    background: #ffeef0;
+    border: 1px solid #fdaeb7;
+    color: #86181d;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+  pre {
+    background: #282c34;
+    color: #abb2bf;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-summary {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .test-pass { background: #dcffe4; color: #144620; border: 1px solid #85e89d; }
+  .test-fail { background: #ffeef0; color: #86181d; border: 1px solid #fdaeb7; }
+  .test-item {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-item.pass { background: #f6ffed; color: #144620; border-left: 3px solid #28a745; }
+  .test-item.fail { background: #ffeef0; color: #86181d; border-left: 3px solid #d73a49; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 8px 12px;
+    border: 1px solid #e1e4e8;
+    text-align: left;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  .doc h2 { font-size: 18px; margin: 24px 0 12px; color: #24292e; }
+  .doc h3 { font-size: 15px; margin: 18px 0 10px; color: #24292e; }
+  .doc p { margin: 8px 0; }
+  .doc ul, .doc ol { margin: 8px 0 8px 24px; }
+  .doc li { margin: 4px 0; }
+  .doc code {
+    background: #f6f8fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    color: #e36209;
+  }
+  .doc .warn {
+    background: #fffbdd;
+    border-left: 4px solid #f9c513;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #959da5;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  .mode-switch {
+    display: inline-flex;
+    background: #eaecef;
+    border-radius: 6px;
+    padding: 3px;
+    margin-bottom: 16px;
+  }
+  .mode-switch button {
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #586069;
+  }
+  .mode-switch button.active {
+    background: #fff;
+    color: #0366d6;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>钢筋理论重量计算工具</h1>
+  <p>依据 GB/T 1499.2-2018《钢筋混凝土用钢 第2部分：热轧带肋钢筋》附录A</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">计算器</div>
+  <div class="tab" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<!-- 计算器 -->
+<div class="panel active" id="panel-calc">
+  <div class="card">
+    <h2>计算模式</h2>
+    <div class="mode-switch">
+      <button class="active" data-mode="weight">已知长度求重量</button>
+      <button data-mode="length">已知重量反查长度</button>
+    </div>
+
+    <div id="mode-weight">
+      <div class="form-row">
+        <div class="form-group">
+          <label>公称直径 d (mm)</label>
+          <select id="diameter">
+            <option value="">请选择</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="10">10</option>
+            <option value="12">12</option>
+            <option value="14">14</option>
+            <option value="16">16</option>
+            <option value="18">18</option>
+            <option value="20">20</option>
+            <option value="22">22</option>
+            <option value="25">25</option>
+            <option value="28">28</option>
+            <option value="32">32</option>
+            <option value="36">36</option>
+            <option value="40">40</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>单根长度 L (m)</label>
+          <input type="number" id="length" step="0.001" min="0" placeholder="例如 9">
+        </div>
+        <div class="form-group">
+          <label>根数 n</label>
+          <input type="number" id="count" step="1" min="0" placeholder="例如 100" value="1">
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="doCalcWeight()">计算理论重量</button>
+        <button class="btn btn-secondary" onclick="resetForm('weight')">重置</button>
+      </div>
+      <div id="result-weight"></div>
+    </div>
+
+    <div id="mode-length" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>公称直径 d (mm)</label>
+          <select id="diameter2">
+            <option value="">请选择</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="10">10</option>
+            <option value="12">12</option>
+            <option value="14">14</option>
+            <option value="16">16</option>
+            <option value="18">18</option>
+            <option value="20">20</option>
+            <option value="22">22</option>
+            <option value="25">25</option>
+            <option value="28">28</option>
+            <option value="32">32</option>
+            <option value="36">36</option>
+            <option value="40">40</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>总重量 W (kg)</label>
+          <input type="number" id="weight" step="0.001" min="0" placeholder="例如 1000">
+        </div>
+        <div class="form-group">
+          <label>根数 n</label>
+          <input type="number" id="count2" step="1" min="1" placeholder="例如 100" value="1">
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="doCalcLength()">反查单根长度</button>
+        <button class="btn btn-secondary" onclick="resetForm('length')">重置</button>
+      </div>
+      <div id="result-length"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>公称直径与理论重量对照表（GB/T 1499.2-2018 附录A）</h2>
+    <table>
+      <thead>
+        <tr><th>公称直径 (mm)</th><th>理论重量 (kg/m)</th><th>公称直径 (mm)</th><th>理论重量 (kg/m)</th></tr>
+      </thead>
+      <tbody id="ref-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 源码 -->
+<div class="panel" id="panel-source">
+  <div class="card">
+    <h2>核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="source-code"></pre>
+  </div>
+</div>
+
+<!-- 测试 -->
+<div class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试（共 30+ 用例）</h2>
+    <div id="test-summary"></div>
+    <div id="test-list"></div>
+  </div>
+</div>
+
+<!-- 说明书 -->
+<div class="panel" id="panel-doc">
+  <div class="card doc" id="doc-content"></div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法源码
+ * 依据：GB/T 1499.2-2018《钢筋混凝土用钢 第2部分：热轧带肋钢筋》附录A
+ * ============================================================ */
+
+/**
+ * 热轧带肋钢筋公称直径与理论重量对照表（GB/T 1499.2-2018 附录A）
+ * 单位：kg/m
+ * 注：表中数值为国标附录A给出的理论重量，非由公式 0.00617×d² 计算所得，
+ *     两者存在微小差异，本工具以国标原文为准。
+ * @type {Object.<number, number>}
+ */
+const UNIT_WEIGHT_TABLE = {
+  6:  0.222,
+  8:  0.395,
+  10: 0.617,
+  12: 0.888,
+  14: 1.21,
+  16: 1.58,
+  18: 2.00,
+  20: 2.47,
+  22: 2.98,
+  25: 3.85,
+  28: 4.83,
+  32: 6.31,
+  36: 7.99,
+  40: 9.87
+};
+
+/**
+ * 支持的公称直径列表（mm）
+ * @type {number[]}
+ */
+const VALID_DIAMETERS = Object.keys(UNIT_WEIGHT_TABLE).map(Number).sort((a,b)=>a-b);
+
+/**
+ * 根据公称直径查询每米理论重量
+ *
+ * @param {number} diameter - 公称直径，单位 mm。必须是 UNIT_WEIGHT_TABLE 中的键值之一
+ * @returns {number} 每米理论重量，单位 kg/m
+ * @throws {TypeError} 当参数不是有限数字时抛出
+ * @throws {RangeError} 当直径不在国标规定范围内时抛出
+ * @example
+ *   getUnitWeight(20); // 2.47
+ *   getUnitWeight(6);  // 0.222
+ */
+function getUnitWeight(diameter) {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter)) {
+    throw new TypeError('直径必须是有限数字');
+  }
+  if (!UNIT_WEIGHT_TABLE.hasOwnProperty(diameter)) {
+    throw new RangeError(
+      '直径 ' + diameter + ' mm 不在 GB/T 1499.2-2018 附录A 规定范围内，' +
+      '支持：' + VALID_DIAMETERS.join('/') + ' mm'
+    );
+  }
+  return UNIT_WEIGHT_TABLE[diameter];
+}
+
+/**
+ * 计算钢筋总理论重量
+ * 公式：W = w × L × n，其中 w 为每米理论重量，L 为单根长度，n 为根数
+ *
+ * @param {number} diameter - 公称直径，单位 mm
+ * @param {number} length   - 单根长度，单位 m，必须 ≥ 0
+ * @param {number} count    - 根数，必须为非负整数
+ * @returns {number} 总理论重量，单位 kg，保留 3 位小数
+ * @throws {TypeError} 当任一参数类型非法时抛出
+ * @throws {RangeError} 当参数超出合理范围时抛出
+ * @example
+ *   calcWeight(20, 9, 100); // 2223.000
+ *   calcWeight(12, 1, 1);   // 0.888
+ */
+function calcWeight(diameter, length, count) {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter)) {
+    throw new TypeError('直径必须是有限数字');
+  }
+  if (typeof length !== 'number' || !Number.isFinite(length)) {
+    throw new TypeError('长度必须是有限数字');
+  }
+  if (typeof count !== 'number' || !Number.isFinite(count)) {
+    throw new TypeError('根数必须是有限数字');
+  }
+  if (length < 0) {
+    throw new RangeError('长度不能为负数');
+  }
+  if (count < 0) {
+    throw new RangeError('根数不能为负数');
+  }
+  if (!Number.isInteger(count)) {
+    throw new RangeError('根数必须为整数');
+  }
+  const w = getUnitWeight(diameter);
+  // 使用 Math.round 避免浮点误差（如 0.222*9*100 = 199.79999999999998）
+  const raw = w * length * count;
+  return Math.round(raw * 1000) / 1000;
+}
+
+/**
+ * 根据总重量反查单根长度
+ * 公式：L = W / (w × n)
+ *
+ * @param {number} diameter - 公称直径，单位 mm
+ * @param {number} weight   - 总重量，单位 kg，必须 ≥ 0
+ * @param {number} count    - 根数，必须为正整数（反查时分母不能为 0）
+ * @returns {number} 单根长度，单位 m，保留 3 位小数
+ * @throws {TypeError} 当任一参数类型非法时抛出
+ * @throws {RangeError} 当参数超出合理范围或根数为 0 时抛出
+ * @example
+ *   calcLength(20, 2223, 100); // 9.000
+ *   calcLength(12, 0.888, 1);  // 1.000
+ */
+function calcLength(diameter, weight, count) {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter)) {
+    throw new TypeError('直径必须是有限数字');
+  }
+  if (typeof weight !== 'number' || !Number.isFinite(weight)) {
+    throw new TypeError('重量必须是有限数字');
+  }
+  if (typeof count !== 'number' || !Number.isFinite(count)) {
+    throw new TypeError('根数必须是有限数字');
+  }
+  if (weight < 0) {
+    throw new RangeError('重量不能为负数');
+  }
+  if (count <= 0) {
+    throw new RangeError('反查长度时根数必须为正整数');
+  }
+  if (!Number.isInteger(count)) {
+    throw new RangeError('根数必须为整数');
+  }
+  const w = getUnitWeight(diameter);
+  const raw = weight / (w * count);
+  return Math.round(raw * 1000) / 1000;
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS 实现，无外部依赖）
+ * ============================================================ */
+
+let _passed = 0;
+let _failed = 0;
+let _total  = 0;
+const _results = [];
+
+/**
+ * 断言函数
+ * @param {string} name - 用例名称
+ * @param {boolean} cond - 断言条件
+ * @param {string} detail - 失败时的详细信息
+ */
+function assert(name, cond, detail) {
+  _total++;
+  if (cond) {
+    _passed++;
+    _results.push({ name, pass: true, detail: '' });
+  } else {
+    _failed++;
+    _results.push({ name, pass: false, detail: detail || '' });
+  }
+}
+
+/**
+ * 近似相等断言（处理浮点误差）
+ * @param {string} name
+ * @param {number} actual
+ * @param {number} expected
+ * @param {number} [eps=1e-6]
+ */
+function assertClose(name, actual, expected, eps) {
+  eps = eps === undefined ? 1e-6 : eps;
+  assert(name, Math.abs(actual - expected) < eps,
+    '期望 ' + expected + '，实际 ' + actual);
+}
+
+/**
+ * 断言抛出指定类型异常
+ * @param {string} name
+ * @param {Function} fn
+ * @param {Function} ErrCtor
+ */
+function assertThrows(name, fn, ErrCtor) {
+  _total++;
+  try {
+    fn();
+    _failed++;
+    _results.push({ name, pass: false, detail: '未抛出异常' });
+  } catch (e) {
+    if (e instanceof ErrCtor) {
+      _passed++;
+      _results.push({ name, pass: true, detail: '' });
+    } else {
+      _failed++;
+      _results.push({ name, pass: false, detail: '抛出异常类型不符：' + e.constructor.name });
+    }
+  }
+}
+
+// ---------- 测试用例 ----------
+
+// 1-3. getUnitWeight 正常值
+assertClose('getUnitWeight(6) = 0.222',   getUnitWeight(6),  0.222);
+assertClose('getUnitWeight(20) = 2.47',   getUnitWeight(20), 2.47);
+assertClose('getUnitWeight(40) = 9.87',   getUnitWeight(40), 9.87);
+
+// 4-6. getUnitWeight 覆盖更多直径
+assertClose('getUnitWeight(8) = 0.395',   getUnitWeight(8),  0.395);
+assertClose('getUnitWeight(12) = 0.888',  getUnitWeight(12), 0.888);
+assertClose('getUnitWeight(25) = 3.85',   getUnitWeight(25), 3.85);
+
+// 7-9. getUnitWeight 异常输入
+assertThrows('getUnitWeight(null) 抛 TypeError',     () => getUnitWeight(null),     TypeError);
+assertThrows('getUnitWeight(undefined) 抛 TypeError',() => getUnitWeight(undefined),TypeError);
+assertThrows('getUnitWeight(NaN) 抛 TypeError',      () => getUnitWeight(NaN),      TypeError);
+
+// 10-11. getUnitWeight 超范围
+assertThrows('getUnitWeight(5) 抛 RangeError',  () => getUnitWeight(5),  RangeError);
+assertThrows('getUnitWeight(50) 抛 RangeError', () => getUnitWeight(50), RangeError);
+
+// 12-14. calcWeight 正常值
+assertClose('calcWeight(20,9,100) = 2223',     calcWeight(20, 9, 100), 2223);
+assertClose('calcWeight(12,1,1) = 0.888',      calcWeight(12, 1, 1),   0.888);
+assertClose('calcWeight(6,12,50) = 133.2',     calcWeight(6, 12, 50),  133.2);
+
+// 15. calcWeight 长度为 0
+assertClose('calcWeight(20,0,100) = 0', calcWeight(20, 0, 100), 0);
+
+// 16. calcWeight 根数为 0
+assertClose('calcWeight(20,9,0) = 0', calcWeight(20, 9, 0), 0);
+
+// 17. calcWeight 浮点精度（0.222*9*100 应得 199.8 而非 199.79999999999998）
+assertClose('calcWeight(6,9,100) 浮点精度 = 199.8', calcWeight(6, 9, 100), 199.8);
+
+// 18. calcWeight 大数
+assertClose('calcWeight(40,12,1000) = 118440', calcWeight(40, 12, 1000), 118440);
+
+// 19-21. calcWeight 异常
+assertThrows('calcWeight 负长度 抛 RangeError', () => calcWeight(20, -1, 10), RangeError);
+assertThrows('calcWeight 负根数 抛 RangeError', () => calcWeight(20, 9, -1),  RangeError);
+assertThrows('calcWeight 非整数根数 抛 RangeError', () => calcWeight(20, 9, 1.5), RangeError);
+
+// 22-24. calcWeight 非法类型
+assertThrows('calcWeight(null,...) 抛 TypeError', () => calcWeight(null, 9, 10), TypeError);
+assertThrows('calcWeight(20,NaN,10) 抛 TypeError',() => calcWeight(20, NaN, 10), TypeError);
+assertThrows('calcWeight(20,9,"10") 抛 TypeError',() => calcWeight(20, 9, "10"), TypeError);
+
+// 25-27. calcLength 正常值
+assertClose('calcLength(20,2223,100) = 9',   calcLength(20, 2223, 100), 9);
+assertClose('calcLength(12,0.888,1) = 1',    calcLength(12, 0.888, 1),  1);
+assertClose('calcLength(25,3850,100) = 10',  calcLength(25, 3850, 100), 10);
+
+// 28. calcLength 重量为 0
+assertClose('calcLength(20,0,10) = 0', calcLength(20, 0, 10), 0);
+
+// 29. calcLength 根数为 0 抛异常
+assertThrows('calcLength 根数=0 抛 RangeError', () => calcLength(20, 100, 0), RangeError);
+
+// 30. calcLength 负重量 抛异常
+assertThrows('calcLength 负重量 抛 RangeError', () => calcLength(20, -100, 10), RangeError);
+
+// 31. calcLength 非法类型
+assertThrows('calcLength(null,...) 抛 TypeError', () => calcLength(null, 100, 10), TypeError);
+
+// 32. 反查与正算互逆
+(function(){
+  const d = 16, L = 7.5, n = 200;
+  const W = calcWeight(d, L, n);
+  const L2 = calcLength(d, W, n);
+  assertClose('calcLength(calcWeight(...)) 互逆', L2, L);
+})();
+
+// 33. 所有直径都能查到
+(function(){
+  let ok = true;
+  for (const d of VALID_DIAMETERS) {
+    if (typeof getUnitWeight(d) !== 'number') { ok = false; break; }
+  }
+  assert('所有 14 种直径均可查询', ok);
+})();
+
+// 34. 公式 0.00617×d² 与国标表值对比（允许 ±2% 偏差，因国标为修约值）
+(function(){
+  let ok = true;
+  for (const d of VALID_DIAMETERS) {
+    const formula = 0.00617 * d * d;
+    const table = getUnitWeight(d);
+    const diff = Math.abs(formula - table) / table;
+    if (diff > 0.02) { ok = false; break; }
+  }
+  assert('国标表值与 0.00617×d² 偏差 < 2%', ok);
+})();
+
+// 35. 字符串类型直径抛异常
+assertThrows('getUnitWeight("20") 抛 TypeError', () => getUnitWeight("20"), TypeError);
+
+// 36. Infinity 抛异常
+assertThrows('getUnitWeight(Infinity) 抛 TypeError', () => getUnitWeight(Infinity), TypeError);
+
+// 打印结果
+function printTestResults() {
+  const summary = document.getElementById('test-summary');
+  const list = document.getElementById('test-list');
+  summary.className = 'test-summary ' + (_failed === 0 ? 'test-pass' : 'test-fail');
+  summary.textContent = '通过 ' + _passed + ' / 共 ' + _total +
+    (_failed > 0 ? '（失败 ' + _failed + '）' : ' ✓ 全部通过');
+  list.innerHTML = _results.map(r =>
+    '<div class="test-item ' + (r.pass ? 'pass' : 'fail') + '">' +
+    (r.pass ? '✓ ' : '✗ ') + r.name +
+    (r.pass ? '' : ' —— ' + r.detail) +
+    '</div>'
+  ).join('');
+  console.log('通过 ' + _passed + ' / 共 ' + _total);
+}
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+
+const DOC_HTML = `
+<h2>一、工具简介</h2>
+<p>本工具用于计算热轧带肋钢筋（俗称"螺纹钢"）的理论重量，或根据已知重量反查钢筋长度。理论重量是工程预算、材料采购、施工下料、成本核算中的基础数据，直接影响工程造价与材料计划的准确性。</p>
+<p>本工具严格依据 <strong>GB/T 1499.2-2018《钢筋混凝土用钢 第2部分：热轧带肋钢筋》</strong> 附录 A 给出的理论重量表实现，支持公称直径 6mm 至 40mm 共 14 种规格，覆盖房建、市政、桥梁、隧道等绝大多数土木工程场景。</p>
+
+<h2>二、参数说明</h2>
+<h3>1. 公称直径 d（mm）</h3>
+<ul>
+  <li><strong>含义：</strong>钢筋横截面的等效直径，是钢筋规格的核心标识。注意"公称直径"与"实测直径"不同，理论重量按公称直径计算。</li>
+  <li><strong>取值范围：</strong>6、8、10、12、14、16、18、20、22、25、28、32、36、40（单位 mm），共 14 种，必须从下拉菜单中选择。</li>
+  <li><strong>单位：</strong>毫米（mm）。</li>
+  <li><strong>说明：</strong>GB/T 1499.2-2018 中规定的常用规格即为此 14 种，其他非标直径（如 7mm、9mm、11mm 等）本工具不支持，需查标准原文或厂家资料。</li>
+</ul>
+
+<h3>2. 单根长度 L（m）</h3>
+<ul>
+  <li><strong>含义：</strong>一根钢筋的实际长度。</li>
+  <li><strong>取值范围：</strong>≥ 0 的有限数字，支持小数（如 9.5、12.75）。</li>
+  <li><strong>单位：</strong>米（m）。</li>
+  <li><strong>说明：</strong>商品钢筋常见定尺长度为 9m 或 12m，但实际下料长度可能为任意值。长度为 0 时重量为 0，为负数时工具会报错。</li>
+</ul>
+
+<h3>3. 根数 n</h3>
+<ul>
+  <li><strong>含义：</strong>同规格、同长度钢筋的数量。</li>
+  <li><strong>取值范围：</strong>非负整数（正算模式）；正整数（反查模式，分母不能为 0）。</li>
+  <li><strong>单位：</strong>根（无量纲）。</li>
+  <li><strong>说明：</strong>根数必须为整数，输入 1.5 根会报错。若需计算"半根"，请将长度折半后根数取 1。</li>
+</ul>
+
+<h3>4. 总重量 W（kg，仅反查模式）</h3>
+<ul>
+  <li><strong>含义：</strong>已知若干根钢筋的总重量，反求单根长度。</li>
+  <li><strong>取值范围：</strong>≥ 0 的有限数字。</li>
+  <li><strong>单位：</strong>千克（kg）。</li>
+</ul>
+
+<h2>三、计算公式</h2>
+<p>正算：$$W = w \\times L \\times n$$</p>
+<p>反查：$$L = \\frac{W}{w \\times n}$$</p>
+<p>其中 <code>w</code> 为每米理论重量（kg/m），由 GB/T 1499.2-2018 附录 A 查表得到。</p>
+<p class="warn">⚠️ 注意：理论重量公式 <code>w = 0.00617 × d²</code> 是工程近似公式，与国标附录 A 的表值存在微小差异（因国标值经过修约）。本工具以国标原文表值为准，不使用近似公式计算。</p>
+
+<h2>四、实际使用场景</h2>
+
+<h3>场景 1：工程预算——计算某分项钢筋总用量</h3>
+<p><strong>背景：</strong>某框架梁配筋为 HRB400 Φ20，单根下料长度 9m，共需 100 根，求理论重量。</p>
+<p><strong>输入：</strong>直径 20mm，长度 9m，根数 100。</p>
+<p><strong>计算：</strong>w = 2.47 kg/m，W = 2.47 × 9 × 100 = <strong>2223 kg</strong>。</p>
+<p><strong>用途：</strong>用于编制材料计划、采购订单、成本预算。</p>
+
+<h3>场景 2：施工下料——估算一批钢筋的总重</h3>
+<p><strong>背景：</strong>工地进场 Φ12 钢筋 500 根，每根 12m，求总重以核对过磅单。</p>
+<p><strong>输入：</strong>直径 12mm，长度 12m，根数 500。</p>
+<p><strong>计算：</strong>w = 0.888 kg/m，W = 0.888 × 12 × 500 = <strong>5328 kg</strong>。</p>
+<p><strong>用途：</strong>与地磅实测值对比，偏差过大需核查是否存在短尺、负公差超标等问题。</p>
+
+<h3>场景 3：材料反查——已知重量求长度</h3>
+<p><strong>背景：</strong>仓库盘点发现 Φ25 钢筋共 3850 kg，共 100 根，求每根平均长度。</p>
+<p><strong>输入：</strong>直径 25mm，重量 3850 kg，根数 100。</p>
+<p><strong>计算：</strong>w = 3.85 kg/m，L = 3850 / (3.85 × 100) = <strong>10 m</strong>。</p>
+<p><strong>用途：</strong>库存管理、余料统计、非标长度钢筋的规格识别。</p>
+
+<h3>场景 4：小规格钢筋——箍筋用量计算</h3>
+<p><strong>背景：</strong>某柱箍筋采用 Φ8，每根周长 1.5m，一个柱子 30 道箍筋，共 20 根柱子。</p>
+<p><strong>输入：</strong>直径 8mm，长度 1.5m，根数 30 × 20 = 600。</p>
+<p><strong>计算：</strong>w = 0.395 kg/m，W = 0.395 × 1.5 × 600 = <strong>355.5 kg</strong>。</p>
+<p><strong>用途：</strong>箍筋、拉筋等小规格钢筋的用量汇总。</p>
+
+<h3>场景 5：大规格钢筋——桩基主筋</h3>
+<p><strong>背景：</strong>钻孔灌注桩主筋采用 Φ32，单根长 15m，每桩 12 根，共 50 根桩。</p>
+<p><strong>输入：</strong>直径 32mm，长度 15m，根数 12 × 50 = 600。</p>
+<p><strong>计算：</strong>w = 6.31 kg/m，W = 6.31 × 15 × 600 = <strong>56790 kg</strong>（约 56.79 吨）。</p>
+<p><strong>用途：</strong>大型基础设施项目的材料总量估算。</p>
+
+<h2>五、常见错误与排查</h2>
+<ol>
+  <li><strong>错误提示"直径不在规定范围内"：</strong>输入的直径不是 14 种标准规格之一。请确认设计图纸上的公称直径，注意区分公称直径与实测直径。</li>
+  <li><strong>错误提示"根数必须为整数"：</strong>根数输入了小数。如需计算"半根"，请将长度折半、根数取 1。</li>
+  <li><strong>错误提示"长度/重量不能为负数"：</strong>物理量不能为负，请检查输入。</li>
+  <li><strong>计算结果与手算略有差异：</strong>本工具使用国标表值（如 Φ6 = 0.222 kg/m），而手算常用 0.00617×d²（Φ6 计算值为 0.22212），两者差异在千分之一以内，属正常。</li>
+  <li><strong>反查长度时根数填 0 报错：</strong>数学上分母不能为 0，请确认根数。</li>
+  <li><strong>结果与过磅重量不符：</strong>理论重量是按公称直径计算的"理想值"，实际钢筋存在允许偏差（GB/T 1499.2-2018 第 7.4 条规定了重量允许偏差），实测重量通常略低于理论重量，偏差在 ±5% 以内一般属正常。</li>
+</ol>
+
+<h2>六、数据来源与标准依据</h2>
+<ul>
+  <li><strong>主要依据：</strong>GB/T 1499.2-2018《钢筋混凝土用钢 第2部分：热轧带肋钢筋》附录 A（规范性附录）"钢筋公称横截面积与理论重量"。</li>
+  <li><strong>适用钢种：</strong>HRB400、HRB500、HRBF400、HRBF500 等热轧带肋钢筋（牌号不同但同一直径的理论重量相同，因理论重量仅与几何尺寸有关）。</li>
+  <li><strong>理论重量的物理基础：</strong>钢材密度取 7.85 g/cm³，由截面积 × 长度 × 密度推导得出。国标附录 A 的表值已对公式结果进行修约。</li>
+  <li><strong>不适用钢种：</strong>光圆钢筋（GB/T 1499.1）、冷轧带肋钢筋（GB/T 13788）、预应力混凝土用钢绞线（GB/T 5224）等，本工具不支持。</li>
+</ul>
+
+<h2>七、局限性说明</h2>
+<ol>
+  <li><strong>仅支持 14 种标准直径：</strong>非标直径（如 7、9、11、15、17、19、21 等）不在 GB/T 1499.2-2018 附录 A 范围内，本工具无法计算，需查标准原文或厂家资料。</li>
+  <li><strong>仅适用于热轧带肋钢筋：</strong>光圆钢筋、冷轧钢筋、钢绞线、钢丝等不适用本工具。</li>
+  <li><strong>理论重量 ≠ 实际重量：</strong>实际钢筋存在重量允许偏差（国标规定），本工具计算的是"理论值"，不能替代过磅实测。</li>
+  <li><strong>不考虑搭接、损耗：</strong>施工下料还需考虑搭接长度、加工损耗、废料等，本工具仅计算净用量。</li>
+  <li><strong>不考虑锈蚀、涂层：</strong>若钢筋已锈蚀或带涂层，实际重量会偏离理论值。</li>
+  <li><strong>精度限制：</strong>结果保留 3 位小数，超大数量累计时可能存在微小舍入误差，重大工程请以设计图纸与过磅数据为准。</li>
+  <li><strong>不替代设计文件：</strong>本工具为辅助计算工具，不能替代结构设计图纸、材料质保书、第三方检测报告等法定文件。</li>
+</ol>
+
+<h2>八、版本与更新</h2>
+<p>当前版本：v2.0.0-完整版 20261021</p>
+<p>如 GB/T 1499.2 标准修订，本工具需同步更新附录 A 表值。使用前请确认标准现行有效。</p>
+`;
+
+/* ============================================================
+ * UI 交互
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 模式切换
+document.querySelectorAll('.mode-switch button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-switch button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode = btn.dataset.mode;
+    document.getElementById('mode-weight').style.display = mode === 'weight' ? '' : 'none';
+    document.getElementById('mode-length').style.display = mode === 'length' ? '' : 'none';
+  });
+});
+
+function showResult(id, html) {
+  document.getElementById(id).innerHTML = html;
+}
+
+function doCalcWeight() {
+  const d = parseFloat(document.getElementById('diameter').value);
+  const L = parseFloat(document.getElementById('length').value);
+  const n = parseFloat(document.getElementById('count').value);
+  const box = document.getElementById('result-weight');
+  if (!document.getElementById('diameter').value) {
+    box.innerHTML = '<div class="error-box">请选择公称直径</div>';
+    return;
+  }
+  if (isNaN(L)) { box.innerHTML = '<div class="error-box">请输入长度</div>'; return; }
+  if (isNaN(n)) { box.innerHTML = '<div class="error-box">请输入根数</div>'; return; }
+  try {
+    const w = getUnitWeight(d);
+    const W = calcWeight(d, L, n);
+    box.innerHTML =
+      '<div class="result-box">' +
+      '<div class="sub">每米理论重量：' + w + ' kg/m</div>' +
+      '<div class="big">' + W + ' kg</div>' +
+      '<div class="sub">计算过程：' + w + ' × ' + L + ' × ' + n + ' = ' + W + '</div>' +
+      '</div>';
+  } catch (e) {
+    box.innerHTML = '<div class="error-box">' + e.message + '</div>';
+  }
+}
+
+function doCalcLength() {
+  const d = parseFloat(document.getElementById('diameter2').value);
+  const W = parseFloat(document.getElementById('weight').value);
+  const n = parseFloat(document.getElementById('count2').value);
+  const box = document.getElementById('result-length');
+  if (!document.getElementById('diameter2').value) {
+    box.innerHTML = '<div class="error-box">请选择公称直径</div>';
+    return;
+  }
+  if (isNaN(W)) { box.innerHTML = '<div class="error-box">请输入重量</div>'; return; }
+  if (isNaN(n)) { box.innerHTML = '<div class="error-box">请输入根数</div>'; return; }
+  try {
+    const w = getUnitWeight(d);
+    const L = calcLength(d, W, n);
+    box.innerHTML =
+      '<div class="result-box">' +
+      '<div class="sub">每米理论重量：' + w + ' kg/m</div>' +
+      '<div class="big">' + L + ' m</div>' +
+      '<div class="sub">计算过程：' + W + ' / (' + w + ' × ' + n + ') = ' + L + '</div>' +
+      '</div>';
+  } catch (e) {
+    box.innerHTML = '<div class="error-box">' + e.message + '</div>';
+  }
+}
+
+function resetForm(mode) {
+  if (mode === 'weight') {
+    document.getElementById('diameter').value = '';
+    document.getElementById('length').value = '';
+    document.getElementById('count').value = '1';
+    document.getElementById('result-weight').innerHTML = '';
+  } else {
+    document.getElementById('diameter2').value = '';
+    document.getElementById('weight').value = '';
+    document.getElementById('count2').value = '1';
+    document.getElementById('result-length').innerHTML = '';
+  }
+}
+
+// 渲染对照表
+(function(){
+  const tbody = document.getElementById('ref-table');
+  const rows = [];
+  for (let i = 0; i < VALID_DIAMETERS.length; i += 2) {
+    const d1 = VALID_DIAMETERS[i];
+    const d2 = VALID_DIAMETERS[i+1];
+    rows.push('<tr>' +
+      '<td>' + d1 + '</td><td>' + UNIT_WEIGHT_TABLE[d1] + '</td>' +
+      (d2 !== undefined ? '<td>' + d2 + '</td><td>' + UNIT_WEIGHT_TABLE[d2] + '</td>' : '<td colspan="2"></td>') +
+      '</tr>');
+  }
+  tbody.innerHTML = rows.join('');
+})();
+
+// 渲染源码
+(function(){
+  const src =
+`/**
+ * 热轧带肋钢筋公称直径与理论重量对照表
+ * 依据：GB/T 1499.2-2018 附录 A
+ * 单位：kg/m
+ */
+const UNIT_WEIGHT_TABLE = {
+  6:  0.222,  8:  0.395, 10: 0.617, 12: 0.888,
+  14: 1.21,  16: 1.58,  18: 2.00,  20: 2.47,
+  22: 2.98,  25: 3.85,  28: 4.83,  32: 6.31,
+  36: 7.99,  40: 9.87
+};
+
+const VALID_DIAMETERS = Object.keys(UNIT_WEIGHT_TABLE).map(Number).sort((a,b)=>a-b);
+
+/**
+ * 查询每米理论重量
+ * @param {number} diameter - 公称直径 (mm)
+ * @returns {number} 每米理论重量 (kg/m)
+ * @throws {TypeError} 参数非法
+ * @throws {RangeError} 直径不在国标范围
+ */
+function getUnitWeight(diameter) {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter)) {
+    throw new TypeError('直径必须是有限数字');
+  }
+  if (!UNIT_WEIGHT_TABLE.hasOwnProperty(diameter)) {
+    throw new RangeError('直径 ' + diameter + ' mm 不在 GB/T 1499.2-2018 附录A 范围内');
+  }
+  return UNIT_WEIGHT_TABLE[diameter];
+}
+
+/**
+ * 计算总理论重量
+ * @param {number} diameter - 公称直径 (mm)
+ * @param {number} length   - 单根长度 (m)
+ * @param {number} count    - 根数（非负整数）
+ * @returns {number} 总重量 (kg)，保留 3 位小数
+ */
+function calcWeight(diameter, length, count) {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter))
+    throw new TypeError('直径必须是有限数字');
+  if (typeof length !== 'number' || !Number.isFinite(length))
+    throw new TypeError('长度必须是有限数字');
+  if (typeof count !== 'number' || !Number.isFinite(count))
+    throw new TypeError('根数必须是有限数字');
+  if (length < 0) throw new RangeError('长度不能为负数');
+  if (count < 0)  throw new RangeError('根数不能为负数');
+  if (!Number.isInteger(count)) throw new RangeError('根数必须为整数');
+  const w = getUnitWeight(diameter);
+  return Math.round(w * length * count * 1000) / 1000;
+}
+
+/**
+ * 反查单根长度
+ * @param {number} diameter - 公称直径 (mm)
+ * @param {number} weight   - 总重量 (kg)
+ * @param {number} count    - 根数（正整数）
+ * @returns {number} 单根长度 (m)，保留 3 位小数
+ */
+function calcLength(diameter, weight, count) {
+  if (typeof diameter !== 'number' || !Number.isFinite(diameter))
+    throw new TypeError('直径必须是有限数字');
+  if (typeof weight !== 'number' || !Number.isFinite(weight))
+    throw new TypeError('重量必须是有限数字');
+  if (typeof count !== 'number' || !Number.isFinite(count))
+    throw new TypeError('根数必须是有限数字');
+  if (weight < 0) throw new RangeError('重量不能为负数');
+  if (count <= 0) throw new RangeError('反查长度时根数必须为正整数');
+  if (!Number.isInteger(count)) throw new RangeError('根数必须为整数');
+  const w = getUnitWeight(diameter);
+  return Math.round(weight / (w * count) * 1000) / 1000;
+}`;
+  document.getElementById('source-code').textContent = src;
+})();
+
+// 渲染说明书
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+
+// 运行测试
+printTestResults();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>气体吸收亨利定律计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#c8d6e5;font:13px/1.55 system-ui,-apple-system,"Microsoft YaHei",sans-serif;overflow-x:hidden}
+header{padding:10px 14px;border-bottom:1px solid #1d3557}
+h1{margin:0;font-size:16px;color:#4a9eff}
+h2{font-size:14px;color:#4a9eff;margin:0 0 8px}
+nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px}
+nav button{background:#12243d;color:#9fb3c8;border:1px solid #1d3557;padding:6px 12px;border-radius:6px;font-size:13px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#06121f;border-color:#4a9eff;font-weight:700}
+main{max-width:1080px;margin:0 auto;padding:0 14px 60px}
+.card{background:#0f1f38;border:1px solid #1d3557;border-radius:8px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fa5bb;margin-bottom:3px}
+input,select{width:100%;background:#0a1628;border:1px solid #24405f;color:#e2ecf5;padding:6px 8px;border-radius:5px;font-size:13px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.run{background:#4a9eff;color:#06121f;border:0;padding:9px 22px;border-radius:6px;font-weight:700;cursor:pointer;margin-top:12px;font-size:13px}
+.err{color:#ff6b6b;font-size:12px;margin-top:8px;white-space:pre-line}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td,th{border-bottom:1px solid #1d3557;padding:5px 6px;text-align:left;vertical-align:top}
+th{color:#8fa5bb;font-weight:600}
+td.v{color:#4a9eff;font-weight:700;font-family:ui-monospace,monospace}
+.ok{color:#3ddc97;font-weight:700}.bad{color:#ff6b6b;font-weight:700}
+pre{background:#07101d;border:1px solid #1d3557;border-radius:6px;padding:10px;overflow:auto;font-size:11px;color:#9fd0ff;max-height:70vh}
+.small{font-size:11.5px;color:#7b93ab}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#54718f;background:rgba(10,22,40,.85);padding:2px 6px;border-radius:4px}
+ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+</style>
+</head>
+<body>
+<header><h1>气体吸收 · 亨利定律计算器</h1><div class="small">亨利常数温度修正 · 平衡溶解度 · 吸收因子 · NTU / HTU</div></header>
+<nav>
+<button class="on" data-t="calc">计算工具</button>
+<button data-t="src">JS 源码</button>
+<button data-t="test">单元测试</button>
+<button data-t="help">使用说明</button>
+</nav>
+<main>
+<section id="p-calc">
+<div class="card"><h2>工况输入</h2><div class="grid">
+<div><label>溶质气体</label><select id="gas"><option value="CO2">二氧化碳 CO₂</option><option value="O2">氧气 O₂</option><option value="NH3">氨 NH₃</option><option value="SO2">二氧化硫 SO₂</option></select></div>
+<div><label>温度 T (°C)</label><input id="T" value="25"></div>
+<div><label>总压 P (kPa)</label><input id="P" value="101.325"></div>
+<div><label>进口气相摩尔分数 y₁ (%)</label><input id="y1" value="5"></div>
+<div><label>出口气相摩尔分数 y₂ (%)</label><input id="y2" value="0.5"></div>
+<div><label>入塔液相摩尔分数 x₂</label><input id="x2" value="0"></div>
+<div><label>液气比 L/G (mol/mol)</label><input id="LG" value="1.5"></div>
+<div><label>惰性气体流量 G (kmol/h)</label><input id="G" value="100"></div>
+<div><label>塔径 D (m)</label><input id="D" value="1"></div>
+<div><label>K_y·a (kmol/(m³·h))</label><input id="Kya" value="100"></div>
+<div><label>液相总摩尔浓度 C_T (mol/m³)</label><input id="CT" value="55500"></div>
+</div><button class="run" id="run">开始计算</button><div class="err" id="err"></div></div>
+<div class="card" id="res"></div>
+</section>
+<section id="p-src" hidden><div class="card"><h2>核心计算源码（纯函数，可单独测试）</h2><pre id="srcBox"></pre></div></section>
+<section id="p-test" hidden><div class="card"><h2>单元测试</h2><button class="run" id="trun">运行全部测试</button><div id="tsum" class="small" style="margin-top:8px"></div><table id="tres"></table></div></section>
+<section id="p-help" hidden><div class="card"><h2>使用说明与数据出处</h2>
+<div class="small">1. 选择溶质气体后，程序按 van't Hoff 式把 298.15 K 的亨利常数修正到实际温度；再按 p=y₁·P 求分压、x*=p/H 求平衡液相摩尔分数。</div>
+<div class="small">2. 吸收因子 A=(L/G)/(H/P)，NTU 用低浓度线性平衡的对数平均推动力积分式，HTU=G/(S·K_y·a)，Z=NTU·HTU。</div>
+<div class="small">3. 所有输入框均有范围与空值校验，异常时给中文提示，不输出 NaN。</div>
+<h2 style="margin-top:12px">数据与公式出处</h2><ul class="small">
+<li>亨利定律 p_i = H(T)·x_i：W. Henry (1803)；《化工原理》（陈敏恒等，化学工业出版社）吸收章。</li>
+<li>温度修正 ln(H₂/H₁)=ΔH_sol/R·(1/T₂−1/T₁)：R. Sander, <i>Atmos. Chem. Phys.</i> 15 (2015) 4399–4981（真实文献，亨利常数汇编）。</li>
+<li>CO₂、O₂ 在 298.15 K 的亨利常数（水为溶剂）：取自上述 Sander (2015) 汇编。</li>
+<li>NH₃、SO₂ 的亨利常数与溶解焓：本参数为行业经验值，未经标准核对，工程应用请以实测或手册数据校核。</li>
+<li>吸收因子 A=L/(mG)、Kremser 方程：R. E. Treybal, <i>Mass-Transfer Operations</i>, 3rd ed., McGraw-Hill, 1980。</li>
+<li>传质单元数 NTU（对数平均推动力积分式）与 HTU：同上文献及《化工原理》吸收章。</li>
+<li>本工具不引用任何国家标准强制值；结果为方案估算，不替代工艺包设计。</li>
+</ul></div></section>
+</main>
+<div class="ver">v1.0.0-absorber-henry 20261108</div>
+<script>
+const R=8.314,GAS={
+CO2:{n:'二氧化碳 CO₂',H:1.64e8,dH:-19.9,M:44.01,s:'Sander (2015) ACP 15:4399 汇编'},
+O2:{n:'氧气 O₂',H:4.4e9,dH:-12.0,M:32.00,s:'Sander (2015) 汇编'},
+NH3:{n:'氨 NH₃',H:3.3e5,dH:-31.0,M:17.03,s:'行业经验值，未经标准核对'},
+SO2:{n:'二氧化硫 SO₂',H:1.6e7,dH:-26.0,M:64.07,s:'行业经验值，未经标准核对'}};
+function henry(H0,dH,Tc){return H0*Math.exp(dH*1000/R*(1/(Tc+273.15)-1/298.15));}
+function equiX(p,H){return p/H;}
+function absFactor(LG,H,P){return LG*P/H;}
+function ntu(A,y1,y2,x2,m){var mx=m*x2;if(Math.abs(A-1)<1e-9)return (y1-y2)/(y2-mx);var t=((y1-mx)-(y1-y2)/A)/(y2-mx);if(!(t>0))return NaN;return A/(A-1)*Math.log(t);}
+function htu(G,D,Kya){return G/(Math.PI*D*D/4)/Kya;}
+var RNG={T:[-5,120],P:[50,5000],y1:[0.01,50],y2:[0.001,50],x2:[0,0.05],LG:[0.05,50],G:[0.1,100000],D:[0.2,10],Kya:[1,5000],CT:[1000,60000]};
+var NAME={T:'温度(°C)',P:'总压(kPa)',y1:'进口摩尔分数(%)',y2:'出口摩尔分数(%)',x2:'入塔液相摩尔分数',LG:'液气比 L/G',G:'惰性气体流量(kmol/h)',D:'塔径(m)',Kya:'K_y·a(kmol/(m³·h))',CT:'液相总摩尔浓度(mol/m³)'};
+function validate(o){
+for(var k in RNG){var v=o[k];if(v===''||v===null||v===undefined||!isFinite(v))return '【'+NAME[k]+'】不能为空或含非数字字符';if(v<RNG[k][0]||v>RNG[k][1])return '【'+NAME[k]+'】超出允许范围 '+RNG[k][0]+' ~ '+RNG[k][1];}
+if(o.y2>=o.y1)return '【出口摩尔分数】必须小于进口摩尔分数 y₁';
+return '';}
+function compute(o){
+var g=GAS[o.gas],H=henry(g.H,g.dH,o.T),P=o.P*1000,y1=o.y1/100,y2=o.y2/100,p=y1*P,x=p/H,c=x*o.CT,m=H/P,A=o.LG*P/H,N=ntu(A,y1,y2,o.x2,m),HT=htu(o.G,o.D,o.Kya);
+return{H:H,p:p,x:x,c:c,mgL:c*g.M,m:m,A:A,x1:o.x2+(y1-y2)/o.LG,eta:(y1-y2)/y1,ab:o.G*(y1-y2),N:N,HTU:HT,Z:N*HT,gas:g};}
+function num(id){var v=document.getElementById(id).value.trim();return v===''?NaN:parseFloat(v);}
+function collect(){return{gas:document.getElementById('gas').value,T:num('T'),P:num('P'),y1:num('y1'),y2:num('y2'),x2:num('x2'),LG:num('LG'),G:num('G'),D:num('D'),Kya:num('Kya'),CT:num('CT')};}
+function fmt(v,n){return isFinite(v)?Number(v).toPrecision(n||4):'—';}
+function row(k,v,u,s){return '<tr><td>'+k+'</td><td class="v">'+v+'</td><td class="small">'+(u||'')+'</td><td class="small">'+(s||'')+'</td></tr>';}
+function render(r){
+var h='<h2>计算结果</h2><table><tr><th>项目</th><th>数值</th><th>单位</th><th>公式 / 依据</th></tr>';
+h+=row('亨利常数 H(T)',fmt(r.H),'Pa','H₂₉₈·exp[ΔH/R·(1/T−1/298.15)]，van’t Hoff');
+h+=row('溶质分压 p=y₁·P',fmt(r.p),'Pa','道尔顿分压定律');
+h+=row('平衡液相摩尔分数 x*=p/H',fmt(r.x),'mol/mol','亨利定律 p=H·x');
+h+=row('平衡液相浓度 c*=x*·C_T',fmt(r.c),'mol/m³','x* 换算为体积摩尔浓度');
+h+=row('对应溶解度',fmt(r.mgL),'mg/L','c*·M（g/m³ 即 mg/L）');
+h+=row('相平衡常数 m=H/P',fmt(r.m),'—','y*=m·x');
+h+=row('吸收因子 A=(L/G)/m',fmt(r.A),'—','Kremser 吸收因子');
+h+=row('出塔液相摩尔分数 x₁',fmt(r.x1),'mol/mol','物料衡算 x₁=x₂+(y₁−y₂)/(L/G)');
+h+=row('吸收率 η',fmt(r.eta*100,4),'%','(y₁−y₂)/y₁');
+h+=row('溶质吸收量',fmt(r.ab),'kmol/h','G·(y₁−y₂)');
+h+=row('传质单元数 NTU',fmt(r.N),'—','A/(A−1)·ln{[y₁−mx₂−(y₁−y₂)/A]/(y₂−mx₂)}');
+h+=row('传质单元高度 HTU',fmt(r.HTU),'m','G/(S·K_y·a)，S=πD²/4');
+h+=row('所需传质高度 Z',fmt(r.Z),'m','Z=NTU·HTU');
+h+='</table><div class="small" style="margin-top:8px">气体数据：'+r.gas.n+'，298.15 K 亨利常数 '+r.gas.H.toExponential(3)+' Pa，ΔH_sol='+r.gas.dH+' kJ/mol（'+r.gas.s+'）。结果为稳态稀溶液近似估算。</div>';
+document.getElementById('res').innerHTML=h;}
+document.getElementById('run').onclick=function(){
+var o=collect(),e=validate(o),er=document.getElementById('err');
+er.textContent=e;document.getElementById('res').innerHTML='';
+if(e)return;
+var r=compute(o);render(r);
+if(!isFinite(r.N))er.textContent='传质推动力 ≤ 0（x₂ 接近或超过平衡浓度），NTU 无解：请降低 x₂ 或增大液气比 L/G。';
+};
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('on',x===b);});
+['calc','src','test','help'].forEach(function(k){document.getElementById('p-'+k).hidden=(k!==b.dataset.t);});};});
+var TESTS=[
+{n:'H(CO₂,25°C)=1.64e8 Pa',f:function(){return henry(1.64e8,-19.9,25);},e:1.64e8,t:1e5},
+{n:'放热溶解：H 随温度升高而增大',f:function(){return henry(1.64e8,-19.9,45)>henry(1.64e8,-19.9,25);},e:true},
+{n:'x*=p/H，p=101325 Pa → 6.179e-4',f:function(){return equiX(101325,1.64e8);},e:6.179e-4,t:1e-6},
+{n:'A=(L/G)·P/H = 9.267e-4',f:function(){return absFactor(1.5,1.64e8,101325);},e:9.267e-4,t:1e-6},
+{n:'NTU(A=1.5,y₁=.05,y₂=.005)=4.159',f:function(){return ntu(1.5,.05,.005,0,0);},e:4.159,t:1e-3},
+{n:'NTU(A=1)=4',f:function(){return ntu(1,.05,.01,0,0);},e:4,t:1e-9},
+{n:'HTU(G=100,D=1,Kya=100)=1.273 m',f:function(){return htu(100,1,100);},e:1.2732,t:1e-3},
+{n:'吸收率 η=90%',f:function(){return compute({gas:'CO2',T:25,P:101.325,y1:5,y2:0.5,x2:0,LG:1.5,G:100,D:1,Kya:100,CT:55500}).eta;},e:0.9,t:1e-9},
+{n:'空值输入被拦截',f:function(){return validate({gas:'CO2',T:'',P:101.325,y1:5,y2:.5,x2:0,LG:1.5,G:100,D:1,Kya:100,CT:55500})!=='';},e:true},
+{n:'y₂≥y₁ 报错',f:function(){return validate({gas:'CO2',T:25,P:101,y1:1,y2:2,x2:0,LG:1.5,G:100,D:1,Kya:100,CT:55500})!=='';},e:true},
+{n:'温度超范围报错',f:function(){return validate({gas:'CO2',T:200,P:101,y1:1,y2:.5,x2:0,LG:1.5,G:100,D:1,Kya:100,CT:55500})!=='';},e:true},
+{n:'负压报错',f:function(){return validate({gas:'CO2',T:25,P:-5,y1:1,y2:.5,x2:0,LG:1.5,G:100,D:1,Kya:100,CT:55500})!=='';},e:true}];
+document.getElementById('trun').onclick=function(){
+var h='',p=0;
+TESTS.forEach(function(t,i){
+var ok=false,v;
+try{v=t.f();ok=(typeof t.e==='boolean')?(v===t.e):(isFinite(v)&&Math.abs(v-t.e)<=Math.abs(t.t||1e-9));}
+catch(ex){v='异常：'+ex.message;}
+if(ok)p++;
+h+='<tr><td>'+(i+1)+'</td><td>'+t.n+'</td><td class="small">'+v+'</td><td class="'+(ok?'ok':'bad')+'">'+(ok?'通过':'失败')+'</td></tr>';});
+document.getElementById('tres').innerHTML=h;
+document.getElementById('tsum').textContent='通过 '+p+' / '+TESTS.length+' 项';};
+document.getElementById('srcBox').textContent=[henry,equiX,absFactor,ntu,htu,compute,validate].map(String).join('\n\n');
+document.getElementById('run').click();
+</script>
+</body>
+</html>

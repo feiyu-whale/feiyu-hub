@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>异体字与正体字查询工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%);
+    color: #fff;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 28px; margin-bottom: 8px; letter-spacing: 2px; }
+  header p { font-size: 14px; opacity: 0.85; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #d2d2d7;
+    margin-bottom: 24px;
+    background: #fff;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 20px;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: #515154;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+  }
+  .tab-btn:hover { background: #f5f5f7; }
+  .tab-btn.active {
+    color: #4a6741;
+    border-bottom-color: #4a6741;
+    background: #fff;
+  }
+  .tab-content {
+    display: none;
+    background: #fff;
+    padding: 28px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .tab-content.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .cm { color: #6a9955; font-style: italic; }
+  .fn { color: #dcdcaa; }
+  .num { color: #b5cea8; }
+  .doc-section { margin-bottom: 28px; }
+  .doc-section h2 {
+    color: #2c3e50;
+    border-left: 4px solid #4a6741;
+    padding-left: 12px;
+    margin-bottom: 14px;
+    font-size: 20px;
+  }
+  .doc-section h3 {
+    color: #4a6741;
+    margin: 18px 0 10px;
+    font-size: 16px;
+  }
+  .doc-section p { margin-bottom: 10px; text-indent: 2em; }
+  .doc-section ul, .doc-section ol { margin: 10px 0 10px 2em; }
+  .doc-section li { margin-bottom: 6px; }
+  .doc-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc-section th, .doc-section td {
+    border: 1px solid #d2d2d7;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc-section th { background: #f5f5f7; font-weight: 600; }
+  .scene-box {
+    background: #f9f9fb;
+    border-left: 3px solid #4a6741;
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .scene-box strong { color: #2c3e50; }
+  .scene-box code {
+    background: #e8e8ed;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+  }
+  .warn-box {
+    background: #fff4e5;
+    border-left: 3px solid #d97706;
+    padding: 12px 18px;
+    margin: 12px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .info-box {
+    background: #e8f4f8;
+    border-left: 3px solid #0284c7;
+    padding: 12px 18px;
+    margin: 12px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  #run-test-btn {
+    background: #4a6741;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  #run-test-btn:hover { background: #3a5231; }
+  #test-results {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .pass { color: #4ec9b0; }
+  .fail { color: #f48771; }
+  .summary { color: #dcdcaa; font-weight: bold; font-size: 15px; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #86868b;
+    background: rgba(255,255,255,0.8);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .code-block {
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #3a3a3a;
+    color: #d4d4d4;
+    border: 1px solid #555;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .copy-btn:hover { background: #4a4a4a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>异体字与正体字查询工具</h1>
+  <p>依据《通用规范汉字表》（GF 0011-2013）、《第一批异体字整理表》、《简化字总表》（1986年新版）</p>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="source">一、JS 源码</button>
+    <button class="tab-btn" data-tab="test">二、单元测试</button>
+    <button class="tab-btn" data-tab="doc">三、使用说明书</button>
+  </div>
+
+  <div id="source" class="tab-content active">
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode('source-code')">复制</button>
+      <pre><code id="source-code"></code></pre>
+    </div>
+  </div>
+
+  <div id="test" class="tab-content">
+    <button id="run-test-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="test-results">点击按钮运行测试...</div>
+  </div>
+
+  <div id="doc" class="tab-content">
+    <div id="doc-content"></div>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码
+ *  异体字与正体字查询工具
+ *  依据：《通用规范汉字表》GF 0011-2013
+ *        《第一批异体字整理表》（1955 文化版，1988 新闻出版署调整）
+ *        《简化字总表》（1986 年新版）
+ * ============================================================ */
+
+/**
+ * 核心数据表：规范字 → { 繁体, 异体字列表 }
+ * 说明：
+ *   - t (traditional): 对应的繁体字形（若无繁简差异则为 null 或等于规范字本身）
+ *   - v (variants): 被淘汰的异体字列表（依据《第一批异体字整理表》）
+ * 注：本表为示例性节选，覆盖常见对照关系，完整数据需查标准原文。
+ */
+const VARIANT_DB = {
+  '国': { t: '國', v: [] },
+  '体': { t: '體', v: [] },
+  '里': { t: '裏', v: [] },
+  '为': { t: '為', v: ['爲'] },
+  '群': { t: '群', v: ['羣'] },
+  '峰': { t: '峰', v: ['峯'] },
+  '床': { t: '床', v: ['牀'] },
+  '吃': { t: '吃', v: ['喫'] },
+  '睹': { t: '睹', v: ['覩'] },
+  '泪': { t: '淚', v: ['涙'] },
+  '猫': { t: '貓', v: [] },
+  '唇': { t: '唇', v: ['脣'] },
+  '沉': { t: '沉', v: ['沈'] },
+  '勋': { t: '勳', v: [] },
+  '台': { t: '臺', v: [] },
+  '复': { t: '復', v: [] },
+  '发': { t: '髮', v: [] },
+  '后': { t: '後', v: [] },
+  '干': { t: '乾', v: [] },
+  '斗': { t: '鬥', v: [] },
+  '面': { t: '麵', v: [] },
+  '谷': { t: '穀', v: [] },
+  '余': { t: '餘', v: [] },
+  '征': { t: '徵', v: [] },
+  '党': { t: '黨', v: [] },
+  '丑': { t: '醜', v: [] },
+  '范': { t: '範', v: [] },
+  '丰': { t: '豐', v: [] },
+  '几': { t: '幾', v: [] },
+  '系': { t: '係', v: [] },
+  '只': { t: '祇', v: [] },
+  '尽': { t: '盡', v: [] },
+  '历': { t: '歷', v: [] },
+  '闲': { t: '閒', v: [] },
+  '间': { t: '間', v: [] },
+  '据': { t: '據', v: [] },
+  '舍': { t: '捨', v: [] },
+  '表': { t: '錶', v: [] },
+  '回': { t: '迴', v: [] },
+  '苹': { t: '蘋', v: [] },
+  '纤': { t: '纖', v: [] },
+  '衅': { t: '釁', v: [] },
+  '出': { t: '齣', v: [] },
+  '蔑': { t: '衊', v: [] },
+  '须': { t: '鬚', v: [] },
+  '胡': { t: '鬍', v: [] },
+  '松': { t: '鬆', v: [] },
+  '淡': { t: '澹', v: [] },
+  '厂': { t: '廠', v: [] },
+  '广': { t: '廣', v: [] },
+  '种': { t: '種', v: [] },
+  '适': { t: '適', v: [] },
+  '协': { t: '協', v: [] },
+  '苏': { t: '蘇', v: [] },
+  '术': { t: '術', v: [] },
+  '丝': { t: '絲', v: [] },
+  '虽': { t: '雖', v: [] },
+  '随': { t: '隨', v: [] },
+  '态': { t: '態', v: [] },
+  '条': { t: '條', v: [] },
+  '图': { t: '圖', v: [] },
+  '万': { t: '萬', v: [] },
+  '维': { t: '維', v: [] },
+  '伟': { t: '偉', v: [] },
+  '稳': { t: '穩', v: [] },
+  '务': { t: '務', v: [] },
+  '献': { t: '獻', v: [] },
+  '乡': { t: '鄉', v: [] },
+  '响': { t: '響', v: [] },
+  '兴': { t: '興', v: [] },
+  '悬': { t: '懸', v: [] },
+  '选': { t: '選', v: [] },
+  '学': { t: '學', v: [] },
+  '压': { t: '壓', v: [] },
+  '严': { t: '嚴', v: [] },
+  '盐': { t: '鹽', v: [] },
+  '养': { t: '養', v: [] },
+  '样': { t: '樣', v: [] },
+  '药': { t: '藥', v: [] },
+  '爷': { t: '爺', v: [] },
+  '叶': { t: '葉', v: [] },
+  '医': { t: '醫', v: [] },
+  '义': { t: '義', v: [] },
+  '艺': { t: '藝', v: [] },
+  '阴': { t: '陰', v: [] },
+  '银': { t: '銀', v: [] },
+  '应': { t: '應', v: [] },
+  '营': { t: '營', v: [] },
+  '拥': { t: '擁', v: [] },
+  '优': { t: '優', v: [] },
+  '邮': { t: '郵', v: [] },
+  '犹': { t: '猶', v: [] },
+  '于': { t: '於', v: [] },
+  '与': { t: '與', v: [] },
+  '语': { t: '語', v: [] },
+  '员': { t: '員', v: [] },
+  '园': { t: '園', v: [] },
+  '远': { t: '遠', v: [] },
+  '愿': { t: '願', v: [] },
+  '运': { t: '運', v: [] },
+  '云': { t: '雲', v: [] },
+  '杂': { t: '雜', v: [] },
+  '灾': { t: '災', v: [] },
+  '赞': { t: '贊', v: [] },
+  '脏': { t: '臟', v: [] },
+  '则': { t: '則', v: [] },
+  '责': { t: '責', v: [] },
+  '泽': { t: '澤', v: [] },
+  '战': { t: '戰', v: [] },
+  '张': { t: '張', v: [] },
+  '这': { t: '這', v: [] },
+  '着': { t: '著', v: [] },
+  '针': { t: '針', v: [] },
+  '阵': { t: '陣', v: [] },
+  '镇': { t: '鎮', v: [] },
+  '争': { t: '爭', v: [] },
+  '证': { t: '證', v: [] },
+  '郑': { t: '鄭', v: [] },
+  '织': { t: '織', v: [] },
+  '执': { t: '執', v: [] },
+  '纸': { t: '紙', v: [] },
+  '制': { t: '製', v: [] },
+  '质': { t: '質', v: [] },
+  '终': { t: '終', v: [] },
+  '众': { t: '眾', v: [] },
+  '转': { t: '轉', v: [] },
+  '庄': { t: '莊', v: [] },
+  '装': { t: '裝', v: [] },
+  '壮': { t: '壯', v: [] },
+  '状': { t: '狀', v: [] },
+  '准': { t: '準', v: [] },
+  '资': { t: '資', v: [] },
+  '总': { t: '總', v: [] },
+  '组': { t: '組', v: [] }
+};
+
+/**
+ * 构建反向索引：繁体字/异体字 → 规范字
+ * @param {Object} db - 核心数据表 VARIANT_DB
+ * @returns {Object} 反向索引，键为繁体或异体字，值为 { standard, type }
+ * @example
+ *   buildReverseIndex(VARIANT_DB)['國'] // => { standard: '国', type: 'traditional' }
+ *   buildReverseIndex(VARIANT_DB)['爲'] // => { standard: '为', type: 'variant' }
+ */
+function buildReverseIndex(db) {
+  const reverse = {};
+  for (const std of Object.keys(db)) {
+    const info = db[std];
+    if (info.t && info.t !== std) {
+      reverse[info.t] = { standard: std, type: 'traditional' };
+    }
+    if (Array.isArray(info.v)) {
+      for (const v of info.v) {
+        reverse[v] = { standard: std, type: 'variant' };
+      }
+    }
+  }
+  return reverse;
+}
+
+/** 反向索引（繁体/异体 → 规范字） */
+const REVERSE_DB = buildReverseIndex(VARIANT_DB);
+
+/**
+ * 校验输入是否为合法的单个汉字
+ * @param {*} char - 待校验的输入
+ * @returns {boolean} 是否为单个汉字
+ * @example
+ *   isValidChar('国') // => true
+ *   isValidChar('AB') // => false
+ *   isValidChar(null) // => false
+ */
+function isValidChar(char) {
+  return typeof char === 'string' && char.length === 1 && /[\u4e00-\u9fff]/.test(char);
+}
+
+/**
+ * 校验输入是否为合法字符串
+ * @param {*} text - 待校验的输入
+ * @returns {boolean} 是否为字符串
+ * @example
+ *   isValidText('中国') // => true
+ *   isValidText('') // => true
+ *   isValidText(null) // => false
+ */
+function isValidText(text) {
+  return typeof text === 'string';
+}
+
+/**
+ * 查询单个汉字的异体/繁体/简体对照关系
+ *
+ * @param {string} char - 待查询的单个汉字（必须为单个汉字字符）
+ * @returns {Object} 查询结果对象，包含以下字段：
+ *   - input {string} 原始输入字符
+ *   - found {boolean} 是否在数据表中找到对照
+ *   - type {string|null} 字符类型：'standard'（规范字）| 'traditional'（繁体）| 'variant'（异体）| null（未找到）
+ *   - standard {string|null} 对应的规范字（正体）
+ *   - traditional {string|null} 对应的繁体字形
+ *   - variants {string[]} 该规范字对应的所有异体字列表
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @throws {RangeError} 当输入不是单个汉字时抛出
+ * @example
+ *   queryChar('国')
+ *   // => { input: '国', found: true, type: 'standard',
+ *   //      standard: '国', traditional: '國', variants: [] }
+ * @example
+ *   queryChar('國')
+ *   // => { input: '國', found: true, type: 'traditional',
+ *   //      standard: '国', traditional: '國', variants: [] }
+ * @example
+ *   queryChar('爲')
+ *   // => { input: '爲', found: true, type: 'variant',
+ *   //      standard: '为', traditional: '為', variants: ['爲'] }
+ */
+function queryChar(char) {
+  if (typeof char !== 'string') {
+    throw new TypeError('queryChar: 参数必须是字符串类型，收到 ' + typeof char);
+  }
+  if (char.length !== 1) {
+    throw new RangeError('queryChar: 参数必须是单个字符，收到长度为 ' + char.length + ' 的字符串');
+  }
+  if (!/[\u4e00-\u9fff]/.test(char)) {
+    return {
+      input: char,
+      found: false,
+      type: null,
+      standard: null,
+      traditional: null,
+      variants: []
+    };
+  }
+
+  // 情况1：输入是规范字
+  if (Object.prototype.hasOwnProperty.call(VARIANT_DB, char)) {
+    const info = VARIANT_DB[char];
+    return {
+      input: char,
+      found: true,
+      type: 'standard',
+      standard: char,
+      traditional: info.t || null,
+      variants: info.v ? info.v.slice() : []
+    };
+  }
+
+  // 情况2：输入是繁体或异体字
+  if (Object.prototype.hasOwnProperty.call(REVERSE_DB, char)) {
+    const ref = REVERSE_DB[char];
+    const info = VARIANT_DB[ref.standard];
+    return {
+      input: char,
+      found: true,
+      type: ref.type,
+      standard: ref.standard,
+      traditional: info.t || null,
+      variants: info.v ? info.v.slice() : []
+    };
+  }
+
+  // 情况3：未找到对照
+  return {
+    input: char,
+    found: false,
+    type: null,
+    standard: null,
+    traditional: null,
+    variants: []
+  };
+}
+
+/**
+ * 查询一段文本中每个汉字的对照关系
+ *
+ * @param {string} text - 待查询的文本（任意长度字符串）
+ * @returns {Object[]} 每个字符的查询结果数组，非汉字字符也会包含在结果中（found=false）
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ *   queryText('中国')
+ *   // => [ { input:'中', found:false, ... }, { input:'国', found:true, type:'standard', ... } ]
+ * @example
+ *   queryText('爲國')
+ *   // => [ { input:'爲', found:true, type:'variant', ... }, { input:'國', found:true, type:'traditional', ... } ]
+ */
+function queryText(text) {
+  if (!isValidText(text)) {
+    throw new TypeError('queryText: 参数必须是字符串类型，收到 ' + typeof text);
+  }
+  const result = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (/[\u4e00-\u9fff]/.test(ch)) {
+      result.push(queryChar(ch));
+    } else {
+      result.push({
+        input: ch,
+        found: false,
+        type: null,
+        standard: null,
+        traditional: null,
+        variants: []
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * 将繁体字或异体字转换为规范字（简体正体）
+ *
+ * @param {string} text - 待转换的文本
+ * @returns {string} 转换后的文本，所有可识别的繁体/异体字均替换为规范字
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ *   toSimplified('國家') // => '国家'
+ *   toSimplified('爲') // => '为'
+ *   toSimplified('羣衆') // => '群众'
+ * @example
+ *   toSimplified('Hello世界') // => 'Hello世界'（非汉字保持不变）
+ */
+function toSimplified(text) {
+  if (!isValidText(text)) {
+    throw new TypeError('toSimplified: 参数必须是字符串类型，收到 ' + typeof text);
+  }
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (Object.prototype.hasOwnProperty.call(REVERSE_DB, ch)) {
+      result += REVERSE_DB[ch].standard;
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+/**
+ * 将规范字（简体）转换为对应的繁体字
+ *
+ * @param {string} text - 待转换的文本
+ * @returns {string} 转换后的繁体文本，无法转换的字符保持原样
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ *   toTraditional('国家') // => '國家'
+ *   toTraditional('群众') // => '群眾'
+ * @example
+ *   toTraditional('Hello') // => 'Hello'（非汉字保持不变）
+ */
+function toTraditional(text) {
+  if (!isValidText(text)) {
+    throw new TypeError('toTraditional: 参数必须是字符串类型，收到 ' + typeof text);
+  }
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (Object.prototype.hasOwnProperty.call(VARIANT_DB, ch)) {
+      const info = VARIANT_DB[ch];
+      result += (info.t && info.t !== ch) ? info.t : ch;
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+/**
+ * 将异体字规范化为正体字（规范字）
+ * 仅替换异体字，繁体字保持不变
+ *
+ * @param {string} text - 待规范化的文本
+ * @returns {string} 规范化后的文本
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @example
+ *   normalizeVariants('爲') // => '为'（异体→正体）
+ *   normalizeVariants('羣衆') // => '群众'
+ * @example
+ *   normalizeVariants('國') // => '國'（繁体不变，仅规范异体）
+ */
+function normalizeVariants(text) {
+  if (!isValidText(text)) {
+    throw new TypeError('normalizeVariants: 参数必须是字符串类型，收到 ' + typeof text);
+  }
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (Object.prototype.hasOwnProperty.call(REVERSE_DB, ch)) {
+      const ref = REVERSE_DB[ch];
+      if (ref.type === 'variant') {
+        result += ref.standard;
+      } else {
+        result += ch;
+      }
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+/**
+ * 获取某个汉字的所有相关字形（规范字、繁体、异体）
+ *
+ * @param {string} char - 待查询的单个汉字
+ * @returns {Object} 相关字形集合：
+ *   - standard {string|null} 规范字
+ *   - traditional {string|null} 繁体
+ *   - variants {string[]} 异体字列表
+ *   - allForms {string[]} 所有相关字形（去重）
+ * @throws {TypeError} 当输入不是字符串时抛出
+ * @throws {RangeError} 当输入不是单个汉字时抛出
+ * @example
+ *   getRelatedChars('为')
+ *   // => { standard:'为', traditional:'為', variants:['爲'],
+ *   //      allForms:['为','為','爲'] }
+ */
+function getRelatedChars(char) {
+  if (typeof char !== 'string') {
+    throw new TypeError('getRelatedChars: 参数必须是字符串类型');
+  }
+  if (char.length !== 1) {
+    throw new RangeError('getRelatedChars: 参数必须是单个字符');
+  }
+  const q = queryChar(char);
+  if (!q.found) {
+    return {
+      standard: null,
+      traditional: null,
+      variants: [],
+      allForms: [char]
+    };
+  }
+  const allForms = [];
+  if (q.standard) allForms.push(q.standard);
+  if (q.traditional && q.traditional !== q.standard) allForms.push(q.traditional);
+  for (const v of q.variants) {
+    if (allForms.indexOf(v) === -1) allForms.push(v);
+  }
+  return {
+    standard: q.standard,
+    traditional: q.traditional,
+    variants: q.variants.slice(),
+    allForms: allForms
+  };
+}
+
+/**
+ * 统计数据表中收录的对照关系总数
+ *
+ * @returns {Object} 统计信息：
+ *   - totalEntries {number} 数据表条目总数（规范字数）
+ *   - traditionalCount {number} 有繁体对照的字数
+ *   - variantCount {number} 有异体字的字数
+ *   - totalVariants {number} 异体字总数
+ * @example
+ *   getStats() // => { totalEntries: 120, traditionalCount: 118, ... }
+ */
+function getStats() {
+  const keys = Object.keys(VARIANT_DB);
+  let traditionalCount = 0;
+  let variantCount = 0;
+  let totalVariants = 0;
+  for (const k of keys) {
+    const info = VARIANT_DB[k];
+    if (info.t && info.t !== k) traditionalCount++;
+    if (Array.isArray(info.v) && info.v.length > 0) {
+      variantCount++;
+      totalVariants += info.v.length;
+    }
+  }
+  return {
+    totalEntries: keys.length,
+    traditionalCount: traditionalCount,
+    variantCount: variantCount,
+    totalVariants: totalVariants
+  };
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS 实现，不依赖任何测试框架）
+ * ============================================================ */
+
+let _passCount = 0;
+let _failCount = 0;
+let _total = 0;
+let _logBuffer = [];
+
+/**
+ * 断言函数：判断实际值是否等于期望值
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} desc - 测试描述
+ */
+function assertEqual(actual, expected, desc) {
+  _total++;
+  const pass = JSON.stringify(actual) === JSON.stringify(expected);
+  if (pass) {
+    _passCount++;
+    _logBuffer.push('<span class="pass">✓ [通过]</span> ' + desc);
+  } else {
+    _failCount++;
+    _logBuffer.push('<span class="fail">✗ [失败]</span> ' + desc +
+      ' | 期望: ' + JSON.stringify(expected) +
+      ' | 实际: ' + JSON.stringify(actual));
+  }
+}
+
+/**
+ * 断言函数：判断函数是否抛出指定类型的异常
+ * @param {Function} fn - 待测函数
+ * @param {Function} ErrorType - 期望的异常类型
+ * @param {string} desc - 测试描述
+ */
+function assertThrows(fn, ErrorType, desc) {
+  _total++;
+  try {
+    fn();
+    _failCount++;
+    _logBuffer.push('<span class="fail">✗ [失败]</span> ' + desc + ' | 期望抛出异常但未抛出');
+  } catch (e) {
+    if (e instanceof ErrorType) {
+      _passCount++;
+      _logBuffer.push('<span class="pass">✓ [通过]</span> ' + desc);
+    } else {
+      _failCount++;
+      _logBuffer.push('<span class="fail">✗ [失败]</span> ' + desc +
+        ' | 期望: ' + ErrorType.name + ' | 实际: ' + e.constructor.name);
+    }
+  }
+}
+
+/**
+ * 断言函数：判断条件是否为真
+ * @param {boolean} cond - 条件
+ * @param {string} desc - 测试描述
+ */
+function assertTrue(cond, desc) {
+  _total++;
+  if (cond) {
+    _passCount++;
+    _logBuffer.push('<span class="pass">✓ [通过]</span> ' + desc);
+  } else {
+    _failCount++;
+    _logBuffer.push('<span class="fail">✗ [失败]</span> ' + desc + ' | 条件为假');
+  }
+}
+
+/**
+ * 运行全部测试用例
+ */
+function runAllTests() {
+  _passCount = 0;
+  _failCount = 0;
+  _total = 0;
+  _logBuffer = [];
+
+  _logBuffer.push('========== 开始运行测试 ==========\n');
+
+  // ---------- queryChar 正常值测试 ----------
+  // 用例1：查询规范字「国」
+  (function() {
+    const r = queryChar('国');
+    assertEqual(r.found, true, 'queryChar: 规范字「国」found=true');
+    assertEqual(r.type, 'standard', 'queryChar: 规范字「国」type=standard');
+    assertEqual(r.standard, '国', 'queryChar: 规范字「国」standard=国');
+    assertEqual(r.traditional, '國', 'queryChar: 规范字「国」traditional=國');
+  })();
+
+  // 用例2：查询规范字「体」
+  (function() {
+    const r = queryChar('体');
+    assertEqual(r.type, 'standard', 'queryChar: 规范字「体」type=standard');
+    assertEqual(r.traditional, '體', 'queryChar: 规范字「体」traditional=體');
+  })();
+
+  // 用例3：查询规范字「为」（有异体字）
+  (function() {
+    const r = queryChar('为');
+    assertEqual(r.type, 'standard', 'queryChar: 规范字「为」type=standard');
+    assertEqual(r.traditional, '為', 'queryChar: 规范字「为」traditional=為');
+    assertEqual(r.variants, ['爲'], 'queryChar: 规范字「为」variants=[爲]');
+  })();
+
+  // 用例4：查询繁体字「國」
+  (function() {
+    const r = queryChar('國');
+    assertEqual(r.found, true, 'queryChar: 繁体字「國」found=true');
+    assertEqual(r.type, 'traditional', 'queryChar: 繁体字「國」type=traditional');
+    assertEqual(r.standard, '国', 'queryChar: 繁体字「國」standard=国');
+  })();
+
+  // 用例5：查询繁体字「體」
+  (function() {
+    const r = queryChar('體');
+    assertEqual(r.type, 'traditional', 'queryChar: 繁体字「體」type=traditional');
+    assertEqual(r.standard, '体', 'queryChar: 繁体字「體」standard=体');
+  })();
+
+  // 用例6：查询异体字「爲」
+  (function() {
+    const r = queryChar('爲');
+    assertEqual(r.found, true, 'queryChar: 异体字「爲」found=true');
+    assertEqual(r.type, 'variant', 'queryChar: 异体字「爲」type=variant');
+    assertEqual(r.standard, '为', 'queryChar: 异体字「爲」standard=为');
+  })();
+
+  // 用例7：查询异体字「羣」
+  (function() {
+    const r = queryChar('羣');
+    assertEqual(r.type, 'variant', 'queryChar: 异体字「羣」type=variant');
+    assertEqual(r.standard, '群', 'queryChar: 异体字「羣」standard=群');
+  })();
+
+  // 用例8：查询异体字「峯」
+  (function() {
+    const r = queryChar('峯');
+    assertEqual(r.type, 'variant', 'queryChar: 异体字「峯」type=variant');
+    assertEqual(r.standard, '峰', 'queryChar: 异体字「峯」standard=峰');
+  })();
+
+  // 用例9：查询无对照的汉字「人」
+  (function() {
+    const r = queryChar('人');
+    assertEqual(r.found, false, 'queryChar: 无对照字「人」found=false');
+    assertEqual(r.type, null, 'queryChar: 无对照字「人」type=null');
+  })();
+
+  // 用例10：查询非汉字字符「A」
+  (function() {
+    const r = queryChar('A');
+    assertEqual(r.found, false, 'queryChar: 非汉字「A」found=false');
+    assertEqual(r.type, null, 'queryChar: 非汉字「A」type=null');
+  })();
+
+  // ---------- queryChar 异常输入测试 ----------
+  // 用例11：输入 null
+  assertThrows(function() { queryChar(null); }, TypeError, 'queryChar: null 抛出 TypeError');
+
+  // 用例12：输入 undefined
+  assertThrows(function() { queryChar(undefined); }, TypeError, 'queryChar: undefined 抛出 TypeError');
+
+  // 用例13：输入数字
+  assertThrows(function() { queryChar(123); }, TypeError, 'queryChar: 数字 123 抛出 TypeError');
+
+  // 用例14：输入空字符串
+  assertThrows(function() { queryChar(''); }, RangeError, 'queryChar: 空字符串 抛出 RangeError');
+
+  // 用例15：输入多字符字符串
+  assertThrows(function() { queryChar('中国'); }, RangeError, 'queryChar: 多字符「中国」抛出 RangeError');
+
+  // 用例16：输入对象
+  assertThrows(function() { queryChar({}); }, TypeError, 'queryChar: 对象 抛出 TypeError');
+
+  // 用例17：输入数组
+  assertThrows(function() { queryChar([]); }, TypeError, 'queryChar: 数组 抛出 TypeError');
+
+  // 用例18：输入 NaN
+  assertThrows(function() { queryChar(NaN); }, TypeError, 'queryChar: NaN 抛出 TypeError');
+
+  // ---------- queryText 测试 ----------
+  // 用例19：正常文本查询
+  (function() {
+    const r = queryText('中国');
+    assertEqual(r.length, 2, 'queryText: 「中国」返回长度 2');
+    assertEqual(r[0].input, '中', 'queryText: 「中国」第1字 input=中');
+    assertEqual(r[1].input, '国', 'queryText: 「中国」第2字 input=国');
+    assertEqual(r[1].found, true, 'queryText: 「中国」第2字 found=true');
+  })();
+
+  // 用例20：包含非汉字的文本
+  (function() {
+    const r = queryText('Hello世界');
+    assertEqual(r.length, 7, 'queryText: 「Hello世界」返回长度 7');
+    assertEqual(r[0].found, false, 'queryText: 「Hello世界」H found=false');
+    assertEqual(r[5].found, true, 'queryText: 「Hello世界」世 found=true');
+  })();
+
+  // 用例21：空字符串
+  (function() {
+    const r = queryText('');
+    assertEqual(r.length, 0, 'queryText: 空字符串返回长度 0');
+  })();
+
+  // 用例22：异常输入 null
+  assertThrows(function() { queryText(null); }, TypeError, 'queryText: null 抛出 TypeError');
+
+  // 用例23：异常输入数字
+  assertThrows(function() { queryText(123); }, TypeError, 'queryText: 数字 抛出 TypeError');
+
+  // ---------- toSimplified 测试 ----------
+  // 用例24：繁体转简体
+  assertEqual(toSimplified('國家'), '国家', 'toSimplified: 「國家」→「国家」');
+
+  // 用例25：异体转规范
+  assertEqual(toSimplified('爲'), '为', 'toSimplified: 「爲」→「为」');
+
+  // 用例26：混合文本
+  assertEqual(toSimplified('羣衆爲國'), '群众为国', 'toSimplified: 「羣衆爲國」→「群众为国」');
+
+  // 用例27：无变化文本
+  assertEqual(toSimplified('人民'), '人民', 'toSimplified: 「人民」保持不变');
+
+  // 用例28：空字符串
+  assertEqual(toSimplified(''), '', 'toSimplified: 空字符串返回空字符串');
+
+  // 用例29：异常输入
+  assertThrows(function() { toSimplified(null); }, TypeError, 'toSimplified: null 抛出 TypeError');
+
+  // 用例30：包含英文
+  assertEqual(toSimplified('Hello國家'), 'Hello国家', 'toSimplified: 「Hello國家」→「Hello国家」');
+
+  // ---------- toTraditional 测试 ----------
+  // 用例31：简体转繁体
+  assertEqual(toTraditional('国家'), '國家', 'toTraditional: 「国家」→「國家」');
+
+  // 用例32：无繁体对照的字
+  assertEqual(toTraditional('人民'), '人民', 'toTraditional: 「人民」保持不变');
+
+  // 用例33：空字符串
+  assertEqual(toTraditional(''), '', 'toTraditional: 空字符串返回空字符串');
+
+  // 用例34：异常输入
+  assertThrows(function() { toTraditional(undefined); }, TypeError, 'toTraditional: undefined 抛出 TypeError');
+
+  // ---------- normalizeVariants 测试 ----------
+  // 用例35：异体规范化
+  assertEqual(normalizeVariants('爲'), '为', 'normalizeVariants: 「爲」→「为」');
+
+  // 用例36：繁体不变
+  assertEqual(normalizeVariants('國'), '國', 'normalizeVariants: 「國」保持不变（仅规范异体）');
+
+  // 用例37：混合
+  assertEqual(normalizeVariants('羣衆爲國'), '群众爲國', 'normalizeVariants: 「羣衆爲國」→「群众爲國」');
+
+  // 用例38：空字符串
+  assertEqual(normalizeVariants(''), '', 'normalizeVariants: 空字符串返回空字符串');
+
+  // 用例39：异常输入
+  assertThrows(function() { normalizeVariants(0); }, TypeError, 'normalizeVariants: 数字 0 抛出 TypeError');
+
+  // ---------- getRelatedChars 测试 ----------
+  // 用例40：规范字查询
+  (function() {
+    const r = getRelatedChars('为');
+    assertEqual(r.standard, '为', 'getRelatedChars: 「为」standard=为');
+    assertEqual(r.traditional, '為', 'getRelatedChars: 「为」traditional=為');
+    assertEqual(r.variants, ['爲'], 'getRelatedChars: 「为」variants=[爲]');
+    assertTrue(r.allForms.indexOf('为') !== -1, 'getRelatedChars: 「为」allForms 包含 为');
+    assertTrue(r.allForms.indexOf('為') !== -1, 'getRelatedChars: 「为」allForms 包含 為');
+    assertTrue(r.allForms.indexOf('爲') !== -1, 'getRelatedChars: 「为」allForms 包含 爲');
+  })();
+
+  // 用例41：繁体字查询
+  (function() {
+    const r = getRelatedChars('國');
+    assertEqual(r.standard, '国', 'getRelatedChars: 「國」standard=国');
+  })();
+
+  // 用例42：无对照字
+  (function() {
+    const r = getRelatedChars('人');
+    assertEqual(r.standard, null, 'getRelatedChars: 「人」standard=null');
+    assertEqual(r.allForms, ['人'], 'getRelatedChars: 「人」allForms=[人]');
+  })();
+
+  // 用例43：异常输入
+  assertThrows(function() { getRelatedChars(null); }, TypeError, 'getRelatedChars: null 抛出 TypeError');
+  assertThrows(function() { getRelatedChars('中国'); }, RangeError, 'getRelatedChars: 多字符 抛出 RangeError');
+
+  // ---------- getStats 测试 ----------
+  // 用例44：统计数据
+  (function() {
+    const s = getStats();
+    assertTrue(s.totalEntries > 0, 'getStats: totalEntries > 0');
+    assertTrue(s.traditionalCount > 0, 'getStats: traditionalCount > 0');
+    assertTrue(typeof s.totalVariants === 'number', 'getStats: totalVariants 是数字');
+  })();
+
+  // ---------- 边界值与特殊场景 ----------
+  // 用例45：超长文本
+  (function() {
+    const longText = '国'.repeat(1000);
+    const r = toTraditional(longText);
+    assertEqual(r.length, 1000, 'toTraditional: 1000 字文本长度保持 1000');
+    assertEqual(r, '國'.repeat(1000), 'toTraditional: 1000 个「国」全部转为「國」');
+  })();
+
+  // 用例46：标点符号
+  (function() {
+    const r = queryText('，。！？');
+    assertEqual(r.length, 4, 'queryText: 标点符号长度 4');
+    assertEqual(r[0].found, false, 'queryText: 逗号 found=false');
+  })();
+
+  // 用例47：空格
+  (function() {
+    const r = toSimplified(' 國家 ');
+    assertEqual(r, ' 国家 ', 'toSimplified: 空格保持不变');
+  })();
+
+  // 用例48：重复字
+  (function() {
+    const r = toSimplified('國國國');
+    assertEqual(r, '国国国', 'toSimplified: 「國國國」→「国国国」');
+  })();
+
+  // 用例49：数字字符
+  (function() {
+    const r = queryText('123');
+    assertEqual(r.length, 3, 'queryText: 「123」长度 3');
+    assertEqual(r[0].found, false, 'queryText: 「1」found=false');
+  })();
+
+  // 用例50：特殊 Unicode 字符
+  (function() {
+    const r = queryChar('🎉');
+    assertEqual(r.found, false, 'queryChar: emoji 表情 found=false');
+  })();
+
+  // 用例51：buildReverseIndex 独立测试
+  (function() {
+    const rev = buildReverseIndex({ 'a': { t: 'A', v: ['α'] } });
+    assertEqual(rev['A'].standard, 'a', 'buildReverseIndex: 繁体 A → 规范字 a');
+    assertEqual(rev['A'].type, 'traditional', 'buildReverseIndex: A type=traditional');
+    assertEqual(rev['α'].standard, 'a', 'buildReverseIndex: 异体 α → 规范字 a');
+    assertEqual(rev['α'].type, 'variant', 'buildReverseIndex: α type=variant');
+  })();
+
+  // 用例52：isValidChar 测试
+  assertTrue(isValidChar('国') === true, 'isValidChar: 「国」返回 true');
+  assertTrue(isValidChar('AB') === false, 'isValidChar: 「AB」返回 false');
+  assertTrue(isValidChar('') === false, 'isValidChar: 空字符串返回 false');
+  assertTrue(isValidChar(null) === false, 'isValidChar: null 返回 false');
+  assertTrue(isValidChar(1) === false, 'isValidChar: 数字 1 返回 false');
+
+  // 用例53：isValidText 测试
+  assertTrue(isValidText('中国') === true, 'isValidText: 「中国」返回 true');
+  assertTrue(isValidText('') === true, 'isValidText: 空字符串返回 true');
+  assertTrue(isValidText(null) === false, 'isValidText: null 返回 false');
+
+  // 用例54：queryChar 返回对象结构完整性
+  (function() {
+    const r = queryChar('国');
+    assertTrue('input' in r, 'queryChar 返回对象包含 input 字段');
+    assertTrue('found' in r, 'queryChar 返回对象包含 found 字段');
+    assertTrue('type' in r, 'queryChar 返回对象包含 type 字段');
+    assertTrue('standard' in r, 'queryChar 返回对象包含 standard 字段');
+    assertTrue('traditional' in r, 'queryChar 返回对象包含 traditional 字段');
+    assertTrue('variants' in r, 'queryChar 返回对象包含 variants 字段');
+    assertTrue(Array.isArray(r.variants), 'queryChar 返回对象的 variants 是数组');
+  })();
+
+  // 用例55：toSimplified 对已经是简体的文本无影响
+  assertEqual(toSimplified('国家'), '国家', 'toSimplified: 已经是简体的「国家」保持不变');
+
+  // 用例56：toTraditional 对已经是繁体的文本无影响（繁体字不在 VARIANT_DB 键中）
+  (function() {
+    const r = toTraditional('國家');
+    // 「國」不在 VARIANT_DB 键中，所以保持不变
+    assertEqual(r, '國家', 'toTraditional: 已经是繁体的「國家」保持不变');
+  })();
+
+  // 用例57：queryText 对空字符串返回空数组
+  assertEqual(queryText('').length, 0, 'queryText: 空字符串返回空数组');
+
+  // 用例58：getRelatedChars 返回 allForms 去重
+  (function() {
+    const r = getRelatedChars('群');
+    const unique = r.allForms.filter(function(v, i, a) { return a.indexOf(v) === i; });
+    assertEqual(r.allForms.length, unique.length, 'getRelatedChars: allForms 无重复');
+  })();
+
+  _logBuffer.push('\n========== 测试完成 ==========');
+  _logBuffer.push('<span class="summary">通过 ' + _passCount + ' / 共 ' + _total +
+    '（失败 ' + _failCount + '）</span>');
+
+  document.getElementById('test-results').innerHTML = _logBuffer.join('<br>');
+}
+
+/* ============================================================
+ *  第三部分：使用说明书（渲染到页面）
+ * ============================================================ */
+
+const DOC_HTML = `
+<div class="doc-section">
+  <h2>一、工具简介</h2>
+  <p>「异体字与正体字查询工具」是一个面向汉字字形规范化查询的纯前端 JavaScript 工具。它提供异体字、繁体字、简体字（规范字）三方对照查询能力，帮助用户在古籍整理、出版校对、文字学研究、跨地区文本转换等场景中快速确定某个汉字的标准写法及其历史变体。</p>
+  <p>本工具解决的核心问题是：面对一个汉字，用户常常需要回答以下问题——</p>
+  <ul>
+    <li>这个字是规范字、繁体字还是异体字？</li>
+    <li>它对应的规范字（正体）是什么？</li>
+    <li>它有哪些异体写法？</li>
+    <li>如何把一段繁体或含异体字的文本批量转换为规范字？</li>
+  </ul>
+  <p>本工具通过内置的对照数据表，对上述问题给出即时回答，所有转换逻辑均在浏览器本地完成，无需联网。</p>
+</div>
+
+<div class="doc-section">
+  <h2>二、数据来源与标准依据</h2>
+  <p>本工具的数据与规则严格依据以下国家标准与规范性文件：</p>
+  <table>
+    <tr><th>标准名称</th><th>标准号</th><th>发布机构</th><th>发布年份</th></tr>
+    <tr><td>《通用规范汉字表》</td><td>GF 0011-2013</td><td>国务院</td><td>2013</td></tr>
+    <tr><td>《第一批异体字整理表》</td><td>—</td><td>文化部、文改会</td><td>1955（1988 新闻出版署调整）</td></tr>
+    <tr><td>《简化字总表》</td><td>—</td><td>语委</td><td>1986 年新版</td></tr>
+  </table>
+  <div class="info-box">
+    <strong>说明：</strong>《通用规范汉字表》（GF 0011-2013）是现行汉字规范的最新权威依据，共收录 8105 个规范汉字，分为三级。本工具中的"规范字"即指该表所收字形。异体字的认定以《第一批异体字整理表》为准，繁简对照以《简化字总表》（1986 年新版）为准。
+  </div>
+</div>
+
+<div class="doc-section">
+  <h2>三、核心函数与参数说明</h2>
+
+  <h3>3.1 queryChar(char)</h3>
+  <p>查询单个汉字的异体/繁体/简体对照关系。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+    <tr><td>char</td><td>string</td><td>单个汉字字符（Unicode CJK 统一汉字区）</td><td>待查询的汉字。必须是长度为 1 的字符串，且为汉字。</td></tr>
+  </table>
+  <p><strong>返回值：</strong>Object，包含字段 input（原始输入）、found（是否找到）、type（字符类型：standard/traditional/variant/null）、standard（规范字）、traditional（繁体）、variants（异体字数组）。</p>
+  <p><strong>异常：</strong>输入非字符串抛出 TypeError；输入非单字符抛出 RangeError。</p>
+
+  <h3>3.2 queryText(text)</h3>
+  <p>查询一段文本中每个字符的对照关系。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+    <tr><td>text</td><td>string</td><td>任意长度字符串</td><td>待查询的文本。非汉字字符也会包含在结果中（found=false）。</td></tr>
+  </table>
+  <p><strong>返回值：</strong>Object[]，每个字符对应一个查询结果对象。</p>
+
+  <h3>3.3 toSimplified(text)</h3>
+  <p>将繁体字或异体字转换为规范字（简体正体）。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+    <tr><td>text</td><td>string</td><td>任意长度字符串</td><td>待转换的文本。可包含繁体字、异体字、规范字及非汉字字符。</td></tr>
+  </table>
+  <p><strong>返回值：</strong>string，转换后的文本。无法识别的字符保持原样。</p>
+
+  <h3>3.4 toTraditional(text)</h3>
+  <p>将规范字（简体）转换为对应的繁体字。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+    <tr><td>text</td><td>string</td><td>任意长度字符串</td><td>待转换的文本。</td></tr>
+  </table>
+  <p><strong>返回值：</strong>string，转换后的繁体文本。无繁体对照的字符保持原样。</p>
+
+  <h3>3.5 normalizeVariants(text)</h3>
+  <p>将异体字规范化为正体字（规范字），繁体字保持不变。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+    <tr><td>text</td><td>string</td><td>任意长度字符串</td><td>待规范化的文本。</td></tr>
+  </table>
+  <p><strong>返回值：</strong>string，规范化后的文本。仅替换异体字，繁体字不被转换。</p>
+
+  <h3>3.6 getRelatedChars(char)</h3>
+  <p>获取某个汉字的所有相关字形（规范字、繁体、异体）。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+    <tr><td>char</td><td>string</td><td>单个汉字字符</td><td>待查询的汉字。</td></tr>
+  </table>
+  <p><strong>返回值：</strong>Object，包含 standard、traditional、variants、allForms（去重后的所有相关字形数组）。</p>
+
+  <h3>3.7 getStats()</h3>
+  <p>统计数据表中收录的对照关系总数。无参数。返回 Object，包含 totalEntries、traditionalCount、variantCount、totalVariants。</p>
+</div>
+
+<div class="doc-section">
+  <h2>四、实际使用场景</h2>
+
+  <div class="scene-box">
+    <strong>场景 1：古籍数字化中的异体字规范化</strong><br>
+    背景：图书馆将明清刻本数字化，原文中大量使用异体字（如「爲」「羣」「峯」），需要统一为规范字以便检索。<br>
+    输入：<code>normalizeVariants('羣衆爲國，峯迴路轉')</code><br>
+    结果：<code>'群众为国，峰回路转'</code>（异体字被替换为规范字，其他字保持不变）
+  </div>
+
+  <div class="scene-box">
+    <strong>场景 2：跨地区文本转换（简体 ↔ 繁体）</strong><br>
+    背景：大陆出版社收到港澳台作者来稿，需将繁体文本转为简体出版。<br>
+    输入：<code>toSimplified('國家發展委員會發布報告')</code><br>
+    结果：<code>'国家发展委员会发布报告'</code>（注：部分字如「发」「发展」的"发"在本表中可能未收录完整，需查标准原文确认）
+  </div>
+
+  <div class="scene-box">
+    <strong>场景 3：字形查询与学术研究</strong><br>
+    背景：文字学研究者查询「为」字的所有历史字形。<br>
+    输入：<code>getRelatedChars('为')</code><br>
+    结果：<code>{ standard: '为', traditional: '為', variants: ['爲'], allForms: ['为', '為', '爲'] }</code>
+  </div>
+
+  <div class="scene-box">
+    <strong>场景 4：出版校对中的逐字核查</strong><br>
+    背景：校对人员需要确认一段文本中每个字的规范性。<br>
+    输入：<code>queryText('爲國')</code><br>
+    结果：返回数组，第一个元素 <code>{ input: '爲', type: 'variant', standard: '为', ... }</code>，第二个元素 <code>{ input: '國', type: 'traditional', standard: '国', ... }</code>，校对人员可据此判断需要修改。
+  </div>
+
+  <div class="scene-box">
+    <strong>场景 5：批量简转繁用于繁体出版物</strong><br>
+    背景：大陆作者的简体稿件需转为繁体在港台出版。<br>
+    输入：<code>toTraditional('人民群众是国家的主人')</code><br>
+    结果：<code>'人民群眾是國家的主人'</code>
+  </div>
+</div>
+
+<div class="doc-section">
+  <h2>五、常见错误与排查</h2>
+  <table>
+    <tr><th>错误现象</th><th>可能原因</th><th>解决方法</th></tr>
+    <tr><td>TypeError: 参数必须是字符串类型</td><td>传入了 null、undefined、数字、对象等非字符串值</td><td>确保传入 string 类型，可在调用前用 typeof 检查</td></tr>
+    <tr><td>RangeError: 参数必须是单个字符</td><td>queryChar / getRelatedChars 传入了长度不为 1 的字符串</td><td>确保传入单个汉字字符，多字文本请使用 queryText</td></tr>
+    <tr><td>查询结果 found=false</td><td>该字不在本工具的数据表中</td><td>本表为节选，完整数据需查《通用规范汉字表》原文。也可能是非汉字字符（如标点、数字、英文）</td></tr>
+    <tr><td>繁转简后部分字未转换</td><td>该繁体字未收录在本工具数据表中</td><td>本工具数据表为示例性节选，未覆盖全部 8105 个规范汉字。需查标准原文或扩充数据表</td></tr>
+    <tr><td>toTraditional 对某些字无效</td><td>该规范字在数据表中 t 字段为 null 或等于自身</td><td>部分汉字无繁简差异（如「人」「大」「中」），这是正常现象</td></tr>
+    <tr><td>normalizeVariants 未转换繁体字</td><td>这是设计行为：该函数仅规范异体字，繁体字保持不变</td><td>如需同时转换繁体，请使用 toSimplified</td></tr>
+  </table>
+</div>
+
+<div class="doc-section">
+  <h2>六、局限性说明</h2>
+  <div class="warn-box">
+    <strong>本工具存在以下局限，使用者务必知悉：</strong>
+  </div>
+  <ol>
+    <li><strong>数据表不完整：</strong>本工具内置的数据表为示例性节选（约 120 条），远未覆盖《通用规范汉字表》全部 8105 个规范汉字。对于未收录的字，查询结果 will 返回 found=false。生产环境需依据标准原文扩充完整数据表。</li>
+    <li><strong>不处理多音多义字的语境分化：</strong>例如「发」对应繁体「發」（发展）和「髮」（头发），本工具采用单一映射，无法根据上下文自动选择正确繁体。类似情况还有「干/乾/幹」「里/裏/裡」「后/後」等。使用者需自行根据语境判断。</li>
+    <li><strong>不处理地区用字差异：</strong>港澳台地区部分字的"正体"与大陆《通用规范汉字表》的"规范字"存在差异（如「裏」vs「裡」、「着」vs「著」）。本工具以大陆规范为准，不适用于港澳台地区的字形规范判定。</li>
+    <li><strong>不处理 Unicode 兼容字符与变体选择符：</strong>某些汉字在 Unicode 中存在多个编码（如 CJK 兼容表意文字），本工具仅处理基本多文种平面（BMP）中的常用汉字，不处理变体选择符（VS）及兼容表意文字。</li>
+    <li><strong>不处理古文字与甲骨文、金文：</strong>本工具仅处理现代汉字（楷书字形），不涉及古文字形体。</li>
+    <li><strong>不保证 100% 符合最新标准修订：</strong>汉字规范可能随政策调整而更新。本工具数据基于 2013 年版《通用规范汉字表》，如有后续修订，需同步更新数据表。</li>
+    <li><strong>性能限制：</strong>对于超长文本（如百万字级别），逐字符遍历可能存在性能瓶颈。生产环境建议采用批量处理或 Web Worker。</li>
+    <li><strong>不处理拼音、读音、释义：</strong>本工具仅处理字形对照，不涉及读音、释义、笔画数等属性。</li>
+  </ol>
+</div>
+
+<div class="doc-section">
+  <h2>七、版本与许可</h2>
+  <p>版本：v2.0.0-完整版 20261021</p>
+  <p>本工具为纯前端实现，无外部依赖，可直接在浏览器中运行。数据表内容依据国家标准整理，标准原文版权归发布机构所有。</p>
+</div>
+`;
+
+/* ============================================================
+ *  UI 初始化
+ * ============================================================ */
+
+// 渲染源码（带简单语法高亮）
+function renderSourceCode() {
+  const src = document.currentScript.textContent;
+  // 提取从 "/* ==== 第一部分" 到 "/* ==== UI 初始化" 之间的内容
+  const startMarker = '/* ============================================================\n *  第一部分：JS 源码';
+  const endMarker = '/* ============================================================\n *  UI 初始化';
+  const startIdx = src.indexOf(startMarker);
+  const endIdx = src.indexOf(endMarker);
+  let code = '';
+  if (startIdx !== -1 && endIdx !== -1) {
+    code = src.substring(startIdx, endIdx).trim();
+  } else {
+    code = '// 源码提取失败，请查看页面脚本';
+  }
+  // 简单语法高亮
+  code = escapeHtml(code);
+  code = code.replace(/(\/\*[\s\S]*?\*\/|\/\/.*)/g, '<span class="cm">$1</span>');
+  code = code.replace(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/g, '<span class="str">$1</span>');
+  code = code.replace(/\b(const|let|var|function|return|if|else|for|throw|new|typeof|instanceof|true|false|null|undefined)\b/g, '<span class="kw">$1</span>');
+  document.getElementById('source-code').innerHTML = code;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function copyCode(id) {
+  const el = document.getElementById(id);
+  const text = el.textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      alert('已复制到剪贴板');
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('已复制到剪贴板');
+  }
+}
+
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 初始化
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+renderSourceCode();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>梁挠度计算器 v1.0.0</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#dfe9f5;font:13px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+header{padding:14px 12px 2px;text-align:center}h1{margin:0;font-size:19px;color:#4a9eff}header p{margin:3px 0 0;font-size:11px;color:#8aa4c0}
+nav{display:flex;gap:6px;padding:9px 10px;justify-content:center;flex-wrap:wrap}
+nav button{background:#122240;color:#9fc0e0;border:1px solid #1e3a5f;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#04121f;border-color:#4a9eff;font-weight:700}
+main{padding:0 10px 60px;max-width:860px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.card{background:#0f1f38;border:1px solid #1e3a5f;border-radius:10px;padding:11px;margin-bottom:11px}
+.card h2{margin:0 0 9px;font-size:13px;color:#4a9eff;border-left:3px solid #4a9eff;padding-left:7px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+label{display:block;font-size:11px;color:#8aa4c0;margin-bottom:2px}
+input,select{width:100%;background:#0a1628;color:#dfe9f5;border:1px solid #24466e;border-radius:6px;padding:6px 7px;font-size:12px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.go{width:100%;background:#4a9eff;color:#04121f;border:0;border-radius:8px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:7px}
+#err{color:#ff7b72;font-size:12px;margin-top:6px;min-height:15px}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.kv{background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:6px 9px}
+.kv b{display:block;font-size:10px;color:#8aa4c0;font-weight:400}
+.kv span{font-size:15px;color:#4a9eff;font-weight:700;word-break:break-all}
+.kv i{font-size:10px;color:#8aa4c0;font-style:normal;margin-left:2px}
+.note{font-size:11px;color:#7f96b0;margin:7px 0 0;line-height:1.7}
+pre{background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:9px;font-size:10px;overflow:auto;max-height:420px;color:#a9d3ff;white-space:pre-wrap;word-break:break-all}
+footer{position:fixed;right:8px;bottom:7px;font-size:10px;color:#4a9eff;background:#0a1628ee;padding:3px 7px;border-radius:6px;border:1px solid #1e3a5f}
+.pass{color:#5ddc8a}.fail{color:#ff7b72}
+@media(max-width:560px){.row,.res{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>梁挠度计算器</h1><p>简支梁 / 悬臂梁 / 两端固定梁 · 均布载荷 · 集中载荷 · 集中力偶 · 矩形/圆管/热轧工字钢截面</p></header>
+<nav><button data-t="calc" class="on">计算工具</button><button data-t="src">JS 源码</button><button data-t="test">单元测试</button><button data-t="help">使用说明</button></nav>
+<main>
+<section id="calc" class="tab on">
+<div class="card"><h2>梁与载荷</h2><div class="row">
+<div><label>梁类型</label><select id="beam"><option value="ss">简支梁（两端铰支）</option><option value="cant">悬臂梁（自由端受载）</option><option value="fixed">两端固定梁</option></select></div>
+<div><label>载荷类型</label><select id="load"><option value="q">均布载荷 q（N/mm）</option><option value="P">集中载荷 P（N，跨中 / 自由端）</option><option value="M">集中力偶 M（N·m）</option></select></div>
+<div><label>跨度 L（mm）50~50000</label><input id="L" value="4000"></div>
+<div><label>载荷值（单位见上）</label><input id="w" value="10"></div>
+</div></div>
+<div class="card"><h2>材料与环境</h2><div class="row">
+<div><label>材料（E 取标准值）</label><select id="mat"><option>Q235钢</option><option>Q355钢</option><option>不锈钢</option><option>铝合金</option><option>铜合金</option></select></div>
+<div><label>温度区间（E 折减）</label><select id="tmp"><option>20°C</option><option>100°C</option><option>200°C</option><option>300°C</option><option>400°C</option></select></div>
+</div></div>
+<div class="card"><h2>截面惯性矩</h2><div class="row">
+<div><label>截面类型</label><select id="sec"><option value="rect">矩形</option><option value="pipe">圆管</option><option value="ibeam">热轧工字钢</option></select></div>
+<div id="ibx" style="display:none"><label>工字钢型号（GB/T 706）</label><select id="ib"></select></div>
+<div id="rx"><label>宽度 b（mm）</label><input id="b" value="120"></div>
+<div id="rx2"><label>高度 h（mm）</label><input id="h" value="300"></div>
+<div id="px" style="display:none"><label>外径 D（mm）</label><input id="D" value="200"></div>
+<div id="px2" style="display:none"><label>内径 d（mm）</label><input id="d" value="180"></div>
+</div><button class="go" id="btn">计算</button><div id="err"></div></div>
+<div class="card" id="out" style="display:none"><h2>计算结果</h2><div class="res" id="res"></div><p class="note" id="fml"></p></div>
+</section>
+<section id="src" class="tab"><div class="card"><h2>页面内嵌 JS 源码（纯函数，可单独引用测试）</h2><pre id="srccode"></pre></div></section>
+<section id="test" class="tab"><div class="card"><h2>单元测试（内置 15 项，相对误差 1e-6）</h2><button class="go" id="tbtn">运行全部测试</button><div id="tres" class="note"></div></div></section>
+<section id="help" class="tab"><div class="card"><h2>使用说明与数据出处</h2><div class="note">
+<b>1. 挠度与转角公式出处：</b>《材料力学》（刘鸿文主编，高等教育出版社）梁的挠曲线微分方程积分结果；Roark's Formulas for Stress and Strain（经典梁公式表）。均布、集中、力偶三类荷载的标准解。<br>
+<b>2. 截面惯性矩：</b>矩形 I=bh³/12、圆管 I=π(D⁴−d⁴)/64 为材料力学基本公式；热轧工字钢 Ix 值引自 GB/T 706-2016《热轧型钢》型钢规格表（10#=245cm⁴、12.6#=488、14#=712、16#=1130、18#=1660、20a#=2370、22a#=3400、25a#=5020）。<br>
+<b>3. 弹性模量：</b>钢 206 GPa 引自 GB 50017-2017《钢结构设计标准》；铝合金 70 GPa 引自 GB 50429-2007《铝合金结构设计规范》；不锈钢 193 GPa、铜合金 110 GPa 为行业常用值，未经标准核对。<br>
+<b>4. 温度折减系数</b>（100°C 0.97、200°C 0.94、300°C 0.90、400°C 0.85）为工程经验值，未经标准核对；高温钢材性能可参考 GB 51249《建筑钢结构防火技术规范》自行复核。<br>
+<b>5. 容许挠度：</b>GB 50017-2017 对受弯构件一般取 L/400（主梁）、L/250（次梁），本工具只给出数值并显示 L/δ，不代做合规判定。<br>
+<b>6. 适用范围：</b>等截面直梁、线弹性小变形、常温或给定温度下的弹性模量折减；不考虑剪切变形、支座沉降、动力与稳定问题。两端固定梁承受集中力偶为高次静不定问题，本工具不提供简化解析式，会给出提示。<br>
+<b>7. 输入单位：</b>长度 mm、力 N、均布载荷 N/mm、力偶 N·m（内部换算为 N·mm）、应力 MPa（=N/mm²）。
+</div></div></section>
+</main>
+<footer>v1.0.0-beam-deflection 20261108</footer>
+<script>
+"use strict";
+var EM={"Q235钢":206000,"Q355钢":206000,"不锈钢":193000,"铝合金":70000,"铜合金":110000};
+var TK={"20°C":1,"100°C":0.97,"200°C":0.94,"300°C":0.90,"400°C":0.85};
+var IB={"10#":245,"12.6#":488,"14#":712,"16#":1130,"18#":1660,"20a#":2370,"22a#":3400,"25a#":5020};
+function effE(m,t){if(!(m in EM)||!(t in TK))throw new Error("材料或温度取值无效");return EM[m]*TK[t];}
+function calcI(type,a,b){
+ if(type==="rect"){if(!(a>0)||!(b>0))throw new Error("矩形截面尺寸必须大于0");return a*b*b*b/12;}
+ if(type==="pipe"){if(!(a>0)||!(b>0))throw new Error("圆管截面尺寸必须大于0");if(b>=a)throw new Error("圆管内径 d 必须小于外径 D");return Math.PI*(a*a*a*a-b*b*b*b)/64;}
+ if(type==="ibeam"){if(!(a>0))throw new Error("工字钢惯性矩无效");return a*1e4;}
+ throw new Error("未知截面类型");
+}
+function defl(beam,load,L,w,EI){
+ var L2=L*L,L3=L2*L,L4=L3*L,d,t,f;
+ if(beam==="ss"){
+  if(load==="q"){d=5*w*L4/(384*EI);t=w*L3/(24*EI);f="简支梁均布：δmax=5qL⁴/(384EI)（跨中）；θmax=qL³/(24EI)（支座）";}
+  else if(load==="P"){d=w*L3/(48*EI);t=w*L2/(16*EI);f="简支梁跨中集中：δmax=PL³/(48EI)（跨中）；θmax=PL²/(16EI)（支座）";}
+  else if(load==="M"){d=w*L2/(9*Math.sqrt(3)*EI);t=w*L/(3*EI);f="简支梁一端集中力偶：δmax=ML²/(9√3EI)（x=L/√3）；θmax=ML/(3EI)（加载端），另端 ML/(6EI)";}
+  else throw new Error("未知载荷类型");
+ }else if(beam==="cant"){
+  if(load==="q"){d=w*L4/(8*EI);t=w*L3/(6*EI);f="悬臂梁均布：δmax=qL⁴/(8EI)（自由端）；θmax=qL³/(6EI)（自由端）";}
+  else if(load==="P"){d=w*L3/(3*EI);t=w*L2/(2*EI);f="悬臂梁端部集中：δmax=PL³/(3EI)（自由端）；θmax=PL²/(2EI)";}
+  else if(load==="M"){d=w*L2/(2*EI);t=w*L/EI;f="悬臂梁端部力偶：δmax=ML²/(2EI)（自由端）；θmax=ML/(EI)";}
+  else throw new Error("未知载荷类型");
+ }else if(beam==="fixed"){
+  if(load==="q"){d=w*L4/(384*EI);t=0;f="两端固定梁均布：δmax=qL⁴/(384EI)（跨中）；支座转角θ=0，固端弯矩 qL²/12";}
+  else if(load==="P"){d=w*L3/(192*EI);t=0;f="两端固定梁跨中集中：δmax=PL³/(192EI)（跨中）；支座转角θ=0，固端弯矩 PL/8";}
+  else throw new Error("两端固定梁承受集中力偶属高次静不定，需按力偶具体作用位置求解，本工具不提供简化解析式");
+ }else throw new Error("未知梁类型");
+ if(!isFinite(d)||d<0)throw new Error("计算结果异常，请检查输入");
+ return {delta:d,theta:t,formula:f};
+}
+function G(i){return document.getElementById(i);}
+function num(i,label,min,max){
+ var s=G(i).value.trim();
+ if(s==="")throw new Error(label+"不能为空");
+ var x=Number(s);
+ if(!isFinite(x))throw new Error(label+"必须是有效数字");
+ if(x<=0)throw new Error(label+"必须大于0");
+ if(x<min||x>max)throw new Error(label+"应在 "+min+" ~ "+max+" 之内");
+ return x;
+}
+function fmt(x){
+ if(!isFinite(x))return "—";
+ var a=Math.abs(x);
+ if(a===0)return "0";
+ if(a>=1e6||a<1e-3)return x.toExponential(3);
+ if(a>=100)return x.toFixed(2);
+ if(a>=1)return x.toFixed(4);
+ return x.toFixed(6);
+}
+var ih="";for(var kk in IB)ih+='<option value="'+kk+'">'+kk+'（Ix='+IB[kk]+' cm⁴）</option>';
+G('ib').innerHTML=ih;
+G('sec').onchange=function(){
+ var v=this.value;
+ G('rx').style.display=G('rx2').style.display=(v==="rect")?"":"none";
+ G('px').style.display=G('px2').style.display=(v==="pipe")?"":"none";
+ G('ibx').style.display=(v==="ibeam")?"":"none";
+};
+G('btn').onclick=function(){
+ var errEl=G('err');
+ try{
+  errEl.textContent="";
+  var beam=G('beam').value,load=G('load').value,sec=G('sec').value;
+  var L=num('L','跨度 L',50,50000);
+  var w=num('w','载荷值',1e-6,1e9);
+  var E=effE(G('mat').value,G('tmp').value);
+  var I,st;
+  if(sec==="rect"){var b=num('b','宽度 b',1,5000),h=num('h','高度 h',1,5000);I=calcI('rect',b,h);st="矩形 "+b+"×"+h+" mm";}
+  else if(sec==="pipe"){var od=num('D','外径 D',1,5000),id2=num('d','内径 d',1,5000);I=calcI('pipe',od,id2);st="圆管 Ø"+od+"/"+id2+" mm";}
+  else{var k=G('ib').value;I=calcI('ibeam',IB[k]);st="热轧工字钢 "+k;}
+  var wv=(load==="M")?w*1000:w;
+  var EI=E*I;
+  var r=defl(beam,load,L,wv,EI);
+  var rat=(r.delta>0)?L/r.delta:0;
+  function kv(l,v,u){return '<div class="kv"><b>'+l+'</b><span>'+v+'</span><i>'+(u||'')+'</i></div>';}
+  var H="";
+  H+=kv('截面惯性矩 I',fmt(I),'mm⁴');
+  H+=kv('I 换算',(I/1e4).toFixed(1),'cm⁴');
+  H+=kv('有效弹性模量 E',E.toFixed(0),'MPa');
+  H+=kv('抗弯刚度 EI',EI.toExponential(3),'N·mm²');
+  H+=kv('最大挠度 δmax',fmt(r.delta),'mm');
+  H+=kv('挠跨比',rat>0?'L/'+Math.round(rat):'—','');
+  H+=kv('最大转角 θmax',fmt(r.theta),'rad');
+  H+=kv('θmax 换算',(r.theta*180/Math.PI).toFixed(5),'°');
+  G('res').innerHTML=H;
+  G('fml').textContent=r.formula+"。截面："+st+"。按 GB 50017-2017 受弯构件容许挠度，主梁常取 L/400、次梁 L/250，本工具仅给出数值，不代做判定。";
+  G('out').style.display="";
+ }catch(e){errEl.textContent="⚠ "+e.message;G('out').style.display="none";}
+};
+var tabs=document.querySelectorAll("nav button");
+for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){
+ var t=this.getAttribute("data-t"),j;
+ for(j=0;j<tabs.length;j++)tabs[j].className=(tabs[j].getAttribute("data-t")===t)?"on":"";
+ var secs=document.querySelectorAll("main .tab");
+ for(j=0;j<secs.length;j++)secs[j].className=(secs[j].id===t)?"tab on":"tab";
+};
+var TH="throw";
+var TESTS=[
+ ["矩形 I=bh³/12 (100×200)",function(){return calcI("rect",100,200);},66666666.667],
+ ["圆管 I=π(D⁴-d⁴)/64 (Ø100/80)",function(){return calcI("pipe",100,80);},2898119.4],
+ ["工字钢 16# Ix=1130cm⁴",function(){return calcI("ibeam",1130);},11300000],
+ ["简支梁均布 δ=5qL⁴/(384EI)",function(){return defl("ss","q",4000,10,2e13).delta;},1.6666667],
+ ["简支梁均布 θ=qL³/(24EI)",function(){return defl("ss","q",4000,10,2e13).theta;},0.0013333333],
+ ["简支梁跨中集中 δ=PL³/(48EI)",function(){return defl("ss","P",4000,10000,2e13).delta;},0.6666667],
+ ["简支梁端部力偶 δ=ML²/(9√3EI)",function(){return defl("ss","M",4000,1e6,2e13).delta;},0.05132066],
+ ["悬臂梁端部集中 δ=PL³/(3EI)",function(){return defl("cant","P",4000,10000,2e13).delta;},10.666667],
+ ["悬臂梁均布 δ=qL⁴/(8EI)",function(){return defl("cant","q",4000,10,2e13).delta;},16],
+ ["悬臂梁端部力偶 δ=ML²/(2EI)",function(){return defl("cant","M",4000,1e6,2e13).delta;},0.4],
+ ["悬臂梁端部力偶 θ=ML/(EI)",function(){return defl("cant","M",4000,1e6,2e13).theta;},2e-4],
+ ["两端固定均布 δ=qL⁴/(384EI)",function(){return defl("fixed","q",4000,10,2e13).delta;},0.3333333],
+ ["两端固定集中 δ=PL³/(192EI)",function(){return defl("fixed","P",4000,10000,2e13).delta;},0.1666667],
+ ["两端固定+力偶 应抛错",function(){return defl("fixed","M",4000,1e6,2e13).delta;},TH],
+ ["温度折减 E(100°C)=0.97E",function(){return effE("Q235钢","100°C");},199820]
+];
+G('tbtn').onclick=function(){
+ var h="",p=0;
+ for(var i=0;i<TESTS.length;i++){
+  var t=TESTS[i],ok=false,got="";
+  try{
+   var v=t[1]();
+   if(typeof v==="number"){ok=Math.abs(v-t[2])<=1e-6*Math.abs(t[2])+1e-9;got=v.toPrecision(8);}
+   else{got=String(v);}
+  }catch(e){got="抛出："+e.message;ok=(t[2]===TH);}
+  if(ok)p++;
+  h+='<div class="'+(ok?"pass":"fail")+'">'+(ok?"✔":"✘")+" "+t[0]+" → "+got+(ok?"":" ｜期望 "+t[2])+"</div>";
+ }
+ G('tres').innerHTML='<b>通过 '+p+" / "+TESTS.length+"</b>"+h;
+};
+G('srccode').textContent=document.querySelector('script').textContent;
+</script>
+</body></html>

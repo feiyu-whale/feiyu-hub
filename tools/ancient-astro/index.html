@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏛️ 古代天文学换算</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#07080f; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#d8d0e8;
+    padding:16px 13px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:540px; }
+  h1 { font-size:12px; text-align:center; color:#b0a0e0; margin-bottom:4px; letter-spacing:2px; }
+  .sub { text-align:center; color:#5a5578; font-size:12px; margin-bottom:16px; }
+  .tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px; }
+  .tabs button { padding:9px 2px; font-size:12px; font-weight:600; color:#9a90c0; background:#131426;
+    border:1px solid #2a2a48; border-radius:9px; cursor:pointer; font-family:inherit; }
+  .tabs button.on { background:linear-gradient(160deg,#4a3a8a,#28204e); color:#fff; border-color:#6a5ac9; }
+  .card { background:linear-gradient(160deg,#141528,#0d0e1a); border:1px solid #2a2a48;
+    border-radius:12px; padding:14px 15px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#b0a0e0; margin-bottom:10px; border-left:3px solid #b0a0e0; padding-left:8px; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:14px; border-bottom:1px dashed #262646; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#8a86a8; } .row .v { color:#d8d0e8; text-align:right; font-weight:600; }
+  .row .v.hl { color:#ffd479; font-size:16px; }
+  input, select { background:#0a0b16; border:1px solid #2a2a48; border-radius:9px; padding:10px;
+    font-size:15px; color:#d8d0e8; outline:none; font-family:inherit; width:100%; }
+  input:focus, select:focus { border-color:#6a5ac9; }
+  .inrow { display:flex; gap:8px; align-items:center; }
+  button.go { padding:11px 16px; font-size:14px; font-weight:700; background:linear-gradient(160deg,#4a3a8a,#28204e);
+    color:#fff; border:1px solid #6a5ac9; border-radius:9px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  button.go:active { transform:scale(.96); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .gz { font-size:12px; font-weight:800; color:#ffd479; letter-spacing:3px; text-align:center; padding:8px 0; }
+  .hz { font-size:15px; color:#c8c0e0; line-height:1.9; }
+  .hz b { color:#b0a0e0; }
+  .hint { text-align:center; color:#4a4668; font-size:11px; margin-top:12px; line-height:1.7; }
+  .ver { text-align:center; color:#2a2848; font-size:10px; margin-top:8px; }
+  .chip { display:inline-block; font-size:12px; padding:3px 9px; border-radius:20px;
+    background:#1a1830; color:#c0b4e0; border:1px solid #3a3a60; margin:2px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🏛️ 古代天文学换算</h1>
+  <div class="sub">干支 · 十二时辰 · 二十八宿 · 二十四节气</div>
+
+  <div class="tabs" id="tabs">
+    <button data-t="ganzhi" class="on">四柱干支</button>
+    <button data-t="shichen">十二时辰</button>
+    <button data-t="xiu">二十八宿</button>
+    <button data-t="jieqi">二十四节气</button>
+  </div>
+
+  <!-- 四柱干支 -->
+  <div id="p-ganzhi">
+    <div class="card">
+      <h3>选日期 + 时辰，推四柱</h3>
+      <div class="grid2" style="margin-bottom:10px;">
+        <input type="date" id="gzDate">
+        <select id="gzHour"></select>
+      </div>
+      <div class="gz" id="gzOut">—</div>
+      <div class="hz" id="gzInfo"></div>
+    </div>
+  </div>
+
+  <!-- 十二时辰 -->
+  <div id="p-shichen" style="display:none">
+    <div class="card">
+      <h3>现代时间 → 古代时辰</h3>
+      <div class="inrow" style="margin-bottom:10px;">
+        <input type="text" id="hourIn" placeholder="输入小时 0-23" maxlength="2" inputmode="numeric">
+        <button class="go" id="hourGo">换算</button>
+      </div>
+      <div class="hz" id="hourOut"></div>
+    </div>
+    <div class="card">
+      <h3>十二时辰对照表</h3>
+      <div id="shichenTable" class="hz"></div>
+    </div>
+  </div>
+
+  <!-- 二十八宿 -->
+  <div id="p-xiu" style="display:none">
+    <div class="card">
+      <h3>选日期，查当日值宿</h3>
+      <div class="inrow" style="margin-bottom:10px;">
+        <input type="date" id="xiuDate">
+        <button class="go" id="xiuGo">查询</button>
+      </div>
+      <div class="hz" id="xiuOut"></div>
+    </div>
+  </div>
+
+  <!-- 二十四节气 -->
+  <div id="p-jieqi" style="display:none">
+    <div class="card">
+      <h3>选年份，列当年二十四节气</h3>
+      <div class="inrow" style="margin-bottom:10px;">
+        <input type="text" id="jqYear" placeholder="年份，如 2026" maxlength="4" inputmode="numeric">
+        <button class="go" id="jqGo">列出</button>
+      </div>
+      <div class="hz" id="jqOut"></div>
+    </div>
+  </div>
+
+  <div class="hint">数据由 lunar-javascript（MIT）计算 · 古代天文参考 🐳</div>
+  <div class="ver">v1.0.0-古代天文换算 20261015</div>
+</div>
+
+<script src="../li-huang/lib/lunar.js"></script>
+<script>
+(function(){
+  'use strict';
+  if(typeof Solar==='undefined'){ document.body.insertAdjacentHTML('afterbegin','<p style="color:#e08080;text-align:center">库加载失败</p>'); return; }
+
+  var SHICHEN=[
+    ['子','23:00–01:00'],['丑','01:00–03:00'],['寅','03:00–05:00'],['卯','05:00–07:00'],
+    ['辰','07:00–09:00'],['巳','09:00–11:00'],['午','11:00–13:00'],['未','13:00–15:00'],
+    ['申','15:00–17:00'],['酉','17:00–19:00'],['戌','19:00–21:00'],['亥','21:00–23:00']
+  ];
+  function zhiOfHour(h){ // h:0-23
+    if(h===23||h===0) return '子';
+    return SHICHEN[Math.floor((h+1)/2)][0];
+  }
+
+  // ---- Tab 切换 ----
+  document.querySelectorAll('#tabs button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('#tabs button').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      ['ganzhi','shichen','xiu','jieqi'].forEach(function(t){
+        document.getElementById('p-'+t).style.display = (t===b.dataset.t)?'':'none';
+      });
+    };
+  });
+
+  function todayStr(){
+    var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function parseDate(v){
+    var p=v.split('-'); return Solar.fromYmd(Number(p[0]),Number(p[1]),Number(p[2]));
+  }
+
+  // ---- 四柱干支 ----
+  var gzHour=document.getElementById('gzHour');
+  for(var h=0;h<24;h++){
+    var o=document.createElement('option'); o.value=h;
+    o.textContent = String(h).padStart(2,'0')+':00（'+zhiOfHour(h)+'时）';
+    gzHour.appendChild(o);
+  }
+  document.getElementById('gzDate').value=todayStr();
+  function calcGz(){
+    var v=document.getElementById('gzDate').value; if(!v) return;
+    var hh=Number(gzHour.value);
+    var solar=parseDate(v);
+    var lunar=solar.getLunar();
+    // 用当前时辰构造八字
+    var eight=lunar.getEightChar();
+    var yearGz=lunar.getYearInGanZhiExact ? lunar.getYearInGanZhiExact() : lunar.getYearInGanZhi();
+    var monthGz=lunar.getMonthInGanZhiExact ? lunar.getMonthInGanZhiExact() : lunar.getMonthInGanZhi();
+    var dayGz=lunar.getDayInGanZhiExact ? lunar.getDayInGanZhiExact() : lunar.getDayInGanZhi();
+    // 时柱：用八字库的时柱（按出生时辰）
+    var timeGz='—';
+    try{
+      var eight2 = solar.getLunar().getEightChar();
+      eight2.setSect && eight2.setSect(2);
+      timeGz = eight2.getTime();
+    }catch(e){}
+    document.getElementById('gzOut').textContent = (yearGz+' · '+monthGz+' · '+dayGz+' · '+timeGz);
+    document.getElementById('gzInfo').innerHTML =
+      '<div>年柱：<b>'+yearGz+'</b>　（生肖 <b>'+lunar.getYearShengXiao()+'</b>）</div>'+
+      '<div>月柱：<b>'+monthGz+'</b>　（农历 '+lunar.getMonthInChinese()+'月）</div>'+
+      '<div>日柱：<b>'+dayGz+'</b>　（'+lunar.getDayInChinese()+'）</div>'+
+      '<div>时辰：<b>'+zhiOfHour(hh)+'时</b>（'+String(hh).padStart(2,'0')+':00）　时柱（需真太阳时，仅供参考）：<b>'+timeGz+'</b></div>';
+  }
+  document.getElementById('gzDate').addEventListener('change',calcGz);
+  gzHour.addEventListener('change',calcGz);
+
+  // ---- 十二时辰 ----
+  document.getElementById('hourGo').onclick=function(){
+    var v=document.getElementById('hourIn').value.trim();
+    var h=Number(v);
+    if(v===''||!isFinite(h)||h<0||h>23){ document.getElementById('hourOut').innerHTML='<span style="color:#e08080">请输入 0-23 的小时</span>'; return; }
+    h=Math.floor(h);
+    var zhi=zhiOfHour(h);
+    var idx=SHICHEN.findIndex(function(s){return s[0]===zhi;});
+    document.getElementById('hourOut').innerHTML =
+      '<div style="font-size:11px"><b>'+String(h).padStart(2,'0')+':00</b> → <span style="color:#ffd479;font-weight:800">'+zhi+'时</span></div>'+
+      '<div style="margin-top:6px;color:#8a86a8">该时辰区间：'+SHICHEN[idx][1]+'</div>';
+  };
+  // 十二时辰对照表
+  (function(){
+    var t=document.getElementById('shichenTable');
+    t.innerHTML=SHICHEN.map(function(s){ return '<span class="chip">'+s[0]+'时 '+s[1]+'</span>'; }).join('');
+  })();
+
+  // ---- 二十八宿 ----
+  document.getElementById('xiuDate').value=todayStr();
+  document.getElementById('xiuGo').onclick=function(){
+    var v=document.getElementById('xiuDate').value; if(!v) return;
+    var lunar=parseDate(v).getLunar();
+    document.getElementById('xiuOut').innerHTML =
+      '<div style="font-size:11px">值宿：<span style="color:#ffd479;font-weight:800">'+lunar.getXiu()+'宿</span>　<span style="color:#7fd6a0">'+lunar.getXiuLuck()+'</span></div>'+
+      '<div style="margin-top:8px;color:#8a86a8">'+lunar.getXiuSong().replace(/\n/g,'<br>')+'</div>'+
+      '<div style="margin-top:8px">宫位：<b>'+lunar.getZheng()+'</b>　禽兽：<b>'+lunar.getAnimal()+'</b>　</div>';
+  };
+
+  // ---- 二十四节气 ----
+  document.getElementById('jqYear').value=new Date().getFullYear();
+  document.getElementById('jqGo').onclick=function(){
+    var y=Number(document.getElementById('jqYear').value.trim());
+    if(!isFinite(y)||y<1900||y>2100){ document.getElementById('jqOut').innerHTML='<span style="color:#e08080">请输入 1900-2100 的年份</span>'; return; }
+    var out=[];
+    try{
+      // 用年的节气表：遍历 12 个月，取每月两个节气的精确时刻
+      for(var m=1;m<=12;m++){
+        var dm = [31,28,31,30,31,30,31,31,30,31,30,31][m-1];
+        if(m===2 && ((y%4===0&&y%100!==0)||y%400===0)) dm=29;
+        for(var d=1;d<=dm;d++){
+          var lun=Solar.fromYmd(y,m,d).getLunar();
+          var jq=lun.getJieQi();
+          if(jq){ out.push('<span class="chip">'+jq+' '+m+'/'+d+'</span>'); }
+        }
+      }
+    }catch(e){}
+    document.getElementById('jqOut').innerHTML = out.length? out.join('') : '<span style="color:#e08080">未取到节气数据</span>';
+  };
+
+  calcGz();
+  document.getElementById('xiuGo').click();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌳 欧甘树文</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0a100c; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#d8e8d8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#8fd0a0; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#6b8a75; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#142a1a,#0d1c12); border:1px solid #2a5a3a;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#7fc890; margin-bottom:10px; border-left:3px solid #7fc890; padding-left:8px; }
+  button.go { width:100%; padding:14px; font-size:11px; font-weight:700; color:#0a1810;
+    background:linear-gradient(160deg,#8fd0a0,#4a9868); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:2px; }
+  button.go:active { transform:scale(.98); }
+  .modes { display:flex; gap:8px; margin-bottom:10px; }
+  .modes button { flex:1; padding:9px; font-size:13px; background:#0d1c12; color:#7fc890;
+    border:1px solid #2a5a3a; border-radius:9px; cursor:pointer; font-family:inherit; }
+  .modes button.active { background:#1a4028; color:#a8f0c0; border-color:#4a9868; }
+  .runes { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .rune { width:150px; height:200px; perspective:600px; cursor:pointer; }
+  .rune .inner { position:relative; width:100%; height:100%; transition:transform .5s;
+    transform-style:preserve-3d; }
+  .rune.flipped .inner { transform:rotateY(180deg); }
+  .rune .face { position:absolute; width:100%; height:100%; backface-visibility:hidden;
+    border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .rune .back { background:linear-gradient(160deg,#2a5a3a,#1a4028); border:1px solid #4a9868;
+    font-size:14px; color:#8fd0a0; }
+  .rune .front { background:linear-gradient(160deg,#142a1a,#0d1c12); border:1px solid #4a9868;
+    transform:rotateY(180deg); padding:10px; text-align:center; }
+  .rune .glyph { font-size:14px; color:#a8f0c0; line-height:1.1; margin-bottom:6px; }
+  .rune .nm { font-size:13px; color:#8fd0a0; font-weight:700; }
+  .rune .pos { font-size:11px; color:#6b8a75; margin-top:4px; }
+  .rune .face.front.rev .glyph { transform:rotate(180deg); }  .sect { font-size:13px; color:#8fd0a0; margin:16px 0 8px; border-left:3px solid #7fc890; padding-left:8px; }
+  .interp { font-size:13px; line-height:1.85; color:#c8d8c8; }
+  .disclaim { font-size:11px; color:#909880; background:#141c14; border:1px solid #2a3a2a;
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .interp ul { padding-left:18px; margin:8px 0; }
+  .interp li { margin-bottom:5px; }
+  .interp .note { font-size:11px; color:#88987f; margin-top:8px; }
+  .hint { text-align:center; font-size:11px; color:#5f6f5f; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; font-size:10px; color:#3f4a3f; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🌳 欧 甘 树 文</h1>
+  <div class="sub">凯尔特古文字 · 神树占卜<br>纯本地随机 · 无网络</div>
+
+  <div class="card">
+    <h3>选择牌阵</h3>
+    <div class="modes">
+      <button data-n="1" class="active">单字（指引）</button>
+      <button data-n="3">三字（局势/行动/结果）</button>
+    </div>
+    <button class="go" id="draw">投 掷 树 文</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">欧甘树文属凯尔特古文化 · 属娱乐参考，非科学预测 🐳<br>请勿据此做重大决定</div>
+  <div class="ver">v5-正统20符 20261016</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 【数据来源】欧甘字母表 Beith-Luis-Nin 标准 20 符（4 组 aicme × 5），源自中世纪爱尔兰《Auraicept na n-Éces》(学者入门书)
+  //   符名/本义为通行学界转写；完整说明见 THIRD-PARTY-NOTICES.md「三之二」
+  // 欧甘树文（Ogham）标准 20 符（Beith-Luis-Nin，4 组 aicme × 5）
+  // 2026-10-16 正统修正：只保留标准 20 符，移除混入的 3 个 forfeda（附加符 Oir/Uilleand/Phagos）
+  // 并修正符名/字符：Nuin→Nion、Idho→Iodhadh、补回 Ruis/Ailm/Eadhadh
+  // 格式：[名称, 字符, 本义, 占义]
+  var OGHAM = [
+    // ── B 组（Beith-Luis-Nin 第一组）──
+    ['桦 Beith','ᚁ','桦树 · 起始、净化','新的开始、清除旧物、开端顺利'],
+    ['花楸 Luis','ᚂ','花楸 · 保护、直觉','守护、警醒、直觉指引'],
+    ['桤木 Fearn','ᚃ','桤木 · 勇气、传承','勇气、根基、稳步前行'],
+    ['柳 Saille','ᚄ','柳树 · 直觉、月相','直觉、情绪流动、顺应'],
+    ['桦木 Nion','ᚅ','梣树 · 世界之树','联结、命运之网、内在力量'],
+    // ── H 组（第二组）──
+    ['山楂 Huath','ᚆ','山楂 · 障碍、等待','阻碍、耐心、时机未到'],
+    ['橡树 Duir','ᚇ','橡树 · 力量、门扉','力量、稳固、机遇之门'],
+    ['冬青 Tinne','ᚈ','冬青 · 平衡、公正','平衡、正义、迎难而上'],
+    ['榛木 Coll','ᚉ','榛树 · 智慧、知识','智慧、洞察、灵感'],
+    ['苹果 Quert','ᚊ','苹果 · 选择、丰饶','抉择、疗愈、丰盛'],
+    // ── M 组（第三组）──
+    ['藤 Muin','ᚋ','葡萄藤 · 内省、真实','内省、直觉、看清真相'],
+    ['常春藤 Gort','ᚌ','常春藤 · 探索、坚持','探索、坚韧、曲折前行'],
+    ['芦苇 Ngetal','ᚍ','芦苇 · 净化、秩序','净化、理顺、扫除障碍'],
+    ['接骨木 Straif','ᚎ','接骨木 · 转变、蜕变','转变、放手、破旧立新'],
+    ['接骨木 Ruis','ᚏ','接骨木 · 终结、转化','终结、转化、重生前的放下'],
+    // ── A 组（第四组）──
+    ['冷杉 Ailm','ᚐ','冷杉 · 远见、新生','远见、新生、长远眼光'],
+    ['金雀花 Onn','ᚑ','金雀花 · 爱情、旅程','聚合、前路、机缘'],
+    ['石楠 Ur','ᚒ','石楠 · 疗愈、热情','疗愈、热情、付出'],
+    ['白杨 Eadhadh','ᚓ','白杨 · 回响、抉择','抉择、回响、看清本质'],
+    ['紫杉 Iodhadh','ᚔ','紫杉 · 生死、永恒','轮回、结束与新生、重生']
+  ];
+
+  var mode=1;
+  document.querySelectorAll('.modes button').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.modes button').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active'); mode=parseInt(b.dataset.n,10);
+    });
+  });
+
+  // 2026-10-16 改用真随机源 crypto.getRandomValues（操作系统熵池），老浏览器回退 Math.random
+  // ⚠️ 只改本页随机源，不动其他逻辑！
+  function secureRand(){
+    if(window.crypto && window.crypto.getRandomValues){
+      var a=new Uint32Array(1); window.crypto.getRandomValues(a);
+      return a[0]/4294967296;
+    }
+    return Math.random();
+  }
+  // 2026-10-16 趣味彩蛋：会话内连10次一模一样 → 弹窗（纯内存，不存储）
+  // ⚠️ 只改本页展示逻辑，不动其他逻辑！
+  var _eggStreak={sig:'',n:0};
+  function streakCheck(sig){
+    if(_eggStreak.sig===sig){ _eggStreak.n++; } else { _eggStreak.sig=sig; _eggStreak.n=1; }
+    return _eggStreak.n===10 ? '你的运气过于奇特' : '';
+  }
+  function showEgg(msg){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+      mask.innerHTML='<div style="background:#1e2a20;border:1px solid #4a7a5a;border-radius:14px;padding:26px 30px;text-align:center;max-width:80%"><div style="font-size:12px;font-weight:700;color:#a0f0c0;margin-bottom:10px">'+msg+'</div><div style="font-size:13px;color:#90b0a0;margin-bottom:16px">连抽 10 次一模一样的签，天意难测啊 🌀</div><div style="font-size:12px;color:#708078">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 400);
+  }
+  function drawOgham(n){
+    var pool=OGHAM.slice();
+    for(var i=pool.length-1;i>0;i--){ var j=Math.floor(secureRand()*(i+1)); var t=pool[i];pool[i]=pool[j];pool[j]=t; }
+    // 2026-10-16 传统欧甘占卜仅有正位，无逆位（老爹指定）：不再生成 reversed
+    return pool.slice(0,n).map(function(r){ return {sym:r}; });
+  }
+
+  function calc(){
+    var picked=drawOgham(mode);
+    var res=document.getElementById('result');
+    var h='<div class="card"><h3>你的树文</h3><div class="runes">';
+    picked.forEach(function(p){
+      var r=p.sym;
+      h+='<div class="rune"><div class="inner">';
+      h+='<div class="face back">ᚁ</div>';
+      h+='<div class="face front">';
+      h+='<div class="glyph">'+r[1]+'</div>';
+      h+='<div class="nm">'+r[0]+'</div>';
+      h+='<div class="pos">正位</div>';
+      h+='</div></div></div>';
+    });
+    h+='</div><div style="text-align:center;color:#6b8a75;font-size:11px">点击树文翻开</div></div>';
+
+    // 解读（2026-10-16 改为「全翻完才显示」，防剧透）
+    h+='<div id="interpBox" style="display:none">';
+    h+='<div class="sect">📖 解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 欧甘树文属凯尔特古文化，以下为传统树符义，非科学预测，仅供娱乐参考。</div>';
+    var labels = mode===1?['今日指引']:['局势现状','可行行动','可能结果'];
+    picked.forEach(function(p,i){
+      var r=p.sym;
+      h+='<p><b>'+labels[i]+'：'+r[0]+'</b></p>';
+      h+='<ul><li>'+r[3]+'</li></ul>';
+    });
+    h+='<p class="note">欧甘树文是古凯尔特德鲁伊的自然符号体系，可作自省与思考的引子；解读因人而异，勿作命运断言。</p>';
+    h+='</div></div>';
+    // 未翻牌时的遮罩提示（翻完后隐藏）
+    h+='<div id="interpLock" class="interp" style="text-align:center;color:#6b8a75">🔒 翻开全部树文后，显示解读</div>';
+
+    // 2026-10-16 趣味彩蛋：连10次一模一样 → 弹窗
+    // 2026-10-16 传统欧甘占卜仅有正位，无逆位
+    var _sig=picked.map(function(p){return p.sym[0];}).join('|');
+    var blow=streakCheck(_sig);
+    if(blow) showEgg(blow);
+
+    res.innerHTML=h;
+    res.querySelectorAll('.rune').forEach(function(el){
+      el.addEventListener('click',function(){ el.classList.toggle('flipped'); checkReveal(); });
+    });
+    // 2026-10-16 全翻完才显示解读（防剧透）
+    function checkReveal(){
+      var all=res.querySelectorAll('.rune');
+      var flipped=res.querySelectorAll('.rune.flipped');
+      var box=document.getElementById('interpBox'), lock=document.getElementById('interpLock');
+      if(all.length>0 && flipped.length===all.length){ if(box)box.style.display=''; if(lock)lock.style.display='none'; }
+      else { if(box)box.style.display='none'; if(lock)lock.style.display=''; }
+    }
+    // 2026-10-16 改为纯手动翻：移除原「延迟 500ms 自动翻开」，投掷后需手动点才翻（老爹指定）
+  }
+
+  document.getElementById('draw').addEventListener('click',calc);
+  calc();
+})();
+</script>
+</body>
+</html>

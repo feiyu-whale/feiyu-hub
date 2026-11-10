@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>压力容器圆筒壁厚计算工具</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 20px;
+  text-align: center;
+  padding: 16px 0 8px;
+  color: #1a1a2e;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8e8e8;
+  color: #1a1a2e;
+}
+.form-group {
+  margin-bottom: 12px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+}
+.form-group label .unit {
+  color: #999;
+  font-size: 12px;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background: #fafafa;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: #4a90d9;
+  background: #fff;
+}
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+.form-row .form-group {
+  flex: 1;
+}
+.hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+.btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #4a90d9;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn:hover {
+  background: #357abd;
+}
+.btn:active {
+  background: #2a6099;
+}
+.result-box {
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 14px;
+  display: none;
+}
+.result-box.error {
+  background: #fff2f0;
+  border-color: #ffccc7;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e8e8e8;
+}
+.result-item:last-child {
+  border-bottom: none;
+}
+.result-label {
+  font-size: 13px;
+  color: #555;
+}
+.result-value {
+  font-size: 15px;
+  font-weight: bold;
+  color: #1a1a2e;
+}
+.result-value.highlight {
+  font-size: 18px;
+  color: #389e0d;
+}
+.result-value.error-text {
+  color: #cf1322;
+  font-size: 13px;
+  font-weight: normal;
+}
+.formula-box {
+  background: #f9f9f9;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.formula-box .formula {
+  font-family: "Times New Roman", serif;
+  font-size: 15px;
+  text-align: center;
+  padding: 8px 0;
+  color: #1a1a2e;
+  font-weight: bold;
+}
+.source-section {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.8;
+}
+.source-section h3 {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+}
+.source-section ul {
+  padding-left: 18px;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #bbb;
+  z-index: 100;
+}
+.phi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.phi-table th, .phi-table td {
+  border: 1px solid #d9d9d9;
+  padding: 4px 6px;
+  text-align: center;
+}
+.phi-table th {
+  background: #f5f5f5;
+  font-weight: normal;
+  color: #666;
+}
+.phi-table td {
+  color: #333;
+}
+.toggle-btn {
+  background: none;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #4a90d9;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.toggle-btn:hover {
+  background: #f0f7ff;
+}
+.phi-ref {
+  display: none;
+  margin-top: 8px;
+}
+.phi-ref.show {
+  display: block;
+}
+.warn {
+  color: #d48806;
+  font-size: 12px;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🏭 压力容器圆筒壁厚计算</h1>
+  <p class="subtitle">依据 GB/T 150.1-2011《压力容器 第1部分：通用要求》</p>
+
+  <div class="card">
+    <div class="card-title">📐 计算公式</div>
+    <div class="formula-box">
+      <div>圆筒计算厚度（内压）：</div>
+      <div class="formula">δ = P·D<sub>i</sub> / (2[σ]<sup>t</sup>·φ − P) + C</div>
+      <div style="margin-top:8px;">许用应力：</div>
+      <div class="formula">[σ]<sup>t</sup> = min( σ<sub>b</sub>/n<sub>b</sub> , σ<sub>s</sub>/n<sub>s</sub> )</div>
+      <div style="margin-top:6px; font-size:12px; color:#888;">
+        其中：P—设计压力；D<sub>i</sub>—圆筒内径；φ—焊接接头系数；C—厚度附加量；<br>
+        σ<sub>b</sub>—抗拉强度；σ<sub>s</sub>—屈服强度（或规定非比例延伸强度R<sub>p0.2</sub>）；<br>
+        n<sub>b</sub>—抗拉强度安全系数（≥2.7）；n<sub>s</sub>—屈服强度安全系数（≥1.5）
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ 参数输入</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>设计压力 P <span class="unit">(MPa)</span></label>
+        <input type="number" id="inputP" step="0.01" min="0" placeholder="例：1.6">
+      </div>
+      <div class="form-group">
+        <label>圆筒内径 D<sub>i</sub> <span class="unit">(mm)</span></label>
+        <input type="number" id="inputD" step="1" min="0" placeholder="例：1000">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>抗拉强度 σ<sub>b</sub> <span class="unit">(MPa)</span></label>
+        <input type="number" id="inputSigmaB" step="1" min="0" placeholder="例：510">
+      </div>
+      <div class="form-group">
+        <label>屈服强度 σ<sub>s</sub> <span class="unit">(MPa)</span></label>
+        <input type="number" id="inputSigmaS" step="1" min="0" placeholder="例：235">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>抗拉安全系数 n<sub>b</sub></label>
+        <input type="number" id="inputNb" step="0.1" min="2.7" value="2.7">
+        <div class="hint">GB/T 150.1 规定 n<sub>b</sub> ≥ 2.7</div>
+      </div>
+      <div class="form-group">
+        <label>屈服安全系数 n<sub>s</sub></label>
+        <input type="number" id="inputNs" step="0.1" min="1.5" value="1.5">
+        <div class="hint">GB/T 150.1 规定 n<sub>s</sub> ≥ 1.5</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>焊接接头系数 φ</label>
+        <select id="inputPhi">
+          <option value="1.0">1.0 — 双面焊对接接头，100%无损检测</option>
+          <option value="0.9">0.9 — 双面焊对接接头，局部无损检测</option>
+          <option value="0.85" selected>0.85 — 单面焊对接接头，局部无损检测</option>
+          <option value="0.7">0.7 — 单面焊对接接头，无无损检测</option>
+          <option value="0.6">0.6 — 不带垫板的单面对接焊</option>
+          <option value="custom">自定义…</option>
+        </select>
+        <input type="number" id="inputPhiCustom" step="0.05" min="0" max="1" placeholder="输入0~1之间的值" style="display:none; margin-top:6px;">
+        <button class="toggle-btn" id="togglePhiTable" type="button">📋 查看焊接接头系数参考表</button>
+        <div class="phi-ref" id="phiRef">
+          <table class="phi-table">
+            <tr>
+              <th>接头型式</th>
+              <th>无损检测</th>
+              <th>φ 值</th>
+            </tr>
+            <tr>
+              <td>双面焊对接接头<br>或相当于双面焊的全焊透对接接头</td>
+              <td>100%检测<br>局部检测<br>无检测</td>
+              <td>1.00<br>0.85<br>—</td>
+            </tr>
+            <tr>
+              <td>单面焊对接接头<br>（沿焊缝全长有紧贴基本金属的垫板）</td>
+              <td>100%检测<br>局部检测<br>无检测</td>
+              <td>0.90<br>0.80<br>0.70</td>
+            </tr>
+            <tr>
+              <td>单面焊对接接头<br>（沿焊缝全长无紧贴基本金属的垫板）</td>
+              <td>100%检测<br>局部检测<br>无检测</td>
+              <td>0.80<br>0.70<br>0.60</td>
+            </tr>
+          </table>
+          <div class="hint" style="margin-top:4px;">参考 GB/T 150.1-2011 表 B.1（焊接接头系数）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>厚度附加量 C <span class="unit">(mm)</span></label>
+      <input type="number" id="inputC" step="0.1" min="0" value="2" placeholder="腐蚀裕量+钢板负偏差">
+      <div class="hint">C = C₁（钢板厚度负偏差）+ C₂（腐蚀裕量），具体值需根据工况确定</div>
+    </div>
+
+    <button class="btn" id="calcBtn" type="button">🔧 计算壁厚</button>
+
+    <div class="result-box" id="resultBox">
+      <div id="resultContent"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📖 数据来源</div>
+    <div class="source-section">
+      <h3>主要依据标准</h3>
+      <ul>
+        <li><strong>GB/T 150.1-2011</strong>《压力容器 第1部分：通用要求》——规定了压力容器材料许用应力的确定方法、安全系数取值及内压圆筒壁厚计算公式。</li>
+        <li><strong>GB/T 150.3-2011</strong>《压力容器 第3部分：设计》——给出了内压圆筒和球壳厚度计算的具体公式。</li>
+      </ul>
+      <h3 style="margin-top:10px;">关键参数说明</h3>
+      <ul>
+        <li><strong>安全系数 n<sub>b</sub> ≥ 2.7</strong>：GB/T 150.1-2011 第4.2.2条规定，室温下抗拉强度安全系数 n<sub>b</sub> ≥ 2.7。</li>
+        <li><strong>安全系数 n<sub>s</sub> ≥ 1.5</strong>：GB/T 150.1-2011 第4.2.2条规定，室温下屈服强度安全系数 n<sub>s</sub> ≥ 1.5。</li>
+        <li><strong>焊接接头系数 φ</strong>：按 GB/T 150.1-2011 附录B（表B.1）选取，具体值取决于焊接接头型式和无损检测比例。</li>
+        <li><strong>厚度附加量 C</strong>：包括钢板厚度负偏差 C₁ 和腐蚀裕量 C₂，具体数值需根据材料标准和工艺条件查相应标准确定。</li>
+      </ul>
+      <h3 style="margin-top:10px;">⚠️ 注意事项</h3>
+      <ul>
+        <li>本工具仅计算内压圆筒的计算厚度，不适用于外压容器。</li>
+        <li>实际设计中还需考虑最小厚度要求、开孔补强、支座处应力等，须由持证压力容器设计人员完成最终设计。</li>
+        <li>材料许用应力 [σ]<sup>t</sup> 在设计温度下的具体数值需查 GB/T 150.2《压力容器 第2部分：材料》中的许用应力表，本工具仅按室温强度指标进行估算。</li>
+        <li>本工具计算结果仅供参考，不得直接用于工程设计出图。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-压力容器壁厚计算 20261021</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var phiSelect = document.getElementById('inputPhi');
+  var phiCustom = document.getElementById('inputPhiCustom');
+  var toggleBtn = document.getElementById('togglePhiTable');
+  var phiRef = document.getElementById('phiRef');
+  var calcBtn = document.getElementById('calcBtn');
+  var resultBox = document.getElementById('resultBox');
+  var resultContent = document.getElementById('resultContent');
+
+  // Toggle phi custom input
+  phiSelect.addEventListener('change', function() {
+    if (this.value === 'custom') {
+      phiCustom.style.display = 'block';
+      phiCustom.focus();
+    } else {
+      phiCustom.style.display = 'none';
+    }
+  });
+
+  // Toggle phi reference table
+  toggleBtn.addEventListener('click', function() {
+    if (phiRef.classList.contains('show')) {
+      phiRef.classList.remove('show');
+      toggleBtn.textContent = '📋 查看焊接接头系数参考表';
+    } else {
+      phiRef.classList.add('show');
+      toggleBtn.textContent = '📋 收起参考表';
+    }
+  });
+
+  // Get phi value
+  function getPhi() {
+    if (phiSelect.value === 'custom') {
+      var v = parseFloat(phiCustom.value);
+      if (isNaN(v) || v <= 0 || v > 1) return NaN;
+      return v;
+    }
+    return parseFloat(phiSelect.value);
+  }
+
+  // Calculate
+  calcBtn.addEventListener('click', function() {
+    var P = parseFloat(document.getElementById('inputP').value);
+    var D = parseFloat(document.getElementById('inputD').value);
+    var sigmaB = parseFloat(document.getElementById('inputSigmaB').value);
+    var sigmaS = parseFloat(document.getElementById('inputSigmaS').value);
+    var nb = parseFloat(document.getElementById('inputNb').value);
+    var ns = parseFloat(document.getElementById('inputNs').value);
+    var phi = getPhi();
+    var C = parseFloat(document.getElementById('inputC').value);
+
+    // Validation
+    var errors = [];
+
+    if (isNaN(P) || P <= 0) errors.push('设计压力 P 必须大于 0');
+    if (isNaN(D) || D <= 0) errors.push('圆筒内径 D 必须大于 0');
+    if (isNaN(sigmaB) || sigmaB <= 0) errors.push('抗拉强度 σb 必须大于 0');
+    if (isNaN(sigmaS) || sigmaS <= 0) errors.push('屈服强度 σs 必须大于 0');
+    if (isNaN(nb) || nb < 2.7) errors.push('抗拉安全系数 nb 不得小于 2.7（GB/T 150.1 要求）');
+    if (isNaN(ns) || ns < 1.5) errors.push('屈服安全系数 ns 不得小于 1.5（GB/T 150.1 要求）');
+    if (isNaN(phi) || phi <= 0 || phi > 1) errors.push('焊接接头系数 φ 应在 (0, 1] 范围内');
+    if (isNaN(C) || C < 0) errors.push('厚度附加量 C 不能为负值');
+
+    if (errors.length > 0) {
+      resultBox.style.display = 'block';
+      resultBox.className = 'result-box error';
+      resultContent.innerHTML = '<div class="result-item"><span class="result-label">❌ 输入错误</span></div>' +
+        errors.map(function(e) {
+          return '<div class="result-item"><span class="result-value error-text">' + e + '</span></div>';
+        }).join('');
+      return;
+    }
+
+    // Calculate allowable stress
+    var sigmaAllowB = sigmaB / nb;
+    var sigmaAllowS = sigmaS / ns;
+    var sigmaAllow = Math.min(sigmaAllowB, sigmaAllowS);
+
+    // Check denominator
+    var denominator = 2 * sigmaAllow * phi - P;
+    if (denominator <= 0) {
+      resultBox.style.display = 'block';
+      resultBox.className = 'result-box error';
+      resultContent.innerHTML =
+        '<div class="result-item"><span class="result-label">❌ 计算错误</span></div>' +
+        '<div class="result-item"><span class="result-value error-text">分母 2[σ]φ − P = ' +
+        denominator.toFixed(4) + ' ≤ 0，公式无意义。请检查参数（可能压力过高或许用应力过低）。</span></div>';
+      return;
+    }
+
+    // Calculate thickness
+    var deltaCalc = (P * D) / denominator;
+    var deltaTotal = deltaCalc + C;
+
+    // Round up to 0.5mm for practical plate thickness
+    var deltaRound = Math.ceil(deltaTotal * 2) / 2;
+
+    // Build result
+    var html = '';
+    html += '<div class="result-item"><span class="result-label">σ<sub>b</sub>/n<sub>b</sub> = ' +
+      sigmaB.toFixed(1) + '/' + nb.toFixed(1) + '</span><span class="result-value">' +
+      sigmaAllowB.toFixed(2) + ' MPa</span></div>';
+    html += '<div class="result-item"><span class="result-label">σ<sub>s</sub>/n<sub>s</sub> = ' +
+      sigmaS.toFixed(1) + '/' + ns.toFixed(1) + '</span><span class="result-value">' +
+      sigmaAllowS.toFixed(2) + ' MPa</span></div>';
+    html += '<div class="result-item"><span class="result-label">许用应力 [σ]<sup>t</sup> = min(…)</span>' +
+      '<span class="result-value">' + sigmaAllow.toFixed(2) + ' MPa</span></div>';
+    html += '<div class="result-item"><span class="result-label">计算厚度 δ<sub>calc</sub> = PD/(2[σ]φ−P)</span>' +
+      '<span class="result-value">' + deltaCalc.toFixed(3) + ' mm</span></div>';
+    html += '<div class="result-item"><span class="result-label">设计厚度 δ + C</span>' +
+      '<span class="result-value">' + deltaTotal.toFixed(3) + ' mm</span></div>';
+    html += '<div class="result-item"><span class="result-label">📏 名义厚度（向上圆整至0.5mm）</span>' +
+      '<span class="result-value highlight">' + deltaRound.toFixed(1) + ' mm</span></div>';
+
+    resultBox.style.display = 'block';
+    resultBox.className = 'result-box';
+    resultContent.innerHTML = html;
+  });
+
+})();
+</script>
+</body>
+</html>

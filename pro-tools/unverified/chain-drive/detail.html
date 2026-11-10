@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>链传动计算工具 v2.0.0</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; line-height: 1.7; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; padding: 30px 0 10px; font-size: 28px; color: #1a1a2e; }
+.subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 0; }
+.tab-btn { padding: 12px 28px; cursor: pointer; background: #e8ecf1; border: none; font-size: 15px; color: #555; transition: all .2s; border-radius: 6px 6px 0 0; margin-right: 4px; }
+.tab-btn.active { background: #fff; color: #1a73e8; font-weight: 600; border-bottom: 2px solid #fff; margin-bottom: -2px; }
+.tab-btn:hover { background: #d4dbe5; }
+.tab-content { display: none; background: #fff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+.tab-content.active { display: block; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+code { font-family: "Fira Code", "Consolas", monospace; }
+.test-result { margin-top: 15px; padding: 15px; border-radius: 6px; font-weight: 600; font-size: 16px; }
+.test-pass { background: #e8f5e9; color: #2e7d32; }
+.test-fail { background: #ffebee; color: #c62828; }
+.test-detail { margin-top: 10px; font-size: 13px; color: #555; max-height: 400px; overflow-y: auto; }
+.test-detail .pass-item { color: #2e7d32; }
+.test-detail .fail-item { color: #c62828; }
+.manual h2 { font-size: 22px; color: #1a1a2e; margin: 30px 0 15px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+.manual h3 { font-size: 18px; color: #333; margin: 20px 0 10px; }
+.manual p { margin: 10px 0; text-indent: 2em; }
+.manual table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+.manual th, .manual td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
+.manual th { background: #f0f4f8; font-weight: 600; }
+.manual .scenario { background: #f8f9fb; border-left: 4px solid #1a73e8; padding: 15px 20px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+.manual .scenario h4 { color: #1a73e8; margin-bottom: 8px; }
+.manual .warn { background: #fff8e1; border-left: 4px solid #ff8f00; padding: 12px 18px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+.manual .note { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 12px 18px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+.version-tag { position: fixed; bottom: 10px; right: 15px; font-size: 11px; color: #aaa; z-index: 999; }
+.run-btn { display: inline-block; padding: 10px 24px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; margin: 15px 0; }
+.run-btn:hover { background: #1557b0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>链传动计算工具</h1>
+<p class="subtitle">依据 GB/T 1243《传动用短节距精密滚子链》 | 传动比 · 链速 · 链节数</p>
+
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('source')">第一部分：JS 源码</button>
+<button class="tab-btn" onclick="switchTab('test')">第二部分：单元测试</button>
+<button class="tab-btn" onclick="switchTab('manual')">第三部分：使用说明书</button>
+</div>
+
+<div id="tab-source" class="tab-content active">
+<pre><code id="source-code"></code></pre>
+</div>
+
+<div id="tab-test" class="tab-content">
+<p style="margin-bottom:10px;color:#666;">点击下方按钮运行全部单元测试（共 35 个用例），结果将显示在下方。</p>
+<button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+<div id="test-output"></div>
+</div>
+
+<div id="tab-manual" class="tab-content manual">
+<div id="manual-content"></div>
+</div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+// ============================================================
+// 第一部分：JS 源码 —— 链传动计算核心算法
+// ============================================================
+
+/**
+ * 计算链传动的传动比。
+ *
+ * 公式：i = z2 / z1
+ *
+ * 传动比定义为从动链轮齿数与主动链轮齿数之比。
+ * 当 i > 1 时为减速传动，i < 1 时为增速传动，i = 1 时为等速传动。
+ *
+ * @param {number} z1 - 主动链轮（小链轮）齿数，必须为正整数且 >= 1。
+ * @param {number} z2 - 从动链轮（大链轮）齿数，必须为正整数且 >= 1。
+ * @returns {number} 传动比 i（无量纲），保留完整浮点精度。
+ * @throws {Error} 当 z1 或 z2 为 null、undefined、NaN、非数字类型时抛出。
+ * @throws {Error} 当 z1 或 z2 小于 1 时抛出（齿数必须 >= 1）。
+ * @throws {Error} 当 z1 或 z2 不是整数时抛出（齿数必须为整数）。
+ * @example
+ * calcTransmissionRatio(20, 40); // => 2
+ * calcTransmissionRatio(17, 51); // => 3
+ * calcTransmissionRatio(25, 25); // => 1
+ */
+function calcTransmissionRatio(z1, z2) {
+    _validateSprocketTeeth(z1, 'z1');
+    _validateSprocketTeeth(z2, 'z2');
+    return z2 / z1;
+}
+
+/**
+ * 计算链速（链条线速度）。
+ *
+ * 公式：v = z1 × p × n1 / 60000
+ *
+ * 其中 z1 为小链轮齿数，p 为链条节距（mm），n1 为小链轮转速（r/min）。
+ * 结果单位为 m/s。
+ *
+ * 推导：小链轮每转一圈，链条走过 z1 × p mm；
+ *       每分钟走过 z1 × p × n1 mm；
+ *       换算为 m/s 需除以 60 × 1000 = 60000。
+ *
+ * @param {number} z1 - 小链轮齿数，必须为正整数且 >= 1。
+ * @param {number} p  - 链条节距（mm），必须为正数。标准节距系列见 GB/T 1243。
+ * @param {number} n1 - 小链轮转速（r/min），必须为非负数。n1=0 表示静止状态。
+ * @returns {number} 链速 v，单位 m/s。
+ * @throws {Error} 当参数为 null、undefined、NaN、非数字类型时抛出。
+ * @throws {Error} 当 z1 < 1 时抛出。
+ * @throws {Error} 当 p <= 0 时抛出。
+ * @throws {Error} 当 n1 < 0 时抛出。
+ * @throws {Error} 当 z1 不是整数时抛出。
+ * @example
+ * calcChainSpeed(20, 12.7, 1000); // => 4.2333...
+ * calcChainSpeed(17, 15.875, 500); // => 2.2489...
+ */
+function calcChainSpeed(z1, p, n1) {
+    _validateSprocketTeeth(z1, 'z1');
+    _validatePositiveNumber(p, 'p（链条节距）');
+    _validateNonNegativeNumber(n1, 'n1（小链轮转速）');
+    return (z1 * p * n1) / 60000;
+}
+
+/**
+ * 计算链节数（链条长度，以节距为单位）。
+ *
+ * 公式：X = 2a/p + (z1+z2)/2 + ((z2-z1)/(2π))² × p/a
+ *
+ * 这是 GB/T 1243 及机械设计手册中推荐的链节数近似计算公式。
+ * 计算结果通常需圆整为偶数（优先取偶数节），以避免使用过渡链节。
+ *
+ * @param {number} z1 - 小链轮齿数，必须为正整数且 >= 1。
+ * @param {number} z2 - 大链轮齿数，必须为正整数且 >= 1。
+ * @param {number} p  - 链条节距（mm），必须为正数。
+ * @param {number} a  - 初定中心距（mm），必须为正数。
+ * @returns {number} 链节数 X（无量纲，以节距 p 为单位），保留完整浮点精度。
+ * @throws {Error} 当参数为 null、undefined、NaN、非数字类型时抛出。
+ * @throws {Error} 当 z1 或 z2 < 1 时抛出。
+ * @throws {Error} 当 p <= 0 时抛出。
+ * @throws {Error} 当 a <= 0 时抛出（a=0 会导致除零错误）。
+ * @throws {Error} 当 z1 或 z2 不是整数时抛出。
+ * @example
+ * calcChainLength(20, 40, 12.7, 400); // => 约 93.31
+ * calcChainLength(17, 17, 12.7, 300); // => 约 64.24
+ */
+function calcChainLength(z1, z2, p, a) {
+    _validateSprocketTeeth(z1, 'z1');
+    _validateSprocketTeeth(z2, 'z2');
+    _validatePositiveNumber(p, 'p（链条节距）');
+    _validatePositiveNumber(a, 'a（中心距）');
+
+    var term1 = (2 * a) / p;
+    var term2 = (z1 + z2) / 2;
+    var diff = (z2 - z1) / (2 * Math.PI);
+    var term3 = diff * diff * p / a;
+
+    return term1 + term2 + term3;
+}
+
+/**
+ * 将链节数圆整为推荐值（优先偶数）。
+ *
+ * 实际选用链条时，链节数应取为偶数，以避免使用过渡链节（弯板链节），
+ * 因为过渡链节的强度较低。若计算值已接近偶数则直接取偶，否则向上取偶。
+ *
+ * @param {number} x - 计算所得链节数（浮点数）。
+ * @returns {number} 圆整后的偶数链节数。
+ * @throws {Error} 当 x 为 null、undefined、NaN、非数字时抛出。
+ * @throws {Error} 当 x <= 0 时抛出。
+ * @example
+ * roundToEvenPitch(93.31); // => 94
+ * roundToEvenPitch(64.24); // => 66
+ * roundToEvenPitch(80.0);  // => 80
+ */
+function roundToEvenPitch(x) {
+    _validatePositiveNumber(x, 'x（链节数）');
+    var ceil = Math.ceil(x);
+    if (ceil % 2 === 0) {
+        return ceil;
+    }
+    return ceil + 1;
+}
+
+/**
+ * 由链节数反算实际中心距。
+ *
+ * 当链节数 X 确定后（已圆整），可用以下近似公式反算实际安装中心距：
+ * a = (p / 4) × [(X - (z1+z2)/2) + sqrt((X - (z1+z2)/2)² - 8 × ((z2-z1)/(2π))²)]
+ *
+ * @param {number} X  - 选定的链节数（整数，通常为偶数）。
+ * @param {number} z1 - 小链轮齿数，正整数 >= 1。
+ * @param {number} z2 - 大链轮齿数，正整数 >= 1。
+ * @param {number} p  - 链条节距（mm），正数。
+ * @returns {number} 实际中心距 a（mm）。
+ * @throws {Error} 参数校验失败时抛出。
+ * @throws {Error} 当根号内为负数时抛出（参数组合不合理）。
+ * @example
+ * calcActualCenterDistance(94, 20, 40, 12.7); // => 约 404.7 mm
+ */
+function calcActualCenterDistance(X, z1, z2, p) {
+    _validatePositiveNumber(X, 'X（链节数）');
+    _validateSprocketTeeth(z1, 'z1');
+    _validateSprocketTeeth(z2, 'z2');
+    _validatePositiveNumber(p, 'p（链条节距）');
+
+    var M = (z1 + z2) / 2;
+    var delta = X - M;
+    var zDiff = (z2 - z1) / (2 * Math.PI);
+    var discriminant = delta * delta - 8 * zDiff * zDiff;
+
+    if (discriminant < 0) {
+        throw new Error('参数组合不合理：根号内为负数（判别式 = ' + discriminant.toFixed(6) + '），请检查链节数与齿数是否匹配。');
+    }
+
+    var a = (p / 4) * (delta + Math.sqrt(discriminant));
+    return a;
+}
+
+// ---- 内部校验辅助函数 ----
+
+/**
+ * 校验链轮齿数参数。
+ * @param {*} value - 待校验值。
+ * @param {string} name - 参数名称（用于错误信息）。
+ * @throws {Error} 校验失败时抛出。
+ * @private
+ */
+function _validateSprocketTeeth(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error(name + ' 不能为 null 或 undefined');
+    }
+    if (typeof value !== 'number' || isNaN(value)) {
+        throw new Error(name + ' 必须为有效数字，当前值：' + value);
+    }
+    if (!Number.isInteger(value)) {
+        throw new Error(name + ' 必须为整数，当前值：' + value);
+    }
+    if (value < 1) {
+        throw new Error(name + ' 必须 >= 1，当前值：' + value);
+    }
+}
+
+/**
+ * 校验正数参数（必须 > 0）。
+ * @param {*} value - 待校验值。
+ * @param {string} name - 参数名称。
+ * @throws {Error} 校验失败时抛出。
+ * @private
+ */
+function _validatePositiveNumber(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error(name + ' 不能为 null 或 undefined');
+    }
+    if (typeof value !== 'number' || isNaN(value)) {
+        throw new Error(name + ' 必须为有效数字，当前值：' + value);
+    }
+    if (value <= 0) {
+        throw new Error(name + ' 必须为正数，当前值：' + value);
+    }
+}
+
+/**
+ * 校验非负数参数（必须 >= 0）。
+ * @param {*} value - 待校验值。
+ * @param {string} name - 参数名称。
+ * @throws {Error} 校验失败时抛出。
+ * @private
+ */
+function _validateNonNegativeNumber(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error(name + ' 不能为 null 或 undefined');
+    }
+    if (typeof value !== 'number' || isNaN(value)) {
+        throw new Error(name + ' 必须为有效数字，当前值：' + value);
+    }
+    if (value < 0) {
+        throw new Error(name + ' 不能为负数，当前值：' + value);
+    }
+}
+
+// ============================================================
+// 第二部分：单元测试（纯 JS 实现，不依赖任何框架）
+// ============================================================
+
+var _testResults = [];
+
+/**
+ * 断言函数：判断实际值是否与预期值在容差范围内相等。
+ * @param {string} description - 测试描述。
+ * @param {number} actual - 实际值。
+ * @param {number} expected - 预期值。
+ * @param {number} [tolerance=1e-6] - 容差。
+ */
+function assertClose(description, actual, expected, tolerance) {
+    tolerance = tolerance || 1e-6;
+    var pass = Math.abs(actual - expected) < tolerance;
+    _testResults.push({
+        desc: description,
+        pass: pass,
+        actual: actual,
+        expected: expected
+    });
+}
+
+/**
+ * 断言函数：判断函数调用是否抛出异常。
+ * @param {string} description - 测试描述。
+ * @param {Function} fn - 待测函数。
+ */
+function assertThrows(description, fn) {
+    var threw = false;
+    var errorMsg = '';
+    try {
+        fn();
+    } catch (e) {
+        threw = true;
+        errorMsg = e.message;
+    }
+    _testResults.push({
+        desc: description,
+        pass: threw,
+        actual: threw ? '抛出异常: ' + errorMsg : '未抛出异常',
+        expected: '应抛出异常'
+    });
+}
+
+/**
+ * 运行全部测试用例。
+ */
+function runAllTests() {
+    _testResults = [];
+
+    // ======== calcTransmissionRatio 测试 ========
+
+    // 1. 正常值：z1=20, z2=40
+    assertClose('传动比: z1=20, z2=40 → i=2',
+        calcTransmissionRatio(20, 40), 2);
+
+    // 2. 正常值：z1=17, z2=51
+    assertClose('传动比: z1=17, z2=51 → i=3',
+        calcTransmissionRatio(17, 51), 3);
+
+    // 3. 正常值：z1=25, z2=100
+    assertClose('传动比: z1=25, z2=100 → i=4',
+        calcTransmissionRatio(25, 100), 4);
+
+    // 4. 边界值：等传动比 z1=z2=9
+    assertClose('传动比: z1=9, z2=9 → i=1',
+        calcTransmissionRatio(9, 9), 1);
+
+    // 5. 边界值：最小齿数 z1=1, z2=1
+    assertClose('传动比: z1=1, z2=1 → i=1',
+        calcTransmissionRatio(1, 1), 1);
+
+    // 6. 增速传动：z1=100, z2=1
+    assertClose('传动比: z1=100, z2=1 → i=0.01',
+        calcTransmissionRatio(100, 1), 0.01);
+
+    // 7. 异常：z1=0
+    assertThrows('传动比: z1=0 应抛出异常',
+        function() { calcTransmissionRatio(0, 40); });
+
+    // 8. 异常：z1=-5
+    assertThrows('传动比: z1=-5 应抛出异常',
+        function() { calcTransmissionRatio(-5, 40); });
+
+    // 9. 异常：z1=null
+    assertThrows('传动比: z1=null 应抛出异常',
+        function() { calcTransmissionRatio(null, 40); });
+
+    // 10. 异常：z2=0
+    assertThrows('传动比: z2=0 应抛出异常',
+        function() { calcTransmissionRatio(20, 0); });
+
+    // 11. 异常：z1=undefined
+    assertThrows('传动比: z1=undefined 应抛出异常',
+        function() { calcTransmissionRatio(undefined, 40); });
+
+    // 12. 异常：z2=NaN
+    assertThrows('传动比: z2=NaN 应抛出异常',
+        function() { calcTransmissionRatio(20, NaN); });
+
+    // 13. 异常：z1 为字符串
+    assertThrows('传动比: z1="20" 字符串应抛出异常',
+        function() { calcTransmissionRatio("20", 40); });
+
+    // 14. 异常：z1 非整数
+    assertThrows('传动比: z1=20.5 非整数应抛出异常',
+        function() { calcTransmissionRatio(20.5, 40); });
+
+    // ======== calcChainSpeed 测试 ========
+
+    // 15. 正常值：z1=20, p=12.7, n1=1000
+    assertClose('链速: z1=20, p=12.7, n1=1000 → v≈4.2333',
+        calcChainSpeed(20, 12.7, 1000), 20 * 12.7 * 1000 / 60000);
+
+    // 16. 正常值：z1=17, p=15.875, n1=500
+    assertClose('链速: z1=17, p=15.875, n1=500 → v≈2.2490',
+        calcChainSpeed(17, 15.875, 500), 17 * 15.875 * 500 / 60000);
+
+    // 17. 正常值：z1=25, p=25.4, n1=2000
+    assertClose('链速: z1=25, p=25.4, n1=2000 → v≈21.1667',
+        calcChainSpeed(25, 25.4, 2000), 25 * 25.4 * 2000 / 60000);
+
+    // 18. 边界值：n1=0（静止）
+    assertClose('链速: n1=0 → v=0',
+        calcChainSpeed(20, 12.7, 0), 0);
+
+    // 19. 异常：z1=0
+    assertThrows('链速: z1=0 应抛出异常',
+        function() { calcChainSpeed(0, 12.7, 1000); });
+
+    // 20. 异常：p=0
+    assertThrows('链速: p=0 应抛出异常',
+        function() { calcChainSpeed(20, 0, 1000); });
+
+    // 21. 异常：p 为负数
+    assertThrows('链速: p=-1 应抛出异常',
+        function() { calcChainSpeed(20, -1, 1000); });
+
+    // 22. 异常：n1 为负数
+    assertThrows('链速: n1=-100 应抛出异常',
+        function() { calcChainSpeed(20, 12.7, -100); });
+
+    // 23. 异常：p=null
+    assertThrows('链速: p=null 应抛出异常',
+        function() { calcChainSpeed(20, null, 1000); });
+
+    // 24. 异常：n1=undefined
+    assertThrows('链速: n1=undefined 应抛出异常',
+        function() { calcChainSpeed(20, 12.7, undefined); });
+
+    // 25. 异常：p 为空字符串
+    assertThrows('链速: p="" 空字符串应抛出异常',
+        function() { calcChainSpeed(20, "", 1000); });
+
+    // ======== calcChainLength 测试 ========
+
+    // 26. 正常值：z1=20, z2=40, p=12.7, a=400
+    (function() {
+        var expected = 2*400/12.7 + (20+40)/2 + Math.pow((40-20)/(2*Math.PI), 2) * 12.7/400;
+        assertClose('链节数: z1=20,z2=40,p=12.7,a=400 → X≈93.314',
+            calcChainLength(20, 40, 12.7, 400), expected);
+    })();
+
+    // 27. 正常值：等齿数 z1=z2=17
+    (function() {
+        var expected = 2*300/12.7 + (17+17)/2 + 0;
+        assertClose('链节数: z1=17,z2=17,p=12.7,a=300 → X≈64.244',
+            calcChainLength(17, 17, 12.7, 300), expected);
+    })();
+
+    // 28. 正常值：z1=25, z2=50, p=19.05, a=600
+    (function() {
+        var expected = 2*600/19.05 + (25+50)/2 + Math.pow((50-25)/(2*Math.PI), 2) * 19.05/600;
+        assertClose('链节数: z1=25,z2=50,p=19.05,a=600 → X≈100.995',
+            calcChainLength(25, 50, 19.05, 600), expected);
+    })();
+
+    // 29. 精度测试：z1=19, z2=57, p=12.7, a=500
+    (function() {
+        var expected = 2*500/12.7 + (19+57)/2 + Math.pow((57-19)/(2*Math.PI), 2) * 12.7/500;
+        assertClose('链节数精度: z1=19,z2=57,p=12.7,a=500',
+            calcChainLength(19, 57, 12.7, 500), expected, 1e-10);
+    })();
+
+    // 30. 异常：a=0（除零）
+    assertThrows('链节数: a=0 应抛出异常',
+        function() { calcChainLength(20, 40, 12.7, 0); });
+
+    // 31. 异常：z1=0
+    assertThrows('链节数: z1=0 应抛出异常',
+        function() { calcChainLength(0, 40, 12.7, 400); });
+
+    // 32. 异常：p=0
+    assertThrows('链节数: p=0 应抛出异常',
+        function() { calcChainLength(20, 40, 0, 400); });
+
+    // 33. 异常：a 为负数
+    assertThrows('链节数: a=-100 应抛出异常',
+        function() { calcChainLength(20, 40, 12.7, -100); });
+
+    // 34. 异常：z1=NaN
+    assertThrows('链节数: z1=NaN 应抛出异常',
+        function() { calcChainLength(NaN, 40, 12.7, 400); });
+
+    // 35. 异常：z2=null
+    assertThrows('链节数: z2=null 应抛出异常',
+        function() { calcChainLength(20, null, 12.7, 400); });
+
+    // 36. 异常：p 为空字符串
+    assertThrows('链节数: p="" 应抛出异常',
+        function() { calcChainLength(20, 40, "", 400); });
+
+    // 37. 异常：a=undefined
+    assertThrows('链节数: a=undefined 应抛出异常',
+        function() { calcChainLength(20, 40, 12.7, undefined); });
+
+    // ======== roundToEvenPitch 测试 ========
+
+    // 38. 正常圆整
+    assertClose('圆整: 93.31 → 94',
+        roundToEvenPitch(93.31), 94);
+
+    // 39. 已是偶数
+    assertClose('圆整: 80.0 → 80',
+        roundToEvenPitch(80.0), 80);
+
+    // 40. 奇数向上取偶
+    assertClose('圆整: 64.24 → 66',
+        roundToEvenPitch(64.24), 66);
+
+    // ======== calcActualCenterDistance 测试 ========
+
+    // 41. 正常反算
+    (function() {
+        var a = calcActualCenterDistance(94, 20, 40, 12.7);
+        // 验证反算值合理（应在 400 附近）
+        var pass = a > 390 && a < 420;
+        _testResults.push({
+            desc: '反算中心距: X=94,z1=20,z2=40,p=12.7 → a应在390~420之间(实际=' + a.toFixed(2) + ')',
+            pass: pass,
+            actual: a,
+            expected: '390~420'
+        });
+    })();
+
+    // 渲染结果
+    renderTestResults();
+}
+
+/**
+ * 渲染测试结果到页面。
+ */
+function renderTestResults() {
+    var total = _testResults.length;
+    var passed = 0;
+    var html = '<div class="test-detail">';
+    for (var i = 0; i < _testResults.length; i++) {
+        var r = _testResults[i];
+        if (r.pass) {
+            passed++;
+            html += '<div class="pass-item">✓ [' + (i+1) + '] ' + r.desc + '</div>';
+        } else {
+            html += '<div class="fail-item">✗ [' + (i+1) + '] ' + r.desc +
+                ' | 实际: ' + (typeof r.actual === 'number' ? r.actual.toFixed(8) : r.actual) +
+                ' | 预期: ' + (typeof r.expected === 'number' ? r.expected.toFixed(8) : r.expected) + '</div>';
+        }
+    }
+    html += '</div>';
+
+    var cls = passed === total ? 'test-pass' : 'test-fail';
+    var summary = '<div class="test-result ' + cls + '">通过 ' + passed + ' / 共 ' + total + '</div>';
+
+    document.getElementById('test-output').innerHTML = summary + html;
+}
+
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+
+var manualHTML = '' +
+'<h2>一、工具概述</h2>' +
+'<p>本工具用于链传动系统的基本运动学参数计算，覆盖传动比、链速（链条线速度）和链节数（链条长度）三个核心指标。适用于滚子链传动方案的设计校核阶段，帮助工程师快速完成初步参数计算，为后续的详细设计（强度校核、润滑方式选择等）提供基础数据。</p>' +
+'<p>链传动是机械传动中常用的中间挠性件传动方式，广泛应用于农业机械、输送设备、摩托车、工业生产线等领域。与带传动相比，链传动没有弹性滑动和打滑现象，能保持准确的平均传动比；与齿轮传动相比，链传动适用于较大中心距的场合，且对安装精度要求较低。</p>' +
+'<p>本工具的计算公式来源于机械设计手册及 GB/T 1243 标准体系，适用于短节距精密滚子链的传动计算。工具采用纯 JavaScript 实现，无需安装任何依赖，可直接在浏览器中运行。</p>' +
+
+'<h2>二、参数详细说明</h2>' +
+'<table>' +
+'<tr><th>参数符号</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>' +
+'<tr><td>z1</td><td>小链轮（主动轮）齿数</td><td>—（无量纲）</td><td>正整数，≥ 1</td><td>主动链轮的齿数。GB/T 1243 推荐最小齿数：高速时（n > 800 r/min）zmin ≥ 21，中速时 zmin ≥ 17，低速时 zmin ≥ 9。齿数过少会导致多边形效应加剧，增大动载荷和噪声。实际选用时需根据转速工况参照标准推荐值。</td></tr>' +
+'<tr><td>z2</td><td>大链轮（从动轮）齿数</td><td>—（无量纲）</td><td>正整数，≥ 1</td><td>从动链轮的齿数。推荐最大齿数 zmax ≤ 114～120。齿数过多时，链条磨损后易发生跳齿和脱链现象。通常 z2 = i × z1，计算后应圆整为整数（优先奇数，使磨损均匀）。</td></tr>' +
+'<tr><td>p</td><td>链条节距</td><td>mm</td><td>正数</td><td>相邻两链节中心之间的距离。GB/T 1243 规定的标准节距系列（单位 mm）包括：4.7625、6.35、9.525、12.7、15.875、19.05、25.4、31.75、38.1、44.45、50.8 等。节距越大，承载能力越高，但多边形效应也越显著，需根据传递功率和转速合理选择。</td></tr>' +
+'<tr><td>n1</td><td>小链轮转速</td><td>r/min</td><td>非负数</td><td>主动链轮的旋转速度。输入 0 表示链轮静止（链速为 0）。实际应用中需注意链速上限，不同链号和工况下允许的最大转速不同，需查标准或厂家资料。</td></tr>' +
+'<tr><td>a</td><td>初定中心距</td><td>mm</td><td>正数</td><td>两链轮轴线之间的距离。一般推荐 a = (30～50)p，最大不超过 80p。中心距过小则包角小、链条绕转次数多、寿命短；中心距过大则链条松边垂度大，易产生振动。</td></tr>' +
+'</table>' +
+
+'<h2>三、计算公式</h2>' +
+'<h3>3.1 传动比</h3>' +
+'<p style="text-indent:0;text-align:center;font-size:18px;font-weight:bold;margin:15px 0;">i = z2 / z1</p>' +
+'<p>传动比为从动轮齿数与主动轮齿数之比。i > 1 为减速，i < 1 为增速，i = 1 为等速。链传动的瞬时传动比是波动的（多边形效应），此处计算的是平均传动比。</p>' +
+
+'<h3>3.2 链速</h3>' +
+'<p style="text-indent:0;text-align:center;font-size:18px;font-weight:bold;margin:15px 0;">v = z1 × p × n1 / 60000 &nbsp;&nbsp; (m/s)</p>' +
+'<p>链条的线速度等于小链轮分度圆上周线速度的近似值。推导过程：小链轮每转一圈链条移动 z1·p mm，每分钟移动 z1·p·n1 mm，除以 60000（= 60 × 1000）换算为 m/s。</p>' +
+
+'<h3>3.3 链节数</h3>' +
+'<p style="text-indent:0;text-align:center;font-size:16px;font-weight:bold;margin:15px 0;">X = 2a/p + (z1+z2)/2 + [(z2−z1)/(2π)]² × p/a</p>' +
+'<p>这是链节数的近似计算公式，基于链条包络在两链轮上的几何关系推导。计算结果通常不是整数，需向上圆整。推荐圆整为偶数，以避免使用过渡链节（弯板链节），因为过渡链节的疲劳强度约为正常链节的 80%。</p>' +
+
+'<h3>3.4 实际中心距反算</h3>' +
+'<p style="text-indent:0;text-align:center;font-size:15px;font-weight:bold;margin:15px 0;">a = (p/4) × [(X − (z1+z2)/2) + √((X − (z1+z2)/2)² − 8·((z2−z1)/(2π))²)]</p>' +
+'<p>当链节数 X 确定后（已圆整为标准值），用此公式反算实际安装中心距。实际安装时还需预留一定的中心距调整量（通常为 2p 左右），以便安装和张紧。</p>' +
+
+'<h2>四、实际使用场景</h2>' +
+
+'<div class="scenario">' +
+'<h4>场景 1：摩托车发动机正时链传动</h4>' +
+'<p>某摩托车发动机曲轴到凸轮轴的正时链传动，采用 08A  roller chain（节距 p = 12.7 mm）。已知曲轴链轮齿数 z1 = 17，凸轮轴链轮齿数 z2 = 34，曲轴转速 n1 = 6000 r/min，初定中心距 a = 250 mm。</p>' +
+'<p><strong>输入：</strong>z1 = 17, z2 = 34, p = 12.7 mm, n1 = 6000 r/min, a = 250 mm</p>' +
+'<p><strong>计算结果：</strong></p>' +
+'<p>• 传动比 i = 34 / 17 = 2（减速传动，凸轮轴转速为曲轴的一半，符合四冲程发动机要求）</p>' +
+'<p>• 链速 v = 17 × 12.7 × 6000 / 60000 = 21.59 m/s</p>' +
+'<p>• 链节数 X = 2×250/12.7 + (17+34)/2 + ((34−17)/(2π))² × 12.7/250 ≈ 65.24 节</p>' +
+'<p>• 圆整为偶数：66 节</p>' +
+'<div class="warn">注意：此链速 21.59 m/s 较高，需确认所选链条型号是否允许此转速下的使用，并检查润滑方式是否满足要求。</div>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景 2：工业输送机链传动</h4>' +
+'<p>某工厂输送线采用链传动驱动滚筒，选用 16A 链条（p = 25.4 mm）。主动链轮 z1 = 21，从动链轮 z2 = 42，电机转速经减速器后 n1 = 100 r/min，中心距 a = 800 mm。</p>' +
+'<p><strong>输入：</strong>z1 = 21, z2 = 42, p = 25.4 mm, n1 = 100 r/min, a = 800 mm</p>' +
+'<p><strong>计算结果：</strong></p>' +
+'<p>• 传动比 i = 42 / 21 = 2</p>' +
+'<p>• 链速 v = 21 × 25.4 × 100 / 60000 = 0.889 m/s（低速运行，适合输送工况）</p>' +
+'<p>• 链节数 X = 2×800/25.4 + (21+42)/2 + ((42−21)/(2π))² × 25.4/800 ≈ 94.85 节</p>' +
+'<p>• 圆整为偶数：96 节</p>' +
+'<p>• 反算实际中心距：将 X = 96 代入反算公式，可得实际中心距约 812 mm</p>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景 3：农业机械传动</h4>' +
+'<p>某联合收割机的传动系统，采用 12A 链条（p = 19.05 mm）。主动轮 z1 = 15，从动轮 z2 = 45，主动轴转速 n1 = 540 r/min（拖拉机 PTO 转速），中心距 a = 500 mm。</p>' +
+'<p><strong>输入：</strong>z1 = 15, z2 = 45, p = 19.05 mm, n1 = 540 r/min, a = 500 mm</p>' +
+'<p><strong>计算结果：</strong></p>' +
+'<p>• 传动比 i = 45 / 15 = 3（大传动比减速）</p>' +
+'<p>• 链速 v = 15 × 19.05 × 540 / 60000 = 2.572 m/s</p>' +
+'<p>• 链节数 X = 2×500/19.05 + (15+45)/2 + ((45−15)/(2π))² × 19.05/500 ≈ 83.36 节</p>' +
+'<p>• 圆整为偶数：84 节</p>' +
+'<div class="note">提示：z1 = 15 在低速工况下可以接受，但需注意小链轮齿数较少时多边形效应较明显，可能产生振动和噪声。</div>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景 4：等速传动（z1 = z2）</h4>' +
+'<p>某生产线上两根平行轴需要等速传动，选用 10A 链条（p = 15.875 mm）。两链轮齿数均为 z1 = z2 = 25，主动轴转速 n1 = 300 r/min，中心距 a = 400 mm。</p>' +
+'<p><strong>输入：</strong>z1 = 25, z2 = 25, p = 15.875 mm, n1 = 300 r/min, a = 400 mm</p>' +
+'<p><strong>计算结果：</strong></p>' +
+'<p>• 传动比 i = 25 / 25 = 1（等速传动）</p>' +
+'<p>• 链速 v = 25 × 15.875 × 300 / 60000 = 1.984 m/s</p>' +
+'<p>• 链节数 X = 2×400/15.875 + (25+25)/2 + 0 = 50.39 + 25 = 75.39 节</p>' +
+'<p>• 圆整为偶数：76 节</p>' +
+'<div class="note">提示：当 z1 = z2 时，公式中第三项（齿数差修正项）为零，计算简化为 X = 2a/p + z。</div>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景 5：大传动比减速传动</h4>' +
+'<p>某设备需要将电机转速从 1440 r/min 降至 288 r/min，采用 08A 链条（p = 12.7 mm）。主动轮 z1 = 11，从动轮 z2 = 55，中心距 a = 350 mm。</p>' +
+'<p><strong>输入：</strong>z1 = 11, z2 = 55, p = 12.7 mm, n1 = 1440 r/min, a = 350 mm</p>' +
+'<p><strong>计算结果：</strong></p>' +
+'<p>• 传动比 i = 55 / 11 = 5（大传动比）</p>' +
+'<p>• 链速 v = 11 × 12.7 × 1440 / 60000 = 3.352 m/s</p>' +
+'<p>• 链节数 X = 2×350/12.7 + (11+55)/2 + ((55−11)/(2π))² × 12.7/350 ≈ 89.90 节</p>' +
+'<p>• 圆整为偶数：90 节</p>' +
+'<div class="warn">注意：z1 = 11 齿数偏少，在 n1 = 1440 r/min 的转速下多边形效应会比较显著。建议核实是否可提高 z1（如 z1 = 17, z2 = 85），或降低转速以减小动载荷。传动比 i = 5 也偏大，一般推荐链传动 i ≤ 6～8。</div>' +
+'</div>' +
+
+'<h2>五、常见错误与排查</h2>' +
+'<table>' +
+'<tr><th>错误现象</th><th>可能原因</th><th>解决方法</th></tr>' +
+'<tr><td>报错"z1 必须为整数"</td><td>输入了小数齿数（如 17.5）</td><td>齿数必须为整数，请检查输入值</td></tr>' +
+'<tr><td>报错"p 必须为正数"</td><td>节距输入为 0 或负数，或单位错误（如输入了米而非毫米）</td><td>确认节距单位为 mm，且为正值。常见标准节距：12.7、15.875、19.05、25.4 mm 等</td></tr>' +
+'<tr><td>报错"a 不能为 null 或 undefined"</td><td>中心距字段未填写</td><td>请填写有效的中心距数值</td></tr>' +
+'<tr><td>链速异常大（>30 m/s）</td><td>转速或节距输入可能有误</td><td>一般链速推荐不超过 15～20 m/s（具体取决于链号），请核实 n1 和 p 的值</td></tr>' +
+'<tr><td>链节数计算结果异常大</td><td>中心距 a 过大或节距 p 过小</td><td>检查 a/p 比值，推荐 a = (30～50)p，最大不超过 80p</td></tr>' +
+'<tr><td>反算中心距报错"根号内为负数"</td><td>链节数 X 过小，与齿数不匹配</td><td>增大链节数或减小齿数差，确保 X > (z1+z2)/2</td></tr>' +
+'<tr><td>计算结果与手册不一致</td><td>公式为近似公式，且手册可能采用不同的圆整规则</td><td>本工具计算的是理论值，实际选用需按标准圆整并考虑安装余量</td></tr>' +
+'</table>' +
+
+'<h2>六、数据来源与标准依据</h2>' +
+'<p>本工具的计算公式和参数取值依据以下标准和资料：</p>' +
+'<p>1. <strong>GB/T 1243</strong>《传动用短节距精密滚子链、套筒链、链轮和附件》——规定了链条的基本参数、尺寸和技术要求。该标准等效采用 ISO 606。</p>' +
+'<p>2. <strong>GB/T 1243 系列标准</strong>中规定的标准节距系列，包括 A 系列（如 08A、10A、16A 等）和 B 系列（如 08B、10B、16B 等），两者的节距值在相同号数下可能相同，但滚子宽度等尺寸有差异。</p>' +
+'<p>3. 链节数计算公式来源于《机械设计》教材（高等教育出版社）及《机械设计手册》中的通用公式，该公式在工程实践中被广泛采用。</p>' +
+'<p>4. 链轮最小齿数推荐值、最大齿数限制、中心距推荐范围等设计准则，来源于上述标准和手册中的推荐值。</p>' +
+'<div class="note">重要提示：本工具中的部分推荐值（如最小齿数、最大齿数、链速上限等）为行业通用推荐值，具体数值可能因标准版本、链条型号和工况条件而有所不同。在正式工程设计中，请务必查阅最新版 GB/T 1243 标准原文及链条制造商的技术资料进行确认。</div>' +
+
+'<h2>七、局限性说明</h2>' +
+'<p>本工具仅完成链传动的基本运动学计算，存在以下局限性，使用者需充分了解：</p>' +
+'<p><strong>1. 不涉及强度校核：</strong>本工具不计算链条的拉伸强度、疲劳强度、磨损寿命等。这些计算需要知道传递功率、工况系数、链条破断载荷等参数，需参照 GB/T 1243 或厂家选型手册完成。</p>' +
+'<p><strong>2. 不涉及润滑方式选择：</strong>链传动的润滑方式（人工润滑、滴油润滑、油浴润滑、喷油润滑等）需根据链速和链号查标准中的润滑选择图确定，本工具不提供此功能。</p>' +
+'<p><strong>3. 不考虑多边形效应的瞬时速度波动：</strong>本工具计算的链速为平均链速。实际链速存在周期性波动，波动幅度与齿数和节距有关。如需分析动力学特性，需建立更详细的数学模型。</p>' +
+'<p><strong>4. 链节数公式为近似公式：</strong>公式 X = 2a/p + (z1+z2)/2 + ((z2−z1)/(2π))²·p/a 是基于链条包络线的近似展开，当齿数差较大或中心距较小时，误差可能增大。精确计算需考虑链条的实际啮合几何。</p>' +
+'<p><strong>5. 不覆盖特殊链条类型：</strong>本工具仅适用于 GB/T 1243 规定的短节距精密滚子链。对于双节距链条（GB/T 5269）、齿形链（GB/T 10858）、自润滑链条等特殊类型，需使用对应的计算方法。</p>' +
+'<p><strong>6. 不处理非标参数：</strong>工具假设输入的节距为标准值。若使用非标链条，计算结果仅供参考。</p>' +
+'<p><strong>7. 浮点精度限制：</strong>由于 JavaScript 采用 IEEE 754 双精度浮点数，在极端数值组合下可能存在微小的浮点误差（通常在 10⁻¹² 量级），对工程计算无实质影响，但用户应注意对结果进行合理的工程圆整。</p>' +
+'<p><strong>8. 不包含链轮几何设计：</strong>链轮的分度圆直径、齿根圆直径、齿廓形状等几何参数需另行计算，本工具不涉及。</p>' +
+'<p>综上所述，本工具适用于链传动设计的初步参数估算和方案比选阶段。在正式出图和生产前，仍需完成完整的强度校核、寿命计算和选型确认。</p>';
+
+// ============================================================
+// 页面初始化
+// ============================================================
+
+// 渲染源码
+var sourceCodeEl = document.getElementById('source-code');
+var sourceText = '' +
+'/**\n' +
+' * 链传动计算核心算法\n' +
+' * 依据：GB/T 1243《传动用短节距精密滚子链》\n' +
+' * 版本：v2.0.0-完整版 20261021\n' +
+' */\n\n' +
+'// ---- 公开 API ----\n\n' +
+'/**\n' +
+' * 计算传动比 i = z2 / z1\n' +
+' * @param {number} z1 - 小链轮齿数（正整数 >= 1）\n' +
+' * @param {number} z2 - 大链轮齿数（正整数 >= 1）\n' +
+' * @returns {number} 传动比 i\n' +
+' * @throws {Error} 参数无效时抛出\n' +
+' */\n' +
+'function calcTransmissionRatio(z1, z2) {\n' +
+'    _validateSprocketTeeth(z1, "z1");\n' +
+'    _validateSprocketTeeth(z2, "z2");\n' +
+'    return z2 / z1;\n' +
+'}\n\n' +
+'/**\n' +
+' * 计算链速 v = z1 * p * n1 / 60000 (m/s)\n' +
+' * @param {number} z1 - 小链轮齿数（正整数 >= 1）\n' +
+' * @param {number} p  - 链条节距 mm（正数）\n' +
+' * @param {number} n1 - 小链轮转速 r/min（非负数）\n' +
+' * @returns {number} 链速 v (m/s)\n' +
+' * @throws {Error} 参数无效时抛出\n' +
+' */\n' +
+'function calcChainSpeed(z1, p, n1) {\n' +
+'    _validateSprocketTeeth(z1, "z1");\n' +
+'    _validatePositiveNumber(p, "p（链条节距）");\n' +
+'    _validateNonNegativeNumber(n1, "n1（小链轮转速）");\n' +
+'    return (z1 * p * n1) / 60000;\n' +
+'}\n\n' +
+'/**\n' +
+' * 计算链节数 X = 2a/p + (z1+z2)/2 + ((z2-z1)/(2π))² * p/a\n' +
+' * @param {number} z1 - 小链轮齿数（正整数 >= 1）\n' +
+' * @param {number} z2 - 大链轮齿数（正整数 >= 1）\n' +
+' * @param {number} p  - 链条节距 mm（正数）\n' +
+' * @param {number} a  - 中心距 mm（正数）\n' +
+' * @returns {number} 链节数 X\n' +
+' * @throws {Error} 参数无效时抛出\n' +
+' */\n' +
+'function calcChainLength(z1, z2, p, a) {\n' +
+'    _validateSprocketTeeth(z1, "z1");\n' +
+'    _validateSprocketTeeth(z2, "z2");\n' +
+'    _validatePositiveNumber(p, "p（链条节距）");\n' +
+'    _validatePositiveNumber(a, "a（中心距）");\n' +
+'    var term1 = (2 * a) / p;\n' +
+'    var term2 = (z1 + z2) / 2;\n' +
+'    var diff = (z2 - z1) / (2 * Math.PI);\n' +
+'    var term3 = diff * diff * p / a;\n' +
+'    return term1 + term2 + term3;\n' +
+'}\n\n' +
+'/**\n' +
+' * 将链节数圆整为推荐偶数值\n' +
+' * @param {number} x - 计算所得链节数\n' +
+' * @returns {number} 偶数链节数\n' +
+' */\n' +
+'function roundToEvenPitch(x) {\n' +
+'    _validatePositiveNumber(x, "x（链节数）");\n' +
+'    var ceil = Math.ceil(x);\n' +
+'    return (ceil % 2 === 0) ? ceil : ceil + 1;\n' +
+'}\n\n' +
+'/**\n' +
+' * 由链节数反算实际中心距\n' +
+' * @param {number} X  - 链节数\n' +
+' * @param {number} z1 - 小链轮齿数\n' +
+' * @param {number} z2 - 大链轮齿数\n' +
+' * @param {number} p  - 链条节距 mm\n' +
+' * @returns {number} 实际中心距 a (mm)\n' +
+' */\n' +
+'function calcActualCenterDistance(X, z1, z2, p) {\n' +
+'    _validatePositiveNumber(X, "X（链节数）");\n' +
+'    _validateSprocketTeeth(z1, "z1");\n' +
+'    _validateSprocketTeeth(z2, "z2");\n' +
+'    _validatePositiveNumber(p, "p（链条节距）");\n' +
+'    var M = (z1 + z2) / 2;\n' +
+'    var delta = X - M;\n' +
+'    var zDiff = (z2 - z1) / (2 * Math.PI);\n' +
+'    var disc = delta * delta - 8 * zDiff * zDiff;\n' +
+'    if (disc < 0) throw new Error("参数组合不合理：判别式 < 0");\n' +
+'    return (p / 4) * (delta + Math.sqrt(disc));\n' +
+'}\n\n' +
+'// ---- 内部校验函数 ----\n\n' +
+'function _validateSprocketTeeth(v, name) {\n' +
+'    if (v === null || v === undefined)\n' +
+'        throw new Error(name + " 不能为 null 或 undefined");\n' +
+'    if (typeof v !== "number" || isNaN(v))\n' +
+'        throw new Error(name + " 必须为有效数字");\n' +
+'    if (!Number.isInteger(v))\n' +
+'        throw new Error(name + " 必须为整数");\n' +
+'    if (v < 1)\n' +
+'        throw new Error(name + " 必须 >= 1");\n' +
+'}\n\n' +
+'function _validatePositiveNumber(v, name) {\n' +
+'    if (v === null || v === undefined)\n' +
+'        throw new Error(name + " 不能为 null 或 undefined");\n' +
+'    if (typeof v !== "number" || isNaN(v))\n' +
+'        throw new Error(name + " 必须为有效数字");\n' +
+'    if (v <= 0)\n' +
+'        throw new Error(name + " 必须为正数");\n' +
+'}\n\n' +
+'function _validateNonNegativeNumber(v, name) {\n' +
+'    if (v === null || v === undefined)\n' +
+'        throw new Error(name + " 不能为 null 或 undefined");\n' +
+'    if (typeof v !== "number" || isNaN(v))\n' +
+'        throw new Error(name + " 必须为有效数字");\n' +
+'    if (v < 0)\n' +
+'        throw new Error(name + " 不能为负数");\n' +
+'}';
+
+sourceCodeEl.textContent = sourceText;
+
+// 渲染说明书
+document.getElementById('manual-content').innerHTML = manualHTML;
+
+// 标签页切换
+function switchTab(tabName) {
+    var tabs = document.querySelectorAll('.tab-content');
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+        btns[i].classList.remove('active');
+    }
+    document.getElementById('tab-' + tabName).classList.add('active');
+    // 找到对应的按钮
+    for (var j = 0; j < btns.length; j++) {
+        if (btns[j].getAttribute('onclick').indexOf(tabName) !== -1) {
+            btns[j].classList.add('active');
+        }
+    }
+}
+</script>
+</body>
+</html>

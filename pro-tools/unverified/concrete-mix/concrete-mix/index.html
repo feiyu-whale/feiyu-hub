@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>混凝土配合比计算（JGJ 55）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#eef2f7;color:#222;font-size:14px;line-height:1.55;padding:12px 8px 60px}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-size:18px;text-align:center;padding:14px 8px;background:linear-gradient(135deg,#1e5799,#2989d8);color:#fff;border-radius:10px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+h1 small{display:block;font-size:12px;font-weight:normal;opacity:.9;margin-top:4px}
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{font-size:15px;color:#1e5799;border-bottom:1px dashed #cfd8e3;padding-bottom:6px;margin-bottom:10px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.field{flex:1 1 45%;min-width:140px}
+.field label{display:block;font-size:13px;color:#555;margin-bottom:4px}
+.field select,.field input{width:100%;padding:8px 10px;border:1px solid #c8d2de;border-radius:6px;font-size:14px;background:#fafbfc;outline:none}
+.field select:focus,.field input:focus{border-color:#2989d8;background:#fff}
+.btn{display:block;width:100%;padding:12px;background:linear-gradient(135deg,#1e5799,#2989d8);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-top:6px}
+.btn:active{opacity:.9}
+.result{display:none}
+.result.show{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+table th,table td{border:1px solid #d6dde6;padding:7px 6px;text-align:center}
+table th{background:#eaf1f9;color:#1e5799;font-weight:600}
+table td.v{font-weight:bold;color:#c0392b;background:#fff8f5}
+.note{font-size:12px;color:#777;background:#f7f9fc;border-left:3px solid #2989d8;padding:8px 10px;margin-top:10px;border-radius:0 6px 6px 0}
+.src{font-size:12px;color:#555;background:#f7f9fc;padding:10px;border-radius:6px;line-height:1.7}
+.src b{color:#1e5799}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#999;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:4px}
+.warn{color:#c0392b;font-size:12px;margin-top:6px}
+@media(max-width:420px){.field{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🧱 混凝土初步配合比计算<small>依据 JGJ 55-2011《普通混凝土配合比设计规程》</small></h1>
+
+<div class="card">
+<h2>📥 输入参数</h2>
+<div class="row">
+<div class="field">
+<label>强度等级 fcu,k (MPa)</label>
+<select id="fcuk">
+<option value="15">C15</option><option value="20">C20</option>
+<option value="25" selected>C25</option><option value="30">C30</option>
+<option value="35">C35</option><option value="40">C40</option>
+<option value="45">C45</option><option value="50">C50</option>
+<option value="55">C55</option><option value="60">C60</option>
+</select>
+</div>
+<div class="field">
+<label>坍落度 (mm)</label>
+<select id="slump">
+<option value="35">35~50</option>
+<option value="55" selected>55~70</option>
+<option value="75">75~90</option>
+<option value="100">100~120</option>
+<option value="130">130~150</option>
+<option value="160">160~180</option>
+<option value="190">190~210</option>
+</select>
+</div>
+</div>
+<div class="row">
+<div class="field">
+<label>粗骨料最大粒径 (mm)</label>
+<select id="dmax">
+<option value="16">16</option>
+<option value="20" selected>20</option>
+<option value="25">25</option>
+<option value="31.5">31.5</option>
+<option value="40">40</option>
+</select>
+</div>
+<div class="field">
+<label>水泥强度等级</label>
+<select id="cem">
+<option value="32.5">32.5</option>
+<option value="42.5" selected>42.5</option>
+<option value="52.5">52.5</option>
+</select>
+</div>
+</div>
+<div class="row">
+<div class="field">
+<label>粗骨料品种</label>
+<select id="agg">
+<option value="crushed" selected>碎石</option>
+<option value="gravel">卵石</option>
+</select>
+</div>
+<div class="field">
+<label>水泥富余系数 γc</label>
+<input type="number" id="gamma" value="1.13" step="0.01" min="1.0" max="1.2">
+</div>
+</div>
+<div class="row">
+<div class="field">
+<label>假定混凝土表观密度 ρcp (kg/m³)</label>
+<input type="number" id="rhocp" value="2400" step="10" min="2200" max="2600">
+</div>
+<div class="field">
+<label>砂表观密度 ρs (kg/m³)</label>
+<input type="number" id="rhos" value="2650" step="10" min="2500" max="2800">
+</div>
+</div>
+<button class="btn" onclick="calc()">🔢 计算初步配合比</button>
+</div>
+
+<div class="card result" id="res">
+<h2>📤 计算结果（每 m³ 混凝土材料用量）</h2>
+<table>
+<tr><th>项目</th><th>符号</th><th>数值</th><th>单位</th></tr>
+<tr><td>配制强度</td><td>fcu,o</td><td class="v" id="r_fcuo">-</td><td>MPa</td></tr>
+<tr><td>标准差</td><td>σ</td><td class="v" id="r_sigma">-</td><td>MPa</td></tr>
+<tr><td>水胶比</td><td>W/B</td><td class="v" id="r_wb">-</td><td>-</td></tr>
+<tr><td>用水量</td><td>m_w</td><td class="v" id="r_mw">-</td><td>kg</td></tr>
+<tr><td>水泥用量</td><td>m_c</td><td class="v" id="r_mc">-</td><td>kg</td></tr>
+<tr><td>砂率</td><td>βs</td><td class="v" id="r_bs">-</td><td>%</td></tr>
+<tr><td>砂用量</td><td>m_s</td><td class="v" id="r_ms">-</td><td>kg</td></tr>
+<tr><td>石用量</td><td>m_g</td><td class="v" id="r_mg">-</td><td>kg</td></tr>
+</table>
+<div class="note" id="r_note"></div>
+</div>
+
+<div class="card">
+<h2>📚 数据来源</h2>
+<div class="src">
+<b>1. 配制强度公式：</b>fcu,o = fcu,k + 1.645σ<br>
+<b>2. 标准差 σ 取值：</b>依据 JGJ 55-2011 表 5.1.1-2：&lt;C20 取 4.0 MPa；C25~C45 取 5.0 MPa；C50~C55 取 6.0 MPa。<br>
+<b>3. 水胶比公式：</b>W/B = αa·fb / (fcu,o + αa·αb·fb)，依据 JGJ 55-2011 第 5.2.1 条。回归系数：碎石 αa=0.53、αb=0.20；卵石 αa=0.49、αb=0.13。<br>
+<b>4. 胶凝材料 28d 胶砂抗压强度 fb：</b>本工具按 fb = γc·fce,k 估算（fce,k 为水泥强度等级值，γc 为用户输入的水泥富余系数），具体取值需按工程实测或 JGJ 55-2011 第 5.2.1 条注执行。<br>
+<b>5. 用水量 m_w：</b>查 JGJ 55-2011 表 5.2.2（干硬性/塑性混凝土用水量），坍落度 &gt; 70 mm 时按规程每增大 20 mm 增加约 5 kg/m³ 插值。<br>
+<b>6. 砂率 βs：</b>查 JGJ 55-2011 表 5.3.3，按水胶比与最大粒径插值取中值；坍落度 &gt; 70 mm 时按规程增大 1%~2%。<br>
+<b>7. 砂石用量：</b>采用假定表观密度法（JGJ 55-2011 第 5.3.1 条）：m_s + m_g = ρcp − m_c − m_w，再按砂率分配。<br>
+<b>8. 重要提示：</b>本工具仅输出"初步配合比"，实际工程须按 JGJ 55-2011 第 6 章进行试配、调整、强度复核及表观密度校正后方可用于施工。具体表值（用水量、砂率）以标准原文为准。
+</div>
+</div>
+</div>
+<div class="ver">v1.0.0-JGJ55配合比 20261021</div>
+
+<script>
+// 用水量查表（JGJ 55-2011 表5.2.2）单位 kg/m³
+// 碎石：坍落度 10-30 / 35-50 / 55-70 / 75-90
+const W_CRUSHED = {
+  '16':   [200,210,220,230],
+  '20':   [190,200,210,220],
+  '25':   [185,195,205,215],
+  '31.5': [180,190,200,210],
+  '40':   [175,185,195,205]
+};
+// 卵石
+const W_GRAVEL = {
+  '10':   [185,195,205,215],
+  '16':   [175,185,195,205],
+  '20':   [170,180,190,200],
+  '25':   [165,175,185,195],
+  '31.5': [160,170,180,190],
+  '40':   [155,165,175,185]
+};
+// 砂率查表（JGJ 55-2011 表5.3.3）取中值
+// 碎石：水胶比 0.40 / 0.50 / 0.60
+const BS_CRUSHED = {
+  '16':   [32.5,37.5,42.5],
+  '20':   [31.5,36.5,41.5],
+  '25':   [30.5,35.5,40.5],
+  '31.5': [29.5,34.5,39.5],
+  '40':   [28.5,33.5,38.5]
+};
+const BS_GRAVEL = {
+  '10':   [28,33,38],
+  '16':   [27,32,37],
+  '20':   [26,31,36],
+  '25':   [25,30,35],
+  '31.5': [24,29,34],
+  '40':   [23,28,33]
+};
+
+function getSigma(fcu){
+  if(fcu<20) return 4.0;
+  if(fcu<=45) return 5.0;
+  return 6.0;
+}
+
+// 双线性插值
+function interp2(table, xs, ys, x, y){
+  // xs,ys 升序
+  let i=0;
+  while(i<xs.length-1 && x>xs[i+1]) i++;
+  let j=0;
+  while(j<ys.length-1 && y>ys[j+1]) j++;
+  if(i>=xs.length-1){i=xs.length-2;}
+  if(j>=ys.length-1){j=ys.length-2;}
+  const x1=xs[i],x2=xs[i+1],y1=ys[j],y2=ys[j+1];
+  const tx=(x2===x1)?0:(x-x1)/(x2-x1);
+  const ty=(y2===y1)?0:(y-y1)/(y2-y1);
+  const v00=table[x1][y1], v10=table[x2][y1], v01=table[x1][y2], v11=table[x2][y2];
+  return v00*(1-tx)*(1-ty)+v10*tx*(1-ty)+v01*(1-tx)*ty+v11*tx*ty;
+}
+
+function getWater(agg,dmax,slump){
+  const tbl = agg==='crushed'?W_CRUSHED:W_GRAVEL;
+  const xs = Object.keys(tbl).map(Number).sort((a,b)=>a-b);
+  const ys = [20,52.5,72.5,87.5]; // 坍落度区间中值
+  // 对每个粒径构建 {yIndex: value}
+  const data={};
+  xs.forEach(x=>{
+    data[x]={};
+    tbl[x].forEach((v,i)=>data[x][ys[i]]=v);
+  });
+  let w = interp2(data, xs, ys, dmax, slump);
+  // 坍落度>90时，每增加20mm加约5kg
+  if(slump>87.5){
+    w += Math.round((slump-87.5)/20)*5;
+  }
+  return Math.round(w);
+}
+
+function getSandRate(agg,dmax,wb,slump){
+  const tbl = agg==='crushed'?BS_CRUSHED:BS_GRAVEL;
+  const xs = Object.keys(tbl).map(Number).sort((a,b)=>a-b);
+  const ys = [0.40,0.50,0.60];
+  const data={};
+  xs.forEach(x=>{
+    data[x]={};
+    tbl[x].forEach((v,i)=>data[x][ys[i]]=v);
+  });
+  // 限制 wb 在插值范围内
+  let wb2 = Math.max(0.40, Math.min(0.60, wb));
+  let bs = interp2(data, xs, ys, dmax, wb2);
+  if(slump>70) bs += 1.5;
+  return bs;
+}
+
+function calc(){
+  const fcu = parseFloat(document.getElementById('fcuk').value);
+  const slump = parseFloat(document.getElementById('slump').value);
+  const dmax = parseFloat(document.getElementById('dmax').value);
+  const cem = parseFloat(document.getElementById('cem').value);
+  const agg = document.getElementById('agg').value;
+  const gamma = parseFloat(document.getElementById('gamma').value);
+  const rhocp = parseFloat(document.getElementById('rhocp').value);
+
+  const sigma = getSigma(fcu);
+  const fcuo = fcu + 1.645*sigma;
+  const fb = gamma * cem; // 胶凝材料28d胶砂抗压强度估算
+  const aa = agg==='crushed'?0.53:0.49;
+  const ab = agg==='crushed'?0.20:0.13;
+  let wb = aa*fb/(fcuo + aa*ab*fb);
+  // 按规程限值：C60及以上≤0.40，C50≤0.45，C45≤0.50等，此处仅提示不强制
+  wb = Math.max(0.30, Math.min(0.80, wb));
+
+  const mw = getWater(agg,dmax,slump);
+  const mc = Math.round(mw/wb);
+  const bs = getSandRate(agg,dmax,wb,slump);
+  const ms = Math.round((rhocp - mc - mw)*bs/100);
+  const mg = Math.round(rhocp - mc - mw - ms);
+
+  document.getElementById('r_fcuo').textContent = fcuo.toFixed(2);
+  document.getElementById('r_sigma').textContent = sigma.toFixed(1);
+  document.getElementById('r_wb').textContent = wb.toFixed(3);
+  document.getElementById('r_mw').textContent = mw;
+  document.getElementById('r_mc').textContent = mc;
+  document.getElementById('r_bs').textContent = bs.toFixed(1);
+  document.getElementById('r_ms').textContent = ms;
+  document.getElementById('r_mg').textContent = mg;
+
+  let note = `fb = γc·fce,k = ${gamma}×${cem} = ${fb.toFixed(1)} MPa；αa=${aa}, αb=${ab}。`;
+  if(fcu>=50) note += ' ⚠ 高强混凝土（≥C50）需采用较小水胶比并宜掺用矿物掺合料，本工具未考虑掺合料影响，仅供参考。';
+  document.getElementById('r_note').textContent = note;
+
+  document.getElementById('res').classList.add('show');
+  document.getElementById('res').scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+</body>
+</html>

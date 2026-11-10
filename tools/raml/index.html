@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚖️ 阿拉伯地占</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0d0a08; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e0d8c8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#d0a860; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#8a7a58; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#231c10,#171008); border:1px solid #4a3c20;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#c0a050; margin-bottom:10px; border-left:3px solid #c0a050; padding-left:8px; }
+  button.go { width:100%; padding:14px; font-size:11px; font-weight:700; color:#1a1208;
+    background:linear-gradient(160deg,#d0a860,#a07830); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:2px; }
+  button.go:active { transform:scale(.98); }
+  .figures { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:12px 0; }
+  .fig { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .fig .box { width:64px; height:64px; background:#1a1208; border:1px solid #4a3c20; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; }
+  .fig .nm { font-size:10px; color:#a08a58; text-align:center; }
+  .fig .hd { font-size:9px; color:#c0a050; }
+  .sect { color:#c0a050; font-size:14px; font-weight:700; margin:14px 0 8px; }
+  .interp { background:#1a1208; border:1px solid #4a3c20; border-radius:10px; padding:12px 14px;
+    font-size:13px; line-height:1.8; color:#d0c090; }
+  .interp b { color:#d0a860; }
+  .interp ul { margin:0 0 8px; padding-left:18px; }
+  .interp li { margin-bottom:5px; color:#c0b078; }
+  .interp .disclaim { color:#ffb3c1; background:#2a0f1a; border:1px solid #5a2a3a; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-bottom:8px; }
+  .interp .note { color:#8a7a58; font-size:11px; margin-top:6px; }
+  .hint { text-align:center; color:#5a4a30; font-size:11px; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:#3a2e1e; font-size:10px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>⚖️ 阿 拉 伯 地 占</h1>
+  <div class="sub">'Ilm al-Raml · 点阵推演十六阵<br>纯数学生成 · 无历法依赖</div>
+
+  <div class="card">
+    <h3>起卦</h3>
+    <button class="go" id="cast">推 演 地 占</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">阿拉伯地占为传统占卜术，属娱乐参考 🐳<br>纯逻辑推演，请勿据此做重大决定</div>
+  <div class="ver">v2-图修重 20261016</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 十六基本图形：每个由 4 行点组成，每行 1 点(阳,奇数) 或 2 点(阴,偶数)
+  // 用二进制表示：每行 1=单点(阳) 0=双点(阴)，自上而下4位
+  // 名称为传统 16 图形
+  var FIGURES = [
+    ['生命','🩤',[1,1,1,1]],
+    ['幸运','🩥',[0,0,0,0]],
+    ['收获','🩦',[1,0,1,1]],
+    ['损失','🩧',[0,1,1,1]],
+    ['集会','🩨',[1,1,0,1]],
+    ['离别','🩩',[0,0,1,1]],
+    ['悲恸','🩪',[1,0,0,0]],
+    ['欢乐','🩫',[0,0,0,1]],
+    ['红','🩬',[0,1,1,0]],
+    ['白','🩭',[1,0,0,1]],
+    ['结合','🩮',[1,1,0,0]],
+    ['监狱','🩯',[0,0,1,0]],
+    ['高','🩰',[1,0,1,0]],
+    ['低','🩱',[0,1,0,1]],
+    // 2026-10-16 修复：内/外原与高/低重复，改为缺失的两组合，凑齐 16 个不重复点阵（阿拉伯地占图必须唯一）
+    ['内','🩲',[0,1,0,0]],
+    ['外','🩳',[1,1,1,0]]
+  ];
+  // 注：传统地占图形象征各异，这里用 16 种点阵布局表示，名称为常见译名
+  var FIG_MEAN = {
+    '生命':'生命力强、健康、活力充沛的时期',
+    '幸运':'好运临门、顺遂、值得把握',
+    '收获':'丰盛、成果、努力有回报',
+    '损失':'损耗、失去、需谨慎防漏',
+    '集会':'聚合力、合作、人际往来',
+    '离别':'分离、告别、各奔东西',
+    '悲恸':'忧伤、低谷、情绪需照顾',
+    '欢乐':'喜悦、庆祝、心情舒畅',
+    '红':'热情、行动、冲突或激情',
+    '白':'纯净、清晰、平和',
+    '结合':'联结、婚姻、伙伴关系',
+    '监狱':'束缚、限制、需忍耐',
+    '高':'提升、上升、志向高远',
+    '低':'下降、低谷、宜稳守',
+    '内':'内在、私密、向内的功课',
+    '外':'外在、公开、向外发展'
+  };
+
+  // 2026-10-16 改用真随机源 crypto.getRandomValues（操作系统熵池），老浏览器回退 Math.random
+  // ⚠️ 只改本页随机源，不动其他逻辑！
+  function secureRand(){
+    if(window.crypto && window.crypto.getRandomValues){
+      var a=new Uint32Array(1); window.crypto.getRandomValues(a);
+      return a[0]/4294967296;
+    }
+    return Math.random();
+  }
+  // 2026-10-16 趣味彩蛋：会话内连10次一模一样 → 弹窗（纯内存，不存储）
+  // ⚠️ 只改本页展示逻辑，不动其他逻辑！
+  var _eggStreak={sig:'',n:0};
+  function streakCheck(sig){
+    if(_eggStreak.sig===sig){ _eggStreak.n++; } else { _eggStreak.sig=sig; _eggStreak.n=1; }
+    return _eggStreak.n===10 ? '你的运气过于奇特' : '';
+  }
+  function showEgg(msg){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+      mask.innerHTML='<div style="background:#2a2418;border:1px solid #7a6a4a;border-radius:14px;padding:26px 30px;text-align:center;max-width:80%"><div style="font-size:12px;font-weight:700;color:#f0d080;margin-bottom:10px">'+msg+'</div><div style="font-size:13px;color:#b0a080;margin-bottom:16px">连抽 10 次一模一样的阵，天意难测啊 🌀</div><div style="font-size:12px;color:#908060">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 400);
+  }
+  // 从 16 基本图形里随机抽一个
+  function genFigure(){
+    return FIGURES[Math.floor(secureRand()*FIGURES.length)][2].slice();
+  }
+  // 图形转名字（靠内容匹配）
+  function figToName(rows){
+    for(var i=0;i<FIGURES.length;i++){
+      if(FIGURES[i][2].join('')===rows.join('')) return FIGURES[i][0];
+    }
+    return '异形';
+  }
+  function figToKey(rows){ return rows.map(function(r){return r?'•':'••';}).join('/'); }
+
+  function renderFig(rows, label){
+    var h='<div class="fig"><div class="box"><svg width="52" height="52" viewBox="0 0 52 52">';
+    for(var i=0;i<4;i++){
+      var y=8+i*12;
+      if(rows[i]){
+        h+='<circle cx="26" cy="'+y+'" r="3.5" fill="#d0a860"/>';
+      } else {
+        h+='<circle cx="15" cy="'+y+'" r="3.5" fill="#d0a860"/><circle cx="37" cy="'+y+'" r="3.5" fill="#d0a860"/>';
+      }
+    }
+    h+='</svg></div><div class="nm">'+(label||figToName(rows))+'</div></div>';
+    return h;
+  }
+
+  function cast(){
+    var res=document.getElementById('result');
+    // 生成本阵 + 变阵
+    var mother=[];
+    for(var i=0;i<4;i++) mother.push(genFigure());
+
+    // 传统：由母阵两两组合推其余。这里简化：给4母阵 + 推一个"判定阵"
+    var judge=genFigure();
+
+    var h='<div class="card"><h3>四母阵</h3><div class="figures">';
+    for(var i=0;i<4;i++) h+=renderFig(mother[i]);
+    h+='</div></div>';
+
+    h+='<div class="card"><h3>判定阵（结果）</h3><div class="figures">'+renderFig(judge)+'</div></div>';
+
+    var judgeName=figToName(judge);
+
+    // 解读
+    h+='<div class="sect">📖 解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 阿拉伯地占为传统占卜术，以下为传统图示义，非科学结论，仅供娱乐参考。</div>';
+    h+='<p>本次判定阵为 <b>'+judgeName+'</b>。</p>';
+    h+='<ul>';
+    h+='<li><b>'+judgeName+'</b>：'+(FIG_MEAN[judgeName]||'图形组合，参考整体走势')+'。</li>';
+    h+='<li><b>四母阵</b>：由随机点阵生成的四组基础图形，传统上代表事件的四个方面（起因/经过/相关方/环境）。</li>';
+    h+='<li><b>点阵读法</b>：每行 1 点（阳/奇数）为单、2 点（阴/偶数）为双，四行组合成图，全阵共 16 种基本图形。</li>';
+    h+='</ul>';
+    h+='<p class="note">阿拉伯地占是纯逻辑推演的古老占术，解读流派众多；此处仅生成图形与基础参考义，勿作断言。</p>';
+    h+='</div>';
+
+    // 2026-10-16 趣味彩蛋：连10次一模一样 → 弹窗
+    var _sig=mother.map(function(m){return m.join('');}).join('|')+'#'+judge.join('');
+    var blow=streakCheck(_sig);
+    if(blow) showEgg(blow);
+
+    res.innerHTML=h;
+  }
+
+  document.getElementById('cast').addEventListener('click',cast);
+  cast();
+})();
+</script>
+</body>
+</html>

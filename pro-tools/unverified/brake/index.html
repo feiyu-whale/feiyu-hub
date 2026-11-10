@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>制动器制动力矩计算工具 v2.0.3-修审查问题 20261108</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #f5f5f5;
+    padding: 20px;
+    padding-bottom: 60px;
+  }
+  h1 { text-align: center; margin-bottom: 20px; color: #2c3e50; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #eee;
+    border: none;
+    border-radius: 4px 4px 0 0;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+  .tab.active { background: #3498db; color: white; }
+  .panel { display: none; background: white; padding: 20px; border-radius: 4px; }
+  .panel.active { display: block; }
+  .calc-section { margin-bottom: 30px; padding: 20px; background: #fafafa; border-radius: 4px; border: 1px solid #eee; }
+  .calc-section h2 { margin-bottom: 15px; color: #2c3e50; font-size: 18px; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+  }
+  .form-item { display: flex; flex-direction: column; }
+  .form-item label { font-size: 13px; margin-bottom: 4px; color: #555; font-weight: 500; }
+  .form-item input, .form-item select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .form-item .hint { font-size: 11px; color: #888; margin-top: 2px; }
+  .btn {
+    padding: 10px 20px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 15px;
+  }
+  .btn:hover { background: #2980b9; }
+  .result {
+    margin-top: 15px;
+    padding: 15px;
+    background: #e8f4f8;
+    border-left: 4px solid #3498db;
+    border-radius: 4px;
+  }
+  .result-item { margin: 5px 0; }
+  .result-label { font-weight: bold; color: #2c3e50; }
+  .result-value { color: #c0392b; font-size: 16px; font-weight: 600; }
+  .warning { color: #e67e22; font-size: 13px; margin-top: 5px; padding: 8px; background: #fff3cd; border-radius: 3px; }
+  pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 15px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: Consolas, Monaco, monospace;
+  }
+  .test-result {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: Consolas, monospace;
+  }
+  .test-pass { background: #d4edda; color: #155724; }
+  .test-fail { background: #f8d7da; color: #721c24; }
+  .test-summary {
+    padding: 15px;
+    background: #e8f4f8;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 15px;
+  }
+  .doc-content { line-height: 1.8; }
+  .doc-content h2 { margin: 25px 0 12px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 6px; font-size: 20px; }
+  .doc-content h3 { margin: 18px 0 10px; color: #34495e; font-size: 16px; }
+  .doc-content p { margin: 10px 0; text-align: justify; }
+  .doc-content ul, .doc-content ol { margin: 10px 0 10px 24px; }
+  .doc-content li { margin: 5px 0; }
+  .doc-content table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  .doc-content th, .doc-content td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  .doc-content th { background: #f5f5f5; font-weight: 600; }
+  .doc-content code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: Consolas, monospace; font-size: 13px; }
+  .doc-content .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 12px 0; border-radius: 3px; }
+  .doc-content .warn { background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px; margin: 12px 0; border-radius: 3px; }
+  .doc-content .info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 12px; margin: 12px 0; border-radius: 3px; }
+  .version {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.95);
+    padding: 4px 8px;
+    border-radius: 3px;
+    border: 1px solid #eee;
+    z-index: 1000;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>制动器制动力矩计算工具</h1>
+  
+  <div class="tabs">
+    <button class="tab active" data-tab="calc">计算器</button>
+    <button class="tab" data-tab="source">JS 源码</button>
+    <button class="tab" data-tab="test">单元测试</button>
+    <button class="tab" data-tab="doc">使用说明书</button>
+  </div>
+  
+  <div id="calc" class="panel active">
+    <div class="calc-section">
+      <h2>盘式制动器力矩计算</h2>
+      <div class="form-grid">
+        <div class="form-item">
+          <label>摩擦系数 μ</label>
+          <input type="number" id="disc_mu" value="0.40" step="0.01" min="0">
+          <div class="hint">典型范围 0.30~0.50</div>
+        </div>
+        <div class="form-item">
+          <label>夹紧力 F (N)</label>
+          <input type="number" id="disc_F" value="5000" step="100">
+        </div>
+        <div class="form-item">
+          <label>摩擦片外半径 R_o (m)</label>
+          <input type="number" id="disc_Ro" value="0.12" step="0.001">
+        </div>
+        <div class="form-item">
+          <label>摩擦片内半径 R_i (m)</label>
+          <input type="number" id="disc_Ri" value="0.08" step="0.001">
+        </div>
+        <div class="form-item">
+          <label>摩擦面数 n</label>
+          <select id="disc_n">
+            <option value="1">1（单侧）</option>
+            <option value="2" selected>2（双侧/浮钳）</option>
+            <option value="4">4（对向活塞）</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="calcDisc()">计算</button>
+      <div id="disc_result" class="result" style="display:none;"></div>
+    </div>
+    
+    <div class="calc-section">
+      <h2>鼓式制动器力矩计算</h2>
+      <div class="form-grid">
+        <div class="form-item">
+          <label>摩擦系数 μ</label>
+          <input type="number" id="drum_mu" value="0.35" step="0.01">
+        </div>
+        <div class="form-item">
+          <label>促动力 F (N)</label>
+          <input type="number" id="drum_F" value="3000" step="100">
+        </div>
+        <div class="form-item">
+          <label>制动鼓半径 r (m)</label>
+          <input type="number" id="drum_r" value="0.12" step="0.001" min="0.001" max="0.5">
+          <div class="hint">单位 <strong>米</strong>（不是 mm）；鼓内半径或蹄接触半径均可，但应与公式假设一致</div>
+        </div>
+        <div class="form-item">
+          <label>类型</label>
+          <select id="drum_type">
+            <option value="leading-trailing">领从蹄式</option>
+            <option value="two-leading">双领蹄式</option>
+            <option value="duo-servo">双向自增力式</option>
+          </select>
+        </div>
+        <div class="form-item">
+          <label>促动力臂 a (m)</label>
+          <input type="number" id="drum_a" value="0.10" step="0.001">
+          <div class="hint">促动力作用点到支承销距离</div>
+        </div>
+        <div class="form-item">
+          <label>支承销偏移 c (m)</label>
+          <input type="number" id="drum_c" value="0.08" step="0.001">
+          <div class="hint">制动鼓中心到支承销距离</div>
+        </div>
+      </div>
+      <button class="btn" onclick="calcDrum()">计算</button>
+      <div id="drum_result" class="result" style="display:none;"></div>
+    </div>
+    
+    <div class="calc-section">
+      <h2>制动距离估算</h2>
+      <div class="form-grid">
+        <div class="form-item">
+          <label>初速度 v₀ (km/h)</label>
+          <input type="number" id="dist_v" value="100" step="1">
+        </div>
+        <div class="form-item">
+          <label>整车质量 m (kg)</label>
+          <input type="number" id="dist_m" value="1500" step="50">
+        </div>
+        <div class="form-item">
+          <label>整车总制动力矩 T (N·m)</label>
+          <input type="number" id="dist_T" value="4000" step="100">
+          <div class="hint">所有制动器力矩之和</div>
+        </div>
+        <div class="form-item">
+          <label>车轮滚动半径 r_w (m)</label>
+          <input type="number" id="dist_rw" value="0.30" step="0.01">
+        </div>
+        <div class="form-item">
+          <label>路面附着系数 φ</label>
+          <input type="number" id="dist_phi" value="0.80" step="0.05" min="0" max="1.5">
+          <div class="hint">干燥沥青≈0.8，湿滑≈0.4~0.6</div>
+        </div>
+        <div class="form-item">
+          <label>驾驶员反应时间 t_r (s)</label>
+          <input type="number" id="dist_tr" value="1.0" step="0.1">
+          <div class="hint">典型值 0.7~1.5s</div>
+        </div>
+      </div>
+      <button class="btn" onclick="calcDistance()">计算</button>
+      <div id="dist_result" class="result" style="display:none;"></div>
+    </div>
+  </div>
+  
+  <div id="source" class="panel">
+    <h2>核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="source_code"></pre>
+  </div>
+  
+  <div id="test" class="panel">
+    <h2>单元测试（共 34 个用例）</h2>
+    <button class="btn" onclick="runAndDisplayTests()">运行全部测试</button>
+    <div id="test_output" style="margin-top:15px;"></div>
+  </div>
+  
+  <div id="doc" class="panel">
+    <div class="doc-content">
+      <h2>制动器制动力矩计算工具 使用说明书</h2>
+      
+      <h3>一、工具简介</h3>
+      <p>本工具用于盘式/鼓式制动器制动力矩的理论计算，以及基于力矩的制动距离估算。适用于汽车工程教学、制动器初步选型、方案对比分析、车辆动力学演示等场景。</p>
+      <p>本工具基于经典摩擦制动理论，采用纯 JavaScript 实现，不依赖任何外部库，可直接在浏览器中运行。所有核心函数均为纯函数，输入确定则输出确定，便于测试和复用。</p>
+      <div class="warn">
+        <strong>重要提示</strong>：本工具提供的是理论计算结果，实际制动性能受温度、磨损、材料特性、液压系统响应、轮胎特性等多种因素影响，计算结果仅供工程参考，不作为最终设计依据。
+      </div>
+      
+      <h3>二、适用对象</h3>
+      <ul>
+        <li>车辆工程、机械工程专业师生（教学演示、课程作业）</li>
+        <li>汽车制动器初步设计工程师（方案对比、参数估算）</li>
+        <li>制动系统方案分析人员（快速评估不同方案）</li>
+        <li>车辆动力学研究人员（基础模型验证）</li>
+      </ul>
+      <div class="note">
+        <strong>不适用场景</strong>：最终设计定型、法规认证试验、安全关键分析、生产质量控制。这些场景需要详细的台架试验和整车试验。
+      </div>
+      
+      <h3>三、快速入门</h3>
+      <ol>
+        <li>选择计算器标签页</li>
+        <li>根据制动器类型选择对应计算模块（盘式/鼓式/制动距离）</li>
+        <li>输入参数（注意单位：长度用 m，力用 N，力矩用 N·m）</li>
+        <li>点击"计算"按钮查看结果</li>
+        <li>结果包含理论值、中间参数、可能的警告信息</li>
+      </ol>
+      
+      <h3>四、参数详解</h3>
+      
+      <h4>4.1 盘式制动器参数</h4>
+      <table>
+        <tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th><th>典型范围</th></tr>
+        <tr><td>摩擦系数</td><td>μ</td><td>-</td><td>摩擦片与制动盘间的摩擦系数</td><td>0.30~0.50</td></tr>
+        <tr><td>夹紧力</td><td>F</td><td>N</td><td>制动钳施加的夹紧力</td><td>2000~15000</td></tr>
+        <tr><td>外半径</td><td>R_o</td><td>m</td><td>摩擦片外缘半径</td><td>0.08~0.18</td></tr>
+        <tr><td>内半径</td><td>R_i</td><td>m</td><td>摩擦片内缘半径</td><td>0.05~0.14</td></tr>
+        <tr><td>摩擦面数</td><td>n</td><td>-</td><td>参与摩擦的面数</td><td>1/2/4</td></tr>
+      </table>
+      
+      <p><strong>等效半径计算</strong>：盘式制动器的摩擦力矩并非简单作用在平均半径上，而是需要考虑摩擦面的压力分布。对于环形摩擦面，基于均匀压力分布假设，等效半径公式为：</p>
+      <p><code>R_e = (2/3) × (R_o³ - R_i³) / (R_o² - R_i²)</code></p>
+      <p>若采用均匀磨损假设，等效半径为 <code>R_e' = (R_o + R_i) / 2</code>。两种假设的差异通常在 5% 以内，本工具采用均匀压力假设。</p>
+      
+      <p><strong>力矩计算</strong>：<code>T = n × μ × F × R_e</code></p>
+      
+      <h4>4.2 鼓式制动器参数</h4>
+      <table>
+        <tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th><th>典型范围</th></tr>
+        <tr><td>摩擦系数</td><td>μ</td><td>-</td><td>摩擦片与制动鼓间的摩擦系数</td><td>0.25~0.45</td></tr>
+        <tr><td>促动力</td><td>F</td><td>N</td><td>轮缸施加的促动力</td><td>1500~8000</td></tr>
+        <tr><td>制动鼓半径</td><td>r</td><td>m</td><td>制动鼓内半径</td><td>0.10~0.20</td></tr>
+        <tr><td>促动力臂</td><td>a</td><td>m</td><td>促动力作用点到支承销距离</td><td>0.08~0.15</td></tr>
+        <tr><td>支承销偏移</td><td>c</td><td>m</td><td>制动鼓中心到支承销距离</td><td>0.06~0.12</td></tr>
+      </table>
+      
+      <p><strong>领从蹄式</strong>：</p>
+      <ul>
+        <li>领蹄（前进蹄）：<code>T_L = μ × F × r × a / (a - μ × c)</code></li>
+        <li>从蹄（后退蹄）：<code>T_S = μ × F × r × a / (a + μ × c)</code></li>
+        <li>总力矩：<code>T = T_L + T_S</code></li>
+      </ul>
+      <p>领蹄具有自增力效应，摩擦力矩会增大蹄片对制动鼓的正压力，因此制动力矩较大。从蹄则相反，具有自减力效应。</p>
+      <div class="note">
+        <strong>简化声明</strong>：上式 <code>a/(a − μ×c)</code> 为<strong>粗化简形式</strong>，并非精确公式；精确的领/从蹄效能系数表达式与具体几何布置相关。本工具结果为近似估算，切勿当作精确解使用。
+      </div>
+      
+      <p><strong>双领蹄式</strong>：两个蹄片均为领蹄，总力矩为单领蹄的两倍：<code>T = 2 × μ × F × r × a / (a - μ × c)</code></p>
+      
+      <p><strong>双向自增力式</strong>：利用摩擦力使两个蹄片相互促动，具有更大的自增力效应。本工具采用简化系数 2.5。</p>
+      <div class="warn">
+        <strong>⚠️ 无来源提示</strong>：双向自增力式系数 <strong>2.5 为经验估算值，无标准/手册/文献依据</strong>，实际值取决于具体结构，可能与真实值有明显偏差。结果仅供参考。
+      </div>
+      
+      <div class="warn">
+        <strong>自锁条件</strong>：当 <code>a ≤ μ × c</code> 时，领蹄会发生自锁，此时制动力矩理论上趋于无穷大，实际中会导致制动器卡死。本工具在检测到自锁条件时会给出警告。
+      </div>
+      
+      <h4>4.3 制动距离参数</h4>
+      <table>
+        <tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th><th>典型范围</th></tr>
+        <tr><td>初速度</td><td>v₀</td><td>km/h</td><td>制动初速度</td><td>30~120</td></tr>
+        <tr><td>整车质量</td><td>m</td><td>kg</td><td>车辆总质量</td><td>1000~3000</td></tr>
+        <tr><td>总制动力矩</td><td>T</td><td>N·m</td><td>所有制动器力矩之和</td><td>2000~8000</td></tr>
+        <tr><td>车轮滚动半径</td><td>r_w</td><td>m</td><td>轮胎滚动半径</td><td>0.25~0.40</td></tr>
+        <tr><td>附着系数</td><td>φ</td><td>-</td><td>路面附着系数</td><td>0.3~0.9</td></tr>
+        <tr><td>反应时间</td><td>t_r</td><td>s</td><td>驾驶员反应时间</td><td>0.7~1.5</td></tr>
+      </table>
+      
+      <p><strong>计算原理</strong>：</p>
+      <ol>
+        <li>地面制动力：<code>F_b = T / r_w</code></li>
+        <li>附着限制：<code>F_b_max = φ × m × g</code>（g = 9.81 m/s²）</li>
+        <li>实际制动力：<code>F_b = min(F_b, F_b_max)</code></li>
+        <li>减速度：<code>a = F_b / m</code></li>
+        <li>反应距离：<code>s_r = v₀ × t_r</code></li>
+        <li>制动距离：<code>s_b = v₀² / (2a)</code></li>
+        <li>总停车距离：<code>s = s_r + s_b</code></li>
+      </ol>
+      
+      <h3>五、使用场景</h3>
+      
+      <h4>场景1：乘用车盘式制动器选型</h4>
+      <p><strong>背景</strong>：某乘用车前轴采用单活塞浮钳盘式制动器，需要估算制动力矩。</p>
+      <p><strong>参数</strong>：μ = 0.40，F = 8000 N（对应液压压力约 4MPa，轮缸直径 50mm），R_o = 0.12 m，R_i = 0.08 m，n = 2（浮钳双侧）。</p>
+      <p><strong>计算</strong>：等效半径 R_e ≈ 0.1013 m，制动力矩 T ≈ 648 N·m。</p>
+      <p><strong>分析</strong>：该力矩值可用于评估是否满足制动性能要求，或与其他方案对比。需注意这是单制动器力矩，整车前轴有两个制动器。</p>
+      
+      <h4>场景2：商用车鼓式制动器校核</h4>
+      <p><strong>背景</strong>：某轻型商用车后轴采用领从蹄式鼓式制动器，需要校核制动力矩。</p>
+      <p><strong>参数</strong>：μ = 0.35，F = 4000 N，r = 0.14 m，a = 0.11 m，c = 0.09 m，类型：领从蹄式。</p>
+      <p><strong>计算</strong>：领蹄力矩 T_L ≈ 274.65 N·m，从蹄力矩 T_S ≈ 152.37 N·m，总力矩 T ≈ 427.02 N·m。</p>
+      <p><strong>分析</strong>：领从蹄式的领蹄力矩约为从蹄的 1.80 倍，体现了自增力效应。这种不对称性在倒车时会反转，因此领从蹄式倒车制动效能较低。</p>
+      
+      <h4>场景3：制动距离估算</h4>
+      <p><strong>背景</strong>：估算某乘用车在干燥沥青路面上的制动距离。</p>
+      <p><strong>参数</strong>：v₀ = 100 km/h，m = 1500 kg，T = 5000 N·m（四轮总和），r_w = 0.30 m，φ = 0.80，t_r = 1.0 s。</p>
+      <p><strong>计算</strong>：初速度 v₀ = 27.78 m/s，地面制动力 F_b = 16667 N，附着限制 F_b_max = 11772 N，实际制动力受附着限制为 11772 N，减速度 a ≈ 7.85 m/s²（约 0.80g），反应距离 s_r = 27.78 m，制动距离 s_b ≈ 49.0 m，总停车距离 s ≈ 76.8 m。</p>
+      <p><strong>分析</strong>：该结果可与 GB 21670-2008 中乘用车制动性能要求作对比参考。需注意实际制动距离还受 ABS 介入、轮胎特性等因素影响。</p>
+      
+      <h4>场景4：方案对比</h4>
+      <p><strong>背景</strong>：对比盘式与鼓式制动器的力矩输出能力。</p>
+      <p><strong>方案A</strong>（盘式）：μ = 0.40，F = 6000 N，R_o = 0.12 m，R_i = 0.08 m，n = 2，计算得 T_A ≈ 486 N·m。</p>
+      <p><strong>方案B</strong>（鼓式，领从蹄）：μ = 0.35，F = 4000 N，r = 0.14 m，a = 0.11 m，c = 0.09 m，计算得 T_B ≈ 427.02 N·m。</p>
+      <p><strong>分析</strong>：两种方案力矩接近，但盘式制动器散热性能更好，适合高频制动工况；鼓式制动器成本低、自增力效应明显，适合轻载低频工况。选择时需综合考虑成本、性能、使用工况。</p>
+      
+      <h4>场景5：教学演示</h4>
+      <p><strong>背景</strong>：在车辆工程课程中演示制动器参数对力矩的影响。</p>
+      <p><strong>演示内容</strong>：</p>
+      <ul>
+        <li>改变摩擦系数 μ，观察力矩线性变化</li>
+        <li>改变夹紧力 F，观察力矩线性变化</li>
+        <li>对比领从蹄式与双领蹄式的力矩差异</li>
+        <li>演示自锁条件（a ≤ μ × c）的危险性</li>
+        <li>展示附着限制对制动距离的影响</li>
+      </ul>
+      <p>通过本工具，学生可以直观理解各参数对制动性能的影响，加深对制动器工作原理的认识。</p>
+      
+      <h3>六、常见错误</h3>
+      
+      <h4>6.1 单位错误</h4>
+      <p><strong>错误</strong>：将半径单位输入为 mm 而非 m。</p>
+      <p><strong>后果</strong>：计算结果偏大 1000 倍（力矩与半径成正比）。</p>
+      <p><strong>纠正</strong>：确保所有长度单位为 m，力为 N，力矩为 N·m。</p>
+      
+      <h4>6.2 摩擦面数错误</h4>
+      <p><strong>错误</strong>：单活塞浮钳盘式制动器输入 n=1。</p>
+      <p><strong>后果</strong>：计算结果偏小一半。</p>
+      <p><strong>纠正</strong>：浮钳盘式制动器虽然只有一个活塞，但两侧都有摩擦片，应输入 n=2。</p>
+      
+      <h4>6.3 总力矩与单制动器力矩混淆</h4>
+      <p><strong>错误</strong>：在制动距离计算中，输入单个制动器的力矩而非整车总力矩。</p>
+      <p><strong>后果</strong>：制动距离计算结果偏大（可能偏大 4 倍）。</p>
+      <p><strong>纠正</strong>：制动距离计算需要输入整车所有制动器的总力矩。对于四轮乘用车，通常为 4 个制动器力矩之和。</p>
+      
+      <h4>6.4 忽略附着限制</h4>
+      <p><strong>错误</strong>：认为制动力矩越大，制动距离越短。</p>
+      <p><strong>后果</strong>：当制动力超过附着极限时，车轮会抱死，实际制动力受附着限制。</p>
+      <p><strong>纠正</strong>：本工具已考虑附着限制，当制动力超过 φ×m×g 时，会自动按附着极限计算，并提示"受附着限制"。</p>
+      
+      <h4>6.5 鼓式制动器自锁</h4>
+      <p><strong>错误</strong>：参数设置不当导致 a ≤ μ × c。</p>
+      <p><strong>后果</strong>：领蹄自锁，计算结果异常（理论无穷大）。</p>
+      <p><strong>纠正</strong>：检查参数，确保 a > μ × c。若确实需要大自增力效应，应选择双向自增力式，并注意其自锁风险。</p>
+      
+      <h3>七、数据依据</h3>
+      <div class="warn">
+        <strong>⚠️ 参数来源声明</strong>：下面列出的标准与教材仅为<b>理论背景参考</b>，源码中的<b>具体公式与系数（盘式等效半径、鼓式领从蹄公式、双向自增力系数 2.5、摩擦系数典型范围、附着系数典型范围）均未经标准原文页码逐条核对，属经验估算值</b>。<br>
+        可直接查证的只有 <strong>g = 9.81 m/s²</strong>（通用重力加速度定义）。<br>
+        <strong>本工具全部参数均为经验值，未经标准核对</strong>，不承诺与任何标准/文献一致。<br>
+        <strong>请勿将本工具结果直接用于选型定型或制动系统定型计算</strong>，仅适合作业、初算与量级估算。
+      </div>
+      <p>以下标准与教材作为理论背景引用（未逐条核对页码）：</p>
+      <ol>
+        <li><strong>GB/T 12676-2014</strong>《汽车制动系统结构、性能和试验方法》——等效采用 ECE R13，规定了制动性能要求和试验方法。</li>
+        <li><strong>GB 21670-2008</strong>《乘用车制动系统技术要求及试验方法》——等效采用 ECE R13H，针对乘用车的制动性能要求。</li>
+        <li><strong>QC/T 564-2008</strong>《乘用车制动器》——规定了乘用车制动器的技术要求和试验方法。</li>
+        <li><strong>《汽车设计》（王望予主编）</strong>——制动器设计理论公式来源。</li>
+        <li><strong>《汽车理论》（余志生主编）</strong>——制动性能分析理论。</li>
+      </ol>
+      <div class="note">
+        <strong>注意</strong>：具体参数取值（如摩擦系数范围、附着系数等）需根据实际材料和工况确定，本工具提供的典型范围仅供参考。更精确的数据需查标准原文或材料供应商数据。
+      </div>
+      
+      <h3>八、精度与误差说明</h3>
+      
+      <h4>8.1 算准了什么</h4>
+      <p>本工具在以下方面做到了方法准确：</p>
+      <ul>
+        <li><strong>几何计算</strong>：盘式制动器等效半径的计算基于经典弹性力学理论，公式本身是精确的。</li>
+        <li><strong>力矩平衡</strong>：鼓式制动器的力矩平衡方程基于静力学原理，但领/从蹄采用<strong>粗化简公式</strong>，双向自增力式采用<strong>无来源的经验系数 2.5</strong>，均为近似估算。</li>
+        <li><strong>运动学计算</strong>：制动距离的运动学计算基于牛顿运动定律，公式精确。</li>
+        <li><strong>数值计算</strong>：采用 IEEE 754 双精度浮点数，相对精度约 15~16 位有效数字。</li>
+      </ul>
+      
+      <h4>8.2 哪些因素没算进去</h4>
+      <p>实际制动过程涉及众多复杂因素，本工具未考虑以下因素：</p>
+      <ol>
+        <li><strong>温度效应</strong>：摩擦系数随温度变化，高温下可能出现热衰退。</li>
+        <li><strong>磨损影响</strong>：摩擦片磨损后，几何参数和摩擦系数都会变化。</li>
+        <li><strong>速度效应</strong>：摩擦系数可能随滑动速度变化。</li>
+        <li><strong>压力分布</strong>：实际压力分布并非均匀，影响等效半径。</li>
+        <li><strong>液压系统响应</strong>：制动液压缩性、管路弹性等影响实际夹紧力。</li>
+        <li><strong>轮胎特性</strong>：轮胎纵向刚度、滑移率特性等影响实际附着力。</li>
+        <li><strong>轴荷转移</strong>：制动时轴荷重新分配，影响各轮附着力。</li>
+        <li><strong>制动器效能因数</strong>：实际制动器效能因数与理论值有差异。</li>
+        <li><strong>材料非线性</strong>：摩擦材料的非线性特性。</li>
+        <li><strong>制造公差</strong>：零件加工误差影响实际性能。</li>
+      </ol>
+      
+      <h4>8.3 误差大概多大</h4>
+      <p>基于工程经验，本工具的计算结果与实测值的偏差范围大致如下：</p>
+      <ul>
+        <li><strong>盘式制动器力矩</strong>：±10%~15%</li>
+        <li><strong>鼓式制动器力矩</strong>：±15%~25%（鼓式对参数更敏感）</li>
+        <li><strong>制动距离</strong>：±20%~30%</li>
+      </ul>
+      <div class="info">
+        <strong>说明</strong>：
+        <ul style="margin:5px 0 5px 20px;">
+          <li>上述误差范围是基于典型工况的经验估计，实际误差可能更大。</li>
+          <li>在参数准确、工况稳定的情况下，误差可能较小。</li>
+          <li>在极端工况（高温、高速、湿滑路面）下，误差可能显著增大。</li>
+          <li>本工具不承诺绝对精确，计算结果仅供工程参考。</li>
+        </ul>
+      </div>
+      
+      <h4>8.4 使用建议</h4>
+      <ol>
+        <li><strong>参数选取</strong>：尽量采用实际测量数据或供应商提供的数据，避免使用经验值。</li>
+        <li><strong>结果校核</strong>：计算结果应与试验数据或其他计算方法相互校核。</li>
+        <li><strong>安全裕度</strong>：在工程设计中，应留有足够的性能裕度。</li>
+        <li><strong>专业咨询</strong>：对于关键应用，应咨询专业制动器供应商或进行台架试验。</li>
+      </ol>
+      
+      <h3>九、局限性</h3>
+      <p>本工具存在以下局限性：</p>
+      <ol>
+        <li><strong>理论模型简化</strong>：采用经典摩擦制动理论，未考虑现代制动器的复杂特性。</li>
+        <li><strong>稳态假设</strong>：假设制动过程为稳态，未考虑瞬态响应。</li>
+        <li><strong>单轴模型</strong>：制动距离计算采用整车单轴模型，未考虑轴荷转移。</li>
+        <li><strong>理想附着</strong>：假设附着系数为常数，未考虑滑移率影响。</li>
+        <li><strong>无热分析</strong>：未考虑温度对制动性能的影响。</li>
+        <li><strong>无磨损分析</strong>：未考虑磨损对制动性能的影响。</li>
+        <li><strong>无 ABS/ESC</strong>：未考虑电子稳定系统的影响。</li>
+        <li><strong>无法规校核</strong>：未自动校核是否满足相关法规要求。</li>
+      </ol>
+      <div class="warn">
+        <strong>总结</strong>：本工具适用于初步设计、方案对比、教学演示等场景，不适用于最终设计、法规认证、安全关键分析。对于关键应用，应进行详细的台架试验和整车试验。
+      </div>
+      
+      <h3>十、版本信息</h3>
+      <p>当前版本：v2.0.3-修审查问题 20261108</p>
+      <p>核心算法：纯 JavaScript 实现，无外部依赖</p>
+      <p>测试覆盖：34 个单元测试用例</p>
+      
+    </div>
+  </div>
+</div>
+
+<div class="version">v2.0.3-修审查问题 20261108</div>
+
+<script>
+// ============================================================
+// 核心算法（纯函数，无外部依赖）
+// ============================================================
+
+/**
+ * 计算盘式制动器摩擦片等效半径
+ * 基于均匀压力分布假设
+ * @param {number} Ro - 摩擦片外半径 (m)，必须 > 0
+ * @param {number} Ri - 摩擦片内半径 (m)，必须 >= 0 且 < Ro
+ * @returns {number} 等效半径 (m)，输入无效时返回 NaN
+ */
+function calcDiscEffectiveRadius(Ro, Ri) {
+  if (!isFinite(Ro) || !isFinite(Ri)) return NaN;
+  if (Ro <= 0 || Ri < 0 || Ri >= Ro) return NaN;
+  const Ro2 = Ro * Ro, Ri2 = Ri * Ri;
+  const Ro3 = Ro2 * Ro, Ri3 = Ri2 * Ri;
+  return (2 / 3) * (Ro3 - Ri3) / (Ro2 - Ri2);
+}
+
+/**
+ * 计算盘式制动器制动力矩
+ * 公式：T = n × μ × F × R_e
+ * @param {number} mu - 摩擦系数，必须 >= 0
+ * @param {number} F - 夹紧力 (N)，必须 >= 0
+ * @param {number} Ro - 摩擦片外半径 (m)，必须 > 0
+ * @param {number} Ri - 摩擦片内半径 (m)，必须 >= 0 且 < Ro
+ * @param {number} n - 摩擦面数，必须 > 0
+ * @returns {number} 制动力矩 (N·m)，输入无效时返回 NaN
+ */
+function calcDiscBrakeTorque(mu, F, Ro, Ri, n) {
+  if ([mu, F, Ro, Ri, n].some(v => !isFinite(v))) return NaN;
+  if (mu < 0 || F < 0 || Ro <= 0 || Ri < 0 || Ri >= Ro || n <= 0) return NaN;
+  const Re = calcDiscEffectiveRadius(Ro, Ri);
+  if (!isFinite(Re)) return NaN;
+  return n * mu * F * Re;
+}
+
+/**
+ * 计算鼓式制动器制动力矩
+ * 领从蹄式：T = μ×F×r×a/(a-μ×c) + μ×F×r×a/(a+μ×c)
+ * 双领蹄式：T = 2×μ×F×r×a/(a-μ×c)
+ * 双向自增力式：T = 2.5×μ×F×r×a/(a-μ×c)（简化系数）
+ * @param {number} mu - 摩擦系数，必须 >= 0
+ * @param {number} F - 促动力 (N)，必须 >= 0
+ * @param {number} r - 制动鼓半径 (m)，必须 > 0
+ * @param {string} type - 类型：'leading-trailing' | 'two-leading' | 'duo-servo'
+ * @param {number} a - 促动力臂 (m)，必须 > 0
+ * @param {number} c - 支承销偏移 (m)，必须 > 0
+ * @returns {number} 制动力矩 (N·m)，输入无效返回 NaN，自锁返回 Infinity
+ */
+function calcDrumBrakeTorque(mu, F, r, type, a, c) {
+  if ([mu, F, r, a, c].some(v => !isFinite(v))) return NaN;
+  if (mu < 0 || F < 0 || r <= 0 || a <= 0 || c <= 0) return NaN;
+  
+  if (type === 'leading-trailing') {
+    const denomL = a - mu * c;
+    const denomS = a + mu * c;
+    if (denomL <= 0) return Infinity; // 领蹄自锁
+    const TL = mu * F * r * a / denomL;
+    const TS = mu * F * r * a / denomS;
+    return TL + TS;
+  } else if (type === 'two-leading') {
+    const denom = a - mu * c;
+    if (denom <= 0) return Infinity;
+    return 2 * mu * F * r * a / denom;
+  } else if (type === 'duo-servo') {
+    const denom = a - mu * c;
+    if (denom <= 0) return Infinity;
+    return 2.5 * mu * F * r * a / denom;
+  }
+  return NaN;
+}
+
+/**
+ * 计算制动距离
+ * 基于运动学和附着限制
+ * @param {number} v0_kmh - 初速度 (km/h)，必须 >= 0
+ * @param {number} mass - 整车质量 (kg)，必须 > 0
+ * @param {number} T_total - 整车总制动力矩 (N·m)，必须 >= 0
+ * @param {number} r_wheel - 车轮滚动半径 (m)，必须 > 0
+ * @param {number} phi - 路面附着系数，必须 >= 0 且 <= 1.5
+ * @param {number} t_reaction - 驾驶员反应时间 (s)，必须 >= 0
+ * @returns {object|null} 结果对象，输入无效返回 null
+ *   - totalDistance: 总停车距离 (m)
+ *   - reactionDistance: 反应距离 (m)
+ *   - brakingDistance: 制动距离 (m)
+ *   - deceleration: 减速度 (m/s²)
+ *   - deceleration_g: 减速度 (g)
+ *   - limitedByAdhesion: 是否受附着限制 (boolean)
+ */
+function calcBrakingDistance(v0_kmh, mass, T_total, r_wheel, phi, t_reaction) {
+  if ([v0_kmh, mass, T_total, r_wheel, phi, t_reaction].some(v => !isFinite(v))) return null;
+  if (v0_kmh < 0 || mass <= 0 || T_total < 0 || r_wheel <= 0 || phi < 0 || phi > 1.5 || t_reaction < 0) return null;
+  
+  const v0 = v0_kmh / 3.6; // m/s
+  const g = 9.81;
+  
+  if (v0 === 0) {
+    return {
+      totalDistance: 0,
+      reactionDistance: 0,
+      brakingDistance: 0,
+      deceleration: 0,
+      deceleration_g: 0,
+      limitedByAdhesion: false
+    };
+  }
+  
+  const F_brake_from_torque = T_total / r_wheel;
+  const F_brake_max = phi * mass * g;
+  const F_brake = Math.min(F_brake_from_torque, F_brake_max);
+  const limitedByAdhesion = F_brake_from_torque > F_brake_max;
+  
+  const decel = F_brake / mass;
+  
+  if (decel <= 0) {
+    return {
+      totalDistance: Infinity,
+      reactionDistance: v0 * t_reaction,
+      brakingDistance: Infinity,
+      deceleration: 0,
+      deceleration_g: 0,
+      limitedByAdhesion: limitedByAdhesion
+    };
+  }
+  
+  const s_reaction = v0 * t_reaction;
+  const s_braking = (v0 * v0) / (2 * decel);
+  
+  return {
+    totalDistance: s_reaction + s_braking,
+    reactionDistance: s_reaction,
+    brakingDistance: s_braking,
+    deceleration: decel,
+    deceleration_g: decel / g,
+    limitedByAdhesion: limitedByAdhesion
+  };
+}
+
+// ============================================================
+// 单元测试
+// ============================================================
+
+function runTests() {
+  let passed = 0;
+  let total = 0;
+  const results = [];
+  
+  function test(name, fn) {
+    total++;
+    try {
+      fn();
+      passed++;
+      results.push({ name, pass: true });
+    } catch (e) {
+      results.push({ name, pass: false, error: e.message });
+    }
+  }
+  
+  function assert(cond, msg) {
+    if (!cond) throw new Error(msg || 'Assertion failed');
+  }
+  
+  function assertClose(a, b, eps, msg) {
+    if (Math.abs(a - b) > eps) {
+      throw new Error(`${msg}: expected ${b}, got ${a}`);
+    }
+  }
+  
+  // 盘式力矩测试 (13个)
+  test('盘式-标准输入1', () => {
+    const T = calcDiscBrakeTorque(0.4, 5000, 0.1, 0.06, 2);
+    assert(isFinite(T) && T > 0, '应返回正数');
+  });
+  
+  test('盘式-标准输入2', () => {
+    const T = calcDiscBrakeTorque(0.35, 8000, 0.15, 0.1, 2);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  test('盘式-μ=0', () => {
+    const T = calcDiscBrakeTorque(0, 5000, 0.1, 0.06, 2);
+    assert(T === 0, 'μ=0时力矩应为0');
+  });
+  
+  test('盘式-F=0', () => {
+    const T = calcDiscBrakeTorque(0.4, 0, 0.1, 0.06, 2);
+    assert(T === 0, 'F=0时力矩应为0');
+  });
+  
+  test('盘式-n=1 vs n=2', () => {
+    const T1 = calcDiscBrakeTorque(0.4, 5000, 0.1, 0.06, 1);
+    const T2 = calcDiscBrakeTorque(0.4, 5000, 0.1, 0.06, 2);
+    assertClose(T2, 2 * T1, 0.001, 'n=2应为n=1的两倍');
+  });
+  
+  test('盘式-Ri=0（实心盘）', () => {
+    const T = calcDiscBrakeTorque(0.4, 5000, 0.1, 0, 2);
+    const expected = 2 * 0.4 * 5000 * (2/3) * 0.1;
+    assertClose(T, expected, 0.01, '实心盘等效半径应为2/3*Ro');
+  });
+  
+  test('盘式-Ri接近Ro', () => {
+    const T = calcDiscBrakeTorque(0.4, 5000, 0.1, 0.099, 2);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  test('盘式-负μ', () => {
+    const T = calcDiscBrakeTorque(-0.4, 5000, 0.1, 0.06, 2);
+    assert(isNaN(T), '负μ应返回NaN');
+  });
+  
+  test('盘式-负F', () => {
+    const T = calcDiscBrakeTorque(0.4, -5000, 0.1, 0.06, 2);
+    assert(isNaN(T), '负F应返回NaN');
+  });
+  
+  test('盘式-Ro<=0', () => {
+    const T = calcDiscBrakeTorque(0.4, 5000, 0, 0.06, 2);
+    assert(isNaN(T), 'Ro<=0应返回NaN');
+  });
+  
+  test('盘式-Ri>=Ro', () => {
+    const T = calcDiscBrakeTorque(0.4, 5000, 0.1, 0.1, 2);
+    assert(isNaN(T), 'Ri>=Ro应返回NaN');
+  });
+  
+  test('盘式-NaN输入', () => {
+    const T = calcDiscBrakeTorque(NaN, 5000, 0.1, 0.06, 2);
+    assert(isNaN(T), 'NaN输入应返回NaN');
+  });
+  
+  test('盘式-等效半径精度', () => {
+    const Re = calcDiscEffectiveRadius(0.1, 0.06);
+    const expected = (2/3) * (0.1*0.1*0.1 - 0.06*0.06*0.06) / (0.1*0.1 - 0.06*0.06);
+    assertClose(Re, expected, 1e-10, '等效半径精度');
+  });
+  
+  // 鼓式力矩测试 (8个)
+  test('鼓式-领从蹄标准', () => {
+    const T = calcDrumBrakeTorque(0.35, 3000, 0.12, 'leading-trailing', 0.10, 0.08);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  test('鼓式-双领蹄标准', () => {
+    const T = calcDrumBrakeTorque(0.35, 3000, 0.12, 'two-leading', 0.10, 0.08);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  test('鼓式-duo-servo', () => {
+    const T = calcDrumBrakeTorque(0.35, 3000, 0.12, 'duo-servo', 0.10, 0.08);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  test('鼓式-μ=0', () => {
+    const T = calcDrumBrakeTorque(0, 3000, 0.12, 'leading-trailing', 0.10, 0.08);
+    assert(T === 0, 'μ=0时力矩应为0');
+  });
+  
+  test('鼓式-F=0', () => {
+    const T = calcDrumBrakeTorque(0.35, 0, 0.12, 'leading-trailing', 0.10, 0.08);
+    assert(T === 0, 'F=0时力矩应为0');
+  });
+  
+  test('鼓式-自锁情况', () => {
+    const T = calcDrumBrakeTorque(0.4, 3000, 0.12, 'leading-trailing', 0.05, 0.2);
+    assert(!isFinite(T), '自锁时应返回Infinity');
+  });
+  
+  test('鼓式-负输入', () => {
+    const T = calcDrumBrakeTorque(-0.35, 3000, 0.12, 'leading-trailing', 0.10, 0.08);
+    assert(isNaN(T), '负μ应返回NaN');
+  });
+  
+  test('鼓式-领从蹄 vs 双领蹄', () => {
+    const T_LT = calcDrumBrakeTorque(0.35, 3000, 0.12, 'leading-trailing', 0.10, 0.08);
+    const T_2L = calcDrumBrakeTorque(0.35, 3000, 0.12, 'two-leading', 0.10, 0.08);
+    assert(T_2L > T_LT, '双领蹄力矩应大于领从蹄');
+  });
+  
+  // 制动距离测试 (10个)
+  test('制动距离-标准输入', () => {
+    const r = calcBrakingDistance(100, 1500, 4000, 0.3, 0.8, 1.0);
+    assert(r !== null && r.totalDistance > 0);
+  });
+  
+  test('制动距离-v=0', () => {
+    const r = calcBrakingDistance(0, 1500, 4000, 0.3, 0.8, 1.0);
+    assert(r.totalDistance === 0, 'v=0时距离应为0');
+  });
+  
+  test('制动距离-大速度', () => {
+    const r = calcBrakingDistance(200, 1500, 4000, 0.3, 0.8, 1.0);
+    assert(r.totalDistance > 0);
+  });
+  
+  test('制动距离-小φ', () => {
+    const r = calcBrakingDistance(100, 1500, 4000, 0.3, 0.3, 1.0);
+    assert(r.totalDistance > 0);
+  });
+  
+  test('制动距离-大T', () => {
+    const r = calcBrakingDistance(100, 1500, 10000, 0.3, 0.8, 1.0);
+    assert(r.totalDistance > 0);
+  });
+  
+  test('制动距离-受附着限制', () => {
+    const r = calcBrakingDistance(100, 1500, 10000, 0.3, 0.5, 1.0);
+    assert(r.limitedByAdhesion === true, '应受附着限制');
+  });
+  
+  test('制动距离-负v', () => {
+    const r = calcBrakingDistance(-100, 1500, 4000, 0.3, 0.8, 1.0);
+    assert(r === null, '负v应返回null');
+  });
+  
+  test('制动距离-负m', () => {
+    const r = calcBrakingDistance(100, -1500, 4000, 0.3, 0.8, 1.0);
+    assert(r === null, '负m应返回null');
+  });
+  
+  test('制动距离-φ>1.5', () => {
+    const r = calcBrakingDistance(100, 1500, 4000, 0.3, 2.0, 1.0);
+    assert(r === null, 'φ>1.5应返回null');
+  });
+  
+  test('制动距离-反应时间影响', () => {
+    const r1 = calcBrakingDistance(100, 1500, 4000, 0.3, 0.8, 0.5);
+    const r2 = calcBrakingDistance(100, 1500, 4000, 0.3, 0.8, 1.5);
+    assert(r2.totalDistance > r1.totalDistance, '反应时间越长，总距离越大');
+  });
+  
+  // 精度测试 (3个)
+  test('精度-浮点精度', () => {
+    const T = calcDiscBrakeTorque(0.4, 5000, 0.1, 0.06, 2);
+    const Re = (2/3) * (0.001 - 0.000216) / (0.01 - 0.0036);
+    const expected = 2 * 0.4 * 5000 * Re;
+    assertClose(T, expected, 1e-6, '浮点精度');
+  });
+  
+  test('精度-大数', () => {
+    const T = calcDiscBrakeTorque(0.4, 100000, 0.5, 0.3, 2);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  test('精度-小数', () => {
+    const T = calcDiscBrakeTorque(0.001, 0.001, 0.001, 0.0005, 2);
+    assert(isFinite(T) && T > 0);
+  });
+  
+  return { passed, total, results };
+}
+
+function runAndDisplayTests() {
+  const { passed, total, results } = runTests();
+  
+  const output = document.getElementById('test_output');
+  let html = `<div class="test-summary">通过 ${passed} / 共 ${total}</div>`;
+  
+  results.forEach(r => {
+    const cls = r.pass ? 'test-pass' : 'test-fail';
+    const icon = r.pass ? '✓' : '✗';
+    html += `<div class="test-result ${cls}">${icon} ${r.name}${r.error ? ': ' + r.error : ''}</div>`;
+  });
+  
+  output.innerHTML = html;
+  console.log(`通过 ${passed} / 共 ${total}`);
+}
+
+// ============================================================
+// UI 交互
+// ============================================================
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 盘式计算
+function calcDisc() {
+  const mu = parseFloat(document.getElementById('disc_mu').value);
+  const F = parseFloat(document.getElementById('disc_F').value);
+  const Ro = parseFloat(document.getElementById('disc_Ro').value);
+  const Ri = parseFloat(document.getElementById('disc_Ri').value);
+  const n = parseInt(document.getElementById('disc_n').value);
+  
+  const resultDiv = document.getElementById('disc_result');
+  resultDiv.style.display = 'block';
+  
+  if ([mu, F, Ro, Ri, n].some(v => isNaN(v))) {
+    resultDiv.innerHTML = '<div class="warning">⚠️ 输入参数无效，请检查</div>';
+    return;
+  }
+  
+  const T = calcDiscBrakeTorque(mu, F, Ro, Ri, n);
+  
+  if (isNaN(T)) {
+    resultDiv.innerHTML = '<div class="warning">⚠️ 参数不合理（如 R_i ≥ R_o），请检查</div>';
+    return;
+  }
+  
+  const Re = calcDiscEffectiveRadius(Ro, Ri);
+  
+  resultDiv.innerHTML = `
+    <div class="result-item">
+      <span class="result-label">等效半径 R_e：</span>
+      <span class="result-value">${Re.toFixed(4)} m</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">制动力矩 T：</span>
+      <span class="result-value">${T.toFixed(2)} N·m</span>
+    </div>
+    <div class="result-item" style="font-size:12px;color:#666;margin-top:8px;">
+      计算式：T = n × μ × F × R_e = ${n} × ${mu} × ${F} × ${Re.toFixed(4)}
+    </div>
+  `;
+}
+
+// 鼓式计算
+function calcDrum() {
+  const mu = parseFloat(document.getElementById('drum_mu').value);
+  const F = parseFloat(document.getElementById('drum_F').value);
+  const r = parseFloat(document.getElementById('drum_r').value);
+  const type = document.getElementById('drum_type').value;
+  const a = parseFloat(document.getElementById('drum_a').value);
+  const c = parseFloat(document.getElementById('drum_c').value);
+  
+  const resultDiv = document.getElementById('drum_result');
+  resultDiv.style.display = 'block';
+  
+  if ([mu, F, r, a, c].some(v => isNaN(v))) {
+    resultDiv.innerHTML = '<div class="warning">⚠️ 输入参数无效，请检查</div>';
+    return;
+  }
+  
+  const T = calcDrumBrakeTorque(mu, F, r, type, a, c);
+  
+  if (isNaN(T)) {
+    resultDiv.innerHTML = '<div class="warning">⚠️ 参数不合理，请检查（μ、F 需 ≥ 0，r、a、c 需 > 0）</div>';
+    return;
+  }
+  
+  if (!isFinite(T)) {
+    resultDiv.innerHTML = `
+      <div class="warning">
+        ⚠️ <strong>领蹄自锁（无有效解）</strong>：判别式 a − μ×c = ${a} − ${mu}×${c} = <strong>${(a - mu*c).toFixed(4)} ≤ 0</strong><br>
+        此时制动力矩理论上趋于无穷，实际会导致制动器卡死。本结果<strong>不可用</strong>。<br>
+        <strong>请重新选参</strong>：① 减小支承销偏移 c；② 增大促动力臂 a；③ 降低摩擦系数 μ（换摩擦材料）；④ 改选双领蹄式/双向自增力式并注意其自锁风险。
+      </div>
+    `;
+    return;
+  }
+  
+  // 临界提示：判别式趋近零时数值敏感、易发散
+  const margin = (a - mu * c) / a;
+  let html = '';
+  if (margin < 0.15) {
+    html += `<div class="warning">⚠️ <strong>接近自锁边界</strong>：a − μ×c = ${(a - mu*c).toFixed(4)} m，仅为 a 的 ${(margin*100).toFixed(1)}%。此处结果对 μ、c 的微小变化极敏感（微小输入误差可致力矩大幅跳动），请谨慎使用。</div>`;
+  }
+  
+  const typeNames = {
+    'leading-trailing': '领从蹄式',
+    'two-leading': '双领蹄式',
+    'duo-servo': '双向自增力式'
+  };
+  
+  resultDiv.innerHTML = html + `
+    <div class="result-item">
+      <span class="result-label">制动器类型：</span>
+      <span>${typeNames[type]}</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">制动力矩 T：</span>
+      <span class="result-value">${T.toFixed(2)} N·m</span>
+    </div>
+    <div class="result-item" style="font-size:12px;color:#666;margin-top:8px;">
+      自锁校验：a = ${a}，μ×c = ${(mu*c).toFixed(4)}，${a > mu*c ? '✓ 安全' : '✗ 自锁'}
+    </div>
+  `;
+}
+
+// 制动距离计算
+function calcDistance() {
+  const v0 = parseFloat(document.getElementById('dist_v').value);
+  const m = parseFloat(document.getElementById('dist_m').value);
+  const T = parseFloat(document.getElementById('dist_T').value);
+  const rw = parseFloat(document.getElementById('dist_rw').value);
+  const phi = parseFloat(document.getElementById('dist_phi').value);
+  const tr = parseFloat(document.getElementById('dist_tr').value);
+  
+  const resultDiv = document.getElementById('dist_result');
+  resultDiv.style.display = 'block';
+  
+  if ([v0, m, T, rw, phi, tr].some(v => isNaN(v))) {
+    resultDiv.innerHTML = '<div class="warning">⚠️ 输入参数无效，请检查</div>';
+    return;
+  }
+  
+  // 上界校验：超出工程合理范围的输入直接拦截（避免无意义大数/无穷）
+  const bounds = [
+    { name: '初速度 v₀', v: v0, min: 0, max: 400, unit: 'km/h' },
+    { name: '整车质量 m', v: m, min: 100, max: 60000, unit: 'kg' },
+    { name: '总制动力矩 T', v: T, min: 0, max: 200000, unit: 'N·m' },
+    { name: '车轮滚动半径 r_w', v: rw, min: 0.05, max: 1.5, unit: 'm' },
+    { name: '附着系数 φ', v: phi, min: 0, max: 1.5, unit: '' },
+    { name: '反应时间', v: tr, min: 0, max: 5, unit: 's' }
+  ];
+  for (const b of bounds) {
+    if (b.v < b.min || b.v > b.max) {
+      resultDiv.innerHTML = '<div class="warning">⚠️ <strong>' + b.name + '</strong> 超出合理范围（' + b.min + ' ~ ' + b.max + ' ' + b.unit + '），当前值 ' + b.v + '。请检查单位是否输错。</div>';
+      return;
+    }
+  }
+  
+  const r = calcBrakingDistance(v0, m, T, rw, phi, tr);
+  
+  if (r === null) {
+    resultDiv.innerHTML = '<div class="warning">⚠️ 参数不合理，请检查</div>';
+    return;
+  }
+  
+  let html = `
+    <div class="result-item">
+      <span class="result-label">总停车距离：</span>
+      <span class="result-value">${r.totalDistance.toFixed(2)} m</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label"> ├ 反应距离：</span>
+      <span>${r.reactionDistance.toFixed(2)} m</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label"> └ 制动距离：</span>
+      <span>${r.brakingDistance.toFixed(2)} m</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">减速度：</span>
+      <span>${r.deceleration.toFixed(2)} m/s²（${r.deceleration_g.toFixed(2)} g）</span>
+    </div>
+  `;
+  
+  if (r.limitedByAdhesion) {
+    html += '<div class="warning">⚠️ 制动力受路面附着限制，车轮可能抱死</div>';
+  }
+  
+  resultDiv.innerHTML = html;
+}
+
+// 显示源码
+function displaySource() {
+  const source = `// ============================================================
+// 核心算法（纯函数，无外部依赖）
+// ============================================================
+
+${calcDiscEffectiveRadius.toString()}
+
+${calcDiscBrakeTorque.toString()}
+
+${calcDrumBrakeTorque.toString()}
+
+${calcBrakingDistance.toString()}`;
+  
+  document.getElementById('source_code').textContent = source;
+}
+
+// 初始化
+displaySource();
+</script>
+</body>
+</html>

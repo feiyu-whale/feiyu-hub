@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>衣服尺码对照与换算工具</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #f3f5f8;
+  color: #333;
+  padding: 12px;
+  padding-bottom: 60px;
+}
+.container { max-width: 680px; margin: 0 auto; }
+h1 { font-size: 20px; text-align: center; margin-bottom: 6px; color: #2c3e50; }
+.subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 16px; }
+.card {
+  background: #fff; border-radius: 10px; padding: 14px;
+  margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card h2 { font-size: 15px; margin-bottom: 10px; color: #34495e; border-left: 3px solid #3498db; padding-left: 8px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.field { flex: 1 1 140px; }
+.field label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+.field input, .field select {
+  width: 100%; padding: 8px 10px; border: 1px solid #d5dbe1; border-radius: 6px;
+  font-size: 14px; font-family: inherit; background: #fff; color: #333;
+}
+.field input:focus, .field select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,0.15); }
+.result {
+  background: #f8fafc; border: 1px solid #e3e9ef; border-radius: 8px;
+  padding: 12px; margin-top: 10px;
+}
+.result-line {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px dashed #e3e9ef;
+  font-size: 13px;
+}
+.result-line:last-child { border-bottom: none; }
+.result-line .k { color: #666; }
+.result-line .v { font-weight: 600; color: #2c3e50; font-size: 15px; }
+.hint { font-size: 12px; color: #95a5a6; margin-top: 8px; line-height: 1.5; }
+.err { color: #e74c3c; font-size: 13px; padding: 6px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { border: 1px solid #e3e9ef; padding: 5px 6px; text-align: center; }
+th { background: #f0f4f8; color: #34495e; font-weight: 600; }
+tr.on td { background: #eaf4fd; font-weight: 600; }
+.version {
+  text-align: center; font-size: 11px; color: #b0b8c1;
+  margin-top: 16px; padding-bottom: 8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>衣服尺码对照与换算</h1>
+  <div class="subtitle">男女装 · 亚洲码 / 欧码 / 美码 / 英码 · 身高体重推荐</div>
+
+  <div class="card">
+    <h2>选码条件</h2>
+    <div class="row">
+      <div class="field">
+        <label>性别</label>
+        <select id="sex">
+          <option value="f">女装</option>
+          <option value="m">男装</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>身高（cm）</label>
+        <input type="number" id="height" value="165" min="100" max="220" step="0.5">
+      </div>
+      <div class="field">
+        <label>体重（kg）</label>
+        <input type="number" id="weight" value="55" min="20" max="200" step="0.5">
+      </div>
+    </div>
+    <div class="result" id="result">
+      <div class="err" id="errMsg" style="display:none"></div>
+      <div id="resBody"></div>
+    </div>
+    <div class="hint">按身高推荐基础码，再用体重修正一档；两个方向冲突时取偏大的一档（衣服嫌大能凑合，嫌小穿不上）。</div>
+  </div>
+
+  <div class="card">
+    <h2>女装尺码对照</h2>
+    <table id="tableF">
+      <thead>
+        <tr><th>亚洲码</th><th>欧码</th><th>美码</th><th>英码</th><th>胸围(cm)</th><th>腰围(cm)</th><th>身高(cm)</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>男装尺码对照</h2>
+    <table id="tableM">
+      <thead>
+        <tr><th>亚洲码</th><th>欧码</th><th>美码</th><th>英码</th><th>胸围(cm)</th><th>腰围(cm)</th><th>身高(cm)</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="version">v1.0.0-衣服尺码对照 20261022</div>
+</div>
+
+<script>
+// 尺码表：按亚洲码（中国/日本常见标法）为基准
+// 数据口径：胸部/腰部为人体净尺寸范围（非成衣尺寸），来源为各国常见服装尺码表通行数值
+var SIZE_F = [
+  { cn: 'XS',  eu: '34',   us: '0-2',   uk: '6',    bust: [76, 80],  waist: [60, 64],  height: [155, 160] },
+  { cn: 'S',   eu: '36',   us: '4-6',   uk: '8',    bust: [80, 84],  waist: [64, 68],  height: [158, 163] },
+  { cn: 'M',   eu: '38',   us: '8-10',  uk: '10',   bust: [84, 88],  waist: [68, 72],  height: [161, 166] },
+  { cn: 'L',   eu: '40',   us: '12',    uk: '12',   bust: [88, 92],  waist: [72, 76],  height: [164, 169] },
+  { cn: 'XL',  eu: '42',   us: '14',    uk: '14',   bust: [92, 96],  waist: [76, 80],  height: [167, 172] },
+  { cn: 'XXL', eu: '44',   us: '16',    uk: '16',   bust: [96, 100], waist: [80, 84],  height: [170, 175] },
+  { cn: '3XL', eu: '46',   us: '18',    uk: '18',   bust: [100, 104],waist: [84, 88],  height: [173, 178] }
+];
+
+var SIZE_M = [
+  { cn: 'S',   eu: '44',   us: '34',    uk: '34',   bust: [86, 90],  waist: [72, 76],  height: [163, 168] },
+  { cn: 'M',   eu: '46',   us: '36',    uk: '36',   bust: [90, 94],  waist: [76, 80],  height: [166, 171] },
+  { cn: 'L',   eu: '48',   us: '38',    uk: '38',   bust: [94, 98],  waist: [80, 84],  height: [169, 174] },
+  { cn: 'XL',  eu: '50',   us: '40',    uk: '40',   bust: [98, 102], waist: [84, 88],  height: [172, 177] },
+  { cn: 'XXL', eu: '52',   us: '42',    uk: '42',   bust: [102, 106],waist: [88, 92],  height: [175, 180] },
+  { cn: '3XL', eu: '54',   us: '44',    uk: '44',   bust: [106, 110],waist: [92, 96],  height: [178, 183] }
+];
+
+// 按身高给的基准码区间（index）
+function baseIndexByHeight(h, list) {
+  for (var i = 0; i < list.length; i++) {
+    if (h >= list[i].height[0] && h <= list[i].height[1]) return i;
+  }
+  if (h < list[0].height[0]) return 0;
+  return list.length - 1;
+}
+
+// 按体重修正：BMI 概念化，用「身高对应理想体重」比值判断偏胖/偏瘦
+// 理想体重（kg）用简化公式：男 = (身高cm - 100) * 0.9；女 = (身高cm - 100) * 0.85
+function weightAdjust(h, w, isMale) {
+  var ideal = (h - 100) * (isMale ? 0.9 : 0.85);
+  if (ideal <= 0) return 0;
+  var ratio = w / ideal;
+  if (ratio < 0.88) return -1;   // 偏瘦，小一档
+  if (ratio > 1.15) return 1;    // 偏胖，大一档
+  if (ratio > 1.30) return 2;    // 明显偏胖，大两档
+  return 0;
+}
+
+function fmtRange(a) { return a[0] + '–' + a[1]; }
+
+function calc() {
+  var sex = document.getElementById('sex').value;
+  var h = parseFloat(document.getElementById('height').value);
+  var w = parseFloat(document.getElementById('weight').value);
+  var errEl = document.getElementById('errMsg');
+  var body = document.getElementById('resBody');
+
+  if (!isFinite(h) || !isFinite(w)) {
+    errEl.style.display = 'block';
+    errEl.textContent = '请输入有效的身高和体重';
+    body.innerHTML = '';
+    return;
+  }
+  if (h < 100 || h > 220) {
+    errEl.style.display = 'block';
+    errEl.textContent = '身高需在 100–220 cm 范围内';
+    body.innerHTML = '';
+    return;
+  }
+  if (w < 20 || w > 200) {
+    errEl.style.display = 'block';
+    errEl.textContent = '体重需在 20–200 kg 范围内';
+    body.innerHTML = '';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  var isMale = (sex === 'm');
+  var list = isMale ? SIZE_M : SIZE_F;
+  var idx = baseIndexByHeight(h, list);
+  var adj = weightAdjust(h, w, isMale);
+
+  // 推荐码取「大的一档」：身高建议与体重修正冲突时不前移
+  var finalIdx = idx + adj;
+  if (finalIdx < 0) finalIdx = 0;
+  if (finalIdx > list.length - 1) finalIdx = list.length - 1;
+
+  var rec = list[finalIdx];
+  var byH = list[idx];
+
+  var html = '';
+  html += line('推荐亚洲码', rec.cn);
+  html += line('对应欧码', rec.eu);
+  html += line('对应美码', rec.us);
+  html += line('对应英码', rec.uk);
+  html += line('参考胸围', fmtRange(rec.bust) + ' cm');
+  html += line('参考腰围', fmtRange(rec.waist) + ' cm');
+  if (adj !== 0) {
+    html += line('身高基础码', byH.cn + '（体重修正 ' + (adj > 0 ? '+' + adj : adj) + ' 档）');
+  }
+  body.innerHTML = html;
+
+  renderTable('tableF', SIZE_F, isMale ? -1 : finalIdx);
+  renderTable('tableM', SIZE_M, isMale ? finalIdx : -1);
+}
+
+function line(k, v) {
+  return '<div class="result-line"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+}
+
+function renderTable(id, list, hl) {
+  var tb = document.getElementById(id).getElementsByTagName('tbody')[0];
+  var html = '';
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    html += '<tr' + (i === hl ? ' class="on"' : '') + '>';
+    html += '<td>' + r.cn + '</td><td>' + r.eu + '</td><td>' + r.us + '</td><td>' + r.uk + '</td>';
+    html += '<td>' + fmtRange(r.bust) + '</td><td>' + fmtRange(r.waist) + '</td><td>' + fmtRange(r.height) + '</td>';
+    html += '</tr>';
+  }
+  tb.innerHTML = html;
+}
+
+document.getElementById('sex').addEventListener('change', calc);
+document.getElementById('height').addEventListener('input', calc);
+document.getElementById('weight').addEventListener('input', calc);
+
+calc();
+</script>
+</body>
+</html>

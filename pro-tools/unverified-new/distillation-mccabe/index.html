@@ -1,0 +1,135 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>精馏塔理论板数计算器</title><style>
+*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#c8d8ec;font:14px/1.55 system-ui,"Microsoft YaHei",sans-serif}
+header{padding:12px 16px;background:#0d1e35;border-bottom:1px solid #17324f}h1{margin:0;font-size:17px;color:#4a9eff}
+.sub{margin:3px 0 0;font-size:12px;color:#7f97b4}
+nav{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:#0b1a2e;border-bottom:1px solid #17324f}
+.tab{flex:0 0 auto;padding:6px 12px;border:1px solid #1e4266;border-radius:6px;background:#0f2440;color:#9fb8d4;font-size:13px;cursor:pointer}
+.tab.on{background:#4a9eff;color:#04121f;border-color:#4a9eff;font-weight:600}
+main{padding:12px;max-width:960px;margin:0 auto}.pane{display:none}.pane.on{display:block}
+.card{background:#0f2138;border:1px solid #1c3a5e;border-radius:10px;padding:12px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:14px;color:#4a9eff}
+.grid,.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}
+label{display:block;font-size:12px;color:#8fa8c4}
+input,select{width:100%;margin-top:3px;padding:7px;background:#08172a;border:1px solid #23496f;border-radius:6px;color:#e2eefc;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.btn{margin-top:12px;padding:9px 18px;background:#4a9eff;color:#04121f;border:0;border-radius:7px;font-weight:700;font-size:14px;cursor:pointer}
+.err{color:#ff8b8b;font-size:13px;margin-top:8px;white-space:pre-wrap}
+.row{background:#08172a;border:1px solid #1b3a5a;border-radius:8px;padding:8px 10px}
+.row b{display:block;font-size:11px;color:#8fa8c4;font-weight:400}
+.row s{font-size:16px;color:#e8f3ff;font-weight:600;text-decoration:none}
+.row i{font-size:11px;color:#7f97b4;font-style:normal}
+pre{margin:0;padding:10px;background:#071422;border:1px solid #1c3a5e;border-radius:8px;font-size:11px;line-height:1.45;overflow-x:auto;color:#a8c4e0}
+p,li{font-size:13px}.ok{color:#5cffb1}.no{color:#ff8b8b}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#5b7a9c;background:#0a1628;padding:2px 6px;border-radius:5px;opacity:.85}
+</style></head><body>
+<header><h1>精馏塔理论板数计算器</h1><p class="sub">McCabe-Thiele 法 · 相对挥发度 α · 回流比 · 进料板位置 · 板效率</p></header>
+<nav><button class="tab on" data-t="calc">计算工具</button><button class="tab" data-t="src">JS 源码</button><button class="tab" data-t="test">单元测试</button><button class="tab" data-t="doc">使用说明</button></nav>
+<main>
+<section id="calc" class="pane on"><div class="card"><h2>工况输入</h2><div class="grid">
+<label>物系预设（α 参考）<select id="sys"><option value="2.5">苯–甲苯 α≈2.5</option><option value="3.7">甲醇–水 α≈3.7</option><option value="2.2">乙醇–水 α≈2.2</option><option value="1.9">丙酮–水 α≈1.9</option><option value="">自定义</option></select></label>
+<label>相对挥发度 α<input id="a" value="2.5"></label>
+<label>进料组成 x<sub>F</sub><input id="xF" value="0.50"></label>
+<label>塔顶组成 x<sub>D</sub><input id="xD" value="0.95"></label>
+<label>塔底组成 x<sub>W</sub><input id="xW" value="0.05"></label>
+<label>进料热状态<select id="qs"><option value="1.2">过冷液体 q&gt;1</option><option value="1" selected>饱和液体 q=1</option><option value="0.5">气液混合 0&lt;q&lt;1</option><option value="0">饱和蒸汽 q=0</option><option value="-0.2">过热蒸汽 q&lt;0</option></select></label>
+<label>q 值<input id="q" value="1"></label>
+<label>回流比倍数 R/R<sub>min</sub><input id="k" value="1.30"></label>
+<label>全塔板效率 E（%）<input id="e" value="60"></label>
+</div><button class="btn" id="run">开始计算</button><div id="err" class="err"></div></div><div id="out"></div></section>
+<section id="src" class="pane"><div class="card"><h2>JS 源码（纯函数，可单独测试）</h2><pre id="srccode"></pre></div></section>
+<section id="test" class="pane"><div class="card"><h2>单元测试</h2><button class="btn" id="runt">运行全部测试</button><div id="tres" style="margin-top:10px;font-size:12px"></div></div></section>
+<section id="doc" class="pane"><div class="card"><h2>使用说明</h2>
+<p>1. 选物系预设带出 α 参考值，或直接填实测 α。本工具为恒 α 简化模型，α 随组成变化剧烈时建议分段计算。</p>
+<p>2. 填写 x<sub>F</sub>、x<sub>D</sub>、x<sub>W</sub>（摩尔分数），须满足 x<sub>W</sub> &lt; x<sub>F</sub> &lt; x<sub>D</sub>。</p>
+<p>3. 选进料热状态，q 自动填入：过冷液体 q=1+C<sub>p</sub>ΔT/λ &gt; 1；饱和液 q=1；气液混合 0&lt;q&lt;1（q 为液相分率）；饱和蒸汽 q=0；过热蒸汽 q&lt;0。可按物料与热量衡算修正。</p>
+<p>4. 回流比倍数 R/R<sub>min</sub> 常取 1.1~2.0；倍数越小板数越多、能耗越低，需做经济权衡。</p>
+<p>5. 全塔效率 E 常取 40~70%（行业经验值，未经标准核对），实际板数 = ⌈(N<sub>T</sub>−1)/E⌉，再沸器不计效率。</p>
+<p>限制：恒摩尔流假设；不适用于共沸、非理想强体系、多股进料与侧线采出的严格计算，工程定型前须用严格算法或中试数据校核。</p>
+<p>公式出处：《化工原理》（天津大学 夏清主编）精馏章相平衡、q 线与操作线方程；McCabe &amp; Thiele, Ind. Eng. Chem., 1925, 17(6):605–608。板效率参考 O'Connell 关联式（Trans. AIChE, 1946, 42:741）。</p>
+</div></section>
+</main><div class="ver">v1.0.0-distillation-mccabe 20261108</div>
+<script>
+function yEq(x,a){return a*x/(1+(a-1)*x)}
+function xEq(y,a){return y/(a-(a-1)*y)}
+function qPoint(xF,q,a){
+if(Math.abs(q-1)<1e-6)return{xq:xF,yq:yEq(xF,a)};
+if(Math.abs(q)<1e-9)return{xq:xEq(xF,a),yq:xF};
+var A=q/(q-1),B=-xF/(q-1),c=(a-1)*A,b=A+(a-1)*B-a,d=b*b-4*c*B;
+if(d<0)return null;
+var s=Math.sqrt(d),r=[(-b+s)/(2*c),(-b-s)/(2*c)];
+for(var i=0;i<2;i++)if(r[i]>0&&r[i]<1)return{xq:r[i],yq:A*r[i]+B};
+return null}
+function rmin(xF,xD,q,a){var p=qPoint(xF,q,a);if(!p)return null;var d=p.yq-p.xq;return d<=1e-9?null:(xD-p.yq)/d}
+function stages(p){
+var a=p.a,xD=p.xD,xW=p.xW,R=p.R,rm=rmin(p.xF,xD,p.q,a);
+if(rm===null)return{err:'q 线与平衡线无有效交点，请检查 q 与 α'};
+if(!(R>rm))return{err:'回流比 R='+R.toFixed(4)+' 必须大于最小回流比 Rmin='+rm.toFixed(4)};
+var qp=qPoint(p.xF,p.q,a);
+if(!(qp.xq>xW))return{err:'q 线交点组成 xq 应大于塔底组成 xW'};
+var m1=R/(R+1),b1=xD/(R+1),m2=(qp.yq-xW)/(qp.xq-xW),b2=xW-m2*xW;
+var x=xD,N=0,feed=0,st=0;
+while(x>xW+1e-12&&N<600){var y=st?m2*x+b2:m1*x+b1;
+if(!(y>0&&y<1))break;x=xEq(y,a);N++;
+if(!st&&x<=qp.xq){st=1;feed=N}}
+return{N:N,feed:feed||N,Rmin:rm,m1:m1,b1:b1,m2:m2,b2:b2,xq:qp.xq,yq:qp.yq}}
+function actualPlates(N,e){return Math.ceil((N-1)/e)}
+var T=[
+['平衡线 yEq(0.5,2.5)=0.714286',function(){return yEq(0.5,2.5)},0.714286],
+['反算 xEq(0.714286,2.5)=0.5',function(){return xEq(0.714286,2.5)},0.5],
+['q=1 饱和液：交点 xq=xF=0.5',function(){return qPoint(0.5,1,2.5).xq},0.5],
+['q=1 最小回流比 Rmin=1.1',function(){return rmin(0.5,0.95,1,2.5)},1.1],
+['q=0 饱和蒸汽：Rmin=2.1',function(){return rmin(0.5,0.95,0,2.5)},2.1],
+['q=0.5 气液混合：xq=0.387426',function(){return qPoint(0.5,0.5,2.5).xq},0.387426],
+['q=0.5 时 Rmin=1.4987',function(){return rmin(0.5,0.95,0.5,2.5)},1.4987],
+['R 增大→理论板数减少',function(){return stages({a:2.5,xF:0.5,xD:0.95,xW:0.05,q:1,R:2}).N<stages({a:2.5,xF:0.5,xD:0.95,xW:0.05,q:1,R:1.3}).N},true],
+['R<Rmin 返回错误提示而非 NaN',function(){return !!stages({a:2.5,xF:0.5,xD:0.95,xW:0.05,q:1,R:1}).err},true],
+['实际板数 ceil((N-1)/E)：N=12,E=0.6→19',function(){return actualPlates(12,0.6)},19]];
+function row(t,v,u){return '<div class="row"><b>'+t+'</b><s>'+v+'</s> <i>'+u+'</i></div>'}
+function N2(sel,lo,hi,name){var el=document.querySelector(sel);if(!el.value.trim())throw name+' 不能为空';
+var v=parseFloat(el.value);if(isNaN(v))throw name+' 必须是数字';if(v<lo||v>hi)throw name+' 应在 '+lo+'~'+hi+' 之间';return v}
+function run(){
+var err=document.querySelector('#err'),out=document.querySelector('#out');err.textContent='';out.innerHTML='';
+try{
+var a=N2('#a',1.01,50,'相对挥发度 α'),xF=N2('#xF',0.001,0.99,'进料组成 xF'),
+xD=N2('#xD',0.5,0.999,'塔顶组成 xD'),xW=N2('#xW',0.0001,0.49,'塔底组成 xW'),
+q=N2('#q',-5,5,'进料热状态 q'),k=N2('#k',1.01,6,'回流比倍数 R/Rmin'),ef=N2('#e',5,100,'全塔板效率 E');
+if(!(xW<xF&&xF<xD))throw '组成必须满足 xW < xF < xD';
+var rm=rmin(xF,xD,q,a);
+if(rm===null||!(rm>0))throw '无法得到有效最小回流比，请检查 q 与 α';
+var R=k*rm,s=stages({a:a,xF:xF,xD:xD,xW:xW,q:q,R:R});
+if(s.err)throw s.err;
+var E=ef/100,N=s.N,act=actualPlates(N,E),fda=Math.ceil(s.feed/E);
+out.innerHTML='<div class="card"><h2>主要结果</h2><div class="res">'
++row('理论板数 N<sub>T</sub>（含塔釜再沸器）',N,'块')
++row('塔内理论板数',N-1,'块')
++row('实际板数（E='+ef+'%）',act,'块')
++row('进料板位置（理论）','第 '+s.feed,'块')
++row('进料板位置（实际）','第 '+fda,'块')
++row('最小回流比 R<sub>min</sub>',rm.toFixed(4),'—')
++row('操作回流比 R',R.toFixed(4),'—')
++'</div></div><div class="card"><h2>中间量</h2><div class="res">'
++row('进料热状态 q',q,'—')
++row('q 线交点 x<sub>q</sub>',s.xq.toFixed(4),'摩尔分数')
++row('q 线交点 y<sub>q</sub>',s.yq.toFixed(4),'摩尔分数')
++row('精馏段操作线','y = '+s.m1.toFixed(3)+'x + '+s.b1.toFixed(3),'—')
++row('提馏段操作线','y = '+s.m2.toFixed(3)+'x + '+s.b2.toFixed(3),'—')
++row('R / R<sub>min</sub>',(R/rm).toFixed(2),'—')
++'</div></div><div class="card"><h2>公式与出处</h2><p>相平衡（α 恒定）：y = αx/[1+(α−1)x]；q 线：y = [q/(q−1)]x − x<sub>F</sub>/(q−1)；精馏段操作线：y = [R/(R+1)]x + x<sub>D</sub>/(R+1)；最小回流比：R<sub>min</sub> = (x<sub>D</sub>−y<sub>q</sub>)/(y<sub>q</sub>−x<sub>q</sub>)。</p><p>阶梯自 (x<sub>D</sub>, x<sub>D</sub>) 起，交替换用操作线与平衡线，跨过 x<sub>q</sub> 后改用提馏段操作线，至 x ≤ x<sub>W</sub> 止；最后一级计为再沸器，故塔内理论板 = N<sub>T</sub>−1。实际板数 = ⌈(N<sub>T</sub>−1)/E⌉。</p><p>出处：《化工原理》（天津大学 夏清主编）精馏章；McCabe &amp; Thiele, Ind. Eng. Chem., 1925, 17(6):605–608。板效率 40~70% 为行业经验值，未经标准核对，建议按 O\'Connell 关联式（Trans. AIChE, 1946, 42:741）或实测校核。</p></div>';
+}catch(e){err.textContent='⚠ '+e}}
+document.querySelector('#sys').onchange=function(){if(this.value)document.querySelector('#a').value=this.value};
+document.querySelector('#qs').onchange=function(){document.querySelector('#q').value=this.value};
+document.querySelector('#run').onclick=run;
+document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+document.querySelectorAll('.pane').forEach(function(x){x.classList.remove('on')});
+b.classList.add('on');document.querySelector('#'+b.dataset.t).classList.add('on');
+if(b.dataset.t==='src')document.querySelector('#srccode').textContent=document.querySelectorAll('script')[0].textContent}});
+document.querySelector('#runt').onclick=function(){
+var h='',p=0;
+for(var i=0;i<T.length;i++){var v;
+try{v=T[i][1]()}catch(e){v='异常:'+e.message}
+var ex=T[i][2],ok=(typeof v==='number'&&typeof ex==='number')?Math.abs(v-ex)<=1e-3:v===ex;
+if(ok)p++;
+h+='<div class="'+(ok?'ok':'no')+'">'+(ok?'✔':'✘')+' '+T[i][0]+' ｜期望 '+ex+' ｜实得 '+(typeof v==='number'?v.toFixed(6):v)+'</div>'}
+document.querySelector('#tres').innerHTML='<p class="'+(p===T.length?'ok':'no')+'">通过 '+p+' / '+T.length+'</p>'+h};
+</script></body></html>

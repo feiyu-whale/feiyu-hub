@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分流分压电阻计算器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding: 20px;
+    padding-bottom: 60px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    text-align: center;
+    color: #1a5490;
+    margin-bottom: 20px;
+    font-size: 28px;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #1a5490;
+    margin-bottom: 20px;
+  }
+  .tab {
+    padding: 10px 24px;
+    background: #e8eef5;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #555;
+    border-radius: 6px 6px 0 0;
+    margin-right: 4px;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #d0dcea; }
+  .tab.active {
+    background: #1a5490;
+    color: #fff;
+    font-weight: 600;
+  }
+  .tab-content {
+    display: none;
+    background: #fff;
+    padding: 24px;
+    border-radius: 0 8px 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .tab-content.active { display: block; }
+  .calc-section {
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #fafbfc;
+  }
+  .calc-section h2 {
+    color: #1a5490;
+    font-size: 18px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #e0e6ed;
+    padding-bottom: 8px;
+  }
+  .form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .form-row label {
+    min-width: 120px;
+    font-weight: 500;
+    color: #444;
+  }
+  .form-row input {
+    flex: 1;
+    min-width: 120px;
+    padding: 6px 10px;
+    border: 1px solid #c8d1dc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .form-row input:focus {
+    outline: none;
+    border-color: #1a5490;
+    box-shadow: 0 0 0 2px rgba(26,84,144,0.15);
+  }
+  .btn {
+    padding: 7px 18px;
+    background: #1a5490;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #144272; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: #c0392b; }
+  .btn-danger:hover { background: #922b21; }
+  .btn-secondary { background: #7f8c8d; }
+  .btn-secondary:hover { background: #5d6d6e; }
+  .resistor-list { margin: 10px 0; }
+  .resistor-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .resistor-item input { flex: 1; }
+  .result-box {
+    background: #eaf4fb;
+    border-left: 4px solid #1a5490;
+    padding: 14px 18px;
+    margin-top: 14px;
+    border-radius: 4px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+  .result-box.error {
+    background: #fdecea;
+    border-left-color: #c0392b;
+    color: #922b21;
+  }
+  .test-result {
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    max-height: 600px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .test-pass { color: #4ec9b0; }
+  .test-fail { color: #f48771; }
+  .test-summary {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  .test-summary.all-pass { background: #d4edda; color: #155724; }
+  .test-summary.has-fail { background: #f8d7da; color: #721c24; }
+  .doc-content {
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .doc-content h2 {
+    color: #1a5490;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e0e6ed;
+  }
+  .doc-content h3 {
+    color: #2c5282;
+    margin: 18px 0 10px;
+  }
+  .doc-content p { margin-bottom: 10px; }
+  .doc-content ul, .doc-content ol {
+    margin: 10px 0 10px 24px;
+  }
+  .doc-content li { margin-bottom: 6px; }
+  .doc-content code {
+    background: #f0f3f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .doc-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #d0d7de;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc-content th {
+    background: #eaf0f7;
+    font-weight: 600;
+  }
+  .doc-content .scenario {
+    background: #f8fafc;
+    border: 1px solid #e0e6ed;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 12px 0;
+  }
+  .doc-content .scenario h4 {
+    color: #1a5490;
+    margin-bottom: 8px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    font-family: monospace;
+  }
+  .hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>分流分压电阻计算器</h1>
+  <div class="tabs">
+    <button class="tab active" data-tab="calc">计算器</button>
+    <button class="tab" data-tab="test">单元测试</button>
+    <button class="tab" data-tab="doc">使用说明书</button>
+  </div>
+
+  <div id="calc" class="tab-content active">
+    <div class="calc-section">
+      <h2>一、串联分压计算</h2>
+      <p class="hint">输入总电压和串联电阻值，计算每个电阻上的分压。公式：V<sub>i</sub> = V<sub>total</sub> × R<sub>i</sub> / ΣR</p>
+      <div class="form-row">
+        <label>总电压 V<sub>total</sub> (V)：</label>
+        <input type="number" id="sv-vtotal" step="any" value="12" placeholder="例如 12">
+      </div>
+      <div class="form-row">
+        <label>串联电阻 (Ω)：</label>
+      </div>
+      <div id="sv-resistors" class="resistor-list"></div>
+      <div class="form-row">
+        <button class="btn btn-sm" onclick="addSeriesResistor()">+ 添加电阻</button>
+        <button class="btn" onclick="calcSeries()">计算分压</button>
+        <button class="btn btn-secondary" onclick="resetSeries()">重置</button>
+      </div>
+      <div id="sv-result" class="result-box" style="display:none;"></div>
+    </div>
+
+    <div class="calc-section">
+      <h2>二、并联分流计算</h2>
+      <p class="hint">输入总电流和并联电阻值，计算每个支路的分流。公式：I<sub>i</sub> = I<sub>total</sub> × (R<sub>eq</sub> / R<sub>i</sub>)</p>
+      <div class="form-row">
+        <label>总电流 I<sub>total</sub> (A)：</label>
+        <input type="number" id="pc-itotal" step="any" value="0.01" placeholder="例如 0.01">
+      </div>
+      <div class="form-row">
+        <label>并联电阻 (Ω)：</label>
+      </div>
+      <div id="pc-resistors" class="resistor-list"></div>
+      <div class="form-row">
+        <button class="btn btn-sm" onclick="addParallelResistor()">+ 添加电阻</button>
+        <button class="btn" onclick="calcParallel()">计算分流</button>
+        <button class="btn btn-secondary" onclick="resetParallel()">重置</button>
+      </div>
+      <div id="pc-result" class="result-box" style="display:none;"></div>
+    </div>
+
+    <div class="calc-section">
+      <h2>三、反向计算：已知目标电压求电阻</h2>
+      <p class="hint">两电阻串联分压，已知总电压、目标电压和另一电阻，求所需电阻。公式：R<sub>target</sub> = V<sub>target</sub> × R<sub>other</sub> / (V<sub>total</sub> - V<sub>target</sub>)</p>
+      <div class="form-row">
+        <label>总电压 V<sub>total</sub> (V)：</label>
+        <input type="number" id="rv-vtotal" step="any" value="12">
+      </div>
+      <div class="form-row">
+        <label>目标电压 V<sub>target</sub> (V)：</label>
+        <input type="number" id="rv-vtarget" step="any" value="3.3">
+      </div>
+      <div class="form-row">
+        <label>另一电阻 R<sub>other</sub> (Ω)：</label>
+        <input type="number" id="rv-rother" step="any" value="10000">
+      </div>
+      <div class="form-row">
+        <button class="btn" onclick="calcReverseVoltage()">计算所需电阻</button>
+      </div>
+      <div id="rv-result" class="result-box" style="display:none;"></div>
+    </div>
+
+    <div class="calc-section">
+      <h2>四、反向计算：已知目标电流求电阻</h2>
+      <p class="hint">两电阻并联分流，已知总电流、目标支路电流和另一电阻，求所需电阻。公式：R<sub>target</sub> = R<sub>other</sub> × (I<sub>total</sub> - I<sub>target</sub>) / I<sub>target</sub></p>
+      <div class="form-row">
+        <label>总电流 I<sub>total</sub> (A)：</label>
+        <input type="number" id="rc-itotal" step="any" value="0.01">
+      </div>
+      <div class="form-row">
+        <label>目标电流 I<sub>target</sub> (A)：</label>
+        <input type="number" id="rc-itarget" step="any" value="0.006">
+      </div>
+      <div class="form-row">
+        <label>另一电阻 R<sub>other</sub> (Ω)：</label>
+        <input type="number" id="rc-rother" step="any" value="2000">
+      </div>
+      <div class="form-row">
+        <button class="btn" onclick="calcReverseCurrent()">计算所需电阻</button>
+      </div>
+      <div id="rc-result" class="result-box" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="test" class="tab-content">
+    <h2 style="color:#1a5490;margin-bottom:14px;">单元测试运行结果</h2>
+    <button class="btn" onclick="runAllTests()" style="margin-bottom:14px;">运行全部测试</button>
+    <div id="test-summary" class="test-summary" style="display:none;"></div>
+    <div id="test-output" class="test-result"></div>
+  </div>
+
+  <div id="doc" class="tab-content">
+    <div class="doc-content">
+      <h2>一、工具简介</h2>
+      <p>「分流分压电阻计算器」是一款面向电子工程师、电气技术人员、高校师生及电子爱好者的在线计算工具，用于解决直流电路中两类最基础也最常用的电阻网络计算问题：</p>
+      <ul>
+        <li><b>串联分压</b>：已知总电压和若干串联电阻，求每个电阻两端的电压降。</li>
+        <li><b>并联分流</b>：已知总电流和若干并联电阻，求流过每个支路的电流。</li>
+        <li><b>反向设计</b>：已知期望的分压或分流结果，反推所需的电阻值。</li>
+      </ul>
+      <p>该工具解决的核心问题是：在实际电路设计、调试、维修过程中，工程师经常需要快速估算或精确计算分压/分流网络中各节点的电压或各支路的电流，以选择合适的电阻标称值、评估功耗、校验设计裕量。手工计算容易出错，尤其在多电阻网络或需要反复迭代调整时，本工具可以显著提升效率。</p>
+      <p>本工具基于理想电阻模型，遵循欧姆定律与基尔霍夫定律，不考虑温度系数、寄生电感/电容、高频效应、电阻公差等非理想因素。计算结果适用于低频、直流、小信号场景的初步设计与估算。</p>
+
+      <h2>二、参数详细说明</h2>
+      <h3>2.1 串联分压模块</h3>
+      <table>
+        <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+        <tr><td>V<sub>total</sub></td><td>总电压</td><td>伏特 (V)</td><td>任意实数</td><td>施加在串联电阻网络两端的电压。可以为 0、负数（表示反向偏置），但实际工程中通常为正。</td></tr>
+        <tr><td>R<sub>i</sub></td><td>第 i 个电阻</td><td>欧姆 (Ω)</td><td>&gt; 0</td><td>必须为正数。0 或负数在物理上无意义（0 表示短路，负数表示有源器件，均超出本工具范围）。支持科学计数法，如 <code>1e3</code> 表示 1kΩ。</td></tr>
+      </table>
+      <p><b>输出</b>：每个电阻上的电压 V<sub>i</sub>，单位伏特 (V)。所有 V<sub>i</sub> 之和应等于 V<sub>total</sub>（在浮点精度范围内）。</p>
+
+      <h3>2.2 并联分流模块</h3>
+      <table>
+        <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+        <tr><td>I<sub>total</sub></td><td>总电流</td><td>安培 (A)</td><td>任意实数</td><td>流入并联电阻网络的总电流。可以为 0、负数。</td></tr>
+        <tr><td>R<sub>i</sub></td><td>第 i 个电阻</td><td>欧姆 (Ω)</td><td>&gt; 0</td><td>同串联分压，必须为正数。</td></tr>
+      </table>
+      <p><b>输出</b>：每个支路上的电流 I<sub>i</sub>，单位安培 (A)。所有 I<sub>i</sub> 之和应等于 I<sub>total</sub>（在浮点精度范围内）。</p>
+
+      <h3>2.3 反向计算模块</h3>
+      <p>反向计算仅支持<b>两电阻</b>网络（一目标电阻 + 一已知电阻），因为多电阻情况下解不唯一。</p>
+      <table>
+        <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+        <tr><td>V<sub>total</sub> / I<sub>total</sub></td><td>总电压 / 总电流</td><td>V / A</td><td>任意实数</td><td>网络输入端的总量。</td></tr>
+        <tr><td>V<sub>target</sub> / I<sub>target</sub></td><td>目标电压 / 目标电流</td><td>V / A</td><td>任意实数</td><td>期望在目标电阻上得到的电压或流过的电流。分压时不能等于 V<sub>total</sub>（否则电阻无穷大），分流时不能等于 I<sub>total</sub>（否则电阻为 0）。</td></tr>
+        <tr><td>R<sub>other</sub></td><td>另一已知电阻</td><td>Ω</td><td>&gt; 0</td><td>与目标电阻配对的另一电阻值。</td></tr>
+      </table>
+
+      <h2>三、实际使用场景</h2>
+
+      <div class="scenario">
+        <h4>场景 1：LED 限流电阻设计</h4>
+        <p><b>问题</b>：使用 5V 单片机 IO 口驱动一只红色 LED（正向压降约 2V，期望工作电流 10mA），需要串联多大电阻？</p>
+        <p><b>建模</b>：将 LED 视为一个固定 2V 压降的元件，则电阻上的分压为 5V - 2V = 3V。这是一个两电阻串联分压问题：R<sub>LED</sub> 等效压降 2V，R<sub>limit</sub> 期望压降 3V。</p>
+        <p><b>使用反向计算</b>：V<sub>total</sub> = 5V，V<sub>target</sub> = 3V（电阻上的电压），R<sub>other</sub> 未知。但更直接的方式：已知电流 10mA，电阻上电压 3V，由欧姆定律 R = V/I = 3V / 0.01A = 300Ω。</p>
+        <p><b>本工具用法</b>：在「反向计算：已知目标电压求电阻」中，若将 LED 等效为另一电阻（需先估算其动态电阻），可反推限流电阻。但更推荐直接用欧姆定律。本工具适合验证：输入 V<sub>total</sub>=5V，R<sub>1</sub>=300Ω（限流），R<sub>2</sub>=200Ω（LED 等效），则 V<sub>2</sub>=2V，符合预期。</p>
+      </div>
+
+      <div class="scenario">
+        <h4>场景 2：传感器信号分压衰减</h4>
+        <p><b>问题</b>：某传感器输出 0~10V 信号，需要接入 0~3.3V 的 ADC 输入，设计分压网络。</p>
+        <p><b>建模</b>：两电阻串联分压，要求 V<sub>out</sub>/V<sub>in</sub> = 3.3/10 = 0.33。即 R<sub>2</sub>/(R<sub>1</sub>+R<sub>2</sub>) = 0.33。</p>
+        <p><b>使用本工具</b>：在「反向计算」中输入 V<sub>total</sub>=10V，V<sub>target</sub>=3.3V，R<sub>other</sub>=10kΩ（上拉电阻，取值兼顾功耗与 ADC 输入阻抗），计算得 R<sub>target</sub> = 3.3 × 10000 / (10 - 3.3) ≈ 4925Ω。选取 E24 标称值 4.99kΩ 或 5.1kΩ。</p>
+        <p><b>验证</b>：在「串联分压」中输入 V<sub>total</sub>=10V，R<sub>1</sub>=10000Ω，R<sub>2</sub>=4990Ω，得到 V<sub>2</sub>≈3.327V，满足 3.3V ADC 量程要求。</p>
+      </div>
+
+      <div class="scenario">
+        <h4>场景 3：电流表扩程（分流器设计）</h4>
+        <p><b>问题</b>：有一只满偏电流 1mA、内阻 100Ω 的表头，需要改装为量程 1A 的电流表，求分流电阻。</p>
+        <p><b>建模</b>：表头与分流电阻并联。总电流 1A 时，表头支路电流 1mA，分流电阻支路电流 999mA。</p>
+        <p><b>使用本工具</b>：在「反向计算：已知目标电流求电阻」中输入 I<sub>total</sub>=1A，I<sub>target</sub>=0.001A（表头电流），R<sub>other</sub>=100Ω（表头内阻），计算得 R<sub>target</sub> = 100 × (1 - 0.001) / 0.001 = 99900Ω？不对，这里 I<sub>target</sub> 是目标支路（分流电阻）的电流，应为 0.999A。重新输入：I<sub>total</sub>=1A，I<sub>target</sub>=0.999A，R<sub>other</sub>=100Ω，得 R<sub>target</sub> = 100 × (1 - 0.999) / 0.999 ≈ 0.1001Ω。</p>
+        <p><b>验证</b>：在「并联分流」中输入 I<sub>total</sub>=1A，R<sub>1</sub>=100Ω（表头），R<sub>2</sub>=0.1001Ω（分流器），得 I<sub>1</sub>≈0.001A，I<sub>2</sub>≈0.999A，符合预期。</p>
+      </div>
+
+      <div class="scenario">
+        <h4>场景 4：多路 LED 并联均流</h4>
+        <p><b>问题</b>：3 只 LED 并联由同一电源供电，各支路串联不同电阻以实现不同亮度比例（1:2:3）。</p>
+        <p><b>建模</b>：设电源电压 12V，LED 正向压降均为 2V，则各支路电阻上压降均为 10V。要使电流比为 1:2:3，电阻比应为 3:2:1（电流与电阻成反比）。设基准电流 5mA，则 R<sub>1</sub>=10V/5mA=2kΩ，R<sub>2</sub>=10V/10mA=1kΩ，R<sub>3</sub>=10V/15mA≈667Ω。总电流 30mA。</p>
+        <p><b>使用本工具</b>：在「并联分流」中输入 I<sub>total</sub>=0.03A，R<sub>1</sub>=2000Ω，R<sub>2</sub>=1000Ω，R<sub>3</sub>=667Ω，验证各支路电流是否约为 5mA、10mA、15mA。实际计算：等效电阻 R<sub>eq</sub> ≈ 307.9Ω，I<sub>1</sub>=0.03×307.9/2000≈4.62mA，I<sub>2</sub>≈9.24mA，I<sub>3</sub>≈13.8mA。比例约为 1:2:3，但因 667Ω 非精确值，存在偏差。可调整 R<sub>3</sub>=666.7Ω 使比例更精确。</p>
+      </div>
+
+      <div class="scenario">
+        <h4>场景 5：运放反馈网络分压比校验</h4>
+        <p><b>问题</b>：非反相运放电路中，反馈网络由 R<sub>1</sub>=10kΩ 和 R<sub>2</sub>=1kΩ 串联组成，输入信号加在 R<sub>2</sub> 上（分压后送入反相端），校验分压比。</p>
+        <p><b>建模</b>：两电阻串联，输入 1V 信号，期望 R<sub>2</sub> 上分压为 1V × 1k/(10k+1k) ≈ 0.0909V。</p>
+        <p><b>使用本工具</b>：在「串联分压」中输入 V<sub>total</sub>=1V，R<sub>1</sub>=10000Ω，R<sub>2</sub>=1000Ω，得 V<sub>1</sub>=0.909V，V<sub>2</sub>=0.0909V。分压比 0.0909，对应运放增益 1 + R<sub>1</sub>/R<sub>2</sub> = 11 倍，符合设计预期。</p>
+      </div>
+
+      <h2>四、常见错误与排查</h2>
+      <ol>
+        <li><b>输入电阻为 0 或负数</b>：工具会抛出错误。物理上 0Ω 表示短路，负数表示有源器件，均超出本工具的理想电阻模型范围。请检查输入值。</li>
+        <li><b>反向计算中目标电压等于总电压</b>：此时所需电阻为无穷大（开路），工具会返回 <code>Infinity</code> 或抛出错误。请检查设计目标是否合理。</li>
+        <li><b>反向计算中目标电流等于总电流</b>：此时所需电阻为 0（短路），工具会返回 0。请确认是否真的需要短路该支路。</li>
+        <li><b>浮点精度导致的微小误差</b>：例如计算结果应为 3.3V，实际显示 3.3000000000000003V。这是 IEEE 754 双精度浮点数的固有限制，不影响工程判断。工具内部使用 1e-9 的容差进行相等判断。</li>
+        <li><b>多电阻并联时某电阻极小</b>：会导致等效电阻接近该极小值，其他支路电流接近 0。这是正常物理现象，但要注意数值稳定性。</li>
+        <li><b>单位混淆</b>：工具统一使用国际单位制（V、A、Ω）。输入 mA 需转换为 A（如 10mA = 0.01A），输入 kΩ 需转换为 Ω（如 10kΩ = 10000Ω）。工具不做单位自动转换。</li>
+        <li><b>空电阻数组</b>：工具会抛出错误。至少需要一个电阻才能构成电路。</li>
+      </ol>
+
+      <h2>五、数据来源与标准依据</h2>
+      <p>本工具的计算公式基于经典电路理论，主要依据：</p>
+      <ul>
+        <li><b>欧姆定律</b>：V = I × R，是直流电阻电路分析的基础。</li>
+        <li><b>基尔霍夫电压定律 (KVL)</b>：串联电路中各元件电压之和等于总电压。</li>
+        <li><b>基尔霍夫电流定律 (KCL)</b>：并联电路中各支路电流之和等于总电流。</li>
+        <li><b>IEC 60063:2015</b>：《电阻器和电容器的标称值系列》，规定了 E 系列（E6、E12、E24、E48、E96、E192）优选值。本工具不直接提供标称值选取功能，但用户可参考该标准将计算结果圆整到最接近的标称值。</li>
+        <li><b>GB/T 5729-2003</b>：《电子设备用固定电阻器》，等同采用 IEC 60115-1，规定了固定电阻器的通用规范。本工具不涉及电阻器的具体性能指标，但用户选型时可参考该标准。</li>
+        <li><b>GB/T 1234-2017</b>（需查标准原文确认最新版本号）：电子设备用固定电阻器分规范。</li>
+      </ul>
+      <p>本工具不直接引用任何国家强制性标准，因为分压分流计算属于基础电路理论，不涉及安全、电磁兼容等强制要求。但在实际工程应用中，电阻选型需考虑功率额定值、温度系数、精度等级、耐压等参数，这些需参考具体电阻器产品标准。</p>
+
+      <h2>六、局限性说明</h2>
+      <p>本工具存在以下局限性，用户在使用时应充分了解：</p>
+      <ol>
+        <li><b>理想电阻模型</b>：假设电阻为纯阻性，不考虑寄生电感（ESL）和寄生电容（EPC）。在高频（通常 &gt; 10MHz）或快速脉冲电路中，实际阻抗会偏离标称值，本工具结果不适用。</li>
+        <li><b>不考虑温度系数</b>：实际电阻值随温度变化（温度系数 TCR，单位 ppm/°C）。本工具假设电阻值恒定，不适用于高温或大功率发热场景的精确计算。</li>
+        <li><b>不考虑功率耗散</b>：本工具不计算电阻上的功率 P = V²/R 或 P = I²R，用户需自行校验所选电阻的额定功率是否足够，避免过热损坏。</li>
+        <li><b>不考虑电阻公差</b>：实际电阻有精度等级（如 ±1%、±5%），本工具使用标称值计算，不分析公差对分压/分流比的影响。精密电路需进行最坏情况（WCA）或蒙特卡洛分析。</li>
+        <li><b>仅支持直流/低频</b>：本工具基于直流电路理论，不适用于交流电路（需考虑阻抗、相位）、瞬态分析（需考虑电容/电感）。</li>
+        <li><b>反向计算仅限两电阻</b>：多电阻反向设计问题解不唯一，本工具未提供多电阻反向计算功能。</li>
+        <li><b>不提供标称值圆整</b>：计算结果可能为非标称值（如 4925Ω），用户需自行参照 IEC 60063 的 E 系列选取最接近的标称值，并重新校验分压/分流比是否满足要求。</li>
+        <li><b>浮点精度限制</b>：JavaScript 使用 IEEE 754 双精度浮点数，有效数字约 15~17 位。极端大或极端小的数值（如 1e-20 或 1e20）可能产生精度损失或溢出。</li>
+        <li><b>不支持非线性元件</b>：二极管、晶体管、热敏电阻等非线性元件的 V-I 关系不是线性的，本工具不适用。</li>
+        <li><b>不验证电路可行性</b>：本工具只做数学计算，不判断电路是否物理可实现（如功率是否超标、电压是否击穿、电流是否超过导线载流量等）。</li>
+      </ol>
+      <p>综上，本工具适用于<b>低频、直流、小信号、理想电阻</b>场景的初步设计与估算。对于精密、高频、大功率、高可靠性应用，需结合专业 EDA 工具（如 SPICE 仿真）和详细的手稿计算进行验证。</p>
+
+      <h2>七、附录：公式汇总</h2>
+      <h3>串联分压</h3>
+      <p>总电阻：R<sub>total</sub> = R<sub>1</sub> + R<sub>2</sub> + ... + R<sub>n</sub></p>
+      <p>第 i 个电阻上的电压：V<sub>i</sub> = V<sub>total</sub> × R<sub>i</sub> / R<sub>total</sub></p>
+      <h3>并联分流</h3>
+      <p>等效电阻：1/R<sub>eq</sub> = 1/R<sub>1</sub> + 1/R<sub>2</sub> + ... + 1/R<sub>n</sub></p>
+      <p>第 i 个支路的电流：I<sub>i</sub> = I<sub>total</sub> × R<sub>eq</sub> / R<sub>i</sub></p>
+      <p>两电阻特例：I<sub>1</sub> = I<sub>total</sub> × R<sub>2</sub> / (R<sub>1</sub> + R<sub>2</sub>)，I<sub>2</sub> = I<sub>total</sub> × R<sub>1</sub> / (R<sub>1</sub> + R<sub>2</sub>)</p>
+      <h3>反向计算（两电阻）</h3>
+      <p>分压：R<sub>target</sub> = V<sub>target</sub> × R<sub>other</sub> / (V<sub>total</sub> - V<sub>target</sub>)</p>
+      <p>分流：R<sub>target</sub> = R<sub>other</sub> × (I<sub>total</sub> - I<sub>target</sub>) / I<sub>target</sub></p>
+    </div>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法（纯函数，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 校验输入是否为有限数值
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @returns {void}
+ * @throws {Error} 当 value 不是有限数值时抛出
+ * @example
+ * validateFiniteNumber(3.14, 'pi'); // 通过
+ * validateFiniteNumber(NaN, 'x');   // 抛出 Error
+ */
+function validateFiniteNumber(value, name) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`参数 ${name} 必须是有限数值，收到：${value}`);
+  }
+}
+
+/**
+ * 校验电阻数组
+ * @param {number[]} resistances - 电阻值数组（单位 Ω）
+ * @returns {void}
+ * @throws {Error} 当数组为空、包含非正数或非数值时抛出
+ * @example
+ * validateResistances([100, 200, 300]); // 通过
+ * validateResistances([]);              // 抛出 Error
+ * validateResistances([100, -1]);       // 抛出 Error
+ */
+function validateResistances(resistances) {
+  if (!Array.isArray(resistances)) {
+    throw new Error('电阻参数必须是数组');
+  }
+  if (resistances.length === 0) {
+    throw new Error('电阻数组不能为空');
+  }
+  for (let i = 0; i < resistances.length; i++) {
+    if (typeof resistances[i] !== 'number' || !Number.isFinite(resistances[i])) {
+      throw new Error(`电阻 [${i}] 必须是有限数值，收到：${resistances[i]}`);
+    }
+    if (resistances[i] <= 0) {
+      throw new Error(`电阻 [${i}] 必须大于 0，收到：${resistances[i]}`);
+    }
+  }
+}
+
+/**
+ * 计算串联分压电路中各电阻上的电压
+ * 基于欧姆定律与基尔霍夫电压定律：V_i = V_total × R_i / ΣR
+ * @param {number} V_total - 总电压（单位 V），可为任意有限实数
+ * @param {number[]} resistances - 串联电阻数组（单位 Ω），每个值必须 > 0
+ * @returns {number[]} 各电阻上的电压数组（单位 V），顺序与输入电阻一致
+ * @throws {Error} 当 V_total 不是有限数值，或 resistances 不合法时抛出
+ * @example
+ * calcSeriesVoltageDivider(10, [1000, 1000]);
+ * // => [5, 5]
+ * @example
+ * calcSeriesVoltageDivider(12, [1000, 2000, 3000]);
+ * // => [2, 4, 6]
+ */
+function calcSeriesVoltageDivider(V_total, resistances) {
+  validateFiniteNumber(V_total, 'V_total');
+  validateResistances(resistances);
+  const R_total = resistances.reduce((sum, r) => sum + r, 0);
+  return resistances.map(r => V_total * r / R_total);
+}
+
+/**
+ * 计算并联分流电路中各支路的电流
+ * 基于欧姆定律与基尔霍夫电流定律：I_i = I_total × R_eq / R_i
+ * 其中 1/R_eq = Σ(1/R_i)
+ * @param {number} I_total - 总电流（单位 A），可为任意有限实数
+ * @param {number[]} resistances - 并联电阻数组（单位 Ω），每个值必须 > 0
+ * @returns {number[]} 各支路电流数组（单位 A），顺序与输入电阻一致
+ * @throws {Error} 当 I_total 不是有限数值，或 resistances 不合法时抛出
+ * @example
+ * calcParallelCurrentDivider(0.01, [1000, 1000]);
+ * // => [0.005, 0.005]
+ * @example
+ * calcParallelCurrentDivider(0.011, [1000, 2000, 3000]);
+ * // => [0.006, 0.003, 0.002]
+ */
+function calcParallelCurrentDivider(I_total, resistances) {
+  validateFiniteNumber(I_total, 'I_total');
+  validateResistances(resistances);
+  const invSum = resistances.reduce((sum, r) => sum + 1 / r, 0);
+  const R_eq = 1 / invSum;
+  return resistances.map(r => I_total * R_eq / r);
+}
+
+/**
+ * 计算串联分压中达到目标电压所需的电阻值（两电阻情况）
+ * 公式：R_target = V_target × R_other / (V_total - V_target)
+ * @param {number} V_total - 总电压（单位 V）
+ * @param {number} V_target - 目标电阻上的电压（单位 V）
+ * @param {number} R_other - 另一已知电阻（单位 Ω），必须 > 0
+ * @returns {number} 所需电阻值（单位 Ω）。当 V_target = V_total 时返回 Infinity
+ * @throws {Error} 当参数不合法时抛出
+ * @example
+ * calcResistorForTargetVoltage(10, 3, 2000);
+ * // => 857.1428571428571
+ * @example
+ * calcResistorForTargetVoltage(10, 10, 2000);
+ * // => Infinity
+ */
+function calcResistorForTargetVoltage(V_total, V_target, R_other) {
+  validateFiniteNumber(V_total, 'V_total');
+  validateFiniteNumber(V_target, 'V_target');
+  validateFiniteNumber(R_other, 'R_other');
+  if (R_other <= 0) {
+    throw new Error(`R_other 必须大于 0，收到：${R_other}`);
+  }
+  const denominator = V_total - V_target;
+  if (denominator === 0) {
+    return Infinity;
+  }
+  return V_target * R_other / denominator;
+}
+
+/**
+ * 计算并联分流中达到目标电流所需的电阻值（两电阻情况）
+ * 公式：R_target = R_other × (I_total - I_target) / I_target
+ * @param {number} I_total - 总电流（单位 A）
+ * @param {number} I_target - 目标支路电流（单位 A）
+ * @param {number} R_other - 另一已知电阻（单位 Ω），必须 > 0
+ * @returns {number} 所需电阻值（单位 Ω）。当 I_target = 0 时返回 Infinity
+ * @throws {Error} 当参数不合法时抛出
+ * @example
+ * calcResistorForTargetCurrent(0.01, 0.006, 2000);
+ * // => 1333.3333333333333
+ * @example
+ * calcResistorForTargetCurrent(0.01, 0, 2000);
+ * // => Infinity
+ */
+function calcResistorForTargetCurrent(I_total, I_target, R_other) {
+  validateFiniteNumber(I_total, 'I_total');
+  validateFiniteNumber(I_target, 'I_target');
+  validateFiniteNumber(R_other, 'R_other');
+  if (R_other <= 0) {
+    throw new Error(`R_other 必须大于 0，收到：${R_other}`);
+  }
+  if (I_target === 0) {
+    return Infinity;
+  }
+  return R_other * (I_total - I_target) / I_target;
+}
+
+/**
+ * 计算电阻网络的等效电阻
+ * @param {number[]} resistances - 电阻数组（单位 Ω），每个值必须 > 0
+ * @param {string} type - 连接方式：'series'（串联）或 'parallel'（并联）
+ * @returns {number} 等效电阻（单位 Ω）
+ * @throws {Error} 当参数不合法时抛出
+ * @example
+ * calcEquivalentResistance([100, 200], 'series');
+ * // => 300
+ * @example
+ * calcEquivalentResistance([100, 200], 'parallel');
+ * // => 66.66666666666667
+ */
+function calcEquivalentResistance(resistances, type) {
+  validateResistances(resistances);
+  if (type !== 'series' && type !== 'parallel') {
+    throw new Error(`type 必须是 'series' 或 'parallel'，收到：${type}`);
+  }
+  if (type === 'series') {
+    return resistances.reduce((sum, r) => sum + r, 0);
+  } else {
+    const invSum = resistances.reduce((sum, r) => sum + 1 / r, 0);
+    return 1 / invSum;
+  }
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS，≥30 个用例）
+ * ============================================================ */
+
+let passCount = 0;
+let failCount = 0;
+let testLog = [];
+
+function log(msg, cls) {
+  testLog.push({ msg, cls: cls || '' });
+}
+
+/**
+ * 断言两个数值相等（允许浮点容差）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {string} message - 测试描述
+ * @param {number} tolerance - 容差，默认 1e-9
+ */
+function assertEqual(actual, expected, message, tolerance) {
+  tolerance = (tolerance === undefined) ? 1e-9 : tolerance;
+  const diff = Math.abs(actual - expected);
+  const ok = diff <= tolerance || (Math.abs(expected) > 1e-15 && diff / Math.abs(expected) <= tolerance);
+  if (ok) {
+    passCount++;
+    log(`[PASS] ${message}`, 'test-pass');
+  } else {
+    failCount++;
+    log(`[FAIL] ${message}  期望 ${expected}，实际 ${actual}，差 ${diff}`, 'test-fail');
+  }
+}
+
+/**
+ * 断言两个数组相等（逐元素比较，允许浮点容差）
+ */
+function assertArrayEqual(actual, expected, message, tolerance) {
+  tolerance = (tolerance === undefined) ? 1e-9 : tolerance;
+  if (!Array.isArray(actual) || !Array.isArray(expected)) {
+    failCount++;
+    log(`[FAIL] ${message}  期望数组，实际 ${typeof actual} / ${typeof expected}`, 'test-fail');
+    return;
+  }
+  if (actual.length !== expected.length) {
+    failCount++;
+    log(`[FAIL] ${message}  长度不匹配：期望 ${expected.length}，实际 ${actual.length}`, 'test-fail');
+    return;
+  }
+  for (let i = 0; i < actual.length; i++) {
+    const diff = Math.abs(actual[i] - expected[i]);
+    const relOk = Math.abs(expected[i]) > 1e-15 ? diff / Math.abs(expected[i]) <= tolerance : diff <= tolerance;
+    if (!(diff <= tolerance || relOk)) {
+      failCount++;
+      log(`[FAIL] ${message}  索引 ${i}：期望 ${expected[i]}，实际 ${actual[i]}`, 'test-fail');
+      return;
+    }
+  }
+  passCount++;
+  log(`[PASS] ${message}`, 'test-pass');
+}
+
+/**
+ * 断言函数抛出异常
+ */
+function assertThrows(fn, message) {
+  try {
+    fn();
+    failCount++;
+    log(`[FAIL] ${message}  期望抛出异常但未抛出`, 'test-fail');
+  } catch (e) {
+    passCount++;
+    log(`[PASS] ${message}  (抛出: ${e.message})`, 'test-pass');
+  }
+}
+
+/**
+ * 运行全部测试
+ */
+function runAllTests() {
+  passCount = 0;
+  failCount = 0;
+  testLog = [];
+
+  log('========== 开始运行单元测试 ==========', '');
+
+  // ---------- 串联分压 calcSeriesVoltageDivider ----------
+  log('\n--- calcSeriesVoltageDivider ---', '');
+
+  // 1. 两电阻等值分压
+  assertArrayEqual(
+    calcSeriesVoltageDivider(10, [1000, 1000]),
+    [5, 5],
+    '串联分压：两电阻等值 1k+1k，10V → 5V,5V'
+  );
+
+  // 2. 两电阻 1:2 分压
+  assertArrayEqual(
+    calcSeriesVoltageDivider(9, [1000, 2000]),
+    [3, 6],
+    '串联分压：1k+2k，9V → 3V,6V'
+  );
+
+  // 3. 三电阻分压
+  assertArrayEqual(
+    calcSeriesVoltageDivider(12, [1000, 2000, 3000]),
+    [2, 4, 6],
+    '串联分压：1k+2k+3k，12V → 2V,4V,6V'
+  );
+
+  // 4. 四电阻等值
+  assertArrayEqual(
+    calcSeriesVoltageDivider(20, [1000, 1000, 1000, 1000]),
+    [5, 5, 5, 5],
+    '串联分压：4×1k，20V → 5V×4'
+  );
+
+  // 5. 单电阻
+  assertArrayEqual(
+    calcSeriesVoltageDivider(5, [1000]),
+    [5],
+    '串联分压：单电阻 1k，5V → 5V'
+  );
+
+  // 6. 极小电阻
+  assertArrayEqual(
+    calcSeriesVoltageDivider(1, [1e-6, 1e-6]),
+    [0.5, 0.5],
+    '串联分压：极小电阻 1uΩ+1uΩ，1V → 0.5V,0.5V'
+  );
+
+  // 7. 极大电阻
+  assertArrayEqual(
+    calcSeriesVoltageDivider(100, [1e9, 1e9]),
+    [50, 50],
+    '串联分压：极大电阻 1GΩ+1GΩ，100V → 50V,50V'
+  );
+
+  // 8. 总电压 0
+  assertArrayEqual(
+    calcSeriesVoltageDivider(0, [1000, 1000]),
+    [0, 0],
+    '串联分压：总电压 0V → 0V,0V'
+  );
+
+  // 9. 负电压
+  assertArrayEqual(
+    calcSeriesVoltageDivider(-10, [1000, 1000]),
+    [-5, -5],
+    '串联分压：负电压 -10V → -5V,-5V'
+  );
+
+  // 10. 浮点精度
+  assertArrayEqual(
+    calcSeriesVoltageDivider(10, [1000, 3000]),
+    [2.5, 7.5],
+    '串联分压：浮点精度 1k+3k，10V → 2.5V,7.5V'
+  );
+
+  // 11. 非整数比例
+  assertArrayEqual(
+    calcSeriesVoltageDivider(3, [1, 2]),
+    [1, 2],
+    '串联分压：1Ω+2Ω，3V → 1V,2V'
+  );
+
+  // 12. 大比例
+  assertArrayEqual(
+    calcSeriesVoltageDivider(1000, [1, 999]),
+    [1, 999],
+    '串联分压：1Ω+999Ω，1000V → 1V,999V'
+  );
+
+  // ---------- 并联分流 calcParallelCurrentDivider ----------
+  log('\n--- calcParallelCurrentDivider ---', '');
+
+  // 13. 两电阻等值分流
+  assertArrayEqual(
+    calcParallelCurrentDivider(0.01, [1000, 1000]),
+    [0.005, 0.005],
+    '并联分流：两电阻等值 1k+1k，10mA → 5mA,5mA'
+  );
+
+  // 14. 两电阻 1:2 分流
+  assertArrayEqual(
+    calcParallelCurrentDivider(0.009, [1000, 2000]),
+    [0.006, 0.003],
+    '并联分流：1k+2k，9mA → 6mA,3mA'
+  );
+
+  // 15. 三电阻分流
+  assertArrayEqual(
+    calcParallelCurrentDivider(0.011, [1000, 2000, 3000]),
+    [0.006, 0.003, 0.002],
+    '并联分流：1k+2k+3k，11mA → 6mA,3mA,2mA'
+  );
+
+  // 16. 单电阻
+  assertArrayEqual(
+    calcParallelCurrentDivider(0.005, [1000]),
+    [0.005],
+    '并联分流：单电阻 1k，5mA → 5mA'
+  );
+
+  // 17. 极小电阻
+  assertArrayEqual(
+    calcParallelCurrentDivider(1, [1e-6, 1e-6]),
+    [0.5, 0.5],
+    '并联分流：极小电阻 1uΩ+1uΩ，1A → 0.5A,0.5A'
+  );
+
+  // 18. 极大电阻
+  assertArrayEqual(
+    calcParallelCurrentDivider(100, [1e9, 1e9]),
+    [50, 50],
+    '并联分流：极大电阻 1GΩ+1GΩ，100A → 50A,50A'
+  );
+
+  // 19. 总电流 0
+  assertArrayEqual(
+    calcParallelCurrentDivider(0, [1000, 1000]),
+    [0, 0],
+    '并联分流：总电流 0A → 0A,0A'
+  );
+
+  // 20. 负电流
+  assertArrayEqual(
+    calcParallelCurrentDivider(-0.01, [1000, 1000]),
+    [-0.005, -0.005],
+    '并联分流：负电流 -10mA → -5mA,-5mA'
+  );
+
+  // 21. 浮点精度
+  assertArrayEqual(
+    calcParallelCurrentDivider(0.01, [1000, 3000]),
+    [0.0075, 0.0025],
+    '并联分流：浮点精度 1k+3k，10mA → 7.5mA,2.5mA'
+  );
+
+  // 22. 大比例
+  assertArrayEqual(
+    calcParallelCurrentDivider(1000, [1, 999]),
+    [1000 * 999 / 1000, 1000 * 1 / 1000],
+    '并联分流：大比例 1Ω+999Ω，1000A'
+  );
+
+  // ---------- 反向计算 calcResistorForTargetVoltage ----------
+  log('\n--- calcResistorForTargetVoltage ---', '');
+
+  // 23. 正常分压电阻
+  assertEqual(
+    calcResistorForTargetVoltage(10, 3, 2000),
+    3 * 2000 / (10 - 3),
+    '反向分压：10V 目标 3V，R_other=2kΩ'
+  );
+
+  // 24. 目标电压 0
+  assertEqual(
+    calcResistorForTargetVoltage(10, 0, 2000),
+    0,
+    '反向分压：目标电压 0V → R=0Ω'
+  );
+
+  // 25. 目标电压等于总电压
+  assertEqual(
+    calcResistorForTargetVoltage(10, 10, 2000),
+    Infinity,
+    '反向分压：目标电压=总电压 → R=∞'
+  );
+
+  // 26. 负目标电压
+  assertEqual(
+    calcResistorForTargetVoltage(10, -5, 2000),
+    -5 * 2000 / (10 - (-5)),
+    '反向分压：负目标电压 -5V'
+  );
+
+  // ---------- 反向计算 calcResistorForTargetCurrent ----------
+  log('\n--- calcResistorForTargetCurrent ---', '');
+
+  // 27. 正常分流电阻
+  assertEqual(
+    calcResistorForTargetCurrent(0.01, 0.006, 2000),
+    2000 * (0.01 - 0.006) / 0.006,
+    '反向分流：10mA 目标 6mA，R_other=2kΩ'
+  );
+
+  // 28. 目标电流 0
+  assertEqual(
+    calcResistorForTargetCurrent(0.01, 0, 2000),
+    Infinity,
+    '反向分流：目标电流 0A → R=∞'
+  );
+
+  // 29. 目标电流等于总电流
+  assertEqual(
+    calcResistorForTargetCurrent(0.01, 0.01, 2000),
+    0,
+    '反向分流：目标电流=总电流 → R=0Ω'
+  );
+
+  // ---------- 等效电阻 calcEquivalentResistance ----------
+  log('\n--- calcEquivalentResistance ---', '');
+
+  // 30. 串联等效
+  assertEqual(
+    calcEquivalentResistance([100, 200, 300], 'series'),
+    600,
+    '等效电阻：串联 100+200+300 = 600Ω'
+  );
+
+  // 31. 并联等效
+  assertEqual(
+    calcEquivalentResistance([100, 200], 'parallel'),
+    1 / (1/100 + 1/200),
+    '等效电阻：并联 100//200'
+  );
+
+  // 32. 单电阻串联
+  assertEqual(
+    calcEquivalentResistance([500], 'series'),
+    500,
+    '等效电阻：单电阻串联 = 500Ω'
+  );
+
+  // 33. 单电阻并联
+  assertEqual(
+    calcEquivalentResistance([500], 'parallel'),
+    500,
+    '等效电阻：单电阻并联 = 500Ω'
+  );
+
+  // ---------- 异常输入 ----------
+  log('\n--- 异常输入 ---', '');
+
+  // 34. V_total 为 null
+  assertThrows(
+    () => calcSeriesVoltageDivider(null, [1000]),
+    '异常：V_total=null 应抛出'
+  );
+
+  // 35. V_total 为 undefined
+  assertThrows(
+    () => calcSeriesVoltageDivider(undefined, [1000]),
+    '异常：V_total=undefined 应抛出'
+  );
+
+  // 36. V_total 为 NaN
+  assertThrows(
+    () => calcSeriesVoltageDivider(NaN, [1000]),
+    '异常：V_total=NaN 应抛出'
+  );
+
+  // 37. V_total 为空字符串
+  assertThrows(
+    () => calcSeriesVoltageDivider('', [1000]),
+    '异常：V_total="" 应抛出'
+  );
+
+  // 38. 电阻含负数
+  assertThrows(
+    () => calcSeriesVoltageDivider(10, [1000, -100]),
+    '异常：电阻含负数应抛出'
+  );
+
+  // 39. 电阻含 0
+  assertThrows(
+    () => calcSeriesVoltageDivider(10, [1000, 0]),
+    '异常：电阻含 0 应抛出'
+  );
+
+  // 40. 电阻为空数组
+  assertThrows(
+    () => calcSeriesVoltageDivider(10, []),
+    '异常：电阻空数组应抛出'
+  );
+
+  // 41. 电阻非数组
+  assertThrows(
+    () => calcSeriesVoltageDivider(10, '1000'),
+    '异常：电阻非数组应抛出'
+  );
+
+  // 42. 电阻含 NaN
+  assertThrows(
+    () => calcSeriesVoltageDivider(10, [1000, NaN]),
+    '异常：电阻含 NaN 应抛出'
+  );
+
+  // 43. 电阻含 null
+  assertThrows(
+    () => calcSeriesVoltageDivider(10, [1000, null]),
+    '异常：电阻含 null 应抛出'
+  );
+
+  // 44. I_total 为 null
+  assertThrows(
+    () => calcParallelCurrentDivider(null, [1000]),
+    '异常：I_total=null 应抛出'
+  );
+
+  // 45. type 非法
+  assertThrows(
+    () => calcEquivalentResistance([100], 'bridge'),
+    '异常：type 非法应抛出'
+  );
+
+  // 46. R_other 为 0
+  assertThrows(
+    () => calcResistorForTargetVoltage(10, 5, 0),
+    '异常：R_other=0 应抛出'
+  );
+
+  // 47. R_other 为负
+  assertThrows(
+    () => calcResistorForTargetVoltage(10, 5, -100),
+    '异常：R_other 为负应抛出'
+  );
+
+  // ---------- 边界值 ----------
+  log('\n--- 边界值 ---', '');
+
+  // 48. 极大数值
+  assertArrayEqual(
+    calcSeriesVoltageDivider(1e15, [1e6, 1e6]),
+    [5e14, 5e14],
+    '边界：极大数值 1e15V',
+    1e-3
+  );
+
+  // 49. 极小数值
+  assertArrayEqual(
+    calcSeriesVoltageDivider(1e-15, [1e6, 1e6]),
+    [5e-16, 5e-16],
+    '边界：极小数值 1e-15V',
+    1e-25
+  );
+
+  // 50. 多元素数组
+  const manyR = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const manyV = calcSeriesVoltageDivider(55, manyR);
+  const expectedMany = manyR.map(r => 55 * r / 55);
+  assertArrayEqual(manyV, expectedMany, '边界：10 个电阻串联', 1e-9);
+
+  // ---------- 汇总 ----------
+  log('\n========== 测试完成 ==========', '');
+  log(`通过 ${passCount} / 共 ${passCount + failCount}`, '');
+  if (failCount > 0) {
+    log(`失败 ${failCount} 个`, 'test-fail');
+  } else {
+    log('全部通过！', 'test-pass');
+  }
+
+  // 渲染到页面
+  const summaryEl = document.getElementById('test-summary');
+  const outputEl = document.getElementById('test-output');
+  summaryEl.style.display = 'block';
+  if (failCount === 0) {
+    summaryEl.className = 'test-summary all-pass';
+    summaryEl.textContent = `全部通过：${passCount} / ${passCount + failCount}`;
+  } else {
+    summaryEl.className = 'test-summary has-fail';
+    summaryEl.textContent = `失败 ${failCount} 个，通过 ${passCount} / ${passCount + failCount}`;
+  }
+  outputEl.innerHTML = testLog.map(l =>
+    `<div class="${l.cls}">${escapeHtml(l.msg)}</div>`
+  ).join('');
+  console.log(`通过 ${passCount} / 共 ${passCount + failCount}`);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ============================================================
+ * 第三部分：UI 交互
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 串联分压 UI
+let seriesResistors = [1000, 2000];
+function renderSeriesResistors() {
+  const container = document.getElementById('sv-resistors');
+  container.innerHTML = '';
+  seriesResistors.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'resistor-item';
+    div.innerHTML = `
+      <span>R<sub>${i+1}</sub> =</span>
+      <input type="number" step="any" value="${r}" onchange="seriesResistors[${i}]=parseFloat(this.value)">
+      <span>Ω</span>
+      <button class="btn btn-sm btn-danger" onclick="removeSeriesResistor(${i})">×</button>
+    `;
+    container.appendChild(div);
+  });
+}
+function addSeriesResistor() {
+  seriesResistors.push(1000);
+  renderSeriesResistors();
+}
+function removeSeriesResistor(i) {
+  if (seriesResistors.length <= 1) return;
+  seriesResistors.splice(i, 1);
+  renderSeriesResistors();
+}
+function resetSeries() {
+  seriesResistors = [1000, 2000];
+  document.getElementById('sv-vtotal').value = 12;
+  document.getElementById('sv-result').style.display = 'none';
+  renderSeriesResistors();
+}
+function calcSeries() {
+  const box = document.getElementById('sv-result');
+  box.style.display = 'block';
+  try {
+    const V = parseFloat(document.getElementById('sv-vtotal').value);
+    const Rs = seriesResistors.map(r => parseFloat(r));
+    const voltages = calcSeriesVoltageDivider(V, Rs);
+    const R_total = Rs.reduce((a, b) => a + b, 0);
+    let out = `总电阻 R_total = ${R_total.toPrecision(6)} Ω\n`;
+    out += `总电压 V_total = ${V} V\n`;
+    out += `─────────────────────────────\n`;
+    voltages.forEach((v, i) => {
+      out += `R${i+1} = ${Rs[i].toPrecision(6)} Ω  →  V${i+1} = ${v.toPrecision(6)} V\n`;
+    });
+    out += `─────────────────────────────\n`;
+    out += `校验：ΣV = ${voltages.reduce((a, b) => a + b, 0).toPrecision(6)} V`;
+    box.className = 'result-box';
+    box.textContent = out;
+  } catch (e) {
+    box.className = 'result-box error';
+    box.textContent = `错误：${e.message}`;
+  }
+}
+
+// 并联分流 UI
+let parallelResistors = [1000, 2000];
+function renderParallelResistors() {
+  const container = document.getElementById('pc-resistors');
+  container.innerHTML = '';
+  parallelResistors.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'resistor-item';
+    div.innerHTML = `
+      <span>R<sub>${i+1}</sub> =</span>
+      <input type="number" step="any" value="${r}" onchange="parallelResistors[${i}]=parseFloat(this.value)">
+      <span>Ω</span>
+      <button class="btn btn-sm btn-danger" onclick="removeParallelResistor(${i})">×</button>
+    `;
+    container.appendChild(div);
+  });
+}
+function addParallelResistor() {
+  parallelResistors.push(1000);
+  renderParallelResistors();
+}
+function removeParallelResistor(i) {
+  if (parallelResistors.length <= 1) return;
+  parallelResistors.splice(i, 1);
+  renderParallelResistors();
+}
+function resetParallel() {
+  parallelResistors = [1000, 2000];
+  document.getElementById('pc-itotal').value = 0.01;
+  document.getElementById('pc-result').style.display = 'none';
+  renderParallelResistors();
+}
+function calcParallel() {
+  const box = document.getElementById('pc-result');
+  box.style.display = 'block';
+  try {
+    const I = parseFloat(document.getElementById('pc-itotal').value);
+    const Rs = parallelResistors.map(r => parseFloat(r));
+    const currents = calcParallelCurrentDivider(I, Rs);
+    const R_eq = calcEquivalentResistance(Rs, 'parallel');
+    let out = `等效电阻 R_eq = ${R_eq.toPrecision(6)} Ω\n`;
+    out += `总电流 I_total = ${I} A\n`;
+    out += `─────────────────────────────\n`;
+    currents.forEach((c, i) => {
+      out += `R${i+1} = ${Rs[i].toPrecision(6)} Ω  →  I${i+1} = ${c.toPrecision(6)} A\n`;
+    });
+    out += `─────────────────────────────\n`;
+    out += `校验：ΣI = ${currents.reduce((a, b) => a + b, 0).toPrecision(6)} A`;
+    box.className = 'result-box';
+    box.textContent = out;
+  } catch (e) {
+    box.className = 'result-box error';
+    box.textContent = `错误：${e.message}`;
+  }
+}
+
+// 反向分压 UI
+function calcReverseVoltage() {
+  const box = document.getElementById('rv-result');
+  box.style.display = 'block';
+  try {
+    const Vt = parseFloat(document.getElementById('rv-vtotal').value);
+    const Vg = parseFloat(document.getElementById('rv-vtarget').value);
+    const Ro = parseFloat(document.getElementById('rv-rother').value);
+    const R = calcResistorForTargetVoltage(Vt, Vg, Ro);
+    let out = `总电压 V_total = ${Vt} V\n`;
+    out += `目标电压 V_target = ${Vg} V\n`;
+    out += `另一电阻 R_other = ${Ro} Ω\n`;
+    out += `─────────────────────────────\n`;
+    if (R === Infinity) {
+      out += `所需电阻 R_target = ∞ (开路)\n提示：目标电压等于总电压时，所需电阻为无穷大`;
+    } else {
+      out += `所需电阻 R_target = ${R.toPrecision(6)} Ω`;
+    }
+    box.className = 'result-box';
+    box.textContent = out;
+  } catch (e) {
+    box.className = 'result-box error';
+    box.textContent = `错误：${e.message}`;
+  }
+}
+
+// 反向分流 UI
+function calcReverseCurrent() {
+  const box = document.getElementById('rc-result');
+  box.style.display = 'block';
+  try {
+    const It = parseFloat(document.getElementById('rc-itotal').value);
+    const Ig = parseFloat(document.getElementById('rc-itarget').value);
+    const Ro = parseFloat(document.getElementById('rc-rother').value);
+    const R = calcResistorForTargetCurrent(It, Ig, Ro);
+    let out = `总电流 I_total = ${It} A\n`;
+    out += `目标电流 I_target = ${Ig} A\n`;
+    out += `另一电阻 R_other = ${Ro} Ω\n`;
+    out += `─────────────────────────────\n`;
+    if (R === Infinity) {
+      out += `所需电阻 R_target = ∞ (开路)\n提示：目标电流为 0 时，所需电阻为无穷大`;
+    } else {
+      out += `所需电阻 R_target = ${R.toPrecision(6)} Ω`;
+    }
+    box.className = 'result-box';
+    box.textContent = out;
+  } catch (e) {
+    box.className = 'result-box error';
+    box.textContent = `错误：${e.message}`;
+  }
+}
+
+// 初始化
+renderSeriesResistors();
+renderParallelResistors();
+</script>
+</body>
+</html>

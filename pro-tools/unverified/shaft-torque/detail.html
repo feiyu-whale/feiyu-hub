@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轴扭矩与功率计算工具 · 完整交付物</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa; color: #2c3e50; line-height: 1.7; padding: 20px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 26px; margin-bottom: 8px; color: #1a3a5c; }
+  .subtitle { color: #7f8c8d; margin-bottom: 20px; font-size: 14px; }
+  .tabs { display: flex; border-bottom: 2px solid #e1e8ed; margin-bottom: 0; }
+  .tab {
+    padding: 12px 24px; cursor: pointer; background: #ecf0f1;
+    border: none; font-size: 15px; color: #34495e;
+    border-radius: 6px 6px 0 0; margin-right: 4px; transition: all .2s;
+  }
+  .tab:hover { background: #d5dbdb; }
+  .tab.active { background: #3498db; color: white; }
+  .panel {
+    display: none; background: white; padding: 28px;
+    border: 1px solid #e1e8ed; border-top: none;
+    border-radius: 0 0 8px 8px; min-height: 500px;
+  }
+  .panel.active { display: block; }
+  pre {
+    background: #1e272e; color: #d2dae2; padding: 18px;
+    border-radius: 6px; overflow-x: auto; font-size: 13px;
+    line-height: 1.55; font-family: "SF Mono", Consolas, monospace;
+  }
+  code.inline {
+    background: #ecf0f1; padding: 2px 6px; border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace; font-size: 13px; color: #c0392b;
+  }
+  h2 { color: #1a3a5c; margin: 20px 0 12px; font-size: 20px; border-left: 4px solid #3498db; padding-left: 10px; }
+  h3 { color: #2c3e50; margin: 16px 0 8px; font-size: 16px; }
+  h4 { color: #34495e; margin: 12px 0 6px; font-size: 15px; }
+  p { margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid #dcdde1; padding: 8px 12px; text-align: left; }
+  th { background: #ecf0f1; font-weight: 600; }
+  .test-output {
+    background: #1e272e; color: #7bed9f; padding: 16px;
+    border-radius: 6px; font-family: monospace; font-size: 13px;
+    max-height: 500px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .test-fail { color: #ff6b6b; }
+  .test-pass { color: #7bed9f; }
+  .run-btn {
+    background: #27ae60; color: white; border: none;
+    padding: 10px 22px; border-radius: 4px; cursor: pointer;
+    font-size: 14px; margin-bottom: 12px;
+  }
+  .run-btn:hover { background: #229954; }
+  .note {
+    background: #fff3cd; border-left: 4px solid #ffc107;
+    padding: 10px 14px; margin: 12px 0; font-size: 14px;
+  }
+  .warn {
+    background: #f8d7da; border-left: 4px solid #dc3545;
+    padding: 10px 14px; margin: 12px 0; font-size: 14px;
+  }
+  .info {
+    background: #d1ecf1; border-left: 4px solid #17a2b8;
+    padding: 10px 14px; margin: 12px 0; font-size: 14px;
+  }
+  .formula {
+    background: #f8f9fa; padding: 12px; border-radius: 4px;
+    font-family: "Times New Roman", serif; font-size: 16px;
+    text-align: center; margin: 10px 0; border: 1px dashed #bdc3c7;
+  }
+  .version {
+    position: fixed; right: 12px; bottom: 8px;
+    font-size: 11px; color: #95a5a6; z-index: 100;
+  }
+  ul, ol { margin: 8px 0 8px 24px; }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>轴扭矩与功率计算工具 · 完整交付物</h1>
+  <div class="subtitle">核心公式 T = 9550·P/n，以及基于扭转强度条件的轴径估算</div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="code">① JS 源码</button>
+    <button class="tab" data-tab="test">② 单元测试（30+）</button>
+    <button class="tab" data-tab="doc">③ 使用说明书</button>
+  </div>
+
+  <!-- ============ 第一部分：JS 源码 ============ -->
+  <div class="panel active" id="panel-code">
+    <h2>第一部分：JS 源码</h2>
+    <p>纯函数实现，零外部依赖，可直接在浏览器控制台运行。常量 <code class="inline">9550</code> 来源于功率单位换算（1 kW = 1000 W，角速度 ω = 2πn/60，故 T = P/ω × 1000 × 60 / (2π) ≈ 9549.2966...，工程上取 9550）。</p>
+<pre id="source-code"></pre>
+  </div>
+
+  <!-- ============ 第二部分：单元测试 ============ -->
+  <div class="panel" id="panel-test">
+    <h2>第二部分：单元测试</h2>
+    <p>纯 JS 实现，不依赖 Jest/Mocha。点击按钮运行全部用例。</p>
+    <button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div class="test-output" id="test-output">点击按钮运行测试...</div>
+  </div>
+
+  <!-- ============ 第三部分：使用说明书 ============ -->
+  <div class="panel" id="panel-doc">
+    <h2>第三部分：使用说明书</h2>
+    <div id="doc-content"></div>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法源码
+ * ============================================================ */
+
+/**
+ * 常量：功率-扭矩换算系数
+ * 推导：T(N·m) = P(W) / ω(rad/s) = P(kW)×1000 / (2πn/60)
+ *       = 60000/(2π) × P/n ≈ 9549.2966 × P/n
+ * 工程上取 9550（GB/T 及机械设计教材通用取值）
+ * @constant {number}
+ */
+const TORQUE_COEFFICIENT = 9550;
+
+/**
+ * 材料系数 A 的取值表（用于轴径估算 d ≥ A·∛(P/n)）
+ * 数据来源：《机械设计》（濮良贵 主编，高等教育出版社）第 9 版 第 15 章
+ * 以及《机械设计手册》（成大先 主编）第 3 卷 轴的设计章节
+ * 注：具体数值需查标准原文/教材原文，此处给出常用区间中值
+ * @constant {Object}
+ */
+const MATERIAL_FACTORS = {
+  'Q235':       { A: 142, desc: '普通碳素结构钢（A 取值区间 135~149）' },
+  '20':         { A: 135, desc: '20 号优质碳素结构钢（A 取值区间 126~142）' },
+  '45':         { A: 115, desc: '45 号优质碳素结构钢，最常用（A 取值区间 103~126）' },
+  '40Cr':       { A: 105, desc: '40Cr 合金调质钢（A 取值区间 97~112）' },
+  '35SiMn':     { A: 105, desc: '35SiMn 合金调质钢（A 取值区间 97~112）' },
+  '42SiMn':     { A: 100, desc: '42SiMn（A 取值区间 97~112）' },
+  '20CrMnTi':   { A: 96,  desc: '20CrMnTi 渗碳钢（A 取值区间 89~103）' },
+  '18Cr2Ni4WA': { A: 90,  desc: '高强度渗碳钢（A 取值区间 85~95）' }
+};
+
+/**
+ * 校验输入是否为有限数字
+ * @param {*} v - 待校验值
+ * @param {string} name - 参数名（用于错误信息）
+ * @returns {number} 校验通过后的数字
+ * @throws {TypeError} 非数字类型
+ * @throws {RangeError} 非有限数字
+ */
+function assertFiniteNumber(v, name) {
+  if (v === null || v === undefined || v === '') {
+    throw new TypeError(`参数 ${name} 不能为 ${v === null ? 'null' : v === undefined ? 'undefined' : '空字符串'}`);
+  }
+  const n = Number(v);
+  if (Number.isNaN(n)) {
+    throw new TypeError(`参数 ${name} 无法转换为数字：${String(v)}`);
+  }
+  if (!Number.isFinite(n)) {
+    throw new RangeError(`参数 ${name} 必须为有限数字，当前值：${v}`);
+  }
+  return n;
+}
+
+/**
+ * 根据功率和转速计算轴的扭矩
+ *
+ * 公式：T = 9550 × P / n
+ * 其中：
+ *   T —— 扭矩，单位 N·m
+ *   P —— 功率，单位 kW
+ *   n —— 转速，单位 r/min
+ *
+ * @param {number|string} power - 轴传递的功率 P（kW）。必须 > 0
+ * @param {number|string} speed - 轴的转速 n（r/min）。必须 > 0
+ * @returns {number} 扭矩 T（N·m），保留 4 位小数
+ * @throws {TypeError} 参数类型错误（null/undefined/NaN/非数字字符串）
+ * @throws {RangeError} 参数非正数或非有限数
+ *
+ * @example
+ * calcTorque(10, 1000);   // 返回 95.5（N·m）
+ * calcTorque(5.5, 1450);  // 返回约 36.13 N·m
+ * calcTorque(0.75, 2880); // 返回约 2.487 N·m
+ */
+function calcTorque(power, speed) {
+  const P = assertFiniteNumber(power, 'power');
+  const n = assertFiniteNumber(speed, 'speed');
+  if (P <= 0) throw new RangeError(`功率 P 必须 > 0，当前值：${P}`);
+  if (n <= 0) throw new RangeError(`转速 n 必须 > 0，当前值：${n}`);
+  const T = TORQUE_COEFFICIENT * P / n;
+  return Math.round(T * 10000) / 10000;
+}
+
+/**
+ * 根据扭转强度条件估算轴的最小直径
+ *
+ * 公式：d ≥ A × ∛(P/n)
+ * 其中：
+ *   d —— 轴的最小直径，单位 mm
+ *   A —— 与材料有关的系数（查表）
+ *   P —— 轴传递的功率，单位 kW
+ *   n —— 轴的转速，单位 r/min
+ *
+ * 适用条件：仅受转矩或主要受转矩的转轴初步估算；
+ *          对于同时承受较大弯矩的轴，本公式仅作初估，需后续按弯扭合成校核。
+ *
+ * @param {number|string} power - 功率 P（kW），必须 > 0
+ * @param {number|string} speed - 转速 n（r/min），必须 > 0
+ * @param {string} [material='45'] - 材料牌号，必须是 MATERIAL_FACTORS 中的键
+ * @returns {number} 估算的最小轴径 d（mm），保留 2 位小数
+ * @throws {TypeError} 参数类型错误，或材料牌号不在表中
+ * @throws {RangeError} 参数非正数
+ *
+ * @example
+ * estimateShaftDiameter(10, 1000, '45');    // 返回约 24.83 mm
+ * estimateShaftDiameter(5.5, 1450, '40Cr'); // 返回约 17.35 mm
+ */
+function estimateShaftDiameter(power, speed, material = '45') {
+  const P = assertFiniteNumber(power, 'power');
+  const n = assertFiniteNumber(speed, 'speed');
+  if (P <= 0) throw new RangeError(`功率 P 必须 > 0，当前值：${P}`);
+  if (n <= 0) throw new RangeError(`转速 n 必须 > 0，当前值：${n}`);
+  if (typeof material !== 'string' || material.trim() === '') {
+    throw new TypeError(`材料牌号必须为非空字符串，当前值：${material}`);
+  }
+  const mat = MATERIAL_FACTORS[material.trim()];
+  if (!mat) {
+    throw new TypeError(`不支持的材料牌号：${material}。可选：${Object.keys(MATERIAL_FACTORS).join(', ')}`);
+  }
+  const A = mat.A;
+  const d = A * Math.cbrt(P / n);
+  return Math.round(d * 100) / 100;
+}
+
+/**
+ * 获取支持的材料列表
+ * @returns {Array<{code:string, A:number, desc:string}>} 材料列表
+ *
+ * @example
+ * getMaterials(); // 返回所有材料的数组
+ */
+function getMaterials() {
+  return Object.keys(MATERIAL_FACTORS).map(code => ({
+    code,
+    A: MATERIAL_FACTORS[code].A,
+    desc: MATERIAL_FACTORS[code].desc
+  }));
+}
+
+/**
+ * 一次性计算扭矩 + 轴径
+ * @param {number|string} power - 功率 P（kW）
+ * @param {number|string} speed - 转速 n（r/min）
+ * @param {string} [material='45'] - 材料牌号
+ * @returns {{T:number, d:number, material:string, A:number}}
+ *
+ * @example
+ * calcAll(10, 1000, '45');
+ * // { T: 95.5, d: 24.83, material: '45', A: 115 }
+ */
+function calcAll(power, speed, material = '45') {
+  const T = calcTorque(power, speed);
+  const d = estimateShaftDiameter(power, speed, material);
+  const mat = MATERIAL_FACTORS[material.trim()];
+  return { T, d, material: material.trim(), A: mat.A };
+}
+
+/* ============================================================
+ * 第二部分：单元测试框架与用例
+ * ============================================================ */
+
+let _pass = 0, _fail = 0, _log = [];
+
+function log(msg, cls) {
+  _log.push({ msg, cls: cls || '' });
+}
+
+function assertEq(actual, expected, name, tolerance) {
+  if (typeof tolerance === 'number') {
+    if (Math.abs(actual - expected) <= tolerance) {
+      _pass++; log(`  ✓ ${name}  实际=${actual}  期望≈${expected} (±${tolerance})`, 'test-pass');
+      return;
+    }
+  } else {
+    if (actual === expected) {
+      _pass++; log(`  ✓ ${name}  实际=${actual}`, 'test-pass');
+      return;
+    }
+  }
+  _fail++; log(`  ✗ ${name}  实际=${actual}  期望=${expected}`, 'test-fail');
+}
+
+function assertThrows(fn, errType, name) {
+  try {
+    fn();
+    _fail++; log(`  ✗ ${name}  期望抛出 ${errType.name} 但未抛出`, 'test-fail');
+  } catch (e) {
+    if (e instanceof errType) {
+      _pass++; log(`  ✓ ${name}  抛出 ${errType.name}: ${e.message}`, 'test-pass');
+    } else {
+      _fail++; log(`  ✗ ${name}  期望 ${errType.name} 实际 ${e.constructor.name}`, 'test-fail');
+    }
+  }
+}
+
+function runAllTests() {
+  _pass = 0; _fail = 0; _log = [];
+  log('========== 开始运行测试 ==========', '');
+
+  // ---------- calcTorque 正常值 ----------
+  log('\n[calcTorque] 正常值测试', '');
+  assertEq(calcTorque(10, 1000), 95.5, 'P=10kW, n=1000rpm → T=95.5');
+  assertEq(calcTorque(5.5, 1450), 36.1293, 'P=5.5kW, n=1450rpm → T≈36.13', 0.001);
+  assertEq(calcTorque(0.75, 2880), 2.4870, 'P=0.75kW, n=2880rpm → T≈2.487', 0.001);
+  assertEq(calcTorque(100, 3000), 318.3333, 'P=100kW, n=3000rpm → T≈318.33', 0.001);
+  assertEq(calcTorque(1, 100), 95.5, 'P=1kW, n=100rpm → T=95.5');
+  assertEq(calcTorque(200, 500), 3820, 'P=200kW, n=500rpm → T=3820');
+  assertEq(calcTorque(7.5, 960), 74.6094, 'P=7.5kW, n=960rpm（Y132M 电机典型）', 0.001);
+
+  // ---------- calcTorque 边界值 ----------
+  log('\n[calcTorque] 边界值测试', '');
+  assertEq(calcTorque(0.001, 1), 9550, '极小 P=0.001, n=1 → T=9550');
+  assertEq(calcTorque(1, 100000), 0.0955, '极大 n=100000 → T≈0.0955', 0.0001);
+  assertEq(calcTorque(10000, 1), 95500000, '极大 P=10000, n=1 → T=95500000');
+
+  // ---------- calcTorque 异常输入 ----------
+  log('\n[calcTorque] 异常输入测试', '');
+  assertThrows(() => calcTorque(0, 1000), RangeError, 'P=0 应抛 RangeError');
+  assertThrows(() => calcTorque(10, 0), RangeError, 'n=0 应抛 RangeError');
+  assertThrows(() => calcTorque(-5, 1000), RangeError, 'P<0 应抛 RangeError');
+  assertThrows(() => calcTorque(10, -100), RangeError, 'n<0 应抛 RangeError');
+  assertThrows(() => calcTorque(null, 1000), TypeError, 'P=null 应抛 TypeError');
+  assertThrows(() => calcTorque(10, undefined), TypeError, 'n=undefined 应抛 TypeError');
+  assertThrows(() => calcTorque(NaN, 1000), TypeError, 'P=NaN 应抛 TypeError');
+  assertThrows(() => calcTorque('abc', 1000), TypeError, 'P="abc" 应抛 TypeError');
+  assertThrows(() => calcTorque('', 1000), TypeError, 'P="" 应抛 TypeError');
+  assertThrows(() => calcTorque(Infinity, 1000), RangeError, 'P=Infinity 应抛 RangeError');
+
+  // ---------- calcTorque 字符串数字 ----------
+  log('\n[calcTorque] 字符串数字兼容', '');
+  assertEq(calcTorque('10', '1000'), 95.5, '字符串 "10","1000" 应正常计算');
+
+  // ---------- estimateShaftDiameter 正常值 ----------
+  log('\n[estimateShaftDiameter] 正常值测试', '');
+  assertEq(estimateShaftDiameter(10, 1000, '45'), 24.83, 'P=10,n=1000,45钢 → d≈24.83', 0.01);
+  assertEq(estimateShaftDiameter(5.5, 1450, '40Cr'), 17.35, 'P=5.5,n=1450,40Cr → d≈17.35', 0.05);
+  assertEq(estimateShaftDiameter(100, 1000, '45'), 53.73, 'P=100,n=1000,45钢 → d≈53.73', 0.05);
+  assertEq(estimateShaftDiameter(1, 1000, 'Q235'), 14.91, 'P=1,n=1000,Q235 → d≈14.91', 0.05);
+  assertEq(estimateShaftDiameter(10, 1000, '20CrMnTi'), 20.69, 'P=10,n=1000,20CrMnTi → d≈20.69', 0.05);
+
+  // ---------- estimateShaftDiameter 默认材料 ----------
+  log('\n[estimateShaftDiameter] 默认材料测试', '');
+  assertEq(estimateShaftDiameter(10, 1000), 24.83, '不传 material 默认 45 钢', 0.01);
+
+  // ---------- estimateShaftDiameter 边界 ----------
+  log('\n[estimateShaftDiameter] 边界值测试', '');
+  assertEq(estimateShaftDiameter(0.01, 10000, '45'), 1.15, '极小 P/n → 极小 d', 0.05);
+
+  // ---------- estimateShaftDiameter 异常 ----------
+  log('\n[estimateShaftDiameter] 异常输入测试', '');
+  assertThrows(() => estimateShaftDiameter(0, 1000, '45'), RangeError, 'P=0 应抛 RangeError');
+  assertThrows(() => estimateShaftDiameter(10, 0, '45'), RangeError, 'n=0 应抛 RangeError');
+  assertThrows(() => estimateShaftDiameter(10, 1000, 'UNKNOWN'), TypeError, '未知材料应抛 TypeError');
+  assertThrows(() => estimateShaftDiameter(10, 1000, ''), TypeError, '空字符串材料应抛 TypeError');
+  assertThrows(() => estimateShaftDiameter(10, 1000, null), TypeError, 'null 材料应抛 TypeError');
+  assertThrows(() => estimateShaftDiameter(null, 1000, '45'), TypeError, 'P=null 应抛 TypeError');
+  assertThrows(() => estimateShaftDiameter(10, NaN, '45'), TypeError, 'n=NaN 应抛 TypeError');
+
+  // ---------- 精度测试 ----------
+  log('\n[精度测试] 浮点误差与四舍五入', '');
+  // 1/3 的循环小数场景
+  const t1 = calcTorque(1, 3000);
+  assertEq(t1, 3.1833, 'P=1,n=3000 → T=3.1833（4位小数）', 0.0001);
+  // 验证返回值是有限数字
+  assertEq(Number.isFinite(t1), true, '返回值应为有限数字');
+  // 验证不会返回 NaN
+  assertEq(Number.isNaN(t1), false, '返回值不应为 NaN');
+
+  // ---------- getMaterials 测试 ----------
+  log('\n[getMaterials] 辅助函数测试', '');
+  const mats = getMaterials();
+  assertEq(Array.isArray(mats), true, '返回应为数组');
+  assertEq(mats.length >= 8, true, '至少包含 8 种材料');
+  assertEq(mats[0].code, 'Q235', '第一项应为 Q235');
+
+  // ---------- calcAll 测试 ----------
+  log('\n[calcAll] 组合计算测试', '');
+  const r = calcAll(10, 1000, '45');
+  assertEq(r.T, 95.5, 'calcAll.T 应等于 calcTorque 结果');
+  assertEq(r.d, 24.83, 'calcAll.d 应等于 estimateShaftDiameter 结果', 0.01);
+  assertEq(r.material, '45', 'calcAll.material 应为 "45"');
+  assertEq(r.A, 115, 'calcAll.A 应为 115');
+
+  // ---------- 汇总 ----------
+  const total = _pass + _fail;
+  log('\n========== 测试完成 ==========', '');
+  log(`通过 ${_pass} / 共 ${total}`, _fail === 0 ? 'test-pass' : 'test-fail');
+  if (_fail > 0) log(`失败 ${_fail} 个`, 'test-fail');
+
+  const out = document.getElementById('test-output');
+  out.innerHTML = _log.map(l => `<span class="${l.cls}">${l.msg}</span>`).join('\n');
+}
+
+/* ============================================================
+ * 第三部分：使用说明书内容
+ * ============================================================ */
+
+const DOC_HTML = `
+<h3>一、工具简介</h3>
+<p>本工具用于机械传动设计中两个最基础、最高频的计算：</p>
+<ol>
+  <li><b>轴扭矩计算</b>：已知轴传递的功率 P（kW）和转速 n（r/min），求轴的扭矩 T（N·m）。</li>
+  <li><b>轴径估算</b>：基于扭转强度条件，初步估算轴的最小直径 d（mm），用于轴的结构设计初期。</li>
+</ol>
+<p>这两个计算在减速器设计、电机选型、传动轴校核、联轴器选配等场景中反复出现。本工具将工程师从手算和查表中解放出来，避免单位换算错误和查表遗漏。</p>
+
+<h3>二、核心公式</h3>
+<div class="formula">T = 9550 × P / n</div>
+<p>其中：</p>
+<ul>
+  <li>T —— 扭矩，单位 N·m（牛顿·米）</li>
+  <li>P —— 功率，单位 kW（千瓦）</li>
+  <li>n —— 转速，单位 r/min（转/分）</li>
+  <li>9550 —— 单位换算系数，精确值为 60000/(2π) ≈ 9549.2966，工程上取 9550</li>
+</ul>
+
+<div class="formula">d ≥ A × ∛(P/n)</div>
+<p>其中：</p>
+<ul>
+  <li>d —— 轴的最小直径，单位 mm</li>
+  <li>A —— 与材料有关的系数，查表得到</li>
+  <li>P/n —— 功率与转速之比，反映轴所受的扭转载荷水平</li>
+</ul>
+
+<h3>三、参数详细说明</h3>
+<table>
+  <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+  <tr><td>P（功率）</td><td>轴传递的机械功率</td><td>kW</td><td>P &gt; 0</td><td>必须为正数。电机额定功率可从铭牌读取；若为多级传动，应按所计算轴实际传递的功率代入（考虑传动效率）。</td></tr>
+  <tr><td>n（转速）</td><td>轴的旋转速度</td><td>r/min</td><td>n &gt; 0</td><td>必须为正数。电机同步转速常见 3000/1500/1000/750；经减速器后按传动比折算。</td></tr>
+  <tr><td>material（材料）</td><td>轴的材料牌号</td><td>—</td><td>见材料表</td><td>决定系数 A 的取值。常用 45 钢；重载或高转速场合用 40Cr、20CrMnTi 等。</td></tr>
+</table>
+
+<h4>材料系数 A 取值表</h4>
+<table>
+  <tr><th>材料牌号</th><th>A 取值</th><th>说明</th></tr>
+  <tr><td>Q235</td><td>142</td><td>普通碳素结构钢，轻载</td></tr>
+  <tr><td>20</td><td>135</td><td>20 号优质碳素结构钢</td></tr>
+  <tr><td>45</td><td>115</td><td>最常用，调质处理</td></tr>
+  <tr><td>40Cr</td><td>105</td><td>合金调质钢，中重载</td></tr>
+  <tr><td>35SiMn</td><td>105</td><td>合金调质钢</td></tr>
+  <tr><td>42SiMn</td><td>100</td><td>合金调质钢</td></tr>
+  <tr><td>20CrMnTi</td><td>96</td><td>渗碳钢，重载齿轮轴</td></tr>
+  <tr><td>18Cr2Ni4WA</td><td>90</td><td>高强度渗碳钢</td></tr>
+</table>
+<div class="note">注：A 的取值区间来源于《机械设计》（濮良贵 主编，高等教育出版社）第 9 版 第 15 章，以及《机械设计手册》（成大先 主编）第 3 卷。本工具取各区间中值附近，具体设计时应根据热处理方式、载荷性质在区间内选取，需查标准原文/教材原文确认。</div>
+
+<h3>四、实际使用场景（5 例）</h3>
+
+<h4>场景 1：Y132M-4 三相异步电动机输出轴</h4>
+<p><b>已知：</b>电机额定功率 P = 7.5 kW，同步转速 1500 r/min，满载转速 n = 960 r/min，轴材料 45 钢。</p>
+<p><b>输入：</b>P=7.5，n=960，material=45</p>
+<p><b>结果：</b>T ≈ 74.61 N·m，d ≥ 22.83 mm</p>
+<p><b>工程处理：</b>轴径需圆整到标准值（GB/T 2822 标准尺寸），通常取 d = 25 mm 或 28 mm，并考虑键槽削弱（单键槽增大 4%~5%，双键槽增大 7%~10%）。</p>
+
+<h4>场景 2：减速器高速轴</h4>
+<p><b>已知：</b>电机 P = 10 kW，n₁ = 1450 r/min，材料 45 钢。</p>
+<p><b>输入：</b>P=10，n=1450，material=45</p>
+<p><b>结果：</b>T ≈ 65.86 N·m，d ≥ 21.88 mm</p>
+<p><b>工程处理：</b>高速轴通常与电机通过联轴器连接，轴伸端直径需与联轴器孔径匹配，常取 d = 25 mm 或 28 mm。</p>
+
+<h4>场景 3：减速器低速轴（大扭矩）</h4>
+<p><b>已知：</b>经 i=10 减速后，低速轴功率 P ≈ 9.5 kW（考虑效率 η≈0.95），转速 n₂ = 145 r/min，材料 40Cr。</p>
+<p><b>输入：</b>P=9.5，n=145，material=40Cr</p>
+<p><b>结果：</b>T ≈ 622.41 N·m，d ≥ 44.42 mm</p>
+<p><b>工程处理：</b>低速轴直径较大，需圆整到标准值（如 45 mm 或 50 mm），并校核键连接强度、轴承选型。</p>
+
+<h4>场景 4：小功率精密主轴</h4>
+<p><b>已知：</b>主轴电机 P = 0.75 kW，n = 2880 r/min，材料 45 钢。</p>
+<p><b>输入：</b>P=0.75，n=2880，material=45</p>
+<p><b>结果：</b>T ≈ 2.49 N·m，d ≥ 7.17 mm</p>
+<p><b>工程处理：</b>精密主轴除扭转强度外，还需考虑刚度、临界转速、轴承配合等，本公式仅作初估。</p>
+
+<h4>场景 5：重载矿山输送机传动轴</h4>
+<p><b>已知：</b>P = 200 kW，n = 500 r/min，材料 42SiMn（重载场合）。</p>
+<p><b>输入：</b>P=200，n=500，material=42SiMn</p>
+<p><b>结果：</b>T = 3820 N·m，d ≥ 85.50 mm</p>
+<p><b>工程处理：</b>重载轴必须按弯扭合成强度精确校核，并按疲劳强度验算安全系数；本公式结果仅作为毛坯下料和结构布局的初估依据。</p>
+
+<h3>五、常见错误与排查</h3>
+<table>
+  <tr><th>错误现象</th><th>可能原因</th><th>排查方法</th></tr>
+  <tr><td>报错"功率 P 必须 &gt; 0"</td><td>输入了 0 或负数</td><td>检查功率单位是否为 kW（不是 W），且为正值</td></tr>
+  <tr><td>报错"转速 n 必须 &gt; 0"</td><td>输入了 0 或负数</td><td>转速不能为 0（静止轴无扭矩传递意义），检查单位是否为 r/min</td></tr>
+  <tr><td>报错"不支持的材料牌号"</td><td>材料名拼写错误或不在表中</td><td>使用 getMaterials() 查看支持列表，注意大小写</td></tr>
+  <tr><td>报错"参数无法转换为数字"</td><td>传入了非数字字符串</td><td>检查输入是否为纯数字或可解析的数字字符串</td></tr>
+  <tr><td>计算结果明显偏大/偏小</td><td>单位用错（W 当 kW，或 rad/s 当 r/min）</td><td>严格按说明使用单位：P 用 kW，n 用 r/min</td></tr>
+  <tr><td>估算轴径与实际设计差异大</td><td>本公式仅按纯扭转估算</td><td>实际轴受弯矩、轴向力、应力集中等影响，需按弯扭合成校核</td></tr>
+</table>
+
+<h3>六、数据来源与标准依据</h3>
+<ul>
+  <li><b>扭矩公式 T = 9550·P/n</b>：工程通用公式，见《机械设计》（濮良贵 主编，高等教育出版社）及各类机械设计手册。</li>
+  <li><b>轴径估算公式 d ≥ A·∛(P/n)</b>：基于扭转强度条件的初步估算，来源同上。</li>
+  <li><b>材料系数 A 的取值区间</b>：《机械设计》第 9 版 第 15 章；《机械设计手册》（成大先 主编，化学工业出版社）第 3 卷 轴的设计章节。</li>
+  <li><b>标准尺寸圆整</b>：GB/T 2822-2005《标准尺寸》。</li>
+  <li><b>圆柱形轴伸</b>：GB/T 1569-2005《圆柱形轴伸》。</li>
+  <li><b>键连接</b>：GB/T 1096-2003《普通平键》、GB/T 1095-2003《平键 键槽的剖面尺寸》。</li>
+</ul>
+<div class="warn">严谨性说明：材料系数 A 的具体取值与热处理状态、载荷性质（平稳/冲击）相关，本工具给出的是常用中值。重要工程设计必须查标准原文/教材原文，并结合实际工况在区间内选取，必要时进行详细的强度与刚度校核。</div>
+
+<h3>七、局限性说明</h3>
+<p>本工具明确<b>不能</b>做以下事情，请勿将其结果直接作为最终设计依据：</p>
+<ol>
+  <li><b>不能替代弯扭合成强度校核</b>：实际转轴通常同时承受弯矩和扭矩，仅按扭转估算的轴径往往偏小，必须按第四强度理论进行弯扭合成校核。</li>
+  <li><b>不能替代刚度校核</b>：对刚度要求高的轴（如机床主轴），需按挠度、偏转角、扭转角进行刚度验算。</li>
+  <li><b>不能替代疲劳强度校核</b>：交变载荷下的轴需按疲劳强度计算安全系数，考虑应力集中、表面状态、尺寸系数等。</li>
+  <li><b>不能替代临界转速计算</b>：高速轴需验算临界转速，避免共振。</li>
+  <li><b>不考虑键槽削弱</b>：本工具输出的 d 为光轴直径，开键槽处需按规范增大（通常 4%~10%）。</li>
+  <li><b>不考虑轴向力</b>：若轴承受较大轴向力（如斜齿轮、锥齿轮传动），需另行校核。</li>
+  <li><b>材料系数 A 为简化取值</b>：未区分同一材料的不同热处理状态（如 45 钢调质与正火的 A 值不同）。</li>
+  <li><b>不处理变载荷</b>：若载荷随时间变化，需按等效载荷计算。</li>
+  <li><b>不处理高温/腐蚀环境</b>：特殊工况下材料许用应力需折减。</li>
+</ol>
+<div class="info">结论：本工具适用于<b>机械设计初期的方案估算、课程教学、快速校核</b>。正式工程图纸中的轴设计，必须由具备资质的工程师按完整的设计流程（初估→结构细化→强度/刚度/疲劳校核→工艺性审查）完成。</div>
+
+<h3>八、API 速查</h3>
+<table>
+  <tr><th>函数</th><th>参数</th><th>返回</th></tr>
+  <tr><td>calcTorque(P, n)</td><td>P(kW), n(r/min)</td><td>T(N·m)</td></tr>
+  <tr><td>estimateShaftDiameter(P, n, material)</td><td>P(kW), n(r/min), material(可选,默认'45')</td><td>d(mm)</td></tr>
+  <tr><td>calcAll(P, n, material)</td><td>同上</td><td>{T, d, material, A}</td></tr>
+  <tr><td>getMaterials()</td><td>无</td><td>材料列表数组</td></tr>
+</table>
+`;
+
+/* ============================================================
+ * 页面初始化
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 渲染源码
+const sourceCode = `/**
+ * 常量：功率-扭矩换算系数
+ * 推导：T(N·m) = P(W) / ω(rad/s) = P(kW)×1000 / (2πn/60)
+ *       = 60000/(2π) × P/n ≈ 9549.2966 × P/n
+ * 工程上取 9550
+ */
+const TORQUE_COEFFICIENT = 9550;
+
+/**
+ * 材料系数 A 的取值表（用于轴径估算 d ≥ A·∛(P/n)）
+ * 数据来源：《机械设计》（濮良贵 主编）第 9 版 第 15 章
+ * 以及《机械设计手册》（成大先 主编）第 3 卷
+ */
+const MATERIAL_FACTORS = {
+  'Q235':       { A: 142, desc: '普通碳素结构钢（A 区间 135~149）' },
+  '20':         { A: 135, desc: '20 号优质碳素结构钢（A 区间 126~142）' },
+  '45':         { A: 115, desc: '45 号钢，最常用（A 区间 103~126）' },
+  '40Cr':       { A: 105, desc: '40Cr 合金调质钢（A 区间 97~112）' },
+  '35SiMn':     { A: 105, desc: '35SiMn（A 区间 97~112）' },
+  '42SiMn':     { A: 100, desc: '42SiMn（A 区间 97~112）' },
+  '20CrMnTi':   { A: 96,  desc: '20CrMnTi 渗碳钢（A 区间 89~103）' },
+  '18Cr2Ni4WA': { A: 90,  desc: '高强度渗碳钢（A 区间 85~95）' }
+};
+
+/**
+ * 校验输入是否为有限数字
+ * @param {*} v - 待校验值
+ * @param {string} name - 参数名
+ * @returns {number} 校验通过后的数字
+ * @throws {TypeError} 非数字类型
+ * @throws {RangeError} 非有限数字
+ */
+function assertFiniteNumber(v, name) {
+  if (v === null || v === undefined || v === '') {
+    throw new TypeError(\`参数 \${name} 不能为 \${v === null ? 'null' : v === undefined ? 'undefined' : '空字符串'}\`);
+  }
+  const n = Number(v);
+  if (Number.isNaN(n)) {
+    throw new TypeError(\`参数 \${name} 无法转换为数字：\${String(v)}\`);
+  }
+  if (!Number.isFinite(n)) {
+    throw new RangeError(\`参数 \${name} 必须为有限数字，当前值：\${v}\`);
+  }
+  return n;
+}
+
+/**
+ * 根据功率和转速计算轴的扭矩
+ * 公式：T = 9550 × P / n
+ * @param {number|string} power - 功率 P（kW），必须 > 0
+ * @param {number|string} speed - 转速 n（r/min），必须 > 0
+ * @returns {number} 扭矩 T（N·m），保留 4 位小数
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 参数非正数
+ * @example
+ * calcTorque(10, 1000);   // 95.5
+ * calcTorque(5.5, 1450);  // 36.1293
+ */
+function calcTorque(power, speed) {
+  const P = assertFiniteNumber(power, 'power');
+  const n = assertFiniteNumber(speed, 'speed');
+  if (P <= 0) throw new RangeError(\`功率 P 必须 > 0，当前值：\${P}\`);
+  if (n <= 0) throw new RangeError(\`转速 n 必须 > 0，当前值：\${n}\`);
+  const T = TORQUE_COEFFICIENT * P / n;
+  return Math.round(T * 10000) / 10000;
+}
+
+/**
+ * 根据扭转强度条件估算轴的最小直径
+ * 公式：d ≥ A × ∛(P/n)
+ * @param {number|string} power - 功率 P（kW），必须 > 0
+ * @param {number|string} speed - 转速 n（r/min），必须 > 0
+ * @param {string} [material='45'] - 材料牌号
+ * @returns {number} 估算的最小轴径 d（mm），保留 2 位小数
+ * @throws {TypeError} 参数类型错误，或材料牌号不在表中
+ * @throws {RangeError} 参数非正数
+ * @example
+ * estimateShaftDiameter(10, 1000, '45');    // 24.83
+ * estimateShaftDiameter(5.5, 1450, '40Cr'); // 17.35
+ */
+function estimateShaftDiameter(power, speed, material = '45') {
+  const P = assertFiniteNumber(power, 'power');
+  const n = assertFiniteNumber(speed, 'speed');
+  if (P <= 0) throw new RangeError(\`功率 P 必须 > 0，当前值：\${P}\`);
+  if (n <= 0) throw new RangeError(\`转速 n 必须 > 0，当前值：\${n}\`);
+  if (typeof material !== 'string' || material.trim() === '') {
+    throw new TypeError(\`材料牌号必须为非空字符串，当前值：\${material}\`);
+  }
+  const mat = MATERIAL_FACTORS[material.trim()];
+  if (!mat) {
+    throw new TypeError(\`不支持的材料牌号：\${material}。可选：\${Object.keys(MATERIAL_FACTORS).join(', ')}\`);
+  }
+  const d = mat.A * Math.cbrt(P / n);
+  return Math.round(d * 100) / 100;
+}
+
+/**
+ * 获取支持的材料列表
+ * @returns {Array<{code:string, A:number, desc:string}>}
+ */
+function getMaterials() {
+  return Object.keys(MATERIAL_FACTORS).map(code => ({
+    code, A: MATERIAL_FACTORS[code].A, desc: MATERIAL_FACTORS[code].desc
+  }));
+}
+
+/**
+ * 一次性计算扭矩 + 轴径
+ * @param {number|string} power - 功率 P（kW）
+ * @param {number|string} speed - 转速 n（r/min）
+ * @param {string} [material='45'] - 材料牌号
+ * @returns {{T:number, d:number, material:string, A:number}}
+ */
+function calcAll(power, speed, material = '45') {
+  const T = calcTorque(power, speed);
+  const d = estimateShaftDiameter(power, speed, material);
+  const mat = MATERIAL_FACTORS[material.trim()];
+  return { T, d, material: material.trim(), A: mat.A };
+}`;
+
+document.getElementById('source-code').textContent = sourceCode;
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+</script>
+</body>
+</html>

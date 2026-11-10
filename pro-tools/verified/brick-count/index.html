@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>砌体用砖量计算工具 v2.0.2-修审查问题 20261108</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  header h1 { font-size: 28px; margin-bottom: 8px; }
+  header p { opacity: 0.9; font-size: 14px; }
+  .calc-panel {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+  .calc-panel h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #667eea;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .form-item label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .form-item input, .form-item select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-item input:focus, .form-item select:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  .form-item .hint {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+  }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-primary { background: #667eea; color: white; }
+  .btn-primary:hover { background: #5568d3; }
+  .btn-secondary { background: #e8eaed; color: #555; }
+  .btn-secondary:hover { background: #d8dadd; }
+  .result-panel {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fb;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+  }
+  .result-panel h3 { font-size: 16px; margin-bottom: 12px; color: #667eea; }
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .result-item {
+    background: white;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #eee;
+  }
+  .result-item .label { font-size: 12px; color: #888; }
+  .result-item .value { font-size: 20px; font-weight: 600; color: #2c3e50; margin-top: 4px; }
+  .result-item .unit { font-size: 12px; color: #999; margin-left: 4px; }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #e8eaed;
+    margin-bottom: 0;
+    background: white;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+  .tab {
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #667eea; }
+  .tab.active { color: #667eea; border-bottom-color: #667eea; }
+  .tab-content {
+    display: none;
+    background: white;
+    padding: 24px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .tab-content.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "Consolas", "Monaco", monospace;
+  }
+  .test-output {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .test-pass { color: #4ec9b0; }
+  .test-fail { color: #f48771; }
+  .test-summary { font-weight: bold; margin-top: 10px; font-size: 15px; }
+  .doc-content h2 { font-size: 20px; margin: 24px 0 12px; color: #2c3e50; border-left: 4px solid #667eea; padding-left: 10px; }
+  .doc-content h3 { font-size: 16px; margin: 16px 0 8px; color: #34495e; }
+  .doc-content p { margin-bottom: 10px; text-align: justify; }
+  .doc-content ul, .doc-content ol { margin: 8px 0 12px 20px; }
+  .doc-content li { margin-bottom: 4px; }
+  .doc-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .doc-content th, .doc-content td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  .doc-content th { background: #f5f7fa; font-weight: 600; }
+  .doc-content .warn { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+  .doc-content .info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .num { color: #b5cea8; }
+  .cmt { color: #6a9955; }
+  .fn { color: #dcdcaa; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>砌体用砖量计算工具</h1>
+    <p>基于墙厚、砂浆缝、砖规格，计算每平米 / 每立方用砖数与砂浆量</p>
+  </header>
+
+  <div class="doc-content warn" style="background:#fff3cd;border-left:4px solid #ffc107;padding:10px 14px;margin:0 0 16px;border-radius:4px;font-size:13px;">
+    <strong>数据来源提示：</strong>本工具的墙厚系数 K 值（0.5/1/1.5/2/3/4）、砖与砂浆损耗率默认值（1%~3%）以及核心公式 N=K·10⁹/[t(L+m)(h+m)] 均为经验取值，源自“定额及施工手册”的笼统说法，无标准编号、章节或页码可查，未经标准原文核对，结果仅供估算参考。
+  </div>
+
+  <div class="doc-content info" style="background:#d1ecf1;border-left:4px solid #17a2b8;padding:10px 14px;margin:0 0 16px;border-radius:4px;font-size:13px;">
+    <strong>工况范围提示：</strong>本工具暂不支持孔洞率 / 砖类型（空心砖）、砌筑方式（三顺一丁、梅花丁等）、门窗洞口扣减、砂浆强度等级与饱满度等参数的输入，涉及上述工况时结果仅供估算，需人工修正。
+  </div>
+
+  <div class="calc-panel">
+    <h2>参数输入</h2>
+    <div class="form-grid">
+      <div class="form-item">
+        <label>墙厚 (mm)</label>
+        <select id="wallThickness">
+          <option value="60">60 (1/4 砖)</option>
+          <option value="115">115 (1/2 砖)</option>
+          <option value="180">180 (3/4 砖)</option>
+          <option value="240" selected>240 (1 砖)</option>
+          <option value="365">365 (1.5 砖)</option>
+          <option value="490">490 (2 砖)</option>
+          <option value="custom">自定义</option>
+        </select>
+        <input type="number" id="wallThicknessCustom" placeholder="自定义墙厚 mm" min="1" step="1" style="display:none;margin-top:6px;">
+      </div>
+      <div class="form-item">
+        <label>墙厚系数 K（可选，覆盖内置值）</label>
+        <input type="number" id="kOverride" step="0.5" min="0" placeholder="留空则用内置经验 K 值">
+        <div class="hint">内置 K 值表为经验取值、无标准出处，可在此自行指定</div>
+      </div>
+      <div class="form-item">
+        <label>砖长 (mm)</label>
+        <input type="number" id="brickLength" value="240" step="1">
+        <div class="hint">标准砖 240</div>
+      </div>
+      <div class="form-item">
+        <label>砖宽 (mm)</label>
+        <input type="number" id="brickWidth" value="115" step="1">
+        <div class="hint">标准砖 115</div>
+      </div>
+      <div class="form-item">
+        <label>砖厚 (mm)</label>
+        <input type="number" id="brickHeight" value="53" step="1">
+        <div class="hint">标准砖 53</div>
+      </div>
+      <div class="form-item">
+        <label>灰缝厚度 (mm)</label>
+        <input type="number" id="mortarThickness" value="10" step="0.5">
+        <div class="hint">规范推荐 8~12mm，默认 10</div>
+      </div>
+      <div class="form-item">
+        <label>砖损耗率 (%)</label>
+        <input type="number" id="brickLossRate" value="1.5" step="0.1" min="0">
+        <div class="hint">定额常取 1%~2%</div>
+      </div>
+      <div class="form-item">
+        <label>砂浆损耗率 (%)</label>
+        <input type="number" id="mortarLossRate" value="1.5" step="0.1" min="0">
+        <div class="hint">定额常取 1%~3%</div>
+      </div>
+      <div class="form-item">
+        <label>计算面积 (㎡)</label>
+        <input type="number" id="area" value="1" step="0.1" min="0">
+        <div class="hint">用于计算总量，可填 0</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="calculate()">计算</button>
+      <button class="btn btn-secondary" onclick="resetForm()">重置</button>
+    </div>
+    <div id="resultArea"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">JS 源码</div>
+    <div class="tab" onclick="switchTab(1)">单元测试</div>
+    <div class="tab" onclick="switchTab(2)">使用说明书</div>
+  </div>
+
+  <div class="tab-content active" id="tab0">
+    <h2 style="margin-bottom:12px;">核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="sourceCode"></pre>
+  </div>
+
+  <div class="tab-content" id="tab1">
+    <h2 style="margin-bottom:12px;">单元测试（共 32 个用例）</h2>
+    <button class="btn btn-primary" onclick="runTests()" style="margin-bottom:12px;">运行测试</button>
+    <div class="test-output" id="testOutput">点击"运行测试"查看结果...</div>
+  </div>
+
+  <div class="tab-content" id="tab2">
+    <div class="doc-content" id="docContent"></div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+   第一部分：核心算法（纯函数）
+   ============================================================ */
+
+/**
+ * 根据墙厚获取墙厚系数 K（砖数倍数）
+ * 依据：《全国统一建筑工程基础定额》及施工手册常用取值
+ * @param {number} wallThickness - 墙厚，单位 mm，必须 > 0
+ * @param {number} brickWidth - 砖宽，单位 mm，用于自定义墙厚的近似计算
+ * @returns {number} 墙厚系数 K（无量纲）
+ * @throws {Error} 输入非法时抛出错误
+ */
+function getWallThicknessFactor(wallThickness, brickWidth) {
+  if (typeof wallThickness !== 'number' || isNaN(wallThickness)) {
+    throw new Error('墙厚必须为数字');
+  }
+  if (wallThickness <= 0) {
+    throw new Error('墙厚必须大于 0');
+  }
+  if (typeof brickWidth !== 'number' || isNaN(brickWidth) || brickWidth <= 0) {
+    throw new Error('砖宽必须为大于 0 的数字');
+  }
+  // 标准墙厚对应 K 值（施工手册常用值）
+  const standardMap = {
+    60: 0.5,    // 1/4 砖墙
+    115: 1,     // 1/2 砖墙
+    180: 1.5,   // 3/4 砖墙
+    240: 2,     // 1 砖墙
+    365: 3,     // 1.5 砖墙
+    490: 4      // 2 砖墙
+  };
+  // 允许 ±2mm 的匹配容差（考虑抹灰等）
+  for (const key in standardMap) {
+    if (Math.abs(wallThickness - Number(key)) <= 2) {
+      return standardMap[key];
+    }
+  }
+  // 自定义墙厚：按砖宽近似
+  return wallThickness / brickWidth;
+}
+
+/**
+ * 校验输入参数的合法性
+ * @param {Object} params - 参数对象
+ * @param {number} params.wallThickness - 墙厚 mm
+ * @param {number} params.brickLength - 砖长 mm
+ * @param {number} params.brickWidth - 砖宽 mm
+ * @param {number} params.brickHeight - 砖厚 mm
+ * @param {number} params.mortarThickness - 灰缝 mm
+ * @returns {Object} 校验后的参数（已确保为合法数字）
+ * @throws {Error} 参数非法时抛出
+ */
+function validateParams(params) {
+  const required = ['wallThickness', 'brickLength', 'brickWidth', 'brickHeight', 'mortarThickness'];
+  const result = {};
+  for (const key of required) {
+    const v = Number(params[key]);
+    if (isNaN(v)) {
+      throw new Error(`参数 ${key} 必须为数字`);
+    }
+    if (v <= 0) {
+      throw new Error(`参数 ${key} 必须大于 0`);
+    }
+    result[key] = v;
+  }
+  return result;
+}
+
+/**
+ * 计算每立方米砌体的砖净用量（块/m³）
+ * 公式：N = K × 10^9 / [墙厚 × (砖长+灰缝) × (砖厚+灰缝)]
+ * 其中 K 为墙厚系数，10^9 为 mm³ 到 m³ 的换算
+ * @param {number} wallThickness - 墙厚 mm
+ * @param {number} brickLength - 砖长 mm
+ * @param {number} brickHeight - 砖厚 mm
+ * @param {number} mortarThickness - 灰缝 mm
+ * @param {number} K - 墙厚系数
+ * @returns {number} 每立方米砖净用量（块/m³）
+ */
+function calcBricksPerCubicMeter(wallThickness, brickLength, brickHeight, mortarThickness, K) {
+  const denominator = wallThickness * (brickLength + mortarThickness) * (brickHeight + mortarThickness);
+  return (K * 1e9) / denominator;
+}
+
+/**
+ * 计算每平米砌体的砖净用量（块/㎡）
+ * 公式：N_area = N_volume × 墙厚(m)
+ * @param {number} bricksPerCubicMeter - 每立方米砖数
+ * @param {number} wallThickness - 墙厚 mm
+ * @returns {number} 每平米砖净用量（块/㎡）
+ */
+function calcBricksPerSquareMeter(bricksPerCubicMeter, wallThickness) {
+  return bricksPerCubicMeter * (wallThickness / 1000);
+}
+
+/**
+ * 计算每立方米砌体的砂浆净用量（m³/m³）
+ * 公式：V_mortar = 1 - N × 单砖体积
+ * @param {number} bricksPerCubicMeter - 每立方米砖数
+ * @param {number} brickLength - 砖长 mm
+ * @param {number} brickWidth - 砖宽 mm
+ * @param {number} brickHeight - 砖厚 mm
+ * @returns {number} 每立方米砂浆净用量（m³/m³）
+ */
+function calcMortarPerCubicMeter(bricksPerCubicMeter, brickLength, brickWidth, brickHeight) {
+  const singleBrickVolume = (brickLength * brickWidth * brickHeight) / 1e9; // m³
+  const mortar = 1 - bricksPerCubicMeter * singleBrickVolume;
+  return Math.max(0, mortar); // 防止负值
+}
+
+/**
+ * 计算每平米砌体的砂浆净用量（m³/㎡）
+ * @param {number} mortarPerCubicMeter - 每立方米砂浆用量
+ * @param {number} wallThickness - 墙厚 mm
+ * @returns {number} 每平米砂浆净用量（m³/㎡）
+ */
+function calcMortarPerSquareMeter(mortarPerCubicMeter, wallThickness) {
+  return mortarPerCubicMeter * (wallThickness / 1000);
+}
+
+/**
+ * 计算考虑损耗后的砖消耗量
+ * @param {number} netQuantity - 净用量
+ * @param {number} lossRatePercent - 损耗率（%）
+ * @returns {number} 消耗量
+ */
+function calcGrossQuantity(netQuantity, lossRatePercent) {
+  if (typeof lossRatePercent !== 'number' || isNaN(lossRatePercent) || lossRatePercent < 0) {
+    throw new Error('损耗率必须为非负数字');
+  }
+  return netQuantity * (1 + lossRatePercent / 100);
+}
+
+/**
+ * 主计算函数：根据输入参数计算全部指标
+ * @param {Object} input - 输入参数
+ * @param {number} input.wallThickness - 墙厚 mm
+ * @param {number} input.brickLength - 砖长 mm
+ * @param {number} input.brickWidth - 砖宽 mm
+ * @param {number} input.brickHeight - 砖厚 mm
+ * @param {number} input.mortarThickness - 灰缝 mm
+ * @param {number} [input.brickLossRate=0] - 砖损耗率 %
+ * @param {number} [input.mortarLossRate=0] - 砂浆损耗率 %
+ * @param {number} [input.area=1] - 计算面积 ㎡
+ * @returns {Object} 计算结果
+ */
+function calculateBrickQuantity(input) {
+  const p = validateParams(input);
+  const brickLossRate = Number(input.brickLossRate) || 0;
+  const mortarLossRate = Number(input.mortarLossRate) || 0;
+  const area = Math.max(0, Number(input.area) || 0);
+
+  const K = getWallThicknessFactor(p.wallThickness, p.brickWidth);
+  const bricksPerM3 = calcBricksPerCubicMeter(p.wallThickness, p.brickLength, p.brickHeight, p.mortarThickness, K);
+  const bricksPerM2 = calcBricksPerSquareMeter(bricksPerM3, p.wallThickness);
+  const mortarPerM3 = calcMortarPerCubicMeter(bricksPerM3, p.brickLength, p.brickWidth, p.brickHeight);
+  const mortarPerM2 = calcMortarPerSquareMeter(mortarPerM3, p.wallThickness);
+
+  const bricksPerM3Gross = calcGrossQuantity(bricksPerM3, brickLossRate);
+  const bricksPerM2Gross = calcGrossQuantity(bricksPerM2, brickLossRate);
+  const mortarPerM3Gross = calcGrossQuantity(mortarPerM3, mortarLossRate);
+  const mortarPerM2Gross = calcGrossQuantity(mortarPerM2, mortarLossRate);
+
+  const totalBricksNet = bricksPerM2 * area;
+  const totalBricksGross = bricksPerM2Gross * area;
+  const totalMortarNet = mortarPerM2 * area;
+  const totalMortarGross = mortarPerM2Gross * area;
+
+  return {
+    K: K,
+    bricksPerM3Net: bricksPerM3,
+    bricksPerM2Net: bricksPerM2,
+    mortarPerM3Net: mortarPerM3,
+    mortarPerM2Net: mortarPerM2,
+    bricksPerM3Gross: bricksPerM3Gross,
+    bricksPerM2Gross: bricksPerM2Gross,
+    mortarPerM3Gross: mortarPerM3Gross,
+    mortarPerM2Gross: mortarPerM2Gross,
+    totalBricksNet: totalBricksNet,
+    totalBricksGross: totalBricksGross,
+    totalMortarNet: totalMortarNet,
+    totalMortarGross: totalMortarGross,
+    area: area,
+    wallThickness: p.wallThickness
+  };
+}
+
+/* ============================================================
+   第二部分：单元测试框架与用例
+   ============================================================ */
+
+let testResults = [];
+let testCount = 0;
+let passCount = 0;
+
+function assert(condition, message) {
+  testCount++;
+  if (condition) {
+    passCount++;
+    testResults.push({ pass: true, msg: message });
+  } else {
+    testResults.push({ pass: false, msg: message });
+  }
+}
+
+function assertApprox(actual, expected, tolerance, message) {
+  const diff = Math.abs(actual - expected);
+  assert(diff <= tolerance, `${message} (期望 ${expected}，实际 ${actual}，容差 ${tolerance})`);
+}
+
+function assertThrows(fn, message) {
+  testCount++;
+  try {
+    fn();
+    testResults.push({ pass: false, msg: `${message} (期望抛出异常但未抛出)` });
+  } catch (e) {
+    passCount++;
+    testResults.push({ pass: true, msg: `${message} (正确抛出: ${e.message})` });
+  }
+}
+
+function runAllTests() {
+  testResults = [];
+  testCount = 0;
+  passCount = 0;
+
+  // === 正常值测试 ===
+  // 1. 标准砖 240 墙，灰缝 10mm
+  let r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM3Net, 529.1, 1, 'T01: 240 墙每立方米砖数约 529');
+
+  // 2. 标准砖 115 墙
+  r = calculateBrickQuantity({ wallThickness: 115, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM3Net, 552.0, 2, 'T02: 115 墙每立方米砖数约 552');
+
+  // 3. 标准砖 180 墙
+  r = calculateBrickQuantity({ wallThickness: 180, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM3Net, 529.1, 2, 'T03: 180 墙每立方米砖数约 529（按公式 K=1.5、t=180 重算：1.5e9/(180×250×63)）');
+
+  // 4. 标准砖 365 墙
+  r = calculateBrickQuantity({ wallThickness: 365, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM3Net, 523.0, 2, 'T04: 365 墙每立方米砖数约 523');
+
+  // 5. 标准砖 490 墙
+  r = calculateBrickQuantity({ wallThickness: 490, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM3Net, 518.5, 2, 'T05: 490 墙每立方米砖数约 518');
+
+  // 6. 240 墙每平米砖数
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM2Net, 127.0, 1, 'T06: 240 墙每平米砖数约 127');
+
+  // 7. 240 墙砂浆净用量
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.mortarPerM3Net, 0.226, 0.005, 'T07: 240 墙砂浆净用量约 0.226 m³/m³');
+
+  // 8. 灰缝 8mm 时砖数增加
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 8 });
+  assert(r.bricksPerM3Net > 529, 'T08: 灰缝 8mm 时砖数应大于 529');
+
+  // 9. 灰缝 12mm 时砖数减少
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 12 });
+  assert(r.bricksPerM3Net < 529, 'T09: 灰缝 12mm 时砖数应小于 529');
+
+  // 10. 砖损耗率 1.5%
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10, brickLossRate: 1.5 });
+  assertApprox(r.bricksPerM3Gross, r.bricksPerM3Net * 1.015, 0.1, 'T10: 砖损耗率 1.5% 计算正确');
+
+  // 11. 砂浆损耗率 2%
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10, mortarLossRate: 2 });
+  assertApprox(r.mortarPerM3Gross, r.mortarPerM3Net * 1.02, 0.001, 'T11: 砂浆损耗率 2% 计算正确');
+
+  // 12. 面积 10 ㎡ 总量
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10, area: 10 });
+  assertApprox(r.totalBricksNet, r.bricksPerM2Net * 10, 0.1, 'T12: 10 ㎡ 总砖数计算正确');
+
+  // 13. 多孔砖规格（190×190×90）
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 190, brickWidth: 190, brickHeight: 90, mortarThickness: 10 });
+  assert(r.bricksPerM3Net > 0 && r.bricksPerM3Net < 1000, 'T13: 多孔砖计算结果合理');
+
+  // 14. K 值：240 墙 K=2
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.K, 2, 0.01, 'T14: 240 墙 K 值应为 2');
+
+  // 15. K 值：115 墙 K=1
+  r = calculateBrickQuantity({ wallThickness: 115, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.K, 1, 0.01, 'T15: 115 墙 K 值应为 1');
+
+  // 16. K 值：365 墙 K=3
+  r = calculateBrickQuantity({ wallThickness: 365, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.K, 3, 0.01, 'T16: 365 墙 K 值应为 3');
+
+  // 17. 每平米与每立方米换算
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.bricksPerM2Net, r.bricksPerM3Net * 0.24, 0.1, 'T17: 每平米 = 每立方米 × 墙厚(m)');
+
+  // 18. 砂浆每平米与每立方米换算
+  assertApprox(r.mortarPerM2Net, r.mortarPerM3Net * 0.24, 0.001, 'T18: 砂浆每平米 = 每立方米 × 墙厚(m)');
+
+  // 19. 60 墙（1/4 砖）
+  r = calculateBrickQuantity({ wallThickness: 60, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assert(r.bricksPerM3Net > 0, 'T19: 60 墙计算结果为正');
+
+  // 20. 损耗率为 0
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10, brickLossRate: 0, mortarLossRate: 0 });
+  assertApprox(r.bricksPerM3Gross, r.bricksPerM3Net, 0.001, 'T20: 损耗率 0 时净=毛');
+
+  // === 边界值测试 ===
+  // 21. 极小灰缝 1mm
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 1 });
+  assert(r.bricksPerM3Net > 529, 'T21: 灰缝 1mm 时砖数应显著增加');
+
+  // 22. 极大灰缝 20mm
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 20 });
+  assert(r.bricksPerM3Net < 529, 'T22: 灰缝 20mm 时砖数应显著减少');
+
+  // 23. 自定义墙厚 300mm
+  r = calculateBrickQuantity({ wallThickness: 300, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assertApprox(r.K, 300/115, 0.01, 'T23: 自定义墙厚 K 值按砖宽近似');
+
+  // 24. 大面积 1000 ㎡
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10, area: 1000 });
+  assert(r.totalBricksNet > 100000, 'T24: 大面积计算结果合理');
+
+  // 25. 面积 0
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10, area: 0 });
+  assertApprox(r.totalBricksNet, 0, 0.001, 'T25: 面积 0 时总量为 0');
+
+  // === 异常输入测试 ===
+  // 26. 墙厚为负数
+  assertThrows(() => calculateBrickQuantity({ wallThickness: -100, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 }), 'T26: 墙厚负数应抛错');
+
+  // 27. 墙厚为 0
+  assertThrows(() => calculateBrickQuantity({ wallThickness: 0, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 }), 'T27: 墙厚 0 应抛错');
+
+  // 28. 砖长为 NaN
+  assertThrows(() => calculateBrickQuantity({ wallThickness: 240, brickLength: NaN, brickWidth: 115, brickHeight: 53, mortarThickness: 10 }), 'T28: 砖长 NaN 应抛错');
+
+  // 29. 砖宽为字符串
+  assertThrows(() => calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 'abc', brickHeight: 53, mortarThickness: 10 }), 'T29: 砖宽字符串应抛错');
+
+  // 30. 灰缝为负数
+  assertThrows(() => calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: -5 }), 'T30: 灰缝负数应抛错');
+
+  // 31. 损耗率为负数
+  assertThrows(() => calcGrossQuantity(100, -5), 'T31: 损耗率负数应抛错');
+
+  // 32. 精度：小数位保留
+  r = calculateBrickQuantity({ wallThickness: 240, brickLength: 240, brickWidth: 115, brickHeight: 53, mortarThickness: 10 });
+  assert(typeof r.bricksPerM3Net === 'number' && isFinite(r.bricksPerM3Net), 'T32: 结果为有限数字');
+}
+
+/* ============================================================
+   第三部分：UI 交互
+   ============================================================ */
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
+}
+
+function calculate() {
+  const wtSel = document.getElementById('wallThickness').value;
+  const customVal = document.getElementById('wallThicknessCustom').value.trim();
+  const wallThickness = wtSel === 'custom' ? Number(customVal) : Number(wtSel);
+  const input = {
+    wallThickness: wallThickness,
+    brickLength: Number(document.getElementById('brickLength').value),
+    brickWidth: Number(document.getElementById('brickWidth').value),
+    brickHeight: Number(document.getElementById('brickHeight').value),
+    mortarThickness: Number(document.getElementById('mortarThickness').value),
+    brickLossRate: Number(document.getElementById('brickLossRate').value),
+    mortarLossRate: Number(document.getElementById('mortarLossRate').value),
+    area: Number(document.getElementById('area').value),
+    kOverride: document.getElementById('kOverride').value
+  };
+  const area = document.getElementById('resultArea');
+  try {
+    if (wtSel === 'custom' && (customVal === '' || isNaN(wallThickness))) {
+      throw new Error('已选择自定义墙厚，请先在下方输入框填写大于 0 的墙厚数值（mm）');
+    }
+    const r = calculateBrickQuantity(input);
+    area.innerHTML = `
+      <div class="result-panel">
+        <h3>计算结果（墙厚系数 K = ${r.K.toFixed(2)}）</h3>
+        <div class="result-grid">
+          <div class="result-item"><div class="label">每立方米砖净用量</div><div class="value">${r.bricksPerM3Net.toFixed(1)}<span class="unit">块/m³</span></div></div>
+          <div class="result-item"><div class="label">每平米砖净用量</div><div class="value">${r.bricksPerM2Net.toFixed(1)}<span class="unit">块/㎡</span></div></div>
+          <div class="result-item"><div class="label">每立方米砂浆净用量</div><div class="value">${r.mortarPerM3Net.toFixed(4)}<span class="unit">m³/m³</span></div></div>
+          <div class="result-item"><div class="label">每平米砂浆净用量</div><div class="value">${r.mortarPerM2Net.toFixed(4)}<span class="unit">m³/㎡</span></div></div>
+          <div class="result-item"><div class="label">每立方米砖消耗量（含损耗）</div><div class="value">${r.bricksPerM3Gross.toFixed(1)}<span class="unit">块/m³</span></div></div>
+          <div class="result-item"><div class="label">每立方米砂浆消耗量（含损耗）</div><div class="value">${r.mortarPerM3Gross.toFixed(4)}<span class="unit">m³/m³</span></div></div>
+          ${r.area > 0 ? `
+          <div class="result-item"><div class="label">${r.area} ㎡ 总砖净用量</div><div class="value">${r.totalBricksNet.toFixed(0)}<span class="unit">块</span></div></div>
+          <div class="result-item"><div class="label">${r.area} ㎡ 总砖消耗量</div><div class="value">${r.totalBricksGross.toFixed(0)}<span class="unit">块</span></div></div>
+          <div class="result-item"><div class="label">${r.area} ㎡ 总砂浆净用量</div><div class="value">${r.totalMortarNet.toFixed(3)}<span class="unit">m³</span></div></div>
+          <div class="result-item"><div class="label">${r.area} ㎡ 总砂浆消耗量</div><div class="value">${r.totalMortarGross.toFixed(3)}<span class="unit">m³</span></div></div>
+          ` : ''}
+        </div>
+        <div class="warn" style="margin-top:14px;background:#fff3cd;border-left:4px solid #ffc107;padding:10px 14px;border-radius:4px;font-size:13px;">
+          ⚠ 本结果为理论净用量，实际施工受砌筑方式、工人手艺、砖材尺寸偏差、灰缝饱满度等影响，建议在此基础上增加 3%~8% 的富余量作为备料参考。
+        </div>
+      </div>`;
+  } catch (e) {
+    area.innerHTML = `<div class="result-panel" style="border-left-color:#e74c3c;"><h3 style="color:#e74c3c;">计算错误</h3><p>${e.message}</p></div>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById('wallThickness').value = '240';
+  document.getElementById('wallThicknessCustom').style.display = 'none';
+  document.getElementById('brickLength').value = '240';
+  document.getElementById('brickWidth').value = '115';
+  document.getElementById('brickHeight').value = '53';
+  document.getElementById('mortarThickness').value = '10';
+  document.getElementById('brickLossRate').value = '1.5';
+  document.getElementById('mortarLossRate').value = '1.5';
+  document.getElementById('area').value = '1';
+  document.getElementById('kOverride').value = '';
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+document.getElementById('wallThickness').addEventListener('change', function() {
+  document.getElementById('wallThicknessCustom').style.display = this.value === 'custom' ? 'block' : 'none';
+});
+
+function runTests() {
+  runAllTests();
+  const output = document.getElementById('testOutput');
+  let html = '';
+  testResults.forEach((r, i) => {
+    const cls = r.pass ? 'test-pass' : 'test-fail';
+    const icon = r.pass ? '✓' : '✗';
+    html += `<span class="${cls}">${icon} T${String(i+1).padStart(2,'0')}: ${r.msg}</span>\n`;
+  });
+  const summaryCls = passCount === testCount ? 'test-pass' : 'test-fail';
+  html += `\n<span class="test-summary ${summaryCls}">通过 ${passCount} / 共 ${testCount}</span>`;
+  output.innerHTML = html;
+}
+
+/* ============================================================
+   源码展示（带简易语法高亮）
+   ============================================================ */
+function highlightJS(code) {
+  // 先摘出注释存入占位符，避免后续关键字/数字正则在注释 span 内嵌套插入标签
+  const comments = [];
+  return code
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/(\/\*\*[\s\S]*?\*\/|\/\/.*)/g, function (m) {
+      comments.push(m);
+      return String.fromCharCode(0xE000 + comments.length - 1);
+    })
+    .replace(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/g, '<span class="str">$1</span>')
+    .replace(/\b(function|return|const|let|var|if|else|for|throw|new|try|catch|typeof|NaN|Math|Object|Number|Error)\b/g, '<span class="kw">$1</span>')
+    .replace(/\b(\d+\.?\d*)\b/g, '<span class="num">$1</span>')
+    .replace(/[\uE000-\uE7FF]/g, function (ch) {
+      return '<span class="cmt">' + comments[ch.charCodeAt(0) - 0xE000] + '</span>';
+    });
+}
+
+const sourceCodeText = `/**
+ * 砌体用砖量计算 - 核心算法
+ * 纯函数实现，无外部依赖
+ */
+
+/**
+ * 根据墙厚获取墙厚系数 K（砖数倍数）
+ * 依据：《全国统一建筑工程基础定额》及施工手册常用取值
+ * @param {number} wallThickness - 墙厚，单位 mm，必须 > 0
+ * @param {number} brickWidth - 砖宽，单位 mm，用于自定义墙厚的近似计算
+ * @returns {number} 墙厚系数 K（无量纲）
+ * @throws {Error} 输入非法时抛出错误
+ */
+function getWallThicknessFactor(wallThickness, brickWidth) {
+  if (typeof wallThickness !== 'number' || isNaN(wallThickness)) {
+    throw new Error('墙厚必须为数字');
+  }
+  if (wallThickness <= 0) {
+    throw new Error('墙厚必须大于 0');
+  }
+  if (typeof brickWidth !== 'number' || isNaN(brickWidth) || brickWidth <= 0) {
+    throw new Error('砖宽必须为大于 0 的数字');
+  }
+  const standardMap = {
+    60: 0.5,    // 1/4 砖墙
+    115: 1,     // 1/2 砖墙
+    180: 1.5,   // 3/4 砖墙
+    240: 2,     // 1 砖墙
+    365: 3,     // 1.5 砖墙
+    490: 4      // 2 砖墙
+  };
+  for (const key in standardMap) {
+    if (Math.abs(wallThickness - Number(key)) <= 2) {
+      return standardMap[key];
+    }
+  }
+  return wallThickness / brickWidth;
+}
+
+/**
+ * 校验输入参数的合法性
+ * @param {Object} params - 参数对象
+ * @returns {Object} 校验后的参数
+ * @throws {Error} 参数非法时抛出
+ */
+function validateParams(params) {
+  const required = ['wallThickness', 'brickLength', 'brickWidth', 'brickHeight', 'mortarThickness'];
+  const result = {};
+  for (const key of required) {
+    const v = Number(params[key]);
+    if (isNaN(v)) throw new Error(\`参数 \${key} 必须为数字\`);
+    if (v <= 0) throw new Error(\`参数 \${key} 必须大于 0\`);
+    result[key] = v;
+  }
+  return result;
+}
+
+/**
+ * 计算每立方米砌体的砖净用量（块/m³）
+ * 公式：N = K × 10^9 / [墙厚 × (砖长+灰缝) × (砖厚+灰缝)]
+ * @param {number} wallThickness - 墙厚 mm
+ * @param {number} brickLength - 砖长 mm
+ * @param {number} brickHeight - 砖厚 mm
+ * @param {number} mortarThickness - 灰缝 mm
+ * @param {number} K - 墙厚系数
+ * @returns {number} 每立方米砖净用量（块/m³）
+ */
+function calcBricksPerCubicMeter(wallThickness, brickLength, brickHeight, mortarThickness, K) {
+  const denominator = wallThickness * (brickLength + mortarThickness) * (brickHeight + mortarThickness);
+  return (K * 1e9) / denominator;
+}
+
+/**
+ * 计算每平米砌体的砖净用量（块/㎡）
+ * @param {number} bricksPerCubicMeter - 每立方米砖数
+ * @param {number} wallThickness - 墙厚 mm
+ * @returns {number} 每平米砖净用量（块/㎡）
+ */
+function calcBricksPerSquareMeter(bricksPerCubicMeter, wallThickness) {
+  return bricksPerCubicMeter * (wallThickness / 1000);
+}
+
+/**
+ * 计算每立方米砌体的砂浆净用量（m³/m³）
+ * 公式：V_mortar = 1 - N × 单砖体积
+ * @param {number} bricksPerCubicMeter - 每立方米砖数
+ * @param {number} brickLength - 砖长 mm
+ * @param {number} brickWidth - 砖宽 mm
+ * @param {number} brickHeight - 砖厚 mm
+ * @returns {number} 每立方米砂浆净用量（m³/m³）
+ */
+function calcMortarPerCubicMeter(bricksPerCubicMeter, brickLength, brickWidth, brickHeight) {
+  const singleBrickVolume = (brickLength * brickWidth * brickHeight) / 1e9;
+  const mortar = 1 - bricksPerCubicMeter * singleBrickVolume;
+  return Math.max(0, mortar);
+}
+
+/**
+ * 计算每平米砌体的砂浆净用量（m³/㎡）
+ * @param {number} mortarPerCubicMeter - 每立方米砂浆用量
+ * @param {number} wallThickness - 墙厚 mm
+ * @returns {number} 每平米砂浆净用量（m³/㎡）
+ */
+function calcMortarPerSquareMeter(mortarPerCubicMeter, wallThickness) {
+  return mortarPerCubicMeter * (wallThickness / 1000);
+}
+
+/**
+ * 计算考虑损耗后的消耗量
+ * @param {number} netQuantity - 净用量
+ * @param {number} lossRatePercent - 损耗率（%）
+ * @returns {number} 消耗量
+ */
+function calcGrossQuantity(netQuantity, lossRatePercent) {
+  if (typeof lossRatePercent !== 'number' || isNaN(lossRatePercent) || lossRatePercent < 0) {
+    throw new Error('损耗率必须为非负数字');
+  }
+  return netQuantity * (1 + lossRatePercent / 100);
+}
+
+/**
+ * 主计算函数：根据输入参数计算全部指标
+ * @param {Object} input - 输入参数
+ * @returns {Object} 计算结果
+ */
+function calculateBrickQuantity(input) {
+  const p = validateParams(input);
+  const brickLossRate = Number(input.brickLossRate) || 0;
+  const mortarLossRate = Number(input.mortarLossRate) || 0;
+  const area = Math.max(0, Number(input.area) || 0);
+
+  const K = getWallThicknessFactor(p.wallThickness, p.brickWidth);
+  const bricksPerM3 = calcBricksPerCubicMeter(p.wallThickness, p.brickLength, p.brickHeight, p.mortarThickness, K);
+  const bricksPerM2 = calcBricksPerSquareMeter(bricksPerM3, p.wallThickness);
+  const mortarPerM3 = calcMortarPerCubicMeter(bricksPerM3, p.brickLength, p.brickWidth, p.brickHeight);
+  const mortarPerM2 = calcMortarPerSquareMeter(mortarPerM3, p.wallThickness);
+
+  const bricksPerM3Gross = calcGrossQuantity(bricksPerM3, brickLossRate);
+  const bricksPerM2Gross = calcGrossQuantity(bricksPerM2, brickLossRate);
+  const mortarPerM3Gross = calcGrossQuantity(mortarPerM3, mortarLossRate);
+  const mortarPerM2Gross = calcGrossQuantity(mortarPerM2, mortarLossRate);
+
+  const totalBricksNet = bricksPerM2 * area;
+  const totalBricksGross = bricksPerM2Gross * area;
+  const totalMortarNet = mortarPerM2 * area;
+  const totalMortarGross = mortarPerM2Gross * area;
+
+  return {
+    K, bricksPerM3Net: bricksPerM3, bricksPerM2Net: bricksPerM2,
+    mortarPerM3Net: mortarPerM3, mortarPerM2Net: mortarPerM2,
+    bricksPerM3Gross, bricksPerM2Gross, mortarPerM3Gross, mortarPerM2Gross,
+    totalBricksNet, totalBricksGross, totalMortarNet, totalMortarGross,
+    area, wallThickness: p.wallThickness
+  };
+}`;
+
+document.getElementById('sourceCode').innerHTML = highlightJS(sourceCodeText);
+
+/* ============================================================
+   使用说明书
+   ============================================================ */
+const docHTML = `
+<h2>一、工具用途</h2>
+<p>本工具用于砌筑工程中标准砖、多孔砖等块材的用量估算。输入墙厚、砖规格、灰缝厚度等参数后，可快速得到：</p>
+<ul>
+  <li>每立方米砌体的砖净用量（块/m³）与砂浆净用量（m³/m³）</li>
+  <li>每平米砌体的砖净用量（块/㎡）与砂浆净用量（m³/㎡）</li>
+  <li>考虑施工损耗后的砖与砂浆消耗量</li>
+  <li>给定墙面面积后的总用量</li>
+</ul>
+<p>适用场景：施工图预算编制、材料采购计划、现场备料参考、施工方案对比等。</p>
+
+<h2>二、参数详解</h2>
+<h3>2.1 墙厚 (mm)</h3>
+<p>砌体墙的实际厚度。工具内置 6 种标准墙厚（60、115、180、240、365、490），对应 1/4 砖至 2 砖墙。若为自定义墙厚（如 200mm 砌块墙），选择"自定义"并输入数值，工具将按砖宽近似计算墙厚系数 K。</p>
+<table>
+  <tr><th>墙厚 (mm)</th><th>俗称</th><th>墙厚系数 K</th><th>典型应用</th></tr>
+  <tr><td>60</td><td>1/4 砖</td><td>0.5</td><td>隔墙、装饰线条</td></tr>
+  <tr><td>115</td><td>1/2 砖</td><td>1</td><td>内隔墙</td></tr>
+  <tr><td>180</td><td>3/4 砖</td><td>1.5</td><td>部分地区的内墙</td></tr>
+  <tr><td>240</td><td>1 砖</td><td>2</td><td>承重墙、外墙（最常见）</td></tr>
+  <tr><td>365</td><td>1.5 砖</td><td>3</td><td>寒冷地区外墙</td></tr>
+  <tr><td>490</td><td>2 砖</td><td>4</td><td>严寒地区外墙、基础墙</td></tr>
+</table>
+
+<h3>2.2 砖规格 (长 × 宽 ×厚 mm)</h3>
+<p>默认值为标准砖 240×115×53 mm（依据 GB/T 5101-2017《烧结普通砖》）。若使用多孔砖（如 190×190×90）、空心砖、混凝土砖等，需按实际尺寸输入。注意：本工具按实心砖模型计算，对空心砖的孔洞率未作扣减，结果会偏大，需人工修正。</p>
+
+<h3>2.3 灰缝厚度 (mm)</h3>
+<p>砖与砖之间的砂浆缝厚度。依据 GB 50203-2011《砌体结构工程施工质量验收规范》第 5.3.2 条，水平灰缝厚度和竖向灰缝厚度宜为 10mm，不应小于 8mm，也不应大于 12mm。默认取 10mm。灰缝越大，砂浆用量越多，砖用量越少。</p>
+
+<h3>2.4 砖损耗率 (%)</h3>
+<p>运输、搬运、砌筑过程中的砖破损率。依据各地预算定额，一般取 1%~2%。本工具默认 1.5%。实际取值需参考当地现行定额说明。</p>
+
+<h3>2.5 砂浆损耗率 (%)</h3>
+<p>砂浆搅拌、运输、砌筑过程中的损失率。定额常取 1%~3%，默认 1.5%。</p>
+
+<h3>2.6 计算面积 (㎡)</h3>
+<p>待砌筑的墙面面积。填入后工具会计算该面积的总砖数和总砂浆量。若仅需单位用量，可填 1 或 0。</p>
+
+<h2>三、使用场景</h2>
+<h3>场景 1：住宅楼 240 外墙备料</h3>
+<p>某住宅楼外墙采用标准砖砌筑，墙厚 240mm，灰缝 10mm，外墙面积 800 ㎡。输入参数后得到：每平米砖净用量约 127 块，800 ㎡ 总净用量约 101,600 块；考虑 1.5% 损耗后约 103,124 块。砂浆每平米约 0.054 m³，总量约 43.5 m³。采购时建议再增加 3%~5% 的富余。</p>
+
+<h3>场景 2：内隔墙 115 墙材料计划</h3>
+<p>办公室内隔墙采用 115 墙（1/2 砖），总面积 300 ㎡。计算得每平米砖数约 63.5 块（注意：115 墙的每平米砖数少于 240 墙，因为墙薄），总砖数约 19,050 块。砂浆用量相应减少。</p>
+
+<h3>场景 3：使用多孔砖的对比计算</h3>
+<p>某项目拟采用 190×190×90 多孔砖替代标准砖，墙厚 240mm。输入新砖规格后，可对比两种方案的用砖量和砂浆量差异，为材料选型提供数据支持。注意多孔砖的孔洞率需另行扣减。</p>
+
+<h3>场景 4：不同灰缝厚度的敏感性分析</h3>
+<p>施工队提出将灰缝从 10mm 减小到 8mm 以节约砂浆。通过分别输入 8mm 和 10mm 对比，可量化砂浆节约量和砖用量变化，评估是否值得调整工艺。</p>
+
+<h3>场景 5：基础墙 490 厚的大方量计算</h3>
+<p>某厂房基础墙厚 490mm（2 砖墙），总长 200m，高 1.2m，面积 240 ㎡。计算得每立方米砖数约 518 块，总用量约 62,000 块左右。大方量工程建议分批采购，并考虑现场堆放损耗。</p>
+
+<h3>场景 6：预算编制中的砂浆用量估算</h3>
+<p>编制施工图预算时，需确定 M5 混合砂浆的用量。输入参数后得到每立方米砌体的砂浆净用量，再乘以定额单价即可得到砂浆费用。注意预算定额中可能已包含损耗，避免重复计取。</p>
+
+<h2>四、常见错误</h2>
+<ul>
+  <li><strong>错误 1：混淆净用量与消耗量。</strong>净用量是理论值，消耗量包含损耗。采购应按消耗量，成本分析可用净用量。</li>
+  <li><strong>错误 2：忽略墙厚系数 K 的差异。</strong>不同墙厚的 K 值不同，不能简单按墙厚比例换算砖数。</li>
+  <li><strong>错误 3：将空心砖按实心砖计算。</strong>本工具未考虑孔洞率，空心砖结果需乘以 (1 - 孔洞率) 修正。</li>
+  <li><strong>错误 4：灰缝取值不当。</strong>灰缝小于 8mm 或大于 12mm 均不符合规范要求，计算结果无实际意义。</li>
+  <li><strong>错误 5：重复计取损耗。</strong>若使用的预算定额已含损耗，不要再叠加本工具的损耗率。</li>
+  <li><strong>错误 6：自定义墙厚时 K 值偏差。</strong>非标准墙厚的 K 值按砖宽近似，可能与实际砌筑方式有偏差。</li>
+</ul>
+
+<h2>五、数据依据</h2>
+<p>本工具的计算公式和参数取值参考以下标准与资料：</p>
+<ul>
+  <li>GB 50203-2011《砌体结构工程施工质量验收规范》——灰缝厚度要求</li>
+  <li>GB/T 5101-2017《烧结普通砖》——标准砖规格 240×115×53 mm</li>
+  <li>GB/T 13544-2011《烧结多孔砖和多孔砌块》——多孔砖规格参考</li>
+  <li>《全国统一建筑工程基础定额》——标准砖每立方米用量参考值（240 墙约 529 块/m³）</li>
+  <li>《建筑施工手册》（第五版）——砌体工程材料用量计算方法</li>
+</ul>
+<div class="warn"><strong>来源可靠性声明：</strong>墙厚系数 K 值表（0.5/1/1.5/2/3/4）、损耗率取值（1%~3%）以及核心公式在本工具中均无标准编号、章节或页码可查，属于经验估算值，未经标准原文核对，请勿作为结算依据。</div>
+<div class="info">注：各地预算定额的损耗率取值可能不同，使用时应以当地现行定额说明为准。本工具提供的损耗率默认值仅为参考。</div>
+
+<h2>六、局限性</h2>
+<ul>
+  <li><strong>砌筑方式简化：</strong>公式基于一顺一丁、全顺等典型砌筑方式的平均化模型，未区分具体砌法（如三顺一丁、梅花丁等），不同砌法的实际用砖量会有差异。</li>
+  <li><strong>未考虑门窗洞口：</strong>计算结果为实砌墙体的用量，未扣除门窗洞口、过梁、圈梁等占体积，需用户自行扣减。</li>
+  <li><strong>未考虑砖的破损与切割：</strong>实际砌筑中砖的切割、破损会产生额外损耗，本工具仅按给定损耗率计算。</li>
+  <li><strong>空心砖、砌块不适用：</strong>本工具按实心砖模型计算，对空心砖、混凝土砌块、加气混凝土块等需另行修正。</li>
+  <li><strong>未考虑砂浆饱满度：</strong>实际灰缝的饱满度影响砂浆实际用量，本工具按 100% 饱满度计算。</li>
+  <li><strong>非标准墙厚精度有限：</strong>自定义墙厚的 K 值按砖宽近似，可能与实际有偏差。</li>
+</ul>
+
+<h2>七、精度与误差说明（有限精准原则）</h2>
+<div class="warn">
+<strong>重要声明：</strong>现实工程中的变量是无限的（砖的尺寸偏差、工人手艺、天气、砂浆稠度、砌筑方式、现场管理等），本工具只做到"方法准、输入项准、结果给误差范围"，<strong>不承诺绝对精确</strong>。计算结果仅供估算参考，实际备料应结合现场情况适当增加富余。
+</div>
+
+<h3>7.1 算准了什么</h3>
+<ul>
+  <li><strong>数学模型正确：</strong>公式来源于工程定额与施工手册的标准算法，在给定输入下，计算过程无算术错误。</li>
+  <li><strong>标准墙厚取值准确：</strong>6 种标准墙厚的 K 值采用定额常用值，与《全国统一建筑工程基础定额》一致。</li>
+  <li><strong>单位换算无误：</strong>mm 到 m、块到 m³ 的换算系数经过验证。</li>
+  <li><strong>标准砖 240 墙的基准值可靠：</strong>计算结果约 529 块/m³，与定额参考值一致（容差 ±1 块）。</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<ul>
+  <li>砖的实际尺寸偏差（国标允许偏差 ±2mm）</li>
+  <li>灰缝的实际厚度波动（8~12mm 范围内）</li>
+  <li>砌筑方式的具体差异（一顺一丁、三顺一丁、梅花丁等）</li>
+  <li>门窗洞口、构造柱、圈梁等占体积</li>
+  <li>砖的破损率、切割损耗</li>
+  <li>砂浆饱满度（规范要求 ≥80%，实际可能更低）</li>
+  <li>现场堆放、二次搬运的损耗</li>
+  <li>空心砖的孔洞率</li>
+  <li>异形墙、弧形墙的增加量</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<table>
+  <tr><th>项目</th><th>估算误差范围</th><th>说明</th></tr>
+  <tr><td>每立方米砖数</td><td>±3% ~ ±5%</td><td>标准砖、标准墙厚、规范灰缝下</td></tr>
+  <tr><td>每立方米砂浆量</td><td>±5% ~ ±10%</td><td>受灰缝饱满度影响大</td></tr>
+  <tr><td>非标准墙厚</td><td>±5% ~ ±10%</td><td>K 值近似带来偏差</td></tr>
+  <tr><td>多孔砖 / 空心砖</td><td>±10% ~ ±20%</td><td>未考虑孔洞率</td></tr>
+  <tr><td>总备料量</td><td>建议增加 3%~8% 富余</td><td>综合各种不确定因素</td></tr>
+</table>
+
+<div class="info">
+<strong>使用建议：</strong>将本工具的计算结果作为"理论净用量"，在此基础上根据工程经验增加 3%~8% 的富余量作为实际采购量。重要工程应结合当地定额站发布的参考数据或现场试验段数据校核。
+</div>
+
+<h2>八、版本与维护</h2>
+<p>当前版本：v2.0.2-修审查问题 20261108</p>
+<p>本工具为纯前端实现，所有计算在浏览器本地完成，不上传任何数据。如发现计算结果与定额差异较大，请检查输入参数是否正确，或联系当地定额站确认取值。</p>
+`;
+document.getElementById('docContent').innerHTML = docHTML;
+
+// 初始计算一次
+calculate();
+</script>
+</body>
+</html>

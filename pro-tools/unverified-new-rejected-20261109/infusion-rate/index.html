@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>输液速度与滴速计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:0 0 44px;background:#0a1628;color:#cfe3ff;font:14px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:14px 10px 10px;text-align:center;border-bottom:1px solid #1e3a5f}
+h1{margin:0;font-size:17px;color:#4a9eff}
+.sub{font-size:11px;color:#6f92b8;margin-top:3px}
+nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:10px 6px}
+nav button{background:#12263f;color:#9fc4e8;border:1px solid #1e3a5f;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+main{max-width:780px;margin:0 auto;padding:0 8px}
+section{display:none}
+section.on{display:block}
+.card{background:#0f2038;border:1px solid #1e3a5f;border-radius:10px;padding:11px;margin-bottom:11px}
+label{display:block;font-size:12px;color:#8fb4d9;margin:7px 0 3px}
+input,select{width:100%;min-width:0;background:#0a1628;color:#e6f1ff;border:1px solid #24476f;border-radius:6px;padding:7px;font-size:14px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.go{width:100%;margin-top:11px;padding:11px;border:0;border-radius:8px;background:#4a9eff;color:#04101f;font-size:15px;font-weight:700;cursor:pointer}
+.err{color:#ff7a7a;font-size:12px;min-height:15px;margin-top:6px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #1e3a5f;font-size:13px}
+.row b{color:#4a9eff}
+.row i{color:#7fa3c8;font-style:normal;font-size:12px;min-width:52px;text-align:right}
+.f{font-size:12px;color:#8fb4d9;margin-top:8px;line-height:1.75}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{border:1px solid #1e3a5f;padding:5px;text-align:left;vertical-align:top}
+th{color:#8fb4d9}
+.t{padding:5px 0;font-size:12.5px;border-bottom:1px dashed #1e3a5f}
+.ok{color:#54d98c}.no{color:#ff7a7a}
+footer{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4f7ba8;background:#0a1628cc;padding:2px 6px;border-radius:5px}
+pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:#9fc4e8;margin:0;line-height:1.5}
+@media(max-width:520px){.g{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>输液速度与滴速计算器</h1><div class="sub">mL/h ⇄ gtt/min · 滴系数 10/15/20/60 · 输注时间与剩余量估算</div></header>
+<nav><button class="on" onclick="tab(0)">计算工具</button><button onclick="tab(1)">单元测试</button><button onclick="tab(2)">JS 源码</button><button onclick="tab(3)">使用说明</button></nav>
+<main>
+
+<section class="on">
+<div class="card">
+<div class="g">
+<div><label>计算模式</label><select id="mode" onchange="sw()"><option value="ml">已知速度 → 求滴速</option><option value="gtt">已知滴速 → 求速度</option></select></div>
+<div><label>滴系数 (gtt/mL)</label><select id="df"><option value="20">20 标准重力输液器</option><option value="15">15 部分输液器（经验值）</option><option value="10">10 输血器（经验值）</option><option value="60">60 微量泵/小儿管路</option></select></div>
+<div><label>液体总量 (mL)</label><input id="vol" value="500" inputmode="decimal"></div>
+<div><label>已输入量 (mL)</label><input id="done" value="0" inputmode="decimal"></div>
+<div><label id="lb">输注速度 (mL/h)</label><input id="val" value="60" inputmode="decimal"></div>
+</div>
+<div class="err" id="err"></div>
+<button class="go" onclick="run()">计 算</button>
+</div>
+<div class="card" id="out"><div class="f">输入参数后点「计算」。</div></div>
+</section>
+
+<section>
+<div class="card"><button class="go" onclick="runTests()">运行全部测试</button><div id="tr" style="margin-top:10px"></div></div>
+</section>
+
+<section>
+<div class="card"><pre id="src"></pre></div>
+</section>
+
+<section>
+<div class="card"><div class="f"><b>计算公式</b><br>
+滴速(gtt/min) = 输注速度(mL/h) × 滴系数(gtt/mL) ÷ 60<br>
+速度(mL/h) = 滴速(gtt/min) × 60 ÷ 滴系数<br>
+输注时间(h) = 液体总量(mL) ÷ 速度(mL/h)；剩余时间 = 剩余量 ÷ 当前速度<br>
+剩余滴数 = 剩余量(mL) × 滴系数<br>
+出处：《基础护理学》第6版（人民卫生出版社）输液与输血章节的滴速计算公式。</div></div>
+<div class="card"><div class="f"><b>滴系数取值</b></div>
+<table><tr><th>gtt/mL</th><th>适用器具</th><th>出处</th></tr>
+<tr><td>20</td><td>标准一次性重力输液器</td><td>GB 8368-2018《一次性使用输液器 重力输液式》（等同采用 ISO 8536-4）</td></tr>
+<tr><td>60</td><td>微量输液泵 / 小儿专用管路</td><td>本参数为行业经验值，未经标准核对</td></tr>
+<tr><td>15</td><td>部分成人输液器、输血器</td><td>本参数为行业经验值，未经标准核对</td></tr>
+<tr><td>10</td><td>输血器</td><td>本参数为行业经验值，未经标准核对</td></tr>
+</table></div>
+<div class="card"><div class="f"><b>常用输液量与滴速参考</b></div>
+<table><tr><th>项目</th><th>参考值</th><th>出处</th></tr>
+<tr><td>常见包装量</td><td>100 / 250 / 500 / 1000 mL</td><td>行业经验值（常见药品规格）</td></tr>
+<tr><td>成人常规滴速</td><td>40 ~ 60 gtt/min</td><td>《基础护理学》第6版，人民卫生出版社</td></tr>
+<tr><td>儿童滴速</td><td>20 ~ 40 gtt/min</td><td>《基础护理学》第6版，人民卫生出版社</td></tr>
+<tr><td>老年 / 心肺功能不全者</td><td>20 ~ 40 gtt/min</td><td>同上（经验参考，非强制标准）</td></tr>
+</table>
+<div class="f" style="margin-top:8px">本工具仅作计算辅助，临床实际输注速度须遵医嘱及药品说明书；输液泵使用时以泵设定 mL/h 为准。</div>
+</div>
+</section>
+
+</main>
+<footer>v1.0.0-infusion-rate 20261108</footer>
+<script>
+function mlToGtt(m,k){return m*k/60}
+function gttToMl(g,k){return g*60/k}
+function timeH(v,r){return r>0?v/r:0}
+function remainV(v,d){return Math.max(0,v-d)}
+function hm(h){var m=Math.round(h*60);return Math.floor(m/60)+'小时'+(m%60)+'分'}
+function r2(x){return Math.round(x*100)/100}
+function eq(a,b){return typeof b==='number'?Math.abs(a-b)<1e-6:a===b}
+function tab(i){var s=document.querySelectorAll('main section'),b=document.querySelectorAll('nav button');for(var j=0;j<s.length;j++){s[j].className=j===i?'on':'';b[j].className=j===i?'on':''}}
+function vnum(id,min,max,n){var s=document.getElementById(id).value.trim();if(!s)throw n+'不能为空';var x=Number(s);if(!isFinite(x))throw n+'必须是数字';if(x<min||x>max)throw n+'应在 '+min+' ~ '+max+' 之间';return x}
+function sw(){var m=document.getElementById('mode').value;document.getElementById('lb').textContent=m==='ml'?'输注速度 (mL/h)':'滴速 (gtt/min)';document.getElementById('val').value=m==='ml'?'60':'20';run()}
+function run(){
+var err=document.getElementById('err'),out=document.getElementById('out');
+try{
+var mode=document.getElementById('mode').value,k=Number(document.getElementById('df').value),
+vol=vnum('vol',1,10000,'液体总量'),done=vnum('done',0,10000,'已输入量');
+if(done>vol)throw'已输入量不能大于液体总量';
+var val=vnum('val',0.1,3000,mode==='ml'?'输注速度':'滴速');
+var mlh,gtt;
+if(mode==='ml'){mlh=val;gtt=mlToGtt(mlh,k)}else{gtt=val;mlh=gttToMl(gtt,k)}
+var T=timeH(vol,mlh),rem=remainV(vol,done),Tr=timeH(rem,mlh);
+err.textContent='';
+out.innerHTML=
+'<div class="row"><span>输注速度</span><b>'+r2(mlh)+'</b><i>mL/h</i></div>'+
+'<div class="row"><span>滴速</span><b>'+r2(gtt)+'</b><i>gtt/min</i></div>'+
+'<div class="row"><span>滴系数 k</span><b>'+k+'</b><i>gtt/mL</i></div>'+
+'<div class="row"><span>预计总输注时间</span><b>'+hm(T)+'</b><i>'+r2(T)+' h</i></div>'+
+'<div class="row"><span>剩余液量</span><b>'+r2(rem)+'</b><i>mL</i></div>'+
+'<div class="row"><span>剩余输注时间</span><b>'+hm(Tr)+'</b><i>'+r2(Tr)+' h</i></div>'+
+'<div class="row"><span>剩余总滴数</span><b>'+Math.round(rem*k)+'</b><i>滴</i></div>'+
+'<div class="f">公式：滴速 = 速度 × k ÷ 60；速度 = 滴速 × 60 ÷ k；t = V ÷ v。<br>k=20 依据 GB 8368-2018；k=10/15/60 为行业经验值，未经标准核对；速度区间参考《基础护理学》第6版。</div>';
+}catch(e){err.textContent='⚠ '+e;out.innerHTML='<div class="f">请修正上方输入后重新计算。</div>'}
+}
+function runTests(){
+var T=[
+['mlToGtt(60,20) → 20',mlToGtt(60,20),20],
+['mlToGtt(120,15) → 30',mlToGtt(120,15),30],
+['mlToGtt(30,60) → 30',mlToGtt(30,60),30],
+['mlToGtt(100,20) → 33.33',r2(mlToGtt(100,20)),33.33],
+['gttToMl(40,20) → 120',gttToMl(40,20),120],
+['gttToMl(60,60) → 60',gttToMl(60,60),60],
+['gttToMl(25,10) → 150',gttToMl(25,10),150],
+['timeH(500,50) → 10',timeH(500,50),10],
+['timeH(250,100) → 2.5',timeH(250,100),2.5],
+['timeH(500,0) → 0（防除零）',timeH(500,0),0],
+['remainV(500,150) → 350',remainV(500,150),350],
+['remainV(500,600) → 0（不为负）',remainV(500,600),0],
+['hm(2.5) → 2小时30分',hm(2.5),'2小时30分'],
+['hm(0.25) → 0小时15分',hm(0.25),'0小时15分']
+];
+var h='',p=0;
+for(var i=0;i<T.length;i++){var ok=eq(T[i][1],T[i][2]);if(ok)p++;h+='<div class="t"><span class="'+(ok?'ok':'no')+'">'+(ok?'✓':'✗')+'</span> '+T[i][0]+(ok?'':'　实际='+T[i][1])+'</div>'}
+document.getElementById('tr').innerHTML='<div class="t"><b>通过 '+p+' / '+T.length+'</b></div>'+h;
+}
+document.getElementById('src').textContent=[mlToGtt,gttToMl,timeH,remainV,hm,r2,eq].map(String).join('\n\n');
+run();
+</script>
+</body>
+</html>

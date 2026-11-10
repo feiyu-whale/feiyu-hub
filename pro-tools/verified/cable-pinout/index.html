@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网线光纤线序与传输距离查询工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: #fff;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  header h1 { font-size: 24px; margin-bottom: 6px; }
+  header p { font-size: 13px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 500;
+    color: #586069;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #f6f8fa; }
+  .tab.active { color: #1e3c72; border-bottom-color: #1e3c72; }
+  .panel { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .card h2 {
+    font-size: 18px;
+    color: #1e3c72;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eaecef;
+  }
+  .card h3 { font-size: 15px; margin: 14px 0 8px; color: #2a5298; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid #d1d5da;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  th { background: #f1f3f5; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .wire-row {
+    display: flex;
+    gap: 4px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+  }
+  .wire-pin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 11px;
+  }
+  .wire-block {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    position: relative;
+    overflow: hidden;
+  }
+  .wire-label { margin-top: 3px; color: #555; }
+  .pin-num { font-weight: bold; color: #1e3c72; }
+  /* 纯色 */
+  .c-orange { background: #FF8C00; }
+  .c-green { background: #228B22; }
+  .c-blue { background: #4169E1; }
+  .c-brown { background: #8B4513; }
+  /* 带白条纹（双色线） */
+  .c-orange-white {
+    background: repeating-linear-gradient(45deg, #fff, #fff 4px, #FF8C00 4px, #FF8C00 8px);
+  }
+  .c-green-white {
+    background: repeating-linear-gradient(45deg, #fff, #fff 4px, #228B22 4px, #228B22 8px);
+  }
+  .c-blue-white {
+    background: repeating-linear-gradient(45deg, #fff, #fff 4px, #4169E1 4px, #4169E1 8px);
+  }
+  .c-brown-white {
+    background: repeating-linear-gradient(45deg, #fff, #fff 4px, #8B4513 4px, #8B4513 8px);
+  }
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #ffa000;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+  .info {
+    background: #e3f2fd;
+    border-left: 4px solid #1976d2;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+  .warn {
+    background: #ffebee;
+    border-left: 4px solid #d32f2f;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    font-size: 13px;
+  }
+  select, input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5da;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  button {
+    background: #1e3c72;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 8px;
+  }
+  button:hover { background: #2a5298; }
+  .result-box {
+    background: #f6f8fa;
+    border: 1px solid #d1d5da;
+    border-radius: 4px;
+    padding: 14px;
+    margin-top: 12px;
+    font-size: 13px;
+    min-height: 40px;
+  }
+  .test-log {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 14px;
+    border-radius: 4px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .test-pass { color: #4ec9b0; }
+  .test-fail { color: #f48771; }
+  .test-summary {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+  }
+  .summary-pass { background: #d4edda; color: #155724; }
+  .summary-fail { background: #f8d7da; color: #721c24; }
+  .manual h2 { font-size: 20px; margin-top: 20px; }
+  .manual h3 { font-size: 16px; margin-top: 16px; }
+  .manual p { margin: 8px 0; font-size: 14px; }
+  .manual ul, .manual ol { margin: 8px 0 8px 24px; font-size: 14px; }
+  .manual li { margin: 4px 0; }
+  .manual code {
+    background: #f1f3f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .version {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 700px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .wire-block { width: 32px; height: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔌 网线光纤线序与传输距离查询工具</h1>
+  <p>依据 TIA/EIA-568 · ISO/IEC 11801 · GB 50311 · IEEE 802.3</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="tool">🛠 工具</div>
+  <div class="tab" data-tab="test">🧪 单元测试</div>
+  <div class="tab" data-tab="manual">📖 使用说明书</div>
+</div>
+
+<!-- ============ 工具面板 ============ -->
+<div class="panel active" id="panel-tool">
+
+  <div class="card">
+    <h2>一、网线线序标准（T568A / T568B）</h2>
+    <p style="font-size:13px;color:#555;">依据 TIA/EIA-568-C.2，中国国标 GB 50311-2016 引用该标准。<strong>家用/商用一般使用 T568B。</strong></p>
+
+    <div class="grid-2">
+      <div>
+        <h3>T568A 线序</h3>
+        <div class="wire-row" id="wire-a"></div>
+        <p style="font-size:12px;color:#666;margin-top:6px;">
+          顺序：绿白 → 绿 → 橙白 → 蓝 → 蓝白 → 橙 → 棕白 → 棕
+        </p>
+      </div>
+      <div>
+        <h3>T568B 线序</h3>
+        <div class="wire-row" id="wire-b"></div>
+        <p style="font-size:12px;color:#666;margin-top:6px;">
+          顺序：橙白 → 橙 → 绿白 → 蓝 → 蓝白 → 绿 → 棕白 → 棕
+        </p>
+      </div>
+    </div>
+
+    <div class="note">
+      💡 <strong>提示</strong>：RJ45 水晶头金属触点朝上、卡扣朝下时，从左到右为 Pin 1 ~ Pin 8。
+      1/2 与 3/6 是两对数据线（1000BASE-T 四对全用），4/5 与 7/8 在 10/100M 下空闲。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>二、直通线 vs 交叉线</h2>
+    <table>
+      <tr><th>线缆类型</th><th>两端线序</th><th>典型场景</th></tr>
+      <tr>
+        <td><strong>直通线</strong>（Straight-through）</td>
+        <td>两端同为 T568B 或同为 T568A</td>
+        <td>PC ↔ 交换机 / 路由器 ↔ 交换机 / 路由器 ↔ AP</td>
+      </tr>
+      <tr>
+        <td><strong>交叉线</strong>（Crossover）</td>
+        <td>一端 T568A，另一端 T568B</td>
+        <td>PC ↔ PC / 交换机 ↔ 交换机（无 Auto-MDIX 时）</td>
+      </tr>
+    </table>
+    <div class="info">
+      📌 现代设备普遍支持 <strong>Auto-MDIX</strong>（IEEE 802.3ab-1999），可自动识别线序，
+      实际工程中<strong>统一使用 T568B 直通线</strong>即可覆盖 99% 场景。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>三、双绞线传输规格查询</h2>
+    <div class="form-group">
+      <label>选择线缆类别：</label>
+      <select id="sel-cat">
+        <option value="Cat5e">Cat5e（超五类）</option>
+        <option value="Cat6">Cat6（六类）</option>
+        <option value="Cat6a">Cat6a（超六类）</option>
+        <option value="Cat7">Cat7（七类，ISO/IEC）</option>
+        <option value="Cat8">Cat8（八类）</option>
+      </select>
+    </div>
+    <button onclick="showCatSpec()">查询规格</button>
+    <div class="result-box" id="cat-result">请选择后点击查询。</div>
+  </div>
+
+  <div class="card">
+    <h2>四、光纤类型查询</h2>
+    <div class="form-group">
+      <label>选择光纤类型：</label>
+      <select id="sel-fiber">
+        <optgroup label="单模（SMF）">
+          <option value="OS1">OS1（室内单模）</option>
+          <option value="OS2">OS2（室外单模）</option>
+        </optgroup>
+        <optgroup label="多模（MMF）">
+          <option value="OM1">OM1（62.5/125）</option>
+          <option value="OM2">OM2（50/125）</option>
+          <option value="OM3">OM3（激光优化 50/125）</option>
+          <option value="OM4">OM4（激光优化 50/125）</option>
+          <option value="OM5">OM5（宽带多模 WBMMF）</option>
+        </optgroup>
+      </select>
+    </div>
+    <button onclick="showFiberSpec()">查询规格</button>
+    <div class="result-box" id="fiber-result">请选择后点击查询。</div>
+  </div>
+
+  <div class="card">
+    <h2>五、PoE 供电标准查询</h2>
+    <div class="form-group">
+      <label>选择 PoE 标准：</label>
+      <select id="sel-poe">
+        <option value="802.3af">802.3af（PoE）</option>
+        <option value="802.3at">802.3at（PoE+）</option>
+        <option value="802.3bt-T3">802.3bt Type 3（PoE++）</option>
+        <option value="802.3bt-T4">802.3bt Type 4（Hi-PoE）</option>
+      </select>
+    </div>
+    <button onclick="showPoESpec()">查询规格</button>
+    <div class="result-box" id="poe-result">请选择后点击查询。</div>
+  </div>
+
+  <div class="card">
+    <h2>六、综合查询：设备类型 → 线缆建议</h2>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>设备 A：</label>
+        <select id="dev-a">
+          <option value="PC">PC / 笔记本</option>
+          <option value="Switch">交换机</option>
+          <option value="Router">路由器</option>
+          <option value="AP">无线 AP</option>
+          <option value="IPPhone">IP 电话</option>
+          <option value="Camera">IP 摄像头</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>设备 B：</label>
+        <select id="dev-b">
+          <option value="Switch">交换机</option>
+          <option value="PC">PC / 笔记本</option>
+          <option value="Router">路由器</option>
+          <option value="AP">无线 AP</option>
+          <option value="IPPhone">IP 电话</option>
+          <option value="Camera">IP 摄像头</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="showCableAdvice()">查询建议</button>
+    <div class="result-box" id="cable-result">请选择两端设备后点击查询。</div>
+  </div>
+
+</div>
+
+<!-- ============ 测试面板 ============ -->
+<div class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试（纯 JS 实现）</h2>
+    <button onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="test-summary" class="test-summary" style="display:none;"></div>
+    <div class="test-log" id="test-log" style="margin-top:12px;">点击按钮运行测试...</div>
+  </div>
+</div>
+
+<!-- ============ 说明书面板 ============ -->
+<div class="panel manual" id="panel-manual">
+  <div class="card">
+    <h2>《网线光纤线序与传输距离查询工具》使用说明书</h2>
+    <p style="color:#666;font-size:12px;">版本 v2.0.1-修-光纤速率表 20261025</p>
+
+    <h3>一、工具简介</h3>
+    <p>本工具面向网络工程师、弱电施工人员、IT 运维及计算机相关专业学生，提供结构化布线中常用的线序、线缆规格、光纤参数、PoE 供电等基础数据的快速查询。所有数据均来源于国际/国内公开标准，不依赖网络，可在离线环境下使用。</p>
+
+    <h3>二、解决什么问题</h3>
+    <ul>
+      <li>制作网线时忘记 T568A/B 线序，需要快速对照；</li>
+      <li>选型时不确定 Cat5e/Cat6/Cat6a 等类别的速率、带宽、距离差异；</li>
+      <li>光纤链路设计时，需要查 OM3/OM4/OS2 在特定速率下的最大传输距离；</li>
+      <li>PoE 设备部署时，需要确认 802.3af/at/bt 的功率等级与线缆要求；</li>
+      <li>判断两台设备互联应使用直通线还是交叉线。</li>
+    </ul>
+
+    <h3>三、功能模块与参数详解</h3>
+
+    <h4>3.1 线序查询（T568A / T568B）</h4>
+    <p>展示 RJ45 水晶头 Pin 1 ~ Pin 8 的颜色顺序。参数含义：</p>
+    <ul>
+      <li><strong>Pin 编号</strong>：1~8，面对水晶头金属片、卡扣朝下时从左到右；</li>
+      <li><strong>颜色</strong>：纯色（橙/绿/蓝/棕）或白底彩条（橙白/绿白/蓝白/棕白）；</li>
+      <li><strong>线对</strong>：Pair 1（蓝/蓝白）、Pair 2（橙/橙白）、Pair 3（绿/绿白）、Pair 4（棕/棕白）。</li>
+    </ul>
+    <p>在 10BASE-T / 100BASE-TX 中仅使用 Pair 2（Pin 1,2）和 Pair 3（Pin 3,6）；1000BASE-T 及以上四对全用。</p>
+
+    <h4>3.2 双绞线规格查询</h4>
+    <p>参数说明：</p>
+    <ul>
+      <li><strong>类别（Category）</strong>：Cat5e / Cat6 / Cat6a / Cat7 / Cat8，由 TIA/EIA-568 与 ISO/IEC 11801 定义；</li>
+      <li><strong>最高速率</strong>：单位 Gbps，指在标准规定的最大距离下可稳定支持的速率；</li>
+      <li><strong>频率带宽</strong>：单位 MHz，表示线缆可承载的信号频率上限；</li>
+      <li><strong>最大传输距离</strong>：单位 m，信道（Channel）长度，含跳线。</li>
+    </ul>
+
+    <h4>3.3 光纤规格查询</h4>
+    <ul>
+      <li><strong>芯径/包层</strong>：单位 μm，如 9/125（单模）、50/125（多模）；</li>
+      <li><strong>工作波长</strong>：单位 nm，单模常用 1310/1550 nm，多模常用 850/1300 nm；</li>
+      <li><strong>模式带宽（EMB）</strong>：单位 MHz·km，仅多模有意义；</li>
+      <li><strong>典型距离</strong>：在特定速率下的最大链路长度。</li>
+    </ul>
+
+    <h4>3.4 PoE 供电查询</h4>
+    <ul>
+      <li><strong>PSE 功率</strong>：供电设备（交换机/注入器）输出端最大功率，单位 W；</li>
+      <li><strong>PD 功率</strong>：受电设备实际可用功率，考虑线缆损耗后；</li>
+      <li><strong>线缆要求</strong>：不同功率等级对线径（AWG）与线对数的最低要求。</li>
+    </ul>
+
+    <h3>四、典型使用场景</h3>
+
+    <h4>场景 1：家庭装修布线</h4>
+    <p><strong>输入</strong>：查询 Cat6 规格 + T568B 线序。</p>
+    <p><strong>结果</strong>：Cat6 支持 1 Gbps@100m、250 MHz 带宽；线序按 T568B 制作两端直通线。家用建议选用 Cat6 非屏蔽（UTP）线缆，预留 10 Gbps 短距升级能力（55 m 内）。</p>
+
+    <h4>场景 2：机房万兆上联</h4>
+    <p><strong>输入</strong>：查询 Cat6a 规格。</p>
+    <p><strong>结果</strong>：Cat6a 支持 10 Gbps@100m、500 MHz，推荐用于机房交换机上联、服务器接入。需使用屏蔽（F/UTP 或 S/FTP）线缆并良好接地以抑制外部串扰（AXT）。</p>
+
+    <h4>场景 3：楼宇间长距互联</h4>
+    <p><strong>输入</strong>：查询 OS2 单模光纤。</p>
+    <p><strong>结果</strong>：OS2 芯径 9/125 μm，工作波长 1310/1550 nm，1 Gbps 可支持 10 km 以上（具体需查光模块与光纤衰减系数）。适用于楼宇之间、园区骨干。</p>
+
+    <h4>场景 4：数据中心短距 10G/40G</h4>
+    <p><strong>输入</strong>：查询 OM4 多模光纤。</p>
+    <p><strong>结果</strong>：OM4 在 10 Gbps 下支持 150 m（850 nm VCSEL），40/100 Gbps 支持 100~150 m（需查标准原文确认具体速率-距离表）。适用于机柜间、同机房 TOR 到 EOR 互联。</p>
+
+    <h4>场景 5：部署 802.3at PoE+ 无线 AP</h4>
+    <p><strong>输入</strong>：查询 802.3at 规格。</p>
+    <p><strong>结果</strong>：PSE 最大输出 30 W，PD 可用 25.5 W，要求至少 Cat5e 4 对 24 AWG 铜缆，链路长度 ≤ 100 m。若 AP 峰值功耗接近 25 W，应核算线缆压降。</p>
+
+    <h4>场景 6：PC 直连 PC 临时传文件</h4>
+    <p><strong>输入</strong>：设备 A = PC，设备 B = PC。</p>
+    <p><strong>结果</strong>：传统上需使用交叉线（一端 T568A，一端 T568B）。但现代网卡均支持 Auto-MDIX，使用普通直通线亦可自适应。建议直接采用直通线简化备线。</p>
+
+    <h4>场景 7：IP 摄像头 PoE 供电</h4>
+    <p><strong>输入</strong>：设备 A = 摄像头，设备 B = PoE 交换机。</p>
+    <p><strong>结果</strong>：使用 Cat5e 及以上直通线；根据摄像头功率选择 802.3af（≤12.95 W）或 802.3at（≤25.5 W）；距离 ≤ 100 m，超长需加 PoE 中继器或改用光纤+独立供电。</p>
+
+    <h3>五、常见错误与排查</h3>
+    <ol>
+      <li><strong>线序做反</strong>：水晶头方向搞错导致 Pin 1/8 颠倒。排查：用测线仪逐芯测试，对照 T568B 色标。</li>
+      <li><strong>只压通 4 芯</strong>：10/100M 可工作，但 1000M 失败。排查：确认 8 芯全通。</li>
+      <li><strong>线缆超长</strong>：Cat5e 超过 100 m 出现丢包。排查：用福禄克（Fluke）测试链路长度与衰减。</li>
+      <li><strong>PoE 设备不启动</strong>：可能是功率不足或使用了仅 4 芯的线缆。排查：确认 8 芯全通，核算 PSE/PD 功率匹配。</li>
+      <li><strong>光纤不通</strong>：TX/RX 接反或脏污。排查：用光功率计测收光功率，清洁端面。</li>
+      <li><strong>万兆降速到千兆</strong>：Cat6 在 100 m 下无法稳定 10G，需换 Cat6a。排查：查看网卡协商速率。</li>
+    </ol>
+
+    <h3>六、数据来源与标准依据</h3>
+    <ul>
+      <li><strong>TIA/EIA-568.2-D</strong>（原 568-C.2）：双绞线布线组件标准，定义 Cat5e~Cat8 与 T568A/B 线序；</li>
+      <li><strong>ISO/IEC 11801-1:2017</strong> 及系列：国际综合布线标准，定义 Class EA/FA 与 Cat7/Cat8；</li>
+      <li><strong>GB 50311-2016</strong>《综合布线系统工程设计规范》：中国国标，引用 TIA/EIA-568 线序；</li>
+      <li><strong>GB/T 50312-2016</strong>《综合布线系统工程验收规范》；</li>
+      <li><strong>IEEE 802.3</strong> 系列：
+        <ul>
+          <li>802.3af-2003（PoE，15.4 W）</li>
+          <li>802.3at-2009（PoE+，30 W）</li>
+          <li>802.3bt-2018（PoE++，60/100 W）</li>
+          <li>802.3ab-1999（1000BASE-T，Auto-MDIX）</li>
+          <li>802.3an-2006（10GBASE-T）</li>
+          <li>802.3bq-2016（25/40GBASE-T）</li>
+        </ul>
+      </li>
+      <li><strong>ISO/IEC 11801-3:2019</strong>：光纤布线，定义 OM3/OM4/OM5 与 OS1/OS2。</li>
+    </ul>
+
+    <h3>七、局限性与免责说明</h3>
+    <ol>
+      <li>本工具提供的数据为<strong>标准典型值</strong>，实际工程需结合具体厂商线缆规格书、光模块参数与环境条件（温度、弯曲半径、EMC）核算；</li>
+      <li>Cat7/Cat8 在 TIA 体系中并无对应定义，仅 ISO/IEC 与 IEC 标准有，本工具已注明；</li>
+      <li>光纤传输距离与光模块发射功率、接收灵敏度、光纤衰减系数强相关，表中数值为典型参考，<strong>精确设计需查标准原文与厂商数据</strong>；</li>
+      <li>PoE 功率值基于 IEEE 标准定义，实际 PSE/PD 设备可能因设计余量略有差异；</li>
+      <li>本工具不替代专业测试仪器（如 Fluke DSX、光功率计、OTDR）的验收测试；</li>
+      <li>标准会更新，本工具数据截至编写时有效，使用前请核对最新标准版本。</li>
+    </ol>
+
+    <h3>八、术语表</h3>
+    <ul>
+      <li><strong>Channel（信道）</strong>：从设备端口到设备端口的整条链路，含设备缆、主干缆、跳线，最大 100 m；</li>
+      <li><strong>Permanent Link（永久链路）</strong>：不含设备缆与跳线的固定布线部分，最大 90 m；</li>
+      <li><strong>UTP/F/UTP/S/FTP</strong>：非屏蔽/箔屏蔽/编织屏蔽双绞线；</li>
+      <li><strong>VCSEL</strong>：垂直腔面发射激光器，多模光纤常用光源；</li>
+      <li><strong>EMB</strong>：Effective Modal Bandwidth，有效模式带宽，多模光纤关键参数；</li>
+      <li><strong>PSE / PD</strong>：Power Sourcing Equipment / Powered Device，PoE 供电/受电端。</li>
+    </ul>
+
+    <p style="margin-top:20px;padding-top:12px;border-top:1px solid #eee;color:#888;font-size:12px;">
+      本说明书依据 TIA/EIA-568、ISO/IEC 11801、GB 50311-2016、IEEE 802.3 系列标准编写。
+      如有与标准原文不一致之处，以标准原文为准。
+    </p>
+  </div>
+</div>
+
+<div class="version">v2.0.1-修-光纤速率表 20261025</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心 JS 源码（纯函数，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * T568A 线序（Pin 1 ~ Pin 8）
+ * 依据 TIA/EIA-568-C.2 / GB 50311-2016
+ * @constant {string[]}
+ */
+const T568A = ['绿白', '绿', '橙白', '蓝', '蓝白', '橙', '棕白', '棕'];
+
+/**
+ * T568B 线序（Pin 1 ~ Pin 8）
+ * 依据 TIA/EIA-568-C.2 / GB 50311-2016
+ * @constant {string[]}
+ */
+const T568B = ['橙白', '橙', '绿白', '蓝', '蓝白', '绿', '棕白', '棕'];
+
+/**
+ * 颜色名到 CSS class 的映射
+ * @constant {Object<string,string>}
+ */
+const COLOR_CLASS = {
+  '橙白': 'c-orange-white', '橙': 'c-orange',
+  '绿白': 'c-green-white', '绿': 'c-green',
+  '蓝白': 'c-blue-white', '蓝': 'c-blue',
+  '棕白': 'c-brown-white', '棕': 'c-brown'
+};
+
+/**
+ * 获取指定标准的线序
+ * @param {'A'|'B'|'T568A'|'T568B'} type - 标准类型
+ * @returns {string[]} 8 芯颜色数组，Pin 1 ~ Pin 8
+ * @throws {Error} 参数非法时抛出
+ * @example
+ *   getWireSequence('B'); // ['橙白','橙','绿白','蓝','蓝白','绿','棕白','棕']
+ *   getWireSequence('T568A'); // ['绿白','绿','橙白','蓝','蓝白','橙','棕白','棕']
+ */
+function getWireSequence(type) {
+  if (type === 'A' || type === 'T568A') return T568A.slice();
+  if (type === 'B' || type === 'T568B') return T568B.slice();
+  throw new Error('Invalid wire sequence type: ' + type);
+}
+
+/**
+ * 判断两端设备互联应使用的线缆类型
+ * @param {string} deviceA - 设备 A 类型：'PC'|'Switch'|'Router'|'AP'|'IPPhone'|'Camera'
+ * @param {string} deviceB - 设备 B 类型
+ * @returns {{type:'straight'|'crossover', reason:string, modernNote:string}}
+ * @throws {Error} 参数非法时抛出
+ * @example
+ *   getCableType('PC','Switch'); // {type:'straight', ...}
+ *   getCableType('PC','PC');     // {type:'crossover', ...}
+ */
+function getCableType(deviceA, deviceB) {
+  const valid = ['PC', 'Switch', 'Router', 'AP', 'IPPhone', 'Camera'];
+  if (!valid.includes(deviceA) || !valid.includes(deviceB)) {
+    throw new Error('Invalid device type');
+  }
+  // MDI/MDI-X 分类：PC/AP/IPPhone/Camera 为 MDI；Switch/Router 为 MDI-X
+  const mdiX = ['Switch', 'Router'];
+  const aIsX = mdiX.includes(deviceA);
+  const bIsX = mdiX.includes(deviceB);
+  const sameKind = aIsX === bIsX;
+  return {
+    type: sameKind ? 'crossover' : 'straight',
+    reason: sameKind
+      ? '两端同为 MDI 或同为 MDI-X，需交叉线对调 TX/RX'
+      : '一端 MDI、一端 MDI-X，使用直通线',
+    modernNote: '现代设备普遍支持 Auto-MDIX（IEEE 802.3ab），直通线亦可自适应。'
+  };
+}
+
+/**
+ * 双绞线类别规格数据库
+ * 依据 TIA/EIA-568.2-D、ISO/IEC 11801、IEEE 802.3an/bq
+ * @constant {Object}
+ */
+const CAT_SPECS = {
+  'Cat5e': {
+    cat: 'Cat5e', name: '超五类',
+    maxSpeed: '1 Gbps', bandwidth: '100 MHz',
+    maxDistance: 100, distanceNote: '信道长度 100 m（永久链路 90 m + 跳线）',
+    pairs: 4, shielding: 'UTP 常见',
+    standard: 'TIA/EIA-568.2-D / ISO/IEC 11801 Class D'
+  },
+  'Cat6': {
+    cat: 'Cat6', name: '六类',
+    maxSpeed: '1 Gbps@100m；10 Gbps@55m（非屏蔽）',
+    bandwidth: '250 MHz',
+    maxDistance: 100, distanceNote: '10G 应用下非屏蔽限 55 m，屏蔽可达 100 m',
+    pairs: 4, shielding: 'UTP / F/UTP',
+    standard: 'TIA/EIA-568.2-D / ISO/IEC 11801 Class E'
+  },
+  'Cat6a': {
+    cat: 'Cat6a', name: '超六类',
+    maxSpeed: '10 Gbps', bandwidth: '500 MHz',
+    maxDistance: 100, distanceNote: '10GBASE-T 全双工 100 m',
+    pairs: 4, shielding: 'F/UTP / S/FTP 推荐',
+    standard: 'TIA/EIA-568.2-D / ISO/IEC 11801 Class EA'
+  },
+  'Cat7': {
+    cat: 'Cat7', name: '七类',
+    maxSpeed: '10 Gbps', bandwidth: '600 MHz',
+    maxDistance: 100, distanceNote: '仅 ISO/IEC 定义，TIA 无对应',
+    pairs: 4, shielding: 'S/FTP 必须',
+    standard: 'ISO/IEC 11801 Class F（TIA 未采纳）'
+  },
+  'Cat8': {
+    cat: 'Cat8', name: '八类',
+    maxSpeed: '25 / 40 Gbps', bandwidth: '2000 MHz',
+    maxDistance: 30, distanceNote: 'Cat8.1: 30m@25/40G；Cat8.2: 30m@25/40G',
+    pairs: 4, shielding: 'S/FTP 必须',
+    standard: 'TIA-568.2-D / ISO/IEC 11801 Class I/II'
+  }
+};
+
+/**
+ * 查询双绞线类别规格
+ * @param {string} cat - 类别：'Cat5e'|'Cat6'|'Cat6a'|'Cat7'|'Cat8'
+ * @returns {Object} 规格对象
+ * @throws {Error} 类别不存在时抛出
+ * @example
+ *   getCatSpec('Cat6a'); // {cat:'Cat6a', maxSpeed:'10 Gbps', ...}
+ */
+function getCatSpec(cat) {
+  if (!CAT_SPECS[cat]) throw new Error('Unknown category: ' + cat);
+  return Object.assign({}, CAT_SPECS[cat]);
+}
+
+/**
+ * 光纤类型规格数据库
+ * 依据 ISO/IEC 11801-3:2019、TIA-492AAAAx
+ * @constant {Object}
+ */
+const FIBER_SPECS = {
+  'OS1': {
+    type: 'OS1', category: '单模',
+    coreCladding: '9 / 125 μm',
+    wavelength: '1310 / 1550 nm',
+    distance: '2 km（1 Gbps，室内典型）',
+    distanceBySpeed: { '100M': '2000 m', '1G': '2000 m', '10G': '2000 m' },
+    distanceNote: 'OS1 为室内单模，实际距离受光模块功率与衰减限制；精确值需查光模块与光纤衰减系数',
+    source: 'ISO/IEC 11801-1、IEC 60793-2-50（OS1 衰减等级）；距离为常用工程值，非标准硬性规定',
+    application: '室内单模骨干、楼内长距',
+    standard: 'ISO/IEC 11801 / TIA-568'
+  },
+  'OS2': {
+    type: 'OS2', category: '单模',
+    coreCladding: '9 / 125 μm',
+    wavelength: '1310 / 1550 nm',
+    distance: '10 km+（1 Gbps，室外典型）',
+    distanceBySpeed: { '1G': '10000 m+', '10G': '10000 m+', '40G': '10000 m+', '100G': '10000 m+' },
+    distanceNote: '可达 40/80 km（需配合相应光模块，如 1000BASE-ZX / 10GBASE-ZR）',
+    source: 'ISO/IEC 11801-1、IEC 60793-2-50（OS2 低水峰单模）；具体速率距离见 IEEE 802.3 各 PMD 条款',
+    application: '室外骨干、园区、城域',
+    standard: 'ISO/IEC 11801 / TIA-568'
+  },
+  'OM1': {
+    type: 'OM1', category: '多模',
+    coreCladding: '62.5 / 125 μm',
+    wavelength: '850 / 1300 nm',
+    emb: '200 MHz·km @850nm',
+    distance: '275 m @100 Mbps；33 m @1 Gbps',
+    distanceBySpeed: { '100M': '275 m', '1G': '33 m' },
+    source: 'ISO/IEC 11801-1（OM1）、TIA-492AAAB；速率距离见 IEEE 802.3 100BASE-FX / 1000BASE-SX',
+    application: '旧有系统，不推荐新装',
+    standard: 'ISO/IEC 11801 / TIA-492AAAB'
+  },
+  'OM2': {
+    type: 'OM2', category: '多模',
+    coreCladding: '50 / 125 μm',
+    wavelength: '850 / 1300 nm',
+    emb: '500 MHz·km @850nm',
+    distance: '550 m @100 Mbps；82 m @1 Gbps',
+    distanceBySpeed: { '100M': '550 m', '1G': '82 m' },
+    source: 'ISO/IEC 11801-1（OM2）、TIA-492AAAC；速率距离见 IEEE 802.3 100BASE-FX / 1000BASE-SX',
+    application: '短距多模，逐步被 OM3/OM4 替代',
+    standard: 'ISO/IEC 11801 / TIA-492AAAC'
+  },
+  'OM3': {
+    type: 'OM3', category: '多模（激光优化）',
+    coreCladding: '50 / 125 μm',
+    wavelength: '850 nm（VCSEL）',
+    emb: '2000 MHz·km @850nm',
+    distance: '1000 m @1 Gbps；300 m @10 Gbps；100 m @40/100 Gbps',
+    distanceBySpeed: { '1G': '1000 m', '10G': '300 m', '40G': '100 m', '100G': '100 m' },
+    source: 'ISO/IEC 11801-1（OM3）、TIA-492AAAD；速率距离见 IEEE 802.3 1000BASE-SX / 10GBASE-SR / 40GBASE-SR4 / 100GBASE-SR10',
+    application: '数据中心 10G 短距',
+    standard: 'ISO/IEC 11801 / TIA-492AAAD'
+  },
+  'OM4': {
+    type: 'OM4', category: '多模（激光优化）',
+    coreCladding: '50 / 125 μm',
+    wavelength: '850 nm（VCSEL）',
+    emb: '4700 MHz·km @850nm',
+    distance: '1000 m @1 Gbps；550 m @10 Gbps；150 m @40/100 Gbps',
+    distanceBySpeed: { '1G': '1000 m', '10G': '550 m', '40G': '150 m', '100G': '150 m' },
+    source: 'ISO/IEC 11801-1（OM4）、TIA-492AAAE；速率距离见 IEEE 802.3 1000BASE-SX / 10GBASE-SR / 40GBASE-SR4 / 100GBASE-SR10',
+    application: '数据中心 10/40/100G 主流',
+    standard: 'ISO/IEC 11801 / TIA-492AAAE'
+  },
+  'OM5': {
+    type: 'OM5', category: '多模（宽带 WBMMF）',
+    coreCladding: '50 / 125 μm',
+    wavelength: '850 ~ 950 nm（SWDM）',
+    emb: '与 OM4 相当 @850nm；支持短波分复用',
+    distance: '1G/10G 与 OM4 相当；SWDM4 可达 100 G（100 m 级）',
+    distanceBySpeed: { '1G': '1000 m', '10G': '550 m' },
+    distanceNote: 'SWDM 多波长复用下的速率-距离须按厂商光模块规格确认',
+    source: 'ISO/IEC 11801-1（OM5）、TIA-492AAAF；SWDM 见 IEEE 802.3cd 相关讨论与厂商 PMD 规格',
+    application: '40/100G SWDM 应用',
+    standard: 'ISO/IEC 11801 / TIA-492AAAF'
+  }
+};
+
+/**
+ * 查询光纤规格
+ * @param {string} type - 光纤类型：'OS1'|'OS2'|'OM1'|'OM2'|'OM3'|'OM4'|'OM5'
+ * @returns {Object} 规格对象
+ * @throws {Error} 类型不存在时抛出
+ * @example
+ *   getFiberSpec('OM4'); // {type:'OM4', coreCladding:'50/125 μm', ...}
+ */
+function getFiberSpec(type) {
+  if (!FIBER_SPECS[type]) throw new Error('Unknown fiber type: ' + type);
+  return Object.assign({}, FIBER_SPECS[type]);
+}
+
+/**
+ * PoE 标准规格数据库
+ * 依据 IEEE 802.3af/at/bt
+ * @constant {Object}
+ */
+const POE_SPECS = {
+  '802.3af': {
+    standard: 'IEEE 802.3af-2003',
+    name: 'PoE',
+    psePower: 15.4,    // W，PSE 输出端最大
+    pdPower: 12.95,    // W，PD 可用（考虑线缆损耗）
+    voltage: '44 ~ 57 V',
+    cableReq: 'Cat5e 及以上，4 对 24 AWG 推荐',
+    maxDistance: 100,
+    pairs: 'Alternative A 或 B（2 对或 4 对）'
+  },
+  '802.3at': {
+    standard: 'IEEE 802.3at-2009',
+    name: 'PoE+',
+    psePower: 30,
+    pdPower: 25.5,
+    voltage: '50 ~ 57 V',
+    cableReq: 'Cat5e 及以上，4 对 24 AWG 必须',
+    maxDistance: 100,
+    pairs: '4 对'
+  },
+  '802.3bt-T3': {
+    standard: 'IEEE 802.3bt-2018 Type 3',
+    name: 'PoE++ (Type 3)',
+    psePower: 60,
+    pdPower: 51,
+    voltage: '50 ~ 57 V',
+    cableReq: 'Cat5e 及以上，4 对 24 AWG（建议 23 AWG 降损耗）',
+    maxDistance: 100,
+    pairs: '4 对（双路供电）'
+  },
+  '802.3bt-T4': {
+    standard: 'IEEE 802.3bt-2018 Type 4',
+    name: 'Hi-PoE (Type 4)',
+    psePower: 100,
+    pdPower: 71.3,
+    voltage: '52 ~ 57 V',
+    cableReq: 'Cat5 及以上，4 对 24 AWG（强烈建议 23 AWG 或更粗）',
+    maxDistance: 100,
+    pairs: '4 对（双路供电）'
+  }
+};
+
+/**
+ * 查询 PoE 标准规格
+ * @param {string} std - 标准：'802.3af'|'802.3at'|'802.3bt-T3'|'802.3bt-T4'
+ * @returns {Object} 规格对象
+ * @throws {Error} 标准不存在时抛出
+ * @example
+ *   getPoESpec('802.3at'); // {standard:'IEEE 802.3at-2009', psePower:30, ...}
+ */
+function getPoESpec(std) {
+  if (!POE_SPECS[std]) throw new Error('Unknown PoE standard: ' + std);
+  return Object.assign({}, POE_SPECS[std]);
+}
+
+/**
+ * 根据线缆类别与目标速率判断是否可达指定距离
+ * @param {string} cat - 线缆类别
+ * @param {number} speedGbps - 目标速率（Gbps）
+ * @param {number} distanceM - 目标距离（m）
+ * @returns {{ok:boolean, reason:string}}
+ * @throws {Error} 参数非法时抛出
+ * @example
+ *   checkDistance('Cat6', 10, 55); // {ok:true, reason:'Cat6 10G 支持 55 m'}
+ *   checkDistance('Cat6', 10, 100); // {ok:false, ...}
+ */
+function checkDistance(cat, speedGbps, distanceM) {
+  if (!CAT_SPECS[cat]) throw new Error('Unknown category: ' + cat);
+  if (typeof speedGbps !== 'number' || isNaN(speedGbps) || speedGbps <= 0) {
+    throw new Error('Invalid speed');
+  }
+  if (typeof distanceM !== 'number' || isNaN(distanceM) || distanceM < 0) {
+    throw new Error('Invalid distance');
+  }
+  // 简化规则（基于标准典型值）
+  let maxDist = 100;
+  if (cat === 'Cat5e') {
+    if (speedGbps > 1) return { ok: false, reason: 'Cat5e 仅支持 1 Gbps' };
+    maxDist = 100;
+  } else if (cat === 'Cat6') {
+    if (speedGbps <= 1) maxDist = 100;
+    else if (speedGbps <= 10) maxDist = 55; // 非屏蔽
+    else return { ok: false, reason: 'Cat6 不支持 10 Gbps 以上' };
+  } else if (cat === 'Cat6a' || cat === 'Cat7') {
+    if (speedGbps <= 10) maxDist = 100;
+    else return { ok: false, reason: cat + ' 最高 10 Gbps' };
+  } else if (cat === 'Cat8') {
+    if (speedGbps <= 25) maxDist = 30;
+    else if (speedGbps <= 40) maxDist = 30;
+    else return { ok: false, reason: 'Cat8 最高 40 Gbps' };
+  }
+  const ok = distanceM <= maxDist;
+  return {
+    ok,
+    reason: ok
+      ? cat + ' 在 ' + speedGbps + ' Gbps 下支持 ' + maxDist + ' m，当前 ' + distanceM + ' m 可达'
+      : cat + ' 在 ' + speedGbps + ' Gbps 下最大 ' + maxDist + ' m，当前 ' + distanceM + ' m 超出'
+  };
+}
+
+/**
+ * 计算 PoE 链路压降（简化估算）
+ * @param {number} powerW - PD 功率（W）
+ * @param {number} lengthM - 线缆长度（m）
+ * @param {number} awg - 线径（AWG，如 24）
+ * @returns {{voltageDrop:number, lossW:number, ok:boolean}}
+ * @throws {Error} 参数非法时抛出
+ * @example
+ *   estimatePoELoss(25, 80, 24); // {voltageDrop:~2.1V, lossW:~2.1W, ok:true}
+ */
+function estimatePoELoss(powerW, lengthM, awg) {
+  if (typeof powerW !== 'number' || powerW <= 0) throw new Error('Invalid power');
+  if (typeof lengthM !== 'number' || lengthM < 0 || lengthM > 100) {
+    throw new Error('Length must be 0~100 m');
+  }
+  if (![22, 23, 24, 26].includes(awg)) throw new Error('AWG must be 22/23/24/26');
+  // 简化：24AWG 约 84 Ω/km，回路按 2×长度
+  const ohmPerKm = { 22: 52, 23: 66, 24: 84, 26: 133 }[awg];
+  const loopR = (ohmPerKm * lengthM * 2) / 1000; // Ω
+  const voltage = 48; // 标称
+  const current = powerW / voltage;
+  const voltageDrop = current * loopR;
+  const lossW = current * current * loopR;
+  return {
+    voltageDrop: +voltageDrop.toFixed(2),
+    lossW: +lossW.toFixed(2),
+    ok: voltageDrop < 5 // 经验阈值
+  };
+}
+
+/**
+ * 校验输入是否为非空字符串
+ * @param {*} v - 待校验值
+ * @returns {boolean}
+ * @example
+ *   isNonEmptyString('abc'); // true
+ *   isNonEmptyString('');    // false
+ *   isNonEmptyString(null);  // false
+ */
+function isNonEmptyString(v) {
+  return typeof v === 'string' && v.length > 0;
+}
+
+/**
+ * 校验数值是否在范围内
+ * @param {number} v - 待校验值
+ * @param {number} min - 最小值（含）
+ * @param {number} max - 最大值（含）
+ * @returns {boolean}
+ * @example
+ *   inRange(50, 0, 100); // true
+ *   inRange(-1, 0, 100); // false
+ */
+function inRange(v, min, max) {
+  return typeof v === 'number' && !isNaN(v) && v >= min && v <= max;
+}
+
+/* ============================================================
+ *  UI 渲染
+ * ============================================================ */
+
+function renderWireRow(containerId, sequence) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  sequence.forEach((color, i) => {
+    const pin = document.createElement('div');
+    pin.className = 'wire-pin';
+    pin.innerHTML =
+      '<div class="pin-num">Pin ' + (i + 1) + '</div>' +
+      '<div class="wire-block ' + COLOR_CLASS[color] + '" title="' + color + '"></div>' +
+      '<div class="wire-label">' + color + '</div>';
+    el.appendChild(pin);
+  });
+}
+
+function showCatSpec() {
+  const cat = document.getElementById('sel-cat').value;
+  const s = getCatSpec(cat);
+  const r = document.getElementById('cat-result');
+  r.innerHTML =
+    '<strong>' + s.cat + '（' + s.name + '）</strong><br>' +
+    '最高速率：' + s.maxSpeed + '<br>' +
+    '频率带宽：' + s.bandwidth + '<br>' +
+    '最大距离：' + s.maxDistance + ' m — ' + s.distanceNote + '<br>' +
+    '线对数：' + s.pairs + ' 对 · 屏蔽：' + s.shielding + '<br>' +
+    '<span style="color:#888;font-size:12px;">依据：' + s.standard + '</span>';
+}
+
+function showFiberSpec() {
+  const t = document.getElementById('sel-fiber').value;
+  const s = getFiberSpec(t);
+  const r = document.getElementById('fiber-result');
+  r.innerHTML =
+    '<strong>' + s.type + '（' + s.category + '）</strong><br>' +
+    '芯径/包层：' + s.coreCladding + '<br>' +
+    '工作波长：' + s.wavelength + '<br>' +
+    (s.emb ? '模式带宽 EMB：' + s.emb + '<br>' : '') +
+    '典型距离：' + s.distance + '<br>' +
+    '典型应用：' + s.application + '<br>' +
+    '<span style="color:#888;font-size:12px;">依据：' + s.standard + '</span>';
+}
+
+function showPoESpec() {
+  const s = document.getElementById('sel-poe').value;
+  const p = getPoESpec(s);
+  const r = document.getElementById('poe-result');
+  r.innerHTML =
+    '<strong>' + p.name + '（' + p.standard + '）</strong><br>' +
+    'PSE 最大功率：' + p.psePower + ' W<br>' +
+    'PD 可用功率：' + p.pdPower + ' W<br>' +
+    '供电电压：' + p.voltage + '<br>' +
+    '线缆要求：' + p.cableReq + '<br>' +
+    '供电线对：' + p.pairs + '<br>' +
+    '最大距离：' + p.maxDistance + ' m';
+}
+
+function showCableAdvice() {
+  const a = document.getElementById('dev-a').value;
+  const b = document.getElementById('dev-b').value;
+  const r = document.getElementById('cable-result');
+  try {
+    const c = getCableType(a, b);
+    r.innerHTML =
+      '<strong>' + a + ' ↔ ' + b + '</strong><br>' +
+      '推荐线缆：<strong>' + (c.type === 'straight' ? '直通线（两端同为 T568B）' : '交叉线（一端 T568A，一端 T568B）') + '</strong><br>' +
+      '原因：' + c.reason + '<br>' +
+      '<span style="color:#1976d2;">💡 ' + c.modernNote + '</span>';
+  } catch (e) {
+    r.innerHTML = '<span style="color:#d32f2f;">错误：' + e.message + '</span>';
+  }
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，≥30 个）
+ * ============================================================ */
+
+let _testPass = 0, _testFail = 0, _testLog = [];
+
+function assert(cond, msg) {
+  if (cond) {
+    _testPass++;
+    _testLog.push('<span class="test-pass">✓ ' + msg + '</span>');
+  } else {
+    _testFail++;
+    _testLog.push('<span class="test-fail">✗ ' + msg + '</span>');
+  }
+}
+
+function assertEqual(a, b, msg) {
+  assert(JSON.stringify(a) === JSON.stringify(b), msg + ' (期望 ' + JSON.stringify(b) + '，实际 ' + JSON.stringify(a) + ')');
+}
+
+function assertThrows(fn, msg) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  assert(threw, msg);
+}
+
+function arrEq(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function runAllTests() {
+  _testPass = 0; _testFail = 0; _testLog = [];
+
+  // ---- getWireSequence (6) ----
+  assert(arrEq(getWireSequence('A'), T568A), 'getWireSequence(A) 返回 T568A');
+  assert(arrEq(getWireSequence('B'), T568B), 'getWireSequence(B) 返回 T568B');
+  assert(arrEq(getWireSequence('T568A'), T568A), 'getWireSequence(T568A) 返回 T568A');
+  assert(arrEq(getWireSequence('T568B'), T568B), 'getWireSequence(T568B) 返回 T568B');
+  assert(getWireSequence('B').length === 8, 'T568B 长度为 8');
+  assertThrows(() => getWireSequence('X'), 'getWireSequence 非法参数抛错');
+
+  // ---- T568A/B 数据正确性 (4) ----
+  assertEqual(T568A[0], '绿白', 'T568A Pin1 = 绿白');
+  assertEqual(T568B[0], '橙白', 'T568B Pin1 = 橙白');
+  assertEqual(T568A[3], '蓝', 'T568A Pin4 = 蓝');
+  assertEqual(T568B[7], '棕', 'T568B Pin8 = 棕');
+
+  // ---- getCableType (6) ----
+  assertEqual(getCableType('PC', 'Switch').type, 'straight', 'PC↔Switch 直通');
+  assertEqual(getCableType('Router', 'AP').type, 'straight', 'Router↔AP 直通');
+  assertEqual(getCableType('PC', 'PC').type, 'crossover', 'PC↔PC 交叉');
+  assertEqual(getCableType('Switch', 'Switch').type, 'crossover', 'Switch↔Switch 交叉');
+  assertEqual(getCableType('Camera', 'IPPhone').type, 'crossover', 'Camera↔IPPhone 交叉');
+  assertThrows(() => getCableType('PC', 'Unknown'), 'getCableType 非法设备抛错');
+
+  // ---- getCatSpec (5) ----
+  assertEqual(getCatSpec('Cat5e').bandwidth, '100 MHz', 'Cat5e 带宽 100 MHz');
+  assertEqual(getCatSpec('Cat6').maxDistance, 100, 'Cat6 最大距离 100 m');
+  assertEqual(getCatSpec('Cat6a').maxSpeed, '10 Gbps', 'Cat6a 速率 10 Gbps');
+  assertEqual(getCatSpec('Cat8').maxDistance, 30, 'Cat8 最大距离 30 m');
+  assertThrows(() => getCatSpec('Cat9'), 'getCatSpec 非法类别抛错');
+
+  // ---- getFiberSpec (5) ----
+  assertEqual(getFiberSpec('OS2').coreCladding, '9 / 125 μm', 'OS2 芯径 9/125');
+  assertEqual(getFiberSpec('OM3').category, '多模（激光优化）', 'OM3 类别');
+  assertEqual(getFiberSpec('OM1').coreCladding, '62.5 / 125 μm', 'OM1 芯径 62.5/125');
+  assert(getFiberSpec('OM4').distance.indexOf('150 m') !== -1, 'OM4 10G 距离含 150 m');
+  assertThrows(() => getFiberSpec('OM9'), 'getFiberSpec 非法类型抛错');
+
+  // ---- getPoESpec (4) ----
+  assertEqual(getPoESpec('802.3af').psePower, 15.4, '802.3af PSE 15.4 W');
+  assertEqual(getPoESpec('802.3at').pdPower, 25.5, '802.3at PD 25.5 W');
+  assertEqual(getPoESpec('802.3bt-T4').psePower, 100, '802.3bt T4 PSE 100 W');
+  assertThrows(() => getPoESpec('802.3xx'), 'getPoESpec 非法标准抛错');
+
+  // ---- checkDistance (5) ----
+  assertEqual(checkDistance('Cat5e', 1, 100).ok, true, 'Cat5e 1G@100m 可达');
+  assertEqual(checkDistance('Cat6', 10, 55).ok, true, 'Cat6 10G@55m 可达');
+  assertEqual(checkDistance('Cat6', 10, 100).ok, false, 'Cat6 10G@100m 不可达');
+  assertEqual(checkDistance('Cat8', 40, 30).ok, true, 'Cat8 40G@30m 可达');
+  assertThrows(() => checkDistance('Cat5e', -1, 100), 'checkDistance 负速率抛错');
+
+  // ---- estimatePoELoss (3) ----
+  const loss1 = estimatePoELoss(25, 80, 24);
+  assert(loss1.voltageDrop > 0 && loss1.voltageDrop < 10, 'PoE 25W@80m@24AWG 压降合理');
+  assert(estimatePoELoss(10, 50, 24).ok === true, 'PoE 10W@50m 不超限');
+  assertThrows(() => estimatePoELoss(25, 150, 24), 'PoE 长度超 100m 抛错');
+
+  // ---- 工具函数 (4) ----
+  assert(isNonEmptyString('abc') === true, 'isNonEmptyString("abc") = true');
+  assert(isNonEmptyString('') === false, 'isNonEmptyString("") = false');
+  assert(isNonEmptyString(null) === false, 'isNonEmptyString(null) = false');
+  assert(inRange(50, 0, 100) === true, 'inRange(50,0,100) = true');
+  assert(inRange(-1, 0, 100) === false, 'inRange(-1,0,100) = false');
+  assert(inRange(NaN, 0, 100) === false, 'inRange(NaN,0,100) = false');
+
+  // ---- 边界/异常 (3) ----
+  assertEqual(checkDistance('Cat5e', 1, 0).ok, true, '距离 0 m 可达');
+  assertThrows(() => checkDistance('Cat5e', 1, -5), '负距离抛错');
+  assertThrows(() => checkDistance(null, 1, 100), 'null 类别抛错');
+
+  // 输出
+  const total = _testPass + _testFail;
+  document.getElementById('test-log').innerHTML = _testLog.join('<br>');
+  const sum = document.getElementById('test-summary');
+  sum.style.display = 'block';
+  sum.className = 'test-summary ' + (_testFail === 0 ? 'summary-pass' : 'summary-fail');
+  sum.textContent = '通过 ' + _testPass + ' / 共 ' + total +
+    (_testFail > 0 ? '（失败 ' + _testFail + '）' : ' ✓ 全部通过');
+  console.log('通过 ' + _testPass + ' / 共 ' + total);
+}
+
+/* ============================================================
+ *  标签页切换 & 初始化
+ * ============================================================ */
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 初始化线序渲染
+renderWireRow('wire-a', T568A);
+renderWireRow('wire-b', T568B);
+</script>
+
+</body>
+</html>

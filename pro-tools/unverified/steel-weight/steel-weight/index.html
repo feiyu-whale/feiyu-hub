@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>钢材型材理论重量计算器</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  text-align: center;
+  font-size: 20px;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+  padding-top: 8px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+select, input[type="number"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #333;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+select {
+  background: #fafafa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;
+  padding-right: 32px;
+}
+select:focus, input[type="number"]:focus {
+  border-color: #4a6cf7;
+  background: #fff;
+}
+.input-group {
+  margin-bottom: 12px;
+}
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+.input-row .input-group {
+  flex: 1;
+}
+.unit-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #4a6cf7, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  margin-top: 4px;
+}
+.btn:active { opacity: 0.85; }
+.result-box {
+  background: linear-gradient(135deg, #eef2ff, #f0f4ff);
+  border: 1.5px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 12px;
+  text-align: center;
+  display: none;
+}
+.result-box.show { display: block; }
+.result-label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.result-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #4a6cf7;
+}
+.result-unit {
+  font-size: 14px;
+  color: #888;
+  margin-top: 2px;
+}
+.result-detail {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+  word-break: break-all;
+}
+.formula-box {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #666;
+  border-left: 3px solid #4a6cf7;
+}
+.formula-box code {
+  font-family: "Courier New", monospace;
+  color: #4a6cf7;
+  font-weight: 600;
+}
+.source-section {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.8;
+}
+.source-section h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 6px;
+}
+.source-section ul {
+  padding-left: 18px;
+}
+.source-section li {
+  margin-bottom: 2px;
+}
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #bbb;
+  z-index: 100;
+}
+.param-desc {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  line-height: 1.7;
+}
+.param-desc strong { color: #555; }
+.error-msg {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 8px;
+  display: none;
+}
+.error-msg.show { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔩 钢材型材理论重量计算器</h1>
+  <p class="subtitle">输入规格参数，计算每米理论重量</p>
+
+  <div class="card">
+    <div class="card-title">📐 选择型材类型</div>
+    <div class="input-group">
+      <select id="profileType" onchange="onTypeChange()">
+        <option value="round">圆钢</option>
+        <option value="square">方钢</option>
+        <option value="flat">扁钢</option>
+        <option value="eqAngle">等边角钢</option>
+        <option value="uneqAngle">不等边角钢</option>
+        <option value="channel">槽钢</option>
+        <option value="iBeam">工字钢</option>
+        <option value="hBeam">H型钢</option>
+        <option value="pipe">钢管</option>
+        <option value="plate">钢板</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 输入参数</div>
+    <div id="inputFields"></div>
+    <div class="formula-box" id="formulaBox"></div>
+    <div class="param-desc" id="paramDesc"></div>
+    <button class="btn" onclick="calculate()">🧮 计算理论重量</button>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="result-box" id="resultBox">
+      <div class="result-label" id="resultLabel">每米理论重量</div>
+      <div class="result-value" id="resultValue">--</div>
+      <div class="result-unit" id="resultUnit">kg/m</div>
+      <div class="result-detail" id="resultDetail"></div>
+    </div>
+  </div>
+
+  <div class="card source-section">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li>GB/T 706-2016《热轧型钢》——角钢、槽钢、工字钢、H型钢截面参数及理论重量</li>
+      <li>GB/T 702-2017《热轧钢棒尺寸、外形、重量及允许偏差》——圆钢、方钢、扁钢理论重量</li>
+      <li>GB/T 3091-2015《低压流体输送用焊接钢管》——钢管理论重量公式</li>
+      <li>GB/T 13793-2016《直缝电焊钢管》——钢管理论重量计算</li>
+      <li>密度取值：钢密度 ρ = 7.85 g/cm³（7850 kg/m³），为上述标准统一采用的计算密度</li>
+    </ul>
+    <p style="margin-top:8px;">⚠️ 说明：角钢、槽钢、工字钢的精确理论重量含内圆弧半径 r 和外圆弧半径 R 的修正项，本工具提供简化公式计算结果，精确值请查 GB/T 706 标准附录中的型钢理论重量表。</p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-钢材理论重量计算 20261021</div>
+
+<script>
+var profiles = {
+  round: {
+    name: '圆钢',
+    fields: [
+      { id: 'd', label: '直径 d', unit: 'mm', placeholder: '如 20' }
+    ],
+    formula: 'W = 0.00617 × d²',
+    desc: '<strong>d</strong> — 圆钢直径（mm）<br>推导：W = (π/4)×d²×10⁻⁶×7850 ≈ 0.00617×d² (kg/m)',
+    calc: function(v) {
+      var d = v.d;
+      var w = 0.00617 * d * d;
+      return { value: w, detail: '0.00617 × ' + d + '² = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  square: {
+    name: '方钢',
+    fields: [
+      { id: 'a', label: '边长 a', unit: 'mm', placeholder: '如 20' }
+    ],
+    formula: 'W = 0.00785 × a²',
+    desc: '<strong>a</strong> — 方钢边长（mm）<br>推导：W = a²×10⁻⁶×7850 = 0.00785×a² (kg/m)',
+    calc: function(v) {
+      var a = v.a;
+      var w = 0.00785 * a * a;
+      return { value: w, detail: '0.00785 × ' + a + '² = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  flat: {
+    name: '扁钢',
+    fields: [
+      { id: 'a', label: '宽度 a', unit: 'mm', placeholder: '如 40' },
+      { id: 'b', label: '厚度 b', unit: 'mm', placeholder: '如 4' }
+    ],
+    formula: 'W = 0.00785 × a × b',
+    desc: '<strong>a</strong> — 扁钢宽度（mm）<br><strong>b</strong> — 扁钢厚度（mm）<br>推导：W = a×b×10⁻⁶×7850 = 0.00785×a×b (kg/m)',
+    calc: function(v) {
+      var a = v.a, b = v.b;
+      var w = 0.00785 * a * b;
+      return { value: w, detail: '0.00785 × ' + a + ' × ' + b + ' = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  eqAngle: {
+    name: '等边角钢',
+    fields: [
+      { id: 'b', label: '边宽 b', unit: 'mm', placeholder: '如 50' },
+      { id: 't', label: '边厚 t', unit: 'mm', placeholder: '如 5' }
+    ],
+    formula: 'W = 0.00785 × t × (2b − t)',
+    desc: '<strong>b</strong> — 等边角钢边宽（mm）<br><strong>t</strong> — 等边角钢边厚（mm）<br>注：此为简化公式，忽略圆弧修正。精确值请查 GB/T 706 标准附录型钢表。',
+    calc: function(v) {
+      var b = v.b, t = v.t;
+      var w = 0.00785 * t * (2 * b - t);
+      return { value: w, detail: '0.00785 × ' + t + ' × (2×' + b + ' − ' + t + ') = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  uneqAngle: {
+    name: '不等边角钢',
+    fields: [
+      { id: 'B', label: '长边宽 B', unit: 'mm', placeholder: '如 75' },
+      { id: 'b', label: '短边宽 b', unit: 'mm', placeholder: '如 50' },
+      { id: 't', label: '边厚 t', unit: 'mm', placeholder: '如 6' }
+    ],
+    formula: 'W = 0.00785 × t × (B + b − t)',
+    desc: '<strong>B</strong> — 长边宽（mm）<br><strong>b</strong> — 短边宽（mm）<br><strong>t</strong> — 边厚（mm）<br>注：此为简化公式，忽略圆弧修正。精确值请查 GB/T 706 标准附录型钢表。',
+    calc: function(v) {
+      var B = v.B, b = v.b, t = v.t;
+      var w = 0.00785 * t * (B + b - t);
+      return { value: w, detail: '0.00785 × ' + t + ' × (' + B + ' + ' + b + ' − ' + t + ') = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  channel: {
+    name: '槽钢',
+    fields: [
+      { id: 'h', label: '高度 h', unit: 'mm', placeholder: '如 100' },
+      { id: 'b', label: '腿宽 b', unit: 'mm', placeholder: '如 48' },
+      { id: 'd', label: '腰厚 d', unit: 'mm', placeholder: '如 5.0' },
+      { id: 't', label: '平均腿厚 t', unit: 'mm', placeholder: '如 8.5' }
+    ],
+    formula: 'W = 0.00785 × [h×d + 2×t×(b−d)]',
+    desc: '<strong>h</strong> — 槽钢高度（mm）<br><strong>b</strong> — 腿宽（mm）<br><strong>d</strong> — 腰厚（mm）<br><strong>t</strong> — 平均腿厚（mm）<br>注：此为简化公式，忽略圆弧修正项 0.349(R²−r²)。精确值请查 GB/T 706 标准附录型钢表。',
+    calc: function(v) {
+      var h = v.h, b = v.b, d = v.d, t = v.t;
+      var w = 0.00785 * (h * d + 2 * t * (b - d));
+      return { value: w, detail: '0.00785 × [' + h + '×' + d + ' + 2×' + t + '×(' + b + '−' + d + ')] = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  iBeam: {
+    name: '工字钢',
+    fields: [
+      { id: 'h', label: '高度 h', unit: 'mm', placeholder: '如 100' },
+      { id: 'b', label: '腿宽 b', unit: 'mm', placeholder: '如 68' },
+      { id: 'd', label: '腰厚 d', unit: 'mm', placeholder: '如 4.5' },
+      { id: 't', label: '平均腿厚 t', unit: 'mm', placeholder: '如 7.6' }
+    ],
+    formula: 'W = 0.00785 × [h×d + 2×t×(b−d)]',
+    desc: '<strong>h</strong> — 工字钢高度（mm）<br><strong>b</strong> — 腿宽（mm）<br><strong>d</strong> — 腰厚（mm）<br><strong>t</strong> — 平均腿厚（mm）<br>注：此为简化公式，忽略圆弧修正项 0.615(R²−r²)。精确值请查 GB/T 706 标准附录型钢表。',
+    calc: function(v) {
+      var h = v.h, b = v.b, d = v.d, t = v.t;
+      var w = 0.00785 * (h * d + 2 * t * (b - d));
+      return { value: w, detail: '0.00785 × [' + h + '×' + d + ' + 2×' + t + '×(' + b + '−' + d + ')] = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  hBeam: {
+    name: 'H型钢',
+    fields: [
+      { id: 'h', label: '高度 h', unit: 'mm', placeholder: '如 200' },
+      { id: 'b', label: '翼缘宽度 b', unit: 'mm', placeholder: '如 200' },
+      { id: 'tw', label: '腹板厚度 tw', unit: 'mm', placeholder: '如 8' },
+      { id: 'tf', label: '翼缘厚度 tf', unit: 'mm', placeholder: '如 12' }
+    ],
+    formula: 'W = 0.00785 × [tw×(h−2×tf) + 2×b×tf]',
+    desc: '<strong>h</strong> — H型钢高度（mm）<br><strong>b</strong> — 翼缘宽度（mm）<br><strong>tw</strong> — 腹板厚度（mm）<br><strong>tf</strong> — 翼缘厚度（mm）<br>注：此为简化公式，忽略焊缝圆弧。精确值请查 GB/T 706 或 GB/T 11263 标准附录型钢表。',
+    calc: function(v) {
+      var h = v.h, b = v.b, tw = v.tw, tf = v.tf;
+      var w = 0.00785 * (tw * (h - 2 * tf) + 2 * b * tf);
+      return { value: w, detail: '0.00785 × [' + tw + '×(' + h + '−2×' + tf + ') + 2×' + b + '×' + tf + '] = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  pipe: {
+    name: '钢管',
+    fields: [
+      { id: 'D', label: '外径 D', unit: 'mm', placeholder: '如 48' },
+      { id: 't', label: '壁厚 t', unit: 'mm', placeholder: '如 3.5' }
+    ],
+    formula: 'W = 0.02466 × t × (D − t)',
+    desc: '<strong>D</strong> — 钢管外径（mm）<br><strong>t</strong> — 钢管壁厚（mm）<br>推导：W = π×(D−t)×t×10⁻⁶×7850 ≈ 0.02466×t×(D−t) (kg/m)<br>依据：GB/T 3091、GB/T 13793',
+    calc: function(v) {
+      var D = v.D, t = v.t;
+      var w = 0.02466 * t * (D - t);
+      return { value: w, detail: '0.02466 × ' + t + ' × (' + D + ' − ' + t + ') = ' + w.toFixed(4) + ' kg/m' };
+    }
+  },
+  plate: {
+    name: '钢板',
+    fields: [
+      { id: 't', label: '厚度 t', unit: 'mm', placeholder: '如 6' }
+    ],
+    formula: 'W = 7.85 × t （kg/m²）',
+    desc: '<strong>t</strong> — 钢板厚度（mm）<br>推导：W = t×10⁻³×1×1×7850 = 7.85×t (kg/m²)<br>注：钢板通常以 kg/m² 为单位，也可按面积计算总重。',
+    calc: function(v) {
+      var t = v.t;
+      var w = 7.85 * t;
+      return { value: w, unit: 'kg/m²', label: '每平方米理论重量', detail: '7.85 × ' + t + ' = ' + w.toFixed(2) + ' kg/m²' };
+    }
+  }
+};
+
+function onTypeChange() {
+  var type = document.getElementById('profileType').value;
+  var p = profiles[type];
+  var container = document.getElementById('inputFields');
+  var html = '';
+
+  if (p.fields.length === 1) {
+    var f = p.fields[0];
+    html += '<div class="input-group">';
+    html += '<label>' + f.label + '（' + f.unit + '）</label>';
+    html += '<input type="number" id="field_' + f.id + '" placeholder="' + f.placeholder + '" step="any" min="0">';
+    html += '</div>';
+  } else if (p.fields.length === 2) {
+    html += '<div class="input-row">';
+    for (var i = 0; i < p.fields.length; i++) {
+      var f = p.fields[i];
+      html += '<div class="input-group">';
+      html += '<label>' + f.label + '（' + f.unit + '）</label>';
+      html += '<input type="number" id="field_' + f.id + '" placeholder="' + f.placeholder + '" step="any" min="0">';
+      html += '</div>';
+    }
+    html += '</div>';
+  } else {
+    for (var i = 0; i < p.fields.length; i++) {
+      var f = p.fields[i];
+      html += '<div class="input-group">';
+      html += '<label>' + f.label + '（' + f.unit + '）</label>';
+      html += '<input type="number" id="field_' + f.id + '" placeholder="' + f.placeholder + '" step="any" min="0">';
+      html += '</div>';
+    }
+  }
+
+  container.innerHTML = html;
+  document.getElementById('formulaBox').innerHTML = '📏 公式：<code>' + p.formula + '</code>';
+  document.getElementById('paramDesc').innerHTML = p.desc;
+  document.getElementById('resultBox').classList.remove('show');
+  document.getElementById('errorMsg').classList.remove('show');
+}
+
+function calculate() {
+  var type = document.getElementById('profileType').value;
+  var p = profiles[type];
+  var vals = {};
+  var errEl = document.getElementById('errorMsg');
+  errEl.classList.remove('show');
+
+  for (var i = 0; i < p.fields.length; i++) {
+    var f = p.fields[i];
+    var el = document.getElementById('field_' + f.id);
+    var val = parseFloat(el.value);
+    if (isNaN(val) || val <= 0) {
+      errEl.textContent = '⚠️ 请输入有效的 ' + f.label + '（必须大于 0）';
+      errEl.classList.add('show');
+      return;
+    }
+    vals[f.id] = val;
+  }
+
+  // 钢管校验：壁厚必须小于外径
+  if (type === 'pipe') {
+    if (vals.t >= vals.D) {
+      errEl.textContent = '⚠️ 壁厚必须小于外径';
+      errEl.classList.add('show');
+      return;
+    }
+  }
+
+  // H型钢校验：2×tf 必须小于 h
+  if (type === 'hBeam') {
+    if (2 * vals.tf >= vals.h) {
+      errEl.textContent = '⚠️ 2倍翼缘厚度必须小于高度 h';
+      errEl.classList.add('show');
+      return;
+    }
+  }
+
+  var result = p.calc(vals);
+  var resBox = document.getElementById('resultBox');
+  var resLabel = document.getElementById('resultLabel');
+  var resValue = document.getElementById('resultValue');
+  var resUnit = document.getElementById('resultUnit');
+  var resDetail = document.getElementById('resultDetail');
+
+  resLabel.textContent = result.label || '每米理论重量';
+  resValue.textContent = result.value.toFixed(4);
+  resUnit.textContent = result.unit || 'kg/m';
+  resDetail.textContent = result.detail;
+  resBox.classList.add('show');
+}
+
+// 初始化
+onTypeChange();
+</script>
+</body>
+</html>

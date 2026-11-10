@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPS 后备时间计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e1e8ed;
+    margin-top: 20px;
+    border-radius: 8px 8px 0 0;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 24px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    color: #5a6c7d;
+    white-space: nowrap;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+  }
+  .tab:hover { color: #2a5298; background: #f8fafc; }
+  .tab.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  .panel {
+    display: none;
+    background: #fff;
+    padding: 30px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .panel.active { display: block; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+  @media (max-width: 768px) { .calc-grid { grid-template-columns: 1fr; } }
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #34495e;
+  }
+  .form-group .hint {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-top: 4px;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d9e0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: #2a5298;
+    box-shadow: 0 0 0 3px rgba(42,82,152,0.1);
+  }
+  .btn {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1e3c72; }
+  .btn-reset {
+    background: #95a5a6;
+    margin-top: 8px;
+  }
+  .btn-reset:hover { background: #7f8c8d; }
+  .result-box {
+    background: #f8fafc;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .result-box h3 {
+    font-size: 16px;
+    margin-bottom: 14px;
+    color: #2a5298;
+    border-bottom: 1px solid #e1e8ed;
+    padding-bottom: 8px;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #ecf0f1;
+    font-size: 14px;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .label { color: #5a6c7d; }
+  .result-row .value { font-weight: 600; color: #2c3e50; font-family: "SF Mono", Consolas, monospace; }
+  .result-main {
+    background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+    color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .result-main .big {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: "SF Mono", Consolas, monospace;
+    margin: 8px 0;
+  }
+  .result-main .sub { font-size: 13px; opacity: 0.85; }
+  .warning {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 12px 16px;
+    margin-top: 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #7d6608;
+  }
+  .error-msg {
+    background: #fee;
+    border-left: 4px solid #e74c3c;
+    padding: 12px 16px;
+    margin-top: 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #922;
+    display: none;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "SF Mono", Consolas, "Courier New", monospace;
+  }
+  .test-output {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 20px;
+    border-radius: 8px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .test-pass { color: #4ec9b0; }
+  .test-fail { color: #f48771; }
+  .test-summary {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .test-summary.all-pass { background: #d4edda; color: #155724; }
+  .test-summary.has-fail { background: #f8d7da; color: #721c24; }
+  .doc h2 {
+    font-size: 20px;
+    color: #2a5298;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e1e8ed;
+  }
+  .doc h3 {
+    font-size: 16px;
+    color: #34495e;
+    margin: 18px 0 10px;
+  }
+  .doc p { margin-bottom: 10px; font-size: 14px; }
+  .doc ul, .doc ol { margin: 10px 0 10px 24px; font-size: 14px; }
+  .doc li { margin-bottom: 6px; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #d1d9e0;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc th { background: #f5f7fa; font-weight: 600; }
+  .doc code {
+    background: #f0f3f6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c0392b;
+  }
+  .doc .note {
+    background: #e8f4fd;
+    border-left: 4px solid #3498db;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .doc .warn {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #95a5a6;
+    font-family: "SF Mono", Consolas, monospace;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ UPS 后备时间计算工具</h1>
+  <p>基于电池容量、负载功率与放电倍率修正的后备时间估算</p>
+  <p style="font-size:12px;opacity:0.85;margin-top:6px;">⚠️ 本工具参数（效率典型值、Peukert 指数范围等）为经验值，未经标准核对，结果仅供参考。</p>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-tab="calc">🧮 计算器</button>
+    <button class="tab" data-tab="source">📄 JS 源码</button>
+    <button class="tab" data-tab="test">🧪 单元测试</button>
+    <button class="tab" data-tab="doc">📖 使用说明书</button>
+  </div>
+
+  <!-- 计算器 -->
+  <div class="panel active" id="panel-calc">
+    <div class="calc-grid">
+      <div>
+        <div class="form-group">
+          <label>负载功率 (W)</label>
+          <input type="number" id="loadPower" value="1000" min="0" step="1">
+          <div class="hint">UPS 输出端所带负载的总有功功率</div>
+        </div>
+        <div class="form-group">
+          <label>单节电池标称电压 (V)</label>
+          <input type="number" id="batteryVoltage" value="12" min="0" step="0.1">
+          <div class="hint">铅酸电池通常为 12V，锂电单体常见 3.2V / 3.6V / 3.7V</div>
+        </div>
+        <div class="form-group">
+          <label>电池串联节数</label>
+          <input type="number" id="batteryCount" value="1" min="1" step="1">
+          <div class="hint">串联提升电压，并联提升容量（本工具按串联计）</div>
+        </div>
+        <div class="form-group">
+          <label>单节电池额定容量 (Ah @20h率)</label>
+          <input type="number" id="batteryCapacity" value="100" min="0" step="0.1">
+          <div class="hint">通常以 20 小时率标定，例如 12V100Ah</div>
+        </div>
+        <div class="form-group">
+          <label>逆变器效率 (0~1)</label>
+          <input type="number" id="inverterEfficiency" value="0.9" min="0" max="1" step="0.01">
+          <div class="hint">典型值 0.85~0.95，在线式 UPS 常取 0.9</div>
+        </div>
+        <div class="form-group">
+          <label>Peukert 指数 k</label>
+          <input type="number" id="peukertK" value="1.2" min="1" max="1.5" step="0.01">
+          <div class="hint">铅酸电池 1.1~1.3，锂电接近 1.0。k=1 表示无倍率修正</div>
+        </div>
+        <div class="form-group">
+          <label>额定放电时率 H (h)</label>
+          <input type="number" id="ratedHours" value="20" min="1" step="1">
+          <div class="hint">电池容量标定的放电时长，铅酸通常为 20h 或 10h</div>
+        </div>
+        <button class="btn" onclick="runCalc()">计算后备时间</button>
+        <button class="btn btn-reset" onclick="resetCalc()">重置</button>
+      </div>
+      <div>
+        <div class="result-box">
+          <h3>📊 计算结果</h3>
+          <div id="resultArea">
+            <div class="result-main">
+              <div class="sub">预计后备时间</div>
+              <div class="big" id="resTime">--</div>
+              <div class="sub" id="resTimeDecimal">-- 小时</div>
+            </div>
+            <div class="result-row"><span class="label">直流侧放电电流</span><span class="value" id="resCurrent">-- A</span></div>
+            <div class="result-row"><span class="label">放电倍率 (C-rate)</span><span class="value" id="resCrate">-- C</span></div>
+            <div class="result-row"><span class="label">直流母线总电压</span><span class="value" id="resVoltage">-- V</span></div>
+            <div class="result-row"><span class="label">直流侧需求功率</span><span class="value" id="resDcPower">-- W</span></div>
+            <div class="result-row"><span class="label">Peukert 修正系数</span><span class="value" id="resPeukert">--</span></div>
+            <div class="result-row"><span class="label">理论后备时间 (未修正)</span><span class="value" id="resRawTime">-- h</span></div>
+            <div class="result-row"><span class="label">修正后备时间</span><span class="value" id="resCorrectedTime">-- h</span></div>
+            <div class="warning">
+              ⚠️ 本结果为估算值。实际后备时间受电池老化、温度、终止电压、负载功率因数、逆变器实际效率等多因素影响，建议以实测或厂商数据为准。详见《精度与误差说明》。
+            </div>
+            <div class="error-msg" id="errorMsg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 源码 -->
+  <div class="panel" id="panel-source">
+    <h2 style="color:#2a5298;margin-bottom:16px;">核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="sourceCode"></pre>
+  </div>
+
+  <!-- 测试 -->
+  <div class="panel" id="panel-test">
+    <h2 style="color:#2a5298;margin-bottom:16px;">单元测试</h2>
+    <button class="btn" style="margin-bottom:16px;" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="testSummary"></div>
+    <div class="test-output" id="testOutput">点击"运行全部测试"查看结果...</div>
+  </div>
+
+  <!-- 说明书 -->
+  <div class="panel" id="panel-doc">
+    <div class="doc" id="docContent"></div>
+  </div>
+</div>
+
+<div class="version">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 校验输入是否为有限数字
+ * @param {*} v - 任意输入
+ * @returns {boolean} 是否为有限数字
+ */
+function isFiniteNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * 计算直流母线总电压
+ * @param {number} singleVoltage - 单节电池标称电压 (V)
+ * @param {number} count - 电池串联节数
+ * @returns {number} 直流母线总电压 (V)
+ * @throws {Error} 参数非法时抛出错误
+ */
+function calcBusVoltage(singleVoltage, count) {
+  if (!isFiniteNumber(singleVoltage) || !isFiniteNumber(count)) {
+    throw new Error('calcBusVoltage: 参数必须为有限数字');
+  }
+  if (singleVoltage <= 0) throw new Error('calcBusVoltage: 单节电压必须 > 0');
+  if (count <= 0 || !Number.isInteger(count)) throw new Error('calcBusVoltage: 节数必须为正整数');
+  return singleVoltage * count;
+}
+
+/**
+ * 计算直流侧需求功率（考虑逆变器效率）
+ * @param {number} loadPower - 负载有功功率 (W)
+ * @param {number} efficiency - 逆变器效率 (0, 1]
+ * @returns {number} 直流侧需求功率 (W)
+ * @throws {Error} 参数非法时抛出错误
+ */
+function calcDcPower(loadPower, efficiency) {
+  if (!isFiniteNumber(loadPower) || !isFiniteNumber(efficiency)) {
+    throw new Error('calcDcPower: 参数必须为有限数字');
+  }
+  if (loadPower < 0) throw new Error('calcDcPower: 负载功率不能为负');
+  if (efficiency <= 0 || efficiency > 1) throw new Error('calcDcPower: 效率必须在 (0, 1] 之间');
+  return loadPower / efficiency;
+}
+
+/**
+ * 计算直流侧放电电流
+ * @param {number} loadPower - 负载有功功率 (W)
+ * @param {number} busVoltage - 直流母线总电压 (V)
+ * @param {number} efficiency - 逆变器效率 (0, 1]
+ * @returns {number} 放电电流 (A)
+ */
+function calcDischargeCurrent(loadPower, busVoltage, efficiency) {
+  if (!isFiniteNumber(busVoltage) || busVoltage <= 0) {
+    throw new Error('calcDischargeCurrent: 母线电压必须 > 0');
+  }
+  const dcPower = calcDcPower(loadPower, efficiency);
+  return dcPower / busVoltage;
+}
+
+/**
+ * 计算放电倍率 (C-rate)
+ * @param {number} dischargeCurrent - 放电电流 (A)
+ * @param {number} ratedCapacity - 额定容量 (Ah)
+ * @returns {number} 放电倍率 (C)
+ */
+function calcDischargeRate(dischargeCurrent, ratedCapacity) {
+  if (!isFiniteNumber(dischargeCurrent) || !isFiniteNumber(ratedCapacity)) {
+    throw new Error('calcDischargeRate: 参数必须为有限数字');
+  }
+  if (ratedCapacity <= 0) throw new Error('calcDischargeRate: 额定容量必须 > 0');
+  if (dischargeCurrent < 0) throw new Error('calcDischargeRate: 放电电流不能为负');
+  return dischargeCurrent / ratedCapacity;
+}
+
+/**
+ * 基于 Peukert 方程计算后备时间
+ * 公式：t = H × (I_rated / I_actual)^k
+ * 其中 I_rated = C_rated / H
+ * @param {number} ratedCapacity - 额定容量 (Ah)
+ * @param {number} dischargeCurrent - 实际放电电流 (A)
+ * @param {number} peukertK - Peukert 指数 (通常 1.0~1.3)
+ * @param {number} [ratedHours=20] - 额定放电时率 (h)
+ * @returns {number} 后备时间 (h)
+ */
+function calcBackupTimePeukert(ratedCapacity, dischargeCurrent, peukertK, ratedHours) {
+  if (ratedHours === undefined) ratedHours = 20;
+  if (!isFiniteNumber(ratedCapacity) || !isFiniteNumber(dischargeCurrent) ||
+      !isFiniteNumber(peukertK) || !isFiniteNumber(ratedHours)) {
+    throw new Error('calcBackupTimePeukert: 参数必须为有限数字');
+  }
+  if (ratedCapacity <= 0) throw new Error('calcBackupTimePeukert: 额定容量必须 > 0');
+  if (dischargeCurrent <= 0) throw new Error('calcBackupTimePeukert: 放电电流必须 > 0');
+  if (peukertK < 1) throw new Error('calcBackupTimePeukert: Peukert 指数不能 < 1');
+  if (ratedHours <= 0) throw new Error('calcBackupTimePeukert: 额定时率必须 > 0');
+
+  const ratedCurrent = ratedCapacity / ratedHours;
+  const time = ratedHours * Math.pow(ratedCurrent / dischargeCurrent, peukertK);
+  return time;
+}
+
+/**
+ * 计算未修正的理论后备时间（线性模型，k=1）
+ * @param {number} ratedCapacity - 额定容量 (Ah)
+ * @param {number} dischargeCurrent - 放电电流 (A)
+ * @returns {number} 后备时间 (h)
+ */
+function calcBackupTimeLinear(ratedCapacity, dischargeCurrent) {
+  if (!isFiniteNumber(ratedCapacity) || !isFiniteNumber(dischargeCurrent)) {
+    throw new Error('calcBackupTimeLinear: 参数必须为有限数字');
+  }
+  if (ratedCapacity <= 0 || dischargeCurrent <= 0) {
+    throw new Error('calcBackupTimeLinear: 容量与电流必须 > 0');
+  }
+  return ratedCapacity / dischargeCurrent;
+}
+
+/**
+ * 将小时数格式化为 "Xh Ym Zs" 字符串
+ * @param {number} hours - 小时数（可为小数）
+ * @returns {string} 格式化后的时间字符串
+ */
+function formatTime(hours) {
+  if (!isFiniteNumber(hours) || hours < 0) return '--';
+  if (hours === 0) return '0h 0m 0s';
+  const totalSeconds = Math.round(hours * 3600);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return h + 'h ' + m + 'm ' + s + 's';
+}
+
+/**
+ * 将小时数格式化为 "X小时Y分Z秒" 字符串
+ * @param {number} hours - 小时数
+ * @returns {string} 中文格式化时间
+ */
+function formatTimeCN(hours) {
+  if (!isFiniteNumber(hours) || hours < 0) return '--';
+  if (hours === 0) return '0小时0分0秒';
+  const totalSeconds = Math.round(hours * 3600);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return h + '小时' + m + '分' + s + '秒';
+}
+
+/**
+ * UPS 后备时间主计算函数
+ * @param {Object} params - 输入参数
+ * @param {number} params.loadPower - 负载功率 (W)
+ * @param {number} params.singleVoltage - 单节电池电压 (V)
+ * @param {number} params.batteryCount - 电池串联节数
+ * @param {number} params.ratedCapacity - 额定容量 (Ah)
+ * @param {number} params.efficiency - 逆变器效率 (0, 1]
+ * @param {number} [params.peukertK=1.2] - Peukert 指数
+ * @param {number} [params.ratedHours=20] - 额定放电时率 (h)
+ * @returns {Object} 计算结果对象
+ * @returns {number} returns.busVoltage - 直流母线电压 (V)
+ * @returns {number} returns.dcPower - 直流侧功率 (W)
+ * @returns {number} returns.dischargeCurrent - 放电电流 (A)
+ * @returns {number} returns.dischargeRate - 放电倍率 (C)
+ * @returns {number} returns.rawTime - 未修正后备时间 (h)
+ * @returns {number} returns.correctedTime - Peukert 修正后备时间 (h)
+ * @returns {number} returns.peukertFactor - Peukert 修正系数
+ * @returns {string} returns.formattedTime - 格式化时间字符串
+ * @returns {string} returns.formattedTimeCN - 中文格式化时间
+ */
+function calculateUPSTime(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('calculateUPSTime: 参数必须为对象');
+  }
+  const {
+    loadPower, singleVoltage, batteryCount, ratedCapacity,
+    efficiency, peukertK = 1.2, ratedHours = 20
+  } = params;
+
+  // 字符串数字转换
+  const lp = Number(loadPower);
+  const sv = Number(singleVoltage);
+  const bc = Number(batteryCount);
+  const rc = Number(ratedCapacity);
+  const ef = Number(efficiency);
+  const pk = Number(peukertK);
+  const rh = Number(ratedHours);
+
+  if (lp === 0) {
+    return {
+      busVoltage: calcBusVoltage(sv, bc),
+      dcPower: 0,
+      dischargeCurrent: 0,
+      dischargeRate: 0,
+      rawTime: Infinity,
+      correctedTime: Infinity,
+      peukertFactor: 1,
+      formattedTime: '∞',
+      formattedTimeCN: '无限长'
+    };
+  }
+
+  const busVoltage = calcBusVoltage(sv, bc);
+  const dcPower = calcDcPower(lp, ef);
+  const dischargeCurrent = calcDischargeCurrent(lp, busVoltage, ef);
+  const dischargeRate = calcDischargeRate(dischargeCurrent, rc);
+  const rawTime = calcBackupTimeLinear(rc, dischargeCurrent);
+  const correctedTime = calcBackupTimePeukert(rc, dischargeCurrent, pk, rh);
+  const peukertFactor = rawTime > 0 ? correctedTime / rawTime : 1;
+
+  return {
+    busVoltage: busVoltage,
+    dcPower: dcPower,
+    dischargeCurrent: dischargeCurrent,
+    dischargeRate: dischargeRate,
+    rawTime: rawTime,
+    correctedTime: correctedTime,
+    peukertFactor: peukertFactor,
+    formattedTime: formatTime(correctedTime),
+    formattedTimeCN: formatTimeCN(correctedTime)
+  };
+}
+
+/* ============================================================
+ * 第二部分：单元测试（至少 30 个）
+ * ============================================================ */
+
+let testPassed = 0;
+let testFailed = 0;
+let testTotal = 0;
+let testLog = [];
+
+function assertClose(actual, expected, message, tolerance) {
+  if (tolerance === undefined) tolerance = 1e-6;
+  testTotal++;
+  if (typeof actual !== 'number' || !Number.isFinite(actual)) {
+    testFailed++;
+    testLog.push({ pass: false, msg: message + ' | 期望 ' + expected + '，实际 ' + actual + ' (非有限数)' });
+    return;
+  }
+  if (Math.abs(actual - expected) <= tolerance) {
+    testPassed++;
+    testLog.push({ pass: true, msg: message + ' | ' + actual + ' ≈ ' + expected });
+  } else {
+    testFailed++;
+    testLog.push({ pass: false, msg: message + ' | 期望 ' + expected + '，实际 ' + actual + ' (差 ' + Math.abs(actual - expected) + ')' });
+  }
+}
+
+function assertEqual(actual, expected, message) {
+  testTotal++;
+  if (actual === expected) {
+    testPassed++;
+    testLog.push({ pass: true, msg: message + ' | ' + actual + ' === ' + expected });
+  } else {
+    testFailed++;
+    testLog.push({ pass: false, msg: message + ' | 期望 ' + expected + '，实际 ' + actual });
+  }
+}
+
+function assertThrows(fn, message) {
+  testTotal++;
+  try {
+    fn();
+    testFailed++;
+    testLog.push({ pass: false, msg: message + ' | 期望抛出异常但未抛出' });
+  } catch (e) {
+    testPassed++;
+    testLog.push({ pass: true, msg: message + ' | 抛出: ' + e.message });
+  }
+}
+
+function assertInfinity(actual, message) {
+  testTotal++;
+  if (actual === Infinity) {
+    testPassed++;
+    testLog.push({ pass: true, msg: message + ' | 为 Infinity' });
+  } else {
+    testFailed++;
+    testLog.push({ pass: false, msg: message + ' | 期望 Infinity，实际 ' + actual });
+  }
+}
+
+function runAllTests() {
+  testPassed = 0;
+  testFailed = 0;
+  testTotal = 0;
+  testLog = [];
+
+  // === calcBusVoltage ===
+  assertClose(calcBusVoltage(12, 1), 12, 'T01 单节 12V');
+  assertClose(calcBusVoltage(12, 10), 120, 'T02 10 节 12V 串联');
+  assertClose(calcBusVoltage(12, 32), 384, 'T03 32 节 12V 串联');
+  assertClose(calcBusVoltage(2, 50), 100, 'T04 锂电 50 节 2V');
+  assertThrows(function(){ calcBusVoltage(-12, 1); }, 'T05 负电压抛错');
+  assertThrows(function(){ calcBusVoltage(12, 0); }, 'T06 0 节抛错');
+  assertThrows(function(){ calcBusVoltage(12, -1); }, 'T07 负节数抛错');
+  assertThrows(function(){ calcBusVoltage(NaN, 1); }, 'T08 NaN 电压抛错');
+
+  // === calcDcPower ===
+  assertClose(calcDcPower(1000, 0.9), 1111.111111, 'T09 1000W/0.9 效率', 1e-3);
+  assertClose(calcDcPower(1000, 1.0), 1000, 'T10 效率 1.0');
+  assertClose(calcDcPower(1000, 0.85), 1176.470588, 'T11 效率 0.85', 1e-3);
+  assertClose(calcDcPower(0, 0.9), 0, 'T12 0 负载');
+  assertThrows(function(){ calcDcPower(-100, 0.9); }, 'T13 负负载抛错');
+  assertThrows(function(){ calcDcPower(1000, 0); }, 'T14 效率 0 抛错');
+  assertThrows(function(){ calcDcPower(1000, 1.1); }, 'T15 效率 >1 抛错');
+
+  // === calcDischargeCurrent ===
+  assertClose(calcDischargeCurrent(1000, 120, 0.9), 9.259259, 'T16 1000W/120V/0.9', 1e-3);
+  assertClose(calcDischargeCurrent(0, 120, 0.9), 0, 'T17 0 负载电流 0');
+
+  // === calcDischargeRate ===
+  assertClose(calcDischargeRate(5, 100), 0.05, 'T18 5A/100Ah = 0.05C');
+  assertClose(calcDischargeRate(100, 100), 1.0, 'T19 100A/100Ah = 1C');
+  assertClose(calcDischargeRate(10, 100), 0.1, 'T20 10A/100Ah = 0.1C');
+  assertThrows(function(){ calcDischargeRate(5, 0); }, 'T21 容量 0 抛错');
+  assertThrows(function(){ calcDischargeRate(-5, 100); }, 'T22 负电流抛错');
+
+  // === calcBackupTimePeukert ===
+  // 20h 率放电：I = C/20 = 5A，应得 20h
+  assertClose(calcBackupTimePeukert(100, 5, 1.2, 20), 20, 'T23 20h 率放电得 20h');
+  // 10h 率放电：I = C/10 = 10A
+  // t = 20 × (5/10)^1.2 = 20 × 0.5^1.2 = 20 × 0.43528 = 8.7055
+  assertClose(calcBackupTimePeukert(100, 10, 1.2, 20), 8.7055, 'T24 10h 率放电 k=1.2', 1e-3);
+  // 1h 率放电：I = 100A
+  // t = 20 × (5/100)^1.2 = 20 × 0.05^1.2 = 20 × 0.027464 = 0.54928
+  // 修正：原期望 0.5299 源于注释里把 0.05^1.2 误算为 0.02649
+  assertClose(calcBackupTimePeukert(100, 100, 1.2, 20), 0.54928, 'T25 1h 率放电 k=1.2', 1e-3);
+  // k=1 时退化为线性
+  assertClose(calcBackupTimePeukert(100, 10, 1.0, 20), 10, 'T26 k=1 退化为线性');
+  assertClose(calcBackupTimePeukert(100, 50, 1.0, 20), 2, 'T27 k=1 大电流线性');
+  // k=1.3
+  assertClose(calcBackupTimePeukert(100, 10, 1.3, 20), 8.1225, 'T28 k=1.3 10h 率', 1e-3);
+  // 额定时率 10h
+  // I_rated = 100/10 = 10A, I=10A, t = 10 × (10/10)^1.2 = 10h
+  assertClose(calcBackupTimePeukert(100, 10, 1.2, 10), 10, 'T29 额定 10h 率放电');
+  assertThrows(function(){ calcBackupTimePeukert(100, 0, 1.2, 20); }, 'T30 电流 0 抛错');
+  assertThrows(function(){ calcBackupTimePeukert(0, 10, 1.2, 20); }, 'T31 容量 0 抛错');
+  assertThrows(function(){ calcBackupTimePeukert(100, 10, 0.9, 20); }, 'T32 k<1 抛错');
+
+  // === calcBackupTimeLinear ===
+  assertClose(calcBackupTimeLinear(100, 10), 10, 'T33 线性 100Ah/10A=10h');
+  assertClose(calcBackupTimeLinear(100, 5), 20, 'T34 线性 100Ah/5A=20h');
+  assertClose(calcBackupTimeLinear(200, 10), 20, 'T35 线性 200Ah/10A=20h');
+
+  // === formatTime ===
+  assertEqual(formatTime(0), '0h 0m 0s', 'T36 格式化 0');
+  assertEqual(formatTime(1), '1h 0m 0s', 'T37 格式化 1h');
+  assertEqual(formatTime(1.5), '1h 30m 0s', 'T38 格式化 1.5h');
+  assertEqual(formatTime(2.008333), '2h 0m 30s', 'T39 格式化 2h30s', 1e-3);
+  assertEqual(formatTime(25), '25h 0m 0s', 'T40 格式化 25h');
+  assertEqual(formatTime(0.001388), '0h 0m 5s', 'T41 格式化 5 秒', 1e-3);
+  assertEqual(formatTime(-1), '--', 'T42 负数格式化');
+  assertEqual(formatTime(NaN), '--', 'T43 NaN 格式化');
+
+  // === formatTimeCN ===
+  assertEqual(formatTimeCN(1.5), '1小时30分0秒', 'T44 中文格式化 1.5h');
+  assertEqual(formatTimeCN(0), '0小时0分0秒', 'T45 中文格式化 0');
+
+  // === calculateUPSTime 综合 ===
+  var r1 = calculateUPSTime({
+    loadPower: 1000, singleVoltage: 12, batteryCount: 10,
+    ratedCapacity: 100, efficiency: 0.9, peukertK: 1.2, ratedHours: 20
+  });
+  // busVoltage = 120V, dcPower = 1111.11W, I = 9.259A
+  // rawTime = 100/9.259 = 10.8h
+  // correctedTime = 20 × (5/9.259)^1.2 = 20 × 0.54001^1.2 = 20 × 0.47739 = 9.5478h
+  // 修正：原期望 9.464 源于把 5/9.259 当成 0.5399、把 0.54^1.2 误算为 0.4732
+  assertClose(r1.busVoltage, 120, 'T46 综合 1 母线电压');
+  assertClose(r1.dcPower, 1111.111, 'T47 综合 1 直流功率', 1e-2);
+  assertClose(r1.dischargeCurrent, 9.259, 'T48 综合 1 放电电流', 1e-2);
+  assertClose(r1.dischargeRate, 0.09259, 'T49 综合 1 放电倍率', 1e-4);
+  assertClose(r1.rawTime, 10.8, 'T50 综合 1 理论时间', 0.05);
+  assertClose(r1.correctedTime, 9.5478, 'T51 综合 1 修正时间', 0.05);
+
+  // 0 负载
+  var r2 = calculateUPSTime({
+    loadPower: 0, singleVoltage: 12, batteryCount: 1,
+    ratedCapacity: 100, efficiency: 0.9
+  });
+  assertInfinity(r2.correctedTime, 'T52 0 负载时间无穷');
+  assertClose(r2.dischargeCurrent, 0, 'T53 0 负载电流 0');
+
+  // 异常输入
+  assertThrows(function(){ calculateUPSTime({ loadPower: -100, singleVoltage: 12, batteryCount: 1, ratedCapacity: 100, efficiency: 0.9 }); }, 'T54 负负载抛错');
+  assertThrows(function(){ calculateUPSTime({ loadPower: 100, singleVoltage: 12, batteryCount: 1, ratedCapacity: 0, efficiency: 0.9 }); }, 'T55 0 容量抛错');
+  assertThrows(function(){ calculateUPSTime({ loadPower: 100, singleVoltage: 12, batteryCount: 1, ratedCapacity: 100, efficiency: 0 }); }, 'T56 0 效率抛错');
+  assertThrows(function(){ calculateUPSTime({ loadPower: 100, singleVoltage: 12, batteryCount: 0, ratedCapacity: 100, efficiency: 0.9 }); }, 'T57 0 节数抛错');
+  assertThrows(function(){ calculateUPSTime({ loadPower: NaN, singleVoltage: 12, batteryCount: 1, ratedCapacity: 100, efficiency: 0.9 }); }, 'T58 NaN 负载抛错');
+  assertThrows(function(){ calculateUPSTime(null); }, 'T59 null 参数抛错');
+
+  // 字符串数字
+  var r3 = calculateUPSTime({
+    loadPower: '1000', singleVoltage: '12', batteryCount: '10',
+    ratedCapacity: '100', efficiency: '0.9', peukertK: '1.2'
+  });
+  assertClose(r3.busVoltage, 120, 'T60 字符串数字输入');
+
+  // 大数据
+  var r4 = calculateUPSTime({
+    loadPower: 100000, singleVoltage: 12, batteryCount: 40,
+    ratedCapacity: 200, efficiency: 0.9, peukertK: 1.2
+  });
+  // busVoltage = 480V, dcPower = 111111W, I = 231.48A
+  assertClose(r4.busVoltage, 480, 'T61 大数据母线电压');
+  assertClose(r4.dischargeCurrent, 231.48, 'T62 大数据放电电流', 0.1);
+
+  // 小数据
+  var r5 = calculateUPSTime({
+    loadPower: 10, singleVoltage: 12, batteryCount: 1,
+    ratedCapacity: 7, efficiency: 0.9, peukertK: 1.2
+  });
+  // busVoltage = 12V, dcPower = 11.11W, I = 0.926A
+  assertClose(r5.dischargeCurrent, 0.926, 'T63 小数据放电电流', 0.01);
+
+  // 默认参数
+  var r6 = calculateUPSTime({
+    loadPower: 500, singleVoltage: 12, batteryCount: 1,
+    ratedCapacity: 100, efficiency: 0.9
+  });
+  // 默认 peukertK=1.2, ratedHours=20
+  assertClose(r6.peukertFactor, r6.correctedTime / r6.rawTime, 'T64 默认参数修正系数', 1e-6);
+
+  // 效率边界
+  var r7 = calculateUPSTime({
+    loadPower: 1000, singleVoltage: 12, batteryCount: 10,
+    ratedCapacity: 100, efficiency: 1.0, peukertK: 1.0
+  });
+  // k=1 时修正系数应为 1
+  assertClose(r7.peukertFactor, 1.0, 'T65 k=1 修正系数为 1', 1e-6);
+
+  // 输出结果
+  var output = document.getElementById('testOutput');
+  var summary = document.getElementById('testSummary');
+  var html = '';
+  for (var i = 0; i < testLog.length; i++) {
+    var t = testLog[i];
+    html += '<div class="' + (t.pass ? 'test-pass' : 'test-fail') + '">' +
+            (t.pass ? '✓ ' : '✗ ') + t.msg + '</div>';
+  }
+  output.innerHTML = html;
+  if (testFailed === 0) {
+    summary.innerHTML = '<div class="test-summary all-pass">✅ 全部通过：通过 ' + testPassed + ' / 共 ' + testTotal + '</div>';
+  } else {
+    summary.innerHTML = '<div class="test-summary has-fail">❌ 部分失败：通过 ' + testPassed + ' / 共 ' + testTotal + '，失败 ' + testFailed + '</div>';
+  }
+}
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+
+var docHTML = `
+<p class="warn"><b>重要声明</b>：本工具各参数（逆变器效率典型值、Peukert 指数范围、温度容量修正系数等）均为工程经验值，未经标准条款核对，页面所列标准号仅为相关领域参考，本工具未引用其具体数值。使用前请以厂商数据表或标准原文为准。</p>
+<h2>一、工具用途</h2>
+<p>本工具用于估算 UPS（不间断电源）在给定负载下的后备时间。输入电池容量、负载功率等参数，即可得到考虑放电倍率修正后的后备时间估算值。</p>
+<p>典型应用：数据中心 UPS 配置校核、家庭/办公室 UPS 选型、应急电源方案评估、工程投标中的后备时间论证等。</p>
+<p>本工具基于经典的 Peukert 方程对铅酸蓄电池的放电倍率效应进行修正，相比简单的"容量÷电流"线性算法，能更贴近电池实际放电特性。</p>
+
+<h2>二、参数详解</h2>
+<h3>1. 负载功率 (W)</h3>
+<p>UPS 输出端所带负载的总有功功率，单位瓦特 (W)。注意是"有功功率"而非视在功率 (VA)。若设备铭牌只标 VA，需乘以功率因数 (通常 0.7~0.95) 换算为 W。</p>
+<p>示例：一台铭牌 1000VA、功率因数 0.9 的服务器，其有功功率约为 900W。</p>
+
+<h3>2. 单节电池标称电压 (V)</h3>
+<p>单节电池的标称电压。常见取值：</p>
+<ul>
+  <li>铅酸蓄电池（VRLA/AGM/胶体）：12V（最常见）、6V、2V</li>
+  <li>磷酸铁锂单体：3.2V</li>
+  <li>三元锂单体：3.6V 或 3.7V</li>
+</ul>
+<p>请查阅电池铭牌或厂商数据表确认。</p>
+
+<h3>3. 电池串联节数</h3>
+<p>UPS 直流母线上的电池串联节数。串联提升电压，容量不变。例如 32 节 12V 电池串联，直流母线电压约 384V（标称），容量仍为单节容量。</p>
+<p>常见配置：小功率 UPS 用 1~4 节，中大功率 UPS 用 16~40 节，具体以机型为准。</p>
+<p class="note">注：若存在并联支路，本工具按单串计算。多并多串场景需先折算为等效单串参数。</p>
+
+<h3>4. 单节电池额定容量 (Ah @20h率)</h3>
+<p>电池在指定放电时率下的额定容量，单位安时 (Ah)。铅酸电池通常以 20 小时率 (C20) 标定，即 20 小时放完的容量。例如 "12V100Ah(C20)" 表示以 5A 放电 20 小时可放出 100Ah。</p>
+<p>同一电池在不同放电时率下容量不同：放电越快，可用容量越小。这是 Peukert 效应的体现。</p>
+
+<h3>5. 逆变器效率 (0~1)</h3>
+<p>UPS 内部 DC/AC 逆变器的转换效率。典型值：</p>
+<ul>
+  <li>在线式 UPS：0.88~0.95</li>
+  <li>后备式/互动式 UPS：0.80~0.90</li>
+  <li>ECO 模式：可达 0.98 以上</li>
+</ul>
+<p>效率越低，直流侧需要提供的功率越大，后备时间越短。具体数值请查阅 UPS 机型技术手册。</p>
+
+<h3>6. Peukert 指数 k</h3>
+<p>描述电池容量随放电倍率变化的指数。Peukert 方程：I^k × t = 常数。</p>
+<ul>
+  <li>k = 1.0：理想电池，容量不随放电率变化（锂电接近此值）</li>
+  <li>k = 1.1~1.2：优质铅酸电池</li>
+  <li>k = 1.2~1.3：普通铅酸电池</li>
+  <li>k > 1.3：老化或劣质电池</li>
+</ul>
+<p>具体数值需查阅电池厂商数据表。无数据时铅酸可保守取 1.2~1.3。</p>
+
+<h3>7. 额定放电时率 H (h)</h3>
+<p>电池容量标定时所用的放电时长，单位小时。铅酸电池常见 20h 或 10h。此参数需与电池容量标定的时率一致，否则计算结果会有偏差。</p>
+
+<h2>三、使用场景</h2>
+
+<h3>场景 1：数据中心 UPS 后备时间校核</h3>
+<p>某机房部署 20kVA UPS，实际负载 12kW，配 32 节 12V100Ah 铅酸电池，逆变器效率 0.92，Peukert 指数 1.2。</p>
+<p>输入：负载 12000W，单节 12V，32 节，100Ah，效率 0.92，k=1.2，H=20。</p>
+<p>结果：直流母线 384V，放电电流 12000/0.92/384 ≈ 34.0A，放电倍率 0.340C，修正后备时间 20×(5/34.0)^1.2 ≈ 2.0 小时。可用于验证是否满足设计要求的 15 分钟或 30 分钟后备。</p>
+
+<h3>场景 2：家庭/办公室小型 UPS 选型</h3>
+<p>办公室一台电脑 + 显示器 + 路由器总负载约 300W，希望后备 30 分钟。现有 12V7Ah 小电池。</p>
+<p>输入：负载 300W，单节 12V，1 节，7Ah，效率 0.85，k=1.3（小铅酸偏保守），H=20。</p>
+<p>结果：放电电流约 29.4A，放电倍率高达 4.2C，修正后备时间 20×(5/29.4)^1.3 ≈ 2.0 小时。虽然名义上超过 30 分钟目标，但 4.2C 的深度放电对电池损耗极大，且实际可用容量会进一步缩水，裕量不可靠。提示需增大电池容量或减小负载。</p>
+
+<h3>场景 3：锂电 UPS 方案评估</h3>
+<p>采用磷酸铁锂电池替代铅酸，单体 3.2V100Ah，15 串，负载 5kW，逆变器效率 0.95，锂电 k 取 1.05。</p>
+<p>输入：负载 5000W，单节 3.2V，15 节，100Ah，效率 0.95，k=1.05，H=20。</p>
+<p>结果：直流母线 48V，放电电流约 109.7A，放电倍率 1.097C，修正后备时间 20×(5/109.7)^1.05 ≈ 0.78 小时（约 47 分钟）。锂电因 k 接近 1，倍率修正影响较小。</p>
+
+<h3>场景 4：工程投标后备时间论证</h3>
+<p>投标要求 UPS 在满载下后备 30 分钟。已知 UPS 100kVA，负载功率因数 0.9，配 40 节 12V200Ah 电池。</p>
+<p>输入：负载 90000W，单节 12V，40 节，200Ah，效率 0.92，k=1.2，H=20。</p>
+<p>结果：直流母线 480V，放电电流 90000/0.92/480 ≈ 203.8A，放电倍率 1.019C，修正后备时间 20×(5/203.8)^1.2 ≈ 0.23 小时（约 14 分钟）——<b>不满足</b> 30 分钟要求，需增大电池容量或减小负载。</p>
+
+<h3>场景 5：电池老化后后备时间衰减评估</h3>
+<p>一组运行 3 年的铅酸电池，容量衰减至额定的 80%，Peukert 指数劣化至 1.3。负载 2kW，16 节 12V100Ah。</p>
+<p>输入：负载 2000W，单节 12V，16 节，80Ah（衰减后），效率 0.9，k=1.3，H=20。</p>
+<p>结果：放电电流 2000/0.9/192 ≈ 11.57A，放电倍率约 0.145C，修正后备时间 20×(5/11.57)^1.2 ≈ 7.3 小时（对比新电池约 10.3 小时）。提示需安排电池更换。</p>
+
+<h3>场景 6：不同放电时率电池参数换算</h3>
+<p>某些电池以 10h 率标定容量。若电池铭牌为 "12V100Ah(C10)"，则额定时率 H 应填 10，而非默认的 20，否则计算结果会偏大。</p>
+
+<h2>四、常见错误</h2>
+<ol>
+  <li><b>混淆 VA 与 W</b>：负载功率必须是有功功率 (W)，不是视在功率 (VA)。直接输入 VA 会高估后备时间。</li>
+  <li><b>忽略逆变器效率</b>：默认效率 1.0 会高估后备时间。实际逆变器有损耗，必须按机型手册取值。</li>
+  <li><b>Peukert 指数取值不当</b>：铅酸电池 k 通常 1.1~1.3，若错填 1.0 会忽略倍率修正，高估大电流下的后备时间。</li>
+  <li><b>额定时率与容量不匹配</b>：电池容量若以 C10 标定，H 必须填 10；以 C20 标定则填 20。</li>
+  <li><b>忽略电池并联</b>：多并多串场景需先折算为等效单串参数，不能直接输入总节数。</li>
+  <li><b>把标称电压当实际电压</b>：12V 铅酸实际放电电压在 10.5~13V 之间变化，本工具按标称电压计算，是近似。</li>
+  <li><b>未考虑温度影响</b>：低温下电池容量显著下降（0℃ 时铅酸容量可能只有 25℃ 时的 80%~90%），本工具未做温度修正。</li>
+  <li><b>忽略电池老化</b>：运行多年的电池容量衰减、内阻增大，实际后备时间会明显短于计算值。</li>
+</ol>
+
+<h2>五、数据依据</h2>
+<p>本工具算法基于以下公开原理与标准：</p>
+<ul>
+  <li><b>Peukert 方程</b>：描述电池放电倍率与容量关系的经典经验公式，由 W. Peukert 于 1897 年提出，广泛应用于铅酸电池工程计算。</li>
+  <li><b>GB/T 19638.2-2014</b>《固定型阀控式铅酸蓄电池》：规定了铅酸蓄电池的容量标定方法、放电性能要求等。具体容量-放电率对应数据需查标准原文。</li>
+  <li><b>YD/T 1095-2018</b>《UPS 不间断电源》：通信行业 UPS 标准，规定了 UPS 性能指标与测试方法（具体效率、后备时间测试条款需查标准原文）。</li>
+  <li><b>IEC 62040 系列</b>：国际 UPS 标准，涵盖性能、安全、EMC 等要求。</li>
+  <li><b>GB/T 7260.3-2021</b>《不间断电源设备 (UPS) 第 3 部分：确定性能的方法和试验要求》。</li>
+</ul>
+<p class="note">注：具体电池容量-放电率对应表、温度修正系数、寿命曲线等数据，需查阅相应电池厂商数据表或标准原文，本工具不内置这些数据。</p>
+
+<h2>六、精度与误差说明（有限精准原则）</h2>
+<p>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，<b>不承诺绝对精确</b>。以下说明本工具算准了什么、哪些因素没算进去、误差大概多大。</p>
+
+<h3>① 算准了什么</h3>
+<ul>
+  <li><b>数学模型正确</b>：Peukert 方程是电池工程界公认的经验模型，在常规放电倍率范围内（0.05C~2C）对铅酸电池有较好拟合度。</li>
+  <li><b>输入项精确计算</b>：给定输入参数后，直流侧功率、放电电流、放电倍率、Peukert 修正时间的数学计算是精确的（浮点精度内）。</li>
+  <li><b>倍率效应正确反映</b>：相比简单的"容量÷电流"线性算法，本工具正确反映了"放电越快、可用容量越小"的物理事实。</li>
+</ul>
+
+<h3>② 哪些因素没算进去</h3>
+<ul>
+  <li><b>电池实际电压变化</b>：放电过程中电池电压从满电到终止电压持续下降，本工具按标称电压恒定计算，实际放电电流会随电压下降而上升。</li>
+  <li><b>终止电压</b>：不同 UPS 机型、不同负载下的放电终止电压不同（铅酸常见 10.5V/节），本工具未做终止电压截断。</li>
+  <li><b>温度影响</b>：电池容量随温度变化显著。25℃ 为基准，温度每下降 1℃，铅酸容量约下降 0.5%~1%（具体系数需查厂商数据）。本工具未做温度修正。</li>
+  <li><b>电池老化</b>：运行多年的电池容量衰减、内阻增大，Peukert 指数也会劣化。本工具按输入参数计算，不自动考虑老化。</li>
+  <li><b>逆变器效率非线性</b>：实际逆变器效率随负载率变化，轻载时效率较低。本工具按恒定效率计算。</li>
+  <li><b>负载功率因数与谐波</b>：非线性负载的谐波电流会增加逆变器损耗，本工具未考虑。</li>
+  <li><b>电池不一致性</b>：串联电池组中单体容量、内阻差异会影响整组性能，本工具按理想一致计算。</li>
+  <li><b>连接线缆损耗</b>：电池到 UPS 的线缆有电阻损耗，本工具未计入。</li>
+  <li><b>Peukert 方程本身的局限</b>：Peukert 方程是经验公式，在极高倍率（>3C）或极低倍率（<0.01C）下拟合度下降。</li>
+</ul>
+
+<h3>③ 误差大概多大</h3>
+<ul>
+  <li><b>输入参数准确、电池状态良好、环境温度 25℃ 左右</b>：估算值与实测值偏差通常在 <b>±10%~20%</b> 以内。</li>
+  <li><b>输入参数有偏差（如效率、Peukert 指数取值不准）</b>：偏差可能扩大到 <b>±30%</b> 甚至更多。</li>
+  <li><b>电池老化严重或温度极端</b>：偏差可能超过 <b>±50%</b>。</li>
+  <li><b>极高倍率放电（>2C）</b>：Peukert 方程拟合度下降，误差显著增大。</li>
+</ul>
+
+<p class="warn"><b>重要提示</b>：本工具结果仅供工程估算与方案比选参考，<b>不能</b>作为验收依据或安全设计的唯一依据。关键场景（如数据中心、医疗设备、金融系统）的后备时间应以实际放电测试或厂商提供的数据为准。</p>
+
+<h2>七、局限性</h2>
+<ol>
+  <li><b>仅支持串联电池组</b>：多并多串场景需用户自行折算为等效单串参数。</li>
+  <li><b>不支持混合电池</b>：不同型号、不同新旧程度的电池混用场景不适用。</li>
+  <li><b>不支持充电过程</b>：本工具仅计算放电后备时间，不涉及充电时间、浮充寿命等。</li>
+  <li><b>不支持多段负载</b>：负载功率随时间变化的场景（如分批切负载）不适用。</li>
+  <li><b>不支持锂电专用模型</b>：锂电放电曲线与铅酸差异较大，Peukert 方程对锂电拟合度有限。本工具对锂电仅作粗略估算。</li>
+  <li><b>无温度修正</b>：极端温度环境下的估算误差较大。</li>
+  <li><b>无老化模型</b>：需用户手动输入衰减后的容量与劣化后的 Peukert 指数。</li>
+  <li><b>无厂商数据集成</b>：无法自动调用特定品牌电池的放电曲线数据。</li>
+</ol>
+
+<h2>八、版本与反馈</h2>
+<p>当前版本：v2.0.2-修审查问题 20261108</p>
+<p>如发现算法问题或参数建议，欢迎反馈。本工具持续改进中，但始终遵循"有限精准"原则——老实承认能算什么、不能算什么。</p>
+`;
+
+/* ============================================================
+ * UI 逻辑
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 计算器
+function runCalc() {
+  var errBox = document.getElementById('errorMsg');
+  errBox.style.display = 'none';
+  try {
+    var params = {
+      loadPower: parseFloat(document.getElementById('loadPower').value),
+      singleVoltage: parseFloat(document.getElementById('batteryVoltage').value),
+      batteryCount: parseFloat(document.getElementById('batteryCount').value),
+      ratedCapacity: parseFloat(document.getElementById('batteryCapacity').value),
+      efficiency: parseFloat(document.getElementById('inverterEfficiency').value),
+      peukertK: parseFloat(document.getElementById('peukertK').value),
+      ratedHours: parseFloat(document.getElementById('ratedHours').value)
+    };
+    var r = calculateUPSTime(params);
+    document.getElementById('resTime').textContent = r.formattedTime;
+    document.getElementById('resTimeDecimal').textContent =
+      (r.correctedTime === Infinity ? '∞' : r.correctedTime.toFixed(2) + ' 小时');
+    document.getElementById('resCurrent').textContent = r.dischargeCurrent.toFixed(3) + ' A';
+    document.getElementById('resCrate').textContent = r.dischargeRate.toFixed(4) + ' C';
+    document.getElementById('resVoltage').textContent = r.busVoltage.toFixed(1) + ' V';
+    document.getElementById('resDcPower').textContent = r.dcPower.toFixed(2) + ' W';
+    document.getElementById('resPeukert').textContent = r.peukertFactor.toFixed(4);
+    document.getElementById('resRawTime').textContent = (r.rawTime === Infinity ? '∞' : r.rawTime.toFixed(3) + ' h');
+    document.getElementById('resCorrectedTime').textContent = (r.correctedTime === Infinity ? '∞' : r.correctedTime.toFixed(3) + ' h');
+  } catch (e) {
+    errBox.textContent = '❌ 计算错误：' + e.message;
+    errBox.style.display = 'block';
+  }
+}
+
+function resetCalc() {
+  document.getElementById('loadPower').value = 1000;
+  document.getElementById('batteryVoltage').value = 12;
+  document.getElementById('batteryCount').value = 1;
+  document.getElementById('batteryCapacity').value = 100;
+  document.getElementById('inverterEfficiency').value = 0.9;
+  document.getElementById('peukertK').value = 1.2;
+  document.getElementById('ratedHours').value = 20;
+  document.getElementById('resTime').textContent = '--';
+  document.getElementById('resTimeDecimal').textContent = '-- 小时';
+  document.getElementById('resCurrent').textContent = '-- A';
+  document.getElementById('resCrate').textContent = '-- C';
+  document.getElementById('resVoltage').textContent = '-- V';
+  document.getElementById('resDcPower').textContent = '-- W';
+  document.getElementById('resPeukert').textContent = '--';
+  document.getElementById('resRawTime').textContent = '-- h';
+  document.getElementById('resCorrectedTime').textContent = '-- h';
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+// 初始化
+document.getElementById('sourceCode').textContent =
+  "/* ============ 核心算法源码（完整 JSDoc，无外部依赖） ============ */\n\n" +
+  "/**\n * 校验输入是否为有限数字\n * @param {*} v - 任意输入\n * @returns {boolean}\n */\nfunction isFiniteNumber(v) {\n  return typeof v === 'number' && Number.isFinite(v);\n}\n\n" +
+  "/**\n * 计算直流母线总电压\n * @param {number} singleVoltage - 单节电池标称电压 (V)\n * @param {number} count - 电池串联节数\n * @returns {number} 直流母线总电压 (V)\n */\nfunction calcBusVoltage(singleVoltage, count) {\n  if (!isFiniteNumber(singleVoltage) || !isFiniteNumber(count)) {\n    throw new Error('calcBusVoltage: 参数必须为有限数字');\n  }\n  if (singleVoltage <= 0) throw new Error('calcBusVoltage: 单节电压必须 > 0');\n  if (count <= 0 || !Number.isInteger(count)) throw new Error('calcBusVoltage: 节数必须为正整数');\n  return singleVoltage * count;\n}\n\n" +
+  "/**\n * 计算直流侧需求功率（考虑逆变器效率）\n * @param {number} loadPower - 负载有功功率 (W)\n * @param {number} efficiency - 逆变器效率 (0, 1]\n * @returns {number} 直流侧需求功率 (W)\n */\nfunction calcDcPower(loadPower, efficiency) {\n  if (!isFiniteNumber(loadPower) || !isFiniteNumber(efficiency)) {\n    throw new Error('calcDcPower: 参数必须为有限数字');\n  }\n  if (loadPower < 0) throw new Error('calcDcPower: 负载功率不能为负');\n  if (efficiency <= 0 || efficiency > 1) throw new Error('calcDcPower: 效率必须在 (0, 1] 之间');\n  return loadPower / efficiency;\n}\n\n" +
+  "/**\n * 计算直流侧放电电流\n * @param {number} loadPower - 负载有功功率 (W)\n * @param {number} busVoltage - 直流母线总电压 (V)\n * @param {number} efficiency - 逆变器效率 (0, 1]\n * @returns {number} 放电电流 (A)\n */\nfunction calcDischargeCurrent(loadPower, busVoltage, efficiency) {\n  if (!isFiniteNumber(busVoltage) || busVoltage <= 0) {\n    throw new Error('calcDischargeCurrent: 母线电压必须 > 0');\n  }\n  const dcPower = calcDcPower(loadPower, efficiency);\n  return dcPower / busVoltage;\n}\n\n" +
+  "/**\n * 计算放电倍率 (C-rate)\n * @param {number} dischargeCurrent - 放电电流 (A)\n * @param {number} ratedCapacity - 额定容量 (Ah)\n * @returns {number} 放电倍率 (C)\n */\nfunction calcDischargeRate(dischargeCurrent, ratedCapacity) {\n  if (!isFiniteNumber(dischargeCurrent) || !isFiniteNumber(ratedCapacity)) {\n    throw new Error('calcDischargeRate: 参数必须为有限数字');\n  }\n  if (ratedCapacity <= 0) throw new Error('calcDischargeRate: 额定容量必须 > 0');\n  if (dischargeCurrent < 0) throw new Error('calcDischargeRate: 放电电流不能为负');\n  return dischargeCurrent / ratedCapacity;\n}\n\n" +
+  "/**\n * 基于 Peukert 方程计算后备时间\n * 公式：t = H × (I_rated / I_actual)^k\n * 其中 I_rated = C_rated / H\n * @param {number} ratedCapacity - 额定容量 (Ah)\n * @param {number} dischargeCurrent - 实际放电电流 (A)\n * @param {number} peukertK - Peukert 指数 (通常 1.0~1.3)\n * @param {number} [ratedHours=20] - 额定放电时率 (h)\n * @returns {number} 后备时间 (h)\n */\nfunction calcBackupTimePeukert(ratedCapacity, dischargeCurrent, peukertK, ratedHours) {\n  if (ratedHours === undefined) ratedHours = 20;\n  if (!isFiniteNumber(ratedCapacity) || !isFiniteNumber(dischargeCurrent) ||\n      !isFiniteNumber(peukertK) || !isFiniteNumber(ratedHours)) {\n    throw new Error('calcBackupTimePeukert: 参数必须为有限数字');\n  }\n  if (ratedCapacity <= 0) throw new Error('calcBackupTimePeukert: 额定容量必须 > 0');\n  if (dischargeCurrent <= 0) throw new Error('calcBackupTimePeukert: 放电电流必须 > 0');\n  if (peukertK < 1) throw new Error('calcBackupTimePeukert: Peukert 指数不能 < 1');\n  if (ratedHours <= 0) throw new Error('calcBackupTimePeukert: 额定时率必须 > 0');\n\n  const ratedCurrent = ratedCapacity / ratedHours;\n  const time = ratedHours * Math.pow(ratedCurrent / dischargeCurrent, peukertK);\n  return time;\n}\n\n" +
+  "/**\n * 计算未修正的理论后备时间（线性模型，k=1）\n * @param {number} ratedCapacity - 额定容量 (Ah)\n * @param {number} dischargeCurrent - 放电电流 (A)\n * @returns {number} 后备时间 (h)\n */\nfunction calcBackupTimeLinear(ratedCapacity, dischargeCurrent) {\n  if (!isFiniteNumber(ratedCapacity) || !isFiniteNumber(dischargeCurrent)) {\n    throw new Error('calcBackupTimeLinear: 参数必须为有限数字');\n  }\n  if (ratedCapacity <= 0 || dischargeCurrent <= 0) {\n    throw new Error('calcBackupTimeLinear: 容量与电流必须 > 0');\n  }\n  return ratedCapacity / dischargeCurrent;\n}\n\n" +
+  "/**\n * 将小时数格式化为 'Xh Ym Zs' 字符串\n * @param {number} hours - 小时数（可为小数）\n * @returns {string} 格式化后的时间字符串\n */\nfunction formatTime(hours) {\n  if (!isFiniteNumber(hours) || hours < 0) return '--';\n  if (hours === 0) return '0h 0m 0s';\n  const totalSeconds = Math.round(hours * 3600);\n  const h = Math.floor(totalSeconds / 3600);\n  const m = Math.floor((totalSeconds % 3600) / 60);\n  const s = totalSeconds % 60;\n  return h + 'h ' + m + 'm ' + s + 's';\n}\n\n" +
+  "/**\n * 将小时数格式化为 'X小时Y分Z秒' 字符串\n * @param {number} hours - 小时数\n * @returns {string} 中文格式化时间\n */\nfunction formatTimeCN(hours) {\n  if (!isFiniteNumber(hours) || hours < 0) return '--';\n  if (hours === 0) return '0小时0分0秒';\n  const totalSeconds = Math.round(hours * 3600);\n  const h = Math.floor(totalSeconds / 3600);\n  const m = Math.floor((totalSeconds % 3600) / 60);\n  const s = totalSeconds % 60;\n  return h + '小时' + m + '分' + s + '秒';\n}\n\n" +
+  "/**\n * UPS 后备时间主计算函数\n * @param {Object} params - 输入参数\n * @param {number} params.loadPower - 负载功率 (W)\n * @param {number} params.singleVoltage - 单节电池电压 (V)\n * @param {number} params.batteryCount - 电池串联节数\n * @param {number} params.ratedCapacity - 额定容量 (Ah)\n * @param {number} params.efficiency - 逆变器效率 (0, 1]\n * @param {number} [params.peukertK=1.2] - Peukert 指数\n * @param {number} [params.ratedHours=20] - 额定放电时率 (h)\n * @returns {Object} 计算结果对象\n */\nfunction calculateUPSTime(params) {\n  if (!params || typeof params !== 'object') {\n    throw new Error('calculateUPSTime: 参数必须为对象');\n  }\n  const {\n    loadPower, singleVoltage, batteryCount, ratedCapacity,\n    efficiency, peukertK = 1.2, ratedHours = 20\n  } = params;\n\n  const lp = Number(loadPower);\n  const sv = Number(singleVoltage);\n  const bc = Number(batteryCount);\n  const rc = Number(ratedCapacity);\n  const ef = Number(efficiency);\n  const pk = Number(peukertK);\n  const rh = Number(ratedHours);\n\n  if (lp === 0) {\n    return {\n      busVoltage: calcBusVoltage(sv, bc),\n      dcPower: 0,\n      dischargeCurrent: 0,\n      dischargeRate: 0,\n      rawTime: Infinity,\n      correctedTime: Infinity,\n      peukertFactor: 1,\n      formattedTime: '∞',\n      formattedTimeCN: '无限长'\n    };\n  }\n\n  const busVoltage = calcBusVoltage(sv, bc);\n  const dcPower = calcDcPower(lp, ef);\n  const dischargeCurrent = calcDischargeCurrent(lp, busVoltage, ef);\n  const dischargeRate = calcDischargeRate(dischargeCurrent, rc);\n  const rawTime = calcBackupTimeLinear(rc, dischargeCurrent);\n  const correctedTime = calcBackupTimePeukert(rc, dischargeCurrent, pk, rh);\n  const peukertFactor = rawTime > 0 ? correctedTime / rawTime : 1;\n\n  return {\n    busVoltage: busVoltage,\n    dcPower: dcPower,\n    dischargeCurrent: dischargeCurrent,\n    dischargeRate: dischargeRate,\n    rawTime: rawTime,\n    correctedTime: correctedTime,\n    peukertFactor: peukertFactor,\n    formattedTime: formatTime(correctedTime),\n    formattedTimeCN: formatTimeCN(correctedTime)\n  };\n}";
+
+document.getElementById('docContent').innerHTML = docHTML;
+
+// 默认运行一次计算
+runCalc();
+</script>
+</body>
+</html>

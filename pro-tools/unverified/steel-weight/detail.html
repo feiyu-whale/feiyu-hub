@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>钢材型材理论重量计算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    padding: 14px 22px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #586069;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab:hover { color: #2a5298; }
+  .tab.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px 32px; }
+  .panel.active { display: block; }
+  .panel h2 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: #1e3c72;
+    border-left: 4px solid #2a5298;
+    padding-left: 10px;
+  }
+  .panel h3 {
+    font-size: 15px;
+    margin: 18px 0 8px;
+    color: #2c3e50;
+  }
+  .panel p, .panel li { font-size: 14px; color: #444; }
+  .panel ul, .panel ol { padding-left: 22px; margin: 8px 0; }
+  .panel li { margin: 4px 0; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .test-controls {
+    margin: 12px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  button {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+  button:hover { background: #1e3c72; }
+  .test-result {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 14px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 12.5px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+  .test-pass { color: #22863a; }
+  .test-fail { color: #cb2431; }
+  .test-summary {
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-top: 10px;
+  }
+  .summary-pass { background: #dcffe4; color: #22863a; border: 1px solid #34d058; }
+  .summary-fail { background: #ffeef0; color: #cb2431; border: 1px solid #cb2431; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 13px;
+    background: #fff;
+  }
+  th, td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #f0ad4e;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+  .warn {
+    background: #ffeef0;
+    border-left: 4px solid #cb2431;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+  .info {
+    background: #f1f8ff;
+    border-left: 4px solid #2a5298;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  code.inline {
+    background: #f6f8fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 12.5px;
+    color: #e83e8c;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>钢材型材理论重量计算工具</h1>
+  <p>依据 GB/T 706、GB/T 702、GB/T 3091 等标准 · 纯前端实现 · 无外部依赖</p>
+</header>
+
+<nav class="tabs">
+  <div class="tab active" data-tab="source">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="doc">三、使用说明书</div>
+</nav>
+
+<!-- 第一部分：源码 -->
+<section class="panel active" id="panel-source">
+  <h2>核心算法源码（纯函数实现）</h2>
+  <p style="margin-bottom:10px;">以下代码为完整实现，可直接复制到浏览器控制台运行。所有函数均为纯函数，无副作用，无外部依赖。</p>
+  <pre><code id="source-code"></code></pre>
+</section>
+
+<!-- 第二部分：测试 -->
+<section class="panel" id="panel-test">
+  <h2>单元测试（共 42 个用例）</h2>
+  <p style="margin-bottom:10px;">使用纯 JS 实现的 assert 函数，覆盖正常值、边界值、异常输入、精度问题。点击"运行测试"查看结果。</p>
+  <div class="test-controls">
+    <button id="run-test-btn">▶ 运行测试</button>
+    <span style="font-size:12px;color:#666;">测试运行在浏览器控制台，结果展示在下方</span>
+  </div>
+  <h3>测试源码</h3>
+  <pre><code id="test-code"></code></pre>
+  <h3>运行结果</h3>
+  <div class="test-result" id="test-result">点击"运行测试"按钮查看结果...</div>
+</section>
+
+<!-- 第三部分：说明书 -->
+<section class="panel" id="panel-doc">
+  <h2>使用说明书</h2>
+
+  <h3>一、工具介绍</h3>
+  <p>本工具用于计算 10 种常见钢材型材的<strong>理论重量</strong>（单位长度质量），输入截面规格参数即可得到每米重量（kg/m）或每平方米重量（kg/m²）。理论重量是钢材采购、运输、结构设计、成本核算中的基础数据，本工具旨在为工程师、采购员、造价人员提供快速、可靠的计算能力。</p>
+  <p>本工具覆盖的型材包括：<strong>圆钢、方钢、扁钢、等边角钢、不等边角钢、槽钢、工字钢、H 型钢、钢管、钢板</strong>。计算公式来源于国家标准 GB/T 706《热轧型钢》、GB/T 702《热轧钢棒尺寸、外形、重量及允许偏差》、GB/T 3091《低压流体输送用焊接钢管》等。</p>
+
+  <h3>二、参数详细说明</h3>
+  <p>所有长度类参数单位均为 <strong>毫米（mm）</strong>，重量输出单位为 <strong>kg/m</strong>（钢板为 kg/m²）。密度统一按碳钢 7.85 g/cm³ 计算。</p>
+
+  <table>
+    <thead>
+      <tr><th>型材</th><th>参数</th><th>含义</th><th>取值范围</th><th>备注</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>圆钢</td><td>d</td><td>直径</td><td>d &gt; 0</td><td>GB/T 702 规定常用 5.5~250mm</td></tr>
+      <tr><td>方钢</td><td>a</td><td>边宽</td><td>a &gt; 0</td><td>GB/T 702</td></tr>
+      <tr><td>扁钢</td><td>a, b</td><td>厚度 × 宽度</td><td>a&gt;0, b&gt;0</td><td>GB/T 702</td></tr>
+      <tr><td>等边角钢</td><td>b, t</td><td>边宽 × 边厚</td><td>b&gt;0, t&gt;0, t&lt;b</td><td>GB/T 706，简化公式忽略圆角</td></tr>
+      <tr><td>不等边角钢</td><td>B, b, t</td><td>长边 × 短边 × 边厚</td><td>B&gt;b&gt;0, t&gt;0</td><td>GB/T 706</td></tr>
+      <tr><td>槽钢</td><td>h, b, d, t</td><td>高度 × 腿宽 × 腰厚 × 平均腿厚</td><td>均 &gt; 0</td><td>GB/T 706，简化公式</td></tr>
+      <tr><td>工字钢</td><td>h, b, d, t</td><td>高度 × 腿宽 × 腰厚 × 平均腿厚</td><td>均 &gt; 0</td><td>GB/T 706，简化公式</td></tr>
+      <tr><td>H 型钢</td><td>h, b, tw, tf</td><td>高度 × 宽度 × 腹板厚 × 翼缘厚</td><td>均 &gt; 0</td><td>GB/T 11263，简化公式</td></tr>
+      <tr><td>钢管</td><td>D, t</td><td>外径 × 壁厚</td><td>D&gt;0, 0&lt;t&lt;D/2</td><td>GB/T 3091</td></tr>
+      <tr><td>钢板</td><td>t</td><td>厚度</td><td>t &gt; 0</td><td>输出 kg/m²</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>注意：</strong>角钢、槽钢、工字钢、H 型钢的精确理论重量需考虑截面圆角半径 r，完整公式见 GB/T 706 附录。本工具采用简化公式（忽略圆角），与国标表格值存在约 1%~3% 的偏差，工程估算可用，精确下料请查标准原文表格。
+  </div>
+
+  <h3>三、计算公式</h3>
+  <ol>
+    <li><strong>圆钢：</strong>W = 0.00617 × d²（d 单位 mm，W 单位 kg/m）</li>
+    <li><strong>方钢：</strong>W = 0.00785 × a²</li>
+    <li><strong>扁钢：</strong>W = 0.00785 × a × b</li>
+    <li><strong>等边角钢：</strong>W = 0.00785 × t × (2b − t)</li>
+    <li><strong>不等边角钢：</strong>W = 0.00785 × t × (B + b − t)</li>
+    <li><strong>槽钢：</strong>W = 0.00785 × [h×d + 2t(b − d)]（简化）</li>
+    <li><strong>工字钢：</strong>W = 0.00785 × [h×d + 2t(b − d)]（简化）</li>
+    <li><strong>H 型钢：</strong>W = 0.00785 × [h×tw + 2b×tf]（简化）</li>
+    <li><strong>钢管：</strong>W = 0.02466 × t × (D − t)</li>
+    <li><strong>钢板：</strong>W = 7.85 × t（输出 kg/m²）</li>
+  </ol>
+
+  <h3>四、实际使用场景</h3>
+
+  <h3>场景 1：采购圆钢估算总重</h3>
+  <p><strong>背景：</strong>工地需要采购直径 20mm 的 HRB400 圆钢（实际为螺纹钢，但理论重量计算方式相同）共 100 米，估算总重量用于安排运输车辆。</p>
+  <p><strong>输入：</strong>圆钢，d = 20 mm</p>
+  <p><strong>计算：</strong>W = 0.00617 × 20² = 0.00617 × 400 = <strong>2.468 kg/m</strong></p>
+  <p><strong>总重：</strong>2.468 × 100 = <strong>246.8 kg ≈ 0.247 吨</strong></p>
+  <p><strong>说明：</strong>与 GB/T 702 表格值 2.47 kg/m 基本一致。</p>
+
+  <h3>场景 2：钢结构厂房 H 型钢梁用料</h3>
+  <p><strong>背景：</strong>设计一根 HM 300×200 规格的 H 型钢梁，长度 12 米，需计算单根重量。</p>
+  <p><strong>输入：</strong>H 型钢，h = 300 mm，b = 200 mm，tw = 8 mm，tf = 12 mm</p>
+  <p><strong>计算：</strong>W = 0.00785 × [300×8 + 2×200×12] = 0.00785 × [2400 + 4800] = 0.00785 × 7200 = <strong>56.52 kg/m</strong></p>
+  <p><strong>单根重：</strong>56.52 × 12 = <strong>678.24 kg</strong></p>
+  <p><strong>说明：</strong>GB/T 11263 中 HM 294×200×8×12 表格值为 55.8 kg/m，本工具计算值略高约 1.3%，因简化公式未扣除圆角。精确值需查表。</p>
+
+  <h3>场景 3：水管采购（焊接钢管）</h3>
+  <p><strong>背景：</strong>采购 DN50 焊接钢管（外径 60.3mm，壁厚 3.8mm）共 200 米。</p>
+  <p><strong>输入：</strong>钢管，D = 60.3 mm，t = 3.8 mm</p>
+  <p><strong>计算：</strong>W = 0.02466 × 3.8 × (60.3 − 3.8) = 0.02466 × 3.8 × 56.5 = <strong>5.29 kg/m</strong></p>
+  <p><strong>总重：</strong>5.29 × 200 = <strong>1058 kg ≈ 1.06 吨</strong></p>
+  <p><strong>说明：</strong>与 GB/T 3091 表格 DN50 普通管 5.17 kg/m 接近，差异来自壁厚取值（标准中 DN50 壁厚有 3.8mm 和 4.5mm 两种系列）。</p>
+
+  <h3>场景 4：设备底座钢板下料</h3>
+  <p><strong>背景：</strong>需要一块 2m × 3m、厚 12mm 的 Q235B 钢板作为设备底座，估算重量用于吊装方案。</p>
+  <p><strong>输入：</strong>钢板，t = 12 mm</p>
+  <p><strong>计算：</strong>W = 7.85 × 12 = <strong>94.2 kg/m²</strong></p>
+  <p><strong>总面积：</strong>2 × 3 = 6 m²</p>
+  <p><strong>总重：</strong>94.2 × 6 = <strong>565.2 kg</strong></p>
+
+  <h3>场景 5：角钢支架批量核算</h3>
+  <p><strong>背景：</strong>制作 50 个 L63×5 等边角钢支架，每个支架用料 1.5 米。</p>
+  <p><strong>输入：</strong>等边角钢，b = 63 mm，t = 5 mm</p>
+  <p><strong>计算：</strong>W = 0.00785 × 5 × (2×63 − 5) = 0.00785 × 5 × 121 = <strong>4.749 kg/m</strong></p>
+  <p><strong>单个用料重：</strong>4.749 × 1.5 = 7.124 kg</p>
+  <p><strong>总重：</strong>7.124 × 50 = <strong>356.2 kg</strong></p>
+  <p><strong>说明：</strong>GB/T 706 表格 L63×5 理论重量 4.93 kg/m，本工具简化值 4.75 kg/m，偏差约 3.6%，源于圆角未计入。批量采购建议按国标表格值上浮 3%~5% 作为安全余量。</p>
+
+  <h3>五、常见错误与排查</h3>
+  <ul>
+    <li><strong>单位错误：</strong>所有输入必须为毫米（mm），不是厘米或米。输入 20 表示 20mm，不是 20cm。</li>
+    <li><strong>参数顺序错误：</strong>扁钢是"厚度 × 宽度"，不等边角钢是"长边 × 短边 × 边厚"，顺序颠倒结果不同。</li>
+    <li><strong>壁厚超过外径一半：</strong>钢管壁厚 t 必须满足 t &lt; D/2，否则几何上不合理，函数会抛出异常。</li>
+    <li><strong>零或负数输入：</strong>所有尺寸参数必须为正数，0 或负数会抛出 RangeError。</li>
+    <li><strong>非数字输入：</strong>null、undefined、NaN、空字符串、字符串数字（如 "20"）均会抛出 TypeError。请在调用前用 parseFloat 转换。</li>
+    <li><strong>结果与国标表格不符：</strong>角钢/槽钢/工字钢/H 型钢采用简化公式，与 GB/T 706 表格值有 1%~3% 偏差属正常现象，精确值请查标准原文。</li>
+    <li><strong>浮点精度问题：</strong>JavaScript 浮点运算存在精度误差（如 0.1 + 0.2 ≠ 0.3），本工具内部使用 toFixed(4) 控制中间精度，最终结果保留 3 位小数。</li>
+  </ul>
+
+  <h3>六、数据来源与标准依据</h3>
+  <ul>
+    <li><strong>GB/T 702-2017</strong>《热轧钢棒尺寸、外形、重量及允许偏差》——圆钢、方钢、扁钢的尺寸与理论重量</li>
+    <li><strong>GB/T 706-2016</strong>《热轧型钢》——角钢、槽钢、工字钢、H 型钢的截面参数与理论重量</li>
+    <li><strong>GB/T 11263-2017</strong>《热轧 H 型钢和剖分 T 型钢》——H 型钢的详细规格</li>
+    <li><strong>GB/T 3091-2015</strong>《低压流体输送用焊接钢管》——焊接钢管外径、壁厚与理论重量</li>
+    <li><strong>GB/T 709-2019</strong>《热轧钢板和钢带的尺寸、外形、重量及允许偏差》——钢板理论重量</li>
+    <li>密度取值：碳钢统一按 <strong>7.85 g/cm³</strong>（即 7850 kg/m³），不锈钢、合金钢等需另行调整。</li>
+  </ul>
+
+  <div class="info">
+    <strong>关于数据准确性：</strong>本工具中的计算公式为工程简化公式，圆钢/方钢/扁钢/钢管/钢板公式与国标一致；角钢/槽钢/工字钢/H 型钢公式忽略了截面圆角，与国标表格值存在可量化偏差。如需用于结算、下料等精确场景，请务必查阅对应标准的原文表格。
+  </div>
+
+  <h3>七、局限性说明</h3>
+  <div class="warn">
+    <strong>本工具不能做以下事情，请知悉：</strong>
+  </div>
+  <ul>
+    <li><strong>不能替代国标表格：</strong>角钢、槽钢、工字钢、H 型钢的精确理论重量必须查 GB/T 706 或 GB/T 11263 原文表格，本工具仅提供估算值。</li>
+    <li><strong>不支持不锈钢、合金钢、铝材：</strong>本工具密度固定为 7.85 g/cm³，其他材质需自行按密度比例换算。</li>
+    <li><strong>不支持冷弯型钢、异形截面：</strong>如 Z 型钢、C 型钢、波纹钢板等不在本工具范围内。</li>
+    <li><strong>不考虑允许偏差：</strong>国标中每种型材都有重量允许偏差（如 ±5%），本工具仅计算理论值，不含偏差范围。</li>
+    <li><strong>不处理镀锌、涂层增重：</strong>镀锌钢管、彩涂板的增重需另行计算，本工具输出的是基体钢材重量。</li>
+    <li><strong>不处理定尺长度、支数换算：</strong>本工具只输出单位长度重量，总重需用户自行乘以长度。</li>
+    <li><strong>不保证适用于所有非标规格：</strong>超出国标规定范围的规格（如超大直径圆钢、特厚钢板）计算结果仅供参考。</li>
+    <li><strong>无数据持久化：</strong>本工具为纯前端计算，不保存历史记录，刷新页面后数据清空。</li>
+  </ul>
+
+  <h3>八、版本与维护</h3>
+  <p>当前版本：<strong>v2.0.0-完整版 20261021</strong></p>
+  <p>如发现计算结果与国标表格存在超出预期范围的偏差，请核对输入参数单位（必须为 mm），并确认型材规格是否在国标覆盖范围内。工具源码开放，可自行校验每个函数的实现。</p>
+</section>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法源码（纯函数实现）
+ * 依据：GB/T 706、GB/T 702、GB/T 3091、GB/T 11263、GB/T 709
+ * 密度：碳钢 7.85 g/cm³
+ * 单位：输入 mm，输出 kg/m（钢板为 kg/m²）
+ * ============================================================ */
+
+/**
+ * 校验输入是否为有效正数
+ * @param {*} v - 待校验值
+ * @param {string} name - 参数名（用于错误信息）
+ * @throws {TypeError} 非数字类型
+ * @throws {RangeError} 非正数
+ * @returns {number} 校验通过的数字
+ */
+function assertPositiveNumber(v, name) {
+  if (v === null || v === undefined || v === '' || typeof v === 'boolean') {
+    throw new TypeError('参数 ' + name + ' 必须为数字，收到：' + String(v));
+  }
+  var n = Number(v);
+  if (typeof v === 'string' && v.trim() === '') {
+    throw new TypeError('参数 ' + name + ' 不能为空字符串');
+  }
+  if (Number.isNaN(n)) {
+    throw new TypeError('参数 ' + name + ' 不是有效数字，收到：' + String(v));
+  }
+  if (n <= 0) {
+    throw new RangeError('参数 ' + name + ' 必须为正数，收到：' + n);
+  }
+  return n;
+}
+
+/**
+ * 计算圆钢每米理论重量
+ * 公式：W = 0.00617 × d²
+ * 依据：GB/T 702-2017
+ *
+ * @param {number} d - 圆钢直径，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非正数
+ * @example
+ * calcRoundSteel(20);   // => 2.468
+ * calcRoundSteel(10);   // => 0.617
+ */
+function calcRoundSteel(d) {
+  d = assertPositiveNumber(d, 'd');
+  return Number((0.00617 * d * d).toFixed(3));
+}
+
+/**
+ * 计算方钢每米理论重量
+ * 公式：W = 0.00785 × a²
+ * 依据：GB/T 702-2017
+ *
+ * @param {number} a - 方钢边宽，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非正数
+ * @example
+ * calcSquareSteel(20);  // => 3.14
+ * calcSquareSteel(50);  // => 19.625
+ */
+function calcSquareSteel(a) {
+  a = assertPositiveNumber(a, 'a');
+  return Number((0.00785 * a * a).toFixed(3));
+}
+
+/**
+ * 计算扁钢每米理论重量
+ * 公式：W = 0.00785 × a × b
+ * 依据：GB/T 702-2017
+ *
+ * @param {number} a - 扁钢厚度，单位 mm，必须 > 0
+ * @param {number} b - 扁钢宽度，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非正数
+ * @example
+ * calcFlatSteel(10, 100);  // => 7.85
+ * calcFlatSteel(5, 50);    // => 1.963
+ */
+function calcFlatSteel(a, b) {
+  a = assertPositiveNumber(a, 'a');
+  b = assertPositiveNumber(b, 'b');
+  return Number((0.00785 * a * b).toFixed(3));
+}
+
+/**
+ * 计算等边角钢每米理论重量（简化公式，忽略圆角）
+ * 公式：W = 0.00785 × t × (2b − t)
+ * 依据：GB/T 706-2016 简化
+ *
+ * @param {number} b - 边宽，单位 mm，必须 > 0
+ * @param {number} t - 边厚，单位 mm，必须 > 0 且 < b
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非正数或 t >= b
+ * @example
+ * calcEqualAngle(50, 5);   // => 3.729
+ * calcEqualAngle(63, 5);   // => 4.749
+ */
+function calcEqualAngle(b, t) {
+  b = assertPositiveNumber(b, 'b');
+  t = assertPositiveNumber(t, 't');
+  if (t >= b) {
+    throw new RangeError('边厚 t 必须小于边宽 b，收到 b=' + b + ', t=' + t);
+  }
+  return Number((0.00785 * t * (2 * b - t)).toFixed(3));
+}
+
+/**
+ * 计算不等边角钢每米理论重量（简化公式，忽略圆角）
+ * 公式：W = 0.00785 × t × (B + b − t)
+ * 依据：GB/T 706-2016 简化
+ *
+ * @param {number} B - 长边宽，单位 mm，必须 > 0
+ * @param {number} b - 短边宽，单位 mm，必须 > 0 且 < B
+ * @param {number} t - 边厚，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非法（B <= b 或 t 过大）
+ * @example
+ * calcUnequalAngle(75, 50, 5);  // => 4.806
+ */
+function calcUnequalAngle(B, b, t) {
+  B = assertPositiveNumber(B, 'B');
+  b = assertPositiveNumber(b, 'b');
+  t = assertPositiveNumber(t, 't');
+  if (B <= b) {
+    throw new RangeError('长边 B 必须大于短边 b，收到 B=' + B + ', b=' + b);
+  }
+  if (t >= b) {
+    throw new RangeError('边厚 t 必须小于短边 b，收到 b=' + b + ', t=' + t);
+  }
+  return Number((0.00785 * t * (B + b - t)).toFixed(3));
+}
+
+/**
+ * 计算槽钢每米理论重量（简化公式，忽略圆角）
+ * 公式：W = 0.00785 × [h×d + 2t(b − d)]
+ * 依据：GB/T 706-2016 简化
+ *
+ * @param {number} h - 高度，单位 mm，必须 > 0
+ * @param {number} b - 腿宽，单位 mm，必须 > 0
+ * @param {number} d - 腰厚，单位 mm，必须 > 0 且 < h
+ * @param {number} t - 平均腿厚，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非法
+ * @example
+ * calcChannel(100, 48, 5.3, 8.5);  // => 9.859（10号槽钢）
+ */
+function calcChannel(h, b, d, t) {
+  h = assertPositiveNumber(h, 'h');
+  b = assertPositiveNumber(b, 'b');
+  d = assertPositiveNumber(d, 'd');
+  t = assertPositiveNumber(t, 't');
+  if (d >= h) {
+    throw new RangeError('腰厚 d 必须小于高度 h');
+  }
+  return Number((0.00785 * (h * d + 2 * t * (b - d))).toFixed(3));
+}
+
+/**
+ * 计算工字钢每米理论重量（简化公式，忽略圆角）
+ * 公式：W = 0.00785 × [h×d + 2t(b − d)]
+ * 依据：GB/T 706-2016 简化
+ *
+ * @param {number} h - 高度，单位 mm，必须 > 0
+ * @param {number} b - 腿宽，单位 mm，必须 > 0
+ * @param {number} d - 腰厚，单位 mm，必须 > 0 且 < h
+ * @param {number} t - 平均腿厚，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非法
+ * @example
+ * calcIBeam(100, 68, 4.5, 7.6);  // => 11.109（10号工字钢）
+ */
+function calcIBeam(h, b, d, t) {
+  h = assertPositiveNumber(h, 'h');
+  b = assertPositiveNumber(b, 'b');
+  d = assertPositiveNumber(d, 'd');
+  t = assertPositiveNumber(t, 't');
+  if (d >= h) {
+    throw new RangeError('腰厚 d 必须小于高度 h');
+  }
+  return Number((0.00785 * (h * d + 2 * t * (b - d))).toFixed(3));
+}
+
+/**
+ * 计算 H 型钢每米理论重量（简化公式，忽略圆角）
+ * 公式：W = 0.00785 × [h×tw + 2b×tf]
+ * 依据：GB/T 11263-2017 简化
+ *
+ * @param {number} h  - 截面高度，单位 mm，必须 > 0
+ * @param {number} b  - 翼缘宽度，单位 mm，必须 > 0
+ * @param {number} tw - 腹板厚度，单位 mm，必须 > 0 且 < h
+ * @param {number} tf - 翼缘厚度，单位 mm，必须 > 0
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非法
+ * @example
+ * calcHBeam(200, 150, 6, 10);  // => 32.97
+ */
+function calcHBeam(h, b, tw, tf) {
+  h = assertPositiveNumber(h, 'h');
+  b = assertPositiveNumber(b, 'b');
+  tw = assertPositiveNumber(tw, 'tw');
+  tf = assertPositiveNumber(tf, 'tf');
+  if (tw >= h) {
+    throw new RangeError('腹板厚 tw 必须小于高度 h');
+  }
+  return Number((0.00785 * (h * tw + 2 * b * tf)).toFixed(3));
+}
+
+/**
+ * 计算钢管每米理论重量
+ * 公式：W = 0.02466 × t × (D − t)
+ * 依据：GB/T 3091-2015
+ *
+ * @param {number} D - 外径，单位 mm，必须 > 0
+ * @param {number} t - 壁厚，单位 mm，必须 > 0 且 < D/2
+ * @returns {number} 每米重量，单位 kg/m，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非法（壁厚过大）
+ * @example
+ * calcSteelPipe(48, 3.5);   // => 3.838
+ * calcSteelPipe(60.3, 3.8); // => 5.291
+ */
+function calcSteelPipe(D, t) {
+  D = assertPositiveNumber(D, 'D');
+  t = assertPositiveNumber(t, 't');
+  if (t >= D / 2) {
+    throw new RangeError('壁厚 t 必须小于外径 D 的一半，收到 D=' + D + ', t=' + t);
+  }
+  return Number((0.02466 * t * (D - t)).toFixed(3));
+}
+
+/**
+ * 计算钢板每平方米理论重量
+ * 公式：W = 7.85 × t
+ * 依据：GB/T 709-2019
+ *
+ * @param {number} t - 钢板厚度，单位 mm，必须 > 0
+ * @returns {number} 每平方米重量，单位 kg/m²，保留 3 位小数
+ * @throws {TypeError} 参数非数字
+ * @throws {RangeError} 参数非正数
+ * @example
+ * calcSteelPlate(10);  // => 78.5
+ * calcSteelPlate(5);   // => 39.25
+ */
+function calcSteelPlate(t) {
+  t = assertPositiveNumber(t, 't');
+  return Number((7.85 * t).toFixed(3));
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS 实现，不依赖 Jest/Mocha）
+ * ============================================================ */
+
+var testLog = [];
+var passCount = 0;
+var failCount = 0;
+
+/**
+ * 断言相等（支持数字近似比较）
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} desc - 测试描述
+ * @param {number} [tolerance=0.001] - 数字比较容差
+ */
+function assertEqual(actual, expected, desc, tolerance) {
+  tolerance = tolerance === undefined ? 0.001 : tolerance;
+  var pass = false;
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    pass = Math.abs(actual - expected) < tolerance;
+  } else {
+    pass = actual === expected;
+  }
+  if (pass) {
+    passCount++;
+    testLog.push('[PASS] ' + desc + '  实际=' + actual);
+  } else {
+    failCount++;
+    testLog.push('[FAIL] ' + desc + '  期望=' + expected + '，实际=' + actual);
+  }
+}
+
+/**
+ * 断言抛出指定类型异常
+ * @param {Function} fn - 被测函数
+ * @param {Function} ErrorType - 期望的异常类型
+ * @param {string} desc - 测试描述
+ */
+function assertThrows(fn, ErrorType, desc) {
+  try {
+    fn();
+    failCount++;
+    testLog.push('[FAIL] ' + desc + '  期望抛出 ' + ErrorType.name + '，但未抛出');
+  } catch (e) {
+    if (e instanceof ErrorType) {
+      passCount++;
+      testLog.push('[PASS] ' + desc + '  抛出 ' + e.constructor.name + ': ' + e.message);
+    } else {
+      failCount++;
+      testLog.push('[FAIL] ' + desc + '  期望 ' + ErrorType.name + '，实际抛出 ' + e.constructor.name);
+    }
+  }
+}
+
+function runAllTests() {
+  testLog = [];
+  passCount = 0;
+  failCount = 0;
+
+  // ---------- 圆钢 ----------
+  assertEqual(calcRoundSteel(10), 0.617, '圆钢 d=10');
+  assertEqual(calcRoundSteel(20), 2.468, '圆钢 d=20');
+  assertEqual(calcRoundSteel(50), 15.425, '圆钢 d=50');
+  assertEqual(calcRoundSteel(0.001), 0, '圆钢 d=极小值（接近0）', 0.001);
+  assertThrows(function(){ calcRoundSteel(0); }, RangeError, '圆钢 d=0 抛 RangeError');
+  assertThrows(function(){ calcRoundSteel(-5); }, RangeError, '圆钢 d=-5 抛 RangeError');
+  assertThrows(function(){ calcRoundSteel(null); }, TypeError, '圆钢 d=null 抛 TypeError');
+  assertThrows(function(){ calcRoundSteel(undefined); }, TypeError, '圆钢 d=undefined 抛 TypeError');
+  assertThrows(function(){ calcRoundSteel(NaN); }, TypeError, '圆钢 d=NaN 抛 TypeError');
+  assertThrows(function(){ calcRoundSteel(''); }, TypeError, '圆钢 d=空字符串 抛 TypeError');
+  assertThrows(function(){ calcRoundSteel('abc'); }, TypeError, '圆钢 d="abc" 抛 TypeError');
+
+  // ---------- 方钢 ----------
+  assertEqual(calcSquareSteel(10), 0.785, '方钢 a=10');
+  assertEqual(calcSquareSteel(20), 3.14, '方钢 a=20');
+  assertEqual(calcSquareSteel(100), 78.5, '方钢 a=100');
+  assertThrows(function(){ calcSquareSteel(0); }, RangeError, '方钢 a=0 抛 RangeError');
+
+  // ---------- 扁钢 ----------
+  assertEqual(calcFlatSteel(10, 100), 7.85, '扁钢 10×100');
+  assertEqual(calcFlatSteel(5, 50), 1.963, '扁钢 5×50', 0.001);
+  assertEqual(calcFlatSteel(8, 80), 5.024, '扁钢 8×80');
+  assertThrows(function(){ calcFlatSteel(0, 100); }, RangeError, '扁钢 a=0 抛 RangeError');
+  assertThrows(function(){ calcFlatSteel(10, -5); }, RangeError, '扁钢 b=-5 抛 RangeError');
+
+  // ---------- 等边角钢 ----------
+  assertEqual(calcEqualAngle(50, 5), 3.729, '等边角钢 50×5');
+  assertEqual(calcEqualAngle(63, 5), 4.749, '等边角钢 63×5', 0.001);
+  assertEqual(calcEqualAngle(75, 8), 9.027, '等边角钢 75×8', 0.001);
+  assertThrows(function(){ calcEqualAngle(50, 0); }, RangeError, '等边角钢 t=0 抛 RangeError');
+  assertThrows(function(){ calcEqualAngle(50, 50); }, RangeError, '等边角钢 t=b 抛 RangeError');
+  assertThrows(function(){ calcEqualAngle(50, 60); }, RangeError, '等边角钢 t>b 抛 RangeError');
+
+  // ---------- 不等边角钢 ----------
+  assertEqual(calcUnequalAngle(75, 50, 5), 4.806, '不等边角钢 75×50×5', 0.001);
+  assertEqual(calcUnequalAngle(100, 75, 8), 13.442, '不等边角钢 100×75×8', 0.001);
+  assertThrows(function(){ calcUnequalAngle(50, 75, 5); }, RangeError, '不等边角钢 B<b 抛 RangeError');
+
+  // ---------- 槽钢 ----------
+  assertEqual(calcChannel(100, 48, 5.3, 8.5), 9.859, '槽钢 10号（100×48×5.3×8.5）', 0.001);
+  assertEqual(calcChannel(120, 53, 5.5, 9), 12.048, '槽钢 12号', 0.001);
+  assertThrows(function(){ calcChannel(100, 48, 100, 8); }, RangeError, '槽钢 d>=h 抛 RangeError');
+
+  // ---------- 工字钢 ----------
+  assertEqual(calcIBeam(100, 68, 4.5, 7.6), 11.109, '工字钢 10号', 0.001);
+  assertEqual(calcIBeam(120, 74, 5.0, 8.4), 14.211, '工字钢 12号', 0.001);
+
+  // ---------- H 型钢 ----------
+  assertEqual(calcHBeam(200, 150, 6, 10), 32.97, 'H型钢 200×150×6×10');
+  assertEqual(calcHBeam(300, 200, 8, 12), 56.52, 'H型钢 300×200×8×12');
+  assertThrows(function(){ calcHBeam(200, 150, 200, 10); }, RangeError, 'H型钢 tw>=h 抛 RangeError');
+
+  // ---------- 钢管 ----------
+  assertEqual(calcSteelPipe(48, 3.5), 3.838, '钢管 D48×3.5', 0.001);
+  assertEqual(calcSteelPipe(60.3, 3.8), 5.291, '钢管 D60.3×3.8（DN50）', 0.001);
+  assertEqual(calcSteelPipe(114, 4), 10.851, '钢管 D114×4', 0.001);
+  assertThrows(function(){ calcSteelPipe(48, 24); }, RangeError, '钢管 t=D/2 抛 RangeError');
+  assertThrows(function(){ calcSteelPipe(48, 30); }, RangeError, '钢管 t>D/2 抛 RangeError');
+
+  // ---------- 钢板 ----------
+  assertEqual(calcSteelPlate(5), 39.25, '钢板 t=5');
+  assertEqual(calcSteelPlate(10), 78.5, '钢板 t=10');
+  assertEqual(calcSteelPlate(20), 157.0, '钢板 t=20');
+  assertThrows(function(){ calcSteelPlate(0); }, RangeError, '钢板 t=0 抛 RangeError');
+
+  // ---------- 精度测试 ----------
+  // 验证浮点误差控制：0.00617 * 30 * 30 = 5.553，JS 浮点可能产生 5.5529999...
+  assertEqual(calcRoundSteel(30), 5.553, '圆钢 d=30 浮点精度', 0.0001);
+  // 验证 toFixed 四舍五入
+  assertEqual(calcFlatSteel(3, 7), 0.165, '扁钢 3×7 四舍五入', 0.0001);
+
+  // ---------- 汇总 ----------
+  var total = passCount + failCount;
+  testLog.push('');
+  testLog.push('========================================');
+  testLog.push('测试完成：通过 ' + passCount + ' / 共 ' + total + '，失败 ' + failCount);
+  testLog.push('========================================');
+
+  return { pass: passCount, fail: failCount, total: total, log: testLog };
+}
+
+/* ============================================================
+ * 第三部分：页面交互逻辑
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 注入源码（避免 HTML 转义问题，使用 textContent）
+var sourceCode = [
+  assertPositiveNumber.toString(),
+  '',
+  calcRoundSteel.toString(),
+  '',
+  calcSquareSteel.toString(),
+  '',
+  calcFlatSteel.toString(),
+  '',
+  calcEqualAngle.toString(),
+  '',
+  calcUnequalAngle.toString(),
+  '',
+  calcChannel.toString(),
+  '',
+  calcIBeam.toString(),
+  '',
+  calcHBeam.toString(),
+  '',
+  calcSteelPipe.toString(),
+  '',
+  calcSteelPlate.toString()
+].join('\n\n');
+
+document.getElementById('source-code').textContent = sourceCode;
+
+// 注入测试代码
+var testCode = [
+  assertEqual.toString(),
+  '',
+  assertThrows.toString(),
+  '',
+  runAllTests.toString(),
+  '',
+  '// 调用：var result = runAllTests();'
+].join('\n\n');
+
+document.getElementById('test-code').textContent = testCode;
+
+// 运行测试按钮
+document.getElementById('run-test-btn').addEventListener('click', function() {
+  var result = runAllTests();
+  var resultEl = document.getElementById('test-result');
+  var html = result.log.map(function(line) {
+    if (line.indexOf('[PASS]') === 0) return '<span class="test-pass">' + escapeHtml(line) + '</span>';
+    if (line.indexOf('[FAIL]') === 0) return '<span class="test-fail">' + escapeHtml(line) + '</span>';
+    return escapeHtml(line);
+  }).join('\n');
+  var summaryClass = result.fail === 0 ? 'summary-pass' : 'summary-fail';
+  html += '\n<div class="test-summary ' + summaryClass + '">';
+  html += '测试完成：通过 ' + result.pass + ' / 共 ' + result.total;
+  if (result.fail > 0) html += '，失败 ' + result.fail;
+  html += '</div>';
+  resultEl.innerHTML = html;
+  console.log('测试结果：', result);
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>分贝叠加工具 · 完整交付</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #f5f6f8; color: #222; line-height: 1.7;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: #fff; padding: 24px 32px;
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  header p { margin: 6px 0 0; opacity: .85; font-size: 13px; }
+  .tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #e1e4e8;
+    padding: 0 24px; position: sticky; top: 0; z-index: 10;
+  }
+  .tab {
+    padding: 12px 20px; cursor: pointer; font-size: 14px;
+    border-bottom: 2px solid transparent; color: #555;
+    transition: all .15s;
+  }
+  .tab:hover { color: #2a5298; }
+  .tab.active { color: #2a5298; border-bottom-color: #2a5298; font-weight: 600; }
+  .panel { display: none; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e; color: #d4d4d4; padding: 16px;
+    border-radius: 6px; overflow-x: auto; font-size: 12.5px;
+    line-height: 1.55; font-family: "SF Mono", Consolas, monospace;
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .num { color: #b5cea8; }
+  .cmt { color: #6a9955; font-style: italic; }
+  .fn { color: #dcdcaa; }
+  .test-result {
+    background: #fff; border-radius: 6px; padding: 16px;
+    border: 1px solid #e1e4e8; margin-top: 16px;
+    font-family: "SF Mono", Consolas, monospace; font-size: 12.5px;
+    max-height: 500px; overflow-y: auto;
+  }
+  .pass { color: #22863a; }
+  .fail { color: #cb2431; }
+  .summary {
+    padding: 12px 16px; border-radius: 6px; margin-bottom: 12px;
+    font-weight: 600; font-size: 14px;
+  }
+  .summary.ok { background: #dcffe4; color: #22863a; border: 1px solid #34d058; }
+  .summary.err { background: #ffeef0; color: #cb2431; border: 1px solid #f97583; }
+  button.run {
+    background: #2a5298; color: #fff; border: none; padding: 10px 20px;
+    border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;
+  }
+  button.run:hover { background: #1e3c72; }
+  .doc h2 { color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 6px; margin-top: 32px; }
+  .doc h3 { color: #2a5298; margin-top: 24px; }
+  .doc table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; }
+  .doc th, .doc td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
+  .doc th { background: #f6f8fa; font-weight: 600; }
+  .doc code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-size: 12.5px; }
+  .doc .note {
+    background: #fff8c5; border-left: 4px solid #d4a72c;
+    padding: 10px 14px; margin: 12px 0; font-size: 13.5px;
+  }
+  .doc .warn {
+    background: #ffeef0; border-left: 4px solid #cb2431;
+    padding: 10px 14px; margin: 12px 0; font-size: 13.5px;
+  }
+  .version {
+    position: fixed; right: 12px; bottom: 8px;
+    font-size: 11px; color: #888; font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>分贝叠加工具 · 完整交付</h1>
+  <p>多声源分贝叠加 / 声压级换算 / 距离衰减 / 背景扣除 · 纯 JS 实现</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="doc">三、使用说明书</div>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="panel-source">
+<pre id="source-code"></pre>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div class="panel" id="panel-test">
+  <button class="run" onclick="runAllTests()">▶ 运行全部测试</button>
+  <div id="test-summary"></div>
+  <div class="test-result" id="test-log">点击上方按钮运行测试…</div>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel doc" id="panel-doc">
+  <h2>一、工具简介</h2>
+  <p>
+    「分贝叠加工具」是一个面向声学工程、环境噪声监测、产品噪声评估等场景的纯前端计算工具。它解决的核心问题是：<b>多个独立声源共同作用时，总声级如何计算？不同声学量（声压、声强、声功率、声压级、声强级、声功率级）之间如何换算？</b>
+  </p>
+  <p>
+    分贝（decibel, dB）本身是一个<b>对数比值</b>，不能直接相加。例如两个 60 dB 的声源叠加，结果不是 120 dB，而是约 63 dB。本工具严格按照声学物理公式实现，所有核心算法均为纯函数，无外部依赖，可直接在浏览器中运行。
+  </p>
+
+  <h2>二、核心概念</h2>
+  <h3>2.1 分贝的本质</h3>
+  <p>
+    分贝是贝尔（Bel）的十分之一，用于表示两个同类物理量比值的对数。在声学中，根据被比较物理量的性质（能量型 vs. 场量型），公式不同：
+  </p>
+  <ul>
+    <li><b>能量型量</b>（声强 I、声功率 W）：<code>L = 10·log₁₀(Q/Q₀)</code></li>
+    <li><b>场量型量</b>（声压 p、质点速度 v）：<code>L = 20·log₁₀(Q/Q₀)</code>，因为能量与场量的平方成正比</li>
+  </ul>
+
+  <h3>2.2 三种声级</h3>
+  <table>
+    <tr><th>名称</th><th>符号</th><th>定义</th><th>参考值（空气）</th></tr>
+    <tr><td>声压级</td><td>L<sub>p</sub></td><td>20·log₁₀(p/p₀)</td><td>p₀ = 20 μPa = 2×10⁻⁵ Pa</td></tr>
+    <tr><td>声强级</td><td>L<sub>I</sub></td><td>10·log₁₀(I/I₀)</td><td>I₀ = 10⁻¹² W/m²</td></tr>
+    <tr><td>声功率级</td><td>L<sub>W</sub></td><td>10·log₁₀(W/W₀)</td><td>W₀ = 10⁻¹² W</td></tr>
+  </table>
+  <p>
+    在自由平面波或球面波条件下（远场、无反射），空气中声压级与声强级数值近似相等。这是工程上常用声压级代替声强级测量的物理基础。
+  </p>
+
+  <h3>2.3 多声源叠加原理</h3>
+  <p>
+    对于<b>不相干声源</b>（绝大多数工程场景，如多台设备、交通噪声），能量线性叠加：
+  </p>
+  <pre style="background:#f6f8fa;color:#222;border:1px solid #d0d7de;padding:10px;">L_total = 10 · log₁₀( Σ 10^(L_i / 10) )</pre>
+  <p>
+    对于<b>相干声源</b>（同频率、固定相位差，如扬声器阵列），需要按声压（场量）叠加并考虑相位，本工具<b>不处理</b>相干叠加场景（详见局限性）。
+  </p>
+
+  <h2>三、函数与参数说明</h2>
+  <table>
+    <tr><th>函数</th><th>参数</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+    <tr>
+      <td><code>decibelSum(levels)</code></td>
+      <td>levels: number[]</td><td>dB</td>
+      <td>任意实数，建议 -200 ~ 250</td>
+      <td>多个分贝值能量叠加。空数组抛异常。</td>
+    </tr>
+    <tr>
+      <td><code>pressureToSPL(p, pRef)</code></td>
+      <td>p: number（声压）<br>pRef: number（参考声压，默认 2e-5）</td>
+      <td>Pa / Pa</td>
+      <td>p ≥ 0；pRef &gt; 0</td>
+      <td>声压 → 声压级。p=0 返回 -Infinity。</td>
+    </tr>
+    <tr>
+      <td><code>SPLToPressure(Lp, pRef)</code></td>
+      <td>Lp: number（声压级）<br>pRef: number</td>
+      <td>dB / Pa</td>
+      <td>任意实数；pRef &gt; 0</td>
+      <td>声压级 → 声压。</td>
+    </tr>
+    <tr>
+      <td><code>intensityToSIL(I, IRef)</code></td>
+      <td>I: number（声强）<br>IRef: number（默认 1e-12）</td>
+      <td>W/m² / W/m²</td>
+      <td>I ≥ 0；IRef &gt; 0</td>
+      <td>声强 → 声强级。</td>
+    </tr>
+    <tr>
+      <td><code>SILToIntensity(LI, IRef)</code></td>
+      <td>LI: number<br>IRef: number</td>
+      <td>dB / W/m²</td>
+      <td>任意实数；IRef &gt; 0</td>
+      <td>声强级 → 声强。</td>
+    </tr>
+    <tr>
+      <td><code>powerToSWL(W, WRef)</code></td>
+      <td>W: number（声功率）<br>WRef: number（默认 1e-12）</td>
+      <td>W / W</td>
+      <td>W ≥ 0；WRef &gt; 0</td>
+      <td>声功率 → 声功率级。</td>
+    </tr>
+    <tr>
+      <td><code>SWLToPower(LW, WRef)</code></td>
+      <td>LW: number<br>WRef: number</td>
+      <td>dB / W</td>
+      <td>任意实数；WRef &gt; 0</td>
+      <td>声功率级 → 声功率。</td>
+    </tr>
+    <tr>
+      <td><code>distanceAttenuation(L1, r1, r2)</code></td>
+      <td>L1: number（r1 处声压级）<br>r1, r2: number（距离）</td>
+      <td>dB / m / m</td>
+      <td>r1, r2 &gt; 0</td>
+      <td>点声源自由场球面波衰减：L2 = L1 - 20·log₁₀(r2/r1)。倍距离约 -6 dB。</td>
+    </tr>
+    <tr>
+      <td><code>subtractDecibels(Ltotal, Lbg)</code></td>
+      <td>Ltotal: number（总声级）<br>Lbg: number（背景声级）</td>
+      <td>dB / dB</td>
+      <td>Ltotal &gt; Lbg；差值建议 ≥ 3 dB</td>
+      <td>从总测量值中扣除背景噪声，得到声源净声级。差值 &lt; 3 dB 时修正不确定度显著增大。</td>
+    </tr>
+  </table>
+
+  <h2>四、实际使用场景</h2>
+
+  <h3>场景 1：车间多台设备噪声叠加</h3>
+  <p><b>问题：</b>车间内有 3 台设备，各自在操作位产生的 A 计权声级分别为 82 dB、85 dB、88 dB，求总声级。</p>
+  <p><b>输入：</b><code>decibelSum([82, 85, 88])</code></p>
+  <p><b>计算过程：</b>10·log₁₀(10^8.2 + 10^8.5 + 10^8.8) = 10·log₁₀(1.585e8 + 3.162e8 + 6.310e8) = 10·log₁₀(1.106e9) ≈ 90.44 dB</p>
+  <p><b>结果：</b>约 <b>90.4 dB</b>。可见总声级主要由最大声源（88 dB）贡献，叠加后仅增加约 2.4 dB。</p>
+  <p><b>工程意义：</b>降噪应优先治理最大声源，治理 82 dB 设备对总声级影响甚微。</p>
+
+  <h3>场景 2：声压与声压级互转</h3>
+  <p><b>问题：</b>某麦克风测得声压有效值为 0.632 Pa，求声压级；反之，110 dB 对应多大声压？</p>
+  <p><b>输入 1：</b><code>pressureToSPL(0.632)</code> → 约 <b>100 dB</b>（因为 0.632 / 2e-5 = 31600，20·log₁₀(31600) ≈ 90？需精确：20·log₁₀(31600) = 20 × 4.4997 = 89.99 ≈ 90 dB。修正：0.632 Pa 对应约 90 dB；100 dB 对应 2 Pa）</p>
+  <p><b>输入 2：</b><code>SPLToPressure(100)</code> → <b>2 Pa</b></p>
+  <p><b>输入 3：</b><code>SPLToPressure(110)</code> → 约 <b>6.32 Pa</b></p>
+  <p><b>注意：</b>默认参考声压为空气中 20 μPa；若为水听器应用，需传入 <code>pRef = 1e-6</code>（1 μPa）。</p>
+
+  <h3>场景 3：点声源距离衰减估算</h3>
+  <p><b>问题：</b>某设备在 1 m 处测得 95 dB，求 5 m 处和 10 m 处的声级（自由场近似）。</p>
+  <p><b>输入 1：</b><code>distanceAttenuation(95, 1, 5)</code> → 95 - 20·log₁₀(5) ≈ 95 - 13.98 = <b>81.0 dB</b></p>
+  <p><b>输入 2：</b><code>distanceAttenuation(95, 1, 10)</code> → 95 - 20 = <b>75 dB</b></p>
+  <p><b>适用条件：</b>自由场（无反射）、点声源（距离远大于声源尺寸）、无地面吸收与空气吸收。室内混响场不适用。</p>
+
+  <h3>场景 4：背景噪声修正</h3>
+  <p><b>问题：</b>测量某机器噪声，开机时总声级 78 dB，停机时背景声级 73 dB，求机器本身声级。</p>
+  <p><b>输入：</b><code>subtractDecibels(78, 73)</code></p>
+  <p><b>计算：</b>10·log₁₀(10^7.8 - 10^7.3) = 10·log₁₀(6.310e7 - 1.995e7) = 10·log₁₀(4.315e7) ≈ <b>76.3 dB</b></p>
+  <p><b>结果：</b>机器净声级约 <b>76.3 dB</b>。</p>
+  <p><b>注意：</b>差值 5 dB，修正量 1.7 dB，可接受。按 GB/T 3767（等效 ISO 3744），差值 &lt; 3 dB 时测量无效，3~10 dB 需修正，&gt; 10 dB 修正可忽略。</p>
+
+  <h3>场景 5：声功率级估算远处声压级</h3>
+  <p><b>问题：</b>某设备声功率级 L<sub>W</sub> = 105 dB，在半自由场（地面反射，指向性因子 Q=2，半球辐射），求 4 m 处的声压级。</p>
+  <p><b>公式：</b>L<sub>p</sub> = L<sub>W</sub> - 20·log₁₀(r) - 11 + DI（半球面，DI = 10·log₁₀(Q/(4π)) + 11 ≈ 3 dB 当 Q=2）</p>
+  <p>更直接：半球面 L<sub>p</sub> = L<sub>W</sub> - 20·log₁₀(r) - 8（Q=2 时）</p>
+  <p><b>计算：</b>105 - 20·log₁₀(4) - 8 = 105 - 12.04 - 8 = <b>84.96 dB</b></p>
+  <p><b>说明：</b>此场景需结合 <code>powerToSWL</code>、<code>SWLToPower</code> 与距离衰减公式联合使用，本工具提供基础换算，复杂指向性与环境修正需用户自行组合。</p>
+
+  <h3>场景 6：N 个相同声源叠加</h3>
+  <p><b>问题：</b>10 台相同风机，每台 65 dB，求总声级。</p>
+  <p><b>输入：</b><code>decibelSum(Array(10).fill(65))</code> → 65 + 10·log₁₀(10) = <b>75 dB</b></p>
+  <p><b>规律：</b>N 个相同声源叠加，总声级增加 10·log₁₀(N)。N=2 → +3 dB；N=4 → +6 dB；N=10 → +10 dB；N=100 → +20 dB。</p>
+
+  <h2>五、常见错误与排查</h2>
+  <table>
+    <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+    <tr><td>直接相加 60+60=120 dB</td><td>分贝是对数量，不能直接相加</td><td>必须使用 <code>decibelSum</code></td></tr>
+    <tr><td>pressureToSPL(0) 返回 NaN</td><td>log₁₀(0) 无定义</td><td>函数返回 -Infinity，调用方需判断</td></tr>
+    <tr><td>pressureToSPL(-1) 返回 NaN</td><td>声压为负无物理意义</td><td>传入声压有效值（RMS），必为非负</td></tr>
+    <tr><td>subtractDecibels 返回 NaN</td><td>Ltotal ≤ Lbg</td><td>检查测量：总声级必须大于背景声级</td></tr>
+    <tr><td>距离衰减结果偏大</td><td>室内混响场不适用球面波公式</td><td>室内需考虑房间常数，使用赛宾/伊林公式</td></tr>
+    <tr><td>结果与实测偏差 &gt; 3 dB</td><td>未做背景修正、气象条件、地面吸收等</td><td>按 GB/T 3767 进行环境修正</td></tr>
+    <tr><td>decibelSum 抛 "levels must be a non-empty array"</td><td>传入空数组或非数组</td><td>确保传入至少一个数值的数组</td></tr>
+    <tr><td>浮点误差导致 3.0103000000000004</td><td>IEEE 754 双精度固有特性</td><td>显示时建议 toFixed(1) 或 toFixed(2)</td></tr>
+  </table>
+
+  <h2>六、数据来源与标准依据</h2>
+  <p>本工具所依据的公式与参考值来自以下标准与权威文献：</p>
+  <ul>
+    <li><b>GB/T 3947-1996</b>《声学 术语》—— 声压、声强、声功率定义及参考值</li>
+    <li><b>GB 3096-2008</b>《声环境质量标准》—— 环境噪声评价量</li>
+    <li><b>GB/T 3767-2016</b>（等效 ISO 3744:2010）《声学 声压法测定噪声源声功率级》—— 背景噪声修正规则（差值 &lt; 3 dB 无效，3~10 dB 修正，&gt; 10 dB 忽略）</li>
+    <li><b>GB/T 15173-2010</b>（等效 IEC 60942）《声校准器》—— 参考声压 20 μPa</li>
+    <li><b>ISO 9613-2:1996</b>《声学 户外声传播衰减 第 2 部分：一般计算方法》—— 点声源几何衰减</li>
+    <li><b>参考声压</b>：空气 20 μPa（人耳听阈），水中 1 μPa（需显式传入）</li>
+    <li><b>参考声强</b>：10⁻¹² W/m²</li>
+    <li><b>参考声功率</b>：10⁻¹² W</li>
+  </ul>
+  <div class="note">
+    <b>注：</b>标准原文中关于 A 计权、C 计权频率响应曲线、倍频程/1/3 倍频程合成等细节，本工具未实现，需查标准原文（GB/T 15173、IEC 61672-1）。
+  </div>
+
+  <h2>七、局限性说明</h2>
+  <div class="warn">
+    <b>本工具不能做以下事情，请勿超范围使用：</b>
+  </div>
+  <ol>
+    <li><b>不处理相干声源叠加</b>：同频同相位声源（如扬声器阵列）需按声压矢量叠加并考虑相位差，本工具仅支持不相干声源能量叠加。</li>
+    <li><b>不做频率计权</b>：A 计权、C 计权、Z 计权需对频谱数据逐频点加权后合成，本工具仅处理总声级标量。</li>
+    <li><b>不做倍频程/1/3 倍频程合成</b>：频谱数据的能量合成需用户自行按频带调用 <code>decibelSum</code>。</li>
+    <li><b>不考虑空气吸收、地面吸收、气象衰减</b>：距离衰减仅计算几何衰减（球面波 -6 dB/倍距离），长距离传播需按 ISO 9613-2 补充。</li>
+    <li><b>不考虑房间混响</b>：室内声场需使用房间常数 R 与指向性因子 Q 修正，本工具仅提供自由场公式。</li>
+    <li><b>不处理脉冲噪声、统计声级（L<sub>10</sub>/L<sub>50</sub>/L<sub>90</sub>）</b>：需时间序列数据，本工具仅处理稳态声级。</li>
+    <li><b>不替代专业声级计</b>：本工具为理论计算，工程验收必须以经计量检定的声级计实测为准（GB/T 3785.1）。</li>
+    <li><b>不处理水中声学</b>：默认参考值为空气，水中应用需显式传入 pRef=1e-6，且部分公式（如声强与声压关系）需考虑特性阻抗差异。</li>
+    <li><b>浮点精度限制</b>：极大分贝差（如 200 dB 与 0 dB 叠加）可能因 IEEE 754 精度损失导致小值被吞没，工程上可忽略。</li>
+  </ol>
+
+  <h2>八、版本与许可</h2>
+  <p>版本：v2.0.0-完整版 20261021</p>
+  <p>本工具代码为纯函数实现，无外部依赖，可自由用于教学、工程估算、内部工具集成。工程验收场景请以国家计量检定规程与对应产品标准为准。</p>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（纯函数实现，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 默认参考声压（空气中，人耳听阈）
+ * @constant {number}
+ */
+const P_REF_AIR = 2e-5; // Pa
+
+/**
+ * 默认参考声强
+ * @constant {number}
+ */
+const I_REF = 1e-12; // W/m²
+
+/**
+ * 默认参考声功率
+ * @constant {number}
+ */
+const W_REF = 1e-12; // W
+
+/**
+ * 多个不相干声源的分贝值能量叠加。
+ * 公式：L_total = 10 · log₁₀( Σ 10^(L_i / 10) )
+ *
+ * @param {number[]} levels - 各声源的分贝值数组，单位 dB。任意实数，建议 -200 ~ 250。
+ * @returns {number} 叠加后的总分贝值，单位 dB。
+ * @throws {Error} 当 levels 不是数组、为空数组、或包含非有限数值时抛出。
+ * @example
+ *   decibelSum([60, 60]);        // ≈ 63.0103
+ *   decibelSum([50, 60, 70]);    // ≈ 70.4139
+ *   decibelSum([80]);            // 80
+ */
+function decibelSum(levels) {
+  if (!Array.isArray(levels)) {
+    throw new Error('decibelSum: levels must be an array');
+  }
+  if (levels.length === 0) {
+    throw new Error('decibelSum: levels must be a non-empty array');
+  }
+  let sum = 0;
+  for (let i = 0; i < levels.length; i++) {
+    const v = levels[i];
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      throw new Error('decibelSum: each level must be a finite number, got ' + v);
+    }
+    sum += Math.pow(10, v / 10);
+  }
+  return 10 * Math.log10(sum);
+}
+
+/**
+ * 将声压（Pa）换算为声压级（dB）。
+ * 公式：Lp = 20 · log₁₀(p / pRef)
+ *
+ * @param {number} p - 声压有效值，单位 Pa。必须 ≥ 0。
+ * @param {number} [pRef=2e-5] - 参考声压，单位 Pa。空气中默认 20 μPa；水中为 1 μPa。
+ * @returns {number} 声压级，单位 dB。p = 0 时返回 -Infinity；p < 0 时返回 NaN。
+ * @throws {Error} 当 pRef ≤ 0 或非有限数时抛出。
+ * @example
+ *   pressureToSPL(2e-5);       // 0
+ *   pressureToSPL(2e-4);       // 20
+ *   pressureToSPL(2);          // 100
+ */
+function pressureToSPL(p, pRef) {
+  if (pRef === undefined) pRef = P_REF_AIR;
+  if (typeof pRef !== 'number' || !Number.isFinite(pRef) || pRef <= 0) {
+    throw new Error('pressureToSPL: pRef must be a positive finite number');
+  }
+  if (typeof p !== 'number' || !Number.isFinite(p)) {
+    if (p === null || p === undefined) {
+      throw new Error('pressureToSPL: p must be a number');
+    }
+    return NaN;
+  }
+  if (p < 0) return NaN;
+  if (p === 0) return -Infinity;
+  return 20 * Math.log10(p / pRef);
+}
+
+/**
+ * 将声压级（dB）换算为声压（Pa）。
+ * 公式：p = pRef · 10^(Lp / 20)
+ *
+ * @param {number} Lp - 声压级，单位 dB。任意实数。
+ * @param {number} [pRef=2e-5] - 参考声压，单位 Pa。
+ * @returns {number} 声压有效值，单位 Pa。
+ * @throws {Error} 当 pRef ≤ 0 或非有限数时抛出。
+ * @example
+ *   SPLToPressure(0);          // 2e-5
+ *   SPLToPressure(20);         // 2e-4
+ *   SPLToPressure(100);        // 2
+ */
+function SPLToPressure(Lp, pRef) {
+  if (pRef === undefined) pRef = P_REF_AIR;
+  if (typeof pRef !== 'number' || !Number.isFinite(pRef) || pRef <= 0) {
+    throw new Error('SPLToPressure: pRef must be a positive finite number');
+  }
+  if (typeof Lp !== 'number' || !Number.isFinite(Lp)) {
+    if (Lp === null || Lp === undefined) {
+      throw new Error('SPLToPressure: Lp must be a number');
+    }
+    return NaN;
+  }
+  if (Lp === -Infinity) return 0;
+  return pRef * Math.pow(10, Lp / 20);
+}
+
+/**
+ * 将声强（W/m²）换算为声强级（dB）。
+ * 公式：LI = 10 · log₁₀(I / IRef)
+ *
+ * @param {number} I - 声强，单位 W/m²。必须 ≥ 0。
+ * @param {number} [IRef=1e-12] - 参考声强，单位 W/m²。
+ * @returns {number} 声强级，单位 dB。I = 0 时返回 -Infinity；I < 0 时返回 NaN。
+ * @throws {Error} 当 IRef ≤ 0 或非有限数时抛出。
+ * @example
+ *   intensityToSIL(1e-12);     // 0
+ *   intensityToSIL(1e-6);      // 60
+ */
+function intensityToSIL(I, IRef) {
+  if (IRef === undefined) IRef = I_REF;
+  if (typeof IRef !== 'number' || !Number.isFinite(IRef) || IRef <= 0) {
+    throw new Error('intensityToSIL: IRef must be a positive finite number');
+  }
+  if (typeof I !== 'number' || !Number.isFinite(I)) {
+    if (I === null || I === undefined) {
+      throw new Error('intensityToSIL: I must be a number');
+    }
+    return NaN;
+  }
+  if (I < 0) return NaN;
+  if (I === 0) return -Infinity;
+  return 10 * Math.log10(I / IRef);
+}
+
+/**
+ * 将声强级（dB）换算为声强（W/m²）。
+ * 公式：I = IRef · 10^(LI / 10)
+ *
+ * @param {number} LI - 声强级，单位 dB。
+ * @param {number} [IRef=1e-12] - 参考声强，单位 W/m²。
+ * @returns {number} 声强，单位 W/m²。
+ * @throws {Error} 当 IRef ≤ 0 或非有限数时抛出。
+ * @example
+ *   SILToIntensity(0);         // 1e-12
+ *   SILToIntensity(60);        // 1e-6
+ */
+function SILToIntensity(LI, IRef) {
+  if (IRef === undefined) IRef = I_REF;
+  if (typeof IRef !== 'number' || !Number.isFinite(IRef) || IRef <= 0) {
+    throw new Error('SILToIntensity: IRef must be a positive finite number');
+  }
+  if (typeof LI !== 'number' || !Number.isFinite(LI)) {
+    if (LI === null || LI === undefined) {
+      throw new Error('SILToIntensity: LI must be a number');
+    }
+    return NaN;
+  }
+  if (LI === -Infinity) return 0;
+  return IRef * Math.pow(10, LI / 10);
+}
+
+/**
+ * 将声功率（W）换算为声功率级（dB）。
+ * 公式：LW = 10 · log₁₀(W / WRef)
+ *
+ * @param {number} W - 声功率，单位 W。必须 ≥ 0。
+ * @param {number} [WRef=1e-12] - 参考声功率，单位 W。
+ * @returns {number} 声功率级，单位 dB。W = 0 时返回 -Infinity；W < 0 时返回 NaN。
+ * @throws {Error} 当 WRef ≤ 0 或非有限数时抛出。
+ * @example
+ *   powerToSWL(1e-12);         // 0
+ *   powerToSWL(1);             // 120
+ */
+function powerToSWL(W, WRef) {
+  if (WRef === undefined) WRef = W_REF;
+  if (typeof WRef !== 'number' || !Number.isFinite(WRef) || WRef <= 0) {
+    throw new Error('powerToSWL: WRef must be a positive finite number');
+  }
+  if (typeof W !== 'number' || !Number.isFinite(W)) {
+    if (W === null || W === undefined) {
+      throw new Error('powerToSWL: W must be a number');
+    }
+    return NaN;
+  }
+  if (W < 0) return NaN;
+  if (W === 0) return -Infinity;
+  return 10 * Math.log10(W / WRef);
+}
+
+/**
+ * 将声功率级（dB）换算为声功率（W）。
+ * 公式：W = WRef · 10^(LW / 10)
+ *
+ * @param {number} LW - 声功率级，单位 dB。
+ * @param {number} [WRef=1e-12] - 参考声功率，单位 W。
+ * @returns {number} 声功率，单位 W。
+ * @throws {Error} 当 WRef ≤ 0 或非有限数时抛出。
+ * @example
+ *   SWLToPower(0);             // 1e-12
+ *   SWLToPower(120);           // 1
+ */
+function SWLToPower(LW, WRef) {
+  if (WRef === undefined) WRef = W_REF;
+  if (typeof WRef !== 'number' || !Number.isFinite(WRef) || WRef <= 0) {
+    throw new Error('SWLToPower: WRef must be a positive finite number');
+  }
+  if (typeof LW !== 'number' || !Number.isFinite(LW)) {
+    if (LW === null || LW === undefined) {
+      throw new Error('SWLToPower: LW must be a number');
+    }
+    return NaN;
+  }
+  if (LW === -Infinity) return 0;
+  return WRef * Math.pow(10, LW / 10);
+}
+
+/**
+ * 点声源在自由场中的几何衰减（球面波）。
+ * 公式：L2 = L1 - 20 · log₁₀(r2 / r1)
+ * 距离每增加一倍，声压级下降约 6 dB。
+ *
+ * @param {number} L1 - r1 处的声压级，单位 dB。
+ * @param {number} r1 - 参考距离，单位 m。必须 > 0。
+ * @param {number} r2 - 目标距离，单位 m。必须 > 0。
+ * @returns {number} r2 处的声压级，单位 dB。
+ * @throws {Error} 当 r1 或 r2 ≤ 0 或非有限数时抛出。
+ * @example
+ *   distanceAttenuation(90, 1, 2);   // ≈ 83.98 （倍距离 -6 dB）
+ *   distanceAttenuation(90, 1, 10);  // 70 （10 倍距离 -20 dB）
+ */
+function distanceAttenuation(L1, r1, r2) {
+  if (typeof r1 !== 'number' || !Number.isFinite(r1) || r1 <= 0) {
+    throw new Error('distanceAttenuation: r1 must be a positive finite number');
+  }
+  if (typeof r2 !== 'number' || !Number.isFinite(r2) || r2 <= 0) {
+    throw new Error('distanceAttenuation: r2 must be a positive finite number');
+  }
+  if (typeof L1 !== 'number' || !Number.isFinite(L1)) {
+    throw new Error('distanceAttenuation: L1 must be a finite number');
+  }
+  return L1 - 20 * Math.log10(r2 / r1);
+}
+
+/**
+ * 从总测量声级中扣除背景噪声，得到声源净声级。
+ * 公式：Lsource = 10 · log₁₀( 10^(Ltotal/10) - 10^(Lbg/10) )
+ * 按 GB/T 3767-2016：差值 < 3 dB 测量无效；3~10 dB 需修正；> 10 dB 修正可忽略。
+ *
+ * @param {number} Ltotal - 总声级（含背景），单位 dB。
+ * @param {number} Lbg - 背景声级，单位 dB。必须 < Ltotal。
+ * @returns {number} 声源净声级，单位 dB。若 Ltotal ≤ Lbg 返回 NaN。
+ * @throws {Error} 当参数非有限数时抛出。
+ * @example
+ *   subtractDecibels(78, 73);    // ≈ 76.35
+ *   subtractDecibels(80, 70);    // ≈ 79.58
+ */
+function subtractDecibels(Ltotal, Lbg) {
+  if (typeof Ltotal !== 'number' || !Number.isFinite(Ltotal)) {
+    throw new Error('subtractDecibels: Ltotal must be a finite number');
+  }
+  if (typeof Lbg !== 'number' || !Number.isFinite(Lbg)) {
+    throw new Error('subtractDecibels: Lbg must be a finite number');
+  }
+  if (Ltotal <= Lbg) return NaN;
+  const eTotal = Math.pow(10, Ltotal / 10);
+  const eBg = Math.pow(10, Lbg / 10);
+  const diff = eTotal - eBg;
+  if (diff <= 0) return NaN;
+  return 10 * Math.log10(diff);
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，≥30 个用例）
+ * ============================================================ */
+
+const __testResults = [];
+
+function __approx(a, b, eps) {
+  if (typeof eps === 'undefined') eps = 1e-6;
+  if (a === Infinity && b === Infinity) return true;
+  if (a === -Infinity && b === -Infinity) return true;
+  if (Number.isNaN(a) && Number.isNaN(b)) return true;
+  return Math.abs(a - b) <= eps;
+}
+
+function __assert(name, actual, expected, opts) {
+  opts = opts || {};
+  const eps = opts.eps || 1e-4;
+  const expectThrow = opts.throwError || false;
+  let pass = false;
+  let detail = '';
+
+  if (expectThrow) {
+    pass = actual instanceof Error;
+    detail = pass ? 'threw as expected' : 'expected throw, got ' + actual;
+  } else if (typeof expected === 'function') {
+    pass = expected(actual);
+    detail = pass ? 'predicate ok' : 'predicate failed, got ' + actual;
+  } else {
+    pass = __approx(actual, expected, eps);
+    detail = 'expected ' + expected + ', got ' + actual;
+  }
+
+  __testResults.push({ name, pass, detail });
+}
+
+function __run(name, fn) {
+  try {
+    fn();
+  } catch (e) {
+    __testResults.push({ name, pass: false, detail: 'unexpected exception: ' + e.message });
+  }
+}
+
+function runAllTests() {
+  __testResults.length = 0;
+
+  /* ---------- decibelSum ---------- */
+  __run('decibelSum: 两个相同 0 dB → 3.0103', function () {
+    __assert('t1', decibelSum([0, 0]), 10 * Math.log10(2));
+  });
+  __run('decibelSum: 两个相同 50 dB → 53.0103', function () {
+    __assert('t2', decibelSum([50, 50]), 50 + 10 * Math.log10(2));
+  });
+  __run('decibelSum: 两个相同 100 dB → 103.0103', function () {
+    __assert('t3', decibelSum([100, 100]), 100 + 10 * Math.log10(2));
+  });
+  __run('decibelSum: 三个相同 60 dB → 64.7712', function () {
+    __assert('t4', decibelSum([60, 60, 60]), 60 + 10 * Math.log10(3));
+  });
+  __run('decibelSum: 相差 10 dB → 大值 + 0.4139', function () {
+    __assert('t5', decibelSum([60, 70]), 70 + 10 * Math.log10(1 + 0.1));
+  });
+  __run('decibelSum: 相差 20 dB → 大值 + 0.0432', function () {
+    __assert('t6', decibelSum([60, 80]), 80 + 10 * Math.log10(1 + 0.01));
+  });
+  __run('decibelSum: 单值返回原值', function () {
+    __assert('t7', decibelSum([77.7]), 77.7);
+  });
+  __run('decibelSum: 空数组抛异常', function () {
+    let r;
+    try { decibelSum([]); } catch (e) { r = e; }
+    __assert('t8', r, null, { throwError: true });
+  });
+  __run('decibelSum: null 抛异常', function () {
+    let r;
+    try { decibelSum(null); } catch (e) { r = e; }
+    __assert('t9', r, null, { throwError: true });
+  });
+  __run('decibelSum: 含 NaN 抛异常', function () {
+    let r;
+    try { decibelSum([60, NaN]); } catch (e) { r = e; }
+    __assert('t10', r, null, { throwError: true });
+  });
+  __run('decibelSum: 含负数正常计算', function () {
+    __assert('t11', decibelSum([-10, -10]), -10 + 10 * Math.log10(2));
+  });
+  __run('decibelSum: 极大值 200 dB 正常', function () {
+    __assert('t12', decibelSum([200, 200]), 200 + 10 * Math.log10(2));
+  });
+  __run('decibelSum: 10 个 50 dB → 60 dB', function () {
+    const arr = [];
+    for (let i = 0; i < 10; i++) arr.push(50);
+    __assert('t13', decibelSum(arr), 60, { eps: 1e-9 });
+  });
+  __run('decibelSum: 浮点精度（100 个 0 dB → 20 dB）', function () {
+    const arr = [];
+    for (let i = 0; i < 100; i++) arr.push(0);
+    __assert('t14', decibelSum(arr), 20, { eps: 1e-9 });
+  });
+  __run('decibelSum: 字符串抛异常', function () {
+    let r;
+    try { decibelSum('60'); } catch (e) { r = e; }
+    __assert('t15', r, null, { throwError: true });
+  });
+
+  /* ---------- pressureToSPL ---------- */
+  __run('pressureToSPL: 20 μPa → 0 dB', function () {
+    __assert('t16', pressureToSPL(2e-5), 0, { eps: 1e-9 });
+  });
+  __run('pressureToSPL: 200 μPa → 20 dB', function () {
+    __assert('t17', pressureToSPL(2e-4), 20, { eps: 1e-9 });
+  });
+  __run('pressureToSPL: 2 Pa → 100 dB', function () {
+    __assert('t18', pressureToSPL(2), 100, { eps: 1e-9 });
+  });
+  __run('pressureToSPL: 0 → -Infinity', function () {
+    __assert('t19', pressureToSPL(0), -Infinity);
+  });
+  __run('pressureToSPL: 负数 → NaN', function () {
+    const r = pressureToSPL(-1);
+    __assert('t20', r, NaN, { eps: 0 });
+    if (!Number.isNaN(r)) throw new Error('expected NaN');
+  });
+  __run('pressureToSPL: null 抛异常', function () {
+    let r;
+    try { pressureToSPL(null); } catch (e) { r = e; }
+    __assert('t21', r, null, { throwError: true });
+  });
+  __run('pressureToSPL: 自定义参考值 1 μPa（水）', function () {
+    __assert('t22', pressureToSPL(1e-6, 1e-6), 0, { eps: 1e-9 });
+  });
+  __run('pressureToSPL: pRef ≤ 0 抛异常', function () {
+    let r;
+    try { pressureToSPL(1, 0); } catch (e) { r = e; }
+    __assert('t23', r, null, { throwError: true });
+  });
+
+  /* ---------- SPLToPressure ---------- */
+  __run('SPLToPressure: 0 dB → 20 μPa', function () {
+    __assert('t24', SPLToPressure(0), 2e-5, { eps: 1e-15 });
+  });
+  __run('SPLToPressure: 20 dB → 200 μPa', function () {
+    __assert('t25', SPLToPressure(20), 2e-4, { eps: 1e-14 });
+  });
+  __run('SPLToPressure: 100 dB → 2 Pa', function () {
+    __assert('t26', SPLToPressure(100), 2, { eps: 1e-9 });
+  });
+  __run('SPLToPressure: -Infinity → 0', function () {
+    __assert('t27', SPLToPressure(-Infinity), 0);
+  });
+
+  /* ---------- distanceAttenuation ---------- */
+  __run('distanceAttenuation: 倍距离 → -6.02 dB', function () {
+    __assert('t28', distanceAttenuation(90, 1, 2), 90 - 20 * Math.log10(2));
+  });
+  __run('distanceAttenuation: 10 倍距离 → -20 dB', function () {
+    __assert('t29', distanceAttenuation(90, 1, 10), 70, { eps: 1e-9 });
+  });
+  __run('distanceAttenuation: r1 = r2 → 不变', function () {
+    __assert('t30', distanceAttenuation(85, 5, 5), 85, { eps: 1e-9 });
+  });
+  __run('distanceAttenuation: r2 < r1 → 增益', function () {
+    __assert('t31', distanceAttenuation(80, 10, 1), 80 + 20, { eps: 1e-9 });
+  });
+  __run('distanceAttenuation: r1 = 0 抛异常', function () {
+    let r;
+    try { distanceAttenuation(80, 0, 1); } catch (e) { r = e; }
+    __assert('t32', r, null, { throwError: true });
+  });
+  __run('distanceAttenuation: r2 = 0 抛异常', function () {
+    let r;
+    try { distanceAttenuation(80, 1, 0); } catch (e) { r = e; }
+    __assert('t33', r, null, { throwError: true });
+  });
+
+  /* ---------- subtractDecibels ---------- */
+  __run('subtractDecibels: 78 - 73 → 76.35', function () {
+    const expected = 10 * Math.log10(Math.pow(10, 7.8) - Math.pow(10, 7.3));
+    __assert('t34', subtractDecibels(78, 73), expected);
+  });
+  __run('subtractDecibels: Ltotal < Lbg → NaN', function () {
+    const r = subtractDecibels(70, 75);
+    if (!Number.isNaN(r)) throw new Error('expected NaN, got ' + r);
+    __assert('t35', true, true);
+  });
+  __run('subtractDecibels: Ltotal = Lbg → NaN', function () {
+    const r = subtractDecibels(70, 70);
+    if (!Number.isNaN(r)) throw new Error('expected NaN, got ' + r);
+    __assert('t36', true, true);
+  });
+  __run('subtractDecibels: 差 10 dB → 接近 total', function () {
+    const r = subtractDecibels(80, 70);
+    __assert('t37', r, 80 + 10 * Math.log10(1 - 0.1));
+  });
+
+  /* ---------- 互逆性测试 ---------- */
+  __run('pressureToSPL / SPLToPressure 互逆', function () {
+    __assert('t38', SPLToPressure(pressureToSPL(1.23)), 1.23, { eps: 1e-9 });
+  });
+  __run('intensityToSIL / SILToIntensity 互逆', function () {
+    __assert('t39', SILToIntensity(intensityToSIL(3.45e-8)), 3.45e-8, { eps: 1e-18 });
+  });
+  __run('powerToSWL / SWLToPower 互逆', function () {
+    __assert('t40', SWLToPower(powerToSWL(0.007)), 0.007, { eps: 1e-15 });
+  });
+
+  /* ---------- 渲染结果 ---------- */
+  const total = __testResults.length;
+  const passed = __testResults.filter(t => t.pass).length;
+  const failed = total - passed;
+
+  const summaryEl = document.getElementById('test-summary');
+  summaryEl.className = 'summary ' + (failed === 0 ? 'ok' : 'err');
+  summaryEl.textContent = '通过 ' + passed + ' / 共 ' + total + (failed ? '  （失败 ' + failed + '）' : '  ✓ 全部通过');
+
+  const logEl = document.getElementById('test-log');
+  logEl.innerHTML = __testResults.map(t => {
+    const cls = t.pass ? 'pass' : 'fail';
+    const mark = t.pass ? '✓' : '✗';
+    return '<div class="' + cls + '">' + mark + ' ' + t.name + (t.pass ? '' : '  —— ' + t.detail) + '</div>';
+  }).join('');
+}
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+ *  源码展示（带简易语法高亮）
+ * ============================================================ */
+(function renderSource() {
+  const src =
+'/**\n' +
+' * 默认参考声压（空气中，人耳听阈）\n' +
+' */\n' +
+'const P_REF_AIR = 2e-5; // Pa\n' +
+'const I_REF = 1e-12;    // W/m²\n' +
+'const W_REF = 1e-12;    // W\n' +
+'\n' +
+'/**\n' +
+' * 多个不相干声源的分贝值能量叠加。\n' +
+' * 公式：L_total = 10 · log₁₀( Σ 10^(L_i / 10) )\n' +
+' * @param {number[]} levels - 各声源的分贝值数组，单位 dB\n' +
+' * @returns {number} 叠加后的总分贝值\n' +
+' * @throws {Error} 空数组或非有限数值时抛出\n' +
+' */\n' +
+'function decibelSum(levels) {\n' +
+'  if (!Array.isArray(levels)) throw new Error(\'levels must be an array\');\n' +
+'  if (levels.length === 0) throw new Error(\'levels must be non-empty\');\n' +
+'  let sum = 0;\n' +
+'  for (let i = 0; i < levels.length; i++) {\n' +
+'    const v = levels[i];\n' +
+'    if (typeof v !== \'number\' || !Number.isFinite(v))\n' +
+'      throw new Error(\'each level must be finite\');\n' +
+'    sum += Math.pow(10, v / 10);\n' +
+'  }\n' +
+'  return 10 * Math.log10(sum);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 声压 → 声压级：Lp = 20 · log₁₀(p / pRef)\n' +
+' */\n' +
+'function pressureToSPL(p, pRef) {\n' +
+'  if (pRef === undefined) pRef = P_REF_AIR;\n' +
+'  if (pRef <= 0) throw new Error(\'pRef must be > 0\');\n' +
+'  if (p < 0) return NaN;\n' +
+'  if (p === 0) return -Infinity;\n' +
+'  return 20 * Math.log10(p / pRef);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 声压级 → 声压：p = pRef · 10^(Lp / 20)\n' +
+' */\n' +
+'function SPLToPressure(Lp, pRef) {\n' +
+'  if (pRef === undefined) pRef = P_REF_AIR;\n' +
+'  if (pRef <= 0) throw new Error(\'pRef must be > 0\');\n' +
+'  if (Lp === -Infinity) return 0;\n' +
+'  return pRef * Math.pow(10, Lp / 20);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 声强 → 声强级：LI = 10 · log₁₀(I / IRef)\n' +
+' */\n' +
+'function intensityToSIL(I, IRef) {\n' +
+'  if (IRef === undefined) IRef = I_REF;\n' +
+'  if (IRef <= 0) throw new Error(\'IRef must be > 0\');\n' +
+'  if (I < 0) return NaN;\n' +
+'  if (I === 0) return -Infinity;\n' +
+'  return 10 * Math.log10(I / IRef);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 声强级 → 声强：I = IRef · 10^(LI / 10)\n' +
+' */\n' +
+'function SILToIntensity(LI, IRef) {\n' +
+'  if (IRef === undefined) IRef = I_REF;\n' +
+'  if (IRef <= 0) throw new Error(\'IRef must be > 0\');\n' +
+'  if (LI === -Infinity) return 0;\n' +
+'  return IRef * Math.pow(10, LI / 10);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 声功率 → 声功率级：LW = 10 · log₁₀(W / WRef)\n' +
+' */\n' +
+'function powerToSWL(W, WRef) {\n' +
+'  if (WRef === undefined) WRef = W_REF;\n' +
+'  if (WRef <= 0) throw new Error(\'WRef must be > 0\');\n' +
+'  if (W < 0) return NaN;\n' +
+'  if (W === 0) return -Infinity;\n' +
+'  return 10 * Math.log10(W / WRef);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 声功率级 → 声功率：W = WRef · 10^(LW / 10)\n' +
+' */\n' +
+'function SWLToPower(LW, WRef) {\n' +
+'  if (WRef === undefined) WRef = W_REF;\n' +
+'  if (WRef <= 0) throw new Error(\'WRef must be > 0\');\n' +
+'  if (LW === -Infinity) return 0;\n' +
+'  return WRef * Math.pow(10, LW / 10);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 点声源自由场几何衰减：L2 = L1 - 20 · log₁₀(r2 / r1)\n' +
+' */\n' +
+'function distanceAttenuation(L1, r1, r2) {\n' +
+'  if (r1 <= 0 || r2 <= 0) throw new Error(\'r1, r2 must be > 0\');\n' +
+'  return L1 - 20 * Math.log10(r2 / r1);\n' +
+'}\n' +
+'\n' +
+'/**\n' +
+' * 背景噪声扣除：Lsource = 10 · log₁₀(10^(Ltotal/10) - 10^(Lbg/10))\n' +
+' */\n' +
+'function subtractDecibels(Ltotal, Lbg) {\n' +
+'  if (Ltotal <= Lbg) return NaN;\n' +
+'  const diff = Math.pow(10, Ltotal / 10) - Math.pow(10, Lbg / 10);\n' +
+'  if (diff <= 0) return NaN;\n' +
+'  return 10 * Math.log10(diff);\n' +
+'}\n';
+
+  // 简易高亮
+  const escaped = src
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const highlighted = escaped
+    .replace(/(\/\*\*[\s\S]*?\*\/|\/\/.*)/g, '<span class="cmt">$1</span>')
+    .replace(/\b(const|let|var|function|return|if|for|throw|new|typeof|undefined|true|false|null)\b/g, '<span class="kw">$1</span>')
+    .replace(/('(?:[^'\\]|\\.)*')/g, '<span class="str">$1</span>')
+    .replace(/\b(\d+\.?\d*(?:e[+-]?\d+)?)\b/g, '<span class="num">$1</span>')
+    .replace(/\b(decibelSum|pressureToSPL|SPLToPressure|intensityToSIL|SILToIntensity|powerToSWL|SWLToPower|distanceAttenuation|subtractDecibels)\b/g, '<span class="fn">$1</span>');
+  document.getElementById('source-code').innerHTML = highlighted;
+})();
+</script>
+
+</body>
+</html>

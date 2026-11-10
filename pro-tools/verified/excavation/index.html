@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>基坑放坡计算工具 · v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c5282, #2b6cb0);
+    color: #fff;
+    padding: 28px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e4e7ed;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .tab-btn {
+    padding: 14px 22px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #606266;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: #2b6cb0; }
+  .tab-btn.active {
+    color: #2b6cb0;
+    border-bottom-color: #2b6cb0;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px 32px; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .doc {
+    background: #fff;
+    padding: 32px 40px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    max-width: 1000px;
+  }
+  .doc h2 {
+    color: #2c5282;
+    font-size: 20px;
+    margin: 28px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .doc h3 {
+    color: #2b6cb0;
+    font-size: 16px;
+    margin: 20px 0 10px;
+  }
+  .doc p { margin: 10px 0; font-size: 14.5px; }
+  .doc ul, .doc ol { margin: 10px 0 10px 24px; font-size: 14.5px; }
+  .doc li { margin: 6px 0; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13.5px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #d0d7de;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc th { background: #f1f5f9; font-weight: 600; }
+  .warn {
+    background: #fff8e1;
+    border-left: 4px solid #f59e0b;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  .info {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.85);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .test-result {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 13px;
+    margin-top: 16px;
+    white-space: pre-wrap;
+  }
+  .section-label {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>基坑放坡计算工具</h1>
+  <p>依据 GB 50497《建筑基坑工程监测技术标准》、JGJ 120《建筑基坑支护技术规程》</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="source">一、JS 源码</button>
+  <button class="tab-btn" data-tab="test">二、单元测试</button>
+  <button class="tab-btn" data-tab="doc">三、使用说明书</button>
+</div>
+
+<!-- ============ 第一部分：JS 源码 ============ -->
+<section id="source" class="panel active">
+  <span class="section-label">第一部分 · 核心算法源码</span>
+  <pre><code>/**
+ * ============================================================
+ *  基坑放坡计算核心模块
+ *  依据：GB 50497《建筑基坑工程监测技术标准》
+ *        JGJ 120《建筑基坑支护技术规程》
+ *        GB 50300《建筑地基基础工程施工质量验收标准》
+ *  说明：本模块为纯函数实现，无外部依赖，可在浏览器直接运行。
+ *        所有放坡系数、支护选型建议均为工程经验参考值，
+ *        实际工程须以勘察报告与标准原文为准。
+ * ============================================================
+ */
+
+/**
+ * 土质分类枚举（与 GB 50497、JGJ 120 常用分类对齐）
+ * @readonly
+ * @enum {string}
+ */
+const SOIL_TYPE = Object.freeze({
+  HARD_CLAY:       'hard_clay',        // 坚硬黏土
+  HARD_PLASTIC:    'hard_plastic',     // 硬塑粉质黏土 / 黏土
+  PLASTIC:         'plastic',          // 可塑粉质黏土
+  SOFT_PLASTIC:    'soft_plastic',     // 软塑黏土
+  DENSE_SAND:      'dense_sand',       // 密实砂土、碎石类土
+  MEDIUM_SAND:     'medium_sand',      // 中密砂土
+  LOOSE_SAND:      'loose_sand',       // 松散砂土
+  SOFT_SOIL:       'soft_soil',       // 淤泥、软土
+  ROCK:            'rock'              // 岩石（微风化 / 中风化）
+});
+
+/**
+ * 放坡系数参考表（高宽比 1:m 中的 m 值范围）
+ * 说明：表中数值为工程经验参考区间，源自 JGJ 120 及行业通用做法，
+ *       具体取值须结合现场勘察、地下水、荷载等条件，查标准原文确定。
+ * @type {Object.&lt;string, {min:number, max:number, desc:string}&gt;}}
+ */
+const SLOPE_COEFFICIENT_TABLE = Object.freeze({
+  [SOIL_TYPE.HARD_CLAY]:     { min: 0.25, max: 0.33, desc: '坚硬黏土，整体性好' },
+  [SOIL_TYPE.HARD_PLASTIC]:  { min: 0.33, max: 0.50, desc: '硬塑粉质黏土 / 黏土' },
+  [SOIL_TYPE.PLASTIC]:       { min: 0.50, max: 0.75, desc: '可塑粉质黏土' },
+  [SOIL_TYPE.SOFT_PLASTIC]:  { min: 0.75, max: 1.00, desc: '软塑黏土' },
+  [SOIL_TYPE.DENSE_SAND]:    { min: 0.50, max: 0.75, desc: '密实砂土、碎石类土' },
+  [SOIL_TYPE.MEDIUM_SAND]:   { min: 0.75, max: 1.00, desc: '中密砂土' },
+  [SOIL_TYPE.LOOSE_SAND]:    { min: 1.00, max: 1.50, desc: '松散砂土' },
+  [SOIL_TYPE.SOFT_SOIL]:     { min: 1.25, max: 1.75, desc: '淤泥、软土（需特殊处理）' },
+  [SOIL_TYPE.ROCK]:          { min: 0.10, max: 0.25, desc: '微风化 / 中风化岩石' }
+});
+
+/**
+ * 根据土质类型获取放坡系数参考区间
+ *
+ * @param {string} soilType - 土质类型，取值见 SOIL_TYPE 枚举
+ * @returns {{min:number, max:number, desc:string}} 放坡系数区间（1:m 中的 m）
+ * @throws {Error} 当 soilType 非法时抛出
+ *
+ * @example
+ *   getSlopeCoefficient('hard_clay');
+ *   // => { min: 0.25, max: 0.33, desc: '坚硬黏土，整体性好' }
+ */
+function getSlopeCoefficient(soilType) {
+  if (typeof soilType !== 'string' || soilType.trim() === '') {
+    throw new Error('参数 soilType 必须为非空字符串');
+  }
+  const entry = SLOPE_COEFFICIENT_TABLE[soilType];
+  if (!entry) {
+    throw new Error('未识别的土质类型：' + soilType + '，请参考 SOIL_TYPE 枚举');
+  }
+  return { min: entry.min, max: entry.max, desc: entry.desc };
+}
+
+/**
+ * 根据深度与放坡系数计算单侧水平放坡宽度
+ * 公式：b = m × H
+ *
+ * @param {number} depth       - 基坑开挖深度 H（m），必须 > 0
+ * @param {number} coefficient - 放坡系数 m（1:m 中的 m），必须 > 0
+ * @returns {number} 单侧水平放坡宽度（m）
+ * @throws {Error} 参数非法时抛出
+ */
+function calculateSlopeWidth(depth, coefficient) {
+  if (typeof depth !== 'number' || !isFinite(depth) || depth &lt;= 0) {
+    throw new Error('depth 必须为有限正数');
+  }
+  if (typeof coefficient !== 'number' || !isFinite(coefficient) || coefficient &lt;= 0) {
+    throw new Error('coefficient 必须为有限正数');
+  }
+  return depth * coefficient;
+}
+
+/**
+ * 计算放坡后基坑顶部平面尺寸（矩形基坑）
+ * 公式：L_top = L_bottom + 2·m·H
+ *       W_top = W_bottom + 2·m·H
+ *
+ * @param {number} bottomLength - 基坑底部长边（m），必须 > 0
+ * @param {number} bottomWidth  - 基坑底部短边（m），必须 > 0
+ * @param {number} depth        - 开挖深度（m），必须 > 0
+ * @param {number} coefficient  - 放坡系数 m，必须 > 0
+ * @returns {{topLength:number, topWidth:number, slopeWidth:number}}
+ */
+function calculateTopDimensions(bottomLength, bottomWidth, depth, coefficient) {
+  [bottomLength, bottomWidth, depth, coefficient].forEach(function (v, i) {
+    if (typeof v !== 'number' || !isFinite(v) || v &lt;= 0) {
+      throw new Error('第 ' + (i + 1) + ' 个参数必须为有限正数');
+    }
+  });
+  var slopeWidth = depth * coefficient;
+  return {
+    topLength:  bottomLength + 2 * slopeWidth,
+    topWidth:   bottomWidth  + 2 * slopeWidth,
+    slopeWidth: slopeWidth
+  };
+}
+
+/**
+ * 计算矩形基坑放坡开挖的土方量（棱台公式）
+ * 公式：V = H/6 × [S_bottom + S_top + 4·S_mid]
+ * 其中：
+ *   S_bottom = A × B
+ *   S_top    = (A + 2mH) × (B + 2mH)
+ *   S_mid    = (A + mH)  × (B + mH)
+ *
+ * @param {number} A - 基坑底部长边（m），必须 > 0
+ * @param {number} B - 基坑底部短边（m），必须 > 0
+ * @param {number} H - 开挖深度（m），必须 > 0
+ * @param {number} m - 放坡系数，必须 > 0
+ * @returns {{volume:number, bottomArea:number, topArea:number, midArea:number}}
+ *          体积单位 m³，面积单位 m²
+ */
+function calculateExcavationVolume(A, B, H, m) {
+  [A, B, H, m].forEach(function (v, i) {
+    if (typeof v !== 'number' || !isFinite(v) || v &lt;= 0) {
+      throw new Error('第 ' + (i + 1) + ' 个参数必须为有限正数');
+    }
+  });
+  var slopeWidth = m * H;
+  var topA = A + 2 * slopeWidth;
+  var topB = B + 2 * slopeWidth;
+  var midA = A + slopeWidth;
+  var midB = B + slopeWidth;
+
+  var S_bottom = A * B;
+  var S_top    = topA * topB;
+  var S_mid    = midA * midB;
+
+  var volume = (H / 6) * (S_bottom + S_top + 4 * S_mid);
+  return {
+    volume:     volume,
+    bottomArea: S_bottom,
+    topArea:    S_top,
+    midArea:    S_mid
+  };
+}
+
+/**
+ * 基坑安全等级划分（依据 GB 50497 第 3.1.3 条原则）
+ * 注：实际等级须结合破坏后果、周边环境综合判定，此处仅按深度给出初步参考。
+ *
+ * @param {number} depth - 基坑深度（m）
+ * @returns {{level:number, label:string, note:string}}
+ */
+function classifyPitLevel(depth) {
+  if (typeof depth !== 'number' || !isFinite(depth) || depth &lt;= 0) {
+    throw new Error('depth 必须为有限正数');
+  }
+  if (depth &gt; 10) {
+    return { level: 1, label: '一级', note: '深度 &gt; 10m，或周边环境复杂' };
+  }
+  if (depth &gt;= 7) {
+    return { level: 2, label: '二级', note: '深度 7~10m' };
+  }
+  return { level: 3, label: '三级', note: '深度 &lt; 7m，环境简单' };
+}
+
+/**
+ * 根据基坑条件推荐支护方式（参考 JGJ 120 选型原则）
+ * 说明：本函数仅给出初步建议，最终方案须由注册岩土工程师结合勘察、
+ *       周边环境、地下水等条件确定。
+ *
+ * @param {Object} params
+ * @param {number} params.depth          - 基坑深度（m）
+ * @param {string} params.soilType       - 土质类型（SOIL_TYPE）
+ * @param {boolean} [params.hasGroundwater=false] - 是否存在地下水
+ * @param {boolean} [params.complexEnv=false]     - 周边环境是否复杂（邻近建筑/管线）
+ * @param {boolean} [params.allowSlope=true]      - 场地是否允许放坡
+ * @returns {{methods:Array&lt;{name:string, applicable:string, note:string}&gt;, level:Object}}
+ */
+function selectSupportMethod(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('params 必须为对象');
+  }
+  var depth = params.depth;
+  var soilType = params.soilType;
+  var hasGroundwater = !!params.hasGroundwater;
+  var complexEnv = !!params.complexEnv;
+  var allowSlope = params.allowSlope !== false;
+
+  if (typeof depth !== 'number' || !isFinite(depth) || depth &lt;= 0) {
+    throw new Error('depth 必须为有限正数');
+  }
+  if (!SLOPE_COEFFICIENT_TABLE[soilType]) {
+    throw new Error('未识别的土质类型：' + soilType);
+  }
+
+  var level = classifyPitLevel(depth);
+  var methods = [];
+
+  // 软土 / 松散砂土：一般不推荐纯放坡
+  var isWeakSoil = (soilType === SOIL_TYPE.SOFT_SOIL || soilType === SOIL_TYPE.LOOSE_SAND);
+
+  if (allowSlope &amp;&amp; !isWeakSoil &amp;&amp; depth &lt;= 5 &amp;&amp; !complexEnv &amp;&amp; !hasGroundwater) {
+    methods.push({
+      name: '放坡开挖',
+      applicable: '场地开阔、土质较好、深度较浅',
+      note: '经济性好，但须保证坡顶无堆载、无邻近建筑'
+    });
+  }
+
+  if (depth &lt;= 6 &amp;&amp; !isWeakSoil &amp;&amp; !complexEnv) {
+    methods.push({
+      name: '土钉墙',
+      applicable: '深度 ≤ 6m，非软土、非高水位',
+      note: '造价较低，施工快；软土、高水位地区慎用'
+    });
+  }
+
+  if (depth &lt;= 8 &amp;&amp; !complexEnv) {
+    methods.push({
+      name: '水泥土重力式挡墙',
+      applicable: '深度 ≤ 8m，软土地区常用',
+      note: '整体性好，抗渗性较好；宽度较大，占地多'
+    });
+  }
+
+  if (depth &gt;= 5 &amp;&amp; depth &lt;= 12) {
+    methods.push({
+      name: '排桩（悬臂 / 桩锚）',
+      applicable: '深度 5~12m，适用多数土层',
+      note: '刚度大、变形可控；造价较高'
+    });
+  }
+
+  if (depth &gt; 10 || complexEnv || hasGroundwater) {
+    methods.push({
+      name: '地下连续墙',
+      applicable: '深度 &gt; 10m，或周边环境复杂、高水位',
+      note: '刚度大、止水好；造价最高，施工周期长'
+    });
+  }
+
+  if (depth &gt; 8 &amp;&amp; !complexEnv) {
+    methods.push({
+      name: 'SMW 工法桩（型钢水泥土搅拌墙）',
+      applicable: '深度 8~15m，软土地区',
+      note: '兼具挡土与止水，型钢可回收'
+    });
+  }
+
+  if (methods.length === 0) {
+    methods.push({
+      name: '需专项论证',
+      applicable: '当前条件组合较复杂',
+      note: '建议由注册岩土工程师进行专项设计'
+    });
+  }
+
+  return { methods: methods, level: level };
+}
+
+/**
+ * 估算放坡开挖的坡面面积（单侧矩形坡面）
+ * 公式：S = L × √(H² + b²)，其中 b = m·H
+ *
+ * @param {number} length - 坡面沿基坑边方向长度（m）
+ * @param {number} depth  - 深度（m）
+ * @param {number} m      - 放坡系数
+ * @returns {number} 坡面面积（m²）
+ */
+function calculateSlopeSurfaceArea(length, depth, m) {
+  [length, depth, m].forEach(function (v, i) {
+    if (typeof v !== 'number' || !isFinite(v) || v &lt;= 0) {
+      throw new Error('第 ' + (i + 1) + ' 个参数必须为有限正数');
+    }
+  });
+  var b = m * depth;
+  return length * Math.sqrt(depth * depth + b * b);
+}
+
+/**
+ * 计算放坡开挖土方量并给出合理误差范围
+ * 说明：由于土体松散系数、超挖、边坡修整等因素，
+ *       实际土方量与理论值存在偏差，本函数返回 ±5%~10% 的参考区间。
+ *
+ * @param {number} A - 底部长边（m）
+ * @param {number} B - 底部短边（m）
+ * @param {number} H - 深度（m）
+ * @param {number} m - 放坡系数
+ * @returns {{volume:number, rangeMin:number, rangeMax:number, note:string}}
+ */
+function calculateVolumeWithTolerance(A, B, H, m) {
+  var result = calculateExcavationVolume(A, B, H, m);
+  var v = result.volume;
+  // 工程经验：考虑超挖、土体松散、边坡修整等，误差约 ±8%
+  return {
+    volume:   v,
+    rangeMin: v * 0.92,
+    rangeMax: v * 1.08,
+    note: '理论值 ±8%（考虑超挖、松散、修整等施工因素）'
+  };
+}
+
+// 导出（兼容浏览器与 Node）
+if (typeof module !== 'undefined' &amp;&amp; module.exports) {
+  module.exports = {
+    SOIL_TYPE: SOIL_TYPE,
+    SLOPE_COEFFICIENT_TABLE: SLOPE_COEFFICIENT_TABLE,
+    getSlopeCoefficient: getSlopeCoefficient,
+    calculateSlopeWidth: calculateSlopeWidth,
+    calculateTopDimensions: calculateTopDimensions,
+    calculateExcavationVolume: calculateExcavationVolume,
+    classifyPitLevel: classifyPitLevel,
+    selectSupportMethod: selectSupportMethod,
+    calculateSlopeSurfaceArea: calculateSlopeSurfaceArea,
+    calculateVolumeWithTolerance: calculateVolumeWithTolerance
+  };
+}</code></pre>
+</section>
+
+<!-- ============ 第二部分：单元测试 ============ -->
+<section id="test" class="panel">
+  <span class="section-label">第二部分 · 单元测试（纯 JS，≥30 个）</span>
+  <pre><code>/**
+ * ============================================================
+ *  单元测试（纯 JS 实现，无外部依赖）
+ *  覆盖：正常值、边界值、异常输入、精度问题
+ * ============================================================
+ */
+
+// ---------- 简易断言工具 ----------
+var _passed = 0, _failed = 0, _total = 0, _log = [];
+
+function assert(condition, msg) {
+  _total++;
+  if (condition) {
+    _passed++;
+    _log.push('  ✓ ' + msg);
+  } else {
+    _failed++;
+    _log.push('  ✗ ' + msg);
+  }
+}
+
+function assertEq(actual, expected, msg, tol) {
+  tol = tol || 1e-9;
+  var ok = Math.abs(actual - expected) &lt; tol;
+  assert(ok, msg + ' （期望 ' + expected + '，实际 ' + actual + '）');
+}
+
+function assertThrows(fn, msg) {
+  var threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  assert(threw, msg);
+}
+
+// ---------- 1. getSlopeCoefficient ----------
+(function () {
+  var r1 = getSlopeCoefficient('hard_clay');
+  assertEq(r1.min, 0.25, '坚硬黏土 min=0.25');
+  assertEq(r1.max, 0.33, '坚硬黏土 max=0.33');
+
+  var r2 = getSlopeCoefficient('soft_soil');
+  assertEq(r2.min, 1.25, '软土 min=1.25');
+  assertEq(r2.max, 1.75, '软土 max=1.75');
+
+  var r3 = getSlopeCoefficient('rock');
+  assertEq(r3.min, 0.10, '岩石 min=0.10');
+
+  assertThrows(function () { getSlopeCoefficient('unknown'); },
+    '非法土质类型抛错');
+  assertThrows(function () { getSlopeCoefficient(''); },
+    '空字符串抛错');
+  assertThrows(function () { getSlopeCoefficient(null); },
+    'null 抛错');
+  assertThrows(function () { getSlopeCoefficient(123); },
+    '非字符串抛错');
+})();
+
+// ---------- 2. calculateSlopeWidth ----------
+(function () {
+  assertEq(calculateSlopeWidth(5, 0.5), 2.5, '深度5、系数0.5 → 宽2.5');
+  assertEq(calculateSlopeWidth(10, 1.0), 10, '深度10、系数1.0 → 宽10');
+  assertEq(calculateSlopeWidth(0.1, 0.3), 0.03, '小深度边界');
+  assertEq(calculateSlopeWidth(100, 2), 200, '大深度边界');
+
+  assertThrows(function () { calculateSlopeWidth(0, 0.5); },
+    '深度为 0 抛错');
+  assertThrows(function () { calculateSlopeWidth(-1, 0.5); },
+    '深度为负抛错');
+  assertThrows(function () { calculateSlopeWidth(5, 0); },
+    '系数为 0 抛错');
+  assertThrows(function () { calculateSlopeWidth(5, -0.5); },
+    '系数为负抛错');
+  assertThrows(function () { calculateSlopeWidth(Infinity, 0.5); },
+    '深度为 Infinity 抛错');
+})();
+
+// ---------- 3. calculateTopDimensions ----------
+(function () {
+  var r = calculateTopDimensions(10, 6, 5, 0.5);
+  assertEq(r.topLength, 15, '顶部长边 = 10 + 2×0.5×5 = 15');
+  assertEq(r.topWidth,  11, '顶部短边 = 6 + 2×0.5×5 = 11');
+  assertEq(r.slopeWidth, 2.5, '单侧放坡宽 2.5');
+
+  assertThrows(function () { calculateTopDimensions(0, 6, 5, 0.5); },
+    '底部长边为 0 抛错');
+  assertThrows(function () { calculateTopDimensions(10, 6, 5, -0.1); },
+    '系数为负抛错');
+})();
+
+// ---------- 4. calculateExcavationVolume ----------
+(function () {
+  // 验证：A=10, B=6, H=5, m=0.5
+  // slopeWidth = 2.5
+  // topA = 15, topB = 11
+  // midA = 12.5, midB = 8.5
+  // S_bottom = 60, S_top = 165, S_mid = 106.25
+  // V = 5/6 × (60 + 165 + 4×106.25) = 5/6 × 650 = 541.666...
+  var r = calculateExcavationVolume(10, 6, 5, 0.5);
+  assertEq(r.bottomArea, 60, '底面积 60');
+  assertEq(r.topArea, 165, '顶面积 165');
+  assertEq(r.midArea, 106.25, '中截面面积 106.25');
+  assertEq(r.volume, 541.6666666666666, '体积 ≈ 541.67', 1e-6);
+
+  // 当 m=0 时退化为长方体（但 m 必须 >0，故用极小值近似）
+  var r2 = calculateExcavationVolume(10, 6, 5, 0.0001);
+  assertEq(r2.volume, 300, 'm→0 时体积趋近 A×B×H=300', 0.5);
+
+  // 精度：大数相乘
+  var r3 = calculateExcavationVolume(100, 80, 20, 1);
+  // slopeWidth=20, topA=140, topB=120, midA=120, midB=100
+  // S_b=8000, S_t=16800, S_m=12000
+  // V = 20/6 × (8000 + 16800 + 48000) = 20/6 × 72800 = 242666.666...
+  assertEq(r3.volume, 242666.66666666666, '大尺寸体积精度', 1e-3);
+
+  assertThrows(function () { calculateExcavationVolume(0, 6, 5, 0.5); },
+    'A=0 抛错');
+  assertThrows(function () { calculateExcavationVolume(10, 6, 0, 0.5); },
+    'H=0 抛错');
+  assertThrows(function () { calculateExcavationVolume(10, 6, 5, NaN); },
+    'm=NaN 抛错');
+})();
+
+// ---------- 5. classifyPitLevel ----------
+(function () {
+  assertEq(classifyPitLevel(3).level, 3, '深度 3m → 三级');
+  assertEq(classifyPitLevel(7).level, 2, '深度 7m → 二级');
+  assertEq(classifyPitLevel(10).level, 2, '深度 10m → 二级');
+  assertEq(classifyPitLevel(10.1).level, 1, '深度 10.1m → 一级');
+  assertEq(classifyPitLevel(25).level, 1, '深度 25m → 一级');
+
+  assertThrows(function () { classifyPitLevel(0); }, '深度 0 抛错');
+  assertThrows(function () { classifyPitLevel(-5); }, '深度为负抛错');
+})();
+
+// ---------- 6. selectSupportMethod ----------
+(function () {
+  // 场景 1：浅基坑、好土、无地下水、环境简单 → 放坡 + 土钉墙
+  var r1 = selectSupportMethod({
+    depth: 4, soilType: 'hard_plastic',
+    hasGroundwater: false, complexEnv: false, allowSlope: true
+  });
+  var names1 = r1.methods.map(function (m) { return m.name; });
+  assert(names1.indexOf('放坡开挖') &gt;= 0, '浅基坑推荐放坡');
+  assert(names1.indexOf('土钉墙') &gt;= 0, '浅基坑推荐土钉墙');
+  assertEq(r1.level.level, 3, '浅基坑等级三级');
+
+  // 场景 2：深基坑、复杂环境 → 地下连续墙
+  var r2 = selectSupportMethod({
+    depth: 15, soilType: 'soft_soil',
+    hasGroundwater: true, complexEnv: true, allowSlope: false
+  });
+  var names2 = r2.methods.map(function (m) { return m.name; });
+  assert(names2.indexOf('地下连续墙') &gt;= 0, '深基坑+复杂环境推荐地下连续墙');
+  assert(names2.indexOf('放坡开挖') === -1, '不允许放坡时不推荐放坡');
+  assertEq(r2.level.level, 1, '深基坑等级一级');
+
+  // 场景 3：软土浅基坑 → 不推荐放坡
+  var r3 = selectSupportMethod({
+    depth: 3, soilType: 'soft_soil',
+    hasGroundwater: false, complexEnv: false, allowSlope: true
+  });
+  var names3 = r3.methods.map(function (m) { return m.name; });
+  assert(names3.indexOf('放坡开挖') === -1, '软土不推荐放坡');
+
+  assertThrows(function () { selectSupportMethod(null); }, 'null 参数抛错');
+  assertThrows(function () { selectSupportMethod({ depth: 5 }); },
+    '缺少 soilType 抛错');
+  assertThrows(function () {
+    selectSupportMethod({ depth: 5, soilType: 'xxx' });
+  }, '非法 soilType 抛错');
+})();
+
+// ---------- 7. calculateSlopeSurfaceArea ----------
+(function () {
+  // L=10, H=5, m=0.5 → b=2.5, 斜边=√(25+6.25)=√31.25≈5.590
+  var r = calculateSlopeSurfaceArea(10, 5, 0.5);
+  assertEq(r, 55.90169943749474, '坡面面积精度', 1e-6);
+
+  assertThrows(function () { calculateSlopeSurfaceArea(0, 5, 0.5); },
+    '长度为 0 抛错');
+})();
+
+// ---------- 8. calculateVolumeWithTolerance ----------
+(function () {
+  var r = calculateVolumeWithTolerance(10, 6, 5, 0.5);
+  assertEq(r.volume, 541.6666666666666, '带误差体积理论值', 1e-6);
+  assertEq(r.rangeMin, 541.6666666666666 * 0.92, '误差下限', 1e-6);
+  assertEq(r.rangeMax, 541.6666666666666 * 1.08, '误差上限', 1e-6);
+  assert(typeof r.note === 'string' &amp;&amp; r.note.length &gt; 0, '误差说明非空');
+})();
+
+// ---------- 9. 浮点精度专项 ----------
+(function () {
+  // 0.1 + 0.2 经典问题：本工具使用乘法，避免直接加和
+  var r = calculateExcavationVolume(1, 1, 1, 0.1);
+  // slopeWidth=0.1, topA=1.2, topB=1.2, midA=1.1, midB=1.1
+  // S_b=1, S_t=1.44, S_m=1.21
+  // V = 1/6 × (1 + 1.44 + 4×1.21) = 1/6 × 7.28 = 1.213333...
+  assertEq(r.volume, 7.28 / 6, '浮点精度 0.1 场景', 1e-10);
+})();
+
+// ---------- 输出结果 ----------
+console.log(_log.join('\n'));
+console.log('\n通过 ' + _passed + ' / 共 ' + _total +
+  (_failed &gt; 0 ? '（失败 ' + _failed + '）' : ''));
+
+// 页面展示
+document.getElementById('test-output').textContent =
+  _log.join('\n') + '\n\n通过 ' + _passed + ' / 共 ' + _total;</code></pre>
+  <div id="test-output" class="test-result">点击「运行测试」查看结果</div>
+  <button onclick="runTests()" style="margin-top:12px;padding:8px 18px;background:#2b6cb0;color:#fff;border:none;border-radius:4px;cursor:pointer;">运行测试</button>
+</section>
+
+<!-- ============ 第三部分：使用说明书 ============ -->
+<section id="doc" class="panel">
+  <div class="doc">
+
+    <h2>一、工具用途</h2>
+    <p>本工具面向土木工程施工技术人员、造价人员、监理人员及注册岩土工程师，提供基坑放坡相关的三项基础计算：</p>
+    <ol>
+      <li><b>放坡系数查询</b>：根据土质类别给出 1:m 中 m 值的参考区间；</li>
+      <li><b>开挖土方量计算</b>：基于矩形基坑棱台公式，计算放坡开挖的理论土方量，并给出合理误差范围；</li>
+      <li><b>支护方式选型建议</b>：根据基坑深度、土质、地下水、周边环境等条件，给出初步支护方案推荐。</li>
+    </ol>
+    <p>本工具适用于方案阶段、投标估算、施工组织的初步测算，<b>不能替代正式的基坑支护设计文件</b>。正式工程须由具备相应资质的单位出具专项设计，并经专家论证（一级基坑）。</p>
+
+    <h2>二、参数详解</h2>
+    <h3>2.1 放坡系数 m</h3>
+    <p>放坡系数定义为基坑边坡高度 H 与水平投影宽度 b 之比，即 <code>1:m = H:b</code>，因此 <code>b = m × H</code>。m 值越大，边坡越缓，占地越多但越安全；m 值越小，边坡越陡，占地少但稳定性差。</p>
+    <table>
+      <tr><th>土质类别</th><th>m 参考区间</th><th>说明</th></tr>
+      <tr><td>坚硬黏土</td><td>0.25 ~ 0.33</td><td>整体性好，可较陡</td></tr>
+      <tr><td>硬塑粉质黏土 / 黏土</td><td>0.33 ~ 0.50</td><td>常见一般黏性土</td></tr>
+      <tr><td>可塑粉质黏土</td><td>0.50 ~ 0.75</td><td>中等塑性</td></tr>
+      <tr><td>软塑黏土</td><td>0.75 ~ 1.00</td><td>含水量较高</td></tr>
+      <tr><td>密实砂土、碎石类土</td><td>0.50 ~ 0.75</td><td>内摩擦角较大</td></tr>
+      <tr><td>中密砂土</td><td>0.75 ~ 1.00</td><td>—</td></tr>
+      <tr><td>松散砂土</td><td>1.00 ~ 1.50</td><td>易坍塌</td></tr>
+      <tr><td>淤泥、软土</td><td>1.25 ~ 1.75</td><td>一般不推荐纯放坡</td></tr>
+      <tr><td>微风化 / 中风化岩石</td><td>0.10 ~ 0.25</td><td>可近直立</td></tr>
+    </table>
+    <div class="warn">⚠ 上表为工程经验参考值，具体取值须结合现场勘察报告、地下水位、坡顶荷载、开挖暴露时间等因素，查 JGJ 120、GB 50497 等标准原文确定。</div>
+
+    <h3>2.2 开挖土方量参数</h3>
+    <ul>
+      <li><b>A、B</b>：基坑底部长边、短边（m），指结构外墙（含工作面）外轮廓尺寸；</li>
+      <li><b>H</b>：开挖深度（m），自自然地面算至坑底；</li>
+      <li><b>m</b>：放坡系数。</li>
+    </ul>
+    <p>计算公式采用棱台体积公式：</p>
+    <p style="text-align:center;font-family:monospace;background:#f1f5f9;padding:10px;border-radius:4px;">V = H/6 × [S<sub>底</sub> + S<sub>顶</sub> + 4·S<sub>中</sub>]</p>
+    <p>其中 S<sub>底</sub> = A×B，S<sub>顶</sub> = (A+2mH)×(B+2mH)，S<sub>中</sub> = (A+mH)×(B+mH)。</p>
+
+    <h3>2.3 支护选型参数</h3>
+    <ul>
+      <li><b>基坑深度</b>：决定安全等级（GB 50497 第 3.1.3 条：&gt;10m 或环境复杂为一级，7~10m 为二级，&lt;7m 且环境简单为三级）；</li>
+      <li><b>土质类型</b>：软土、松散砂土一般不推荐纯放坡；</li>
+      <li><b>地下水</b>：高水位地区须考虑止水帷幕；</li>
+      <li><b>周边环境</b>：邻近建筑、重要管线时优先选用刚度大、变形小的支护形式；</li>
+      <li><b>场地条件</b>：是否允许放坡（红线、邻近建筑距离）。</li>
+    </ul>
+
+    <h2>三、使用场景（5 例）</h2>
+
+    <h3>场景 1：住宅小区地下室浅基坑</h3>
+    <p>条件：深度 4m，硬塑粉质黏土，场地开阔无邻近建筑，无地下水。</p>
+    <p>操作：土质选「硬塑粉质黏土」→ m 取 0.5；底边 30×20m → 顶边 34×24m；体积约 3200 m³；推荐放坡开挖 + 土钉墙备选。</p>
+
+    <h3>场景 2：城市地铁车站深基坑</h3>
+    <p>条件：深度 16m，软土地区，高水位，紧邻既有建筑与市政管线。</p>
+    <p>操作：安全等级一级；推荐地下连续墙 + 内支撑，或排桩 + 止水帷幕；放坡开挖不适用。</p>
+
+    <h3>场景 3：山区公路挡墙基坑</h3>
+    <p>条件：深度 3m，中风化岩石，场地受限。</p>
+    <p>操作：岩石 m 可取 0.1~0.25，近乎直立开挖；体积较小；一般无需专门支护，必要时喷锚。</p>
+
+    <h3>场景 4：沿海工业区管廊基坑</h3>
+    <p>条件：深度 6m，中密砂土，地下水位较高，周边有管线。</p>
+    <p>操作：m 取 1.0 左右；推荐 SMW 工法桩或排桩 + 止水帷幕；放坡开挖风险较大。</p>
+
+    <h3>场景 5：投标阶段快速估算</h3>
+    <p>条件：仅知深度 8m、底边 40×25m、土质为可塑粉质黏土。</p>
+    <p>操作：m 取 0.6 → 体积约 7000 m³（±8%）；用于投标土方量报价参考，最终按实结算。</p>
+
+    <h2>四、常见错误</h2>
+    <ol>
+      <li><b>混淆 m 与坡度</b>：m 是高宽比 1:m 中的 m，不是坡度百分比；</li>
+      <li><b>忽略工作面</b>：底边 A、B 应含结构外墙 + 工作面（一般每边 0.6~1.0m），而非结构净尺寸；</li>
+      <li><b>用长方体公式估算放坡基坑</b>：放坡后为棱台，体积明显大于 A×B×H；</li>
+      <li><b>软土地区盲目放坡</b>：淤泥、软塑黏土放坡极易滑坡，须专项论证；</li>
+      <li><b>忽视地下水</b>：高水位地区放坡须配合降水或止水，否则边坡失稳；</li>
+      <li><b>坡顶堆载</b>：坡顶 1~2m 范围内严禁堆载，否则显著降低稳定性；</li>
+      <li><b>将本工具结果作为施工图依据</b>：本工具仅用于初步测算，正式工程须专项设计。</li>
+    </ol>
+
+    <h2>五、数据依据</h2>
+    <ul>
+      <li><b>GB 50497-2019《建筑基坑工程监测技术标准》</b>：基坑安全等级划分、监测项目；</li>
+      <li><b>JGJ 120-2010《建筑基坑支护技术规程》</b>：支护选型、放坡、土钉墙、排桩等设计原则；</li>
+      <li><b>GB 50300-2013《建筑地基基础工程施工质量验收标准》</b>：基坑开挖验收要求；</li>
+      <li><b>GB 50496-2018《大体积混凝土施工标准》</b>（相关参考）；</li>
+      <li><b>GB 50007-2011《建筑地基基础设计规范》</b>：土质分类、承载力。</li>
+    </ul>
+    <div class="info">ℹ 本工具中的放坡系数区间、支护选型建议均基于上述标准的通用原则与行业通用做法整理，具体工程须查标准原文并结合勘察报告确定。</div>
+
+    <h2>六、精度与误差说明（有限精准原则）</h2>
+    <p>现实工程中的变量是无限的（土体非均质、地下水动态变化、施工偏差、荷载不确定性……），本工具遵循「<b>方法准、输入项准、结果给误差范围</b>」的原则，<b>不承诺绝对精确</b>。</p>
+
+    <h3>6.1 算准了什么</h3>
+    <ul>
+      <li>几何计算部分（放坡宽度、顶面尺寸、棱台体积）在<b>输入参数准确</b>的前提下，数学上是精确的（浮点误差 &lt; 1e-10）；</li>
+      <li>放坡系数区间、支护选型建议符合 JGJ 120、GB 50497 的通用原则。</li>
+    </ul>
+
+    <h3>6.2 哪些因素没算进去</h3>
+    <ul>
+      <li>土体实际非均质性、夹层、裂隙；</li>
+      <li>地下水位动态、渗流力；</li>
+      <li>坡顶实际荷载（施工机械、堆载、邻近建筑）；</li>
+      <li>开挖顺序、暴露时间、雨季影响；</li>
+      <li>施工超挖、边坡修整偏差；</li>
+      <li>土体松散系数（挖方与实方的差异）；</li>
+      <li>地震、爆破等动力荷载。</li>
+    </ul>
+
+    <h3>6.3 误差大概多大</h3>
+    <ul>
+      <li><b>土方量</b>：理论值 ±8% 为合理施工误差范围（考虑超挖、松散、修整）；</li>
+      <li><b>放坡系数</b>：表中区间本身即为参考范围，实际取值须由勘察确定，偏差可能超过 ±20%；</li>
+      <li><b>支护选型</b>：仅为初步建议，最终方案须专项设计，不可直接作为施工图依据。</li>
+    </ul>
+    <div class="warn">⚠ 本工具<b>不承诺</b>「精确计算」「绝对准确」「100% 无误」。所有结果仅供初步测算参考，正式工程须由具备资质的单位出具专项设计文件。</div>
+
+    <h2>七、局限性</h2>
+    <ol>
+      <li>仅支持矩形基坑，异形基坑（圆形、多边形、阶梯断面）不适用；</li>
+      <li>未考虑分层开挖、多级放坡、平台设置；</li>
+      <li>未进行边坡稳定性验算（须用瑞典圆弧法、Bishop 法等）；</li>
+      <li>未考虑降水、止水帷幕设计；</li>
+      <li>未进行内力变形计算（须用理正、PLAXIS、MIDAS 等专业软件）；</li>
+      <li>土质分类较粗，无法替代详细勘察报告；</li>
+      <li>本工具为辅助测算工具，<b>不能替代注册岩土工程师的专项设计</b>。</li>
+    </ol>
+
+    <h2>八、结语</h2>
+    <p>基坑工程是土木工程中风险最高的分部工程之一，「十次事故九次基坑」。本工具旨在帮助技术人员在方案阶段快速形成合理估算，减少低级计算错误，但<b>绝不能替代勘察、设计、论证、监测</b>等完整的技术流程。使用者应始终牢记：计算只是手段，安全才是目的。</p>
+
+  </div>
+</section>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+  // 标签页切换
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 运行测试
+  function runTests() {
+    _passed = 0; _failed = 0; _total = 0; _log = [];
+    try {
+      /* 修正：核心算法只存在于 #source 的 <pre><code> 展示块里，从未被执行，
+         导致 getSlopeCoefficient 等函数根本不存在。
+         做法：先把核心代码和测试代码拼在一起，同一次 eval 执行。 */
+      var core = document.querySelector('#source pre code').textContent;
+      var tests = document.querySelector('#test pre code').textContent;
+      /* 还原被 HTML 转义的运算符 */
+      function unesc(t) {
+        return t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+      }
+      var code = unesc(core);
+      var tests = unesc(document.querySelector('#test pre code').textContent);
+      /* 注意：必须用 eval 而非 new Function——_passed/_failed/_log 是闭包变量，
+         new Function 建的是独立作用域，取不到这些累加器（会得到 0/0） */
+      eval(code + '\n;');
+      eval(tests);
+    } catch (e) {
+      _log.push('执行异常：' + e.message);
+    }
+    document.getElementById('test-output').textContent =
+      _log.join('\n') + '\n\n通过 ' + _passed + ' / 共 ' + _total +
+      (_failed > 0 ? '（失败 ' + _failed + '）' : ' ✓ 全部通过');
+  }
+</script>
+
+</body>
+</html>

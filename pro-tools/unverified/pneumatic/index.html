@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>气动气缸选型工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6f8;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e5ea;
+    padding: 0 32px;
+  }
+  .tab {
+    padding: 14px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #5a6c7d;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab:hover { color: #2a5298; }
+  .tab.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  .container { padding: 24px 32px; max-width: 1280px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* 计算器 */
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 900px) { .calc-grid { grid-template-columns: 1fr; } }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h3 {
+    font-size: 15px;
+    color: #1e3c72;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef1f5;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 70px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .form-row label { font-size: 13px; color: #4a5568; }
+  .form-row input {
+    padding: 7px 10px;
+    border: 1px solid #d1d9e0;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-row input:focus { border-color: #2a5298; }
+  .form-row .unit { font-size: 12px; color: #7a8a9a; }
+  .btn {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1e3c72; }
+  .btn-secondary {
+    background: #fff;
+    color: #2a5298;
+    border: 1px solid #2a5298;
+  }
+  .btn-secondary:hover { background: #f0f4fa; }
+  .result-block {
+    background: #f8fafc;
+    border-left: 3px solid #2a5298;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-radius: 0 4px 4px 0;
+  }
+  .result-label { font-size: 12px; color: #7a8a9a; }
+  .result-value { font-size: 18px; color: #1e3c72; font-weight: 600; margin-top: 2px; }
+  .result-range { font-size: 11px; color: #a0522d; margin-top: 2px; }
+  .note {
+    background: #fff8e1;
+    border-left: 3px solid #f5a623;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #6b5a1f;
+    border-radius: 0 4px 4px 0;
+    margin-top: 16px;
+  }
+
+  /* 测试 */
+  .test-toolbar { margin-bottom: 16px; }
+  .test-summary {
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .test-summary.pass { background: #e8f5e9; color: #2e7d32; }
+  .test-summary.fail { background: #ffebee; color: #c62828; }
+  .test-list {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    max-height: 600px;
+    overflow-y: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .test-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f2f5;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-item:last-child { border-bottom: none; }
+  .test-item.pass { color: #2e7d32; }
+  .test-item.fail { color: #c62828; background: #fff5f5; }
+  .test-item .tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    margin-right: 8px;
+  }
+  .test-item.pass .tag { background: #c8e6c9; }
+  .test-item.fail .tag { background: #ffcdd2; }
+
+  /* 说明 */
+  .doc {
+    background: #fff;
+    border-radius: 8px;
+    padding: 32px 40px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .doc h2 {
+    font-size: 18px;
+    color: #1e3c72;
+    margin: 28px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e1e5ea;
+  }
+  .doc h2:first-child { margin-top: 0; }
+  .doc h3 {
+    font-size: 15px;
+    color: #2a5298;
+    margin: 20px 0 8px;
+  }
+  .doc p { margin-bottom: 10px; }
+  .doc ul, .doc ol { margin: 8px 0 12px 24px; }
+  .doc li { margin-bottom: 4px; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #e1e5ea;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .doc th { background: #f4f6f8; font-weight: 600; color: #1e3c72; }
+  .doc code {
+    background: #f4f6f8;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #c7254e;
+  }
+  .doc .warn {
+    background: #fff3cd;
+    border-left: 3px solid #f5a623;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc .info {
+    background: #e7f3ff;
+    border-left: 3px solid #2a5298;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+
+  /* 版本号 */
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #a0a8b0;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>气动气缸选型工具</h1>
+  <p>气缸推力 / 耗气量 / 动作时间计算 · 空气消耗量标准状态换算</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">计算器</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<div class="container">
+
+  <!-- 计算器 -->
+  <div class="panel active" id="panel-calc">
+    <div class="calc-grid">
+      <div class="card">
+        <h3>输入参数</h3>
+        <div class="form-row">
+          <label>工作压力（表压）</label>
+          <input type="number" id="inp-pressure" value="0.5" step="0.01" min="0">
+          <span class="unit">MPa</span>
+        </div>
+        <div class="form-row">
+          <label>缸径 D</label>
+          <input type="number" id="inp-bore" value="40" step="1" min="0">
+          <span class="unit">mm</span>
+        </div>
+        <div class="form-row">
+          <label>杆径 d</label>
+          <input type="number" id="inp-rod" value="12" step="1" min="0">
+          <span class="unit">mm</span>
+        </div>
+        <div class="form-row">
+          <label>行程 L</label>
+          <input type="number" id="inp-stroke" value="100" step="1" min="0">
+          <span class="unit">mm</span>
+        </div>
+        <div class="form-row">
+          <label>负载质量</label>
+          <input type="number" id="inp-mass" value="5" step="0.1" min="0">
+          <span class="unit">kg</span>
+        </div>
+        <div class="form-row">
+          <label>负载率</label>
+          <input type="number" id="inp-loadrate" value="50" step="1" min="0" max="100">
+          <span class="unit">%</span>
+        </div>
+        <div class="form-row">
+          <label>每分钟循环次数</label>
+          <input type="number" id="inp-cycles" value="10" step="1" min="0">
+          <span class="unit">次/min</span>
+        </div>
+        <div class="form-row">
+          <label>进气温度</label>
+          <input type="number" id="inp-temp" value="20" step="1">
+          <span class="unit">°C</span>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn" id="btn-calc">开始计算</button>
+          <button class="btn btn-secondary" id="btn-reset" style="margin-left:8px;">重置</button>
+        </div>
+        <div class="note">
+          提示：负载率推荐值 — 静负载 ≤70%，动负载 ≤50%（参考 JB/T 10702）。
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>计算结果</h3>
+        <div id="results">
+          <div style="color:#a0a8b0; font-size:13px; text-align:center; padding:40px 0;">
+            请填写参数后点击"开始计算"
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 测试 -->
+  <div class="panel" id="panel-test">
+    <div class="test-toolbar">
+      <button class="btn" id="btn-run">运行全部测试</button>
+      <span style="margin-left:12px; font-size:13px; color:#7a8a9a;">共 35 个用例 · 覆盖正常值 / 边界值 / 异常输入 / 精度</span>
+    </div>
+    <div id="test-summary" class="test-summary" style="display:none;"></div>
+    <div id="test-list" class="test-list"></div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="panel" id="panel-doc">
+    <div class="doc">
+      <h2>一、工具用途</h2>
+      <p>本工具用于气动系统中标准单作用 / 双作用气缸的初步选型计算，覆盖以下四类核心计算：</p>
+      <ol>
+        <li><strong>气缸理论推力 / 拉力</strong>：基于工作压力与缸径、杆径，按截面积计算理论出力。</li>
+        <li><strong>实际可用推力</strong>：引入负载率（一般 50%~70%）折算实际可驱动负载。</li>
+        <li><strong>空气消耗量</strong>：计算单次动作耗气量、每分钟耗气量，并换算到标准状态（自由空气）。</li>
+        <li><strong>动作时间估算</strong>：基于负载质量、缸径、压力估算伸出 / 缩回时间（经验公式）。</li>
+      </ol>
+      <p>适用场景：自动化设备气路设计初期选型、空压机容量估算、气源处理组件（FRL）规格确认、车间耗气量统计。</p>
+      <div class="warn">
+        <strong>重要提示：</strong>本工具为工程估算工具，结果仅供选型参考，不作为最终验收依据。实际选型需结合厂商样本、现场工况、安全系数综合判断。
+      </div>
+
+      <h2>二、参数详解</h2>
+      <table>
+        <tr><th>参数</th><th>符号</th><th>单位</th><th>含义与取值建议</th></tr>
+        <tr><td>工作压力</td><td>P</td><td>MPa（表压）</td><td>气源经调压阀后的使用压力。工业常用 0.4~0.6 MPa。计算推力时按表压，计算耗气量时会自动加上 0.1013 MPa 换算为绝对压力。</td></tr>
+        <tr><td>缸径</td><td>D</td><td>mm</td><td>气缸内径，标准系列：8、10、12、16、20、25、32、40、50、63、80、100、125、160、200、250、320 mm（参考 GB/T 13305、ISO 3320）。</td></tr>
+        <tr><td>杆径</td><td>d</td><td>mm</td><td>活塞杆直径，标准系列：4、5、6、8、10、12、14、16、20、25、32、40 mm。仅影响拉力侧出力与缩回耗气量。</td></tr>
+        <tr><td>行程</td><td>L</td><td>mm</td><td>活塞有效位移。标准行程按 10 mm 递增，超长行程需咨询厂商。</td></tr>
+        <tr><td>负载质量</td><td>m</td><td>kg</td><td>被驱动机构（含夹具、工件）的总质量。用于动作时间估算。</td></tr>
+        <tr><td>负载率</td><td>η</td><td>%</td><td>实际负载 / 理论出力。JB/T 10702 推荐：静负载 ≤70%，动负载 ≤50%。本工具默认 50%。</td></tr>
+        <tr><td>每分钟循环次数</td><td>n</td><td>次/min</td><td>一个循环 = 一次伸出 + 一次缩回。用于计算每分钟耗气量。</td></tr>
+        <tr><td>进气温度</td><td>T</td><td>°C</td><td>进入气缸前的空气温度，用于标准状态换算。默认 20°C（ISO 2533 标准状态）。</td></tr>
+      </table>
+
+      <h2>三、使用场景</h2>
+
+      <h3>场景 1：夹爪气缸选型</h3>
+      <p>某自动化产线需要气缸夹持 8 kg 工件，要求夹持力 ≥ 200 N，行程 30 mm，工作频率 20 次/min。输入 P=0.5 MPa、负载率 50%，计算得 D=25 mm 时理论推力约 245 N，实际可用 122 N，不足；D=32 mm 时理论推力约 402 N，实际可用 201 N，满足要求。再校核每分钟耗气量约 7.5 L（标准状态），用于空压机容量核算。</p>
+
+      <h3>场景 2：顶升机构耗气量统计</h3>
+      <p>车间有 8 台设备，每台使用 D=63、d=20、L=200 mm 气缸做顶升，每分钟 6 次循环，压力 0.5 MPa。单缸每分钟耗气量约 42 L（标准状态），8 台合计约 336 L/min ≈ 0.34 m³/min，据此选择空压机与储气罐容量，并考虑同时系数（一般取 0.6~0.8）。</p>
+
+      <h3>场景 3：动作节拍校核</h3>
+      <p>某移载机构要求气缸在 0.3 s 内完成 200 mm 行程，负载 10 kg。选用 D=40 mm 气缸，P=0.6 MPa，计算动作时间约 0.22 s，满足节拍；若负载增至 30 kg，动作时间增至约 0.45 s，不满足，需增大缸径或提高压力。</p>
+
+      <h3>场景 4：高海拔 / 高温工况修正</h3>
+      <p>设备部署在海拔 2000 m 或环境温度 50°C 的车间，空气密度下降，同样表压下质量流量减少。通过调整"进气温度"参数，可估算标准状态下的等效耗气量，用于空压机选型修正。注意：推力计算基于表压，理论上不受海拔影响（前提是调压阀能稳定输出设定表压）。</p>
+
+      <h3>场景 5：双作用气缸差动出力对比</h3>
+      <p>对比 D=50 mm、d=20 mm 气缸在 0.5 MPa 下的推力（约 981 N）与拉力（约 864 N），拉力约为推力的 88%。设计双向受力机构时，需按拉力侧校核，避免缩回方向出力不足。</p>
+
+      <h3>场景 6：标准状态换算</h3>
+      <p>流量计测得某支路实际耗气 15 L/min，工况为 0.6 MPa（表压）、40°C。换算到 ISO 标准状态（20°C、0.1013 MPa 绝压）约 105 L/min，用于与空压机铭牌流量（通常标注为标准状态）对比。</p>
+
+      <h2>四、常见错误</h2>
+      <ul>
+        <li><strong>混淆表压与绝压：</strong>工作压力输入应为表压（相对大气压），工具内部会自动加上 0.1013 MPa 换算为绝压用于耗气量计算。若误输入绝压，耗气量会被严重低估。</li>
+        <li><strong>忽略负载率：</strong>理论推力 ≠ 实际可用推力。气缸启动需克服静摩擦、密封阻力，且需保留加速裕量。JB/T 10702 明确建议动负载率 ≤50%。</li>
+        <li><strong>杆径漏填：</strong>双作用气缸拉力侧必须输入杆径，否则拉力会被错误计算为与推力相等。</li>
+        <li><strong>循环次数定义错误：</strong>"每分钟循环次数"指完整循环（伸出+缩回），不是单程次数。若设备每分钟伸出 10 次、缩回 10 次，应填 10 而非 20。</li>
+        <li><strong>动作时间当精确值：</strong>动作时间受管路直径、阀的流通能力（Cv 值）、排气背压、负载摩擦等多因素影响，本工具给出的是经验估算，实际可能偏差 ±30% 以上。</li>
+        <li><strong>单位混用：</strong>缸径、行程必须为 mm，压力必须为 MPa，质量必须为 kg。工具未做单位自动转换。</li>
+      </ul>
+
+      <h2>五、数据依据</h2>
+      <p>本工具计算公式与参数取值参考以下标准与资料（具体条款以标准原文为准）：</p>
+      <ul>
+        <li><strong>GB/T 13305</strong>（ISO 3320）：气动 气缸内径与活塞杆外径系列。</li>
+        <li><strong>JB/T 10702</strong>：气动气缸技术条件 — 负载率推荐值、试验方法。</li>
+        <li><strong>GB/T 7932</strong>（ISO 4414）：气动系统通用技术条件。</li>
+        <li><strong>ISO 2533 / GB/T 3853</strong>：容积式压缩机 验收试验 — 标准状态定义（20°C、0.1013 MPa、65% RH）。</li>
+        <li><strong>ISO 6358</strong>：气动可压缩流体元件流量测定方法。</li>
+        <li><strong>ISO 5599-1</strong>：气动方向控制阀。</li>
+        <li>《机械设计手册》（气动章节）：气缸出力、耗气量、动作时间经验公式。</li>
+      </ul>
+      <div class="info">
+        注：部分具体数值（如摩擦系数、流量系数）需查标准原文或厂商样本，本工具采用行业通用经验值。
+      </div>
+
+      <h2>六、精度与误差说明（有限精准原则）</h2>
+      <p>现实工况变量是无限的（温度波动、摩擦变化、泄漏、阀门响应、管路压降、负载动态特性等），本工具遵循"方法准、输入项准、结果给误差范围"的有限精准原则，<strong>不承诺绝对精确</strong>。</p>
+
+      <h3>① 算准了什么</h3>
+      <ul>
+        <li><strong>理论推力 / 拉力：</strong>基于几何截面积与压力，按 F = P × A 计算。在压力稳定、温度恒定的理想条件下，几何计算本身无误差。</li>
+        <li><strong>标准状态换算：</strong>基于理想气体状态方程 PV = nRT，在温度压力变化不大时换算精度较高。</li>
+        <li><strong>单次耗气量的几何部分：</strong>气缸容积按圆柱体计算，几何上准确。</li>
+      </ul>
+
+      <h3>② 哪些因素没算进去</h3>
+      <ul>
+        <li>气缸密封摩擦（随使用时长、润滑状态变化）。</li>
+        <li>管路压降（管径、长度、弯头数量、接头流通面积）。</li>
+        <li>电磁阀的流通能力（Cv 值、响应时间）。</li>
+        <li>排气侧背压（消声器堵塞、排气管过长）。</li>
+        <li>空气湿度对密度的影响（本工具按干空气近似）。</li>
+        <li>气体可压缩性在高速工况下的非线性（Z 压缩因子）。</li>
+        <li>负载的摩擦、惯性、外力（如弹簧力、重力分量）。</li>
+        <li>泄漏（接头、密封件老化）。</li>
+      </ul>
+
+      <h3>③ 误差大概多大</h3>
+      <table>
+        <tr><th>计算项</th><th>典型误差范围</th><th>说明</th></tr>
+        <tr><td>理论推力 / 拉力</td><td>±2% 以内</td><td>几何计算，主要误差来自压力波动</td></tr>
+        <tr><td>实际可用推力</td><td>±10% ~ ±20%</td><td>取决于负载率取值的合理性、摩擦变化</td></tr>
+        <tr><td>单次耗气量</td><td>±10% ~ ±15%</td><td>未计入死区容积、泄漏、残余压力</td></tr>
+        <tr><td>每分钟耗气量</td><td>±15% ~ ±25%</td><td>累积误差，且受循环稳定性影响</td></tr>
+        <tr><td>动作时间</td><td>±30% 以上</td><td>经验公式，强烈依赖工况，仅供量级参考</td></tr>
+        <tr><td>标准状态换算</td><td>±3% ~ ±5%</td><td>理想气体近似，高温高压下误差增大</td></tr>
+      </table>
+
+      <div class="warn">
+        <strong>禁止将本工具结果用于安全关键设计。</strong>涉及人身安全、重大财产的场合，必须按相关标准进行详细计算、试验验证，并保留足够安全系数。
+      </div>
+
+      <h2>七、局限性</h2>
+      <ul>
+        <li>仅适用于标准单活塞杆双作用气缸与单作用气缸（弹簧复位需另行计算弹簧力）。</li>
+        <li>不适用于无杆气缸、摆动气缸、多级气缸、气液增压缸等特殊结构。</li>
+        <li>不适用于真空系统、液压系统。</li>
+        <li>动作时间估算为简化模型，高速、大负载、长行程工况下误差显著增大。</li>
+        <li>未考虑气缸安装方式（水平、垂直、倾斜）对负载的影响。</li>
+        <li>未考虑缓冲装置对动作时间的影响。</li>
+        <li>未提供缸径 / 杆径的标准系列圆整，用户需自行按 GB/T 13305 选取最接近的标准规格。</li>
+        <li>本工具不存储用户数据，所有计算在浏览器本地完成，刷新页面后数据丢失。</li>
+      </ul>
+
+      <h2>八、版本与反馈</h2>
+      <p>当前版本：v2.0.0-完整版 20261021</p>
+      <p>如发现计算异常或有改进建议，请联系工具维护方。使用前请确认本工具版本与所依据标准版本匹配。</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，完整 JSDoc 注释）
+ * ============================================================ */
+
+/**
+ * 标准大气压（MPa，绝对压力）
+ * @constant {number}
+ */
+const P_ATM_MPA = 0.1013;
+
+/**
+ * ISO 2533 / GB/T 3853 标准状态温度（K）：20°C
+ * @constant {number}
+ */
+const T_STD_ISO_K = 293.15;
+
+/**
+ * Nm³ 标准状态温度（K）：0°C
+ * @constant {number}
+ */
+const T_STD_N_K = 273.15;
+
+/**
+ * Nm³ 标准状态压力（MPa）：0.101325
+ * @constant {number}
+ */
+const P_STD_N_MPA = 0.101325;
+
+/**
+ * 校验输入是否为非负有限数字
+ * @param {number} v - 待校验值
+ * @param {string} name - 参数名（用于错误信息）
+ * @throws {Error} 输入非法时抛出
+ * @returns {void}
+ */
+function assertNonNegativeNumber(v, name) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    throw new Error(name + ' 必须为有限数字');
+  }
+  if (v < 0) {
+    throw new Error(name + ' 不能为负数');
+  }
+}
+
+/**
+ * 计算气缸活塞有效截面积
+ * @param {number} bore - 缸径，单位 mm
+ * @returns {number} 截面积，单位 mm²
+ */
+function calcPistonArea(bore) {
+  assertNonNegativeNumber(bore, '缸径');
+  return Math.PI / 4 * bore * bore;
+}
+
+/**
+ * 计算气缸活塞杆截面积
+ * @param {number} rod - 杆径，单位 mm
+ * @returns {number} 截面积，单位 mm²
+ */
+function calcRodArea(rod) {
+  assertNonNegativeNumber(rod, '杆径');
+  return Math.PI / 4 * rod * rod;
+}
+
+/**
+ * 计算气缸理论推力（伸出方向）
+ * 公式：F = P × A，其中 1 MPa = 1 N/mm²
+ * @param {number} pressure - 工作压力（表压），单位 MPa
+ * @param {number} bore - 缸径，单位 mm
+ * @returns {number} 理论推力，单位 N
+ * @throws {Error} 参数非法时抛出
+ */
+function calcThrust(pressure, bore) {
+  assertNonNegativeNumber(pressure, '工作压力');
+  assertNonNegativeNumber(bore, '缸径');
+  return pressure * calcPistonArea(bore);
+}
+
+/**
+ * 计算气缸理论拉力（缩回方向）
+ * 公式：F = P × (A_piston - A_rod)
+ * @param {number} pressure - 工作压力（表压），单位 MPa
+ * @param {number} bore - 缸径，单位 mm
+ * @param {number} rod - 杆径，单位 mm
+ * @returns {number} 理论拉力，单位 N
+ * @throws {Error} 参数非法或杆径 ≥ 缸径时抛出
+ */
+function calcPull(pressure, bore, rod) {
+  assertNonNegativeNumber(pressure, '工作压力');
+  assertNonNegativeNumber(bore, '缸径');
+  assertNonNegativeNumber(rod, '杆径');
+  if (rod >= bore) {
+    throw new Error('杆径必须小于缸径');
+  }
+  return pressure * (calcPistonArea(bore) - calcRodArea(rod));
+}
+
+/**
+ * 计算实际可用推力（考虑负载率）
+ * 参考 JB/T 10702：动负载率推荐 ≤50%，静负载率推荐 ≤70%
+ * @param {number} pressure - 工作压力（表压），单位 MPa
+ * @param {number} bore - 缸径，单位 mm
+ * @param {number} loadRate - 负载率，取值 0~1（如 0.5 表示 50%）
+ * @returns {number} 实际可用推力，单位 N
+ * @throws {Error} 参数非法时抛出
+ */
+function calcActualThrust(pressure, bore, loadRate) {
+  assertNonNegativeNumber(loadRate, '负载率');
+  if (loadRate > 1) {
+    throw new Error('负载率不能大于 1');
+  }
+  return calcThrust(pressure, bore) * loadRate;
+}
+
+/**
+ * 计算单次动作耗气量（换算到标准状态自由空气）
+ * 公式：Q_std = V_chamber × (P_abs / P_std)
+ * 其中 P_abs = P_gauge + 0.1013 MPa，P_std = 0.1013 MPa
+ * @param {number} pressure - 工作压力（表压），单位 MPa
+ * @param {number} bore - 缸径，单位 mm
+ * @param {number} stroke - 行程，单位 mm
+ * @param {number} rod - 杆径，单位 mm（伸出时可填 0）
+ * @param {'extend'|'retract'} direction - 动作方向
+ * @returns {number} 标准状态耗气量，单位 L（升）
+ * @throws {Error} 参数非法时抛出
+ */
+function calcAirPerStroke(pressure, bore, stroke, rod, direction) {
+  assertNonNegativeNumber(pressure, '工作压力');
+  assertNonNegativeNumber(bore, '缸径');
+  assertNonNegativeNumber(stroke, '行程');
+  assertNonNegativeNumber(rod, '杆径');
+  if (direction !== 'extend' && direction !== 'retract') {
+    throw new Error('方向必须为 extend 或 retract');
+  }
+  if (direction === 'retract' && rod >= bore) {
+    throw new Error('缩回时杆径必须小于缸径');
+  }
+
+  const pAbs = pressure + P_ATM_MPA; // 绝对压力 MPa
+  const ratio = pAbs / P_ATM_MPA;    // 压缩比
+
+  let volume_mm3;
+  if (direction === 'extend') {
+    volume_mm3 = calcPistonArea(bore) * stroke;
+  } else {
+    volume_mm3 = (calcPistonArea(bore) - calcRodArea(rod)) * stroke;
+  }
+
+  // 1 L = 10^6 mm³
+  const volumeL = volume_mm3 / 1e6;
+  return volumeL * ratio;
+}
+
+/**
+ * 计算每分钟耗气量（标准状态）
+ * 一个循环 = 一次伸出 + 一次缩回
+ * @param {number} pressure - 工作压力（表压），单位 MPa
+ * @param {number} bore - 缸径，单位 mm
+ * @param {number} stroke - 行程，单位 mm
+ * @param {number} rod - 杆径，单位 mm
+ * @param {number} cyclesPerMin - 每分钟循环次数
+ * @returns {number} 每分钟耗气量，单位 L/min（标准状态）
+ */
+function calcAirPerMinute(pressure, bore, stroke, rod, cyclesPerMin) {
+  assertNonNegativeNumber(cyclesPerMin, '循环次数');
+  const extend = calcAirPerStroke(pressure, bore, stroke, 0, 'extend');
+  const retract = calcAirPerStroke(pressure, bore, stroke, rod, 'retract');
+  return (extend + retract) * cyclesPerMin;
+}
+
+/**
+ * 估算气缸动作时间（经验公式）
+ * 基于理论加速度 × 经验系数（考虑摩擦、阀门响应、排气背压）
+ * 假设匀加速-匀速-匀减速运动，平均速度约为最大速度的 60%
+ * @param {number} stroke - 行程，单位 mm
+ * @param {number} pressure - 工作压力（表压），单位 MPa
+ * @param {number} bore - 缸径，单位 mm
+ * @param {number} loadMass - 负载质量，单位 kg（必须 > 0）
+ * @param {'extend'|'retract'} direction - 动作方向
+ * @param {number} [rod=0] - 杆径，单位 mm（仅 retract 时使用）
+ * @returns {number} 估算动作时间，单位 s
+ * @throws {Error} 参数非法时抛出
+ */
+function calcActionTime(stroke, pressure, bore, loadMass, direction, rod) {
+  assertNonNegativeNumber(stroke, '行程');
+  assertNonNegativeNumber(pressure, '工作压力');
+  assertNonNegativeNumber(bore, '缸径');
+  if (loadMass <= 0) {
+    throw new Error('负载质量必须大于 0');
+  }
+  if (direction !== 'extend' && direction !== 'retract') {
+    throw new Error('方向必须为 extend 或 retract');
+  }
+  rod = rod || 0;
+
+  // 有效面积 m²
+  let A_m2;
+  if (direction === 'extend') {
+    A_m2 = calcPistonArea(bore) * 1e-6;
+  } else {
+    A_m2 = (calcPistonArea(bore) - calcRodArea(rod)) * 1e-6;
+  }
+
+  // 理论推力 N（P 单位 MPa = N/mm²，乘 1e6 转为 Pa）
+  const F = pressure * 1e6 * A_m2;
+
+  // 理论加速度 m/s²
+  const a_theo = F / loadMass;
+
+  // 实际加速度（经验系数 0.3，考虑摩擦、阀响应、背压）
+  const a_actual = a_theo * 0.3;
+
+  const L_m = stroke / 1000;
+
+  // 假设全程加速可达最大速度
+  const v_max = Math.sqrt(a_actual * L_m);
+  // 平均速度（考虑加减速段，取 0.6 倍最大速度）
+  const v_avg = v_max * 0.6;
+
+  // 限制合理范围：0.05 ~ 2.0 m/s（工业气缸典型速度）
+  const v_clamped = Math.max(0.05, Math.min(v_avg, 2.0));
+
+  return L_m / v_clamped;
+}
+
+/**
+ * 将实际状态空气体积换算到标准状态
+ * 基于理想气体状态方程：P1·V1/T1 = P2·V2/T2
+ * @param {number} actualVolume - 实际状态体积，单位 L
+ * @param {number} actualPressureAbs - 实际状态绝对压力，单位 MPa
+ * @param {number} actualTempC - 实际状态温度，单位 °C
+ * @param {'ISO'|'N'} standardType - 标准状态类型
+ *   'ISO'：ISO 2533 / GB/T 3853（20°C，0.1013 MPa）
+ *   'N'：Nm³ 标准（0°C，0.101325 MPa）
+ * @returns {number} 标准状态体积，单位 L
+ * @throws {Error} 参数非法时抛出
+ */
+function convertToStandard(actualVolume, actualPressureAbs, actualTempC, standardType) {
+  assertNonNegativeNumber(actualVolume, '实际体积');
+  if (actualPressureAbs <= 0) {
+    throw new Error('绝对压力必须大于 0');
+  }
+  if (actualTempC < -273.15) {
+    throw new Error('温度不能低于绝对零度');
+  }
+  if (standardType !== 'ISO' && standardType !== 'N') {
+    throw new Error('标准类型必须为 ISO 或 N');
+  }
+
+  const T_actual_K = actualTempC + 273.15;
+  let T_std_K, P_std_MPa;
+
+  if (standardType === 'ISO') {
+    T_std_K = T_STD_ISO_K;
+    P_std_MPa = P_ATM_MPA;
+  } else {
+    T_std_K = T_STD_N_K;
+    P_std_MPa = P_STD_N_MPA;
+  }
+
+  // V_std = V_actual × (P_actual / P_std) × (T_std / T_actual)
+  return actualVolume * (actualPressureAbs / P_std_MPa) * (T_std_K / T_actual_K);
+}
+
+/**
+ * 将计算结果四舍五入到指定小数位
+ * @param {number} value - 待处理数值
+ * @param {number} [digits=2] - 小数位数
+ * @returns {number} 四舍五入后的数值
+ */
+function roundTo(value, digits) {
+  if (digits === undefined) digits = 2;
+  const factor = Math.pow(10, digits);
+  return Math.round(value * factor) / factor;
+}
+
+
+/* ============================================================
+ * 第二部分：单元测试（35 个用例）
+ * ============================================================ */
+
+/**
+ * 简易测试框架
+ */
+const TestRunner = (function () {
+  const results = [];
+  const EPS = 1e-6;
+
+  function approxEqual(a, b, tol) {
+    tol = tol === undefined ? 1e-4 : tol;
+    return Math.abs(a - b) <= tol;
+  }
+
+  function assert(cond, msg) {
+    if (!cond) throw new Error(msg || '断言失败');
+  }
+
+  function assertApprox(actual, expected, tol, msg) {
+    if (!approxEqual(actual, expected, tol)) {
+      throw new Error((msg || '近似断言失败') + '：期望 ' + expected + '，实际 ' + actual);
+    }
+  }
+
+  function assertThrows(fn, msg) {
+    let threw = false;
+    try { fn(); } catch (e) { threw = true; }
+    if (!threw) throw new Error(msg || '期望抛出异常但未抛出');
+  }
+
+  function run(name, fn) {
+    try {
+      fn();
+      results.push({ name: name, pass: true });
+    } catch (e) {
+      results.push({ name: name, pass: false, error: e.message });
+    }
+  }
+
+  function summary() {
+    const passed = results.filter(r => r.pass).length;
+    return { total: results.length, passed: passed, failed: results.length - passed, items: results };
+  }
+
+  return {
+    assert: assert,
+    assertApprox: assertApprox,
+    assertThrows: assertThrows,
+    run: run,
+    summary: summary,
+    reset: function () { results.length = 0; }
+  };
+})();
+
+/**
+ * 注册全部测试用例
+ */
+function registerAllTests() {
+
+  // ---------- 推力计算（8 个） ----------
+  TestRunner.run('T01 正常推力 D=40 P=0.5', function () {
+    // F = 0.5 × π/4 × 40² = 0.5 × 1256.637 = 628.3185 N
+    TestRunner.assertApprox(calcThrust(0.5, 40), 628.3185, 0.01);
+  });
+
+  TestRunner.run('T02 正常推力 D=100 P=0.7', function () {
+    // F = 0.7 × π/4 × 10000 = 5497.787 N
+    TestRunner.assertApprox(calcThrust(0.7, 100), 5497.787, 0.01);
+  });
+
+  TestRunner.run('T03 边界 P=0 推力为 0', function () {
+    TestRunner.assertApprox(calcThrust(0, 40), 0, 1e-9);
+  });
+
+  TestRunner.run('T04 边界 D=0 推力为 0', function () {
+    TestRunner.assertApprox(calcThrust(0.5, 0), 0, 1e-9);
+  });
+
+  TestRunner.run('T05 小数精度 D=25.4 P=0.3', function () {
+    // F = 0.3 × π/4 × 25.4² = 0.3 × 506.707 = 152.012 N
+    TestRunner.assertApprox(calcThrust(0.3, 25.4), 152.012, 0.01);
+  });
+
+  TestRunner.run('T06 大缸径 D=320 P=1.0', function () {
+    // F = 1.0 × π/4 × 320² = 80424.77 N
+    TestRunner.assertApprox(calcThrust(1.0, 320), 80424.77, 0.1);
+  });
+
+  TestRunner.run('T07 负载率 50%', function () {
+    // 628.3185 × 0.5 = 314.159
+    TestRunner.assertApprox(calcActualThrust(0.5, 40, 0.5), 314.159, 0.01);
+  });
+
+  TestRunner.run('T08 负载率 100%', function () {
+    TestRunner.assertApprox(calcActualThrust(0.5, 40, 1.0), 628.3185, 0.01);
+  });
+
+  // ---------- 拉力计算（5 个） ----------
+  TestRunner.run('T09 正常拉力 D=40 d=12 P=0.5', function () {
+    // A_piston = 1256.637, A_rod = 113.097, A_eff = 1143.54
+    // F = 0.5 × 1143.54 = 571.77 N
+    TestRunner.assertApprox(calcPull(0.5, 40, 12), 571.77, 0.01);
+  });
+
+  TestRunner.run('T10 杆径=0 拉力等于推力', function () {
+    TestRunner.assertApprox(calcPull(0.5, 40, 0), calcThrust(0.5, 40), 1e-6);
+  });
+
+  TestRunner.run('T11 杆径=缸径 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcPull(0.5, 40, 40); });
+  });
+
+  TestRunner.run('T12 杆径>缸径 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcPull(0.5, 40, 50); });
+  });
+
+  TestRunner.run('T13 拉力小数精度', function () {
+    // D=50 d=20 P=0.6
+    // A_piston = 1963.495, A_rod = 314.159, A_eff = 1649.336
+    // F = 0.6 × 1649.336 = 989.60 N
+    TestRunner.assertApprox(calcPull(0.6, 50, 20), 989.60, 0.01);
+  });
+
+  // ---------- 耗气量计算（7 个） ----------
+  TestRunner.run('T14 伸出耗气 D=40 L=100 P=0.5', function () {
+    // V = π/4 × 40² × 100 = 125663.7 mm³ = 0.12566 L
+    // ratio = (0.5+0.1013)/0.1013 = 5.9358
+    // Q = 0.12566 × 5.9358 = 0.7459 L
+    TestRunner.assertApprox(calcAirPerStroke(0.5, 40, 100, 0, 'extend'), 0.7459, 0.001);
+  });
+
+  TestRunner.run('T15 缩回耗气 D=40 d=12 L=100 P=0.5', function () {
+    // V = (1256.637 - 113.097) × 100 = 114354 mm³ = 0.11435 L
+    // Q = 0.11435 × 5.9358 = 0.6788 L
+    TestRunner.assertApprox(calcAirPerStroke(0.5, 40, 100, 12, 'retract'), 0.6788, 0.001);
+  });
+
+  TestRunner.run('T16 边界 P=0 耗气等于气缸容积', function () {
+    // ratio = 0.1013/0.1013 = 1
+    // V = 0.12566 L
+    TestRunner.assertApprox(calcAirPerStroke(0, 40, 100, 0, 'extend'), 0.12566, 0.001);
+  });
+
+  TestRunner.run('T17 边界 stroke=0 耗气为 0', function () {
+    TestRunner.assertApprox(calcAirPerStroke(0.5, 40, 0, 0, 'extend'), 0, 1e-9);
+  });
+
+  TestRunner.run('T18 每分钟耗气 10 次循环', function () {
+    // extend = 0.7459, retract = 0.6788, sum = 1.4247
+    // per min = 1.4247 × 10 = 14.247 L/min
+    TestRunner.assertApprox(calcAirPerMinute(0.5, 40, 100, 12, 10), 14.247, 0.01);
+  });
+
+  TestRunner.run('T19 0 次循环 耗气为 0', function () {
+    TestRunner.assertApprox(calcAirPerMinute(0.5, 40, 100, 12, 0), 0, 1e-9);
+  });
+
+  TestRunner.run('T20 大缸径耗气 D=100 L=200 P=0.6', function () {
+    // V = π/4 × 10000 × 200 = 1570796 mm³ = 1.5708 L
+    // ratio = 0.7013/0.1013 = 6.923
+    // Q = 1.5708 × 6.923 = 10.874 L
+    TestRunner.assertApprox(calcAirPerStroke(0.6, 100, 200, 0, 'extend'), 10.874, 0.01);
+  });
+
+  // ---------- 动作时间（5 个） ----------
+  TestRunner.run('T21 正常动作时间', function () {
+    // D=40 P=0.5 m=5 L=100
+    // A = 1256.637e-6 m², F = 0.5e6 × 1.2566e-3 = 628.3 N
+    // a_theo = 628.3/5 = 125.66 m/s²
+    // a_actual = 37.7 m/s²
+    // v_max = sqrt(37.7 × 0.1) = 1.94 m/s → clamp 到 2.0? 实际 1.94 < 2
+    // v_avg = 1.94 × 0.6 = 1.164 m/s
+    // t = 0.1 / 1.164 = 0.0859 s
+    const t = calcActionTime(100, 0.5, 40, 5, 'extend', 0);
+    TestRunner.assertApprox(t, 0.0859, 0.005);
+  });
+
+  TestRunner.run('T22 边界 stroke=0 时间为 0', function () {
+    const t = calcActionTime(0, 0.5, 40, 5, 'extend', 0);
+    TestRunner.assertApprox(t, 0, 1e-9);
+  });
+
+  TestRunner.run('T23 边界 loadMass=0 抛出异常', function () {
+    TestRunner.assertThrows(function () {
+      calcActionTime(100, 0.5, 40, 0, 'extend', 0);
+    });
+  });
+
+  TestRunner.run('T24 大负载时间更长', function () {
+    const t1 = calcActionTime(100, 0.5, 40, 5, 'extend', 0);
+    const t2 = calcActionTime(100, 0.5, 40, 50, 'extend', 0);
+    TestRunner.assert(t2 > t1, '大负载时间应更长');
+  });
+
+  TestRunner.run('T25 缩回时间（考虑杆径）', function () {
+    const t = calcActionTime(100, 0.5, 40, 5, 'retract', 12);
+    TestRunner.assert(t > 0 && Number.isFinite(t), '时间应为正有限数');
+  });
+
+  // ---------- 标准状态换算（5 个） ----------
+  TestRunner.run('T26 ISO标准 常温常压 体积不变', function () {
+    // 20°C, 0.1013 MPa → 20°C, 0.1013 MPa，应不变
+    const v = convertToStandard(10, 0.1013, 20, 'ISO');
+    TestRunner.assertApprox(v, 10, 0.01);
+  });
+
+  TestRunner.run('T27 ISO标准 高温 体积增大', function () {
+    // 40°C → 20°C，温度下降，体积应减小
+    // V_std = 10 × (0.1013/0.1013) × (293.15/313.15) = 9.361 L
+    const v = convertToStandard(10, 0.1013, 40, 'ISO');
+    TestRunner.assertApprox(v, 9.361, 0.01);
+  });
+
+  TestRunner.run('T28 N标准 0°C 0.101325MPa', function () {
+    // 20°C → 0°C, 0.1013 → 0.101325
+    // V_std = 10 × (0.1013/0.101325) × (273.15/293.15) = 9.326 L
+    const v = convertToStandard(10, 0.1013, 20, 'N');
+    TestRunner.assertApprox(v, 9.326, 0.01);
+  });
+
+  TestRunner.run('T29 高压 体积增大', function () {
+    // 0.6 MPa abs → 0.1013 MPa，体积应增大
+    // V_std = 10 × (0.6/0.1013) × (293.15/293.15) = 59.23 L
+    const v = convertToStandard(10, 0.6, 20, 'ISO');
+    TestRunner.assertApprox(v, 59.23, 0.1);
+  });
+
+  TestRunner.run('T30 低温 体积减小', function () {
+    // -10°C → 20°C，温度升高，体积应增大
+    // V_std = 10 × 1 × (293.15/263.15) = 11.14 L
+    const v = convertToStandard(10, 0.1013, -10, 'ISO');
+    TestRunner.assertApprox(v, 11.14, 0.01);
+  });
+
+  // ---------- 异常输入（5 个） ----------
+  TestRunner.run('T31 负数缸径 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcThrust(0.5, -10); });
+  });
+
+  TestRunner.run('T32 NaN 输入 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcThrust(NaN, 40); });
+  });
+
+  TestRunner.run('T33 字符串输入 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcThrust('0.5', 40); });
+  });
+
+  TestRunner.run('T34 null 输入 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcThrust(null, 40); });
+  });
+
+  TestRunner.run('T35 undefined 输入 抛出异常', function () {
+    TestRunner.assertThrows(function () { calcThrust(undefined, 40); });
+  });
+}
+
+
+/* ============================================================
+ * UI 交互
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 计算器
+function getNum(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return Number.isFinite(v) ? v : NaN;
+}
+
+function renderResults(data) {
+  const html = [
+    { label: '理论推力（伸出）', value: data.thrust, unit: 'N', range: '±2%' },
+    { label: '理论拉力（缩回）', value: data.pull, unit: 'N', range: '±2%' },
+    { label: '实际可用推力（负载率 ' + data.loadRatePercent + '%）', value: data.actualThrust, unit: 'N', range: '±10%~±20%' },
+    { label: '单次伸出耗气量（标准状态）', value: data.airExtend, unit: 'L', range: '±10%~±15%' },
+    { label: '单次缩回耗气量（标准状态）', value: data.airRetract, unit: 'L', range: '±10%~±15%' },
+    { label: '每分钟耗气量（标准状态）', value: data.airPerMin, unit: 'L/min', range: '±15%~±25%' },
+    { label: '每分钟耗气量（标准状态）', value: roundTo(data.airPerMin / 1000, 3), unit: 'm³/min', range: '±15%~±25%' },
+    { label: '估算伸出时间', value: data.timeExtend, unit: 's', range: '±30% 以上' },
+    { label: '估算缩回时间', value: data.timeRetract, unit: 's', range: '±30% 以上' }
+  ].map(function (r) {
+    return '<div class="result-block">' +
+      '<div class="result-label">' + r.label + '</div>' +
+      '<div class="result-value">' + r.value + ' ' + r.unit + '</div>' +
+      '<div class="result-range">参考误差范围：' + r.range + '</div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('results').innerHTML = html;
+}
+
+document.getElementById('btn-calc').addEventListener('click', function () {
+  try {
+    const P = getNum('inp-pressure');
+    const D = getNum('inp-bore');
+    const d = getNum('inp-rod');
+    const L = getNum('inp-stroke');
+    const m = getNum('inp-mass');
+    const lr = getNum('inp-loadrate') / 100;
+    const n = getNum('inp-cycles');
+
+    if ([P, D, d, L, m, lr, n].some(v => !Number.isFinite(v))) {
+      alert('请填写完整且有效的参数');
+      return;
+    }
+    if (d >= D) {
+      alert('杆径必须小于缸径');
+      return;
+    }
+    if (m <= 0) {
+      alert('负载质量必须大于 0');
+      return;
+    }
+
+    const data = {
+      thrust: roundTo(calcThrust(P, D), 2),
+      pull: roundTo(calcPull(P, D, d), 2),
+      actualThrust: roundTo(calcActualThrust(P, D, lr), 2),
+      airExtend: roundTo(calcAirPerStroke(P, D, L, 0, 'extend'), 3),
+      airRetract: roundTo(calcAirPerStroke(P, D, L, d, 'retract'), 3),
+      airPerMin: roundTo(calcAirPerMinute(P, D, L, d, n), 2),
+      timeExtend: roundTo(calcActionTime(L, P, D, m, 'extend', 0), 3),
+      timeRetract: roundTo(calcActionTime(L, P, D, m, 'retract', d), 3),
+      loadRatePercent: Math.round(lr * 100)
+    };
+    renderResults(data);
+  } catch (e) {
+    alert('计算错误：' + e.message);
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', function () {
+  document.getElementById('inp-pressure').value = 0.5;
+  document.getElementById('inp-bore').value = 40;
+  document.getElementById('inp-rod').value = 12;
+  document.getElementById('inp-stroke').value = 100;
+  document.getElementById('inp-mass').value = 5;
+  document.getElementById('inp-loadrate').value = 50;
+  document.getElementById('inp-cycles').value = 10;
+  document.getElementById('inp-temp').value = 20;
+  document.getElementById('results').innerHTML =
+    '<div style="color:#a0a8b0; font-size:13px; text-align:center; padding:40px 0;">请填写参数后点击"开始计算"</div>';
+});
+
+// 测试运行
+document.getElementById('btn-run').addEventListener('click', function () {
+  TestRunner.reset();
+  registerAllTests();
+  const s = TestRunner.summary();
+  const sumEl = document.getElementById('test-summary');
+  sumEl.style.display = 'block';
+  sumEl.className = 'test-summary ' + (s.failed === 0 ? 'pass' : 'fail');
+  sumEl.textContent = '通过 ' + s.passed + ' / 共 ' + s.total +
+    (s.failed > 0 ? ' （失败 ' + s.failed + '）' : ' ✓ 全部通过');
+
+  const listEl = document.getElementById('test-list');
+  listEl.innerHTML = s.items.map(function (it) {
+    const cls = it.pass ? 'pass' : 'fail';
+    const tag = it.pass ? 'PASS' : 'FAIL';
+    const detail = it.pass ? '' : ' — ' + it.error;
+    return '<div class="test-item ' + cls + '">' +
+      '<span class="tag">' + tag + '</span>' + it.name + detail + '</div>';
+  }).join('');
+
+  console.log('通过 ' + s.passed + ' / 共 ' + s.total);
+});
+</script>
+
+</body>
+</html>

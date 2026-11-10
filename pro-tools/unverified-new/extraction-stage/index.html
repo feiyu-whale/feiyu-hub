@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>液液萃取级数计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe3ff;font:14px/1.55 system-ui,"Microsoft YaHei",sans-serif}
+header{padding:14px 16px;background:linear-gradient(90deg,#0a1628,#123055);border-bottom:1px solid #1d3f66}
+h1{margin:0;font-size:17px;color:#4a9eff}
+header p{margin:2px 0 0;font-size:11px;color:#7fa6cf}
+nav{display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap}
+.tab{background:#122741;color:#9fc3ea;border:1px solid #1d3f66;padding:7px 14px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px}
+.tab.on{background:#4a9eff;color:#04101f;font-weight:700;border-color:#4a9eff}
+main{padding:12px 16px 72px;max-width:1060px;margin:0 auto}
+.p{display:none}.p.on{display:block}
+.card{background:#0f2038;border:1px solid #1d3f66;border-radius:10px;padding:12px;margin-bottom:12px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fb3d9;margin-bottom:4px}
+input,select{width:100%;background:#0a1628;border:1px solid #25486f;color:#e6f1ff;padding:7px 8px;border-radius:6px;font-size:13px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.run{background:#4a9eff;color:#04101f;border:0;padding:10px 22px;border-radius:8px;font-weight:700;cursor:pointer;margin-top:12px;font-size:14px}
+.err{color:#ff7b7b;font-size:13px;margin-top:8px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.k{background:#0a1628;border:1px solid #1d3f66;border-radius:8px;padding:8px}
+.k b{display:block;font-size:15px;color:#4a9eff}
+.k span{font-size:11px;color:#8fb3d9}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{border-bottom:1px solid #1d3f66;padding:5px;text-align:left}
+pre{background:#061020;border:1px solid #1d3f66;border-radius:8px;padding:10px;overflow:auto;font-size:11px;max-height:400px}
+.ok{color:#5fd67a}.no{color:#ff7b7b}
+.note{font-size:11.5px;color:#7fa6cf;margin-top:10px;line-height:1.7}
+.ver{position:fixed;right:10px;bottom:8px;font-size:11px;color:#5d86b3;background:#0a1628ee;padding:3px 8px;border-radius:6px;border:1px solid #1d3f66}
+@media(max-width:600px){main{padding:10px 8px 72px}pre{font-size:10px}}
+</style>
+</head>
+<body>
+<header><h1>液液萃取级数计算器</h1><p>单级 / 多级逆流萃取 · Kremser 方程 · 溶剂比优化</p></header>
+<nav>
+<button class="tab on" data-t="c1">计算工具</button>
+<button class="tab" data-t="c2">单元测试</button>
+<button class="tab" data-t="c3">源码与说明</button>
+</nav>
+<main>
+<section id="c1" class="p on">
+<div class="card">
+<div class="g">
+<div><label>物系预设（经验参考值，未经标准核对）</label>
+<select id="pr"><option value="0">自定义</option><option value="0.85">醋酸-水/异丙醚 K≈0.85</option><option value="1.2">丙酮-水/甲苯 K≈1.2</option><option value="2.4">苯酚-水/煤油 K≈2.4</option><option value="0.65">稀醋酸-水/乙酸乙酯 K≈0.65</option></select></div>
+<div><label>分配系数 K（有机相/水相，25℃基准）</label><input id="K" value="1.2"></div>
+<div><label>操作温度 T（℃）</label><input id="T" value="25"></div>
+<div><label>温度修正系数 dK（%/℃，0=不修正）</label><input id="dK" value="0"></div>
+<div><label>相比 R = 溶剂/料液（体积比）</label><input id="R" value="1.5"></div>
+<div><label>料液流量 A（L/h）</label><input id="A" value="1000"></div>
+<div><label>料液浓度 x_F（g/L）</label><input id="xF" value="10"></div>
+<div><label>理论级数 n（整数，≥1）</label><input id="n" value="3"></div>
+<div><label>目标萃取率 φ_t（%）</label><input id="pt" value="95"></div>
+</div>
+<button class="run" onclick="run()">计 算</button>
+<div class="err" id="err"></div>
+</div>
+<div class="card" id="out"></div>
+</section>
+<section id="c2" class="p">
+<div class="card">
+<button class="run" onclick="runTests()">运行全部测试</button>
+<div id="tout" style="margin-top:12px"></div>
+</div>
+</section>
+<section id="c3" class="p">
+<div class="card">
+<div class="note"><b>使用说明</b><br>
+1. 选择物系预设可快速填入参考 K，也可直接手填实测或文献 K 值。<br>
+2. 相比 R 为有机相（溶剂）与水相（料液）体积流量之比；萃取因子 E = K·R。<br>
+3. 输入理论级数 n 得到实际萃取率；输入目标萃取率得到所需级数，并反算该级数下的最小相比 R_min。<br>
+4. 温度修正为线性经验模型，默认系数 0 即不做修正，需按实测数据自行标定。<br>
+5. 模型假设：y = K·x 线性平衡、稀溶液、两相体积近似可加、溶剂为新鲜溶剂（y_S = 0）。</div>
+<div class="note"><b>公式出处</b>：Kremser 方程（多级逆流萃取），见 Perry 化工手册 8th ed. Sec.15（Liquid-Liquid Extraction）；R. E. Treybal, Mass-Transfer Operations, 3rd ed.。φ=(E^(n+1)−E)/(E^(n+1)−1)，E=1 时 φ=n/(n+1)；n=ln[1+(E−1)/(1−φ)]/lnE−1；单级 φ=E/(1+E)；R_min=1/K（E=1，需无穷多级）。物系预设 K 值与本工具的温度修正系数均为行业经验值，未经标准核对。</div>
+</div>
+<div class="card"><pre id="src">加载中…</pre></div>
+</section>
+</main>
+<div class="ver">v1.0.0-extraction-stage 20261108</div>
+<script id="code">
+var $=function(i){return document.getElementById(i)};
+function kEff(K,T,d){return K*(1+(d/100)*(T-25))}
+function Efac(K,R){return K*R}
+function phiN(E,n){if(Math.abs(E-1)<1e-9)return n/(n+1);return 1-(E-1)/(Math.pow(E,n+1)-1)}
+function nReq(E,phi){var f=1-phi;if(f<=0)return Infinity;if(Math.abs(E-1)<1e-9)return 1/f-1;var t=1+(E-1)/f;if(t<=0)return Infinity;return Math.log(t)/Math.log(E)-1}
+function Esolve(phi,n){var lo=1e-3,hi=1e5,m=1;for(var i=0;i<160;i++){m=Math.sqrt(lo*hi);if(phiN(m,n)<phi)lo=m;else hi=m}return m}
+var TS=[
+["φ(E=2,n=1) 应=2/3",phiN(2,1),2/3],
+["φ(E=2,n=3) 应=14/15",phiN(2,3),14/15],
+["φ(E=1,n=3) 应=0.75",phiN(1,3),0.75],
+["φ(E=0.5,n=2) 应=3/7",phiN(0.5,2),3/7],
+["nReq(E=2,φ=0.9) 应≈2.4598",nReq(2,0.9),2.4598,1e-3],
+["nReq(E=1,φ=0.5) 应=1",nReq(1,0.5),1],
+["kEff(1,25,0) 应=1",kEff(1,25,0),1],
+["kEff(1,35,10) 应=2",kEff(1,35,10),2],
+["Efac(2,1.5) 应=3",Efac(2,1.5),3],
+["Esolve(14/15,3) 应=2",Esolve(14/15,3),2,1e-3]
+];
+function run(){
+var f=function(id,lo,hi,name){var s=$(id).value.trim(),v=parseFloat(s);
+if(s===''||!isFinite(v))return{e:name+'不能为空，且须为数字'};
+if(v<lo||v>hi)return{e:name+'超出允许范围 '+lo+' ~ '+hi};
+return{v:v}};
+var K=f('K',1e-6,1e4,'分配系数K'),T=f('T',-20,200,'操作温度'),d=f('dK',-50,50,'温度修正系数'),
+R=f('R',1e-4,1e3,'相比R'),A=f('A',1e-6,1e9,'料液流量'),xF=f('xF',1e-9,1e6,'料液浓度'),
+N=f('n',1,100,'理论级数'),P=f('pt',0.01,99.99,'目标萃取率');
+var es=[K,T,d,R,A,xF,N,P].filter(function(o){return o.e}).map(function(o){return o.e});
+if(!N.e&&N.v%1!==0)es.push('理论级数须为整数');
+var Kt=K.e?0:kEff(K.v,T.e?25:T.v,d.e?0:d.v);
+if(!es.length&&Kt<=0)es.push('温度修正后分配系数 ≤ 0，请检查温度或修正系数');
+if(es.length){$('err').textContent=es.join('；');$('out').innerHTML='';return}
+$('err').textContent='';
+var E=Efac(Kt,R.v),phi=phiN(E,N.v),xn=(1-phi)*xF.v,y1=(xF.v-xn)/R.v,S=R.v*A.v,ex=S*y1,
+pt=P.v/100,nr=nReq(E,pt),Eo=Esolve(pt,N.v),Ro=Eo/Kt,nN=Math.ceil(nr-1e-9);
+var o='<div class="res">';
+var add=function(v,u,l){o+='<div class="k"><b>'+v+'</b><span>'+l+(u?' ('+u+')':'')+'</span></div>'};
+add(Kt.toFixed(4),'','修正后分配系数 K');
+add(E.toFixed(3),'','萃取因子 E = K·R');
+add((phi*100).toFixed(2),'%','n='+N.v+' 级实际萃取率 φ');
+add(xn.toFixed(4),'g/L','萃余相出口浓度 x_n');
+add(y1.toFixed(4),'g/L','萃取液出口浓度 y_1');
+add(S.toFixed(1),'L/h','溶剂流量 S = R·A');
+add(ex.toFixed(2),'g/h','溶质萃取量 S·y_1');
+add((1/Kt).toFixed(3),'','最小相比 R_min = 1/K');
+add(nN>500?'>500':nN,'级','达到目标 '+P.v+'% 所需级数');
+add(Ro.toFixed(3),'','达标最小相比（n='+N.v+'）');
+o+='</div>';
+o+='<div class="note">判定：'+(phi>=pt?'当前工况 <b class="ok">已达标</b>':'当前工况 <b class="no">未达标</b>')+
+'，目标 '+P.v+'%，实际 '+(phi*100).toFixed(2)+'%。'+(Ro<R.v?'当前相比高于达标最小相比，可下调溶剂用量。':'当前相比低于达标最小相比，需增大溶剂比或增加级数。')+'</div>';
+o+='<div class="note"><b>公式</b>：E=K·R；φ=(E^(n+1)−E)/(E^(n+1)−1)（E≠1），E=1 时 φ=n/(n+1)；反解 n=ln[1+(E−1)/(1−φ)]/lnE−1；单级 φ=E/(1+E)。出处：Kremser 方程，Perry 化工手册 8th ed. Sec.15（Liquid-Liquid Extraction）；R. E. Treybal, Mass-Transfer Operations, 3rd ed.。守恒式：A·x_F = A·x_n + S·y_1。温度修正 K_T=K·[1+dK%×(T−25)]，系数为经验值，未经标准核对。</div>';
+$('out').innerHTML=o;
+}
+function runTests(){
+var h='<table><tr><th>#</th><th>用例</th><th>期望</th><th>实际</th><th>结果</th></tr>',p=0;
+TS.forEach(function(t,i){var ok=Math.abs(t[1]-t[2])<=(t[3]||1e-6);if(ok)p++;
+h+='<tr><td>'+(i+1)+'</td><td>'+t[0]+'</td><td>'+t[2]+'</td><td>'+(isFinite(t[1])?Number(t[1]).toPrecision(8):t[1])+'</td><td class="'+(ok?'ok':'no')+'">'+(ok?'通过':'失败')+'</td></tr>'});
+h+='</table><div class="note">通过 '+p+' / '+TS.length+' 个测试用例</div>';
+$('tout').innerHTML=h;
+}
+$('pr').onchange=function(){if(this.value!=='0')$('K').value=this.value};
+var tb=document.querySelectorAll('.tab');
+for(var i=0;i<tb.length;i++)tb[i].onclick=function(){
+for(var j=0;j<tb.length;j++)tb[j].classList.remove('on');
+this.classList.add('on');
+var ps=document.querySelectorAll('.p');
+for(var k=0;k<ps.length;k++)ps[k].classList.remove('on');
+$(this.getAttribute('data-t')).classList.add('on');
+};
+$('src').textContent=$('code').textContent;
+run();
+</script>
+</body>
+</html>

@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>焊缝强度计算工具 v2.0.2-修审查问题 20261108</title>
+<style>
+:root{--primary:#2563eb;--primary-dark:#1e40af;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--border:#e2e8f0;--text:#1e293b;--text-light:#64748b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding-bottom:40px}
+header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:32px 24px;text-align:center}
+header h1{font-size:28px;margin-bottom:8px}
+header p{opacity:.9;font-size:14px}
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+nav button{flex:1;padding:14px;background:none;border:none;cursor:pointer;font-size:15px;color:var(--text-light);border-bottom:3px solid transparent;transition:all .2s}
+nav button:hover{color:var(--primary)}
+nav button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+main{max-width:1100px;margin:24px auto;padding:0 16px}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card h2{font-size:18px;margin-bottom:16px;color:var(--primary-dark);border-left:4px solid var(--primary);padding-left:12px}
+.card h3{font-size:16px;margin:16px 0 8px;color:var(--text)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.form-item label{display:block;font-size:13px;color:var(--text-light);margin-bottom:6px}
+.form-item input,.form-item select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;transition:border-color .2s}
+.form-item input:focus,.form-item select:focus{outline:none;border-color:var(--primary)}
+.btn{padding:10px 24px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:background .2s;margin-right:8px}
+.btn:hover{background:var(--primary-dark)}
+.btn-secondary{background:#64748b}
+.btn-secondary:hover{background:#475569}
+.result-box{margin-top:20px;padding:20px;border-radius:8px;background:#f1f5f9}
+.result-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border);flex-wrap:wrap;gap:8px}
+.result-row:last-child{border-bottom:none}
+.result-label{color:var(--text-light);font-size:14px}
+.result-value{font-weight:600;font-size:15px}
+.status-pass{color:var(--success);font-weight:700;padding:8px 16px;background:#dcfce7;border-radius:6px;display:inline-block}
+.status-fail{color:var(--danger);font-weight:700;padding:8px 16px;background:#fee2e2;border-radius:6px;display:inline-block}
+pre{background:#1e293b;color:#e2e8f0;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.5;font-family:"SF Mono",Monaco,Consolas,monospace;white-space:pre-wrap;word-wrap:break-word}
+.test-item{padding:8px 12px;margin:4px 0;border-radius:4px;font-size:13px;font-family:monospace}
+.test-pass{background:#dcfce7;color:#166534}
+.test-fail{background:#fee2e2;color:#991b1b}
+.test-summary{padding:16px;border-radius:8px;margin-bottom:16px;font-weight:600;font-size:15px}
+.summary-pass{background:#dcfce7;color:#166534}
+.summary-fail{background:#fee2e2;color:#991b1b}
+.doc-content{font-size:15px;line-height:1.8}
+.doc-content h2{font-size:20px;margin:24px 0 12px;color:var(--primary-dark);border-left:4px solid var(--primary);padding-left:12px}
+.doc-content h3{font-size:17px;margin:20px 0 10px;color:var(--text)}
+.doc-content p{margin-bottom:12px}
+.doc-content ul,.doc-content ol{margin:8px 0 12px 24px}
+.doc-content li{margin-bottom:6px}
+.doc-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+.doc-content th,.doc-content td{border:1px solid var(--border);padding:8px 12px;text-align:left}
+.doc-content th{background:#f1f5f9;font-weight:600}
+.doc-content code{background:#f1f5f9;padding:2px 6px;border-radius:3px;font-family:monospace;font-size:13px}
+.doc-content .scenario{background:#f8fafc;border-left:4px solid var(--primary);padding:16px;margin:16px 0;border-radius:4px}
+.doc-content .formula{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;margin:12px 0;overflow-x:auto}
+.version-tag{position:fixed;bottom:8px;right:12px;font-size:11px;color:var(--text-light);opacity:.7;z-index:100}
+.utilization-bar{height:20px;background:#e2e8f0;border-radius:10px;overflow:hidden;margin-top:8px}
+.utilization-fill{height:100%;transition:width .3s;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#fff;font-size:12px;font-weight:600}
+.fill-safe{background:linear-gradient(90deg,#16a34a,#22c55e)}
+.fill-warn{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.fill-danger{background:linear-gradient(90deg,#dc2626,#ef4444)}
+@media(max-width:640px){header h1{font-size:22px}nav button{font-size:13px;padding:12px 8px}.card{padding:16px}}
+</style>
+</head>
+<body>
+<header>
+<h1>焊缝强度计算工具</h1>
+<p>角焊缝强度校核 · 依据 GB 50017-2017《钢结构设计标准》</p>
+</header>
+<nav>
+<button class="tab-btn active" data-tab="calc">📐 计算器</button>
+<button class="tab-btn" data-tab="source">💻 源码</button>
+<button class="tab-btn" data-tab="test">🧪 测试</button>
+<button class="tab-btn" data-tab="doc">📖 说明书</button>
+</nav>
+<main>
+<section id="calc" class="panel active">
+<div class="card">
+<h2>输入参数</h2>
+<div class="form-grid">
+<div class="form-item">
+<label>受力类型</label>
+<select id="loadType">
+<option value="tension">正面受拉（垂直于焊缝）</option>
+<option value="shear">侧面受剪（平行于焊缝）</option>
+</select>
+</div>
+<div class="form-item">
+<label>轴力 N (kN)</label>
+<input type="number" id="inputN" value="50" step="0.1" min="0">
+</div>
+<div class="form-item">
+<label>焊缝总长度 L (mm)</label>
+<input type="number" id="inputL" value="200" step="1" min="0">
+</div>
+<div class="form-item">
+<label>焊脚尺寸 hf (mm)</label>
+<input type="number" id="inputHf" value="6" step="0.5" min="0">
+</div>
+<div class="form-item">
+<label>角焊缝强度设计值 ffw (N/mm²)</label>
+<input type="number" id="inputFfw" value="160" step="1" min="0">
+</div>
+<div class="form-item">
+<label>是否采用引弧板</label>
+<select id="useArcPlate">
+<option value="no">否（扣除 2hf）</option>
+<option value="yes">是（不扣除）</option>
+</select>
+</div>
+</div>
+<div style="margin-top:20px">
+<button class="btn" onclick="calculate()">计算</button>
+<button class="btn btn-secondary" onclick="resetForm()">重置</button>
+</div>
+</div>
+<div id="resultArea"></div>
+</section>
+<section id="source" class="panel">
+<div class="card">
+<h2>核心算法源码</h2>
+<p style="color:var(--text-light);margin-bottom:12px;font-size:14px">以下为核心算法源码的简化展示版（异常提示信息省略了收到的参数值），实际运行代码的校验逻辑更完整，请以本页内嵌的真实函数为准。本页参数为经验取值与规范常用值，未经标准原文逐条核对，正式设计请查阅 GB 50017-2017 原文确认。</p>
+<pre id="sourceCode"></pre>
+</div>
+</section>
+<section id="test" class="panel">
+<div class="card">
+<h2>单元测试</h2>
+<p style="color:var(--text-light);margin-bottom:12px;font-size:14px">共 65 个测试用例，覆盖正常值、边界值、异常输入、精度问题。</p>
+<button class="btn" onclick="runAllTests()">运行全部测试</button>
+<div id="testResults" style="margin-top:16px"></div>
+</div>
+</section>
+<section id="doc" class="panel">
+<div class="card doc-content" id="docContent"></div>
+</section>
+</main>
+<div class="version-tag">v2.0.2-修审查问题 20261108</div>
+<script>
+/* ============================================================
+ * 第一部分：核心算法（纯函数，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 判断值是否为有效数字（非 NaN、非 Infinity）
+ * @param {*} v - 待检查的值
+ * @returns {boolean} 是否为有效数字
+ * @example
+ * isValidNumber(123);    // true
+ * isValidNumber(NaN);    // false
+ * isValidNumber('123');  // false
+ */
+function isValidNumber(v) {
+  return typeof v === 'number' && !Number.isNaN(v) && Number.isFinite(v);
+}
+
+/**
+ * 计算角焊缝有效长度
+ * 依据 GB 50017-2017 第 11.2.3 条：当未采用引弧板时，每条焊缝的计算长度
+ * 应取其实际长度减去 2hf（hf 为焊脚尺寸），以考虑起弧灭弧缺陷。
+ *
+ * @param {number} totalLength - 焊缝总长度（mm），必须 > 0
+ * @param {number} hf - 焊脚尺寸（mm），必须 > 0
+ * @returns {number} 有效长度 lw（mm）
+ * @throws {Error} 参数非数字、非正数、或有效长度 ≤ 0 时抛出异常
+ * @example
+ * calcEffectiveLength(200, 6); // 返回 188
+ * calcEffectiveLength(300, 8); // 返回 284
+ * calcEffectiveLength(12, 6);  // 抛出 Error（lw = 0）
+ */
+function calcEffectiveLength(totalLength, hf) {
+  if (!isValidNumber(totalLength)) {
+    throw new Error('totalLength 必须为有效数字，收到: ' + totalLength);
+  }
+  if (!isValidNumber(hf)) {
+    throw new Error('hf 必须为有效数字，收到: ' + hf);
+  }
+  if (totalLength <= 0) {
+    throw new Error('totalLength 必须大于 0，收到: ' + totalLength);
+  }
+  if (hf <= 0) {
+    throw new Error('hf 必须大于 0，收到: ' + hf);
+  }
+  const lw = totalLength - 2 * hf;
+  if (lw <= 0) {
+    throw new Error('有效长度 lw = totalLength - 2hf ≤ 0（' + lw + '），请增大总长度或减小焊脚尺寸');
+  }
+  return lw;
+}
+
+/**
+ * 计算角焊缝应力
+ * 公式：σ 或 τ = N / (0.7 · hf · lw)
+ * 其中 0.7·hf 为角焊缝计算厚度 he（依据 GB 50017-2017 第 11.2.2 条）
+ *
+ * @param {number} N - 轴力（N），必须 ≥ 0
+ * @param {number} hf - 焊脚尺寸（mm），必须 > 0
+ * @param {number} lw - 有效长度（mm），必须 > 0
+ * @returns {number} 应力值（N/mm²）
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * calcWeldStress(10000, 6, 188); // 返回约 12.66 N/mm²
+ * calcWeldStress(50000, 8, 284); // 返回约 31.44 N/mm²
+ */
+function calcWeldStress(N, hf, lw) {
+  if (!isValidNumber(N)) throw new Error('N 必须为有效数字，收到: ' + N);
+  if (!isValidNumber(hf)) throw new Error('hf 必须为有效数字，收到: ' + hf);
+  if (!isValidNumber(lw)) throw new Error('lw 必须为有效数字，收到: ' + lw);
+  if (N < 0) throw new Error('N 不能为负数，收到: ' + N);
+  if (hf <= 0) throw new Error('hf 必须大于 0，收到: ' + hf);
+  if (lw <= 0) throw new Error('lw 必须大于 0，收到: ' + lw);
+  const he = 0.7 * hf;
+  return N / (he * lw);
+}
+
+/**
+ * 校核焊缝强度是否满足要求
+ * 判定条件：stress ≤ ffw
+ *
+ * @param {number} stress - 计算应力（N/mm²），必须 ≥ 0
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 > 0
+ * @returns {boolean} stress ≤ ffw 时返回 true，否则返回 false
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * checkWeldStrength(100, 160); // true
+ * checkWeldStrength(200, 160); // false
+ * checkWeldStrength(160, 160); // true（等于时通过）
+ */
+function checkWeldStrength(stress, ffw) {
+  if (!isValidNumber(stress)) throw new Error('stress 必须为有效数字，收到: ' + stress);
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字，收到: ' + ffw);
+  if (ffw <= 0) throw new Error('ffw 必须大于 0，收到: ' + ffw);
+  if (stress < 0) throw new Error('stress 不能为负数，收到: ' + stress);
+  return stress <= ffw;
+}
+
+/**
+ * 计算角焊缝承载力
+ * 公式：N_Rd = 0.7 · hf · lw · ffw
+ *
+ * @param {number} hf - 焊脚尺寸（mm），必须 ≥ 0
+ * @param {number} lw - 有效长度（mm），必须 ≥ 0
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 ≥ 0
+ * @returns {number} 承载力（N），任一参数为 0 时返回 0
+ * @throws {Error} 参数为负数或非数字时抛出异常
+ * @example
+ * calcWeldCapacity(6, 188, 160); // 返回 126336 N
+ * calcWeldCapacity(8, 284, 160); // 返回 254464 N
+ */
+function calcWeldCapacity(hf, lw, ffw, betaF) {
+  if (!isValidNumber(hf)) throw new Error('hf 必须为有效数字，收到: ' + hf);
+  if (!isValidNumber(lw)) throw new Error('lw 必须为有效数字，收到: ' + lw);
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字，收到: ' + ffw);
+  if (hf < 0) throw new Error('hf 不能为负数，收到: ' + hf);
+  if (lw < 0) throw new Error('lw 不能为负数，收到: ' + lw);
+  if (ffw < 0) throw new Error('ffw 不能为负数，收到: ' + ffw);
+  if (hf === 0 || lw === 0 || ffw === 0) return 0;
+  const he = 0.7 * hf;
+  return he * lw * ffw * (betaF || 1);
+}
+
+/**
+ * 计算应力比（利用率）
+ * 应力比 = stress / ffw
+ * 应力比 < 1 表示安全，> 1 表示超限
+ *
+ * @param {number} stress - 计算应力（N/mm²）
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 > 0
+ * @returns {number} 应力比（无量纲）
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * calcWeldUtilization(80, 160);  // 返回 0.5
+ * calcWeldUtilization(160, 160); // 返回 1
+ * calcWeldUtilization(200, 160); // 返回 1.25
+ */
+function calcWeldUtilization(stress, ffw) {
+  if (!isValidNumber(stress)) throw new Error('stress 必须为有效数字，收到: ' + stress);
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字，收到: ' + ffw);
+  if (ffw <= 0) throw new Error('ffw 必须大于 0，收到: ' + ffw);
+  return stress / ffw;
+}
+
+/**
+ * 根据承载力反算所需有效长度
+ * 由 N = 0.7 · hf · lw · ffw 反推 lw = N / (0.7 · hf · ffw)
+ *
+ * @param {number} N - 轴力（N），必须 ≥ 0
+ * @param {number} hf - 焊脚尺寸（mm），必须 > 0
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 > 0
+ * @returns {number} 所需有效长度 lw（mm）
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * calcRequiredLength(100000, 8, 160); // 返回约 111.61 mm
+ */
+function calcRequiredLength(N, hf, ffw, betaF) {
+  if (!isValidNumber(N)) throw new Error('N 必须为有效数字，收到: ' + N);
+  if (!isValidNumber(hf)) throw new Error('hf 必须为有效数字，收到: ' + hf);
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字，收到: ' + ffw);
+  if (N < 0) throw new Error('N 不能为负数，收到: ' + N);
+  if (hf <= 0) throw new Error('hf 必须大于 0，收到: ' + hf);
+  if (ffw <= 0) throw new Error('ffw 必须大于 0，收到: ' + ffw);
+  const he = 0.7 * hf;
+  return N / (he * ffw * (betaF || 1));
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS 实现，65 个用例）
+ * ============================================================ */
+
+let _testResults = [];
+let _testCount = 0;
+let _passCount = 0;
+
+/**
+ * 断言相等（支持容差）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {string} msg - 测试描述
+ * @param {number} [tolerance=0] - 容差
+ */
+function assertEqual(actual, expected, msg, tolerance) {
+  _testCount++;
+  tolerance = tolerance || 0;
+  let pass;
+  if (tolerance > 0) {
+    pass = Math.abs(actual - expected) <= tolerance;
+  } else {
+    pass = actual === expected;
+  }
+  if (pass) {
+    _passCount++;
+    _testResults.push({ pass: true, msg: msg });
+  } else {
+    _testResults.push({
+      pass: false,
+      msg: msg + ' | 期望: ' + expected + ', 实际: ' + actual
+    });
+  }
+}
+
+/**
+ * 断言抛出异常
+ * @param {Function} fn - 待测函数
+ * @param {string} msg - 测试描述
+ */
+function assertThrows(fn, msg) {
+  _testCount++;
+  try {
+    fn();
+    _testResults.push({ pass: false, msg: msg + ' | 期望抛出异常但未抛出' });
+  } catch (e) {
+    _passCount++;
+    _testResults.push({ pass: true, msg: msg });
+  }
+}
+
+/**
+ * 断言为真
+ * @param {*} val - 待测值
+ * @param {string} msg - 测试描述
+ */
+function assertTrue(val, msg) {
+  _testCount++;
+  if (val === true) {
+    _passCount++;
+    _testResults.push({ pass: true, msg: msg });
+  } else {
+    _testResults.push({ pass: false, msg: msg + ' | 期望 true, 实际: ' + val });
+  }
+}
+
+/**
+ * 断言为假
+ * @param {*} val - 待测值
+ * @param {string} msg - 测试描述
+ */
+function assertFalse(val, msg) {
+  _testCount++;
+  if (val === false) {
+    _passCount++;
+    _testResults.push({ pass: true, msg: msg });
+  } else {
+    _testResults.push({ pass: false, msg: msg + ' | 期望 false, 实际: ' + val });
+  }
+}
+
+/**
+ * 运行全部测试用例
+ */
+function runAllTests() {
+  _testResults = [];
+  _testCount = 0;
+  _passCount = 0;
+
+  // ===== calcEffectiveLength 测试（15 个）=====
+  // 正常值
+  assertEqual(calcEffectiveLength(200, 6), 188, '有效长度: 200-2×6=188');
+  assertEqual(calcEffectiveLength(300, 8), 284, '有效长度: 300-2×8=284');
+  assertEqual(calcEffectiveLength(150, 5), 140, '有效长度: 150-2×5=140');
+  assertEqual(calcEffectiveLength(100, 4), 92, '有效长度: 100-2×4=92');
+  // 边界值
+  assertEqual(calcEffectiveLength(13, 6), 1, '有效长度边界: 13-2×6=1');
+  assertEqual(calcEffectiveLength(1000, 3), 994, '有效长度大值: 1000-2×3=994');
+  assertEqual(calcEffectiveLength(7, 3), 1, '有效长度小值: 7-2×3=1');
+  // 异常输入
+  assertThrows(() => calcEffectiveLength(12, 6), '有效长度异常: 12-2×6=0 应抛错');
+  assertThrows(() => calcEffectiveLength(10, 6), '有效长度异常: 10-2×6=-2 应抛错');
+  assertThrows(() => calcEffectiveLength(null, 6), '有效长度异常: null 应抛错');
+  assertThrows(() => calcEffectiveLength(undefined, 6), '有效长度异常: undefined 应抛错');
+  assertThrows(() => calcEffectiveLength(NaN, 6), '有效长度异常: NaN 应抛错');
+  assertThrows(() => calcEffectiveLength(-100, 6), '有效长度异常: 负数 应抛错');
+  assertThrows(() => calcEffectiveLength(200, 0), '有效长度异常: hf=0 应抛错');
+  assertThrows(() => calcEffectiveLength(200, -5), '有效长度异常: hf 负数 应抛错');
+
+  // ===== calcWeldStress 测试（15 个）=====
+  // 正常值
+  assertEqual(calcWeldStress(10000, 6, 188), 10000 / (0.7 * 6 * 188), '应力: 10kN/6/188', 0.001);
+  assertEqual(calcWeldStress(50000, 8, 284), 50000 / (0.7 * 8 * 284), '应力: 50kN/8/284', 0.001);
+  assertEqual(calcWeldStress(100000, 10, 200), 100000 / (0.7 * 10 * 200), '应力: 100kN/10/200', 0.001);
+  assertEqual(calcWeldStress(20000, 5, 140), 20000 / (0.7 * 5 * 140), '应力: 20kN/5/140', 0.001);
+  // 边界值
+  assertEqual(calcWeldStress(0, 6, 188), 0, '应力边界: N=0');
+  assertEqual(calcWeldStress(1, 3, 1), 1 / (0.7 * 3 * 1), '应力边界: 极小值', 0.001);
+  assertEqual(calcWeldStress(1000000, 12, 500), 1000000 / (0.7 * 12 * 500), '应力边界: 大值', 0.001);
+  // 异常输入
+  assertThrows(() => calcWeldStress(null, 6, 188), '应力异常: N=null');
+  assertThrows(() => calcWeldStress(undefined, 6, 188), '应力异常: N=undefined');
+  assertThrows(() => calcWeldStress(NaN, 6, 188), '应力异常: N=NaN');
+  assertThrows(() => calcWeldStress(-1000, 6, 188), '应力异常: N 负数');
+  assertThrows(() => calcWeldStress(10000, 0, 188), '应力异常: hf=0');
+  assertThrows(() => calcWeldStress(10000, 6, 0), '应力异常: lw=0');
+  assertThrows(() => calcWeldStress(10000, -6, 188), '应力异常: hf 负数');
+  assertThrows(() => calcWeldStress(10000, 6, -188), '应力异常: lw 负数');
+
+  // ===== checkWeldStrength 测试（8 个）=====
+  assertTrue(checkWeldStrength(100, 160), '校核: 100<160 通过');
+  assertTrue(checkWeldStrength(159.99, 160), '校核: 159.99<160 通过');
+  assertTrue(checkWeldStrength(160, 160), '校核: 160=160 通过');
+  assertTrue(checkWeldStrength(0, 160), '校核: 0<160 通过');
+  assertFalse(checkWeldStrength(200, 160), '校核: 200>160 不通过');
+  assertFalse(checkWeldStrength(160.001, 160), '校核: 160.001>160 不通过');
+  assertThrows(() => checkWeldStrength(100, 0), '校核异常: ffw=0');
+  assertThrows(() => checkWeldStrength(null, 160), '校核异常: stress=null');
+
+  // ===== calcWeldCapacity 测试（8 个）=====
+  assertEqual(calcWeldCapacity(6, 188, 160), 0.7 * 6 * 188 * 160, '承载力: 6/188/160', 0.001);
+  assertEqual(calcWeldCapacity(8, 284, 160), 0.7 * 8 * 284 * 160, '承载力: 8/284/160', 0.001);
+  assertEqual(calcWeldCapacity(10, 200, 160), 0.7 * 10 * 200 * 160, '承载力: 10/200/160', 0.001);
+  assertEqual(calcWeldCapacity(0, 188, 160), 0, '承载力边界: hf=0');
+  assertEqual(calcWeldCapacity(6, 0, 160), 0, '承载力边界: lw=0');
+  assertEqual(calcWeldCapacity(6, 188, 0), 0, '承载力边界: ffw=0');
+  assertThrows(() => calcWeldCapacity(-6, 188, 160), '承载力异常: hf 负数');
+  assertThrows(() => calcWeldCapacity(6, 188, -160), '承载力异常: ffw 负数');
+
+  // ===== calcWeldUtilization 测试（5 个）=====
+  assertEqual(calcWeldUtilization(80, 160), 0.5, '利用率: 80/160=0.5', 0.001);
+  assertEqual(calcWeldUtilization(160, 160), 1, '利用率: 160/160=1', 0.001);
+  assertEqual(calcWeldUtilization(200, 160), 1.25, '利用率: 200/160=1.25', 0.001);
+  assertEqual(calcWeldUtilization(0, 160), 0, '利用率: 0/160=0', 0.001);
+  assertThrows(() => calcWeldUtilization(100, 0), '利用率异常: ffw=0');
+
+  // ===== calcRequiredLength 测试（4 个）=====
+  assertEqual(calcRequiredLength(100000, 8, 160), 100000 / (0.7 * 8 * 160), '反算长度: 100kN/8/160', 0.01);
+  assertEqual(calcRequiredLength(0, 8, 160), 0, '反算长度边界: N=0');
+  assertThrows(() => calcRequiredLength(-100, 8, 160), '反算长度异常: N 负数');
+  assertThrows(() => calcRequiredLength(100000, 0, 160), '反算长度异常: hf=0');
+
+  // ===== 精度测试（5 个）=====
+  const stress1 = calcWeldStress(10000, 6, 188);
+  assertEqual(Math.round(stress1 * 100) / 100, 12.66, '精度: 四舍五入到 2 位', 0.01);
+  const stress2 = calcWeldStress(100000, 10, 200);
+  assertEqual(Math.round(stress2 * 100) / 100, 71.43, '精度: 四舍五入到 2 位', 0.01);
+  const stress3 = calcWeldStress(1e8, 12, 1000);
+  assertTrue(isValidNumber(stress3), '精度: 大数计算不溢出');
+  const stress4 = calcWeldStress(12345.67, 6.5, 188.5);
+  assertTrue(isValidNumber(stress4), '精度: 小数计算');
+  // 浮点误差验证：0.7*6*188 应接近 789.6
+  assertEqual(0.7 * 6 * 188, 789.6, '精度: 0.7×6×188 浮点误差', 1e-10);
+
+  // ===== 综合场景测试（5 个）=====
+  // 完整流程
+  const N = 50000;
+  const L = 200;
+  const hf = 6;
+  const ffw = 160;
+  const lw = calcEffectiveLength(L, hf);
+  const stress = calcWeldStress(N, hf, lw);
+  const pass = checkWeldStrength(stress, ffw);
+  assertTrue(pass, '综合: 完整流程校核通过');
+  // 反算
+  const reqLw = calcRequiredLength(N, hf, ffw);
+  assertTrue(reqLw > 0, '综合: 反算长度 > 0');
+  // 利用率
+  const util = calcWeldUtilization(stress, ffw);
+  assertTrue(util >= 0 && util <= 2, '综合: 利用率在合理范围');
+  // 承载力
+  const cap = calcWeldCapacity(hf, lw, ffw);
+  assertTrue(cap > N, '综合: 承载力 > 轴力');
+  // 不通过场景
+  const stressFail = calcWeldStress(100000, 4, 142);
+  assertFalse(checkWeldStrength(stressFail, 160), '综合: 大应力小焊脚不通过');
+
+  renderTestResults();
+}
+
+function renderTestResults() {
+  const container = document.getElementById('testResults');
+  let html = '';
+  const allPass = _passCount === _testCount;
+  html += '<div class="test-summary ' + (allPass ? 'summary-pass' : 'summary-fail') + '">';
+  html += '通过 ' + _passCount + ' / 共 ' + _testCount + ' 个测试';
+  if (allPass) {
+    html += ' ✅ 全部通过';
+  } else {
+    html += ' ❌ 有 ' + (_testCount - _passCount) + ' 个失败';
+  }
+  html += '</div>';
+  html += '<div style="max-height:500px;overflow-y:auto">';
+  _testResults.forEach((r, i) => {
+    html += '<div class="test-item ' + (r.pass ? 'test-pass' : 'test-fail') + '">';
+    html += (r.pass ? '✓' : '✗') + ' [' + (i + 1) + '] ' + r.msg;
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/* ============================================================
+ * 第三部分：UI 逻辑
+ * ============================================================ */
+
+function calculate() {
+  const loadType = document.getElementById('loadType').value;
+  const N_kN = parseFloat(document.getElementById('inputN').value);
+  const L = parseFloat(document.getElementById('inputL').value);
+  const hf = parseFloat(document.getElementById('inputHf').value);
+  const ffw = parseFloat(document.getElementById('inputFfw').value);
+  const useArcPlate = document.getElementById('useArcPlate').value === 'yes';
+  const resultArea = document.getElementById('resultArea');
+
+  try {
+    if (!isValidNumber(N_kN) || !isValidNumber(L) || !isValidNumber(hf) || !isValidNumber(ffw)) {
+      throw new Error('请输入有效的数字');
+    }
+    if (N_kN < 0) throw new Error('轴力不能为负数');
+    if (L <= 0) throw new Error('焊缝总长度必须大于 0');
+    if (hf <= 0) throw new Error('焊脚尺寸必须大于 0');
+    if (ffw <= 0) throw new Error('强度设计值必须大于 0');
+
+    const N = N_kN * 1000;
+    let lw;
+    if (useArcPlate) {
+      lw = L;
+    } else {
+      lw = calcEffectiveLength(L, hf);
+    }
+    if (lw < 8 * hf || lw < 40) {
+      throw new Error('构造警告：有效长度 lw 应满足 lw ≥ 8hf 且 lw ≥ 40mm（当前 lw=' + lw.toFixed(2) + 'mm，8hf=' + (8 * hf).toFixed(2) + 'mm），请核对构造要求');
+    }
+
+    const stress = calcWeldStress(N, hf, lw);
+    const betaF = 1.22;
+    const ffwEff = loadType === 'tension' ? ffw * betaF : ffw;
+    const pass = checkWeldStrength(stress, ffwEff);
+    const capacity = calcWeldCapacity(hf, lw, ffw, loadType === 'tension' ? betaF : 1);
+    const utilization = calcWeldUtilization(stress, ffwEff);
+    const reqLw = calcRequiredLength(N, hf, ffw, loadType === 'tension' ? betaF : 1);
+    const reqL = reqLw + (useArcPlate ? 0 : 2 * hf);
+
+    const stressType = loadType === 'tension' ? 'σ' : 'τ';
+    const loadTypeName = loadType === 'tension' ? '正面受拉' : '侧面受剪';
+
+    let html = '<div class="card">';
+    html += '<h2>计算结果</h2>';
+    html += '<div class="result-box">';
+    html += '<div class="result-row"><span class="result-label">受力类型</span><span class="result-value">' + loadTypeName + '</span></div>';
+    html += '<div class="result-row"><span class="result-label">有效长度 lw</span><span class="result-value">' + lw.toFixed(2) + ' mm</span></div>';
+    html += '<div class="result-row"><span class="result-label">计算厚度 he = 0.7·hf</span><span class="result-value">' + (0.7 * hf).toFixed(2) + ' mm</span></div>';
+    html += '<div class="result-row"><span class="result-label">计算应力 ' + stressType + '</span><span class="result-value">' + stress.toFixed(2) + ' N/mm²</span></div>';
+    html += '<div class="result-row"><span class="result-label">强度设计值 ffw' + (loadType === 'tension' ? '（正面受拉，βf=1.22）' : '') + '</span><span class="result-value">' + ffwEff.toFixed(2) + ' N/mm²</span></div>';
+    html += '<div class="result-row"><span class="result-label">承载力 N_Rd</span><span class="result-value">' + (capacity / 1000).toFixed(2) + ' kN</span></div>';
+    html += '<div class="result-row"><span class="result-label">应力比（利用率）</span><span class="result-value">' + (utilization * 100).toFixed(2) + '%</span></div>';
+    html += '<div class="result-row"><span class="result-label">所需最小总长度</span><span class="result-value">' + reqL.toFixed(2) + ' mm</span></div>';
+    html += '<div class="result-row"><span class="result-label">强度校核</span><span class="result-value">';
+    if (pass) {
+      html += '<span class="status-pass">✓ 满足要求 ' + stressType + ' = ' + stress.toFixed(2) + ' ≤ ffw' + (loadType === 'tension' ? '·βf' : '') + ' = ' + ffwEff.toFixed(2) + '</span>';
+    } else {
+      html += '<span class="status-fail">✗ 不满足要求 ' + stressType + ' = ' + stress.toFixed(2) + ' > ffw' + (loadType === 'tension' ? '·βf' : '') + ' = ' + ffwEff.toFixed(2) + '</span>';
+    }
+    html += '</span></div>';
+
+    const utilPercent = utilization * 100;
+    const barWidth = Math.min(utilPercent, 100);
+    let fillClass = 'fill-safe';
+    if (utilization > 0.9) fillClass = 'fill-danger';
+    else if (utilization > 0.7) fillClass = 'fill-warn';
+
+    html += '<div style="margin-top:16px">';
+    html += '<div style="font-size:13px;color:var(--text-light);margin-bottom:4px">应力比可视化</div>';
+    html += '<div class="utilization-bar">';
+    html += '<div class="utilization-fill ' + fillClass + '" style="width:' + barWidth + '%">';
+    html += '</div></div>';
+    if (utilPercent > 15) html += '<div style="font-size:13px;margin-top:4px;font-weight:600;color:' + (utilPercent > 100 ? 'var(--danger)' : 'var(--text)') + '">应力比：' + utilPercent.toFixed(1) + '%' + (utilPercent > 100 ? '（超出 100%，进度条已封顶）' : '') + '</div>';
+    html += '</div>';
+
+    html += '<h3 style="margin-top:20px">计算过程</h3>';
+    html += '<div style="background:#f8fafc;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;line-height:1.8">';
+    if (!useArcPlate) {
+      html += 'lw = L - 2·hf = ' + L + ' - 2×' + hf + ' = ' + lw.toFixed(2) + ' mm<br>';
+    } else {
+      html += 'lw = L = ' + L + ' mm（采用引弧板，不扣除）<br>';
+    }
+    html += 'he = 0.7·hf = 0.7×' + hf + ' = ' + (0.7 * hf).toFixed(2) + ' mm<br>';
+    html += stressType + ' = N / (he·lw) = ' + N.toFixed(0) + ' / (' + (0.7 * hf).toFixed(2) + '×' + lw.toFixed(2) + ') = ' + stress.toFixed(2) + ' N/mm²<br>';
+    html += '校核：' + stressType + ' = ' + stress.toFixed(2) + ' ' + (pass ? '≤' : '>') + ' ffw' + (loadType === 'tension' ? '·βf' : '') + ' = ' + ffwEff.toFixed(2) + ' → ' + (pass ? '满足' : '不满足');
+    html += '</div>';
+    html += '</div>';
+    resultArea.innerHTML = html;
+
+  } catch (e) {
+    resultArea.innerHTML = '<div class="card"><h2 style="color:var(--danger)">计算错误</h2><p style="color:var(--danger)">' + e.message + '</p></div>';
+  }
+}
+
+function resetForm() {
+  document.getElementById('loadType').value = 'tension';
+  document.getElementById('inputN').value = 50;
+  document.getElementById('inputL').value = 200;
+  document.getElementById('inputHf').value = 6;
+  document.getElementById('inputFfw').value = 160;
+  document.getElementById('useArcPlate').value = 'no';
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 源码展示
+const sourceCodeStr = `/**
+ * 判断值是否为有效数字（非 NaN、非 Infinity）
+ * @param {*} v - 待检查的值
+ * @returns {boolean} 是否为有效数字
+ */
+function isValidNumber(v) {
+  return typeof v === 'number' && !Number.isNaN(v) && Number.isFinite(v);
+}
+
+/**
+ * 计算角焊缝有效长度
+ * 依据 GB 50017-2017 第 11.2.3 条：当未采用引弧板时，每条焊缝的计算长度
+ * 应取其实际长度减去 2hf（hf 为焊脚尺寸），以考虑起弧灭弧缺陷。
+ *
+ * @param {number} totalLength - 焊缝总长度（mm），必须 > 0
+ * @param {number} hf - 焊脚尺寸（mm），必须 > 0
+ * @returns {number} 有效长度 lw（mm）
+ * @throws {Error} 参数非数字、非正数、或有效长度 ≤ 0 时抛出异常
+ * @example
+ * calcEffectiveLength(200, 6); // 返回 188
+ * calcEffectiveLength(300, 8); // 返回 284
+ */
+function calcEffectiveLength(totalLength, hf) {
+  if (!isValidNumber(totalLength)) {
+    throw new Error('totalLength 必须为有效数字');
+  }
+  if (!isValidNumber(hf)) {
+    throw new Error('hf 必须为有效数字');
+  }
+  if (totalLength <= 0) throw new Error('totalLength 必须大于 0');
+  if (hf <= 0) throw new Error('hf 必须大于 0');
+  const lw = totalLength - 2 * hf;
+  if (lw <= 0) {
+    throw new Error('有效长度 lw ≤ 0，请增大总长度或减小焊脚尺寸');
+  }
+  return lw;
+}
+
+/**
+ * 计算角焊缝应力
+ * 公式：σ 或 τ = N / (0.7 · hf · lw)
+ * 其中 0.7·hf 为角焊缝计算厚度 he（依据 GB 50017-2017 第 11.2.2 条）
+ *
+ * @param {number} N - 轴力（N），必须 ≥ 0
+ * @param {number} hf - 焊脚尺寸（mm），必须 > 0
+ * @param {number} lw - 有效长度（mm），必须 > 0
+ * @returns {number} 应力值（N/mm²）
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * calcWeldStress(10000, 6, 188); // 返回约 12.66 N/mm²
+ */
+function calcWeldStress(N, hf, lw) {
+  if (!isValidNumber(N)) throw new Error('N 必须为有效数字');
+  if (!isValidNumber(hf)) throw new Error('hf 必须为有效数字');
+  if (!isValidNumber(lw)) throw new Error('lw 必须为有效数字');
+  if (N < 0) throw new Error('N 不能为负数');
+  if (hf <= 0) throw new Error('hf 必须大于 0');
+  if (lw <= 0) throw new Error('lw 必须大于 0');
+  const he = 0.7 * hf;
+  return N / (he * lw);
+}
+
+/**
+ * 校核焊缝强度是否满足要求
+ * 判定条件：stress ≤ ffw
+ *
+ * @param {number} stress - 计算应力（N/mm²），必须 ≥ 0
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 > 0
+ * @returns {boolean} stress ≤ ffw 时返回 true
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * checkWeldStrength(100, 160); // true
+ * checkWeldStrength(200, 160); // false
+ */
+function checkWeldStrength(stress, ffw) {
+  if (!isValidNumber(stress)) throw new Error('stress 必须为有效数字');
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字');
+  if (ffw <= 0) throw new Error('ffw 必须大于 0');
+  if (stress < 0) throw new Error('stress 不能为负数');
+  return stress <= ffw;
+}
+
+/**
+ * 计算角焊缝承载力
+ * 公式：N_Rd = 0.7 · hf · lw · ffw
+ *
+ * @param {number} hf - 焊脚尺寸（mm），必须 ≥ 0
+ * @param {number} lw - 有效长度（mm），必须 ≥ 0
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 ≥ 0
+ * @returns {number} 承载力（N）
+ * @throws {Error} 参数为负数或非数字时抛出异常
+ * @example
+ * calcWeldCapacity(6, 188, 160); // 返回 126336 N
+ */
+function calcWeldCapacity(hf, lw, ffw, betaF) {
+  if (!isValidNumber(hf)) throw new Error('hf 必须为有效数字');
+  if (!isValidNumber(lw)) throw new Error('lw 必须为有效数字');
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字');
+  if (hf < 0 || lw < 0 || ffw < 0) throw new Error('参数不能为负数');
+  if (hf === 0 || lw === 0 || ffw === 0) return 0;
+  const he = 0.7 * hf;
+  return he * lw * ffw * (betaF || 1);
+}
+
+/**
+ * 计算应力比（利用率）
+ *
+ * @param {number} stress - 计算应力（N/mm²）
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 > 0
+ * @returns {number} 应力比（无量纲）
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * calcWeldUtilization(80, 160); // 返回 0.5
+ */
+function calcWeldUtilization(stress, ffw) {
+  if (!isValidNumber(stress)) throw new Error('stress 必须为有效数字');
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字');
+  if (ffw <= 0) throw new Error('ffw 必须大于 0');
+  return stress / ffw;
+}
+
+/**
+ * 根据承载力反算所需有效长度
+ *
+ * @param {number} N - 轴力（N），必须 ≥ 0
+ * @param {number} hf - 焊脚尺寸（mm），必须 > 0
+ * @param {number} ffw - 角焊缝强度设计值（N/mm²），必须 > 0
+ * @returns {number} 所需有效长度 lw（mm）
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ * calcRequiredLength(100000, 8, 160); // 返回约 111.61 mm
+ */
+function calcRequiredLength(N, hf, ffw, betaF) {
+  if (!isValidNumber(N)) throw new Error('N 必须为有效数字');
+  if (!isValidNumber(hf)) throw new Error('hf 必须为有效数字');
+  if (!isValidNumber(ffw)) throw new Error('ffw 必须为有效数字');
+  if (N < 0) throw new Error('N 不能为负数');
+  if (hf <= 0) throw new Error('hf 必须大于 0');
+  if (ffw <= 0) throw new Error('ffw 必须大于 0');
+  const he = 0.7 * hf;
+  return N / (he * ffw * (betaF || 1));
+}`;
+
+document.getElementById('sourceCode').textContent = sourceCodeStr;
+
+// 说明书内容
+const docContentStr = `
+<h2>一、工具简介</h2>
+<p>本工具用于<strong>角焊缝强度计算与校核</strong>，适用于钢结构工程中常见的角焊缝连接设计。工具依据 <strong>GB 50017-2017《钢结构设计标准》</strong>第 11.2 节的相关规定，提供焊缝有效长度计算、应力计算、强度校核、承载力计算、所需长度反算等功能。</p>
+<p>角焊缝是钢结构中最常见的焊缝形式之一，广泛应用于梁柱连接、支撑连接、加劲肋连接、节点板连接等场景。焊缝强度校核是钢结构设计中的重要环节，直接关系到结构的安全性和经济性。</p>
+<p>本工具支持两种受力情况的计算：</p>
+<ul>
+<li><strong>正面受拉</strong>：受力方向垂直于焊缝长度方向（如盖板连接、端板连接）</li>
+<li><strong>侧面受剪</strong>：受力方向平行于焊缝长度方向（如搭接连接、角接连接）</li>
+</ul>
+<p>用户只需输入轴力、焊缝总长度、焊脚尺寸等参数，即可快速得到计算结果和校核结论。工具特点：</p>
+<ul>
+<li>纯前端实现，无需安装，打开即用</li>
+<li>计算过程透明，显示完整计算步骤</li>
+<li>支持承载力反算，帮助设计选型</li>
+<li>提供应力比可视化，直观判断安全裕度</li>
+<li>65 个单元测试覆盖（需在“测试”标签页手动点击运行），算法可靠</li>
+</ul>
+
+<h2>二、参数说明</h2>
+
+<h3>1. 轴力 N（单位：kN）</h3>
+<ul>
+<li><strong>含义</strong>：作用在焊缝上的轴向力，包括拉力、压力或剪力</li>
+<li><strong>取值范围</strong>：≥ 0</li>
+<li><strong>注意事项</strong>：
+<ul>
+<li>输入单位为 kN（千牛），工具内部自动转换为 N（牛）进行计算</li>
+<li>对于受拉构件，N 为拉力设计值</li>
+<li>对于受剪构件，N 为剪力设计值</li>
+<li>N 应取荷载组合后的设计值，而非标准值</li>
+</ul>
+</li>
+</ul>
+
+<h3>2. 焊缝总长度 L（单位：mm）</h3>
+<ul>
+<li><strong>含义</strong>：焊缝的实际几何长度</li>
+<li><strong>取值范围</strong>：&gt; 0，且应满足 L &gt; 2hf（否则有效长度为负）</li>
+<li><strong>注意事项</strong>：
+<ul>
+<li>对于双面角焊缝，L 为单侧焊缝长度</li>
+<li>对于围焊缝，L 为焊缝总长度（各段之和）</li>
+<li>当未采用引弧板时，工具会自动扣除 2hf 作为起弧灭弧缺陷长度</li>
+<li>根据 GB 50017，lw 应满足：lw ≥ 8hf 且 lw ≥ 40mm</li>
+</ul>
+</li>
+</ul>
+
+<h3>3. 焊脚尺寸 hf（单位：mm）</h3>
+<ul>
+<li><strong>含义</strong>：角焊缝的焊脚尺寸，即焊缝截面的直角边长度</li>
+<li><strong>取值范围</strong>：一般 3mm ≤ hf ≤ 12mm</li>
+<li><strong>构造要求</strong>（GB 50017-2017 第 11.2.1 条）：
+<ul>
+<li>最小值：hf ≥ 1.5√t（t 为较厚焊件厚度，mm）</li>
+<li>最大值：不宜大于较薄焊件厚度的 1.2 倍（板边）</li>
+<li>常用值：4、5、6、8、10、12 mm</li>
+</ul>
+</li>
+<li><strong>注意事项</strong>：
+<ul>
+<li>hf 的选择应综合考虑板厚、受力大小、施工条件</li>
+<li>过小的 hf 会导致应力过大，过大的 hf 会增加焊接变形和残余应力</li>
+</ul>
+</li>
+</ul>
+
+<h3>4. 角焊缝强度设计值 ffw（单位：N/mm²）</h3>
+<ul>
+<li><strong>含义</strong>：角焊缝的抗拉、抗压和抗剪强度设计值</li>
+<li><strong>默认值</strong>：160 N/mm²（适用于 Q235 钢，采用 E43 型焊条）</li>
+<li><strong>其他钢材的 ffw 值</strong>（需查 GB 50017-2017 表 11.2.2）：
+<ul>
+<li>Q345 钢，E50 型焊条：ffw 值需查标准原文确认</li>
+<li>Q390 钢，E55 型焊条：ffw 值需查标准原文确认</li>
+</ul>
+</li>
+<li><strong>注意事项</strong>：
+<ul>
+<li>ffw 值与钢材牌号、焊条型号、焊接方法有关</li>
+<li>自动焊、半自动焊的 ffw 值可能与手工焊不同</li>
+<li>本工具默认采用 Q235 钢的 ffw = 160 N/mm²</li>
+</ul>
+</li>
+</ul>
+
+<h3>5. 受力类型</h3>
+<ul>
+<li><strong>正面受拉</strong>：受力方向垂直于焊缝长度方向
+<ul>
+<li>典型场景：盖板连接、端板连接</li>
+<li>计算应力：σ = N / (0.7·hf·lw)</li>
+</ul>
+</li>
+<li><strong>侧面受剪</strong>：受力方向平行于焊缝长度方向
+<ul>
+<li>典型场景：搭接连接、角接连接</li>
+<li>计算应力：τ = N / (0.7·hf·lw)</li>
+</ul>
+</li>
+</ul>
+
+<h3>6. 引弧板选项</h3>
+<ul>
+<li><strong>否（默认）</strong>：扣除 2hf 作为起弧灭弧缺陷长度
+<ul>
+<li>适用于一般工程情况</li>
+<li>lw = L - 2hf</li>
+</ul>
+</li>
+<li><strong>是</strong>：不扣除，lw = L
+<ul>
+<li>适用于采用引弧板的情况</li>
+<li>引弧板可保证焊缝端部质量，避免起弧灭弧缺陷</li>
+</ul>
+</li>
+</ul>
+
+<h2>三、计算公式</h2>
+
+<h3>1. 有效长度计算</h3>
+<div class="formula">lw = L - 2·hf （未采用引弧板）<br>lw = L （采用引弧板）</div>
+<p>依据：GB 50017-2017 第 11.2.3 条</p>
+
+<h3>2. 计算厚度</h3>
+<div class="formula">he = 0.7·hf</div>
+<p>依据：GB 50017-2017 第 11.2.2 条</p>
+
+<h3>3. 应力计算</h3>
+<div class="formula">正面受拉：σ = N / (he·lw) = N / (0.7·hf·lw)<br>侧面受剪：τ = N / (he·lw) = N / (0.7·hf·lw)</div>
+
+<h3>4. 强度校核</h3>
+<div class="formula">σ ≤ ffw （正面受拉）<br>τ ≤ ffw （侧面受剪）</div>
+
+<h3>5. 承载力计算</h3>
+<div class="formula">N_Rd = he·lw·ffw = 0.7·hf·lw·ffw</div>
+
+<h3>6. 所需长度反算</h3>
+<div class="formula">lw_req = N / (0.7·hf·ffw)<br>L_req = lw_req + 2·hf （未采用引弧板）</div>
+
+<p><strong>说明：</strong>根据 GB 50017-2017 第 11.2.2 条，正面角焊缝的强度计算应考虑增大系数 βf = 1.22，即：</p>
+<div class="formula">σ = N / (he·lw) ≤ βf·ffw = 1.22·ffw</div>
+<p>本工具在正面受拉工况下已按 βf = 1.22 放大设计值（ffw·βf），侧面受剪不乘 βf。注意：下文场景 2、场景 5 中的数字示例按未放大设计值（直接用 ffw=160）演示校核，与工具正面受拉工况的实际口径（ffw·βf）不一致，仅作公式演示参考；正面受拉工况请以计算器输出为准。</p>
+
+<h2>四、实际使用场景</h2>
+
+<div class="scenario">
+<h3>场景 1：小型设备支架角焊缝校核</h3>
+<p><strong>工程背景</strong>：某厂房内设备支架，采用角钢与立柱连接，承受竖向荷载。</p>
+<p><strong>已知条件</strong>：</p>
+<ul>
+<li>轴力 N = 20 kN（竖向荷载设计值）</li>
+<li>焊缝总长度 L = 200 mm</li>
+<li>焊脚尺寸 hf = 6 mm</li>
+<li>钢材 Q235，ffw = 160 N/mm²</li>
+<li>未采用引弧板</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+<li>有效长度：lw = 200 - 2×6 = 188 mm</li>
+<li>计算厚度：he = 0.7×6 = 4.2 mm</li>
+<li>计算应力：σ = 20000 / (4.2×188) = 20000 / 789.6 = 25.33 N/mm²</li>
+<li>校核：25.33 &lt; 160，满足要求</li>
+<li>应力比：25.33 / 160 = 15.83%</li>
+</ol>
+<p><strong>结论</strong>：焊缝强度满足要求，且有较大安全裕度。</p>
+</div>
+
+<div class="scenario">
+<h3>场景 2：梁柱连接节点焊缝设计</h3>
+<p><strong>工程背景</strong>：某框架结构梁柱刚性连接，需要设计翼缘连接焊缝。</p>
+<p><strong>已知条件</strong>：</p>
+<ul>
+<li>轴力 N = 150 kN（梁端弯矩转化的拉力设计值）</li>
+<li>焊脚尺寸 hf = 8 mm（根据板厚确定）</li>
+<li>钢材 Q235，ffw = 160 N/mm²</li>
+<li>未采用引弧板</li>
+</ul>
+<p><strong>设计目标</strong>：确定所需焊缝总长度</p>
+<p><strong>计算过程</strong>：</p>
+<ol>
+<li>所需有效长度：lw = 150000 / (0.7×8×160) = 150000 / 896 = 167.41 mm</li>
+<li>所需总长度：L = 167.41 + 2×8 = 183.41 mm</li>
+<li>取整：L = 200 mm（考虑构造要求和施工便利）</li>
+<li>验算：lw = 200 - 2×8 = 184 mm</li>
+<li>实际应力：σ = 150000 / (0.7×8×184) = 150000 / 1030.4 = 145.57 N/mm²</li>
+<li>校核：145.58 &lt; 160，满足要求</li>
+<li>应力比：145.57 / 160 = 90.98%</li>
+</ol>
+<p><strong>结论</strong>：焊缝总长度取 200 mm 可满足要求，应力比 90.98%，经济合理。</p>
+</div>
+
+<div class="scenario">
+<h3>场景 3：吊车梁加劲肋焊缝</h3>
+<p><strong>工程背景</strong>：某车间吊车梁，需要设置横向加劲肋，加劲肋与腹板采用角焊缝连接。</p>
+<p><strong>已知条件</strong>：</p>
+<ul>
+<li>剪力 N = 80 kN</li>
+<li>焊缝总长度 L = 300 mm（加劲肋两侧）</li>
+<li>焊脚尺寸 hf = 6 mm</li>
+<li>钢材 Q235，ffw = 160 N/mm²</li>
+<li>未采用引弧板</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+<li>有效长度：lw = 300 - 2×6 = 288 mm</li>
+<li>计算应力：τ = 80000 / (0.7×6×288) = 80000 / 1209.6 = 66.14 N/mm²</li>
+<li>校核：66.14 &lt; 160，满足要求</li>
+<li>承载力：N_Rd = 0.7×6×288×160 = 193536 N = 193.54 kN</li>
+<li>应力比：66.14 / 160 = 41.34%</li>
+</ol>
+<p><strong>结论</strong>：焊缝强度满足要求，承载力 193.54 kN，远大于设计剪力 80 kN。</p>
+</div>
+
+<div class="scenario">
+<h3>场景 4：支撑连接节点</h3>
+<p><strong>工程背景</strong>：某钢结构厂房柱间支撑，支撑杆件与节点板采用角焊缝连接。</p>
+<p><strong>已知条件</strong>：</p>
+<ul>
+<li>轴力 N = 200 kN（支撑拉力设计值）</li>
+<li>焊缝总长度 L = 300 mm（双面角焊缝）</li>
+<li>焊脚尺寸 hf = 10 mm</li>
+<li>钢材 Q235，ffw = 160 N/mm²</li>
+<li>未采用引弧板</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+<li>有效长度：lw = 300 - 2×10 = 280 mm</li>
+<li>计算应力：σ = 200000 / (0.7×10×280) = 200000 / 1960 = 102.04 N/mm²</li>
+<li>校核：102.04 &lt; 160，满足要求</li>
+<li>承载力：N_Rd = 0.7×10×280×160 = 313600 N = 313.60 kN</li>
+<li>应力比：102.04 / 160 = 63.78%</li>
+</ol>
+<p><strong>结论</strong>：焊缝强度满足要求，应力比 63.78%，安全裕度适中。</p>
+</div>
+
+<div class="scenario">
+<h3>场景 5：极限情况 - 大轴力小焊脚</h3>
+<p><strong>工程背景</strong>：某临时结构，试图用小焊脚焊缝承受较大轴力。</p>
+<p><strong>已知条件</strong>：</p>
+<ul>
+<li>轴力 N = 100 kN</li>
+<li>焊缝总长度 L = 150 mm</li>
+<li>焊脚尺寸 hf = 4 mm</li>
+<li>钢材 Q235，ffw = 160 N/mm²</li>
+<li>未采用引弧板</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+<li>有效长度：lw = 150 - 2×4 = 142 mm</li>
+<li>计算应力：σ = 100000 / (0.7×4×142) = 100000 / 397.6 = 251.51 N/mm²</li>
+<li>校核：251.51 &gt; 160，<strong style="color:var(--danger)">不满足要求！</strong></li>
+<li>所需有效长度：lw_req = 100000 / (0.7×4×160) = 100000 / 448 = 223.21 mm</li>
+<li>所需总长度：L_req = 223.21 + 2×4 = 231.21 mm</li>
+</ol>
+<p><strong>改进方案</strong>：</p>
+<ul>
+<li>方案 A：增大焊脚至 hf = 6 mm，lw = 142 mm，σ = 100000 / (0.7×6×142) = 172.53 N/mm²，仍不满足</li>
+<li>方案 B：增大焊脚至 hf = 8 mm，lw = 134 mm，σ = 100000 / (0.7×8×134) = 133.26 N/mm²，满足</li>
+<li>方案 C：保持 hf = 4 mm，增加焊缝长度至 L = 250 mm，lw = 242 mm，σ = 100000 / (0.7×4×242) = 147.58 N/mm²，满足</li>
+</ul>
+<p><strong>结论</strong>：原设计不满足要求，需调整焊脚尺寸或焊缝长度。</p>
+</div>
+
+<h2>五、常见错误与排查</h2>
+
+<h3>错误 1：有效长度为负或零</h3>
+<ul>
+<li><strong>现象</strong>：计算报错"有效长度 lw ≤ 0"</li>
+<li><strong>原因</strong>：焊缝总长度 L ≤ 2hf</li>
+<li><strong>解决</strong>：增大 L 或减小 hf，确保 L &gt; 2hf</li>
+</ul>
+
+<h3>错误 2：应力超限</h3>
+<ul>
+<li><strong>现象</strong>：校核结果"不满足要求"</li>
+<li><strong>原因</strong>：轴力过大、焊脚过小、或焊缝过短</li>
+<li><strong>解决</strong>：
+<ul>
+<li>增大焊脚尺寸 hf</li>
+<li>增加焊缝长度 L</li>
+<li>减小轴力 N（优化结构方案）</li>
+<li>采用更高强度的钢材或焊材</li>
+</ul>
+</li>
+</ul>
+
+<h3>错误 3：参数输入错误</h3>
+<ul>
+<li><strong>现象</strong>：计算结果异常或报错</li>
+<li><strong>常见原因</strong>：
+<ul>
+<li>轴力单位错误（应为 kN，非 N）</li>
+<li>长度单位错误（应为 mm）</li>
+<li>输入了非数字字符</li>
+<li>输入了负数</li>
+</ul>
+</li>
+<li><strong>解决</strong>：检查输入参数，确保单位正确、数值合理</li>
+</ul>
+
+<h3>错误 4：忽视构造要求</h3>
+<ul>
+<li><strong>现象</strong>：计算通过，但实际施工困难</li>
+<li><strong>原因</strong>：未考虑最小焊缝长度、最小焊脚尺寸等构造要求</li>
+<li><strong>解决</strong>：参考 GB 50017-2017 第 11.2.1 条的构造要求</li>
+</ul>
+
+<h3>错误 5：混淆正面角焊缝和侧面角焊缝</h3>
+<ul>
+<li><strong>现象</strong>：计算结果与实际受力不符</li>
+<li><strong>原因</strong>：受力类型选择错误</li>
+<li><strong>解决</strong>：根据受力方向与焊缝长度方向的关系，正确选择受力类型</li>
+</ul>
+
+<h2>六、数据来源与标准依据</h2>
+<p>本工具的计算公式和参数取值依据以下标准：</p>
+<ol>
+<li><strong>GB 50017-2017《钢结构设计标准》</strong>
+<ul>
+<li>第 11.2.1 条：角焊缝的构造要求</li>
+<li>第 11.2.2 条：角焊缝的计算厚度和强度设计值</li>
+<li>第 11.2.3 条：角焊缝的计算长度</li>
+<li>表 11.2.2：角焊缝的强度设计值</li>
+</ul>
+</li>
+<li><strong>GB/T 5116-2010《低合金钢焊条》</strong>
+<ul>
+<li>焊条型号与强度匹配</li>
+</ul>
+</li>
+<li><strong>JGJ 81-2002《建筑钢结构焊接技术规程》</strong>
+<ul>
+<li>焊接工艺要求</li>
+</ul>
+</li>
+</ol>
+<p><strong>注意</strong>：</p>
+<ul>
+<li>本工具中的 ffw = 160 N/mm² 适用于 Q235 钢 + E43 型焊条</li>
+<li>其他钢材和焊材组合的 ffw 值需查标准原文确认</li>
+<li>正面角焊缝已按 βf = 1.22 放大设计值，侧面受剪不乘 βf</li>
+</ul>
+
+<h2>七、局限性说明</h2>
+<p>本工具存在以下局限性，使用时应注意：</p>
+<ol>
+<li><strong>仅适用于角焊缝</strong>：不适用于对接焊缝、塞焊缝等其他焊缝形式</li>
+<li><strong>仅考虑单一轴力</strong>：不适用于弯矩、扭矩、组合受力等复杂受力情况</li>
+<li><strong>焊缝方向系数处理方式</strong>：正面受拉按 βf = 1.22 放大设计值，侧面受剪不乘 βf</li>
+<li><strong>未考虑焊缝长度限制</strong>：侧面角焊缝的最大计算长度（60hf）未校核</li>
+<li><strong>未考虑构造要求</strong>：最小焊脚尺寸、最小焊缝长度等构造要求需用户自行校核</li>
+<li><strong>未考虑疲劳</strong>：不适用于承受动力荷载的疲劳验算</li>
+<li><strong>未考虑残余应力和焊接变形</strong>：实际工程中需综合考虑</li>
+<li><strong>ffw 值需用户确认</strong>：不同钢材和焊材组合的 ffw 值不同，本工具默认值仅适用于 Q235 + E43</li>
+<li><strong>不替代专业设计</strong>：本工具仅供初步设计和校核参考，正式工程设计应由注册结构工程师完成</li>
+<li><strong>不承担工程责任</strong>：使用本工具进行的计算结果，用户需自行核实并承担相应责任</li>
+</ol>
+`;
+
+document.getElementById('docContent').innerHTML = docContentStr;
+</script>
+</body>
+</html>

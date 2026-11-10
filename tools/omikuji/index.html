@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎋 御神签</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#140a0a; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#f0dcd0;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#e08a70; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#9a7a6a; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#2a1a14,#1c100c); border:1px solid #5a3a2a;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#e0a080; margin-bottom:10px; border-left:3px solid #e0a080; padding-left:8px; }
+  button.go { width:100%; padding:14px; font-size:11px; font-weight:700; color:#180c08;
+    background:linear-gradient(160deg,#e0a080,#a86040); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:2px; }
+  button.go:active { transform:scale(.98); }
+  .fortune-head { text-align:center; padding:18px 0; }
+  .frank { font-size:14px; font-weight:900; letter-spacing:6px; line-height:1; }
+  .frank.daikichi { color:#e0c060; text-shadow:0 0 20px rgba(224,192,96,.5); }
+  .frank.kichi { color:#8fd0a0; }
+  .frank.chuukichi { color:#a0c0e0; }
+  .frank.shoukich i { }
+  .frank.kichi-lt { color:#c0d0e0; }
+  .frank.suekichi { color:#b0b0b0; }
+  .frank.kyou { color:#e08080; }
+  .ftag { font-size:12px; color:#9a7a6a; margin-top:6px; }
+  .pgroup { margin-bottom:12px; }
+  .pgroup .pttl { font-size:12px; color:#e0a080; margin-bottom:4px; border-left:3px solid #5a3a2a; padding-left:8px; }
+  .pgroup .pbody { font-size:14px; line-height:1.8; color:#e8d8cc; padding-left:11px; }
+  .yllow { color:#e08080; }
+  .sect { font-size:13px; color:#e0a080; margin:16px 0 8px; border-left:3px solid #e0a080; padding-left:8px; }
+  .interp { font-size:13px; line-height:1.85; color:#d8c8bc; }
+  .disclaim { font-size:11px; color:#a08a80; background:#221418; border:1px solid #4a2a30;
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .hint { text-align:center; font-size:11px; color:#7a6a60; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; font-size:10px; color:#4a3a34; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🎋 御 神 签</h1>
+  <div class="sub">日本神社おみくじ · 摇签筒抽吉凶<br>纯本地随机 · 无网络</div>
+
+  <div class="card">
+    <h3>摇签</h3>
+    <button class="go" id="draw">摇 签</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">御神签属日本民俗文化 · 凶签请系树上以求化解 · 娱乐参考 🐳<br>请勿据此做重大决定</div>
+  <div class="ver">v1.0.0-御神签 20261015</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 【数据来源】日本御神签（おみくじ）通行等级序列：大吉→吉→中吉→小吉→末吉→凶→大凶
+  //   各神社体系略有差异，此处取通行排列；完整说明见 THIRD-PARTY-NOTICES.md「三之二」
+  // 签等级（日本御神签从大吉到凶）
+  var RANKS = [
+    {k:'大吉', cls:'daikichi', w:8,  txt:'万事如意 · 所愿皆成，最佳之兆'},
+    {k:'中吉', cls:'chuukichi', w:14, txt:'渐入佳境 · 努力有成，中上之兆'},
+    {k:'小吉', cls:'kichi', w:16, txt:'小有收获 · 顺其自然，小吉之兆'},
+    {k:'吉',   cls:'kichi', w:20, txt:'平顺安稳 · 无大凶，吉'},
+    {k:'半吉', cls:'kichi-lt', w:12, txt:'吉凶参半 · 一半顺遂'},
+    {k:'末吉', cls:'suekichi', w:12, txt:'后运渐开 · 眼下平平，往后转好'},
+    {k:'末小吉', cls:'suekichi', w:8, txt:'积微成著 · 小吉而后安'},
+    {k:'凶',   cls:'kyou', w:8,  txt:'暂有阻滞 · 谨慎以待，凶'},
+    {k:'大凶', cls:'kyou', w:2,  txt:'诸事宜慎 · 静守待时，最忌妄动'}
+  ];
+
+  // 各项运势（按等级优劣取对应措辞）
+  var FIELDS = [
+    {ttl:'愿望', good:'心想事成', mid:'尚需努力', bad:'暂难如愿'},
+    {ttl:'待人', good:'贵人相助', mid:'平常往来', bad:'宜谨言慎行'},
+    {ttl:'失物', good:'很快寻回', mid:'慢慢会出现', bad:'恐难寻回'},
+    {ttl:'旅行', good:'一路顺遂', mid:'平顺无碍', bad:'宜暂缓'},
+    {ttl:'健康', good:'身心康泰', mid:'注意休息', bad:'须多加留意'},
+    {ttl:'恋爱', good:'两情相悦', mid:'慢慢升温', bad:'不宜急躁'},
+    {ttl:'学业/事业', good:'进展顺利', mid:'稳步向前', bad:'暂守现状'},
+    {ttl:'胜负/抽选', good:'有望胜出', mid:'五五之数', bad:'胜负难料'}
+  ];
+
+  // 2026-10-16 改用真随机源 crypto.getRandomValues（操作系统熵池），老浏览器回退 Math.random
+  // ⚠️ 只改本页随机源，不动其他逻辑！
+  function secureRand(){
+    if(window.crypto && window.crypto.getRandomValues){
+      var a=new Uint32Array(1); window.crypto.getRandomValues(a);
+      return a[0]/4294967296;
+    }
+    return Math.random();
+  }
+  function pickRank(){
+    var total=RANKS.reduce(function(s,r){return s+r.w;},0);
+    var x=secureRand()*total;
+    for(var i=0;i<RANKS.length;i++){ x-=RANKS[i].w; if(x<=0) return RANKS[i]; }
+    return RANKS[RANKS.length-1];
+  }
+
+  function tier(rk){
+    if(rk.cls==='daikichi'||rk.cls==='chuukichi') return 0; // good
+    if(rk.cls==='kyou') return 2; // bad
+    return 1; // mid
+  }
+
+  // 2026-10-16 趣味彩蛋：会话内连10次同类触发提示（纯内存，不碰 localStorage/不存储）
+  // ⚠️ 只改本页展示逻辑，不动其他逻辑！
+  var _omkStreak={k:'',n:0};
+  function bump(kind){
+    if(_omkStreak.k===kind){ _omkStreak.n++; } else { _omkStreak.k=kind; _omkStreak.n=1; }
+    if(_omkStreak.n===10 && kind==='bad') return '你的运气过黑';
+    if(_omkStreak.n===10 && kind==='good') return '你的运气过好';
+    return '';
+  }
+
+  function calc(){
+    var rk=pickRank();
+    var t=tier(rk);
+    var res=document.getElementById('result');
+    var h='<div class="card"><div class="fortune-head">';
+    h+='<div class="frank '+rk.cls+'">'+rk.k+'</div>';
+    h+='<div class="ftag">'+rk.txt+'</div>';
+    h+='</div>';
+    h+='<div style="height:1px;background:#3a2a24;margin:8px 0 14px"></div>';
+    FIELDS.forEach(function(f){
+      var v = t===0? f.good : (t===2? f.bad : f.mid);
+      var vc = t===2? 'yllow' : '';
+      h+='<div class="pgroup"><div class="pttl">'+f.ttl+'</div><div class="pbody '+vc+'">'+v+'</div></div>';
+    });
+    h+='</div>';
+
+    h+='<div class="sect">📖 解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 御神签属日本民俗文化，以下为传统签文义，非科学预测，仅供娱乐参考。</div>';
+    h+='<p>你摇到了 <b>'+rk.k+'</b>。'+rk.txt+'。</p>';
+    h+='<ul><li>抽到<b>凶签</b>不必忧心——日本习俗是把凶签<b>系在神社树上</b>，寓意"把霉运留在神社、不带走"。</li>';
+    h+='<li>抽到<b>吉签</b>也别得意，签只是引子，<b>路还是自己走</b>。</li></ul>';
+    h+='<p class="note" style="font-size:11px;color:#a08a80">御神签是日本神社的民俗占卜，重在仪式感与自省；勿作命运断言。</p>';
+    h+='</div>';
+
+    // 2026-10-16 彩蛋：连抽 10 次同类触发弹窗（纯内存，不存储）
+    var blow=bump(t===0?'good':(t===2?'bad':'mid'));
+    if(blow){
+      var sub = blow.indexOf('黑')>=0 ? '连抽 10 次凶签，这手气也是绝了 🌑' : '连抽 10 次大吉，锦鲤本鲤就是你 ✨';
+      setTimeout(function(){
+        var mask=document.createElement('div');
+        mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+        mask.innerHTML='<div style="background:#241d1a;border:1px solid #6a4a3a;border-radius:14px;padding:26px 30px;text-align:center;max-width:80%"><div style="font-size:12px;font-weight:700;color:#f0c060;margin-bottom:10px">'+blow+'</div><div style="font-size:13px;color:#b09080;margin-bottom:16px">'+sub+'</div><div style="font-size:12px;color:#807060">（点任意处关闭）</div></div>';
+        mask.onclick=function(){ mask.remove(); };
+        document.body.appendChild(mask);
+      }, 400);
+    }
+
+    res.innerHTML=h;
+  }
+
+  document.getElementById('draw').addEventListener('click',calc);
+  calc();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎨 颜色工具</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #1a2438 0%, #0d1420 60%, #070a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:6px 6px 12px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#6b8fb3; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #22384c; border-radius:20px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:16px; }
+  .preview { height:96px; border-radius:12px; border:1px solid #24384c; margin-bottom:14px; transition:.2s; }
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:7px; letter-spacing:1px; }
+  .f { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+  .f label { width:56px; font-size:13px; color:#9fe0ff; font-family:ui-monospace,monospace; }
+  input[type=text] { flex:1; background:#060a10; border:1px solid #24384c; border-radius:9px; padding:9px 11px;
+    color:#eaf4ff; font-size:14px; font-family:ui-monospace,monospace; }
+  input:focus { outline:none; border-color:#4d8fc9; }
+  .cp { font-size:11px; color:#6b8fb3; cursor:pointer; border:1px solid #2e5f8e; border-radius:6px; padding:2px 8px; }
+  button.act { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border:1px solid #4d8fc9;
+    border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .grad { display:flex; height:56px; border-radius:10px; overflow:hidden; border:1px solid #24384c; margin-bottom:8px; }
+  .grad div { flex:1; display:flex; align-items:center; justify-content:center; font-size:8.5px; color:#0008;
+    padding:2px; font-family:ui-monospace,monospace; overflow:hidden; text-align:center; line-height:1.1; }
+  .ver { text-align:center; color:#22383c; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回工具区</a>
+  <h1>🎨 颜色工具</h1>
+  <div class="sub">HEX ↔ RGB ↔ HSL · 配色板</div>
+
+  <div class="preview" id="pv"></div>
+
+  <div class="card">
+    <div class="lbl">输入任一格式，其他自动同步</div>
+    <div class="f"><label>HEX</label><input type="text" id="hex" value="#4d8fc9"><span class="cp" data-t="hex">复制</span></div>
+    <div class="f"><label>RGB</label><input type="text" id="rgb"><span class="cp" data-t="rgb">复制</span></div>
+    <div class="f"><label>HSL</label><input type="text" id="hsl"><span class="cp" data-t="hsl">复制</span></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">自动配色（同色系渐变）</div>
+    <div class="grad" id="grad"></div>
+    <div class="lbl" style="margin-top:12px">明暗阶梯</div>
+    <div class="grad" id="shades"></div>
+  </div>
+  <div class="ver">v2-修复制兼容+自动对比色 20261016</div>
+</div>
+<script>
+// 依据：sRGB (IEC 61966-2-1) 色彩空间；HEX/RGB/HSL 标准换算公式。
+const $ = id => document.getElementById(id);
+function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+
+// 复制（稳妥版：先试 clipboard API → 兑底 execCommand → 全失败如实报错）
+function doCopy(text){
+  return new Promise(function(resolve, reject){
+    function fallback(){
+      try{
+        var ta=document.createElement('textarea');
+        ta.value=text;
+        ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0';
+        ta.setAttribute('readonly','');
+        document.body.appendChild(ta);
+        ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+        var ok=false;
+        try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+        document.body.removeChild(ta);
+        ok?resolve():reject(new Error('复制不受支持'));
+      }catch(e){ reject(e); }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(resolve).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+}
+
+function hexToRgb(h){
+  h = h.replace("#","").trim();
+  if(h.length === 3) h = h.split("").map(c=>c+c).join("");
+  if(!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function rgbToHex(r,g,b){ return "#"+[r,g,b].map(x=>clamp(Math.round(x),0,255).toString(16).padStart(2,"0")).join(""); }
+function rgbToHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+  let h,s,l=(mx+mn)/2;
+  if(mx===mn){ h=s=0; }
+  else {
+    const d=mx-mn;
+    s = l>0.5 ? d/(2-mx-mn) : d/(mx+mn);
+    h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4;
+    h/=6;
+  }
+  return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
+}
+function hslToRgb(h,s,l){
+  h/=360; s/=100; l/=100;
+  if(s===0){ const v=Math.round(l*255); return [v,v,v]; }
+  const hue2rgb=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+  const q = l<0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+  return [Math.round(hue2rgb(p,q,h+1/3)*255), Math.round(hue2rgb(p,q,h)*255), Math.round(hue2rgb(p,q,h-1/3)*255)];
+}
+
+let cur = {r:77,g:143,b:201};
+
+function render(from){
+  const {r,g,b} = cur;
+  const hex = rgbToHex(r,g,b);
+  const [h,s,l] = rgbToHsl(r,g,b);
+  $("pv").style.background = hex;
+  if(from !== "hex") $("hex").value = hex.toUpperCase();
+  if(from !== "rgb") $("rgb").value = `rgb(${r}, ${g}, ${b})`;
+  if(from !== "hsl") $("hsl").value = `hsl(${h}, ${s}%, ${l}%)`;
+
+  // 色系渐变（同 H，变 L/S）——9 档，HEX 太窄改只显示亮度
+  let g1 = "";
+  for(let i=0;i<=8;i++){ const L = 10 + i*10; const [rr,gg,bb]=hslToRgb(h,s,L); const c=rgbToHex(rr,gg,bb); g1 += `<div style="background:${c};color:${L>55?'#0007':'#fff8'}">${L}%</div>`; }
+  $("grad").innerHTML = g1;
+  // 明暗阶梯（同色，L 各档）
+  let g2 = "";
+  [10,25,40,55,70,85,95].forEach(L => { const [rr,gg,bb]=hslToRgb(h,s,L); const c=rgbToHex(rr,gg,bb); g2 += `<div style="background:${c};color:${L>55?'#0007':'#fff8'}">${c.slice(1)}</div>`; });
+  $("shades").innerHTML = g2;
+}
+
+function parseHex(){ const v=hexToRgb($("hex").value); if(v){ cur={r:v[0],g:v[1],b:v[2]}; render("hex"); } }
+function parseRgb(){
+  const m = $("rgb").value.match(/(\d+)\D+(\d+)\D+(\d+)/);
+  if(m){ cur={r:+m[1],g:+m[2],b:+m[3]}; render("rgb"); }
+}
+function parseHsl(){
+  const m = $("hsl").value.match(/(\d+)\D+(\d+)\D+(\d+)/);
+  if(m){ const v=hslToRgb(+m[1],+m[2],+m[3]); cur={r:v[0],g:v[1],b:v[2]}; render("hsl"); }
+}
+$("hex").addEventListener("input", parseHex);
+$("rgb").addEventListener("input", parseRgb);
+$("hsl").addEventListener("input", parseHsl);
+$("wrap").addEventListener("click", e => {
+  if(e.target.classList.contains("cp")){
+    const t = e.target.dataset.t;
+    doCopy($(t).value).then(function(){
+      e.target.textContent="已复制"; setTimeout(()=>e.target.textContent="复制",1200);
+    }).catch(function(){
+      e.target.textContent="复制失败"; setTimeout(()=>e.target.textContent="复制",1500);
+    });
+  }
+});
+render();
+</script>
+</body>
+</html>

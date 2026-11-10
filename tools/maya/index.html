@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌽 玛雅历</title>
+<link rel="stylesheet" href="../../assets/themes/skins.css">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:var(--bg); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--text);
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; position:relative; }
+  #wrap { width:100%; max-width:520px; position:relative; z-index:1; }
+  h1 { font-size:12px; color:var(--accent); margin-bottom:4px; text-align:center; letter-spacing:3px;
+    text-shadow:0 0 18px rgba(80,200,120,.3); }
+  .sub { color:var(--text-mute); font-size:12px; margin-bottom:18px; text-align:center; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; color:var(--text-dim); margin-bottom:10px; font-weight:700; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:14px; border-bottom:1px solid var(--border); }
+  .row:last-child { border-bottom:none; }
+  .k { color:var(--text-mute); } .v { color:var(--text); font-weight:600; }
+  .big { font-size:12px; font-weight:800; color:var(--accent); letter-spacing:1px; }
+  .ctrls { display:flex; gap:8px; margin-bottom:12px; }
+  button { flex:1; padding:11px; font-size:14px; font-weight:700; color:var(--text); background:rgba(0,0,0,.25);
+    border:1px solid var(--border); border-radius:10px; cursor:pointer; font-family:inherit; }
+  button:active { transform:scale(.96); }
+  button.go { background:linear-gradient(160deg,#8a5a20,#4e3414); color:#fff; border-color:#c9943d; }
+  input[type=date],input[type=text] { width:100%; background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:9px; padding:10px;
+    font-size:15px; color:var(--text); outline:none; font-family:inherit; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button { flex:1; }
+  .tabs button.on { background:#4a3418; border-color:#c9943d; color:#fff; }
+  .glyphs { display:flex; gap:10px; justify-content:center; margin:6px 0 2px; }
+  .glyph { text-align:center; background:rgba(0,0,0,.28); border:1px solid var(--border); border-radius:10px; padding:10px 12px; min-width:78px; }
+  .glyph .num { font-size:14px; font-weight:800; color:var(--accent); }
+  .glyph .nm { font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .hint { color:var(--text-mute); font-size:11px; margin-top:6px; line-height:1.7; }
+  .ver { color:var(--text-mute); font-size:10px; margin-top:10px; text-align:center; opacity:.6; }
+  .err { color:#ff9f9f; font-size:13px; padding:8px 0; }
+</style>
+</head>
+<body class="theme-maya">
+<div id="wrap">
+  <h1>🌽 玛 雅 历</h1>
+  <div class="sub">公历 ↔ 玛雅历 · 长计历 · 卓尔金历 · 哈布历 · 历法轮</div>
+
+  <div class="tabs">
+    <button id="tabG2M" class="on">公历 → 玛雅历</button>
+    <button id="tabM2G">玛雅历 → 公历</button>
+  </div>
+
+  <!-- 公历 → 玛雅 -->
+  <div id="panelG2M">
+    <div class="card">
+      <h3>选一个公历日期</h3>
+      <div class="row"><span class="k">公历日期</span></div>
+      <input type="date" id="gDate">
+      <div class="ctrls" style="margin-top:10px">
+        <button id="todayBtn" class="go">📍 今天</button>
+        <button id="convBtn" class="go">换算 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 玛雅 → 公历 -->
+  <div id="panelM2G" style="display:none">
+    <div class="card">
+      <h3>输入长计历（Baktun.Katun.Tun.Winal.Kin）</h3>
+      <input type="text" id="lcInput" placeholder="例如：13.0.0.0.0">
+      <div class="ctrls" style="margin-top:10px">
+        <button id="convBtn2" class="go">换算 →</button>
+      </div>
+      <div class="hint">长计历五个数依次为：伯克盾·卡盾·盾·维纳尔·金</div>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint" style="text-align:center;margin-top:14px">
+    玛雅历由纯数学换算 · 儒略日(JDN)桥梁 · GMT 相关系数 584283<br>
+    属历史文化参考，非科学预测，仅供娱乐与科普
+  </div>
+  <div class="ver">v1.0.0-玛雅历 20261016</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ============================================================
+  // 玛雅历换算 · 纯本地计算（零依赖、无网络、无 eval）
+  // 坑点处理（写码时逐条避开）：
+  //   ① 取模"0"陷阱：卓尔金数字 1-13，% 13 得 0 时显 13；日名 20 个，% 20 得 0 用查表第 1 个
+  //   ② 用 JDN（儒略日）作桥梁：不用 new Date()，纯数学公历→JDN（含 1582 儒略/格里高利切换）
+  //   ③ GMT 相关系数硬编码：584283（Goodman-Martinez-Thompson 标准）
+  // 参考：长计历纪元 3114-08-11(GMT) 对应 JDN 584283；纪元日长计历为 0.0.0.0.0
+  // ============================================================
+
+  var GMT_CORRELATION = 584283;   // ③ GMT 相关系数（硬编码，标准值）
+  var LONG_COUNT_EPOCH_NAME = '3114-08-11 (GMT)';
+
+  // 卓尔金历 20 日名（顺序：0=Imix … 19=Ahau）
+  var TZOLKIN_NAMES = ['Imix','Ikʼ','Akʼbʼal','Kʼan','Chikchan','Kimi','Manikʼ','Lamat',
+                       'Muluk','Ok','Chuwen','Ebʼ','Bʼen','Ix','Men','Kibʼ',
+                       'Kabʼan','Etzʼnabʼ','Kawak','Ajaw'];
+  // 20 日名中文
+  var TZOLKIN_CN = ['鳄鱼','风','黑夜','玉米','蛇','死亡','鹿','兔',
+                    '水','狗','猴','牙','芦苇','美洲豹','鹰','秃鹫',
+                    '地震','燧石','风暴','太阳'];
+
+  // 哈布历 18 个月名 + 5 无名日
+  var HAAB_MONTHS = ['Pop','Woʼ','Sip','Sotzʼ','Sek','Xul','Yaxkʼin','Mol',
+                     'Chʼen','Yax','Sakʼ','Keh','Mak','Kʼankʼin','Muwan','Pax',
+                     'Kʼayabʼ','Kumkʼu'];
+  var HAAB_CN = ['鱼月','合月','鹿月','蝙蝠月','死月','犬月','青月','收获月',
+                 '黑月','新日月','白月','红月','围月','蓝月','猫头鹰月','播种月',
+                 '龟月','粮仓月'];
+  var WAYEB = 'Wayebʼ';
+
+  // ---------- ② 公历 → 儒略日 (JDN)，纯数学，含 1582 切换 ----------
+  function gregorianToJDN(y, m, d){
+    // 判断用格里高利历还是儒略历：1582-10-15 起为格里高利历
+    var a = Math.floor((14 - m) / 12);
+    var yy = y + 4800 - a;
+    var mm = m + 12 * a - 3;
+    var jdn;
+    var gregorian = (y > 1582) || (y === 1582 && (m > 10 || (m === 10 && d >= 15)));
+    if(gregorian){
+      jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy +
+            Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+    } else {
+      jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy +
+            Math.floor(yy / 4) - 32083;
+    }
+    return jdn;
+  }
+
+  // ---------- 儒略日 → 公历（反算，含 1582 切换） ----------
+  function jdnToGregorian(jdn){
+    var a, b, c, d, e, m, day, month, year;
+    if(jdn >= 2299161){
+      // 格里高利历
+      a = jdn + 32044;
+      b = Math.floor((4 * a + 3) / 146097);
+      c = a - Math.floor((146097 * b) / 4);
+    } else {
+      // 儒略历
+      b = 0;
+      c = jdn + 32082;
+    }
+    d = Math.floor((4 * c + 3) / 1461);
+    e = c - Math.floor((1461 * d) / 4);
+    m = Math.floor((5 * e + 2) / 153);
+    day = e - Math.floor((153 * m + 2) / 5) + 1;
+    month = m + 3 - 12 * Math.floor(m / 10);
+    year = 100 * b + d - 4800 + Math.floor(m / 10);
+    return {year: year, month: month, day: day};
+  }
+
+  // ---------- 长计历计算（从 JDN） ----------
+  // 【硬锚法】纪元日不靠日期反算，直接钉死 JDN=584283（GMT 标准）
+  //   理由：公元前3114-08-11 按儒略历/格里高利历反算会差 26 天（学界的著名坑）
+  //   故三套历法一律以 (jdn - 584283) 起算，最稳、最合 GMT 标准
+  // 长计历：1 Baktun=144000, 1 Katun=7200, 1 Tun=360, 1 Winal=20, 1 Kin=1
+  function jdnToLongCount(jdn){
+    var days = jdn - GMT_CORRELATION;   // 距纪元日的天数
+    // 处理负值（公元前）
+    var neg = days < 0;
+    var n = Math.abs(days);
+    var baktun = Math.floor(n / 144000); n -= baktun * 144000;
+    var katun  = Math.floor(n / 7200);   n -= katun * 7200;
+    var tun    = Math.floor(n / 360);    n -= tun * 360;
+    var winal  = Math.floor(n / 20);     n -= winal * 20;
+    var kin    = n;
+    if(neg){
+      // 负向：用补数方式表示（简化：长计历本身不定义负，标注 BC）
+      return {baktun: baktun, katun: katun, tun: tun, winal: winal, kin: kin, negative: true};
+    }
+    return {baktun: baktun, katun: katun, tun: tun, winal: winal, kin: kin, negative: false};
+  }
+
+  function longCountToDays(lc){
+    return lc.baktun * 144000 + lc.katun * 7200 + lc.tun * 360 + lc.winal * 20 + lc.kin;
+  }
+
+  // ---------- ① 卓尔金历（13×20=260）——重点避"取模0陷阱" ----------
+  function jdnToTzolkin(jdn){
+    var days = jdn - GMT_CORRELATION;
+    // 纪元日 3114-08-11 的卓尔金为 4 Ajaw（4 太阳）
+    // 数字 1-13 循环：index = ((days + 3) mod 13) 得到 0-12 → +1 → 1-13
+    var numIdx = ((days + 3) % 13 + 13) % 13;   // 0..12
+    var num = numIdx + 1;                        // 1..13 ✅ 避 0 陷阱
+    // 日名：纪元日为 Ajaw（索引 19）；days 每 +1，日名索引 +1
+    var nameIdx = ((days + 19) % 20 + 20) % 20;  // 0..19
+    return {number: num, name: TZOLKIN_NAMES[nameIdx], nameCn: TZOLKIN_CN[nameIdx], nameIdx: nameIdx};
+  }
+
+  // ---------- 哈布历（18×20+5=365） ----------
+  function jdnToHaab(jdn){
+    // 纪元日 3114-08-11 哈布为 8 Kumkʼu；哈布年从 0 Pop 起
+    // 哈布日序号：从"0 Pop"算起的天数偏移
+    // 已知：JDN 584283（纪元）对应 8 Kumkʼu
+    // 反推：Kumkʼu 是第 18 月（索引17），8 Kumkʼu → dayInYear = 17*20 + 8 = 348
+    var days = jdn - GMT_CORRELATION;
+    var dayInYear = ((days + 348) % 365 + 365) % 365;   // 0..364
+    if(dayInYear >= 360){
+      return {month: WAYEB, monthCn: '无名日', day: dayInYear - 360, wayeb: true};
+    }
+    var monthIdx = Math.floor(dayInYear / 20);   // 0..17
+    var day = dayInYear % 20;                     // 0..19
+    return {month: HAAB_MONTHS[monthIdx], monthCn: HAAB_CN[monthIdx], day: day, monthIdx: monthIdx, wayeb: false};
+  }
+
+  // ---------- 历法轮（52年周期） ----------
+  function calendarRound(tzolkin, haab){
+    // 历法轮名 = 卓尔金 + 哈布日
+    return tzolkin.number + ' ' + tzolkin.name + ' ' + haab.day + ' ' + haab.month;
+  }
+
+  // ---------- 玛雅历 → 公历 ----------
+  function longCountToJDN(lc){
+    return GMT_CORRELATION + longCountToDays(lc);
+  }
+
+  // ============================================================
+  // 渲染
+  // ============================================================
+  var $ = function(id){ return document.getElementById(id); };
+
+  function renderFromJDN(jdn, srcLabel){
+    var lc = jdnToLongCount(jdn);
+    var tz = jdnToTzolkin(jdn);
+    var hb = jdnToHaab(jdn);
+    var g  = jdnToGregorian(jdn);
+
+    var lcStr = lc.baktun + '.' + lc.katun + '.' + lc.tun + '.' + lc.winal + '.' + lc.kin;
+
+    var h = '';
+    h += '<div class="card"><h3>📅 公历</h3>';
+    h += '<div class="row"><span class="k">格里高利历</span><span class="v">'+g.year+' 年 '+g.month+' 月 '+g.day+' 日</span></div>';
+    h += '<div class="row"><span class="k">儒略日 (JDN)</span><span class="v">'+jdn+'</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>🗿 长计历（Long Count）</h3>';
+    h += '<div class="row"><span class="k">'+(lc.negative?'（纪元前）':'')+'</span><span class="v big">'+lcStr+'</span></div>';
+    h += '<div class="row"><span class="k">伯克盾·卡盾·盾·维纳尔·金</span><span class="v">'+lc.baktun+' · '+lc.katun+' · '+lc.tun+' · '+lc.winal+' · '+lc.kin+'</span></div>';
+    h += '<div class="row"><span class="k">距纪元总天数</span><span class="v">'+ (lc.negative?'-':'') + longCountToDays(lc) +' 天</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>🌀 卓尔金历（Tzolkʼin · 13×20）</h3>';
+    h += '<div class="glyphs">';
+    h += '<div class="glyph"><div class="num">'+tz.number+'</div><div class="nm">数字</div></div>';
+    h += '<div class="glyph"><div class="num" style="font-size:11px">'+tz.nameCn+'</div><div class="nm">'+tz.name+'</div></div>';
+    h += '</div>';
+    h += '<div class="row"><span class="k">卓尔金日</span><span class="v">'+tz.number+' '+tz.name+'（'+tz.number+' '+tz.nameCn+'）</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>🌾 哈布历（Haabʼ · 18×20+5）</h3>';
+    h += '<div class="row"><span class="k">哈布日</span><span class="v">'+hb.day+' '+hb.month+(hb.wayeb?'（无名日）':'')+'</span></div>';
+    h += '<div class="row"><span class="k">中文</span><span class="v">'+hb.monthCn+' '+(hb.wayeb?'第'+(hb.day+1)+'日':'第'+hb.day+'日')+'</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>☸️ 历法轮（Calendar Round · 52年周期）</h3>';
+    h += '<div class="row"><span class="k">历法轮</span><span class="v">'+calendarRound(tz, hb)+'</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>💡 白话解读</h3><div style="font-size:13px;color:#9fb0d8;line-height:1.8">';
+    h += '<p>玛雅人同时用三套历法记日子：</p>';
+    h += '<p><b>· 长计历</b>（'+lcStr+'）= 从纪元日（公元前3114年8月11日）算起的总天数，<b>像"自开天辟地以来的第几天"</b>；</p>';
+    h += '<p><b>· 卓尔金历</b>（'+tz.number+' '+tz.name+'）= 260 天一轮的"神圣历"，13 个数字 × 20 个日名轮转，<b>管吉凶、祭祀、命名</b>；</p>';
+    h += '<p><b>· 哈布历</b>（'+hb.day+' '+hb.month+'）= 365 天一轮的"太阳历"，18 个月 × 20 天 + 5 个无名日，<b>管农事节令</b>；</p>';
+    h += '<p><b>· 历法轮</b>= 卓尔金与哈布组合，<b>每 52 年才重复一次</b>，玛雅人把它当"世纪"。</p>';
+    h += '<p style="color:#5b6a99;font-size:12px;margin-top:6px">※ GMT 相关系数采用 584283（标准）。玛雅历为历史文化体系，本工具仅作换算与科普，非预测。</p>';
+    h += '</div></div>';
+
+    $('result').innerHTML = h;
+  }
+
+  // ---------- 公历 → 玛雅 ----------
+  function convertG2M(){
+    var v = $('gDate').value;
+    if(!v){ $('result').innerHTML = '<div class="err">请选一个公历日期</div>'; return; }
+    var p = v.split('-').map(Number);
+    var jdn = gregorianToJDN(p[0], p[1], p[2]);
+    renderFromJDN(jdn, '公历');
+  }
+
+  // ---------- 玛雅 → 公历 ----------
+  function convertM2G(){
+    var v = ($('lcInput').value || '').trim();
+    if(!v){ $('result').innerHTML = '<div class="err">请输入长计历，如 13.0.0.0.0</div>'; return; }
+    var parts = v.split('.').map(function(x){ return parseInt(x, 10); });
+    if(parts.length !== 5 || parts.some(function(x){ return isNaN(x); })){
+      $('result').innerHTML = '<div class="err">格式不对，应为 5 个数，如 13.0.0.0.0</div>'; return;
+    }
+    var lc = {baktun: parts[0], katun: parts[1], tun: parts[2], winal: parts[3], kin: parts[4], negative: false};
+    var jdn = longCountToJDN(lc);
+    renderFromJDN(jdn, '玛雅');
+  }
+
+  // ---------- 初始化 ----------
+  var now = new Date(), pad = function(n){ return String(n).padStart(2, '0'); };
+  $('gDate').value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+
+  $('tabG2M').addEventListener('click', function(){
+    $('tabG2M').classList.add('on'); $('tabM2G').classList.remove('on');
+    $('panelG2M').style.display = ''; $('panelM2G').style.display = 'none';
+  });
+  $('tabM2G').addEventListener('click', function(){
+    $('tabM2G').classList.add('on'); $('tabG2M').classList.remove('on');
+    $('panelM2G').style.display = ''; $('panelG2M').style.display = 'none';
+  });
+  $('todayBtn').addEventListener('click', function(){
+    $('gDate').value = new Date().getFullYear() + '-' + pad(new Date().getMonth() + 1) + '-' + pad(new Date().getDate());
+    convertG2M();
+  });
+  $('convBtn').addEventListener('click', convertG2M);
+  $('convBtn2').addEventListener('click', convertM2G);
+  $('gDate').addEventListener('change', convertG2M);
+
+  convertG2M();
+})();
+</script>
+</body>
+</html>

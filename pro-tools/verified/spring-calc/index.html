@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圆柱螺旋弹簧计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", "Segoe UI", sans-serif; background: #f5f7fa; color: #333; line-height: 1.7; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; padding: 30px 0 10px; font-size: 28px; color: #1a1a2e; }
+.subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 0; }
+.tab-btn { padding: 12px 28px; cursor: pointer; background: #e8ecf1; border: none; font-size: 15px; color: #555; transition: all 0.2s; border-radius: 8px 8px 0 0; margin-right: 4px; }
+.tab-btn:hover { background: #d0d8e4; }
+.tab-btn.active { background: #fff; color: #1a73e8; font-weight: 600; border-bottom: 2px solid #fff; margin-bottom: -2px; }
+.tab-content { display: none; background: #fff; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-height: 500px; }
+.tab-content.active { display: block; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 24px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; font-family: "Fira Code", "Consolas", monospace; }
+pre .comment { color: #6c7086; }
+pre .keyword { color: #cba6f7; }
+pre .string { color: #a6e3a1; }
+pre .number { color: #fab387; }
+pre .function { color: #89b4fa; }
+.calc-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 20px; }
+.calc-panel label { display: block; margin-bottom: 16px; }
+.calc-panel label span { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+.calc-panel input { width: 100%; padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 15px; }
+.calc-panel input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.12); }
+.btn { padding: 12px 32px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; transition: background 0.2s; }
+.btn:hover { background: #1557b0; }
+.btn-run { background: #0d9488; }
+.btn-run:hover { background: #0a7a70; }
+.result-box { background: #f0f7ff; border: 1px solid #b3d4fc; border-radius: 8px; padding: 20px; margin-top: 20px; }
+.result-box h3 { color: #1a73e8; margin-bottom: 12px; }
+.result-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #d0e0f0; }
+.result-item:last-child { border-bottom: none; }
+.result-label { color: #555; }
+.result-value { font-weight: 700; color: #1a1a2e; font-family: monospace; }
+.test-output { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.8; max-height: 600px; overflow-y: auto; white-space: pre-wrap; }
+.test-pass { color: #a6e3a1; }
+.test-fail { color: #f38ba8; }
+.test-summary { font-size: 16px; font-weight: 700; margin-top: 12px; padding: 12px; border-radius: 6px; }
+.test-summary.all-pass { background: #d1fae5; color: #065f46; }
+.test-summary.has-fail { background: #fee2e2; color: #991b1b; }
+.manual h2 { font-size: 22px; color: #1a1a2e; margin: 30px 0 15px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+.manual h3 { font-size: 18px; color: #333; margin: 20px 0 10px; }
+.manual p { margin-bottom: 12px; text-indent: 2em; }
+.manual table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+.manual th, .manual td { border: 1px solid #d0d5dd; padding: 10px 12px; text-align: left; font-size: 14px; }
+.manual th { background: #f0f4f8; font-weight: 600; }
+.manual .scenario { background: #f8fafc; border-left: 4px solid #1a73e8; padding: 16px 20px; margin: 15px 0; border-radius: 0 6px 6px 0; }
+.manual .scenario h4 { color: #1a73e8; margin-bottom: 8px; }
+.manual .warn { background: #fff8e1; border-left: 4px solid #f9a825; padding: 12px 16px; margin: 12px 0; border-radius: 0 6px 6px 0; }
+.manual code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+.version-tag { position: fixed; bottom: 10px; right: 16px; font-size: 11px; color: #aaa; z-index: 999; }
+.formula-box { background: #fafbfc; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; margin: 12px 0; font-family: "Times New Roman", serif; font-size: 16px; text-align: center; }
+@media (max-width: 768px) { .calc-panel { grid-template-columns: 1fr; } .tabs { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>圆柱螺旋弹簧计算工具</h1>
+<p class="subtitle">依据 GB/T 23935《圆柱螺旋弹簧设计计算》 | 刚度 · 切应力 · 弹簧指数</p>
+
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('calc')">在线计算</button>
+<button class="tab-btn" onclick="switchTab('source')">JS 源码</button>
+<button class="tab-btn" onclick="switchTab('test')">单元测试</button>
+<button class="tab-btn" onclick="switchTab('manual')">使用说明书</button>
+</div>
+
+<!-- 在线计算 -->
+<div id="tab-calc" class="tab-content active">
+<h2 style="margin-bottom:20px;">参数输入</h2>
+<div class="calc-panel">
+<div>
+<label><span>切变模量 G (MPa)</span><input type="number" id="inp-G" value="80000" step="any"></label>
+<label><span>钢丝直径 d (mm)</span><input type="number" id="inp-d" value="5" step="any"></label>
+<label><span>弹簧中径 D (mm)</span><input type="number" id="inp-D" value="50" step="any"></label>
+<label><span>有效圈数 n</span><input type="number" id="inp-n" value="10" step="any"></label>
+<label><span>工作载荷 F (N)</span><input type="number" id="inp-F" value="100" step="any"></label>
+</div>
+<div>
+<div style="background:#f8fafc;padding:20px;border-radius:8px;border:1px solid #e0e0e0;">
+<h3 style="margin-bottom:12px;font-size:16px;">公式说明</h3>
+<div class="formula-box">k = G·d⁴ / (8·D³·n)</div>
+<div class="formula-box">τ = 8·F·D / (π·d³) × (1 + 0.5/c)</div>
+<div class="formula-box">c = D / d（弹簧指数 / 旋绕比）</div>
+<p style="font-size:13px;color:#666;margin-top:12px;">其中 (1+0.5/c) 为曲度系数的简化形式，用于修正直接按直梁公式计算切应力时的偏差。</p>
+<div class="warn" style="font-size:13px;"><strong>提示：本工具参数为经验值，未经标准核对。</strong>简化式 (1+0.5/c)、典型切变模量 G（碳素钢 79000～81000、不锈钢约 70000）及示例许用切应力 [τ]=600 MPa 均无标准出处，仅供估算参考，正式设计请查阅标准原文。</div>
+</div>
+</div>
+</div>
+<button class="btn" onclick="doCalc()">计 算</button>
+<div id="calc-result"></div>
+</div>
+
+<!-- JS 源码 -->
+<div id="tab-source" class="tab-content">
+<h2 style="margin-bottom:15px;">核心算法源码</h2>
+<p style="color:#666;margin-bottom:15px;font-size:14px;">纯函数实现，零外部依赖，可直接在浏览器控制台运行。</p>
+<pre id="source-code"></pre>
+</div>
+
+<!-- 单元测试 -->
+<div id="tab-test" class="tab-content">
+<h2 style="margin-bottom:15px;">单元测试（纯 JS 实现）</h2>
+<p style="color:#666;margin-bottom:15px;font-size:14px;">共 33 个测试用例，覆盖正常值、边界值、异常输入、精度校验。</p>
+<button class="btn btn-run" onclick="runAllTests()">▶ 运行全部测试</button>
+<div id="test-output" class="test-output" style="margin-top:15px;">点击按钮运行测试...</div>
+</div>
+
+<!-- 使用说明书 -->
+<div id="tab-manual" class="tab-content manual">
+<h2>一、工具简介</h2>
+<p>本工具用于圆柱螺旋压缩弹簧（及拉伸弹簧）的核心力学参数计算，涵盖弹簧刚度（k）和弹簧丝截面切应力（τ）两大关键指标。计算依据为中华人民共和国国家标准 GB/T 23935《圆柱螺旋弹簧设计计算》中给出的基本公式。</p>
+<p>在弹簧设计过程中，工程师需要反复校核弹簧的刚度是否满足系统要求，以及在工作载荷下弹簧丝内的切应力是否低于材料的许用切应力。本工具将这两个核心计算封装为纯函数，支持在线交互计算，也提供可复用的 JavaScript 源码供集成到其他系统中。</p>
+<p>本工具适用于等截面圆丝圆柱螺旋弹簧的初步设计校核阶段。对于变截面、变节距、非线性特性等特殊弹簧，本工具不适用。</p>
+
+<h2>二、公式与参数说明</h2>
+<h3>2.1 弹簧刚度公式</h3>
+<div class="formula-box">k = G · d⁴ / (8 · D³ · n)</div>
+<table>
+<tr><th>参数</th><th>符号</th><th>单位</th><th>含义</th><th>典型取值范围</th></tr>
+<tr><td>切变模量</td><td>G</td><td>MPa (N/mm²)</td><td>弹簧材料的剪切弹性模量，反映材料抵抗剪切变形的能力</td><td>碳素弹簧钢丝约 79000～81000；奥氏体不锈钢丝约 69000～71000（需查标准原文确认具体牌号对应值）</td></tr>
+<tr><td>钢丝直径</td><td>d</td><td>mm</td><td>弹簧钢丝的公称直径</td><td>0.2 ～ 60 mm（常见范围，需查标准原文确认系列值）</td></tr>
+<tr><td>弹簧中径</td><td>D</td><td>mm</td><td>弹簧线圈的平均直径，D = D_outer - d = D_inner + d</td><td>通常 2 ～ 500 mm</td></tr>
+<tr><td>有效圈数</td><td>n</td><td>—（无量纲）</td><td>参与弹性变形的弹簧圈数，不含支撑圈</td><td>通常 3 ～ 30 圈</td></tr>
+<tr><td>弹簧刚度</td><td>k</td><td>N/mm</td><td>弹簧产生单位变形量所需的力，即弹簧的"软硬程度"</td><td>计算结果</td></tr>
+</table>
+
+<h3>2.2 切应力公式</h3>
+<div class="formula-box">τ = (8 · F · D) / (π · d³) × (1 + 0.5 / c)</div>
+<div class="formula-box">c = D / d（弹簧指数，又称旋绕比）</div>
+<table>
+<tr><th>参数</th><th>符号</th><th>单位</th><th>含义</th><th>典型取值范围</th></tr>
+<tr><td>工作载荷</td><td>F</td><td>N</td><td>作用在弹簧上的轴向力</td><td>根据实际工况确定</td></tr>
+<tr><td>弹簧中径</td><td>D</td><td>mm</td><td>同上</td><td>同上</td></tr>
+<tr><td>钢丝直径</td><td>d</td><td>mm</td><td>同上</td><td>同上</td></tr>
+<tr><td>弹簧指数</td><td>c</td><td>—（无量纲）</td><td>中径与钢丝直径之比，反映弹簧的"卷绕紧密程度"</td><td>推荐 4 ～ 16，过小制造困难，过大易失稳</td></tr>
+<tr><td>切应力</td><td>τ</td><td>MPa</td><td>弹簧丝截面上的最大切应力（已考虑曲度修正）</td><td>计算结果，需与材料许用切应力比较</td></tr>
+</table>
+
+<div class="warn">
+<strong>关于曲度系数：</strong>GB/T 23935 给出的完整曲度系数（Wahl 修正系数）为 K = (4c-1)/(4c-4) + 0.615/c，本工具<strong>主结果采用此式</strong>。简化式 (1 + 0.5/c) 仅作参考：c=10 时偏差约 9%，c=6 时约 13%，c=4 时约 20%——<strong>c 越小偏差越大，简化式系统性偏低</strong>，用它判定强度会误判为安全。</br>
+</div>
+
+<h2>三、实际使用场景</h2>
+
+<h3>场景 1：验证现有弹簧刚度是否达标</h3>
+<div class="scenario">
+<h4>背景</h4>
+<p>某振动筛设备需要刚度为 5 N/mm 的减振弹簧。现有弹簧参数：碳素弹簧钢丝，d = 5 mm，D = 50 mm，有效圈数 n = 10。</p>
+<h4>输入</h4>
+<p>G = 80000 MPa，d = 5 mm，D = 50 mm，n = 10</p>
+<h4>计算结果</h4>
+<p>k = 80000 × 5⁴ / (8 × 50³ × 10) = 80000 × 625 / (8 × 125000 × 10) = 50000000 / 10000000 = <strong>5.000 N/mm</strong></p>
+<p>弹簧指数 c = 50/5 = 10，在推荐范围 4～16 内，合理。</p>
+<h4>结论</h4>
+<p>该弹簧刚度恰好为 5 N/mm，满足设计要求。</p>
+</div>
+
+<h3>场景 2：校核弹簧强度是否安全</h3>
+<div class="scenario">
+<h4>背景</h4>
+<p>某阀门弹簧在工作时承受 200 N 的载荷，弹簧参数：d = 3 mm，D = 30 mm。材料为碳素弹簧钢丝，许用切应力 [τ] = 600 MPa。</p>
+<h4>输入</h4>
+<p>F = 200 N，D = 30 mm，d = 3 mm</p>
+<h4>计算结果</h4>
+<p>c = 30/3 = 10</p>
+<p>按 Wahl 完整曲度系数：K = (4×10−1)/(4×10−4) + 0.615/10 = 39/36 + 0.0615 ≈ 1.14483</p>
+<p>τ = 8 × 200 × 30 / (π × 3³) × 1.14483 = 48000 / 84.823 × 1.14483 ≈ 565.88 × 1.14483 ≈ <strong>647.84 MPa</strong></p>
+<p style="color:#888;font-size:13px;">（若用简化系数 1+0.5/10 = 1.05，则为 594.18 MPa——偏低约 9%，据此判定会误判为安全。）</p>
+<h4>结论</h4>
+<p><strong>647.84 MPa &gt; 600 MPa，强度不满足要求</strong>（超载约 8%）。应增大钢丝直径或减小工作载荷后重新校核。</p>
+</div>
+
+<h3>场景 3：反求所需有效圈数</h3>
+<div class="scenario">
+<h4>背景</h4>
+<p>设计目标刚度 k = 3.5 N/mm，已有材料 G = 79000 MPa，钢丝 d = 4 mm，中径 D = 40 mm。问需要多少有效圈数？</p>
+<h4>计算过程</h4>
+<p>由 k = Gd⁴/(8D³n) 反推：n = Gd⁴/(8D³k)</p>
+<p>n = 79000 × 4⁴ / (8 × 40³ × 3.5) = 79000 × 256 / (8 × 64000 × 3.5) = 20224000 / 1792000 = <strong>11.286 圈</strong></p>
+<h4>结论</h4>
+<p>取 n = 11 圈时，k = 79000 × 256 / (8 × 64000 × 11) = 20224000 / 5632000 ≈ 3.591 N/mm；取 n = 12 圈时，k ≈ 3.292 N/mm。可根据实际需要选择，或使用本工具反复试算。</p>
+</div>
+
+<h3>场景 4：不锈钢弹簧的刚度计算</h3>
+<div class="scenario">
+<h4>背景</h4>
+<p>食品机械中使用奥氏体不锈钢弹簧（SUS304），d = 2 mm，D = 20 mm，n = 8，工作载荷 F = 50 N。不锈钢切变模量约 G = 70000 MPa。</p>
+<h4>输入</h4>
+<p>G = 70000 MPa，d = 2 mm，D = 20 mm，n = 8，F = 50 N</p>
+<h4>计算结果</h4>
+<p>k = 70000 × 2⁴ / (8 × 20³ × 8) = 70000 × 16 / (8 × 8000 × 8) = 1120000 / 512000 = <strong>2.1875 N/mm</strong></p>
+<p>c = 20/2 = 10</p>
+<p>τ = 8 × 50 × 20 / (π × 2³) × (1 + 0.5/10) = 8000 / (π × 8) × 1.05 = 8000 / 25.133 × 1.05 ≈ 318.31 × 1.05 ≈ <strong>334.23 MPa</strong></p>
+<h4>结论</h4>
+<p>不锈钢弹簧刚度约 2.19 N/mm，切应力约 334 MPa。SUS304 弹簧丝许用切应力需查标准原文或材料供应商数据表。</p>
+</div>
+
+<h3>场景 5：大载荷重型弹簧校核</h3>
+<div class="scenario">
+<h4>背景</h4>
+<p>铁路车辆悬挂弹簧，d = 28 mm，D = 180 mm，n = 6，G = 79000 MPa，最大工作载荷 F = 15000 N。</p>
+<h4>输入</h4>
+<p>G = 79000 MPa，d = 28 mm，D = 180 mm，n = 6，F = 15000 N</p>
+<h4>计算结果</h4>
+<p>k = 79000 × 28⁴ / (8 × 180³ × 6) = 79000 × 614656 / (8 × 5832000 × 6) = 48557824000 / 279936000 ≈ <strong>173.46 N/mm</strong></p>
+<p>c = 180/28 ≈ 6.429</p>
+<p>τ = 8 × 15000 × 180 / (π × 28³) × (1 + 0.5/6.429) = 21600000 / (π × 21952) × 1.07778 = 21600000 / 68959.64 × 1.07778 ≈ 313.22 × 1.07778 ≈ <strong>337.59 MPa</strong></p>
+<h4>结论</h4>
+<p>弹簧指数 c ≈ 6.43，在推荐范围内。刚度约 173.46 N/mm，切应力约 337.59 MPa。需根据具体材料牌号查取许用切应力进行最终判定。</p>
+</div>
+
+<h2>四、常见错误与排查</h2>
+<table>
+<tr><th>错误现象</th><th>可能原因</th><th>排查方法</th></tr>
+<tr><td>计算结果报错"参数必须为正数"</td><td>输入了 0 或负数</td><td>检查所有参数是否 > 0。钢丝直径、中径、有效圈数、切变模量、载荷均须为正数。</td></tr>
+<tr><td>计算结果报错"参数不能为空"</td><td>输入框为空或传入了 null/undefined</td><td>确保所有输入框都已填写数值。</td></tr>
+<tr><td>刚度值异常偏大或偏小</td><td>单位搞错（如 G 用了 Pa 而非 MPa，或 d 用了 m 而非 mm）</td><td>本工具统一使用 mm-N-MPa 单位制。G 的单位是 MPa（即 N/mm²），d 和 D 的单位是 mm。</td></tr>
+<tr><td>切应力结果与旧资料不符</td><td>曲度系数取值差异</td><td>旧资料多用简化式 (1+0.5/c)，系统性偏低。本工具主结果用完整 Wahl 公式 K=(4c-1)/(4c-4)+0.615/c，以本工具值为准。</td></tr>
+<tr><td>弹簧指数 c 不在推荐范围</td><td>c < 4 或 c > 16</td><td>c < 4 时卷绕困难、曲度修正量大；c > 16 时弹簧易失稳。建议调整 d 或 D 使 c 落在 4～16 之间。</td></tr>
+<tr><td>输入 NaN 或非数字</td><td>前端未做输入校验</td><td>本工具函数对非 number 类型或 NaN 会抛出异常。调用前请确保输入已转为有效数字。</td></tr>
+</table>
+
+<h2>五、数据来源与标准依据</h2>
+<p>本工具的核心公式来源于以下标准与文献：</p>
+<table>
+<tr><th>标准/文献</th><th>内容</th></tr>
+<tr><td>GB/T 23935</td><td>《圆柱螺旋弹簧设计计算》——规定了圆柱螺旋弹簧的基本设计计算公式，包括刚度公式和切应力公式。</td></tr>
+<tr><td>GB/T 1239.2</td><td>《冷卷圆柱螺旋弹簧技术条件 第2部分：压缩弹簧》——规定了冷卷压缩弹簧的技术要求和检验方法。</td></tr>
+<tr><td>GB/T 1972</td><td>《圆柱螺旋弹簧 设计计算》（旧版标准号，未被核实，现行状态待查证，仅供线索参考，请勿据此引用）</td></tr>
+</table>
+<div class="warn">
+<strong>声明：</strong>本工具中的公式形式与国标一致，但具体材料参数（如不同牌号弹簧钢丝的切变模量 G、许用切应力 [τ] 等）需查阅上述标准原文或相关材料标准。本工具不内置材料数据库，所有参数由用户自行输入。
+</div>
+
+<h2>六、局限性说明</h2>
+<p>本工具存在以下局限性，使用者应充分了解：</p>
+<p><strong>1. 仅适用于等截面圆丝圆柱螺旋弹簧。</strong>对于变截面（如锥形弹簧、中凸形弹簧）、变节距弹簧、矩形截面丝弹簧等，本工具的公式不适用。</p>
+<p><strong>2. 曲度系数采用 Wahl 完整式。</strong>主结果使用 K=(4c-1)/(4c-4)+0.615/c（GB/T 23935）。简化式 (1+0.5/c) 仅作参考显示，其值系统性偏低——c=10 时约低 9%，c=4 时约低 20%，<strong>不可用于强度判定</strong>。</p>
+<p><strong>3. 不考虑疲劳寿命。</strong>本工具仅计算静态切应力，不涉及疲劳强度校核。对于承受交变载荷的弹簧，需按 GB/T 23935 中的疲劳验算方法另行计算。</p>
+<p><strong>4. 不考虑稳定性。</strong>对于高径比（自由高度/中径）较大的压缩弹簧，可能存在侧向失稳问题。本工具不进行稳定性校核。</p>
+<p><strong>5. 不考虑温度影响。</strong>切变模量 G 随温度变化。本工具假设用户输入的 G 值已考虑工作温度修正，工具本身不做温度补偿。</p>
+<p><strong>6. 不包含材料数据库。</strong>不同牌号、不同直径的弹簧钢丝，其许用切应力和切变模量不同。本工具不内置这些数据，需用户自行查阅标准或供应商资料。</p>
+<p><strong>7. 计算精度受浮点数限制。</strong>JavaScript 使用 IEEE 754 双精度浮点数，在极端数值（极大或极小）情况下可能存在精度损失。对于工程应用，建议结果保留 3～4 位有效数字即可。</p>
+<p><strong>8. 不进行制造工艺校核。</strong>弹簧的制造可行性（如最小弯曲半径、回弹量等）不在本工具考虑范围内。</p>
+</div>
+</div>
+
+<div class="version-tag">v2.0.3-修审查问题 20261108</div>
+
+<script>
+// ============================================================
+// 第一部分：核心算法源码
+// ============================================================
+
+/**
+ * 校验输入参数是否为有效的正数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @returns {void}
+ * @throws {Error} 当值不是有效正数时抛出异常
+ * @example
+ * validatePositive(5, 'd'); // 通过
+ * validatePositive(0, 'd'); // 抛出 Error: "参数 d 必须为正数，当前值: 0"
+ * validatePositive(-1, 'd'); // 抛出 Error: "参数 d 必须为正数，当前值: -1"
+ */
+function validatePositive(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error('参数 ' + name + ' 不能为空 (null/undefined)');
+    }
+    if (typeof value !== 'number') {
+        throw new Error('参数 ' + name + ' 必须为 number 类型，当前类型: ' + typeof value);
+    }
+    if (Number.isNaN(value)) {
+        throw new Error('参数 ' + name + ' 不能为 NaN');
+    }
+    if (!Number.isFinite(value)) {
+        throw new Error('参数 ' + name + ' 不能为 Infinity');
+    }
+    if (value <= 0) {
+        throw new Error('参数 ' + name + ' 必须为正数，当前值: ' + value);
+    }
+}
+
+/**
+ * 校验输入参数是否为有效的非负数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @returns {void}
+ * @throws {Error} 当值不是有效非负数时抛出异常
+ * @example
+ * validateNonNegative(0, 'F'); // 通过
+ * validateNonNegative(100, 'F'); // 通过
+ * validateNonNegative(-1, 'F'); // 抛出 Error
+ */
+function validateNonNegative(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error('参数 ' + name + ' 不能为空 (null/undefined)');
+    }
+    if (typeof value !== 'number') {
+        throw new Error('参数 ' + name + ' 必须为 number 类型，当前类型: ' + typeof value);
+    }
+    if (Number.isNaN(value)) {
+        throw new Error('参数 ' + name + ' 不能为 NaN');
+    }
+    if (!Number.isFinite(value)) {
+        throw new Error('参数 ' + name + ' 不能为 Infinity');
+    }
+    if (value < 0) {
+        throw new Error('参数 ' + name + ' 不能为负数，当前值: ' + value);
+    }
+}
+
+/**
+ * 计算弹簧指数（旋绕比）c = D / d
+ *
+ * 弹簧指数是弹簧中径与钢丝直径的比值，反映弹簧卷绕的紧密程度。
+ * 推荐取值范围为 4 ～ 16。c 过小则制造困难且曲度修正量大，
+ * c 过大则弹簧易发生侧向失稳。
+ *
+ * @param {number} D - 弹簧中径 (mm)，必须为正数
+ * @param {number} d - 弹簧钢丝直径 (mm)，必须为正数
+ * @returns {number} 弹簧指数 c（无量纲）
+ * @throws {Error} 当 D 或 d 不是有效正数时抛出异常
+ * @example
+ * calcSpringIndex(50, 5); // 返回 10
+ * calcSpringIndex(30, 3); // 返回 10
+ * calcSpringIndex(20, 4); // 返回 5
+ */
+function calcSpringIndex(D, d) {
+    validatePositive(D, 'D (弹簧中径)');
+    validatePositive(d, 'd (钢丝直径)');
+    return D / d;
+}
+
+/**
+ * 计算曲度系数（简化公式）
+ *
+ * 曲度系数用于修正因弹簧丝曲率导致的应力集中效应。
+ * 本函数使用简化公式：K = 1 + 0.5/c
+ * 注意：当 c < 4 时，简化公式与完整 Wahl 公式偏差较大。
+ *
+ * @param {number} c - 弹簧指数（旋绕比），必须为正数
+ * @returns {number} 曲度系数 K（无量纲），值恒大于 1
+ * @throws {Error} 当 c 不是有效正数时抛出异常
+ * @example
+ * calcCorrectionFactor(10); // 返回 1.05
+ * calcCorrectionFactor(5);  // 返回 1.1
+ * calcCorrectionFactor(4);  // 返回 1.125
+ */
+function calcCorrectionFactor(c) {
+    validatePositive(c, 'c (弹簧指数)');
+    return 1 + 0.5 / c;
+}
+
+/**
+ * 计算弹簧刚度
+ *
+ * 公式：k = G · d⁴ / (8 · D³ · n)
+ *
+ * 弹簧刚度表示弹簧产生单位变形量所需的力，单位为 N/mm。
+ * 刚度越大，弹簧越"硬"。
+ *
+ * @param {number} G - 材料切变模量 (MPa)，必须为正数。碳素弹簧钢丝典型值约 79000～81000 MPa
+ * @param {number} d - 弹簧钢丝直径 (mm)，必须为正数
+ * @param {number} D - 弹簧中径 (mm)，必须为正数
+ * @param {number} n - 有效圈数（无量纲），必须为正数
+ * @returns {number} 弹簧刚度 k (N/mm)
+ * @throws {Error} 当任一参数不是有效正数时抛出异常
+ * @example
+ * calcStiffness(80000, 5, 50, 10);
+ * // 返回 5，即 k = 80000 × 625 / (8 × 125000 × 10) = 5 N/mm
+ *
+ * @example
+ * calcStiffness(79000, 3, 30, 8);
+ * // 返回 3.703125 N/mm
+ */
+function calcStiffness(G, d, D, n) {
+    validatePositive(G, 'G (切变模量)');
+    validatePositive(d, 'd (钢丝直径)');
+    validatePositive(D, 'D (弹簧中径)');
+    validatePositive(n, 'n (有效圈数)');
+    return (G * Math.pow(d, 4)) / (8 * Math.pow(D, 3) * n);
+}
+
+/**
+ * 计算弹簧丝截面最大切应力
+ *
+ * 公式：τ = (8 · F · D) / (π · d³) × (1 + 0.5/c)
+ * 其中 c = D/d 为弹簧指数
+ *
+ * 公式中 (1 + 0.5/c) 为曲度系数的简化形式，用于修正
+ * 弹簧丝曲率引起的应力集中。8FD/(πd³) 为按直梁公式
+ * 计算的名义切应力。
+ *
+ * @param {number} F - 工作载荷 (N)，必须为非负数（0 表示无载荷）
+ * @param {number} D - 弹簧中径 (mm)，必须为正数
+ * @param {number} d - 弹簧钢丝直径 (mm)，必须为正数
+ * @returns {number} 最大切应力 τ (MPa)
+ * @throws {Error} 当 F 为负数或其他参数不是有效正数时抛出异常
+ * @example
+ * calcShearStress(100, 50, 5);
+ * // c = 10, K = 1.05
+ * // τ = 8×100×50 / (π×125) × 1.05 ≈ 106.952 MPa
+ *
+ * @example
+ * calcShearStress(0, 50, 5);
+ * // 返回 0（无载荷时切应力为 0）
+ */
+function calcShearStress(F, D, d) {
+    validateNonNegative(F, 'F (工作载荷)');
+    validatePositive(D, 'D (弹簧中径)');
+    validatePositive(d, 'd (钢丝直径)');
+    if (F === 0) return 0;
+    var c = D / d;
+    var K = 1 + 0.5 / c;
+    return (8 * F * D) / (Math.PI * Math.pow(d, 3)) * K;
+}
+
+/**
+ * 计算完整 Wahl 曲度系数
+ *
+ * 公式：K = (4c - 1) / (4c - 4) + 0.615 / c
+ *
+ * 这是比简化公式 (1 + 0.5/c) 更精确的曲度系数计算方法，
+ * 尤其适用于 c < 4 的情况。
+ *
+ * @param {number} c - 弹簧指数（旋绕比），必须为正数且 c ≠ 1（c=1 时分母为 0）
+ * @returns {number} Wahl 曲度系数 K（无量纲）
+ * @throws {Error} 当 c 不是有效正数或 c ≤ 1 时抛出异常
+ * @example
+ * calcWahlFactor(10); // 返回约 1.144
+ * calcWahlFactor(5);  // 返回约 1.2525 需查标准原文确认
+ * calcWahlFactor(4);  // 返回约 1.2969 需查标准原文确认
+ */
+function calcWahlFactor(c) {
+    validatePositive(c, 'c (弹簧指数)');
+    if (c <= 1) {
+        throw new Error('Wahl 公式要求 c > 1，当前值: ' + c);
+    }
+    return (4 * c - 1) / (4 * c - 4) + 0.615 / c;
+}
+
+/**
+ * 弹簧综合计算函数
+ *
+ * 一次性计算弹簧的所有核心参数：弹簧指数、曲度系数、刚度、切应力。
+ *
+ * @param {Object} params - 计算参数对象
+ * @param {number} params.G - 材料切变模量 (MPa)
+ * @param {number} params.d - 钢丝直径 (mm)
+ * @param {number} params.D - 弹簧中径 (mm)
+ * @param {number} params.n - 有效圈数
+ * @param {number} params.F - 工作载荷 (N)
+ * @returns {Object} 计算结果对象，包含以下字段：
+ *   - c {number} 弹簧指数
+ *   - K_simplified {number} 简化曲度系数 (1+0.5/c)
+ *   - K_wahl {number} Wahl 曲度系数（当 c > 1 时计算）
+ *   - k {number} 弹簧刚度 (N/mm)
+ *   - tau {number} 切应力 (MPa)，使用 Wahl 完整曲度系数（c≤1 时抛出异常）
+ * @throws {Error} 当任一参数无效时抛出异常
+ * @example
+ * calcSpringAll({ G: 80000, d: 5, D: 50, n: 10, F: 100 });
+ * // 返回 { c: 10, K_simplified: 1.05, K_wahl: 1.144..., k: 5, tau: 116.62...（Wahl 值） }
+ */
+function calcSpringAll(params) {
+    if (params === null || params === undefined || typeof params !== 'object') {
+        throw new Error('参数必须为对象');
+    }
+    var G = params.G;
+    var d = params.d;
+    var D = params.D;
+    var n = params.n;
+    var F = params.F;
+
+    var c = calcSpringIndex(D, d);
+    var K_simplified = calcCorrectionFactor(c);
+    var K_wahl = null;
+    try {
+        K_wahl = calcWahlFactor(c);
+    } catch (e) {
+        K_wahl = null;
+    }
+    var k = calcStiffness(G, d, D, n);
+    // 主结果用 Wahl 完整曲度系数（GB/T 23935）；简化式仅作参考
+    var tau_wahl = (K_wahl !== null && K_wahl !== undefined)
+        ? (8 * F * D) / (Math.PI * Math.pow(d, 3)) * K_wahl
+        : null;
+    if (tau_wahl === null) {
+        throw new Error('弹簧指数 c = ' + c + ' ≤ 1，物理上不成立，无法计算切应力');
+    }
+    var tau = tau_wahl;
+
+    return {
+        c: c,
+        K_simplified: K_simplified,
+        K_wahl: K_wahl,
+        k: k,
+        tau: tau,
+        tau_wahl: tau_wahl
+    };
+}
+
+
+// ============================================================
+// 第二部分：单元测试框架与用例
+// ============================================================
+
+var _testResults = [];
+
+/**
+ * 断言函数：条件为真则通过，否则记录失败
+ * @param {boolean} condition - 断言条件
+ * @param {string} message - 测试描述
+ */
+function assert(condition, message) {
+    _testResults.push({ pass: !!condition, message: message });
+}
+
+/**
+ * 断言两个数值近似相等（考虑浮点误差）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @param {string} message - 测试描述
+ */
+function assertClose(actual, expected, tolerance, message) {
+    var pass = Math.abs(actual - expected) <= tolerance;
+    _testResults.push({
+        pass: pass,
+        message: message + ' (期望≈' + expected + '，实际=' + actual + '，容差=' + tolerance + ')'
+    });
+}
+
+/**
+ * 断言函数抛出异常
+ * @param {Function} fn - 待测函数
+ * @param {string} message - 测试描述
+ */
+function assertThrows(fn, message) {
+    var threw = false;
+    try { fn(); } catch (e) { threw = true; }
+    _testResults.push({ pass: threw, message: message });
+}
+
+/**
+ * 运行全部测试用例
+ */
+function runAllTests() {
+    _testResults = [];
+    var output = document.getElementById('test-output');
+
+    // ========== calcSpringIndex 测试 ==========
+
+    // 测试 1: 正常值 D=50, d=5
+    assertClose(calcSpringIndex(50, 5), 10, 1e-10,
+        'calcSpringIndex: D=50, d=5 → c=10');
+
+    // 测试 2: 正常值 D=30, d=3
+    assertClose(calcSpringIndex(30, 3), 10, 1e-10,
+        'calcSpringIndex: D=30, d=3 → c=10');
+
+    // 测试 3: 正常值 D=20, d=4
+    assertClose(calcSpringIndex(20, 4), 5, 1e-10,
+        'calcSpringIndex: D=20, d=4 → c=5');
+
+    // 测试 4: 正常值 D=100, d=10
+    assertClose(calcSpringIndex(100, 10), 10, 1e-10,
+        'calcSpringIndex: D=100, d=10 → c=10');
+
+    // 测试 5: 边界值 D=1, d=1 → c=1
+    assertClose(calcSpringIndex(1, 1), 1, 1e-10,
+        'calcSpringIndex: 边界值 D=1, d=1 → c=1');
+
+    // 测试 6: 边界值 极小正数
+    assertClose(calcSpringIndex(0.001, 0.001), 1, 1e-10,
+        'calcSpringIndex: 极小值 D=0.001, d=0.001 → c=1');
+
+    // 测试 7: 异常 d=0
+    assertThrows(function() { calcSpringIndex(50, 0); },
+        'calcSpringIndex: d=0 应抛出异常');
+
+    // 测试 8: 异常 D 为负数
+    assertThrows(function() { calcSpringIndex(-10, 5); },
+        'calcSpringIndex: D=-10 应抛出异常');
+
+    // 测试 9: 异常 d 为负数
+    assertThrows(function() { calcSpringIndex(50, -5); },
+        'calcSpringIndex: d=-5 应抛出异常');
+
+    // 测试 10: 异常 null 输入
+    assertThrows(function() { calcSpringIndex(null, 5); },
+        'calcSpringIndex: D=null 应抛出异常');
+
+    // 测试 11: 异常 undefined 输入
+    assertThrows(function() { calcSpringIndex(50, undefined); },
+        'calcSpringIndex: d=undefined 应抛出异常');
+
+    // 测试 12: 异常 NaN 输入
+    assertThrows(function() { calcSpringIndex(NaN, 5); },
+        'calcSpringIndex: D=NaN 应抛出异常');
+
+    // 测试 13: 异常字符串输入
+    assertThrows(function() { calcSpringIndex('50', 5); },
+        'calcSpringIndex: D="50"(字符串) 应抛出异常');
+
+    // ========== calcStiffness 测试 ==========
+
+    // 测试 14: 正常值 G=80000, d=5, D=50, n=10 → k=5
+    assertClose(calcStiffness(80000, 5, 50, 10), 5, 1e-10,
+        'calcStiffness: G=80000,d=5,D=50,n=10 → k=5');
+
+    // 测试 15: 正常值 G=79000, d=3, D=30, n=8 → k=3.703125
+    assertClose(calcStiffness(79000, 3, 30, 8), 3.703125, 1e-6,
+        'calcStiffness: G=79000,d=3,D=30,n=8 → k≈3.703125');
+
+    // 测试 16: 正常值 G=71000, d=8, D=80, n=5 → k=14.2
+    assertClose(calcStiffness(71000, 8, 80, 5), 14.2, 1e-10,
+        'calcStiffness: G=71000,d=8,D=80,n=5 → k=14.2');
+
+    // 测试 17: 正常值 G=80000, d=1, D=10, n=1 → k=10
+    assertClose(calcStiffness(80000, 1, 10, 1), 10, 1e-10,
+        'calcStiffness: G=80000,d=1,D=10,n=1 → k=10');
+
+    // 测试 18: 边界值 n=1（最小有效圈数）
+    assertClose(calcStiffness(80000, 2, 20, 1), 80000*16/(8*8000*1), 1e-10,
+        'calcStiffness: 边界值 n=1');
+
+    // 测试 19: 异常 n=0
+    assertThrows(function() { calcStiffness(80000, 5, 50, 0); },
+        'calcStiffness: n=0 应抛出异常');
+
+    // 测试 20: 异常 d=0
+    assertThrows(function() { calcStiffness(80000, 0, 50, 10); },
+        'calcStiffness: d=0 应抛出异常');
+
+    // 测试 21: 异常 D=0
+    assertThrows(function() { calcStiffness(80000, 5, 0, 10); },
+        'calcStiffness: D=0 应抛出异常');
+
+    // 测试 22: 异常 G 为负数
+    assertThrows(function() { calcStiffness(-100, 5, 50, 10); },
+        'calcStiffness: G=-100 应抛出异常');
+
+    // 测试 23: 异常 null 输入
+    assertThrows(function() { calcStiffness(null, 5, 50, 10); },
+        'calcStiffness: G=null 应抛出异常');
+
+    // 测试 24: 异常 NaN 输入
+    assertThrows(function() { calcStiffness(80000, NaN, 50, 10); },
+        'calcStiffness: d=NaN 应抛出异常');
+
+    // ========== calcShearStress 测试 ==========
+
+    // 测试 25: 正常值 F=100, D=50, d=5 → τ≈106.952
+    assertClose(calcShearStress(100, 50, 5), 106.9521217577540, 0.001,
+        'calcShearStress: F=100,D=50,d=5 → τ≈106.952 MPa');
+
+    // 测试 26: 正常值 F=500, D=30, d=3 → τ≈1485.446
+    assertClose(calcShearStress(500, 30, 3), 1485.44611825, 0.01,
+        'calcShearStress: F=500,D=30,d=3 → τ≈1485.45 MPa');
+
+    // 测试 27: 正常值 F=1000, D=80, d=8 → τ≈417.782
+    assertClose(calcShearStress(1000, 80, 8), 417.78172562, 0.01,
+        'calcShearStress: F=1000,D=80,d=8 → τ≈417.78 MPa');
+
+    // 测试 28: 边界值 F=0 → τ=0
+    assertClose(calcShearStress(0, 50, 5), 0, 1e-10,
+        'calcShearStress: F=0 → τ=0');
+
+    // 测试 29: 异常 d=0
+    assertThrows(function() { calcShearStress(100, 50, 0); },
+        'calcShearStress: d=0 应抛出异常');
+
+    // 测试 30: 异常 F 为负数
+    assertThrows(function() { calcShearStress(-100, 50, 5); },
+        'calcShearStress: F=-100 应抛出异常');
+
+    // 测试 31: 异常 undefined 输入
+    assertThrows(function() { calcShearStress(undefined, 50, 5); },
+        'calcShearStress: F=undefined 应抛出异常');
+
+    // 测试 32: 异常空字符串输入
+    assertThrows(function() { calcShearStress('', 50, 5); },
+        'calcShearStress: F=""(空字符串) 应抛出异常');
+
+    // ========== 精度与特殊值测试 ==========
+
+    // 测试 33: 极小钢丝直径精度
+    assertClose(calcStiffness(80000, 0.1, 1, 1), 1, 1e-10,
+        'calcStiffness: 极小值 d=0.1,D=1 → k=1');
+
+    // 输出结果
+    var passed = 0;
+    var total = _testResults.length;
+    var html = '';
+    for (var i = 0; i < _testResults.length; i++) {
+        var r = _testResults[i];
+        if (r.pass) {
+            passed++;
+            html += '<span class="test-pass">✓ 通过</span> ' + r.message + '\n';
+        } else {
+            html += '<span class="test-fail">✗ 失败</span> ' + r.message + '\n';
+        }
+    }
+    html += '\n';
+    if (passed === total) {
+        html += '<span class="test-summary all-pass">通过 ' + passed + ' / 共 ' + total + ' — 全部通过 ✓</span>';
+    } else {
+        html += '<span class="test-summary has-fail">通过 ' + passed + ' / 共 ' + total + ' — 有 ' + (total - passed) + ' 个失败 ✗</span>';
+    }
+    output.innerHTML = html;
+}
+
+
+// ============================================================
+// 页面交互逻辑
+// ============================================================
+
+function switchTab(name) {
+    var tabs = document.querySelectorAll('.tab-content');
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+        btns[i].classList.remove('active');
+    }
+    document.getElementById('tab-' + name).classList.add('active');
+    var tabNames = ['calc', 'source', 'test', 'manual'];
+    var idx = tabNames.indexOf(name);
+    if (idx >= 0) btns[idx].classList.add('active');
+}
+
+function doCalc() {
+    var G = parseFloat(document.getElementById('inp-G').value);
+    var d = parseFloat(document.getElementById('inp-d').value);
+    var D = parseFloat(document.getElementById('inp-D').value);
+    var n = parseFloat(document.getElementById('inp-n').value);
+    var F = parseFloat(document.getElementById('inp-F').value);
+    var resultDiv = document.getElementById('calc-result');
+
+    try {
+        var result = calcSpringAll({ G: G, d: d, D: D, n: n, F: F });
+        var cAdvice = '';
+        if (result.c < 4) cAdvice = ' <span style="color:#e53e3e;">⚠ 偏小（推荐 4～16），制造困难且曲度修正量大</span>';
+        else if (result.c > 16) cAdvice = ' <span style="color:#e53e3e;">⚠ 偏大（推荐 4～16），弹簧易失稳</span>';
+        else cAdvice = ' <span style="color:#38a169;">✓ 在推荐范围 4～16 内</span>';
+
+        var html = '<div class="result-box">';
+        html += '<h3>计算结果</h3>';
+        html += '<div class="result-item"><span class="result-label">弹簧指数 c = D/d</span><span class="result-value">' + result.c.toFixed(4) + cAdvice + '</span></div>';
+        html += '<div class="result-item"><span class="result-label">简化曲度系数 (1+0.5/c)</span><span class="result-value">' + result.K_simplified.toFixed(6) + '</span></div>';
+        if (result.K_wahl !== null) {
+            html += '<div class="result-item"><span class="result-label">Wahl 曲度系数</span><span class="result-value">' + result.K_wahl.toFixed(6) + '</span></div>';
+        }
+        html += '<div class="result-item"><span class="result-label">弹簧刚度 k</span><span class="result-value">' + result.k.toFixed(4) + ' N/mm</span></div>';
+        if (result.tau_wahl !== null) {
+            html += '<div class="result-item"><span class="result-label">切应力 τ（Wahl 完整式，主结果）</span><span class="result-value">' + result.tau_wahl.toFixed(4) + ' MPa</span></div>';
+            html += '<div class="result-item"><span class="result-label">切应力 τ（简化式，仅供参考）</span><span class="result-value" style="color:#888;">' + result.tau.toFixed(4) + ' MPa</span></div>';
+        } else {
+            html += '<div class="result-item"><span class="result-label">切应力 τ（简化曲度系数）</span><span class="result-value">' + result.tau.toFixed(4) + ' MPa</span></div>';
+        }
+        html += '</div>';
+        resultDiv.innerHTML = html;
+    } catch (e) {
+        resultDiv.innerHTML = '<div class="result-box" style="border-color:#f38ba8;background:#fff5f5;"><h3 style="color:#e53e3e;">计算错误</h3><p id="calc-err-msg"></p></div>';
+        document.getElementById('calc-err-msg').textContent = e.message;
+    }
+}
+
+// 初始化：显示源码
+window.addEventListener('DOMContentLoaded', function() {
+    var sourceEl = document.getElementById('source-code');
+    // 获取当前页面中所有 script 标签的内容，提取核心算法部分
+    var scripts = document.querySelectorAll('script');
+    var sourceText = '';
+    for (var i = 0; i < scripts.length; i++) {
+        var content = scripts[i].textContent;
+        if (content.indexOf('validatePositive') !== -1 && content.indexOf('calcSpringAll') !== -1) {
+            // 提取核心算法部分（到单元测试之前）
+            // 跳过脚本顶部的第一个分节标记，截取到单元测试分节之前
+            var endIdx = content.indexOf('// 第二部分：单元测试框架与用例');
+            if (endIdx > 0) {
+                sourceText = content.substring(0, endIdx);
+            } else {
+                sourceText = content;
+            }
+            break;
+        }
+    }
+    // 简单语法高亮
+    sourceText = sourceText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/(\/\*\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>')
+        .replace(/(\/\/.*)/g, '<span class="comment">$1</span>')
+        .replace(/\b(function|var|return|if|throw|new|try|catch|typeof|null|undefined|true|false)\b/g, '<span class="keyword">$1</span>')
+        .replace(/\b(\d+\.?\d*)\b/g, '<span class="number">$1</span>');
+    sourceEl.innerHTML = sourceText;
+});
+</script>
+</body>
+</html>

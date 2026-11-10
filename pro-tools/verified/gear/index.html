@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>齿轮传动比计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #2c3e50; line-height: 1.7; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; padding: 30px 0 10px; font-size: 28px; color: #1a1a2e; }
+.subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+.tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 0; }
+.tab-btn { padding: 12px 28px; cursor: pointer; background: #f0f0f0; border: 1px solid #e0e0e0; border-bottom: none; border-radius: 8px 8px 0 0; margin-right: 4px; font-size: 15px; font-weight: 500; color: #555; transition: all 0.2s; }
+.tab-btn:hover { background: #e8e8e8; }
+.tab-btn.active { background: #fff; color: #2563eb; border-color: #2563eb; border-bottom: 2px solid #fff; margin-bottom: -2px; position: relative; z-index: 1; }
+.tab-content { display: none; background: #fff; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; padding: 30px; min-height: 500px; }
+.tab-content.active { display: block; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+code { font-family: "JetBrains Mono", "Fira Code", "Source Code Pro", Consolas, monospace; }
+.test-result { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; }
+.test-pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.test-fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.test-detail { margin-top: 10px; font-size: 13px; font-weight: normal; max-height: 400px; overflow-y: auto; }
+.test-detail .pass-item { color: #155724; }
+.test-detail .fail-item { color: #721c24; }
+.manual-section { margin-bottom: 30px; }
+.manual-section h2 { font-size: 22px; color: #1a1a2e; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 15px; }
+.manual-section h3 { font-size: 18px; color: #333; margin: 20px 0 10px; }
+.manual-section p { margin-bottom: 12px; text-indent: 2em; }
+.manual-section table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+.manual-section th, .manual-section td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
+.manual-section th { background: #f0f4ff; font-weight: 600; }
+.manual-section ul, .manual-section ol { margin: 10px 0 10px 2em; }
+.manual-section li { margin-bottom: 6px; }
+.scenario { background: #f8f9ff; border: 1px solid #e0e7ff; border-radius: 8px; padding: 20px; margin: 15px 0; }
+.scenario h4 { color: #2563eb; margin-bottom: 10px; }
+.scenario .input-output { background: #fff; padding: 12px; border-radius: 4px; margin: 8px 0; font-family: monospace; font-size: 13px; }
+.warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+.warning strong { color: #856404; }
+.version-tag { position: fixed; bottom: 10px; right: 15px; font-size: 11px; color: #999; z-index: 9999; }
+.run-btn { background: #2563eb; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; margin-top: 15px; }
+.run-btn:hover { background: #1d4ed8; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>⚙️ 齿轮传动比计算工具</h1>
+<p class="subtitle">传动比 · 转速 · 扭矩 · 模数 · 齿数 — 工程计算与换算</p>
+
+<div class="tabs">
+<div class="tab-btn active" onclick="switchTab(0)">第一部分：JS 源码</div>
+<div class="tab-btn" onclick="switchTab(1)">第二部分：单元测试</div>
+<div class="tab-btn" onclick="switchTab(2)">第三部分：使用说明书</div>
+</div>
+
+<div class="tab-content active" id="tab0">
+<h2 style="margin-bottom:15px;">齿轮传动比计算核心算法（纯函数实现）</h2>
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div class="tab-content" id="tab1">
+<h2 style="margin-bottom:15px;">单元测试（≥30 用例）</h2>
+<button class="run-btn" onclick="runTests()">▶ 运行全部测试</button>
+<div id="testOutput"></div>
+</div>
+
+<div class="tab-content" id="tab2">
+<div id="manualContent"></div>
+</div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+// ============================================================
+// 第一部分：JS 源码 — 齿轮传动比计算核心算法
+// ============================================================
+
+/**
+ * 校验数值参数是否为有效正数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误信息）
+ * @returns {void}
+ * @throws {Error} 当值不是有效正数时抛出异常
+ */
+function validatePositiveNumber(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error(`参数 ${name} 不能为 null 或 undefined`);
+    }
+    if (typeof value !== 'number') {
+        throw new Error(`参数 ${name} 必须是数字类型，当前为 ${typeof value}`);
+    }
+    if (Number.isNaN(value)) {
+        throw new Error(`参数 ${name} 不能为 NaN`);
+    }
+    if (!Number.isFinite(value)) {
+        throw new Error(`参数 ${name} 不能为 Infinity`);
+    }
+    if (value <= 0) {
+        throw new Error(`参数 ${name} 必须为正数，当前值为 ${value}`);
+    }
+}
+
+/**
+ * 校验数值参数是否为有效非负数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误信息）
+ * @returns {void}
+ * @throws {Error} 当值不是有效非负数时抛出异常
+ */
+function validateNonNegativeNumber(value, name) {
+    if (value === null || value === undefined) {
+        throw new Error(`参数 ${name} 不能为 null 或 undefined`);
+    }
+    if (typeof value !== 'number') {
+        throw new Error(`参数 ${name} 必须是数字类型，当前为 ${typeof value}`);
+    }
+    if (Number.isNaN(value)) {
+        throw new Error(`参数 ${name} 不能为 NaN`);
+    }
+    if (!Number.isFinite(value)) {
+        throw new Error(`参数 ${name} 不能为 Infinity`);
+    }
+    if (value < 0) {
+        throw new Error(`参数 ${name} 不能为负数，当前值为 ${value}`);
+    }
+}
+
+/**
+ * 校验齿数是否为有效正整数
+ * @param {number} value - 待校验的齿数
+ * @param {string} name - 参数名称（用于错误信息）
+ * @returns {void}
+ * @throws {Error} 当齿数不是有效正整数时抛出异常
+ */
+function validateToothCount(value, name) {
+    validatePositiveNumber(value, name);
+    if (!Number.isInteger(value)) {
+        throw new Error(`参数 ${name} 必须为正整数，当前值为 ${value}`);
+    }
+    if (value < 4) {
+        throw new Error(`参数 ${name} 过小（${value}），标准齿轮齿数一般不小于 17（不根切），最小不应小于 4`);
+    }
+}
+
+/**
+ * 计算传动比（基于齿数）
+ * 传动比 i = 从动轮齿数 z2 / 主动轮齿数 z1
+ * 对于减速传动，i > 1；对于增速传动，i < 1。
+ *
+ * @param {number} z1 - 主动轮齿数（正整数，一般 ≥ 17）
+ * @param {number} z2 - 从动轮齿数（正整数，一般 ≥ 17）
+ * @returns {number} 传动比 i（无量纲）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcRatioByTeeth(20, 80); // => 4
+ *   calcRatioByTeeth(40, 40); // => 1
+ *   calcRatioByTeeth(30, 15); // => 0.5
+ */
+function calcRatioByTeeth(z1, z2) {
+    validateToothCount(z1, 'z1（主动轮齿数）');
+    validateToothCount(z2, 'z2（从动轮齿数）');
+    return z2 / z1;
+}
+
+/**
+ * 计算传动比（基于转速）
+ * 传动比 i = 主动轮转速 n1 / 从动轮转速 n2
+ *
+ * @param {number} n1 - 主动轮转速（单位：r/min，正数）
+ * @param {number} n2 - 从动轮转速（单位：r/min，正数）
+ * @returns {number} 传动比 i（无量纲）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcRatioBySpeed(1440, 360); // => 4
+ *   calcRatioBySpeed(1000, 1000); // => 1
+ */
+function calcRatioBySpeed(n1, n2) {
+    validatePositiveNumber(n1, 'n1（主动轮转速）');
+    validatePositiveNumber(n2, 'n2（从动轮转速）');
+    return n1 / n2;
+}
+
+/**
+ * 由传动比和主动轮转速计算从动轮转速
+ * n2 = n1 / i
+ *
+ * @param {number} n1 - 主动轮转速（单位：r/min，正数）
+ * @param {number} i - 传动比（正数）
+ * @returns {number} 从动轮转速 n2（单位：r/min）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDrivenSpeed(1440, 4); // => 360
+ *   calcDrivenSpeed(1000, 2); // => 500
+ */
+function calcDrivenSpeed(n1, i) {
+    validatePositiveNumber(n1, 'n1（主动轮转速）');
+    validatePositiveNumber(i, 'i（传动比）');
+    return n1 / i;
+}
+
+/**
+ * 由传动比和从动轮转速计算主动轮转速
+ * n1 = n2 * i
+ *
+ * @param {number} n2 - 从动轮转速（单位：r/min，正数）
+ * @param {number} i - 传动比（正数）
+ * @returns {number} 主动轮转速 n1（单位：r/min）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDrivingSpeed(360, 4); // => 1440
+ *   calcDrivingSpeed(500, 2); // => 1000
+ */
+function calcDrivingSpeed(n2, i) {
+    validatePositiveNumber(n2, 'n2（从动轮转速）');
+    validatePositiveNumber(i, 'i（传动比）');
+    return n2 * i;
+}
+
+/**
+ * 由传动比和主动轮扭矩计算从动轮扭矩（理想情况，不考虑效率）
+ * T2 = T1 * i
+ * 注意：实际应用中需考虑传动效率 η，此时 T2 = T1 * i * η
+ *
+ * @param {number} T1 - 主动轮扭矩（单位：N·m，正数）
+ * @param {number} i - 传动比（正数）
+ * @returns {number} 从动轮扭矩 T2（单位：N·m）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDrivenTorque(100, 4); // => 400
+ *   calcDrivenTorque(50, 2); // => 100
+ */
+function calcDrivenTorque(T1, i) {
+    validatePositiveNumber(T1, 'T1（主动轮扭矩）');
+    validatePositiveNumber(i, 'i（传动比）');
+    return T1 * i;
+}
+
+/**
+ * 由传动比和从动轮扭矩计算主动轮扭矩（理想情况，不考虑效率）
+ * T1 = T2 / i
+ *
+ * @param {number} T2 - 从动轮扭矩（单位：N·m，正数）
+ * @param {number} i - 传动比（正数）
+ * @returns {number} 主动轮扭矩 T1（单位：N·m）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDrivingTorque(400, 4); // => 100
+ *   calcDrivingTorque(100, 2); // => 50
+ */
+function calcDrivingTorque(T2, i) {
+    validatePositiveNumber(T2, 'T2（从动轮扭矩）');
+    validatePositiveNumber(i, 'i（传动比）');
+    return T2 / i;
+}
+
+/**
+ * 考虑传动效率的从动轮扭矩计算
+ * T2 = T1 * i * η
+ *
+ * @param {number} T1 - 主动轮扭矩（单位：N·m，正数）
+ * @param {number} i - 传动比（正数）
+ * @param {number} eta - 传动效率（0 < η ≤ 1，无量纲）
+ * @returns {number} 从动轮扭矩 T2（单位：N·m）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDrivenTorqueWithEfficiency(100, 4, 0.97); // => 388
+ *   calcDrivenTorqueWithEfficiency(100, 4, 1.0); // => 400
+ */
+function calcDrivenTorqueWithEfficiency(T1, i, eta) {
+    validatePositiveNumber(T1, 'T1（主动轮扭矩）');
+    validatePositiveNumber(i, 'i（传动比）');
+    if (eta === null || eta === undefined) {
+        throw new Error('参数 eta（传动效率）不能为 null 或 undefined');
+    }
+    if (typeof eta !== 'number' || Number.isNaN(eta)) {
+        throw new Error('参数 eta（传动效率）必须是有效数字');
+    }
+    if (eta <= 0 || eta > 1) {
+        throw new Error(`参数 eta（传动效率）必须在 (0, 1] 范围内，当前值为 ${eta}`);
+    }
+    return T1 * i * eta;
+}
+
+/**
+ * 计算齿轮模数
+ * 模数 m = 分度圆直径 d / 齿数 z
+ * 模数是齿轮最基本的参数，单位为 mm。
+ * 标准模数系列参见 GB/T 1357-2008。
+ *
+ * @param {number} d - 分度圆直径（单位：mm，正数）
+ * @param {number} z - 齿数（正整数）
+ * @returns {number} 模数 m（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcModule(100, 50); // => 2
+ *   calcModule(200, 40); // => 5
+ */
+function calcModule(d, z) {
+    validatePositiveNumber(d, 'd（分度圆直径）');
+    validateToothCount(z, 'z（齿数）');
+    return d / z;
+}
+
+/**
+ * 计算分度圆直径
+ * d = m * z
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} z - 齿数（正整数）
+ * @returns {number} 分度圆直径 d（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcPitchDiameter(2, 50); // => 100
+ *   calcPitchDiameter(5, 40); // => 200
+ */
+function calcPitchDiameter(m, z) {
+    validatePositiveNumber(m, 'm（模数）');
+    validateToothCount(z, 'z（齿数）');
+    return m * z;
+}
+
+/**
+ * 计算标准中心距
+ * a = m * (z1 + z2) / 2
+ * 适用于标准齿轮传动（无变位）。
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} z1 - 主动轮齿数（正整数）
+ * @param {number} z2 - 从动轮齿数（正整数）
+ * @returns {number} 标准中心距 a（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcCenterDistance(2, 20, 80); // => 200
+ *   calcCenterDistance(5, 20, 40); // => 150
+ */
+function calcCenterDistance(m, z1, z2) {
+    validatePositiveNumber(m, 'm（模数）');
+    validateToothCount(z1, 'z1（主动轮齿数）');
+    validateToothCount(z2, 'z2（从动轮齿数）');
+    return m * (z1 + z2) / 2;
+}
+
+/**
+ * 由中心距反算模数
+ * m = 2a / (z1 + z2)
+ *
+ * @param {number} a - 中心距（单位：mm，正数）
+ * @param {number} z1 - 主动轮齿数（正整数）
+ * @param {number} z2 - 从动轮齿数（正整数）
+ * @returns {number} 模数 m（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcModuleFromCenterDistance(200, 20, 80); // => 2
+ *   calcModuleFromCenterDistance(150, 20, 40); // => 5
+ */
+function calcModuleFromCenterDistance(a, z1, z2) {
+    validatePositiveNumber(a, 'a（中心距）');
+    validateToothCount(z1, 'z1（主动轮齿数）');
+    validateToothCount(z2, 'z2（从动轮齿数）');
+    return 2 * a / (z1 + z2);
+}
+
+/**
+ * 计算齿顶高
+ * 标准齿轮：ha = ha* * m，其中 ha* = 1.0（正常齿制）
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} [haStar=1.0] - 齿顶高系数（无量纲，正常齿制为 1.0，短齿制为 0.8）
+ * @returns {number} 齿顶高 ha（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcAddendum(2); // => 2
+ *   calcAddendum(2, 0.8); // => 1.6
+ */
+function calcAddendum(m, haStar) {
+    if (haStar === undefined || haStar === null) {
+        haStar = 1.0;
+    }
+    validatePositiveNumber(m, 'm（模数）');
+    if (typeof haStar !== 'number' || Number.isNaN(haStar) || haStar <= 0) {
+        throw new Error(`参数 haStar（齿顶高系数）必须为正数，当前值为 ${haStar}`);
+    }
+    return haStar * m;
+}
+
+/**
+ * 计算齿根高
+ * 标准齿轮：hf = (ha* + c*) * m，其中 c* = 0.25（顶隙系数）
+ * 正常齿制：hf = 1.25 * m
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} [haStar=1.0] - 齿顶高系数（无量纲）
+ * @param {number} [cStar=0.25] - 顶隙系数（无量纲）
+ * @returns {number} 齿根高 hf（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDedendum(2); // => 2.5
+ *   calcDedendum(4); // => 5
+ */
+function calcDedendum(m, haStar, cStar) {
+    if (haStar === undefined || haStar === null) {
+        haStar = 1.0;
+    }
+    if (cStar === undefined || cStar === null) {
+        cStar = 0.25;
+    }
+    validatePositiveNumber(m, 'm（模数）');
+    if (typeof haStar !== 'number' || Number.isNaN(haStar) || haStar <= 0) {
+        throw new Error(`参数 haStar（齿顶高系数）必须为正数，当前值为 ${haStar}`);
+    }
+    if (typeof cStar !== 'number' || Number.isNaN(cStar) || cStar < 0) {
+        throw new Error(`参数 cStar（顶隙系数）不能为负数，当前值为 ${cStar}`);
+    }
+    return (haStar + cStar) * m;
+}
+
+/**
+ * 计算全齿高
+ * h = ha + hf = (2*ha* + c*) * m
+ * 正常齿制：h = 2.25 * m
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} [haStar=1.0] - 齿顶高系数
+ * @param {number} [cStar=0.25] - 顶隙系数
+ * @returns {number} 全齿高 h（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcWholeDepth(2); // => 4.5
+ *   calcWholeDepth(4); // => 9
+ */
+function calcWholeDepth(m, haStar, cStar) {
+    if (haStar === undefined || haStar === null) {
+        haStar = 1.0;
+    }
+    if (cStar === undefined || cStar === null) {
+        cStar = 0.25;
+    }
+    validatePositiveNumber(m, 'm（模数）');
+    if (typeof haStar !== 'number' || Number.isNaN(haStar) || haStar <= 0) {
+        throw new Error(`参数 haStar（齿顶高系数）必须为正数，当前值为 ${haStar}`);
+    }
+    if (typeof cStar !== 'number' || Number.isNaN(cStar) || cStar < 0) {
+        throw new Error(`参数 cStar（顶隙系数）不能为负数，当前值为 ${cStar}`);
+    }
+    return (2 * haStar + cStar) * m;
+}
+
+/**
+ * 计算齿顶圆直径
+ * da = d + 2*ha = m*z + 2*haStar*m = m*(z + 2*haStar)
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} z - 齿数（正整数）
+ * @param {number} [haStar=1.0] - 齿顶高系数
+ * @returns {number} 齿顶圆直径 da（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcAddendumDiameter(2, 50); // => 104
+ *   calcAddendumDiameter(5, 40); // => 210
+ */
+function calcAddendumDiameter(m, z, haStar) {
+    if (haStar === undefined || haStar === null) {
+        haStar = 1.0;
+    }
+    validatePositiveNumber(m, 'm（模数）');
+    validateToothCount(z, 'z（齿数）');
+    if (typeof haStar !== 'number' || Number.isNaN(haStar) || haStar <= 0) {
+        throw new Error(`参数 haStar（齿顶高系数）必须为正数，当前值为 ${haStar}`);
+    }
+    return m * (z + 2 * haStar);
+}
+
+/**
+ * 计算齿根圆直径
+ * df = d - 2*hf = m*z - 2*(haStar + cStar)*m = m*(z - 2*haStar - 2*cStar)
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} z - 齿数（正整数）
+ * @param {number} [haStar=1.0] - 齿顶高系数
+ * @param {number} [cStar=0.25] - 顶隙系数
+ * @returns {number} 齿根圆直径 df（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcDedendumDiameter(2, 50); // => 95
+ *   calcDedendumDiameter(5, 40); // => 187.5
+ */
+function calcDedendumDiameter(m, z, haStar, cStar) {
+    if (haStar === undefined || haStar === null) {
+        haStar = 1.0;
+    }
+    if (cStar === undefined || cStar === null) {
+        cStar = 0.25;
+    }
+    validatePositiveNumber(m, 'm（模数）');
+    validateToothCount(z, 'z（齿数）');
+    if (typeof haStar !== 'number' || Number.isNaN(haStar) || haStar <= 0) {
+        throw new Error(`参数 haStar（齿顶高系数）必须为正数，当前值为 ${haStar}`);
+    }
+    if (typeof cStar !== 'number' || Number.isNaN(cStar) || cStar < 0) {
+        throw new Error(`参数 cStar（顶隙系数）不能为负数，当前值为 ${cStar}`);
+    }
+    return m * (z - 2 * haStar - 2 * cStar);
+}
+
+/**
+ * 计算基圆直径
+ * db = d * cos(α) = m * z * cos(α)
+ * 标准压力角 α = 20°
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @param {number} z - 齿数（正整数）
+ * @param {number} [alphaDeg=20] - 压力角（单位：度，默认 20°）
+ * @returns {number} 基圆直径 db（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcBaseDiameter(2, 50); // ≈ 93.969
+ *   calcBaseDiameter(2, 50, 20); // ≈ 93.969
+ */
+function calcBaseDiameter(m, z, alphaDeg) {
+    if (alphaDeg === undefined || alphaDeg === null) {
+        alphaDeg = 20;
+    }
+    validatePositiveNumber(m, 'm（模数）');
+    validateToothCount(z, 'z（齿数）');
+    if (typeof alphaDeg !== 'number' || Number.isNaN(alphaDeg)) {
+        throw new Error(`参数 alphaDeg（压力角）必须是有效数字，当前值为 ${alphaDeg}`);
+    }
+    if (alphaDeg <= 0 || alphaDeg >= 90) {
+        throw new Error(`参数 alphaDeg（压力角）必须在 (0, 90) 范围内，当前值为 ${alphaDeg}`);
+    }
+    const alphaRad = alphaDeg * Math.PI / 180;
+    return m * z * Math.cos(alphaRad);
+}
+
+/**
+ * 计算分度圆上的齿距（周节）
+ * p = π * m
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @returns {number} 齿距 p（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcCircularPitch(2); // ≈ 6.283
+ *   calcCircularPitch(5); // ≈ 15.708
+ */
+function calcCircularPitch(m) {
+    validatePositiveNumber(m, 'm（模数）');
+    return Math.PI * m;
+}
+
+/**
+ * 计算分度圆上的齿厚（标准齿轮）
+ * s = π * m / 2
+ *
+ * @param {number} m - 模数（单位：mm，正数）
+ * @returns {number} 齿厚 s（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcToothThickness(2); // ≈ 3.142
+ *   calcToothThickness(5); // ≈ 7.854
+ */
+function calcToothThickness(m) {
+    validatePositiveNumber(m, 'm（模数）');
+    return Math.PI * m / 2;
+}
+
+/**
+ * 由功率和转速计算扭矩
+ * T = 9550 * P / n
+ * 其中 P 单位为 kW，n 单位为 r/min，T 单位为 N·m
+ *
+ * @param {number} P - 功率（单位：kW，正数）
+ * @param {number} n - 转速（单位：r/min，正数）
+ * @returns {number} 扭矩 T（单位：N·m）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcTorqueFromPower(10, 1440); // ≈ 66.319
+ *   calcTorqueFromPower(5, 960); // ≈ 49.740
+ */
+function calcTorqueFromPower(P, n) {
+    validatePositiveNumber(P, 'P（功率）');
+    validatePositiveNumber(n, 'n（转速）');
+    return 9550 * P / n;
+}
+
+/**
+ * 由扭矩和转速计算功率
+ * P = T * n / 9550
+ * 其中 T 单位为 N·m，n 单位为 r/min，P 单位为 kW
+ *
+ * @param {number} T - 扭矩（单位：N·m，正数）
+ * @param {number} n - 转速（单位：r/min，正数）
+ * @returns {number} 功率 P（单位：kW）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcPowerFromTorque(66.319, 1440); // ≈ 10
+ *   calcPowerFromTorque(100, 1000); // ≈ 10.471
+ */
+function calcPowerFromTorque(T, n) {
+    validatePositiveNumber(T, 'T（扭矩）');
+    validatePositiveNumber(n, 'n（转速）');
+    return T * n / 9550;
+}
+
+/**
+ * 查找最接近的标准模数（GB/T 1357-2008）
+ * 第一系列优先选用
+ *
+ * @param {number} mCalc - 计算所得模数（单位：mm，正数）
+ * @returns {number} 最接近的标准模数（单位：mm）
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   findStandardModule(2.3); // => 2.5
+ *   findStandardModule(3.8); // => 4
+ */
+function findStandardModule(mCalc) {
+    validatePositiveNumber(mCalc, 'mCalc（计算模数）');
+    // GB/T 1357-2008 第一系列标准模数
+    const standardModules = [
+        0.05, 0.06, 0.08, 0.10, 0.12, 0.16, 0.20, 0.25, 0.32, 0.40,
+        0.50, 0.60, 0.80, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0,
+        5.0, 6.0, 8.0, 10, 12, 16, 20, 25, 32, 40, 50
+    ];
+    let closest = standardModules[0];
+    let minDiff = Math.abs(mCalc - closest);
+    for (let i = 1; i < standardModules.length; i++) {
+        const diff = Math.abs(mCalc - standardModules[i]);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closest = standardModules[i];
+        }
+    }
+    return closest;
+}
+
+/**
+ * 完整齿轮副参数计算
+ * 输入基本参数，输出所有关键几何参数和运动参数
+ *
+ * @param {Object} params - 输入参数对象
+ * @param {number} params.m - 模数（单位：mm）
+ * @param {number} params.z1 - 主动轮齿数
+ * @param {number} params.z2 - 从动轮齿数
+ * @param {number} [params.n1] - 主动轮转速（单位：r/min）
+ * @param {number} [params.T1] - 主动轮扭矩（单位：N·m）
+ * @param {number} [params.alphaDeg=20] - 压力角（度）
+ * @param {number} [params.haStar=1.0] - 齿顶高系数
+ * @param {number} [params.cStar=0.25] - 顶隙系数
+ * @returns {Object} 计算结果对象，包含所有齿轮参数
+ * @throws {Error} 参数无效时抛出异常
+ * @example
+ *   calcGearPair({ m: 2, z1: 20, z2: 80, n1: 1440, T1: 50 });
+ *   // => { ratio: 4, n2: 360, T2: 200, d1: 40, d2: 160, a: 100, ... }
+ */
+function calcGearPair(params) {
+    if (params === null || params === undefined || typeof params !== 'object') {
+        throw new Error('参数 params 必须为非空对象');
+    }
+    const { m, z1, z2, n1, T1, alphaDeg, haStar, cStar } = params;
+    validatePositiveNumber(m, 'm（模数）');
+    validateToothCount(z1, 'z1（主动轮齿数）');
+    validateToothCount(z2, 'z2（从动轮齿数）');
+
+    const result = {};
+
+    // 传动比
+    result.ratio = calcRatioByTeeth(z1, z2);
+
+    // 分度圆直径
+    result.d1 = calcPitchDiameter(m, z1);
+    result.d2 = calcPitchDiameter(m, z2);
+
+    // 中心距
+    result.a = calcCenterDistance(m, z1, z2);
+
+    // 齿顶圆直径
+    result.da1 = calcAddendumDiameter(m, z1, haStar);
+    result.da2 = calcAddendumDiameter(m, z2, haStar);
+
+    // 齿根圆直径
+    result.df1 = calcDedendumDiameter(m, z1, haStar, cStar);
+    result.df2 = calcDedendumDiameter(m, z2, haStar, cStar);
+
+    // 基圆直径
+    result.db1 = calcBaseDiameter(m, z1, alphaDeg);
+    result.db2 = calcBaseDiameter(m, z2, alphaDeg);
+
+    // 齿高参数
+    result.ha = calcAddendum(m, haStar);
+    result.hf = calcDedendum(m, haStar, cStar);
+    result.h = calcWholeDepth(m, haStar, cStar);
+
+    // 齿距和齿厚
+    result.p = calcCircularPitch(m);
+    result.s = calcToothThickness(m);
+
+    // 运动参数
+    if (n1 !== undefined && n1 !== null) {
+        validatePositiveNumber(n1, 'n1（主动轮转速）');
+        result.n1 = n1;
+        result.n2 = calcDrivenSpeed(n1, result.ratio);
+    }
+
+    // 扭矩参数
+    if (T1 !== undefined && T1 !== null) {
+        validatePositiveNumber(T1, 'T1（主动轮扭矩）');
+        result.T1 = T1;
+        result.T2 = calcDrivenTorque(T1, result.ratio);
+    }
+
+    return result;
+}
+
+// 导出所有函数（浏览器环境挂到 window）
+if (typeof window !== 'undefined') {
+    window.GearCalc = {
+        validatePositiveNumber,
+        validateNonNegativeNumber,
+        validateToothCount,
+        calcRatioByTeeth,
+        calcRatioBySpeed,
+        calcDrivenSpeed,
+        calcDrivingSpeed,
+        calcDrivenTorque,
+        calcDrivingTorque,
+        calcDrivenTorqueWithEfficiency,
+        calcModule,
+        calcPitchDiameter,
+        calcCenterDistance,
+        calcModuleFromCenterDistance,
+        calcAddendum,
+        calcDedendum,
+        calcWholeDepth,
+        calcAddendumDiameter,
+        calcDedendumDiameter,
+        calcBaseDiameter,
+        calcCircularPitch,
+        calcToothThickness,
+        calcTorqueFromPower,
+        calcPowerFromTorque,
+        findStandardModule,
+        calcGearPair
+    };
+}
+</script>
+
+<script>
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+function runTests() {
+    const output = document.getElementById('testOutput');
+    let passed = 0;
+    let total = 0;
+    let details = [];
+
+    function assertEqual(testName, actual, expected, tolerance) {
+        total++;
+        tolerance = tolerance || 0;
+        let pass;
+        if (tolerance > 0) {
+            pass = Math.abs(actual - expected) <= tolerance;
+        } else {
+            pass = actual === expected;
+        }
+        if (pass) {
+            passed++;
+            details.push(`<div class="pass-item">✓ ${testName}</div>`);
+        } else {
+            details.push(`<div class="fail-item">✗ ${testName} — 期望: ${expected}, 实际: ${actual}</div>`);
+        }
+    }
+
+    function assertThrows(testName, fn, expectedMsgPart) {
+        total++;
+        try {
+            fn();
+            details.push(`<div class="fail-item">✗ ${testName} — 期望抛出异常但未抛出</div>`);
+        } catch (e) {
+            if (expectedMsgPart && e.message.indexOf(expectedMsgPart) === -1) {
+                details.push(`<div class="fail-item">✗ ${testName} — 异常信息不匹配，期望包含"${expectedMsgPart}"，实际"${e.message}"</div>`);
+            } else {
+                passed++;
+                details.push(`<div class="pass-item">✓ ${testName}（抛出异常: ${e.message}）</div>`);
+            }
+        }
+    }
+
+    const G = window.GearCalc;
+
+    // ===== calcRatioByTeeth 测试 =====
+    // 1. 正常值
+    assertEqual('传动比: z1=20, z2=80 → i=4', G.calcRatioByTeeth(20, 80), 4);
+    assertEqual('传动比: z1=40, z2=40 → i=1', G.calcRatioByTeeth(40, 40), 1);
+    assertEqual('传动比: z1=30, z2=15 → i=0.5', G.calcRatioByTeeth(30, 15), 0.5);
+    assertEqual('传动比: z1=17, z2=17 → i=1', G.calcRatioByTeeth(17, 17), 1);
+    assertEqual('传动比: z1=20, z2=100 → i=5', G.calcRatioByTeeth(20, 100), 5);
+
+    // 2. 异常输入
+    assertThrows('传动比: z1=null 抛异常', () => G.calcRatioByTeeth(null, 80), 'null');
+    assertThrows('传动比: z2=undefined 抛异常', () => G.calcRatioByTeeth(20, undefined), 'undefined');
+    assertThrows('传动比: z1=NaN 抛异常', () => G.calcRatioByTeeth(NaN, 80), 'NaN');
+    assertThrows('传动比: z1=0 抛异常', () => G.calcRatioByTeeth(0, 80), '正数');
+    assertThrows('传动比: z1=-5 抛异常', () => G.calcRatioByTeeth(-5, 80), '正数');
+    assertThrows('传动比: z1=字符串 抛异常', () => G.calcRatioByTeeth("20", 80), '数字类型');
+    assertThrows('传动比: z1=3(小于4) 抛异常', () => G.calcRatioByTeeth(3, 80), '过小');
+    assertThrows('传动比: z1=20.5(非整数) 抛异常', () => G.calcRatioByTeeth(20.5, 80), '正整数');
+
+    // ===== calcRatioBySpeed 测试 =====
+    assertEqual('转速传动比: n1=1440, n2=360 → i=4', G.calcRatioBySpeed(1440, 360), 4);
+    assertEqual('转速传动比: n1=1000, n2=500 → i=2', G.calcRatioBySpeed(1000, 500), 2);
+    assertEqual('转速传动比: n1=750, n2=1500 → i=0.5', G.calcRatioBySpeed(750, 1500), 0.5);
+    assertThrows('转速传动比: n1=0 抛异常', () => G.calcRatioBySpeed(0, 360), '正数');
+
+    // ===== calcDrivenSpeed 测试 =====
+    assertEqual('从动转速: n1=1440, i=4 → n2=360', G.calcDrivenSpeed(1440, 4), 360);
+    assertEqual('从动转速: n1=1000, i=2 → n2=500', G.calcDrivenSpeed(1000, 2), 500);
+    assertEqual('从动转速: n1=1500, i=0.5 → n2=3000', G.calcDrivenSpeed(1500, 0.5), 3000);
+    assertThrows('从动转速: n1=null 抛异常', () => G.calcDrivenSpeed(null, 4), 'null');
+
+    // ===== calcDrivingSpeed 测试 =====
+    assertEqual('主动转速: n2=360, i=4 → n1=1440', G.calcDrivingSpeed(360, 4), 1440);
+    assertEqual('主动转速: n2=500, i=2 → n1=1000', G.calcDrivingSpeed(500, 2), 1000);
+
+    // ===== calcDrivenTorque 测试 =====
+    assertEqual('从动扭矩: T1=100, i=4 → T2=400', G.calcDrivenTorque(100, 4), 400);
+    assertEqual('从动扭矩: T1=50, i=2 → T2=100', G.calcDrivenTorque(50, 2), 100);
+    assertEqual('从动扭矩: T1=200, i=0.5 → T2=100', G.calcDrivenTorque(200, 0.5), 100);
+    assertThrows('从动扭矩: T1=-10 抛异常', () => G.calcDrivenTorque(-10, 4), '正数');
+
+    // ===== calcDrivingTorque 测试 =====
+    assertEqual('主动扭矩: T2=400, i=4 → T1=100', G.calcDrivingTorque(400, 4), 100);
+    assertEqual('主动扭矩: T2=100, i=2 → T1=50', G.calcDrivingTorque(100, 2), 50);
+
+    // ===== calcDrivenTorqueWithEfficiency 测试 =====
+    assertEqual('效率扭矩: T1=100, i=4, η=0.97 → T2=388', G.calcDrivenTorqueWithEfficiency(100, 4, 0.97), 388);
+    assertEqual('效率扭矩: T1=100, i=4, η=1.0 → T2=400', G.calcDrivenTorqueWithEfficiency(100, 4, 1.0), 400);
+    assertThrows('效率扭矩: η=0 抛异常', () => G.calcDrivenTorqueWithEfficiency(100, 4, 0), '(0, 1]');
+    assertThrows('效率扭矩: η=1.5 抛异常', () => G.calcDrivenTorqueWithEfficiency(100, 4, 1.5), '(0, 1]');
+    assertThrows('效率扭矩: η=null 抛异常', () => G.calcDrivenTorqueWithEfficiency(100, 4, null), 'null');
+
+    // ===== calcModule 测试 =====
+    assertEqual('模数: d=100, z=50 → m=2', G.calcModule(100, 50), 2);
+    assertEqual('模数: d=200, z=40 → m=5', G.calcModule(200, 40), 5);
+    assertEqual('模数: d=150, z=30 → m=5', G.calcModule(150, 30), 5);
+    assertThrows('模数: d=0 抛异常', () => G.calcModule(0, 50), '正数');
+
+    // ===== calcPitchDiameter 测试 =====
+    assertEqual('分度圆: m=2, z=50 → d=100', G.calcPitchDiameter(2, 50), 100);
+    assertEqual('分度圆: m=5, z=40 → d=200', G.calcPitchDiameter(5, 40), 200);
+    assertEqual('分度圆: m=3, z=20 → d=60', G.calcPitchDiameter(3, 20), 60);
+
+    // ===== calcCenterDistance 测试 =====
+    assertEqual('中心距: m=2, z1=20, z2=80 → a=200', G.calcCenterDistance(2, 20, 80), 200);
+    assertEqual('中心距: m=5, z1=20, z2=40 → a=150', G.calcCenterDistance(5, 20, 40), 150);
+    assertEqual('中心距: m=3, z1=30, z2=30 → a=90', G.calcCenterDistance(3, 30, 30), 90);
+
+    // ===== calcModuleFromCenterDistance 测试 =====
+    assertEqual('反算模数: a=200, z1=20, z2=80 → m=2', G.calcModuleFromCenterDistance(200, 20, 80), 2);
+    assertEqual('反算模数: a=150, z1=20, z2=40 → m=5', G.calcModuleFromCenterDistance(150, 20, 40), 5);
+
+    // ===== calcAddendum 测试 =====
+    assertEqual('齿顶高: m=2 → ha=2', G.calcAddendum(2), 2);
+    assertEqual('齿顶高: m=4 → ha=4', G.calcAddendum(4), 4);
+    assertEqual('齿顶高: m=2, ha*=0.8 → ha=1.6', G.calcAddendum(2, 0.8), 1.6);
+
+    // ===== calcDedendum 测试 =====
+    assertEqual('齿根高: m=2 → hf=2.5', G.calcDedendum(2), 2.5);
+    assertEqual('齿根高: m=4 → hf=5', G.calcDedendum(4), 5);
+
+    // ===== calcWholeDepth 测试 =====
+    assertEqual('全齿高: m=2 → h=4.5', G.calcWholeDepth(2), 4.5);
+    assertEqual('全齿高: m=4 → h=9', G.calcWholeDepth(4), 9);
+
+    // ===== calcAddendumDiameter 测试 =====
+    assertEqual('齿顶圆: m=2, z=50 → da=104', G.calcAddendumDiameter(2, 50), 104);
+    assertEqual('齿顶圆: m=5, z=40 → da=210', G.calcAddendumDiameter(5, 40), 210);
+
+    // ===== calcDedendumDiameter 测试 =====
+    assertEqual('齿根圆: m=2, z=50 → df=95', G.calcDedendumDiameter(2, 50), 95);
+    assertEqual('齿根圆: m=5, z=40 → df=187.5', G.calcDedendumDiameter(5, 40), 187.5);
+
+    // ===== calcBaseDiameter 测试（精度测试）
+    assertEqual('基圆: m=2, z=50, α=20° → db≈93.969', G.calcBaseDiameter(2, 50), 93.96926207859084, 0.001);
+    assertEqual('基圆: m=5, z=20, α=20° → db≈93.969', G.calcBaseDiameter(5, 20), 93.96926207859084, 0.001);
+
+    // ===== calcCircularPitch 测试
+    assertEqual('齿距: m=2 → p≈6.283', G.calcCircularPitch(2), Math.PI * 2, 0.001);
+    assertEqual('齿距: m=5 → p≈15.708', G.calcCircularPitch(5), Math.PI * 5, 0.001);
+
+    // ===== calcToothThickness 测试
+    assertEqual('齿厚: m=2 → s≈3.142', G.calcToothThickness(2), Math.PI, 0.001);
+    assertEqual('齿厚: m=5 → s≈7.854', G.calcToothThickness(5), Math.PI * 2.5, 0.001);
+
+    // ===== calcTorqueFromPower 测试
+    assertEqual('功率→扭矩: P=10kW, n=1440 → T≈66.319', G.calcTorqueFromPower(10, 1440), 66.31944444444444, 0.01);
+    assertEqual('功率→扭矩: P=5kW, n=960 → T≈49.740', G.calcTorqueFromPower(5, 960), 49.739583333333336, 0.01);
+    assertThrows('功率→扭矩: P=0 抛异常', () => G.calcTorqueFromPower(0, 1440), '正数');
+
+    // ===== calcPowerFromTorque 测试
+    assertEqual('扭矩→功率: T=66.319, n=1440 → P≈10', G.calcPowerFromTorque(66.319, 1440), 9.99994..., 0.01);
+    assertEqual('扭矩→功率: T=100, n=1000 → P≈10.471', G.calcPowerFromTorque(100, 1000), 100 * 1000 / 9550, 0.01);
+
+    // ===== findStandardModule 测试
+    assertEqual('标准模数: 2.3 → 2.5', G.findStandardModule(2.3), 2.5);
+    assertEqual('标准模数: 3.8 → 4', G.findStandardModule(3.8), 4);
+    assertEqual('标准模数: 1.0 → 1.0', G.findStandardModule(1.0), 1.0);
+    assertEqual('标准模数: 6.5 → 6', G.findStandardModule(6.5), 6);
+    assertThrows('标准模数: m=-1 抛异常', () => G.findStandardModule(-1), '正数');
+
+    // ===== calcGearPair 综合测试 =====
+    const pair = G.calcGearPair({ m: 2, z1: 20, z2: 80, n1: 1440, T1: 50 });
+    assertEqual('齿轮副: 传动比=4', pair.ratio, 4);
+    assertEqual('齿轮副: d1=40', pair.d1, 40);
+    assertEqual('齿轮副: d2=160', pair.d2, 160);
+    assertEqual('齿轮副: a=100', pair.a, 100);
+    assertEqual('齿轮副: n2=360', pair.n2, 360);
+    assertEqual('齿轮副: T2=200', pair.T2, 200);
+    assertEqual('齿轮副: da1=44', pair.da1, 44);
+    assertEqual('齿轮副: df1=35', pair.df1, 35);
+    assertThrows('齿轮副: params=null 抛异常', () => G.calcGearPair(null), '非空对象');
+
+    // ===== 浮点精度测试 =====
+    assertEqual('浮点精度: 1/3*3 ≈ 1', G.calcRatioByTeeth(30, 10) * G.calcRatioByTeeth(10, 30), 1, 1e-10);
+
+    // 输出结果
+    const resultClass = passed === total ? 'test-pass' : 'test-fail';
+    output.innerHTML = `<div class="test-result ${resultClass}">通过 ${passed} / 共 ${total}</div>` +
+        `<div class="test-detail">${details.join('')}</div>`;
+}
+</script>
+
+<script>
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+document.getElementById('manualContent').innerHTML = `
+<div class="manual-section">
+<h2>一、工具概述</h2>
+<p>本工具是一个用于渐开线圆柱直齿轮传动设计的工程计算工具，覆盖传动比计算、转速换算、扭矩换算、齿轮几何参数计算等核心功能。适用于机械设计工程师、设备维护人员、相关专业学生在进行齿轮传动方案设计和校核时的快速计算需求。</p>
+<p>本工具解决的核心问题包括：</p>
+<ul>
+<li>已知齿数求传动比，或已知传动比和某一轴转速求另一轴转速</li>
+<li>已知传动比和某一轴扭矩求另一轴扭矩（含效率修正）</li>
+<li>由功率和转速计算扭矩，或由扭矩和转速反算功率</li>
+<li>由模数和齿数计算齿轮全部几何参数（分度圆、齿顶圆、齿根圆、基圆、中心距等）</li>
+<li>由计算模数查找最接近的 GB/T 1357-2008 标准模数</li>
+<li>由中心距和齿数反算模数</li>
+</ul>
+<p>本工具为纯前端 JavaScript 实现，无需安装任何软件，打开浏览器即可使用。所有计算均为纯函数，不依赖任何外部库。</p>
+</div>
+
+<div class="manual-section">
+<h2>二、参数详细说明</h2>
+<h3>2.1 基本参数</h3>
+<table>
+<tr><th>参数符号</th><th>名称</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+<tr><td>m</td><td>模数</td><td>mm</td><td>正数，推荐取 GB/T 1357-2008 标准值</td><td>齿轮最基本的尺寸参数，决定齿轮大小。标准模数系列：0.05, 0.06, 0.08, 0.10, 0.12, 0.16, 0.20, 0.25, 0.32, 0.40, 0.50, 0.60, 0.80, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 32, 40, 50</td></tr>
+<tr><td>z</td><td>齿数</td><td>无量纲</td><td>正整数，一般 ≥ 17（标准齿轮不根切）</td><td>齿轮的齿的数量。标准齿轮不根切的最小齿数为 17（压力角 20° 时）。本工具允许最小值为 4，但小于 17 时需注意根切问题。</td></tr>
+<tr><td>z1</td><td>主动轮齿数</td><td>无量纲</td><td>正整数，≥ 4</td><td>输入动力一侧齿轮的齿数</td></tr>
+<tr><td>z2</td><td>从动轮齿数</td><td>无量纲</td><td>正整数，≥ 4</td><td>输出动力一侧齿轮的齿数</td></tr>
+<tr><td>i</td><td>传动比</td><td>无量纲</td><td>正数</td><td>i = z2/z1 = n1/n2。i > 1 为减速传动，i < 1 为增速传动，i = 1 为等速传动。</td></tr>
+<tr><td>n1</td><td>主动轮转速</td><td>r/min</td><td>正数</td><td>主动轮的旋转速度，单位转每分钟</td></tr>
+<tr><td>n2</td><td>从动轮转速</td><td>r/min</td><td>正数</td><td>从动轮的旋转速度</td></tr>
+<tr><td>T1</td><td>主动轮扭矩</td><td>N·m</td><td>正数</td><td>主动轮传递的扭矩</td></tr>
+<tr><td>T2</td><td>从动轮扭矩</td><td>N·m</td><td>正数</td><td>从动轮输出的扭矩（理想值，不含效率损失）</td></tr>
+<tr><td>P</td><td>功率</td><td>kW</td><td>正数</td><td>传递的机械功率</td></tr>
+<tr><td>η</td><td>传动效率</td><td>无量纲</td><td>0 < η ≤ 1</td><td>齿轮副的传动效率。闭式齿轮传动一般取 0.96~0.99，开式齿轮传动取 0.93~0.96。需根据实际工况查手册确定。</td></tr>
+<tr><td>d</td><td>分度圆直径</td><td>mm</td><td>正数</td><td>齿轮设计的基准圆直径，d = m × z</td></tr>
+<tr><td>da</td><td>齿顶圆直径</td><td>mm</td><td>正数</td><td>齿顶所在的圆直径，da = m(z + 2ha*)</td></tr>
+<tr><td>df</td><td>齿根圆直径</td><td>mm</td><td>正数</td><td>齿根所在的圆直径，df = m(z - 2ha* - 2c*)</td></tr>
+<tr><td>db</td><td>基圆直径</td><td>mm</td><td>正数</td><td>渐开线的发生圆直径，db = d × cos(α)</td></tr>
+<tr><td>a</td><td>中心距</td><td>mm</td><td>正数</td><td>两齿轮轴线之间的距离，a = m(z1+z2)/2</td></tr>
+<tr><td>α</td><td>压力角</td><td>度(°)</td><td>0 < α < 90，标准值 20°</td><td>分度圆上的压力角，我国标准规定 α = 20°</td></tr>
+<tr><td>ha*</td><td>齿顶高系数</td><td>无量纲</td><td>正数，正常齿制 1.0，短齿制 0.8</td><td>决定齿顶高的系数</td></tr>
+<tr><td>c*</td><td>顶隙系数</td><td>无量纲</td><td>非负数，标准值 0.25</td><td>决定顶隙的系数，保证啮合时一齿轮齿顶与另一齿轮齿根之间有间隙</td></tr>
+</table>
+</div>
+
+<div class="manual-section">
+<h2>三、核心公式说明</h2>
+<h3>3.1 传动比</h3>
+<p>传动比 i 是齿轮传动最基本的参数，有以下等价关系：</p>
+<p style="text-indent:0; text-align:center; font-size:16px;"><strong>i = z₂ / z₁ = n₁ / n₂ = T₂ / T₁</strong></p>
+<p>其中 z 为齿数，n 为转速，T 为扭矩。减速传动时 i > 1，转速降低但扭矩增大；增速传动时 i < 1，转速升高但扭矩减小。</p>
+
+<h3>3.2 齿轮几何参数</h3>
+<p>标准齿轮（无变位）的主要几何参数计算公式：</p>
+<ul>
+<li>分度圆直径：d = m × z</li>
+<li>齿顶高：ha = ha* × m（正常齿制 ha = m）</li>
+<li>齿根高：hf = (ha* + c*) × m（正常齿制 hf = 1.25m）</li>
+<li>全齿高：h = ha + hf = (2ha* + c*) × m（正常齿制 h = 2.25m）</li>
+<li>齿顶圆直径：da = d + 2ha = m(z + 2ha*)</li>
+<li>齿根圆直径：df = d - 2hf = m(z - 2ha* - 2c*)</li>
+<li>基圆直径：db = d × cos(α) = mz × cos(α)</li>
+<li>标准中心距：a = m(z₁ + z₂) / 2</li>
+<li>齿距（周节）：p = π × m</li>
+<li>分度圆齿厚：s = π × m / 2</li>
+</ul>
+
+<h3>3.3 功率-扭矩-转速关系</h3>
+<p>T = 9550 × P / n</p>
+<p>其中 T 为扭矩（N·m），P 为功率（kW），n 为转速（r/min）。常数 9550 来源于 9550 = 60 × 1000 / (2π) ≈ 9549.3，工程上取 9550。</p>
+</div>
+
+<div class="manual-section">
+<h2>四、实际使用场景</h2>
+
+<div class="scenario">
+<h4>场景一：减速机设计——确定传动比和各轴参数</h4>
+<p><strong>背景：</strong>某输送设备需要设计一级圆柱齿轮减速机。电机转速 1440 r/min，要求输出轴转速 360 r/min，电机输出功率 10 kW。</p>
+<p><strong>输入：</strong></p>
+<div class="input-output">
+主动轮转速 n1 = 1440 r/min<br>
+从动轮转速 n2 = 360 r/min<br>
+功率 P = 10 kW
+</div>
+<p><strong>计算步骤与结果：</strong></p>
+<div class="input-output">
+① 传动比 i = n1/n2 = 1440/360 = <strong>4</strong><br>
+② 主动轮扭矩 T1 = 9550 × P / n1 = 9550 × 10 / 1440 ≈ <strong>66.32 N·m</strong><br>
+③ 从动轮扭矩 T2 = T1 × i = 66.32 × 4 ≈ <strong>265.28 N·m</strong>（理想值）<br>
+④ 考虑效率 η=0.97：T2_实际 = 66.32 × 4 × 0.97 ≈ <strong>257.32 N·m</strong>
+</div>
+<p><strong>工程意义：</strong>确定减速比为 4:1，输出扭矩约 257 N·m，可据此选择轴径和校核强度。</p>
+</div>
+
+<div class="scenario">
+<h4>场景二：齿轮几何参数计算——已知模数和齿数求全部尺寸</h4>
+<p><strong>背景：</strong>已知一对标准直齿轮，模数 m = 3 mm，主动轮齿数 z1 = 25，从动轮齿数 z2 = 75，压力角 α = 20°。</p>
+<p><strong>输入：</strong></p>
+<div class="input-output">
+模数 m = 3 mm<br>
+z1 = 25, z2 = 75<br>
+α = 20°, ha* = 1.0, c* = 0.25
+</div>
+<p><strong>计算结果：</strong></p>
+<div class="input-output">
+传动比 i = 75/25 = <strong>3</strong><br>
+分度圆直径 d1 = 3×25 = <strong>75 mm</strong>，d2 = 3×75 = <strong>225 mm</strong><br>
+齿顶圆直径 da1 = 3×(25+2) = <strong>81 mm</strong>，da2 = 3×(75+2) = <strong>231 mm</strong><br>
+齿根圆直径 df1 = 3×(25-2.5) = <strong>67.5 mm</strong>，df2 = 3×(75-2.5) = <strong>217.5 mm</strong><br>
+基圆直径 db1 = 75×cos20° ≈ <strong>70.48 mm</strong>，db2 = 225×cos20° ≈ <strong>211.43 mm</strong><br>
+标准中心距 a = 3×(25+75)/2 = <strong>150 mm</strong><br>
+齿顶高 ha = <strong>3 mm</strong>，齿根高 hf = <strong>3.75 mm</strong>，全齿高 h = <strong>6.75 mm</strong><br>
+齿距 p = π×3 ≈ <strong>9.42 mm</strong>，齿厚 s = π×3/2 ≈ <strong>4.71 mm</strong>
+</div>
+</div>
+
+<div class="scenario">
+<h4>场景三：由中心距反推模数——设备改造中的齿轮配对</h4>
+<p><strong>背景：</strong>设备改造中，两轴中心距已固定为 180 mm，需要配一对齿轮，主动轮齿数 z1 = 30，从动轮齿数 z2 = 60。</p>
+<p><strong>输入：</strong></p>
+<div class="input-output">
+中心距 a = 180 mm<br>
+z1 = 30, z2 = 60
+</div>
+<p><strong>计算结果：</strong></p>
+<div class="input-output">
+计算模数 m = 2a/(z1+z2) = 2×180/(30+60) = 360/90 = <strong>4 mm</strong><br>
+查标准模数：4 mm 恰好是 GB/T 1357-2008 标准值，<strong>可直接采用 m = 4</strong><br>
+验证：d1 = 4×30 = 120 mm，d2 = 4×60 = 240 mm，a = (120+240)/2 = 180 mm ✓
+</div>
+<p><strong>工程意义：</strong>在设备改造中，中心距往往受限于箱体结构无法改变，此时需要由中心距反算模数和齿数的匹配关系。</p>
+</div>
+
+<div class="scenario">
+<h4>场景四：多级传动的转速和扭矩传递</h4>
+<p><strong>背景：</strong>某机床主轴箱有两级齿轮传动。第一级：z1=20, z2=60；第二级：z3=25, z4=50。电机转速 1440 r/min，输入扭矩 30 N·m。</p>
+<p><strong>输入与计算：</strong></p>
+<div class="input-output">
+第一级传动比 i₁ = 60/20 = <strong>3</strong><br>
+第二级传动比 i₂ = 50/25 = <strong>2</strong><br>
+总传动比 i_total = i₁ × i₂ = 3 × 2 = <strong>6</strong><br><br>
+各轴转速：<br>
+轴 I（电机轴）：n = <strong>1440 r/min</strong><br>
+轴 II（中间轴）：n = 1440/3 = <strong>480 r/min</strong><br>
+轴 III（主轴）：n = 480/2 = <strong>240 r/min</strong><br><br>
+各轴扭矩（理想值）：<br>
+轴 I：T = <strong>30 N·m</strong><br>
+轴 II：T = 30 × 3 = <strong>90 N·m</strong><br>
+轴 III：T = 90 × 2 = <strong>180 N·m</strong>
+</div>
+</div>
+
+<div class="scenario">
+<h4>场景五：非标准模数的标准化选取</h4>
+<p><strong>背景：</strong>设计计算得到所需模数为 3.67 mm，需要选取标准模数。</p>
+<p><strong>输入：</strong></p>
+<div class="input-output">
+计算模数 m_calc = 3.67 mm
+</div>
+<p><strong>计算结果：</strong></p>
+<div class="input-output">
+调用 findStandardModule(3.67)<br>
+GB/T 1357-2008 标准模数中，3.67 最接近的标准值为 <strong>4 mm</strong><br>
+（3 和 4 之间，|3.67-3|=0.67，|3.67-4|=0.33，故取 4）
+</div>
+<p><strong>注意：</strong>选取标准模数后，需要重新验算中心距、齿面接触强度和齿根弯曲强度是否满足要求。如不满足，可能需要调整齿数或采用变位齿轮。</p>
+</div>
+
+<div class="scenario">
+<h4>场景六：已知功率和转速校核扭矩</h4>
+<p><strong>背景：</strong>某齿轮箱输入端：电机功率 7.5 kW，转速 960 r/min。需要计算输入扭矩以选择联轴器。</p>
+<p><strong>输入：</strong></p>
+<div class="input-output">
+P = 7.5 kW, n = 960 r/min
+</div>
+<p><strong>计算结果：</strong></p>
+<div class="input-output">
+T = 9550 × P / n = 9550 × 7.5 / 960 ≈ <strong>74.61 N·m</strong><br>
+选择联轴器时，应考虑工况系数（一般取 1.2~1.5），计算扭矩 ≈ 74.61 × 1.5 ≈ <strong>111.9 N·m</strong>
+</div>
+</div>
+</div>
+
+<div class="manual-section">
+<h2>五、常见错误与排查</h2>
+<table>
+<tr><th>错误现象</th><th>可能原因</th><th>解决方法</th></tr>
+<tr><td>参数报错"必须为正数"</td><td>输入了 0 或负数</td><td>检查所有参数是否为正数。转速、扭矩、模数、齿数等均不能为 0 或负值。</td></tr>
+<tr><td>参数报错"必须为正整数"</td><td>齿数输入了小数</td><td>齿数必须为正整数。检查是否误输入了小数点。</td></tr>
+<tr><td>参数报错"不能为 null 或 undefined"</td><td>参数未填写或传入了空值</td><td>确保所有必填参数都已正确填写。</td></tr>
+<tr><td>参数报错"不能为 NaN"</td><td>输入了非数字内容</td><td>检查输入框是否包含字母或特殊字符。</td></tr>
+<tr><td>计算结果与实际不符</td><td>未考虑传动效率</td><td>本工具的扭矩计算默认为理想值（效率 100%）。实际应用中请使用 calcDrivenTorqueWithEfficiency 函数并输入正确的效率值。</td></tr>
+<tr><td>齿数小于 17 时出现根切</td><td>标准齿轮齿数过少</td><td>标准齿轮（α=20°）不根切的最小齿数为 17。如需更少齿数，应采用变位齿轮，本工具暂不支持变位齿轮计算。</td></tr>
+<tr><td>中心距与箱体不匹配</td><td>模数或齿数选取不当</td><td>使用 calcModuleFromCenterDistance 反算模数，再圆整到标准值。如标准模数不能满足中心距要求，需考虑变位齿轮。</td></tr>
+<tr><td>传动效率取值不当</td><td>效率值超出 (0,1] 范围</td><td>传动效率必须在 0（不含）到 1（含）之间。闭式齿轮传动一般取 0.96~0.99。</td></tr>
+</table>
+</div>
+
+<div class="manual-section">
+<h2>六、数据来源与标准依据</h2>
+<p>本工具的计算公式和参数取值依据以下国家标准和工程手册：</p>
+<table>
+<tr><th>标准编号</th><th>标准名称</th><th>相关内容</th></tr>
+<tr><td>GB/T 1357-2008</td><td>渐开线圆柱齿轮模数</td><td>标准模数系列（本工具 findStandardModule 函数的数据来源）</td></tr>
+<tr><td>GB/T 10095.1-2008</td><td>圆柱齿轮 精度制 第1部分：轮齿同侧齿面偏差的定义和允许值</td><td>齿轮精度等级（本工具不涉及精度计算）</td></tr>
+<tr><td>GB/T 3480.1-2023</td><td>渐开线圆柱齿轮承载能力计算方法 第1部分：基本介绍</td><td>齿轮强度校核（本工具不涉及强度计算）</td></tr>
+<tr><td>GB/T 1243-2006 等</td><td>相关基础标准</td><td>压力角 20°、齿顶高系数 1.0、顶隙系数 0.25 等默认参数的来源</td></tr>
+</table>
+<p>功率-扭矩换算公式 T = 9550P/n 为工程通用公式，来源于机械原理教材和机械设计手册。</p>
+<p><strong>注意：</strong>部分参数的精确取值（如传动效率、载荷系数等）需根据具体工况查阅相关标准原文或设计手册，本工具提供的默认值仅供参考。</p>
+</div>
+
+<div class="manual-section">
+<h2>七、局限性说明</h2>
+<div class="warning">
+<strong>⚠️ 本工具存在以下局限性，请用户务必了解：</strong>
+</div>
+<ol>
+<li><strong>仅适用于标准直齿圆柱齿轮：</strong>本工具的所有几何参数计算均基于标准齿轮（无变位）假设。不适用于斜齿轮、锥齿轮、蜗轮蜗杆、内齿轮、变位齿轮等。斜齿轮需引入螺旋角修正，本工具未实现。</li>
+<li><strong>不进行强度校核：</strong>本工具不计算齿面接触疲劳强度和齿根弯曲疲劳强度。强度校核需按 GB/T 3480 系列标准进行，涉及载荷系数、材料参数、寿命系数等大量参数，远超本工具范围。</li>
+<li><strong>不考虑变位：</strong>实际工程中，为满足中心距要求或避免根切，常采用变位齿轮。本工具所有计算均假设变位系数 x = 0。</li>
+<li><strong>效率值为手动输入：</strong>传动效率取决于齿轮精度、润滑条件、转速、载荷等多种因素，本工具不提供效率自动计算功能，需用户根据经验或手册自行确定。</li>
+<li><strong>精度限制：</strong>本工具使用 JavaScript 的 IEEE 754 双精度浮点数进行计算，对于极端精度要求的场合（如航天航空），建议使用专业 CAE 软件。</li>
+<li><strong>不涉及动态分析：</strong>不计算齿轮的振动、噪声、动载荷等动态特性。</li>
+<li><strong>不涉及热计算：</strong>不计算齿轮传动的发热和散热。</li>
+<li><strong>不涉及材料和热处理：</strong>不提供材料选择、热处理工艺等相关计算。</li>
+<li><strong>标准模数表可能不完整：</strong>本工具内置的 GB/T 1357-2008 标准模数表为第一系列常用值，如需第二系列或更大范围的标准模数，需查标准原文确认。</li>
+<li><strong>多级传动需手动串联：</strong>本工具每次仅计算一级传动。多级传动的总传动比需用户手动将各级传动比相乘。</li>
+</ol>
+<p>如需进行完整的齿轮传动设计，建议结合《机械设计手册》（成大先主编）或相关专业软件（如 KISSsoft、MASTA 等）进行综合设计。</p>
+</div>
+
+<div class="manual-section">
+<h2>八、函数 API 速查表</h2>
+<table>
+<tr><th>函数名</th><th>功能</th><th>主要参数</th><th>返回值</th></tr>
+<tr><td>calcRatioByTeeth(z1, z2)</td><td>由齿数计算传动比</td><td>z1: 主动轮齿数, z2: 从动轮齿数</td><td>传动比 i</td></tr>
+<tr><td>calcRatioBySpeed(n1, n2)</td><td>由转速计算传动比</td><td>n1: 主动轮转速, n2: 从动轮转速</td><td>传动比 i</td></tr>
+<tr><td>calcDrivenSpeed(n1, i)</td><td>计算从动轮转速</td><td>n1: 主动轮转速, i: 传动比</td><td>n2 (r/min)</td></tr>
+<tr><td>calcDrivingSpeed(n2, i)</td><td>计算主动轮转速</td><td>n2: 从动轮转速, i: 传动比</td><td>n1 (r/min)</td></tr>
+<tr><td>calcDrivenTorque(T1, i)</td><td>计算从动轮扭矩（理想）</td><td>T1: 主动轮扭矩, i: 传动比</td><td>T2 (N·m)</td></tr>
+<tr><td>calcDrivingTorque(T2, i)</td><td>计算主动轮扭矩（理想）</td><td>T2: 从动轮扭矩, i: 传动比</td><td>T1 (N·m)</td></tr>
+<tr><td>calcDrivenTorqueWithEfficiency(T1, i, η)</td><td>计算从动轮扭矩（含效率）</td><td>T1, i, η</td><td>T2 (N·m)</td></tr>
+<tr><td>calcModule(d, z)</td><td>计算模数</td><td>d: 分度圆直径, z: 齿数</td><td>m (mm)</td></tr>
+<tr><td>calcPitchDiameter(m, z)</td><td>计算分度圆直径</td><td>m: 模数, z: 齿数</td><td>d (mm)</td></tr>
+<tr><td>calcCenterDistance(m, z1, z2)</td><td>计算标准中心距</td><td>m, z1, z2</td><td>a (mm)</td></tr>
+<tr><td>calcModuleFromCenterDistance(a, z1, z2)</td><td>由中心距反算模数</td><td>a, z1, z2</td><td>m (mm)</td></tr>
+<tr><td>calcAddendum(m, [ha*])</td><td>计算齿顶高</td><td>m, ha*（默认1.0）</td><td>ha (mm)</td></tr>
+<tr><td>calcDedendum(m, [ha*], [c*])</td><td>计算齿根高</td><td>m, ha*, c*</td><td>hf (mm)</td></tr>
+<tr><td>calcWholeDepth(m, [ha*], [c*])</td><td>计算全齿高</td><td>m, ha*, c*</td><td>h (mm)</td></tr>
+<tr><td>calcAddendumDiameter(m, z, [ha*])</td><td>计算齿顶圆直径</td><td>m, z, ha*</td><td>da (mm)</td></tr>
+<tr><td>calcDedendumDiameter(m, z, [ha*], [c*])</td><td>计算齿根圆直径</td><td>m, z, ha*, c*</td><td>df (mm)</td></tr>
+<tr><td>calcBaseDiameter(m, z, [α])</td><td>计算基圆直径</td><td>m, z, α（默认20°）</td><td>db (mm)</td></tr>
+<tr><td>calcCircularPitch(m)</td><td>计算齿距</td><td>m</td><td>p (mm)</td></tr>
+<tr><td>calcToothThickness(m)</td><td>计算分度圆齿厚</td><td>m</td><td>s (mm)</td></tr>
+<tr><td>calcTorqueFromPower(P, n)</td><td>由功率和转速计算扭矩</td><td>P (kW), n (r/min)</td><td>T (N·m)</td></tr>
+<tr><td>calcPowerFromTorque(T, n)</td><td>由扭矩和转速计算功率</td><td>T (N·m), n (r/min)</td><td>P (kW)</td></tr>
+<tr><td>findStandardModule(mCalc)</td><td>查找最接近的标准模数</td><td>mCalc: 计算模数</td><td>标准模数 (mm)</td></tr>
+<tr><td>calcGearPair(params)</td><td>齿轮副完整参数计算</td><td>{m, z1, z2, n1?, T1?, α?, ha*?, c*?}</td><td>结果对象</td></tr>
+</table>
+</div>
+`;
+
+// 将源码填入页面
+document.getElementById('sourceCode').textContent = document.querySelector('script').textContent;
+
+// 标签页切换
+function switchTab(index) {
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.tab-content').forEach((content, i) => {
+        content.classList.toggle('active', i === index);
+    });
+}
+</script>
+</body>
+</html>

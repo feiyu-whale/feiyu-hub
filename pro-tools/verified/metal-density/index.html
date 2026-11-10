@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>金属材料密度与重量计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
+.tabs { display: flex; border-bottom: 2px solid #3498db; margin-bottom: 20px; }
+.tab { padding: 12px 24px; cursor: pointer; background: #ecf0f1; border: none; font-size: 15px; transition: all 0.2s; }
+.tab:hover { background: #d5dbdb; }
+.tab.active { background: #3498db; color: white; }
+.panel { display: none; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.panel.active { display: block; }
+pre { background: #282c34; color: #abb2bf; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+code { font-family: "Consolas", "Monaco", monospace; }
+.test-result { padding: 16px; border-radius: 6px; margin-top: 16px; font-family: monospace; font-size: 13px; }
+.test-pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.test-fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.doc-section { margin-bottom: 24px; }
+.doc-section h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-bottom: 12px; font-size: 20px; }
+.doc-section h3 { color: #34495e; margin: 16px 0 8px; font-size: 16px; }
+.doc-section p { margin-bottom: 10px; text-indent: 2em; }
+.doc-section ul, .doc-section ol { margin: 10px 0 10px 2em; }
+.doc-section li { margin-bottom: 6px; }
+.doc-section table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.doc-section th, .doc-section td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+.doc-section th { background: #f2f4f6; }
+.doc-section .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 12px 0; }
+.doc-section .info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 12px; margin: 12px 0; }
+.version { position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #95a5a6; }
+.run-btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-bottom: 12px; }
+.run-btn:hover { background: #2980b9; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>金属材料密度与重量计算工具</h1>
+<div class="tabs">
+<button class="tab active" onclick="switchTab(0)">JS 源码</button>
+<button class="tab" onclick="switchTab(1)">单元测试</button>
+<button class="tab" onclick="switchTab(2)">使用说明书</button>
+</div>
+
+<div class="panel active" id="panel-0">
+<pre><code id="source-code"></code></pre>
+</div>
+
+<div class="panel" id="panel-1">
+<button class="run-btn" onclick="runTests()">运行全部测试</button>
+<div id="test-output"></div>
+</div>
+
+<div class="panel" id="panel-2">
+<div id="doc-content"></div>
+</div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码 —— 金属材料密度与重量计算核心算法
+ * 依据：GB/T 700、GB/T 3190、GB/T 1220
+ * ============================================================ */
+
+/**
+ * 常见金属材料密度表（单位：g/cm³，20℃ 标称值）
+ * 说明：
+ *   - 数据来源：GB/T 700《碳素结构钢》、GB/T 3190《变形铝及铝合金化学成分》、
+ *              GB/T 1220《不锈钢棒》及常见工程手册
+ *   - 密度为标称值，实际牌号有偏差（如不锈钢 304 为 7.93，316 为 7.98）
+ *   - 合金成分不同密度会变化，精确计算需查对应牌号标准原文
+ * @type {Object.<string, {value: number, range: ?[number, number], note: string}>}
+ */
+const METAL_DENSITY_TABLE = {
+  '纯铝':     { value: 2.70, range: null,        note: 'GB/T 3190 工业纯铝 1xxx 系' },
+  '铝合金':   { value: 2.75, range: [2.70, 2.80], note: 'GB/T 3190，范围依牌号而定，2xxx/6xxx/7xxx 系差异较大' },
+  '纯铜':     { value: 8.96, range: null,        note: 'T1/T2 工业纯铜' },
+  '黄铜':     { value: 8.50, range: [8.40, 8.70], note: 'H62/H65/H68 等，含锌量不同密度不同' },
+  '青铜':     { value: 8.80, range: [8.70, 8.90], note: '锡青铜 QSn 系列' },
+  '纯铁':     { value: 7.87, range: null,        note: 'DT4 等电工纯铁' },
+  '碳钢':     { value: 7.85, range: null,        note: 'GB/T 700 Q235 等碳素结构钢' },
+  '不锈钢304':{ value: 7.93, range: null,        note: 'GB/T 1220 06Cr19Ni10' },
+  '不锈钢316':{ value: 7.98, range: null,        note: 'GB/T 1220 06Cr17Ni12Mo2' },
+  '铸铁':     { value: 7.30, range: [7.20, 7.40], note: '灰铸铁 HT 系列，球墨铸铁略高' },
+  '钛':       { value: 4.51, range: null,        note: 'TA1/TA2 工业纯钛' },
+  '镁':       { value: 1.74, range: null,        note: '纯镁' },
+  '锌':       { value: 7.14, range: null,        note: 'Zn 纯锌' },
+  '铅':       { value: 11.34,range: null,        note: 'Pb 纯铅' },
+  '镍':       { value: 8.90, range: null,        note: 'Ni 纯镍' }
+};
+
+/**
+ * 支持的形状类型
+ * @type {string[]}
+ */
+const SHAPE_TYPES = ['plate', 'bar', 'tube'];
+
+/**
+ * 支持的长度单位
+ * @type {string[]}
+ */
+const LENGTH_UNITS = ['mm', 'cm', 'm'];
+
+/**
+ * 支持的重量单位
+ * @type {string[]}
+ */
+const WEIGHT_UNITS = ['g', 'kg', 't'];
+
+/**
+ * 长度单位到 cm 的换算系数
+ * @type {Object.<string, number>}
+ */
+const LENGTH_TO_CM = { mm: 0.1, cm: 1, m: 100 };
+
+/**
+ * 重量单位到 g 的换算系数
+ * @type {Object.<string, number>}
+ */
+const WEIGHT_TO_G = { g: 1, kg: 1000, t: 1000000 };
+
+/**
+ * 查询金属材料的密度（g/cm³）
+ *
+ * @param {string} material - 材料名称，需与 METAL_DENSITY_TABLE 键名一致
+ * @returns {number} 密度值，单位 g/cm³
+ * @throws {TypeError} 参数非字符串
+ * @throws {Error} 材料名称不在密度表中
+ * @example
+ *   getDensity('碳钢');       // 7.85
+ *   getDensity('不锈钢304');  // 7.93
+ *   getDensity('铝合金');     // 2.75（取中值）
+ */
+function getDensity(material) {
+  if (typeof material !== 'string') {
+    throw new TypeError('材料名称必须为字符串');
+  }
+  const key = material.trim();
+  if (!key) {
+    throw new Error('材料名称不能为空');
+  }
+  if (!Object.prototype.hasOwnProperty.call(METAL_DENSITY_TABLE, key)) {
+    throw new Error('未知材料：' + key + '，请从密度表中选取');
+  }
+  return METAL_DENSITY_TABLE[key].value;
+}
+
+/**
+ * 获取材料密度的完整信息（含范围和备注）
+ *
+ * @param {string} material - 材料名称
+ * @returns {{value: number, range: ?[number, number], note: string}} 密度信息对象
+ * @throws {TypeError} 参数非字符串
+ * @throws {Error} 材料不存在
+ * @example
+ *   getDensityInfo('铝合金');
+ *   // { value: 2.75, range: [2.70, 2.80], note: '...' }
+ */
+function getDensityInfo(material) {
+  if (typeof material !== 'string') {
+    throw new TypeError('材料名称必须为字符串');
+  }
+  const key = material.trim();
+  if (!Object.prototype.hasOwnProperty.call(METAL_DENSITY_TABLE, key)) {
+    throw new Error('未知材料：' + key);
+  }
+  return Object.assign({}, METAL_DENSITY_TABLE[key]);
+}
+
+/**
+ * 校验数值参数（非空、有限、非负）
+ *
+ * @param {number} value - 待校验数值
+ * @param {string} name - 参数名（用于错误信息）
+ * @returns {void}
+ * @throws {TypeError} 非数字类型
+ * @throws {Error} NaN / Infinity / 负数
+ */
+function validatePositiveNumber(value, name) {
+  if (typeof value !== 'number') {
+    throw new TypeError(name + ' 必须为数字');
+  }
+  if (Number.isNaN(value)) {
+    throw new Error(name + ' 不能为 NaN');
+  }
+  if (!Number.isFinite(value)) {
+    throw new Error(name + ' 不能为 Infinity');
+  }
+  if (value <= 0) {
+    throw new Error(name + ' 必须大于 0');
+  }
+}
+
+/**
+ * 校验单位是否在允许列表中
+ *
+ * @param {string} unit - 单位字符串
+ * @param {string[]} allowed - 允许的单位列表
+ * @param {string} name - 参数名
+ * @returns {void}
+ * @throws {Error} 单位不合法
+ */
+function validateUnit(unit, allowed, name) {
+  if (typeof unit !== 'string' || allowed.indexOf(unit) === -1) {
+    throw new Error(name + ' 必须为 ' + allowed.join('/') + ' 之一');
+  }
+}
+
+/**
+ * 长度单位换算
+ *
+ * @param {number} value - 数值
+ * @param {string} fromUnit - 原单位（mm/cm/m）
+ * @param {string} toUnit - 目标单位（mm/cm/m）
+ * @returns {number} 换算后的数值
+ * @throws {Error} 单位不合法或数值非法
+ * @example
+ *   convertLength(1000, 'mm', 'm');  // 1
+ *   convertLength(1, 'm', 'cm');     // 100
+ */
+function convertLength(value, fromUnit, toUnit) {
+  validatePositiveNumber(value, 'value');
+  validateUnit(fromUnit, LENGTH_UNITS, 'fromUnit');
+  validateUnit(toUnit, LENGTH_UNITS, 'toUnit');
+  const cmValue = value * LENGTH_TO_CM[fromUnit];
+  return cmValue / LENGTH_TO_CM[toUnit];
+}
+
+/**
+ * 重量单位换算
+ *
+ * @param {number} value - 数值
+ * @param {string} fromUnit - 原单位（g/kg/t）
+ * @param {string} toUnit - 目标单位（g/kg/t）
+ * @returns {number} 换算后的数值
+ * @throws {Error} 单位不合法或数值非法
+ * @example
+ *   convertWeight(1000, 'g', 'kg');  // 1
+ *   convertWeight(1, 't', 'kg');     // 1000
+ */
+function convertWeight(value, fromUnit, toUnit) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new Error('value 必须为有效数字');
+  }
+  if (value < 0) {
+    throw new Error('value 不能为负数');
+  }
+  validateUnit(fromUnit, WEIGHT_UNITS, 'fromUnit');
+  validateUnit(toUnit, WEIGHT_UNITS, 'toUnit');
+  const gValue = value * WEIGHT_TO_G[fromUnit];
+  return gValue / WEIGHT_TO_G[toUnit];
+}
+
+/**
+ * 计算板材体积（长方体）
+ * 公式：V = 长 × 宽 × 高（厚）
+ *
+ * @param {number} length - 长度
+ * @param {number} width - 宽度
+ * @param {number} thickness - 厚度（高）
+ * @param {string} unit - 单位（mm/cm/m）
+ * @returns {{volume: number, unit: string}} 体积及单位（体积单位为单位³）
+ * @throws {Error} 参数非法
+ * @example
+ *   calculatePlateVolume(1000, 500, 10, 'mm');
+ *   // { volume: 5000000, unit: 'mm³' }
+ */
+function calculatePlateVolume(length, width, thickness, unit) {
+  validatePositiveNumber(length, 'length');
+  validatePositiveNumber(width, 'width');
+  validatePositiveNumber(thickness, 'thickness');
+  validateUnit(unit, LENGTH_UNITS, 'unit');
+  return { volume: length * width * thickness, unit: unit + '³' };
+}
+
+/**
+ * 计算圆棒材体积
+ * 公式：V = π × (直径/2)² × 长度 = π × 直径² × 长度 / 4
+ *
+ * @param {number} diameter - 直径
+ * @param {number} length - 长度
+ * @param {string} unit - 单位（mm/cm/m）
+ * @returns {{volume: number, unit: string}} 体积及单位
+ * @throws {Error} 参数非法
+ * @example
+ *   calculateBarVolume(20, 1000, 'mm');
+ *   // { volume: 314159.26..., unit: 'mm³' }
+ */
+function calculateBarVolume(diameter, length, unit) {
+  validatePositiveNumber(diameter, 'diameter');
+  validatePositiveNumber(length, 'length');
+  validateUnit(unit, LENGTH_UNITS, 'unit');
+  return { volume: Math.PI * diameter * diameter * length / 4, unit: unit + '³' };
+}
+
+/**
+ * 计算管材体积（空心圆管）
+ * 公式：V = π × (外径² - 内径²) × 长度 / 4
+ *
+ * @param {number} outerDiameter - 外径
+ * @param {number} innerDiameter - 内径
+ * @param {number} length - 长度
+ * @param {string} unit - 单位（mm/cm/m）
+ * @returns {{volume: number, unit: string}} 体积及单位
+ * @throws {Error} 参数非法或内径≥外径
+ * @example
+ *   calculateTubeVolume(50, 40, 1000, 'mm');
+ *   // { volume: 706858.34..., unit: 'mm³' }
+ */
+function calculateTubeVolume(outerDiameter, innerDiameter, length, unit) {
+  validatePositiveNumber(outerDiameter, 'outerDiameter');
+  validatePositiveNumber(innerDiameter, 'innerDiameter');
+  validatePositiveNumber(length, 'length');
+  validateUnit(unit, LENGTH_UNITS, 'unit');
+  if (innerDiameter >= outerDiameter) {
+    throw new Error('内径必须小于外径');
+  }
+  return {
+    volume: Math.PI * (outerDiameter * outerDiameter - innerDiameter * innerDiameter) * length / 4,
+    unit: unit + '³'
+  };
+}
+
+/**
+ * 将体积从任意长度单位的立方转换到 cm³
+ *
+ * @param {number} volume - 体积数值
+ * @param {string} unit - 原长度单位（mm/cm/m）
+ * @returns {number} 体积，单位 cm³
+ * @throws {Error} 参数非法
+ * @example
+ *   volumeToCm3(1000000, 'mm');  // 1000
+ */
+function volumeToCm3(volume, unit) {
+  validatePositiveNumber(volume, 'volume');
+  validateUnit(unit, LENGTH_UNITS, 'unit');
+  const factor = LENGTH_TO_CM[unit];
+  return volume * factor * factor * factor;
+}
+
+/**
+ * 根据体积（cm³）和密度（g/cm³）计算重量（g）
+ *
+ * @param {number} volumeCm3 - 体积，单位 cm³
+ * @param {number} density - 密度，单位 g/cm³
+ * @returns {number} 重量，单位 g
+ * @throws {Error} 参数非法
+ * @example
+ *   weightFromVolume(1000, 7.85);  // 7850
+ */
+function weightFromVolume(volumeCm3, density) {
+  validatePositiveNumber(volumeCm3, 'volumeCm3');
+  validatePositiveNumber(density, 'density');
+  return volumeCm3 * density;
+}
+
+/**
+ * 计算金属材料的理论重量（主入口函数）
+ *
+ * @param {string} shape - 形状：'plate'（板材）/ 'bar'（圆棒）/ 'tube'（管材）
+ * @param {Object} params - 尺寸参数
+ * @param {number} [params.length] - 长度（板材/棒材/管材）
+ * @param {number} [params.width] - 宽度（板材）
+ * @param {number} [params.thickness] - 厚度（板材）
+ * @param {number} [params.diameter] - 直径（棒材）
+ * @param {number} [params.outerDiameter] - 外径（管材）
+ * @param {number} [params.innerDiameter] - 内径（管材）
+ * @param {string} material - 材料名称
+ * @param {string} [lengthUnit='mm'] - 长度单位（mm/cm/m）
+ * @param {string} [weightUnit='kg'] - 重量单位（g/kg/t）
+ * @returns {{volume: number, volumeUnit: string, weight: number, weightUnit: string, density: number, densityUnit: string}}
+ * @throws {Error} 参数非法
+ * @example
+ *   calculateMetalWeight('plate', { length: 1000, width: 500, thickness: 10 }, '碳钢', 'mm', 'kg');
+ *   // { volume: 5000, volumeUnit: 'cm³', weight: 39.25, weightUnit: 'kg', density: 7.85, densityUnit: 'g/cm³' }
+ */
+function calculateMetalWeight(shape, params, material, lengthUnit, weightUnit) {
+  if (SHAPE_TYPES.indexOf(shape) === -1) {
+    throw new Error('shape 必须为 plate/bar/tube 之一');
+  }
+  if (params === null || typeof params !== 'object') {
+    throw new TypeError('params 必须为对象');
+  }
+  lengthUnit = lengthUnit || 'mm';
+  weightUnit = weightUnit || 'kg';
+  validateUnit(lengthUnit, LENGTH_UNITS, 'lengthUnit');
+  validateUnit(weightUnit, WEIGHT_UNITS, 'weightUnit');
+
+  const density = getDensity(material);
+  let volumeResult;
+
+  if (shape === 'plate') {
+    volumeResult = calculatePlateVolume(params.length, params.width, params.thickness, lengthUnit);
+  } else if (shape === 'bar') {
+    volumeResult = calculateBarVolume(params.diameter, params.length, lengthUnit);
+  } else {
+    volumeResult = calculateTubeVolume(params.outerDiameter, params.innerDiameter, params.length, lengthUnit);
+  }
+
+  const volumeCm3 = volumeToCm3(volumeResult.volume, lengthUnit);
+  const weightG = weightFromVolume(volumeCm3, density);
+  const weight = convertWeight(weightG, 'g', weightUnit);
+
+  return {
+    volume: roundTo(volumeCm3, 6),
+    volumeUnit: 'cm³',
+    weight: roundTo(weight, 6),
+    weightUnit: weightUnit,
+    density: density,
+    densityUnit: 'g/cm³'
+  };
+}
+
+/**
+ * 四舍五入到指定小数位
+ *
+ * @param {number} value - 数值
+ * @param {number} digits - 小数位数
+ * @returns {number} 四舍五入后的数值
+ * @throws {Error} 参数非法
+ * @example
+ *   roundTo(3.14159, 2);  // 3.14
+ */
+function roundTo(value, digits) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new Error('value 必须为有效数字');
+  }
+  if (typeof digits !== 'number' || digits < 0 || !Number.isInteger(digits)) {
+    throw new Error('digits 必须为非负整数');
+  }
+  const factor = Math.pow(10, digits);
+  return Math.round(value * factor) / factor;
+}
+
+/**
+ * 列出所有可用材料
+ *
+ * @returns {string[]} 材料名称数组
+ * @example
+ *   listMaterials();  // ['纯铝', '铝合金', '纯铜', ...]
+ */
+function listMaterials() {
+  return Object.keys(METAL_DENSITY_TABLE);
+}
+
+/* ============================================================
+ * 第二部分：单元测试（自实现 assert，≥30 个用例）
+ * ============================================================ */
+
+let testPassed = 0;
+let testFailed = 0;
+let testLog = [];
+
+function assertEqual(actual, expected, message) {
+  const pass = actual === expected;
+  if (pass) {
+    testPassed++;
+    testLog.push('✓ ' + message);
+  } else {
+    testFailed++;
+    testLog.push('✗ ' + message + ' | 期望: ' + expected + '，实际: ' + actual);
+  }
+}
+
+function assertApprox(actual, expected, tolerance, message) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  if (pass) {
+    testPassed++;
+    testLog.push('✓ ' + message);
+  } else {
+    testFailed++;
+    testLog.push('✗ ' + message + ' | 期望≈' + expected + '，实际: ' + actual + '，容差: ' + tolerance);
+  }
+}
+
+function assertThrows(fn, message) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (threw) {
+    testPassed++;
+    testLog.push('✓ ' + message);
+  } else {
+    testFailed++;
+    testLog.push('✗ ' + message + ' | 期望抛出异常但未抛出');
+  }
+}
+
+function runAllTests() {
+  testPassed = 0;
+  testFailed = 0;
+  testLog = [];
+
+  // === getDensity 测试 ===
+  assertEqual(getDensity('碳钢'), 7.85, 'getDensity: 碳钢');
+  assertEqual(getDensity('不锈钢304'), 7.93, 'getDensity: 不锈钢304');
+  assertEqual(getDensity('不锈钢316'), 7.98, 'getDensity: 不锈钢316');
+  assertEqual(getDensity('纯铝'), 2.70, 'getDensity: 纯铝');
+  assertEqual(getDensity('铅'), 11.34, 'getDensity: 铅');
+  assertEqual(getDensity('镁'), 1.74, 'getDensity: 镁');
+  assertThrows(() => getDensity('未知材料'), 'getDensity: 未知材料抛错');
+  assertThrows(() => getDensity(''), 'getDensity: 空字符串抛错');
+  assertThrows(() => getDensity(null), 'getDensity: null 抛错');
+  assertThrows(() => getDensity(undefined), 'getDensity: undefined 抛错');
+  assertThrows(() => getDensity(123), 'getDensity: 数字类型抛错');
+
+  // === getDensityInfo 测试 ===
+  const info = getDensityInfo('铝合金');
+  assertEqual(info.value, 2.75, 'getDensityInfo: 铝合金 value');
+  assertEqual(info.range[0], 2.70, 'getDensityInfo: 铝合金 range[0]');
+  assertEqual(info.range[1], 2.80, 'getDensityInfo: 铝合金 range[1]');
+
+  // === convertLength 测试 ===
+  assertEqual(convertLength(1000, 'mm', 'm'), 1, 'convertLength: 1000mm -> 1m');
+  assertEqual(convertLength(1, 'm', 'cm'), 100, 'convertLength: 1m -> 100cm');
+  assertEqual(convertLength(10, 'cm', 'mm'), 100, 'convertLength: 10cm -> 100mm');
+  assertThrows(() => convertLength(-1, 'mm', 'cm'), 'convertLength: 负数抛错');
+  assertThrows(() => convertLength(0, 'mm', 'cm'), 'convertLength: 0 抛错');
+  assertThrows(() => convertLength(NaN, 'mm', 'cm'), 'convertLength: NaN 抛错');
+  assertThrows(() => convertLength(1, 'km', 'm'), 'convertLength: 非法单位抛错');
+
+  // === convertWeight 测试 ===
+  assertEqual(convertWeight(1000, 'g', 'kg'), 1, 'convertWeight: 1000g -> 1kg');
+  assertEqual(convertWeight(1, 't', 'kg'), 1000, 'convertWeight: 1t -> 1000kg');
+  assertEqual(convertWeight(1, 'kg', 'g'), 1000, 'convertWeight: 1kg -> 1000g');
+  assertEqual(convertWeight(0, 'g', 'kg'), 0, 'convertWeight: 0 允许');
+  assertThrows(() => convertWeight(-1, 'g', 'kg'), 'convertWeight: 负数抛错');
+
+  // === 体积计算测试 ===
+  const plateVol = calculatePlateVolume(100, 50, 10, 'cm');
+  assertEqual(plateVol.volume, 50000, 'calculatePlateVolume: 100×50×10 cm');
+  assertEqual(plateVol.unit, 'cm³', 'calculatePlateVolume: 单位正确');
+
+  const barVol = calculateBarVolume(20, 1000, 'mm');
+  assertApprox(barVol.volume, Math.PI * 100 * 1000, 0.001, 'calculateBarVolume: Φ20×1000mm');
+
+  const tubeVol = calculateTubeVolume(50, 40, 1000, 'mm');
+  assertApprox(tubeVol.volume, Math.PI * (2500 - 1600) * 1000 / 4, 0.001, 'calculateTubeVolume: Φ50×Φ40×1000mm');
+
+  assertThrows(() => calculateTubeVolume(40, 50, 1000, 'mm'), 'calculateTubeVolume: 内径≥外径抛错');
+  assertThrows(() => calculatePlateVolume(0, 50, 10, 'cm'), 'calculatePlateVolume: 0 抛错');
+  assertThrows(() => calculatePlateVolume(-1, 50, 10, 'cm'), 'calculatePlateVolume: 负数抛错');
+  assertThrows(() => calculatePlateVolume(null, 50, 10, 'cm'), 'calculatePlateVolume: null 抛错');
+
+  // === 主函数 calculateMetalWeight 测试 ===
+  // 场景1：碳钢板 1000×500×10 mm
+  // 体积 = 100×50×1 = 5000 cm³，重量 = 5000 × 7.85 = 39250 g = 39.25 kg
+  const r1 = calculateMetalWeight('plate', { length: 1000, width: 500, thickness: 10 }, '碳钢', 'mm', 'kg');
+  assertApprox(r1.volume, 5000, 0.001, '主函数: 碳钢板体积 5000 cm³');
+  assertApprox(r1.weight, 39.25, 0.001, '主函数: 碳钢板重量 39.25 kg');
+  assertEqual(r1.density, 7.85, '主函数: 碳钢密度 7.85');
+
+  // 场景2：不锈钢304圆棒 Φ20×1000 mm
+  // 体积 = π × 1² × 100 = 314.159 cm³，重量 = 314.159 × 7.93 = 2491.28 g ≈ 2.491 kg
+  const r2 = calculateMetalWeight('bar', { diameter: 20, length: 1000 }, '不锈钢304', 'mm', 'kg');
+  assertApprox(r2.volume, Math.PI * 100, 0.01, '主函数: 不锈钢304圆棒体积');
+  assertApprox(r2.weight, Math.PI * 100 * 7.93 / 1000, 0.01, '主函数: 不锈钢304圆棒重量');
+
+  // 场景3：铝管 Φ50×Φ40×2000 mm
+  const r3 = calculateMetalWeight('tube', { outerDiameter: 50, innerDiameter: 40, length: 2000 }, '纯铝', 'mm', 'kg');
+  const expectVol3 = Math.PI * (2.5*2.5 - 2*2) * 200;
+  assertApprox(r3.volume, expectVol3, 0.01, '主函数: 铝管体积');
+  assertApprox(r3.weight, expectVol3 * 2.70 / 1000, 0.01, '主函数: 铝管重量');
+
+  // 单位切换：用 m 输入
+  const r4 = calculateMetalWeight('plate', { length: 1, width: 0.5, thickness: 0.01 }, '碳钢', 'm', 'kg');
+  assertApprox(r4.weight, 39.25, 0.01, '主函数: 用 m 输入结果一致');
+
+  // 重量单位切换：输出 g
+  const r5 = calculateMetalWeight('plate', { length: 1000, width: 500, thickness: 10 }, '碳钢', 'mm', 'g');
+  assertApprox(r5.weight, 39250, 0.1, '主函数: 输出 g 单位');
+
+  // 重量单位切换：输出 t
+  const r6 = calculateMetalWeight('plate', { length: 1000, width: 500, thickness: 10 }, '碳钢', 'mm', 't');
+  assertApprox(r6.weight, 0.03925, 0.00001, '主函数: 输出 t 单位');
+
+  // 异常：非法 shape
+  assertThrows(() => calculateMetalWeight('cube', {}, '碳钢'), '主函数: 非法 shape 抛错');
+  // 异常：params 为 null
+  assertThrows(() => calculateMetalWeight('plate', null, '碳钢'), '主函数: params null 抛错');
+  // 异常：材料不存在
+  assertThrows(() => calculateMetalWeight('plate', { length: 1, width: 1, thickness: 1 }, '未知', 'mm', 'kg'), '主函数: 未知材料抛错');
+
+  // === roundTo 测试 ===
+  assertEqual(roundTo(3.14159, 2), 3.14, 'roundTo: 3.14159 -> 3.14');
+  assertEqual(roundTo(3.145, 2), 3.15, 'roundTo: 3.145 -> 3.15');
+  assertEqual(roundTo(100, 0), 100, 'roundTo: 整数 0 位');
+  assertThrows(() => roundTo(NaN, 2), 'roundTo: NaN 抛错');
+  assertThrows(() => roundTo(1.5, -1), 'roundTo: 负数位抛错');
+
+  // === listMaterials 测试 ===
+  const mats = listMaterials();
+  assertEqual(Array.isArray(mats), true, 'listMaterials: 返回数组');
+  assertEqual(mats.indexOf('碳钢') >= 0, true, 'listMaterials: 包含碳钢');
+  assertEqual(mats.length >= 15, true, 'listMaterials: 至少 15 种材料');
+
+  // === 边界值：极大值 ===
+  const rBig = calculateMetalWeight('plate', { length: 10000, width: 10000, thickness: 100 }, '碳钢', 'mm', 't');
+  assertApprox(rBig.weight, 7850, 1, '主函数: 极大尺寸计算');
+
+  // === 精度：小数尺寸 ===
+  const rSmall = calculateMetalWeight('bar', { diameter: 0.5, length: 100 }, '纯铜', 'cm', 'g');
+  assertApprox(rSmall.volume, Math.PI * 0.25 * 0.25 * 100, 0.001, '主函数: 小尺寸精度');
+
+  return { passed: testPassed, failed: testFailed, total: testPassed + testFailed, log: testLog };
+}
+
+function runTests() {
+  const result = runAllTests();
+  const output = document.getElementById('test-output');
+  const cls = result.failed === 0 ? 'test-pass' : 'test-fail';
+  output.innerHTML = '<div class="test-result ' + cls + '">' +
+    '<strong>通过 ' + result.passed + ' / 共 ' + result.total + '</strong><br>' +
+    (result.failed > 0 ? '<strong>失败 ' + result.failed + '</strong><br>' : '') +
+    '<hr style="margin:8px 0">' +
+    result.log.map(l => '<div>' + l + '</div>').join('') +
+    '</div>';
+}
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+
+const DOC_CONTENT = `
+<div class="doc-section">
+<h2>一、工具简介</h2>
+<p>本工具用于常见金属材料的密度查询与理论重量计算，面向机械设计、采购下料、物流估算、成本核算等场景。用户输入材料牌号与几何尺寸，即可得到理论重量，免去手工查表与单位换算的繁琐。</p>
+<p>本工具解决的核心问题：</p>
+<ul>
+<li>快速查询常见金属材料的密度标称值，避免记忆错误；</li>
+<li>根据板材、圆棒、管材三种常见形状计算理论重量；</li>
+<li>支持 mm / cm / m 与 g / kg / t 的单位自由切换；</li>
+<li>所有密度数据均标注来源国标，便于溯源与复核。</li>
+</ul>
+<p class="info"><strong>重要提示：</strong>本工具计算结果为"理论重量"，依据标称密度与几何尺寸计算，实际重量会因牌号偏差、表面氧化、尺寸公差、内部缺陷等因素有所不同，工程下料与结算应以实际过磅为准。</p>
+</div>
+
+<div class="doc-section">
+<h2>二、参数详解</h2>
+
+<h3>2.1 材料（material）</h3>
+<p>从密度表中选取，当前支持 15 种常见金属材料。每种材料均给出标称密度（g/cm³），部分合金给出范围。完整列表如下：</p>
+<table>
+<tr><th>材料名称</th><th>标称密度 (g/cm³)</th><th>范围</th><th>依据</th></tr>
+<tr><td>纯铝</td><td>2.70</td><td>—</td><td>GB/T 3190 1xxx 系</td></tr>
+<tr><td>铝合金</td><td>2.75</td><td>2.70 ~ 2.80</td><td>GB/T 3190，依牌号差异</td></tr>
+<tr><td>纯铜</td><td>8.96</td><td>—</td><td>T1/T2 工业纯铜</td></tr>
+<tr><td>黄铜</td><td>8.50</td><td>8.40 ~ 8.70</td><td>H62/H65/H68 等</td></tr>
+<tr><td>青铜</td><td>8.80</td><td>8.70 ~ 8.90</td><td>锡青铜 QSn 系列</td></tr>
+<tr><td>纯铁</td><td>7.87</td><td>—</td><td>DT4 电工纯铁</td></tr>
+<tr><td>碳钢</td><td>7.85</td><td>—</td><td>GB/T 700 Q235 等</td></tr>
+<tr><td>不锈钢304</td><td>7.93</td><td>—</td><td>GB/T 1220 06Cr19Ni10</td></tr>
+<tr><td>不锈钢316</td><td>7.98</td><td>—</td><td>GB/T 1220 06Cr17Ni12Mo2</td></tr>
+<tr><td>铸铁</td><td>7.30</td><td>7.20 ~ 7.40</td><td>灰铸铁 HT 系列</td></tr>
+<tr><td>钛</td><td>4.51</td><td>—</td><td>TA1/TA2 工业纯钛</td></tr>
+<tr><td>镁</td><td>1.74</td><td>—</td><td>纯镁</td></tr>
+<tr><td>锌</td><td>7.14</td><td>—</td><td>纯锌</td></tr>
+<tr><td>铅</td><td>11.34</td><td>—</td><td>纯铅</td></tr>
+<tr><td>镍</td><td>8.90</td><td>—</td><td>纯镍</td></tr>
+</table>
+<p class="warning"><strong>注意：</strong>密度为标称值，实际牌号有偏差。例如不锈钢 304 标准密度为 7.93 g/cm³，316 为 7.98 g/cm³；铝合金 2xxx 系（如 2024）密度约 2.78，7xxx 系（如 7075）约 2.81。精确计算需查对应牌号标准原文。</p>
+
+<h3>2.2 形状（shape）</h3>
+<p>支持三种常见形状：</p>
+<ul>
+<li><strong>plate（板材）</strong>：长方体，需输入 长 × 宽 × 厚（高）；</li>
+<li><strong>bar（圆棒）</strong>：实心圆柱，需输入 直径 × 长度；</li>
+<li><strong>tube（管材）</strong>：空心圆管，需输入 外径 × 内径 × 长度。</li>
+</ul>
+
+<h3>2.3 尺寸参数</h3>
+<table>
+<tr><th>参数</th><th>适用形状</th><th>含义</th><th>取值范围</th></tr>
+<tr><td>length</td><td>plate / bar / tube</td><td>长度</td><td>&gt; 0，受浮点精度限制</td></tr>
+<tr><td>width</td><td>plate</td><td>宽度</td><td>&gt; 0</td></tr>
+<tr><td>thickness</td><td>plate</td><td>厚度</td><td>&gt; 0</td></tr>
+<tr><td>diameter</td><td>bar</td><td>直径</td><td>&gt; 0</td></tr>
+<tr><td>outerDiameter</td><td>tube</td><td>外径</td><td>&gt; 0</td></tr>
+<tr><td>innerDiameter</td><td>tube</td><td>内径</td><td>&gt; 0 且 &lt; 外径</td></tr>
+</table>
+
+<h3>2.4 单位</h3>
+<ul>
+<li><strong>长度单位 lengthUnit</strong>：mm（毫米）/ cm（厘米）/ m（米），默认 mm；</li>
+<li><strong>重量单位 weightUnit</strong>：g（克）/ kg（千克）/ t（吨），默认 kg。</li>
+</ul>
+<p>密度单位固定为 g/cm³，内部自动完成单位换算，用户无需关心。</p>
+</div>
+
+<div class="doc-section">
+<h2>三、完整使用场景</h2>
+
+<h3>场景 1：碳钢板下料估算</h3>
+<p><strong>需求：</strong>一块 Q235 碳钢板，尺寸 1000 mm × 500 mm × 10 mm，估算重量。</p>
+<p><strong>输入：</strong></p>
+<ul>
+<li>shape: 'plate'</li>
+<li>params: { length: 1000, width: 500, thickness: 10 }</li>
+<li>material: '碳钢'</li>
+<li>lengthUnit: 'mm'，weightUnit: 'kg'</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>体积 = 1000 × 500 × 10 = 5,000,000 mm³ = 5000 cm³</li>
+<li>重量 = 5000 × 7.85 = 39,250 g = 39.25 kg</li>
+</ul>
+<p><strong>结果：</strong>体积 5000 cm³，重量 39.25 kg。</p>
+
+<h3>场景 2：不锈钢 304 圆棒重量</h3>
+<p><strong>需求：</strong>一根 Φ20 mm × 1000 mm 的 304 不锈钢圆棒。</p>
+<p><strong>输入：</strong></p>
+<ul>
+<li>shape: 'bar'</li>
+<li>params: { diameter: 20, length: 1000 }</li>
+<li>material: '不锈钢304'</li>
+<li>lengthUnit: 'mm'，weightUnit: 'kg'</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>体积 = π × (20/2)² × 1000 = π × 100 × 1000 ≈ 314,159 mm³ ≈ 314.16 cm³</li>
+<li>重量 = 314.16 × 7.93 ≈ 2491.3 g ≈ 2.49 kg</li>
+</ul>
+<p><strong>结果：</strong>体积约 314.16 cm³，重量约 2.49 kg。</p>
+
+<h3>场景 3：铝合金管材批量估算</h3>
+<p><strong>需求：</strong>一根铝合金管，外径 50 mm，内径 40 mm，长度 2 m，求重量（单位 kg）。</p>
+<p><strong>输入：</strong></p>
+<ul>
+<li>shape: 'tube'</li>
+<li>params: { outerDiameter: 50, innerDiameter: 40, length: 2 }</li>
+<li>material: '铝合金'</li>
+<li>lengthUnit: 'm'，weightUnit: 'kg'</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>长度换算：2 m = 2000 mm</li>
+<li>体积 = π × (50² - 40²) / 4 × 2000 = π × 900 / 4 × 2000 ≈ 1,413,717 mm³ ≈ 1413.72 cm³</li>
+<li>重量 = 1413.72 × 2.75 ≈ 3887.7 g ≈ 3.89 kg</li>
+</ul>
+<p><strong>结果：</strong>体积约 1413.72 cm³，重量约 3.89 kg（按铝合金中值 2.75 计算）。</p>
+
+<h3>场景 4：纯铜棒以克为单位输出</h3>
+<p><strong>需求：</strong>Φ10 mm × 500 mm 的纯铜棒，需要以克为单位输出重量。</p>
+<p><strong>输入：</strong></p>
+<ul>
+<li>shape: 'bar'</li>
+<li>params: { diameter: 10, length: 500 }</li>
+<li>material: '纯铜'</li>
+<li>lengthUnit: 'mm'，weightUnit: 'g'</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>体积 = π × 5² × 500 = π × 25 × 500 ≈ 39,270 mm³ ≈ 39.27 cm³</li>
+<li>重量 = 39.27 × 8.96 ≈ 351.86 g</li>
+</ul>
+<p><strong>结果：</strong>体积约 39.27 cm³，重量约 351.86 g。</p>
+
+<h3>场景 5：大型碳钢构件以吨计重</h3>
+<p><strong>需求：</strong>一块 2 m × 1 m × 20 mm 的碳钢板，求重量（单位 t）。</p>
+<p><strong>输入：</strong></p>
+<ul>
+<li>shape: 'plate'</li>
+<li>params: { length: 2, width: 1, thickness: 0.02 }</li>
+<li>material: '碳钢'</li>
+<li>lengthUnit: 'm'，weightUnit: 't'</li>
+</ul>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>体积 = 2 × 1 × 0.02 = 0.04 m³ = 40,000 cm³</li>
+<li>重量 = 40,000 × 7.85 = 314,000 g = 314 kg = 0.314 t</li>
+</ul>
+<p><strong>结果：</strong>体积 40,000 cm³，重量 0.314 t。</p>
+</div>
+
+<div class="doc-section">
+<h2>四、常见错误与排查</h2>
+
+<h3>4.1 报错："未知材料"</h3>
+<p><strong>原因：</strong>材料名称拼写错误或不在密度表中。</p>
+<p><strong>排查：</strong>调用 listMaterials() 获取完整材料列表，严格使用表中的键名（如"不锈钢304"而非"304不锈钢"）。</p>
+
+<h3>4.2 报错："内径必须小于外径"</h3>
+<p><strong>原因：</strong>管材参数中 innerDiameter ≥ outerDiameter。</p>
+<p><strong>排查：</strong>检查输入，确保外径严格大于内径；若为实心棒，请使用 bar 形状。</p>
+
+<h3>4.3 报错："参数必须大于 0"</h3>
+<p><strong>原因：</strong>尺寸参数为 0 或负数。</p>
+<p><strong>排查：</strong>几何尺寸必须为正数，0 或负数无物理意义。</p>
+
+<h3>4.4 报错："单位不合法"</h3>
+<p><strong>原因：</strong>lengthUnit 或 weightUnit 不在允许列表中。</p>
+<p><strong>排查：</strong>长度单位仅支持 mm/cm/m，重量单位仅支持 g/kg/t，注意大小写。</p>
+
+<h3>4.5 计算结果与实际称重不符</h3>
+<p><strong>原因：</strong>本工具计算的是理论重量，实际重量受以下因素影响：</p>
+<ul>
+<li>材料牌号偏差（如 304 与 316 密度不同）；</li>
+<li>尺寸公差（国标允许厚度、直径有偏差）；</li>
+<li>表面氧化、涂层、油污；</li>
+<li>内部缺陷（气孔、夹杂）。</li>
+</ul>
+<p><strong>建议：</strong>工程结算以实际过磅为准，本工具仅用于前期估算。</p>
+
+<h3>4.6 浮点精度问题</h3>
+<p><strong>现象：</strong>结果出现 39.25000000000001 这类长小数。</p>
+<p><strong>原因：</strong>JavaScript 浮点数精度限制。</p>
+<p><strong>处理：</strong>工具内部已使用 roundTo 函数保留 6 位小数，如需更高精度可自行扩展。</p>
+</div>
+
+<div class="doc-section">
+<h2>五、数据来源与标准依据</h2>
+<p>本工具密度数据主要来源于以下国家标准与工程手册：</p>
+<ul>
+<li><strong>GB/T 700《碳素结构钢》</strong>：碳钢（如 Q235）密度取 7.85 g/cm³；</li>
+<li><strong>GB/T 3190《变形铝及铝合金化学成分》</strong>：纯铝 2.70，铝合金按牌号范围 2.70~2.80；</li>
+<li><strong>GB/T 1220《不锈钢棒》</strong>：304（06Cr19Ni10）取 7.93，316（06Cr17Ni12Mo2）取 7.98；</li>
+<li><strong>《机械设计手册》</strong>：纯铜、黄铜、青铜、钛、镁、锌、铅、镍等取自常见工程手册标称值。</li>
+</ul>
+<p class="warning"><strong>严谨性声明：</strong>密度为标称值，实际牌号有偏差。合金成分不同密度会变化，精确计算需查对应牌号标准原文。本工具不保证适用于所有特殊牌号或非标材料。</p>
+</div>
+
+<div class="doc-section">
+<h2>六、局限性说明</h2>
+<ul>
+<li><strong>形状限制：</strong>仅支持板材、圆棒、圆管三种规则形状，异形件（如角钢、槽钢、工字钢、方管等）需另行计算或查型钢表；</li>
+<li><strong>材料限制：</strong>仅内置 15 种常见金属，特殊合金、高温合金、粉末冶金材料等未收录；</li>
+<li><strong>温度影响：</strong>密度数据为 20℃ 标称值，高温或低温下密度会变化，本工具未做温度补偿；</li>
+<li><strong>理论值：</strong>计算结果为理论重量，实际重量因公差、氧化、缺陷等因素会有偏差，工程结算应以过磅为准；</li>
+<li><strong>精度限制：</strong>JavaScript 浮点数精度约 15~17 位有效数字，超大或超小尺寸可能出现微小误差；</li>
+<li><strong>无持久化：</strong>本工具为纯前端实现，不保存历史数据，刷新页面后状态丢失；</li>
+<li><strong>无网络依赖：</strong>所有计算在本地完成，无需联网，但密度表需手动更新。</li>
+</ul>
+<p class="info">如需扩展更多材料或形状，可直接修改 METAL_DENSITY_TABLE 与 calculateMetalWeight 函数，无需改动其他逻辑。</p>
+</div>
+`;
+
+/* ============================================================
+ * 页面渲染与交互
+ * ============================================================ */
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 获取源码文本（从当前 script 标签之前的内容）
+function getSourceCode() {
+  const scripts = document.querySelectorAll('script');
+  // 取第一个 script 的内容（即核心算法部分）
+  let src = scripts[0].textContent;
+  // 截取到 "第二部分" 注释之前
+  const cutIdx = src.indexOf('第二部分：单元测试');
+  if (cutIdx > 0) {
+    src = src.substring(0, cutIdx);
+  }
+  return src.trim();
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('source-code').textContent = getSourceCode();
+  document.getElementById('doc-content').innerHTML = DOC_CONTENT;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<!--
+  rice-lock/index.html —— 白饭催睡页
+  干什么：白饭从上方落下，越堆越高、坡面自然起伏铺满整屏，然后屏幕慢慢变黑"关机"。
+  用啥库：零依赖，纯 Canvas 2D。
+  输入输出：无输入（可选 ?t=秒数 调整灌满时长）；输出为全屏动画。
+  作者：肥鱼  v1.3.0-白饭梭形颗粒 20261108
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>白饭满了</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+    overscroll-behavior:none;touch-action:none}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #ver{position:fixed;right:6px;bottom:4px;font:10px/1.2 -apple-system,sans-serif;
+    color:rgba(255,255,255,.18);pointer-events:none;z-index:9;letter-spacing:.3px}
+  #bye{position:fixed;inset:0;background:#000;display:flex;align-items:center;
+    justify-content:center;flex-direction:column;gap:14px;opacity:0;
+    transition:opacity 2.6s ease;pointer-events:none;z-index:8;
+    font:400 15px/1.8 -apple-system,"PingFang SC",sans-serif;color:#4a4a4a}
+  #bye.on{opacity:1;pointer-events:auto}
+  #bye .g{font-size:34px;opacity:.45}
+  #bye .h{opacity:.4;letter-spacing:2px}
+  #bye .w{margin-top:22px;font-size:12px;opacity:.22;letter-spacing:1px;
+    border:1px solid rgba(255,255,255,.1);padding:7px 16px;border-radius:20px;color:#6b6b6b}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="bye">
+  <div class="g">🍚</div>
+  <div class="h">饭 吃 饱 了 ，该 睡 了</div>
+  <div class="w">轻点一下醒过来</div>
+</div>
+<div id="ver">v1.3.0-白饭梭形颗粒 20261108</div>
+<script>
+(function(){
+  'use strict';
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W=0,H=0,DPR=1;
+  var q=new URLSearchParams(location.search);
+  var FILL_MS=Math.max(9000,(parseFloat(q.get('t'))||30)*1000);
+
+  /* 米粒色阶：8 档，从明亮到阴影（预生成，避免每帧建渐变） */
+  var PAL=[
+    '#ffffff','#fdfcf7','#faf7ef','#f4f0e4',
+    '#e8e3d4','#d8d2c2','#c4beae','#aba597'
+  ];
+
+  /* ── 堆体纹理（静态一次性生成，靠"坡面高度"逐帧揭开） ── */
+  var pile=null;            // {grains:[{x,y,r,rot,ci}], crest:Float32Array}
+  var CREST_STEP=4;
+
+  function buildPile(){
+    var grains=[];
+    var step=6.4;                     // 网格间距（越小越密、越吃性能）
+    for(var y=H+step; y>-step; y-=step*0.78){
+      var rowShift=(Math.round(y/step)%2)?step*0.5:0;
+      for(var x=-step+rowShift; x<W+step; x+=step){
+        var gx=x+(Math.random()-0.5)*step*0.9;
+        var gy=y+(Math.random()-0.5)*step*0.65;
+        grains.push({
+          x:gx, y:gy,
+          r:2.8+Math.random()*2.6,        // 半径
+          rot:Math.random()*Math.PI,
+          ci:0                            // 颜色档位，逐帧按深度算
+        });
+      }
+    }
+    pile={grains:grains, n:grains.length};
+  }
+
+  /* 坡面高度：中间高、两边低，叠几层正弦做自然起伏 */
+  function crestAt(x, pileH, t){
+    var u=x/W;                                  // 0..1
+    // 主坡：中间顶起来
+    var shape=1-0.20*Math.pow(Math.abs(u*2-1),2.4);
+    // 起伏
+    var bump = Math.sin(u*Math.PI*2.1+1.7)*0.045
+             + Math.sin(u*Math.PI*5.3-0.6)*0.025
+             + Math.sin(u*Math.PI*11.7+2.2)*0.012;
+    // 落下时的轻微震动（很轻，别抖）
+    var vib=Math.sin(t/460+u*9)*0.004;
+    return H - pileH*(shape+bump+vib);
+  }
+
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2.5);
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=Math.floor(W*DPR); cv.height=Math.floor(H*DPR);
+    cv.style.width=W+'px'; cv.style.height=H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    buildPile();
+  }
+  window.addEventListener('resize',function(){resize()});
+  window.addEventListener('orientationchange',function(){setTimeout(resize,200)});
+  resize();
+
+  /* ── 下落中的米（带拖影） ── */
+  var fall=[], dust=[];
+  function spawnDrop(pileH,t){
+    var x=Math.random()*W;
+    var top=crestAt(x,pileH,t);
+    fall.push({
+      x:x,
+      y:top-(20+Math.random()*Math.min(260,H*0.5)),
+      vy:1.8+Math.random()*4.2,
+      vx:(Math.random()-0.5)*0.8,
+      r:3.6+Math.random()*2.6,          // 下落米粒尺寸跟堆积体对齐，不再是一小点
+      rot:Math.random()*Math.PI,
+      vr:(Math.random()-0.5)*0.25,
+      ci:1+Math.floor(Math.random()*3)
+    });
+  }
+  function spawnDust(x,y){
+    dust.push({x:x,y:y,vx:(Math.random()-0.5)*2.2,vy:-Math.random()*1.6,
+               life:1,r:0.8+Math.random()*1.4});
+  }
+
+  function drawGrain(x,y,r,rot,ci,alpha){
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=PAL[ci];
+    // 棱形米粒：两头尖、中间鼓（而不是纯椭圆）
+    ctx.beginPath();
+    ctx.moveTo(-r*1.25,0);
+    ctx.quadraticCurveTo(-r*0.55,-r*0.68, r*0.15,-r*0.52);
+    ctx.quadraticCurveTo(r*0.9,-r*0.34, r*1.25,0);
+    ctx.quadraticCurveTo(r*0.9, r*0.34, r*0.15, r*0.52);
+    ctx.quadraticCurveTo(-r*0.55, r*0.68, -r*1.25,0);
+    ctx.closePath();
+    ctx.save();
+    ctx.translate(x,y); ctx.rotate(rot);
+    ctx.fill();
+    // 米粒自身高光（左边一条亮线）
+    if(ci<5 && alpha>0.8){
+      ctx.globalAlpha=alpha*0.55;
+      ctx.strokeStyle='rgba(255,255,255,.85)';
+      ctx.lineWidth=Math.max(0.6,r*0.3);
+      ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-r*0.5,-r*0.22); ctx.lineTo(r*0.3,-r*0.16); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  var t0=0,last=0,acc=0,done=false,pileH=0;
+
+  function loop(ts){
+    if(!t0) t0=ts;
+    var dt=Math.min(0.05,(ts-last)/1000)||0.016; last=ts;
+    var el=ts-t0;
+    var prog=Math.min(1,el/FILL_MS);
+
+    // 堆积高度（前段慢、后段涌上来）
+    pileH=H*Math.pow(prog,0.72);
+
+    // 黑底
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+
+    /* ── 画堆体：按每颗米相对坡顶的深度决定明暗 ── */
+    var gs=pile.grains, n=pile.n;
+    // 每 4px 采一次坡面，避免重复算 sin
+    var crestCache=new Array(Math.ceil(W/CREST_STEP)+2);
+    for(var i=0;i<crestCache.length;i++){
+      crestCache[i]=crestAt(Math.min(W,i*CREST_STEP),pileH,ts);
+    }
+    var maxDepth=Math.max(60,H*0.22);
+    for(var k=0;k<n;k++){
+      var g=gs[k];
+      var cxi=(g.x/CREST_STEP)|0;
+      if(cxi<0)cxi=0; if(cxi>=crestCache.length)cxi=crestCache.length-1;
+      var crest=crestCache[cxi];
+      var above=g.y-crest;
+      if(above<-9) continue;                    // 离坡面太远，跳过
+      // 坡面上沿 0~9px 的米粒：只让一部分露头，做出"毛糙边"
+      if(above<0 && ((g.x*13+g.y*7)|0)%5>2) continue;
+      var d=above/maxDepth;                     // 0=坡顶 1=深处
+      if(d<0)d=0; if(d>1)d=1;
+      var ci=(d*7)|0;
+      if(ci>7)ci=7;
+      var alpha=above<0?0.55:1;                 // 露头的稍淡
+      // 先画一层右下偏移的暗影 → 颗粒间互相遮挡的 AO
+      if(ci<7){
+        drawGrain(g.x+g.r*0.34, g.y+g.r*0.30, g.r*1.05, g.rot, 7, alpha*0.55);
+      }
+      drawGrain(g.x,g.y,g.r,g.rot,ci,alpha);
+    }
+
+    /* ── 坡顶高光带：让堆有"受光面" ── */
+    if(pileH>4){
+      ctx.globalAlpha=1;
+      var band=ctx.createLinearGradient(0,0,0,26);
+      band.addColorStop(0,'rgba(255,255,255,0)');
+      band.addColorStop(0.45,'rgba(255,255,255,0.16)');
+      band.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0,crestCache[0]-4);
+      for(var b=0;b<crestCache.length;b++) ctx.lineTo(b*CREST_STEP,crestCache[b]-4);
+      ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle=band; ctx.fillRect(0,0,W,30);
+      ctx.restore();
+    }
+
+    /* ── 下落中的米 ── */
+    if(!done){
+      var rate=60+420*Math.pow(prog,1.5);
+      acc+=rate*dt;
+      while(acc>=1){ spawnDrop(pileH,ts); acc-=1; }
+    }
+    for(var j=fall.length-1;j>=0;j--){
+      var f=fall[j];
+      f.vy+=0.13; f.y+=f.vy; f.x+=f.vx; f.rot+=f.vr;
+      var cxi2=((f.x/W)*crestCache.length)|0;
+      if(cxi2<0)cxi2=0; if(cxi2>=crestCache.length)cxi2=crestCache.length-1;
+      if(f.y>=crestCache[cxi2]-1){
+        if(Math.random()<0.35) spawnDust(f.x,crestCache[cxi2]);
+        fall.splice(j,1); continue;
+      }
+      // 拖影
+      ctx.globalAlpha=0.14; ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.ellipse(f.x,f.y-f.vy*1.8,f.r*0.7,f.r*2.2,f.rot,0,Math.PI*2); ctx.fill();
+      drawGrain(f.x,f.y,f.r,f.rot,f.ci,0.95);
+    }
+
+    /* ── 落点粉尘 ── */
+    for(var m=dust.length-1;m>=0;m--){
+      var p=dust[m];
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.life-=dt*1.6; p.r*=0.985;
+      if(p.life<=0){ dust.splice(m,1); continue; }
+      ctx.globalAlpha=p.life*0.5; ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    /* ── 顶部压暗，制造"从黑暗里涌上来"的压迫感 ── */
+    var topY=crestAt(W*0.5,pileH,ts);
+    if(topY>2){
+      var dk=ctx.createLinearGradient(0,0,0,topY);
+      dk.addColorStop(0,'rgba(0,0,0,'+(0.55+0.4*prog)+')');
+      dk.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=dk; ctx.fillRect(0,0,W,topY);
+    }
+
+    if(!done && pileH>=H*0.995){
+      done=true; fall.length=0;
+      setTimeout(function(){
+        document.getElementById('bye').classList.add('on');
+      },1100);
+    }
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  document.getElementById('bye').addEventListener('click',function(){
+    if(this.classList.contains('on')) location.href='/';
+  });
+})();
+</script>
+</body>
+</html>

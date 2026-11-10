@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>房间混响时间计算器（Sabine公式）- 专业版</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.6;
+  padding-bottom: 40px;
+}
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #fff;
+  padding: 24px 32px;
+  text-align: center;
+}
+.header h1 { font-size: 1.6em; margin-bottom: 4px; }
+.header p { font-size: 0.9em; opacity: 0.85; }
+.tab-bar {
+  display: flex;
+  background: #16213e;
+  border-bottom: 3px solid #e94560;
+  overflow-x: auto;
+}
+.tab-btn {
+  padding: 12px 24px;
+  background: transparent;
+  color: #ccc;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95em;
+  white-space: nowrap;
+  transition: all 0.2s;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -3px;
+}
+.tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.tab-btn.active { color: #fff; border-bottom-color: #e94560; background: rgba(233,69,96,0.1); }
+.tab-content { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+.tab-content.active { display: block; }
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.card h2 { font-size: 1.2em; color: #16213e; margin-bottom: 16px; border-left: 4px solid #e94560; padding-left: 12px; }
+.card h3 { font-size: 1.05em; color: #0f3460; margin: 16px 0 8px; }
+.form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 0.85em; color: #555; margin-bottom: 4px; font-weight: 600; }
+.form-group input, .form-group select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95em;
+  width: 140px;
+}
+.form-group input:focus, .form-group select:focus { border-color: #0f3460; outline: none; box-shadow: 0 0 0 2px rgba(15,52,96,0.15); }
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: all 0.2s;
+}
+.btn-primary { background: #0f3460; color: #fff; }
+.btn-primary:hover { background: #16213e; }
+.btn-danger { background: #e94560; color: #fff; }
+.btn-danger:hover { background: #c73e54; }
+.btn-success { background: #2ecc71; color: #fff; }
+.btn-success:hover { background: #27ae60; }
+.btn-sm { padding: 6px 12px; font-size: 0.85em; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9em; }
+th { background: #f8f9fa; font-weight: 600; color: #333; }
+tr:hover { background: #f8f9fa; }
+.result-box {
+  background: #f0f7ff;
+  border: 1px solid #b3d4fc;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.result-box h3 { color: #0f3460; margin-bottom: 8px; }
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.warning-box strong { color: #856404; }
+.danger-box {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.danger-box strong { color: #721c24; }
+.info-box {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+pre {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.82em;
+  line-height: 1.5;
+  max-height: 600px;
+  overflow-y: auto;
+}
+code { font-family: "Fira Code", "Consolas", monospace; }
+.test-pass { color: #2ecc71; font-weight: bold; }
+.test-fail { color: #e94560; font-weight: bold; }
+.freq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.freq-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+}
+.freq-card .freq-label { font-size: 0.8em; opacity: 0.9; }
+.freq-card .freq-value { font-size: 1.5em; font-weight: bold; margin: 4px 0; }
+.freq-card .freq-unit { font-size: 0.75em; opacity: 0.8; }
+.material-table input { width: 100px; }
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.7em;
+  color: #999;
+  z-index: 9999;
+}
+.safety-banner {
+  background: #e94560;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+.doc-content { font-size: 0.95em; }
+.doc-content p { margin-bottom: 12px; }
+.doc-content ul, .doc-content ol { margin: 8px 0 12px 24px; }
+.doc-content li { margin-bottom: 6px; }
+@media (max-width: 768px) {
+  .form-row { flex-direction: column; }
+  .form-group input { width: 100%; }
+  .tab-btn { padding: 10px 14px; font-size: 0.85em; }
+}
+</style>
+</head>
+<body>
+
+<div class="safety-banner">
+  ⚠ 本工具仅供声学工程与建筑物理专业人员参考，计算结果需结合实际测量验证，不构成工程设计最终依据。
+</div>
+
+<div class="header">
+  <h1>🔊 房间混响时间计算器（Sabine 公式）</h1>
+  <p>支持 125Hz ~ 4kHz 六频段 | 基于 Sabine (1922) 经典公式 | GB/T 50121 参考</p>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('calculator')">📐 计算器</button>
+  <button class="tab-btn" onclick="switchTab('source')">💻 源码</button>
+  <button class="tab-btn" onclick="switchTab('tests')">🧪 单元测试</button>
+  <button class="tab-btn" onclick="switchTab('docs')">📖 专业说明</button>
+  <button class="tab-btn" onclick="switchTab('safety')">🛡️ 安全声明</button>
+</div>
+
+<!-- ==================== TAB 1: CALCULATOR ==================== -->
+<div id="tab-calculator" class="tab-content active">
+  <div class="card">
+    <h2>房间尺寸输入</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>长度 L (m)</label>
+        <input type="number" id="room-length" value="6" min="0.1" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>宽度 W (m)</label>
+        <input type="number" id="room-width" value="4" min="0.1" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>高度 H (m)</label>
+        <input type="number" id="room-height" value="3" min="0.1" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>温度 (°C)</label>
+        <input type="number" id="room-temp" value="20" min="-20" max="60" step="1">
+      </div>
+    </div>
+    <div class="result-box" id="room-info" style="display:none;">
+      <strong>房间体积：</strong><span id="room-volume">—</span> m³ &nbsp;|&nbsp;
+      <strong>总表面积：</strong><span id="room-surface">—</span> m² &nbsp;|&nbsp;
+      <strong>声速：</strong><span id="room-speed">—</span> m/s
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>表面材料与吸声系数</h2>
+    <p style="font-size:0.85em;color:#666;margin-bottom:12px;">
+      吸声系数 α 范围 0.00~1.00（可略超，如特殊共振吸声体）。各频率列分别填入对应频段的吸声系数。
+    </p>
+    <div style="overflow-x:auto;">
+      <table class="material-table" id="material-table">
+        <thead>
+          <tr>
+            <th>材料名称</th>
+            <th>面积 (m²)</th>
+            <th>125 Hz</th>
+            <th>250 Hz</th>
+            <th>500 Hz</th>
+            <th>1 kHz</th>
+            <th>2 kHz</th>
+            <th>4 kHz</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="material-tbody">
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="addMaterialRow()">+ 添加材料</button>
+      <button class="btn btn-success" onclick="calculate()">🔊 计算混响时间</button>
+      <button class="btn btn-danger" onclick="clearAll()">🗑️ 清空全部</button>
+      <button class="btn btn-primary btn-sm" onclick="loadExample()">📋 加载示例</button>
+    </div>
+  </div>
+
+  <div class="card" id="result-card" style="display:none;">
+    <h2>计算结果</h2>
+    <div id="result-content"></div>
+  </div>
+
+  <div class="warning-box">
+    <strong>⚠ 适用性提醒：</strong>Sabine 公式适用于平均吸声系数 ᾱ &lt; 0.2 的房间（即混响时间较长的"活"房间）。
+    当 ᾱ ≥ 0.2 时（强吸声房间，如录音棚、消声室），应改用 <strong>Eyring 公式</strong>：RT60 = −0.161·V / [S·ln(1−ᾱ)]。
+    本工具在计算结果页面会自动判断并给出警告。
+  </div>
+</div>
+
+<!-- ==================== TAB 2: SOURCE CODE ==================== -->
+<div id="tab-source" class="tab-content">
+  <div class="card">
+    <h2>完整 HTML/CSS/JS 源码</h2>
+    <p style="font-size:0.85em;color:#666;margin-bottom:12px;">原生 JavaScript，零外部依赖。所有函数均含 JSDoc 注释，注明公式名称与文献出处。</p>
+    <pre id="source-code"></pre>
+  </div>
+</div>
+
+<!-- ==================== TAB 3: UNIT TESTS ==================== -->
+<div id="tab-tests" class="tab-content">
+  <div class="card">
+    <h2>单元测试（10 项）</h2>
+    <p style="font-size:0.85em;color:#666;margin-bottom:12px;">纯 JS 实现，覆盖负数、零值、极高值、极低值、NaN、单位边界等极端条件。</p>
+    <button class="btn btn-success" onclick="runAllTests()" style="margin-bottom:16px;">▶ 运行全部测试</button>
+    <div id="test-results"></div>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: DOCUMENTATION ==================== -->
+<div id="tab-docs" class="tab-content">
+  <div class="card doc-content">
+    <h2>专业说明文档</h2>
+    <div id="doc-content"></div>
+  </div>
+</div>
+
+<!-- ==================== TAB 5: SAFETY ==================== -->
+<div id="tab-safety" class="tab-content">
+  <div class="card">
+    <h2>安全声明与适用范围</h2>
+    <div id="safety-content"></div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.0-专业版 20261021</div>
+
+<script>
+/**
+ * ============================================================================
+ * 房间混响时间计算器 - 核心计算引擎
+ * ============================================================================
+ *
+ * 基于 Sabine 经典混响时间公式：
+ *   RT60 = 0.161 × V / A
+ *
+ * 其中：
+ *   V = 房间体积 (m³)
+ *   A = 总吸声量 (m²·sabin) = Σ(Si × αi)
+ *   Si = 第 i 种材料的面积 (m²)
+ *   αi = 第 i 种材料在特定频率下的吸声系数
+ *
+ * 文献出处：
+ *   Sabine WC. Collected Papers on Acoustics. Cambridge: Harvard University
+ *   Press, 1922. (Reprinted by Acoustical Society of America, 1993.)
+ *
+ * 参考标准：
+ *   GB/T 50121-2005《建筑隔声评价标准》
+ *   ISO 354:2003 Acoustics — Measurement of sound absorption in a
+ *   reverberation room
+ *   ISO 3382-1:2009 Acoustics — Measurement of room acoustic parameters
+ *
+ * @author 专业声学计算工具组
+ * @version 2.0.0
+ */
+
+// ======================== 核心计算函数 ========================
+
+/**
+ * 计算房间体积
+ *
+ * 公式：V = L × W × H
+ * 文献：基础几何学，无特定声学文献引用。
+ *
+ * @param {number} length - 房间长度 (m)，必须 > 0
+ * @param {number} width - 房间宽度 (m)，必须 > 0
+ * @param {number} height - 房间高度 (m)，必须 > 0
+ * @returns {number} 房间体积 (m³)
+ * @throws {Error} 当任一维度 ≤ 0 或非有限数时抛出错误
+ */
+function calcVolume(length, width, height) {
+  if (!isFinite(length) || !isFinite(width) || !isFinite(height)) {
+    throw new Error('房间尺寸必须为有限数值');
+  }
+  if (length <= 0 || width <= 0 || height <= 0) {
+    throw new Error('房间尺寸必须为正值');
+  }
+  return length * width * height;
+}
+
+/**
+ * 计算房间总内表面积
+ *
+ * 公式：S = 2 × (L×W + L×H + W×H)
+ * 文献：基础几何学。
+ *
+ * @param {number} length - 房间长度 (m)
+ * @param {number} width - 房间宽度 (m)
+ * @param {number} height - 房间高度 (m)
+ * @returns {number} 总内表面积 (m²)
+ * @throws {Error} 当任一维度 ≤ 0 或非有限数时抛出错误
+ */
+function calcSurfaceArea(length, width, height) {
+  if (!isFinite(length) || !isFinite(width) || !isFinite(height)) {
+    throw new Error('房间尺寸必须为有限数值');
+  }
+  if (length <= 0 || width <= 0 || height <= 0) {
+    throw new Error('房间尺寸必须为正值');
+  }
+  return 2 * (length * width + length * height + width * height);
+}
+
+/**
+ * 计算 20°C 干燥空气中的声速（近似）
+ *
+ * 公式：c ≈ 331.3 × √(1 + T/273.15) m/s
+ * 其中 T 为摄氏温度。
+ * 文献：Cramer O. The variation of the specific heat ratio and the speed
+ *   of sound in air with temperature, relative humidity, and pressure.
+ *   J Acoust Soc Am. 1993;93(5):2510-2516.
+ *
+ * @param {number} temperature - 空气温度 (°C)
+ * @returns {number} 声速 (m/s)
+ */
+function calcSpeedOfSound(temperature) {
+  if (!isFinite(temperature)) {
+    return 343.2; // 默认 20°C
+  }
+  return 331.3 * Math.sqrt(1 + temperature / 273.15);
+}
+
+/**
+ * 计算总吸声量 A（各频段）
+ *
+ * 公式：A(f) = Σ [Si × αi(f)]
+ * 其中 Si 为第 i 种表面材料的面积，αi(f) 为该材料在频率 f 下的吸声系数。
+ *
+ * 文献：Sabine WC. Collected Papers on Acoustics. Harvard University Press,
+ *   1922. 总吸声量（又称"赛宾数"）定义为各表面面积与其吸声系数之积的总和。
+ *
+ * @param {Array<{area: number, coefficients: number[]}>} materials - 材料数组
+ *   每个元素包含 area（面积 m²）和 coefficients（6 个频段的吸声系数数组）
+ * @returns {number[]} 6 个频段的总吸声量 [A125, A250, A500, A1k, A2k, A4k] (m²·sabin)
+ * @throws {Error} 当材料数据无效时抛出错误
+ */
+function calcTotalAbsorption(materials) {
+  if (!Array.isArray(materials) || materials.length === 0) {
+    throw new Error('至少需要一种材料数据');
+  }
+  const freqCount = 6;
+  const result = new Array(freqCount).fill(0);
+
+  for (let i = 0; i < materials.length; i++) {
+    const m = materials[i];
+    if (!m || typeof m.area !== 'number' || !isFinite(m.area) || m.area < 0) {
+      throw new Error(`材料 #${i + 1} 面积无效: ${m ? m.area : 'undefined'}`);
+    }
+    if (!Array.isArray(m.coefficients) || m.coefficients.length !== freqCount) {
+      throw new Error(`材料 #${i + 1} 吸声系数数组长度必须为 ${freqCount}`);
+    }
+    for (let f = 0; f < freqCount; f++) {
+      const alpha = m.coefficients[f];
+      if (typeof alpha !== 'number' || !isFinite(alpha)) {
+        throw new Error(`材料 #${i + 1} 在频段 ${f} 的吸声系数无效: ${alpha}`);
+      }
+      if (alpha < 0) {
+        throw new Error(`材料 #${i + 1} 在频段 ${f} 的吸声系数不能为负: ${alpha}`);
+      }
+      // 吸声系数理论上 ≤ 1.0，但实际测量中由于边缘衍射效应可能略超 1.0
+      // 此处不做硬限制，但会给出警告
+      result[f] += m.area * alpha;
+    }
+  }
+  return result;
+}
+
+/**
+ * 使用 Sabine 公式计算混响时间 RT60
+ *
+ * 公式：RT60 = 0.161 × V / A
+ *
+ * 常数 0.161 的推导：
+ *   0.161 ≈ 24 × ln(10) / c × (c/1000) 的简化
+ *   更准确地说，0.161 = 0.161 s/m，是在标准条件（20°C，c≈343 m/s）下
+ *   由 4V/(c×A) × ln(10^6) 简化得到的公制常数。
+ *   精确值 = 4 × ln(1000000) / 343 ≈ 0.1611 s/m
+ *
+ * 文献：Sabine WC. Collected Papers on Acoustics. Harvard University Press,
+ *   1922. 原始论文中 Sabine 使用英制单位（RT = 0.049V/A），公制转换后
+ *   得到 0.161。
+ *
+ * 适用条件：
+ *   - 扩散声场假设成立
+ *   - 平均吸声系数 ᾱ = A/S < 0.2（部分文献放宽至 0.3）
+ *   - 房间形状不宜过于狭长（长宽比建议 < 3:1）
+ *   - 频率不宜过低（低频模态问题需另行分析）
+ *
+ * @param {number} volume - 房间体积 V (m³)，必须 > 0
+ * @param {number} absorption - 总吸声量 A (m²·sabin)，必须 > 0
+ * @returns {number} 混响时间 RT60 (秒)
+ * @throws {Error} 当体积或吸声量 ≤ 0 或非有限数时抛出错误
+ */
+function calcSabineRT60(volume, absorption) {
+  if (!isFinite(volume) || !isFinite(absorption)) {
+    throw new Error('体积和吸声量必须为有限数值');
+  }
+  if (volume <= 0) {
+    throw new Error('房间体积必须为正值');
+  }
+  if (absorption <= 0) {
+    throw new Error('总吸声量必须为正值（否则为理想全反射，RT60→∞）');
+  }
+  return 0.161 * volume / absorption;
+}
+
+/**
+ * 使用 Eyring 公式计算混响时间 RT60（用于强吸声房间）
+ *
+ * 公式：RT60 = -0.161 × V / [S × ln(1 - ᾱ)]
+ * 其中 ᾱ = A / S 为平均吸声系数。
+ *
+ * 文献：Eyring C. Reverberation times in rooms where absorption is high.
+ *   J Acoust Soc Am. 1930;1(2):217-241.
+ *
+ * 适用条件：
+ *   - 平均吸声系数较高（ᾱ > 0.2）
+ *   - 当 ᾱ → 0 时，Eyring 公式退化为 Sabine 公式
+ *   - 当 ᾱ → 1 时，RT60 → ∞（物理上对应全吸收）
+ *
+ * @param {number} volume - 房间体积 V (m³)
+ * @param {number} surfaceArea - 总表面积 S (m²)
+ * @param {number} absorption - 总吸声量 A (m²·sabin)
+ * @returns {number} 混响时间 RT60 (秒)
+ */
+function calcEyringRT60(volume, surfaceArea, absorption) {
+  if (!isFinite(volume) || !isFinite(surfaceArea) || !isFinite(absorption)) {
+    throw new Error('所有参数必须为有限数值');
+  }
+  if (volume <= 0 || surfaceArea <= 0 || absorption <= 0) {
+    throw new Error('所有参数必须为正值');
+  }
+  const alphaBar = absorption / surfaceArea;
+  if (alphaBar >= 1) {
+    return Infinity; // 全吸收，理论 RT60 无穷大
+  }
+  return -0.161 * volume / (surfaceArea * Math.log(1 - alphaBar));
+}
+
+/**
+ * 计算平均吸声系数
+ *
+ * 公式：ᾱ = A / S
+ * 文献：Sabine WC. Collected Papers on Acoustics. 1922.
+ *
+ * @param {number} absorption - 总吸声量 A (m²·sabin)
+ * @param {number} surfaceArea - 总表面积 S (m²)
+ * @returns {number} 平均吸声系数 ᾱ（无量纲）
+ */
+function calcMeanAbsorptionCoeff(absorption, surfaceArea) {
+  if (!isFinite(absorption) || !isFinite(surfaceArea)) {
+    throw new Error('参数必须为有限数值');
+  }
+  if (surfaceArea <= 0) {
+    throw new Error('表面积必须为正值');
+  }
+  return absorption / surfaceArea;
+}
+
+/**
+ * 完整计算流程：输入房间参数和材料数据，输出各频段 RT60
+ *
+ * 文献：Sabine WC. Collected Papers on Acoustics. Harvard University Press, 1922.
+ * 参考：GB/T 50121-2005《建筑隔声评价标准》；ISO 3382-1:2009.
+ *
+ * @param {Object} params - 计算参数
+ * @param {number} params.length - 房间长度 (m)
+ * @param {number} params.width - 房间宽度 (m)
+ * @param {number} params.height - 房间高度 (m)
+ * @param {number} [params.temperature=20] - 空气温度 (°C)
+ * @param {Array<{name: string, area: number, coefficients: number[]}>} params.materials - 材料数据
+ * @returns {Object} 计算结果对象
+ * @returns {number} returns.volume - 房间体积 (m³)
+ * @returns {number} returns.surfaceArea - 总表面积 (m²)
+ * @returns {number} returns.speedOfSound - 声速 (m/s)
+ * @returns {number[]} returns.absorption - 各频段总吸声量 (m²·sabin)
+ * @returns {number[]} returns.meanAlpha - 各频段平均吸声系数
+ * @returns {number[]} returns.sabineRT60 - Sabine 公式各频段 RT60 (s)
+ * @returns {number[]} returns.eyringRT60 - Eyring 公式各频段 RT60 (s)
+ * @returns {string[]} returns.warnings - 警告信息数组
+ */
+function fullCalculation(params) {
+  const { length, width, height, temperature = 20, materials } = params;
+
+  const volume = calcVolume(length, width, height);
+  const surfaceArea = calcSurfaceArea(length, width, height);
+  const speedOfSound = calcSpeedOfSound(temperature);
+  const absorption = calcTotalAbsorption(materials);
+
+  const warnings = [];
+  const meanAlpha = [];
+  const sabineRT60 = [];
+  const eyringRT60 = [];
+
+  for (let f = 0; f < 6; f++) {
+    const alphaBar = calcMeanAbsorptionCoeff(absorption[f], surfaceArea);
+    meanAlpha.push(alphaBar);
+
+    if (alphaBar >= 0.2) {
+      warnings.push(`频段 ${getFreqLabel(f)}: 平均吸声系数 ᾱ=${alphaBar.toFixed(3)} ≥ 0.2，Sabine 公式可能不准确，建议参考 Eyring 结果`);
+    }
+    if (alphaBar >= 1.0) {
+      warnings.push(`频段 ${getFreqLabel(f)}: 平均吸声系数 ᾱ ≥ 1.0，物理上不可能（除非存在面积计算错误）`);
+    }
+
+    sabineRT60.push(calcSabineRT60(volume, absorption[f]));
+    eyringRT60.push(calcEyringRT60(volume, surfaceArea, absorption[f]));
+  }
+
+  // 检查材料总面积是否超过房间表面积
+  const totalMaterialArea = materials.reduce((sum, m) => sum + m.area, 0);
+  if (totalMaterialArea > surfaceArea * 1.05) {
+    warnings.push(`材料总面积 (${totalMaterialArea.toFixed(1)} m²) 超过房间总表面积 (${surfaceArea.toFixed(1)} m²)，请检查数据`);
+  }
+
+  return {
+    volume,
+    surfaceArea,
+    speedOfSound,
+    absorption,
+    meanAlpha,
+    sabineRT60,
+    eyringRT60,
+    warnings
+  };
+}
+
+/**
+ * 获取频段标签
+ * @param {number} index - 频段索引 (0-5)
+ * @returns {string} 频段标签
+ */
+function getFreqLabel(index) {
+  const labels = ['125 Hz', '250 Hz', '500 Hz', '1 kHz', '2 kHz', '4 kHz'];
+  return labels[index] || '未知';
+}
+
+// ======================== UI 交互函数 ========================
+
+/**
+ * 切换标签页
+ * @param {string} tabId - 标签页 ID
+ */
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+
+/** 材料行计数器 */
+let materialRowCount = 0;
+
+/**
+ * 添加材料输入行
+ */
+function addMaterialRow(name, area, coeffs) {
+  materialRowCount++;
+  const tbody = document.getElementById('material-tbody');
+  const tr = document.createElement('tr');
+  tr.id = 'mat-row-' + materialRowCount;
+
+  const defaultCoeffs = coeffs || [0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+  const defaultArea = area || 0;
+  const defaultName = name || '';
+
+  tr.innerHTML = `
+    <td><input type="text" class="mat-name" value="${defaultName}" placeholder="材料名称"></td>
+    <td><input type="number" class="mat-area" value="${defaultArea}" min="0" step="0.1"></td>
+    <td><input type="number" class="mat-alpha" value="${defaultCoeffs[0]}" min="0" max="1.2" step="0.01"></td>
+    <td><input type="number" class="mat-alpha" value="${defaultCoeffs[1]}" min="0" max="1.2" step="0.01"></td>
+    <td><input type="number" class="mat-alpha" value="${defaultCoeffs[2]}" min="0" max="1.2" step="0.01"></td>
+    <td><input type="number" class="mat-alpha" value="${defaultCoeffs[3]}" min="0" max="1.2" step="0.01"></td>
+    <td><input type="number" class="mat-alpha" value="${defaultCoeffs[4]}" min="0" max="1.2" step="0.01"></td>
+    <td><input type="number" class="mat-alpha" value="${defaultCoeffs[5]}" min="0" max="1.2" step="0.01"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="removeMaterialRow(${materialRowCount})">删除</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+/**
+ * 删除材料行
+ * @param {number} rowId - 行 ID
+ */
+function removeMaterialRow(rowId) {
+  const row = document.getElementById('mat-row-' + rowId);
+  if (row) row.remove();
+}
+
+/**
+ * 清空所有材料
+ */
+function clearAll() {
+  document.getElementById('material-tbody').innerHTML = '';
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('room-info').style.display = 'none';
+  materialRowCount = 0;
+}
+
+/**
+ * 加载示例数据（典型会议室）
+ * 数据来源：常见建筑材料吸声系数参考表
+ * 注意：以下数据为典型参考值，实际产品吸声系数需查厂家检测报告
+ */
+function loadExample() {
+  clearAll();
+  // 示例：6m × 4m × 3m 会议室
+  document.getElementById('room-length').value = 6;
+  document.getElementById('room-width').value = 4;
+  document.getElementById('room-height').value = 3;
+
+  // 混凝土墙面（两面长墙）: 6×3×2 = 36 m²
+  addMaterialRow('混凝土墙面(×2)', 36, [0.01, 0.01, 0.02, 0.02, 0.02, 0.03]);
+  // 混凝土墙面（两面短墙）: 4×3×2 = 24 m²
+  addMaterialRow('抹灰墙面(×2)', 24, [0.01, 0.01, 0.02, 0.03, 0.03, 0.04]);
+  // 天花板: 6×4 = 24 m²
+  addMaterialRow('石膏板天花', 24, [0.15, 0.10, 0.08, 0.05, 0.04, 0.04]);
+  // 地面: 6×4 = 24 m²
+  addMaterialRow('地毯', 24, [0.08, 0.10, 0.20, 0.30, 0.35, 0.40]);
+  // 玻璃窗: 约 6 m²
+  addMaterialRow('玻璃窗', 6, [0.18, 0.06, 0.04, 0.03, 0.02, 0.02]);
+  // 座椅（10把）: 约 10 m² 等效吸声面积
+  addMaterialRow('软座椅(10把)', 10, [0.30, 0.40, 0.50, 0.55, 0.60, 0.60]);
+}
+
+/**
+ * 执行计算并显示结果
+ */
+function calculate() {
+  try {
+    const length = parseFloat(document.getElementById('room-length').value);
+    const width = parseFloat(document.getElementById('room-width').value);
+    const height = parseFloat(document.getElementById('room-height').value);
+    const temp = parseFloat(document.getElementById('room-temp').value);
+
+    // 显示房间信息
+    const vol = calcVolume(length, width, height);
+    const surf = calcSurfaceArea(length, width, height);
+    const spd = calcSpeedOfSound(temp);
+    document.getElementById('room-volume').textContent = vol.toFixed(2);
+    document.getElementById('room-surface').textContent = surf.toFixed(2);
+    document.getElementById('room-speed').textContent = spd.toFixed(1);
+    document.getElementById('room-info').style.display = 'block';
+
+    // 收集材料数据
+    const rows = document.querySelectorAll('#material-tbody tr');
+    const materials = [];
+    rows.forEach(row => {
+      const name = row.querySelector('.mat-name').value;
+      const area = parseFloat(row.querySelector('.mat-area').value);
+      const alphaInputs = row.querySelectorAll('.mat-alpha');
+      const coefficients = [];
+      alphaInputs.forEach(inp => coefficients.push(parseFloat(inp.value)));
+      if (area > 0) {
+        materials.push({ name, area, coefficients });
+      }
+    });
+
+    if (materials.length === 0) {
+      alert('请至少添加一种材料并输入面积和吸声系数');
+      return;
+    }
+
+    const result = fullCalculation({ length, width, height, temperature: temp, materials });
+
+    // 渲染结果
+    let html = '';
+
+    // 房间参数
+    html += `<div class="result-box">
+      <h3>房间参数</h3>
+      <p>体积 V = ${result.volume.toFixed(2)} m³ | 总表面积 S = ${result.surfaceArea.toFixed(2)} m² | 声速 c = ${result.speedOfSound.toFixed(1)} m/s</p>
+    </div>`;
+
+    // 各频段 RT60 卡片
+    html += '<h3 style="margin:16px 0 8px;">各频段混响时间 RT60（Sabine 公式）</h3>';
+    html += '<div class="freq-grid">';
+    for (let f = 0; f < 6; f++) {
+      html += `<div class="freq-card">
+        <div class="freq-label">${getFreqLabel(f)}</div>
+        <div class="freq-value">${result.sabineRT60[f].toFixed(3)}</div>
+        <div class="freq-unit">秒 (s)</div>
+        <div style="font-size:0.7em;margin-top:4px;opacity:0.8;">ᾱ=${result.meanAlpha[f].toFixed(3)}</div>
+      </div>`;
+    }
+    html += '</div>';
+
+    // 详细数据表
+    html += '<h3 style="margin:16px 0 8px;">详细数据</h3>';
+    html += '<table><thead><tr><th>频段</th><th>总吸声量 A (m²·sabin)</th><th>平均吸声系数 ᾱ</th><th>Sabine RT60 (s)</th><th>Eyring RT60 (s)</th></tr></thead><tbody>';
+    for (let f = 0; f < 6; f++) {
+      html += `<tr>
+        <td>${getFreqLabel(f)}</td>
+        <td>${result.absorption[f].toFixed(2)}</td>
+        <td>${result.meanAlpha[f].toFixed(4)}</td>
+        <td><strong>${result.sabineRT60[f].toFixed(3)}</strong></td>
+        <td>${result.eyringRT60[f] === Infinity ? '∞' : result.eyringRT60[f].toFixed(3)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+
+    // 警告信息
+    if (result.warnings.length > 0) {
+      html += '<div class="warning-box"><strong>⚠ 警告：</strong><ul>';
+      result.warnings.forEach(w => { html += `<li>${w}</li>`; });
+      html += '</ul></div>';
+    }
+
+    // 适用性判断
+    const maxAlpha = Math.max(...result.meanAlpha);
+    if (maxAlpha < 0.2) {
+      html += '<div class="info-box"><strong>✅ 适用性判断：</strong>所有频段平均吸声系数均 < 0.2，Sabine 公式适用。</div>';
+    } else {
+      html += `<div class="danger-box"><strong>❌ 适用性警告：</strong>部分频段平均吸声系数 ≥ 0.2（最大 ᾱ=${maxAlpha.toFixed(3)}），
+        Sabine 公式在此条件下精度下降。建议以 Eyring 公式结果为主要参考，或进行实际测量验证。</div>`;
+    }
+
+    document.getElementById('result-content').innerHTML = html;
+    document.getElementById('result-card').style.display = 'block';
+
+  } catch (err) {
+    alert('计算错误：' + err.message);
+  }
+}
+
+// ======================== 单元测试框架 ========================
+
+/**
+ * 简易断言框架（纯 JS，零依赖）
+ */
+const TestRunner = {
+  results: [],
+  currentTest: '',
+
+  /**
+   * 断言相等（数值比较，允许容差）
+   * @param {number} actual - 实际值
+   * @param {number} expected - 期望值
+   * @param {number} [tolerance=0.001] - 容差
+   * @param {string} [message=''] - 描述信息
+   */
+  assertClose(actual, expected, tolerance, message) {
+    tolerance = tolerance || 0.001;
+    message = message || '';
+    const pass = Math.abs(actual - expected) <= tolerance;
+    this.results.push({
+      test: this.currentTest,
+      pass,
+      actual,
+      expected,
+      tolerance,
+      message
+    });
+  },
+
+  /**
+   * 断言抛出异常
+   * @param {Function} fn - 要执行的函数
+   * @param {string} [message=''] - 描述信息
+   */
+  assertThrows(fn, message) {
+    message = message || '';
+    let threw = false;
+    try { fn(); } catch (e) { threw = true; }
+    this.results.push({
+      test: this.currentTest,
+      pass: threw,
+      actual: threw ? 'threw' : 'no throw',
+      expected: 'should throw',
+      message
+    });
+  },
+
+  /**
+   * 断言为真
+   * @param {boolean} condition - 条件
+   * @param {string} [message=''] - 描述信息
+   */
+  assertTrue(condition, message) {
+    message = message || '';
+    this.results.push({
+      test: this.currentTest,
+      pass: !!condition,
+      actual: condition,
+      expected: true,
+      message
+    });
+  },
+
+  /**
+   * 运行单个测试
+   * @param {string} name - 测试名称
+   * @param {Function} fn - 测试函数
+   */
+  run(name, fn) {
+    this.currentTest = name;
+    try {
+      fn();
+    } catch (e) {
+      this.results.push({
+        test: name,
+        pass: false,
+        actual: 'Error: ' + e.message,
+        expected: 'no error',
+        message: '测试执行异常'
+      });
+    }
+  },
+
+  /**
+   * 渲染测试结果到页面
+   * @returns {string} HTML 字符串
+   */
+  renderResults() {
+    let html = '<table><thead><tr><th>#</th><th>测试名称</th><th>说明</th><th>期望</th><th>实际</th><th>结果</th></tr></thead><tbody>';
+    let passCount = 0;
+    this.results.forEach((r, i) => {
+      if (r.pass) passCount++;
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td>${r.test}</td>
+        <td>${r.message}</td>
+        <td>${typeof r.expected === 'number' ? r.expected.toFixed(4) : r.expected}</td>
+        <td>${typeof r.actual === 'number' ? r.actual.toFixed(4) : r.actual}</td>
+        <td class="${r.pass ? 'test-pass' : 'test-fail'}">${r.pass ? '✅ PASS' : '❌ FAIL'}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>
+      <div class="result-box" style="margin-top:16px;">
+        <strong>总计：${this.results.length} 项 | 通过：${passCount} | 失败：${this.results.length - passCount}</strong>
+      </div>`;
+    return html;
+  }
+};
+
+/**
+ * 运行全部单元测试（10 项）
+ */
+function runAllTests() {
+  TestRunner.results = [];
+
+  // 测试 1：标准房间 Sabine RT60 计算
+  TestRunner.run('标准房间 RT60 计算', function() {
+    // 10m × 8m × 4m 房间，V=320 m³
+    // 总吸声量 A = 50 m²·sabin
+    // RT60 = 0.161 × 320 / 50 = 1.0304 s
+    const rt = calcSabineRT60(320, 50);
+    TestRunner.assertClose(rt, 1.0304, 0.001, 'V=320m³, A=50sabin, 期望 RT60≈1.030s');
+  });
+
+  // 测试 2：极小吸声量（接近全反射）
+  TestRunner.run('极小吸声量 → 极大 RT60', function() {
+    // V=100 m³, A=0.01 m²·sabin
+    // RT60 = 0.161 × 100 / 0.01 = 1610 s
+    const rt = calcSabineRT60(100, 0.01);
+    TestRunner.assertClose(rt, 1610, 1, '极小吸声量应产生极大 RT60');
+  });
+
+  // 测试 3：极大吸声量（强吸声房间）
+  TestRunner.run('极大吸声量 → 极小 RT60', function() {
+    // V=50 m³, A=200 m²·sabin
+    // RT60 = 0.161 × 50 / 200 = 0.04025 s
+    const rt = calcSabineRT60(50, 200);
+    TestRunner.assertClose(rt, 0.04025, 0.001, '极大吸声量应产生极小 RT60');
+  });
+
+  // 测试 4：零体积应抛出异常
+  TestRunner.run('零体积 → 抛出异常', function() {
+    TestRunner.assertThrows(function() {
+      calcSabineRT60(0, 50);
+    }, '体积为 0 应抛出异常');
+  });
+
+  // 测试 5：负数体积应抛出异常
+  TestRunner.run('负数体积 → 抛出异常', function() {
+    TestRunner.assertThrows(function() {
+      calcSabineRT60(-10, 50);
+    }, '负数体积应抛出异常');
+  });
+
+  // 测试 6：零吸声量应抛出异常
+  TestRunner.run('零吸声量 → 抛出异常', function() {
+    TestRunner.assertThrows(function() {
+      calcSabineRT60(100, 0);
+    }, '吸声量为 0 应抛出异常（理想全反射 RT60→∞）');
+  });
+
+  // 测试 7：NaN 输入应抛出异常
+  TestRunner.run('NaN 输入 → 抛出异常', function() {
+    TestRunner.assertThrows(function() {
+      calcSabineRT60(NaN, 50);
+    }, 'NaN 体积应抛出异常');
+  });
+
+  // 测试 8：房间体积计算
+  TestRunner.run('房间体积计算', function() {
+    const v = calcVolume(5.5, 3.2, 2.8);
+    // 5.5 × 3.2 × 2.8 = 49.28
+    TestRunner.assertClose(v, 49.28, 0.01, '5.5×3.2×2.8 = 49.28 m³');
+  });
+
+  // 测试 9：负数尺寸应抛出异常
+  TestRunner.run('负数房间尺寸 → 抛出异常', function() {
+    TestRunner.assertThrows(function() {
+      calcVolume(5, -3, 2.8);
+    }, '负数宽度应抛出异常');
+  });
+
+  // 测试 10：完整计算流程（含 Eyring 对比）
+  TestRunner.run('完整流程 + Eyring 对比', function() {
+    // 小房间 4×3×2.5 = 30 m³, S=2(12+10+7.5)=59 m²
+    // 一种材料：面积 59 m², α=0.5 (各频段相同)
+    // A = 59 × 0.5 = 29.5 m²·sabin
+    // ᾱ = 29.5/59 = 0.5
+    // Sabine: RT60 = 0.161 × 30 / 29.5 = 0.1637 s
+    // Eyring: RT60 = -0.161 × 30 / (59 × ln(1-0.5)) = -4.83 / (59 × (-0.6931)) = 4.83/40.89 = 0.1181 s
+    const result = fullCalculation({
+      length: 4, width: 3, height: 2.5, temperature: 20,
+      materials: [{ name: 'test', area: 59, coefficients: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5] }]
+    });
+    TestRunner.assertClose(result.volume, 30, 0.01, '体积应为 30 m³');
+    TestRunner.assertClose(result.absorption[0], 29.5, 0.01, '吸声量应为 29.5');
+    TestRunner.assertClose(result.meanAlpha[0], 0.5, 0.001, 'ᾱ 应为 0.5');
+    TestRunner.assertClose(result.sabineRT60[0], 0.1637, 0.001, 'Sabine RT60 ≈ 0.164s');
+    TestRunner.assertClose(result.eyringRT60[0], 0.1181, 0.005, 'Eyring RT60 ≈ 0.118s');
+    // 当 ᾱ=0.5 > 0.2 时应有警告
+    TestRunner.assertTrue(result.warnings.length > 0, 'ᾱ≥0.2 时应产生警告');
+  });
+
+  document.getElementById('test-results').innerHTML = TestRunner.renderResults();
+}
+
+// ======================== 文档内容 ========================
+
+function loadDocumentation() {
+  document.getElementById('doc-content').innerHTML = `
+    <h3>一、公式概述</h3>
+    <p><strong>Sabine 混响时间公式</strong>是建筑声学中最经典、应用最广泛的混响时间预估公式，由美国物理学家
+    Wallace Clement Sabine 于 1898 年首次提出，并于 1922 年在其《Collected Papers on Acoustics》中系统阐述。</p>
+    <p>公式表达为：</p>
+    <p style="text-align:center;font-size:1.2em;margin:16px 0;"><strong>RT<sub>60</sub> = 0.161 × V / A</strong></p>
+    <p>其中：</p>
+    <ul>
+      <li><strong>RT<sub>60</sub></strong>：混响时间，即声源停止发声后声压级衰减 60 dB 所需时间（秒）</li>
+      <li><strong>V</strong>：房间体积（m³）</li>
+      <li><strong>A</strong>：房间总吸声量（m²·sabin），A = Σ(S<sub>i</sub> × α<sub>i</sub>)</li>
+      <li><strong>S<sub>i</sub></strong>：第 i 种表面材料的面积（m²）</li>
+      <li><strong>α<sub>i</sub></strong>：第 i 种材料在特定频率下的吸声系数（无量纲，0~1）</li>
+      <li><strong>0.161</strong>：公制常数，由 4ln(10⁶)/c 在标准声速 c≈343 m/s 下简化得到</li>
+    </ul>
+
+    <h3>二、适用场景与不适用场景</h3>
+    <h4>✅ 适用场景</h4>
+    <ul>
+      <li><strong>平均吸声系数 ᾱ < 0.2 的房间</strong>：如普通教室、会议室、音乐厅（空场）、教堂等"活"房间</li>
+      <li><strong>扩散声场条件较好的房间</strong>：房间形状接近立方体或比例合理（如 1:1.25:1.6 的黄金比例）</li>
+      <li><strong>中高频段</strong>（500 Hz 以上）：波长较短，模态密度高，扩散场假设更合理</li>
+      <li><strong>初步设计阶段</strong>：用于快速估算混响时间，指导材料选型</li>
+      <li><strong>体积较大的房间</strong>（V > 200 m³）：模态问题相对不突出</li>
+    </ul>
+    <h4>❌ 不适用场景</h4>
+    <ul>
+      <li><strong>强吸声房间</strong>（ᾱ ≥ 0.2~0.3）：如录音棚控制室、消声室、强吸声办公室。此时应使用 Eyring 公式或 Fitzroy 公式</li>
+      <li><strong>极小房间</strong>（V < 50 m³）：低频模态效应显著，统计声学方法失效，需使用波动声学或有限元分析</li>
+      <li><strong>非扩散声场</strong>：如狭长走廊、大型开放空间、体育馆（存在显著聚焦和回声）</li>
+      <li><strong>低频段</strong>（≤ 125 Hz）：房间模态主导，吸声系数测量本身不确定性大</li>
+      <li><strong>存在强方向性声源或吸声体分布极不均匀时</strong></li>
+      <li><strong>室外或半室外空间</strong>：无明确边界，不适用封闭空间公式</li>
+    </ul>
+
+    <h3>三、计算步骤逐步解释</h3>
+    <ol>
+      <li><strong>测量/确定房间尺寸</strong>：获取房间的长(L)、宽(W)、高(H)，计算体积 V = L×W×H 和总内表面积 S = 2(LW+LH+WH)</li>
+      <li><strong>识别所有表面材料</strong>：逐一列出房间中所有表面（墙面、天花板、地面、窗户、门等）的材料类型</li>
+      <li><strong>计算各表面面积</strong>：测量或计算每种材料覆盖的面积 S<sub>i</sub>。注意：同种材料在不同墙面应分别计算</li>
+      <li><strong>查取吸声系数</strong>：从材料厂家检测报告或标准参考表（如 GB/T 50121 附录、ISO 354 测量数据）中获取各材料在 6 个中心频率（125/250/500/1k/2k/4k Hz）的吸声系数 α<sub>i</sub></li>
+      <li><strong>计算各频段总吸声量</strong>：A(f) = Σ(S<sub>i</sub> × α<sub>i</sub>(f))，对每个频段分别计算</li>
+      <li><strong>计算平均吸声系数</strong>：ᾱ(f) = A(f) / S，用于判断 Sabine 公式适用性</li>
+      <li><strong>代入 Sabine 公式</strong>：RT60(f) = 0.161 × V / A(f)，得到各频段混响时间</li>
+      <li><strong>结果校验</strong>：检查 ᾱ 是否 < 0.2；若 ≥ 0.2，同时计算 Eyring 结果作为参考</li>
+    </ol>
+
+    <h3>四、工程意义</h3>
+    <p>混响时间是评价房间声学品质最核心的单一指标之一，其工程意义体现在：</p>
+    <ul>
+      <li><strong>语言清晰度</strong>：教室、会议室、剧院的推荐 RT60 通常为 0.6~1.0 秒（500 Hz）。过长导致语言模糊（"嗡嗡"声），过短则声音干涩、需要更大扩声功率</li>
+      <li><strong>音乐丰满度</strong>：音乐厅推荐 RT60 通常为 1.8~2.2 秒（中频）。适当的混响使音乐丰满、温暖，但过长会掩蔽细节</li>
+      <li><strong>录音/广播</strong>：录音棚控制室通常要求 RT60 < 0.3 秒，以保证监听准确性</li>
+      <li><strong>噪声控制</strong>：工业厂房中，通过增加吸声处理降低混响时间，可有效降低室内噪声级（通常可降低 3~10 dB）</li>
+      <li><strong>建筑规范合规</strong>：GB 50118《民用建筑隔声设计规范》对各类建筑的混响时间有明确要求</li>
+    </ul>
+
+    <h3>五、已知局限与误差来源</h3>
+    <ul>
+      <li><strong>扩散场假设</strong>：Sabine 公式假设声能在房间内均匀扩散分布，实际房间中声场往往不完全扩散，尤其在靠近声源和吸声体附近</li>
+      <li><strong>吸声系数测量误差</strong>：实验室测量（ISO 354 混响室法）与现场条件存在差异，同一材料在不同安装条件下吸声系数可能变化 20%~50%</li>
+      <li><strong>边缘衍射效应</strong>：吸声材料边缘的衍射会使其有效吸声面积大于几何面积，导致实测 α 可能 > 1.0</li>
+      <li><strong>空气吸收未计入</strong>：高频（≥ 2 kHz）和大房间中，空气分子吸收不可忽略。ISO 9613-1 给出了空气吸收系数，本工具暂未纳入</li>
+      <li><strong>家具与人员</strong>：人员、家具的吸声贡献难以精确量化，通常使用等效吸声面积估算</li>
+      <li><strong>温度与湿度影响</strong>：影响声速和空气吸收，但对 Sabine 公式中的 0.161 常数影响较小（< 2%）</li>
+      <li><strong>非矩形房间</strong>：异形房间的表面积和体积计算本身存在不确定性</li>
+    </ul>
+
+    <h3>六、精度与误差说明</h3>
+    <div class="info-box">
+      <h4>① 算准了什么</h4>
+      <ul>
+        <li>在输入数据准确的前提下，Sabine 公式的数学计算是精确的（浮点精度范围内）</li>
+        <li>体积、表面积、总吸声量的计算无模型误差</li>
+        <li>各频段独立计算，不存在频段间耦合误差</li>
+      </ul>
+      <h4>② 哪些因素没算进去</h4>
+      <ul>
+        <li>空气吸收（高频、大房间时影响显著，4 kHz 时可达 10%~30%）</li>
+        <li>声场非扩散性（房间形状、吸声体分布不均匀的影响）</li>
+        <li>低频模态效应（125 Hz 及以下，尤其在小房间中）</li>
+        <li>耦合空间效应（如相邻房间的声能传递）</li>
+        <li>温度梯度、气流对声传播的影响</li>
+      </ul>
+      <h4>③ 误差大概多大</h4>
+      <ul>
+        <li>在 Sabine 公式适用条件内（ᾱ < 0.2），与实测值的典型偏差为 <strong>±10%~20%</strong></li>
+        <li>当 ᾱ 接近 0.2~0.3 时，偏差可能增大至 <strong>±20%~30%</strong></li>
+        <li>吸声系数数据本身的误差（±15%~30%）往往是总误差的主要来源</li>
+        <li>对于强吸声房间（ᾱ > 0.3），Sabine 公式可能高估 RT60 达 <strong>30%~50%</strong></li>
+      </ul>
+    </div>
+
+    <h3>七、参考文献</h3>
+    <ol>
+      <li>Sabine WC. <em>Collected Papers on Acoustics</em>. Cambridge: Harvard University Press, 1922. (Reprinted by Acoustical Society of America, 1993.)</li>
+      <li>Eyring C. Reverberation times in rooms where absorption is high. <em>J Acoust Soc Am</em>. 1930;1(2):217-241.</li>
+      <li>GB/T 50121-2005《建筑隔声评价标准》</li>
+      <li>GB 50118-2010《民用建筑隔声设计规范》</li>
+      <li>ISO 354:2003 Acoustics — Measurement of sound absorption in a reverberation room</li>
+      <li>ISO 3382-1:2009 Acoustics — Measurement of room acoustic parameters — Part 1: Performance spaces</li>
+      <li>Cramer O. The variation of the specific heat ratio and the speed of sound in air with temperature, relative humidity, and pressure. <em>J Acoust Soc Am</em>. 1993;93(5):2510-2516.</li>
+      <li>Kuttruff H. <em>Room Acoustics</em>. 6th ed. Boca Raton: CRC Press, 2016.</li>
+    </ol>
+  `;
+}
+
+// ======================== 安全声明内容 ========================
+
+function loadSafetyContent() {
+  document.getElementById('safety-content').innerHTML = `
+    <div class="danger-box">
+      <h3 style="color:#721c24;margin-bottom:12px;">⚠ 重要声明</h3>
+      <p><strong>本工具仅供声学工程、建筑物理、环境噪声控制等专业领域人员参考使用。</strong></p>
+      <p>计算结果基于理论公式和输入数据，<strong>不构成工程设计、施工验收或法规合规的最终依据</strong>。
+      实际工程决策须由具备相应资质的注册建筑师、声学顾问或相关专业工程师做出，并应以现场实测数据为最终验证。</p>
+    </div>
+
+    <h3>适用范围</h3>
+    <ul>
+      <li>本工具适用于<strong>矩形封闭空间</strong>的混响时间初步估算</li>
+      <li>适用于<strong>建筑方案设计阶段</strong>的声学预评估</li>
+      <li>适用于<strong>教学演示</strong>和<strong>学术研究</strong>中的 Sabine 公式应用</li>
+      <li>适用于<strong>噪声控制工程</strong>中吸声处理方案的初步比较</li>
+    </ul>
+
+    <h3>假设条件</h3>
+    <ul>
+      <li>房间为理想矩形封闭空间，无耦合空间</li>
+      <li>声场为扩散声场（声能均匀分布）</li>
+      <li>吸声系数数据准确代表实际安装条件</li>
+      <li>空气吸收在计算中未纳入（高频大房间时需另行修正）</li>
+      <li>温度均匀，无显著气流</li>
+      <li> Sabine 公式适用条件：平均吸声系数 ᾱ < 0.2</li>
+    </ul>
+
+    <h3>不适用于</h3>
+    <ul>
+      <li>消声室、半消声室的精确设计（需使用波动声学方法）</li>
+      <li>异形空间、开放空间的声学评估</li>
+      <li>低频（< 100 Hz）声学分析</li>
+      <li>法规合规性最终判定（须由有资质的检测机构实测）</li>
+      <li>涉及人身安全的声学设计（如爆炸冲击波、超声暴露等）</li>
+    </ul>
+
+    <h3>数据责任</h3>
+    <p>用户须对输入数据（房间尺寸、材料吸声系数等）的准确性负责。
+    吸声系数应来源于权威检测报告（如 ISO 354 混响室法测试报告）或可靠文献，
+    不应使用未经验证的估算值作为工程依据。</p>
+
+    <h3>免责声明</h3>
+    <p>本工具开发者不对因使用本工具计算结果而导致的任何直接、间接、附带或后果性损失承担责任。
+    使用者应充分理解公式的局限性和假设条件，并在必要时咨询专业声学顾问。</p>
+
+    <div class="info-box" style="margin-top:20px;">
+      <strong>版本信息：</strong>v2.0.0-专业版 20261021<br>
+      <strong>核心公式：</strong>Sabine RT60 = 0.161V/A (1922)<br>
+      <strong>辅助公式：</strong>Eyring RT60 = -0.161V/[S·ln(1-ᾱ)] (1930)<br>
+      <strong>技术依赖：</strong>原生 HTML/CSS/JavaScript，零外部依赖
+    </div>
+  `;
+}
+
+// ======================== 源码展示 ========================
+
+function loadSourceCode() {
+  // 获取当前页面的完整源码
+  const sourceHTML = document.documentElement.outerHTML;
+  document.getElementById('source-code').textContent = sourceHTML;
+}
+
+// ======================== 初始化 ========================
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadExample();
+  loadDocumentation();
+  loadSafetyContent();
+  // 延迟加载源码（避免页面过大）
+  setTimeout(loadSourceCode, 500);
+});
+</script>
+
+</body>
+</html>

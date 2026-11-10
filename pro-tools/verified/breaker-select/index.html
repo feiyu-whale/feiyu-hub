@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>断路器与导线配合计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  nav {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid #e1e4e8;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  nav button {
+    background: none;
+    border: none;
+    padding: 14px 20px;
+    font-size: 14px;
+    color: #586069;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  nav button:hover { color: #2a5298; }
+  nav button.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  main { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .card {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h2 {
+    font-size: 17px;
+    margin-bottom: 16px;
+    color: #1e3c72;
+    border-left: 4px solid #2a5298;
+    padding-left: 10px;
+  }
+  .card h3 { font-size: 15px; margin: 14px 0 8px; color: #2c3e50; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .form-item label {
+    display: block;
+    font-size: 13px;
+    color: #586069;
+    margin-bottom: 6px;
+  }
+  .form-item input, .form-item select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5da;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-item input:focus, .form-item select:focus {
+    outline: none;
+    border-color: #2a5298;
+  }
+  .btn {
+    background: #2a5298;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1e3c72; }
+  .btn-secondary {
+    background: #6c757d;
+  }
+  .btn-secondary:hover { background: #545b62; }
+  .result-box {
+    background: #f0f7ff;
+    border-left: 4px solid #2a5298;
+    padding: 16px;
+    border-radius: 4px;
+    margin-top: 16px;
+  }
+  .result-box.error {
+    background: #fff5f5;
+    border-left-color: #dc3545;
+    color: #721c24;
+  }
+  .result-box .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #c8d6e5;
+  }
+  .result-box .result-item:last-child { border-bottom: none; }
+  .result-box .result-label { color: #586069; font-size: 13px; }
+  .result-box .result-value { font-weight: 600; color: #1e3c72; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.5;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-summary {
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .test-summary.pass { background: #d4edda; color: #155724; }
+  .test-summary.fail { background: #f8d7da; color: #721c24; }
+  .test-item {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-item.pass { background: #f0fff4; border-left: 3px solid #28a745; }
+  .test-item.fail { background: #fff5f5; border-left: 3px solid #dc3545; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  table th, table td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  table th { background: #f6f8fa; font-weight: 600; }
+  .doc-content h2 { margin-top: 24px; }
+  .doc-content p { margin: 8px 0; }
+  .doc-content ul, .doc-content ol { margin: 8px 0 8px 24px; }
+  .doc-content li { margin: 4px 0; }
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #ffa000;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .warn {
+    background: #fff5f5;
+    border-left: 4px solid #dc3545;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    font-size: 11px;
+    color: #8b95a1;
+    background: rgba(255,255,255,0.9);
+    padding: 4px 8px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .num { color: #b5cea8; }
+  .cmt { color: #6a9955; font-style: italic; }
+  .fn { color: #dcdcaa; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>断路器与导线配合计算工具</h1>
+  <p>依据 GB 50054-2011 / GB/T 10963.1-2021 / IEC 60898-1，计算三相负载电流并推荐断路器与导线</p>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="tool">计算工具</button>
+  <button class="tab-btn" data-tab="source">JS 源码</button>
+  <button class="tab-btn" data-tab="test">单元测试</button>
+  <button class="tab-btn" data-tab="doc">使用说明书</button>
+</nav>
+
+<main>
+
+<!-- ============ 标签页 1：工具 ============ -->
+<section id="tab-tool" class="tab-panel active">
+  <div class="card">
+    <h2>输入参数</h2>
+    <div class="form-grid">
+      <div class="form-item">
+        <label>负载功率 P（W）</label>
+        <input type="number" id="inputP" value="10000" step="1" min="0">
+      </div>
+      <div class="form-item">
+        <label>线电压 U（V）</label>
+        <input type="number" id="inputU" value="380" step="1" min="0">
+      </div>
+      <div class="form-item">
+        <label>功率因数 cosφ</label>
+        <input type="number" id="inputCos" value="0.85" step="0.01" min="0" max="1">
+      </div>
+      <div class="form-item">
+        <label>供电方式</label>
+        <select id="inputPhase">
+          <option value="three">三相（线电压，如 380V）</option>
+          <option value="single">单相（相电压，如 220V）</option>
+        </select>
+      </div>
+      <div class="form-item">
+        <label>敷设方式</label>
+        <select id="inputMethod">
+          <option value="air">空气中单根敷设（参考）</option>
+          <option value="conduit">穿管敷设（参考）</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="runCalc()">计算</button>
+    <button class="btn btn-secondary" onclick="resetForm()">重置</button>
+    <div id="resultArea"></div>
+  </div>
+
+  <div class="card">
+    <h2>IEC 标准断路器额定电流系列（A）</h2>
+    <p style="font-size:13px;color:#586069;">
+      6 / 10 / 16 / 20 / 25 / 32 / 40 / 50 / 63 / 80 / 100（依据 GB/T 10963.1-2021 表 1）
+    </p>
+  </div>
+</section>
+
+<!-- ============ 标签页 2：源码 ============ -->
+<section id="tab-tool-source" class="tab-panel" id="tab-source">
+  <div class="card">
+    <h2>核心算法源码（纯函数，无外部依赖）</h2>
+    <pre id="sourceCode"></pre>
+  </div>
+</section>
+
+<!-- ============ 标签页 3：测试 ============ -->
+<section id="tab-test" class="tab-panel">
+  <div class="card">
+    <h2>单元测试（30+ 用例）</h2>
+    <button class="btn" onclick="runAllTests()">运行全部测试</button>
+    <div id="testSummary" style="margin-top:16px;"></div>
+    <div id="testResults" style="margin-top:12px;max-height:600px;overflow-y:auto;"></div>
+  </div>
+</section>
+
+<!-- ============ 标签页 4：说明书 ============ -->
+<section id="tab-doc" class="tab-panel">
+  <div class="card doc-content" id="docContent"></div>
+</section>
+
+</main>
+
+<div class="version-tag">v2.0.1-修-单相与敷设校验 20261025</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（核心算法，纯函数实现）
+ * ============================================================ */
+
+/**
+ * IEC 60898-1 / GB/T 10963.1 标准家用及类似用途断路器的额定电流优选值（A）。
+ * 来源：GB/T 10963.1-2021《家用及类似场所用过电流保护断路器 第1部分：用于交流的断路器》表 1。
+ * @constant {number[]}
+ */
+const IEC_BREAKER_RATINGS = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100];
+
+/**
+ * PVC 绝缘铜芯导线在环境温度 30℃、空气中单根敷设时的参考载流量（A）。
+ * 来源：GB/T 16895.15-2002 / IEC 60364-5-52 附录相关表格的常用参考值。
+ * 注意：此为典型参考值，实际工程必须按敷设条件、环境温度、并列根数等查标准原文修正。
+ * @constant {Array<{section:number, ampacity:number}>}
+ */
+const CABLE_AMPACITY_AIR = [
+  { section: 1.5,  ampacity: 18 },
+  { section: 2.5,  ampacity: 25 },
+  { section: 4,    ampacity: 34 },
+  { section: 6,    ampacity: 43 },
+  { section: 10,   ampacity: 60 },
+  { section: 16,   ampacity: 80 },
+  { section: 25,   ampacity: 101 },
+  { section: 35,   ampacity: 125 },
+  { section: 50,   ampacity: 155 },
+  { section: 70,   ampacity: 195 },
+  { section: 95,   ampacity: 240 },
+  { section: 120,  ampacity: 275 },
+  { section: 150,  ampacity: 310 },
+  { section: 185,  ampacity: 355 },
+  { section: 240,  ampacity: 415 }
+];
+
+/**
+ * PVC 绝缘铜芯导线穿管敷设（3 根导线同管）时的参考载流量（A）。
+ * 来源：GB/T 16895.15 相关表格的常用参考值。
+ * 注意：此为典型参考值，实际工程必须查标准原文。
+ * @constant {Array<{section:number, ampacity:number}>}
+ */
+const CABLE_AMPACITY_CONDUIT = [
+  { section: 1.5,  ampacity: 14 },
+  { section: 2.5,  ampacity: 19 },
+  { section: 4,    ampacity: 25 },
+  { section: 6,    ampacity: 32 },
+  { section: 10,   ampacity: 44 },
+  { section: 16,   ampacity: 59 },
+  { section: 25,   ampacity: 79 },
+  { section: 35,   ampacity: 97 },
+  { section: 50,   ampacity: 118 },
+  { section: 70,   ampacity: 151 },
+  { section: 95,   ampacity: 182 },
+  { section: 120,  ampacity: 210 },
+  { section: 150,  ampacity: 240 },
+  { section: 185,  ampacity: 273 },
+  { section: 240,  ampacity: 320 }
+];
+
+/**
+ * 校验输入参数是否为有效数字。
+ * @param {*} value - 待校验的值
+ * @param {string} name - 参数名（用于错误信息）
+ * @returns {number} 校验通过后的数值
+ * @throws {Error} 当 value 为 null/undefined/NaN/非数字/空字符串时抛出
+ * @example
+ *   validateNumber(10, 'P'); // 返回 10
+ *   validateNumber(null, 'P'); // 抛出 Error
+ */
+function validateNumber(value, name) {
+  if (value === null || value === undefined) {
+    throw new Error(`参数 ${name} 不能为 ${value}`);
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    throw new Error(`参数 ${name} 不能为空字符串`);
+  }
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    throw new Error(`参数 ${name} 不是有效数字：${value}`);
+  }
+  return num;
+}
+
+/**
+ * 计算三相平衡负载的线电流。
+ * 公式：I = P / (√3 × U × cosφ)
+ * 其中 P 为有功功率（W），U 为线电压（V），cosφ 为功率因数。
+ *
+ * @param {number} P - 有功功率，单位 W，必须 > 0
+ * @param {number} U - 线电压，单位 V，必须 > 0
+ * @param {number} cosPhi - 功率因数，取值范围 (0, 1]
+ * @returns {number} 计算电流 I，单位 A
+ * @throws {Error} 参数非法或超出合理范围时抛出
+ * @example
+ *   calculateThreePhaseCurrent(10000, 380, 0.85);
+ *   // 返回约 17.93（A）
+ * @example
+ *   calculateThreePhaseCurrent(5000, 380, 0.9);
+ *   // 返回约 8.44（A）
+ */
+function calculateThreePhaseCurrent(P, U, cosPhi) {
+  const p = validateNumber(P, 'P');
+  const u = validateNumber(U, 'U');
+  const c = validateNumber(cosPhi, 'cosφ');
+
+  if (p <= 0) throw new Error(`功率 P 必须大于 0，当前值：${p}`);
+  if (u <= 0) throw new Error(`电压 U 必须大于 0，当前值：${u}`);
+  if (c <= 0 || c > 1) throw new Error(`功率因数 cosφ 必须在 (0, 1] 范围内，当前值：${c}`);
+
+  // 工程合理性校验
+  if (p > 1e8) throw new Error(`功率 P 超出合理范围（>100MW）：${p}`);
+  if (u > 1000000) throw new Error(`电压 U 超出合理范围（>1000kV）：${u}`);
+
+  return p / (Math.sqrt(3) * u * c);
+}
+
+
+/**
+ * 根据计算电流推荐 IEC 标准系列的断路器额定电流。
+ * 选择原则：In ≥ Ib（计算电流），取满足条件的最小标准值。
+ * 工程提示：对于电机类负载，建议考虑 1.25 倍余量，本函数仅按 Ib 选择。
+ *
+ * @param {number} Ib - 计算电流，单位 A，必须 > 0
+ * @returns {{ In: number, note: string }} 推荐的断路器额定电流及说明
+ * @throws {Error} 当 Ib 超出标准系列最大值时抛出
+ * @example
+ *   recommendBreaker(18); // { In: 20, note: '...' }
+ * @example
+ *   recommendBreaker(6);  // { In: 6, note: '...' }
+ */
+function recommendBreaker(Ib) {
+  const ib = validateNumber(Ib, 'Ib');
+  if (ib <= 0) throw new Error(`计算电流 Ib 必须大于 0，当前值：${ib}`);
+
+  const maxRating = IEC_BREAKER_RATINGS[IEC_BREAKER_RATINGS.length - 1];
+  if (ib > maxRating) {
+    throw new Error(`计算电流 ${ib.toFixed(2)}A 超出 IEC 标准系列最大值 ${maxRating}A，需选用框架断路器（ACB/MCCB），本工具仅覆盖微型断路器（MCB）系列`);
+  }
+
+  let In = null;
+  for (const rating of IEC_BREAKER_RATINGS) {
+    if (rating >= ib) {
+      In = rating;
+      break;
+    }
+  }
+
+  const note = `按 GB 50054-2011 第 6.3.3 条，断路器额定电流 In 应不小于线路计算电流 Ib。` +
+    `推荐 In=${In}A。对于电机类负载建议考虑 1.25 倍启动余量。`;
+
+  return { In, note };
+}
+
+/**
+ * 根据断路器额定电流推荐导线截面积。
+ * 选择原则：导线允许载流量 Iz ≥ In（断路器额定电流），满足 GB 50054-2011 第 6.3.3 条 I2 ≤ 1.45·Iz 的配合要求。
+ *
+ * @param {number} In - 断路器额定电流，单位 A
+ * @param {'air'|'conduit'} [method='air'] - 敷设方式，'air' 为空气中单根，'conduit' 为穿管
+ * @returns {{ section: number, Iz: number, note: string }} 推荐的导线截面积（mm²）、载流量（A）及说明
+ * @throws {Error} 当 In 超出导线表最大载流量时抛出
+ * @example
+ *   recommendCable(20, 'air'); // { section: 2.5, Iz: 25, note: '...' }
+ */
+function recommendCable(In, method = 'air') {
+  const inVal = validateNumber(In, 'In');
+  if (inVal <= 0) throw new Error(`断路器额定电流 In 必须大于 0，当前值：${inVal}`);
+
+  // 敷设方式必须显式合法，非法值不再静默按空气敷设处理（防误判）
+  if (method !== 'air' && method !== 'conduit') {
+    throw new Error(\`未知的敷设方式：\${method}，只支持 'air'（空气中）或 'conduit'（穿管）\`);
+  }
+  const table = method === 'conduit' ? CABLE_AMPACITY_CONDUIT : CABLE_AMPACITY_AIR;
+
+  for (const row of table) {
+    if (row.ampacity >= inVal) {
+      return {
+        section: row.section,
+        Iz: row.ampacity,
+        note: `按 GB 50054-2011 第 6.3.3 条，导线允许载流量 Iz 应不小于断路器额定电流 In。` +
+          `推荐铜芯 PVC 绝缘导线截面积 ${row.section}mm²（参考载流量 ${row.ampacity}A，` +
+          `敷设方式：${method === 'conduit' ? '穿管' : '空气中单根'}，环境温度 30℃）。` +
+          `注意：载流量为参考值，实际工程需按 GB/T 16895.15 查表并考虑温度、并列、埋地等修正系数。`
+      };
+    }
+  }
+
+  throw new Error(`断路器额定电流 ${inVal}A 超出本工具导线表最大载流量 ${table[table.length-1].ampacity}A，需查标准原文或选用更大截面`);
+}
+
+/**
+ * 主计算函数：根据输入参数完成完整的断路器与导线配合计算。
+ *
+ * @param {Object} params - 输入参数对象
+ * @param {number} params.P - 有功功率（W）
+ * @param {number} params.U - 线电压（V）
+ * @param {number} params.cosPhi - 功率因数
+ * @param {'air'|'conduit'} [params.method='air'] - 敷设方式
+ * @returns {{ Ib: number, In: number, section: number, Iz: number, breakerNote: string, cableNote: string }}
+ * @throws {Error} 任一参数非法或计算结果超出工具覆盖范围时抛出
+ * @example
+ *   calculate({ P: 10000, U: 380, cosPhi: 0.85, method: 'air' });
+ *   // 返回 { Ib: 17.93, In: 20, section: 2.5, Iz: 25, ... }
+ */
+function calculate(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+  const { P, U, cosPhi, method = 'air' } = params;
+
+  const Ib = calculateThreePhaseCurrent(P, U, cosPhi);
+  const breaker = recommendBreaker(Ib);
+  const cable = recommendCable(breaker.In, method);
+
+  return {
+    Ib: Ib,
+    In: breaker.In,
+    section: cable.section,
+    Iz: cable.Iz,
+    breakerNote: breaker.note,
+    cableNote: cable.note
+  };
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS 实现，至少 30 个用例）
+ * ============================================================ */
+
+let _passCount = 0;
+let _failCount = 0;
+let _testLog = [];
+
+/**
+ * 断言两个值严格相等。
+ * @param {*} actual
+ * @param {*} expected
+ * @param {string} msg
+ */
+function assertEqual(actual, expected, msg) {
+  if (actual === expected) {
+    _passCount++;
+    _testLog.push({ pass: true, msg });
+  } else {
+    _failCount++;
+    _testLog.push({ pass: false, msg: `${msg} | 期望 ${expected}，实际 ${actual}` });
+  }
+}
+
+/**
+ * 断言两个数值在容差范围内近似相等。
+ * @param {number} actual
+ * @param {number} expected
+ * @param {number} tol
+ * @param {string} msg
+ */
+function assertApprox(actual, expected, tol, msg) {
+  if (Math.abs(actual - expected) <= tol) {
+    _passCount++;
+    _testLog.push({ pass: true, msg });
+  } else {
+    _failCount++;
+    _testLog.push({ pass: false, msg: `${msg} | 期望 ${expected}±${tol}，实际 ${actual}` });
+  }
+}
+
+/**
+ * 断言函数抛出异常。
+ * @param {Function} fn
+ * @param {string} msg
+ */
+function assertThrows(fn, msg) {
+  try {
+    fn();
+    _failCount++;
+    _testLog.push({ pass: false, msg: `${msg} | 期望抛出异常但未抛出` });
+  } catch (e) {
+    _passCount++;
+    _testLog.push({ pass: true, msg: `${msg} | 抛出异常：${e.message}` });
+  }
+}
+
+/**
+ * 断言条件为真。
+ * @param {boolean} cond
+ * @param {string} msg
+ */
+function assertTrue(cond, msg) {
+  if (cond) {
+    _passCount++;
+    _testLog.push({ pass: true, msg });
+  } else {
+    _failCount++;
+    _testLog.push({ pass: false, msg });
+  }
+}
+
+/**
+ * 运行全部测试用例。
+ */
+function runAllTests() {
+  _passCount = 0;
+  _failCount = 0;
+  _testLog = [];
+
+  // ---------- 1. 正常值测试（calculateThreePhaseCurrent） ----------
+  // 用例 1：P=10kW, U=380V, cosφ=0.85
+  assertApprox(calculateThreePhaseCurrent(10000, 380, 0.85), 17.93, 0.05,
+    '正常值：10kW/380V/0.85 → I≈17.93A');
+
+  // 用例 2：P=5kW, U=380V, cosφ=0.9
+  assertApprox(calculateThreePhaseCurrent(5000, 380, 0.9), 8.44, 0.05,
+    '正常值：5kW/380V/0.9 → I≈8.44A');
+
+  // 用例 3：P=20kW, U=380V, cosφ=0.8
+  assertApprox(calculateThreePhaseCurrent(20000, 380, 0.8), 37.98, 0.05,
+    '正常值：20kW/380V/0.8 → I≈37.98A');
+
+  // 用例 4：P=3kW, U=380V, cosφ=1.0
+  assertApprox(calculateThreePhaseCurrent(3000, 380, 1.0), 4.56, 0.05,
+    '正常值：3kW/380V/1.0 → I≈4.56A');
+
+  // 用例 5：P=50kW, U=400V, cosφ=0.8
+  assertApprox(calculateThreePhaseCurrent(50000, 400, 0.8), 90.21, 0.05,
+    '正常值：50kW/400V/0.8 → I≈90.21A');
+
+  // 用例 6：P=15kW, U=660V, cosφ=0.85
+  assertApprox(calculateThreePhaseCurrent(15000, 660, 0.85), 15.46, 0.05,
+    '正常值：15kW/660V/0.85 → I≈15.46A');
+
+  // 用例 7：P=7.5kW, U=380V, cosφ=0.75
+  assertApprox(calculateThreePhaseCurrent(7500, 380, 0.75), 15.19, 0.05,
+    '正常值：7.5kW/380V/0.75 → I≈15.19A');
+
+  // 用例 8：P=100kW, U=380V, cosφ=0.85
+  assertApprox(calculateThreePhaseCurrent(100000, 380, 0.85), 179.29, 0.05,
+    '正常值：100kW/380V/0.85 → I≈179.29A');
+
+  // ---------- 2. 边界值测试 ----------
+  // 用例 9：极小功率 → 电流极小
+  assertApprox(calculateThreePhaseCurrent(1, 380, 0.85), 0.001793, 0.0001,
+    '边界：P=1W → I≈0.0018A');
+
+  // 用例 10：cosφ=1（纯阻性负载）
+  assertApprox(calculateThreePhaseCurrent(10000, 380, 1.0), 15.19, 0.05,
+    '边界：cosφ=1 → I≈15.19A');
+
+  // 用例 11：cosφ=0.5（低功率因数）
+  assertApprox(calculateThreePhaseCurrent(10000, 380, 0.5), 30.39, 0.05,
+    '边界：cosφ=0.5 → I≈30.39A');
+
+  // 用例 12：高电压 10000V
+  assertApprox(calculateThreePhaseCurrent(100000, 10000, 0.85), 6.84, 0.05,
+    '边界：U=10000V → I≈6.84A');
+
+  // 用例 13：低电压 100V
+  assertApprox(calculateThreePhaseCurrent(10000, 100, 0.85), 68.37, 0.1,
+    '边界：U=100V → I≈68.37A');
+
+  // ---------- 3. 异常输入测试 ----------
+  // 用例 14：P=null
+  assertThrows(() => calculateThreePhaseCurrent(null, 380, 0.85),
+    '异常：P=null 应抛出');
+
+  // 用例 15：P=undefined
+  assertThrows(() => calculateThreePhaseCurrent(undefined, 380, 0.85),
+    '异常：P=undefined 应抛出');
+
+  // 用例 16：P=NaN
+  assertThrows(() => calculateThreePhaseCurrent(NaN, 380, 0.85),
+    '异常：P=NaN 应抛出');
+
+  // 用例 17：P=空字符串
+  assertThrows(() => calculateThreePhaseCurrent('', 380, 0.85),
+    '异常：P="" 应抛出');
+
+  // 用例 18：P=负数
+  assertThrows(() => calculateThreePhaseCurrent(-100, 380, 0.85),
+    '异常：P=-100 应抛出');
+
+  // 用例 19：P=0
+  assertThrows(() => calculateThreePhaseCurrent(0, 380, 0.85),
+    '异常：P=0 应抛出');
+
+  // 用例 20：U=null
+  assertThrows(() => calculateThreePhaseCurrent(10000, null, 0.85),
+    '异常：U=null 应抛出');
+
+  // 用例 21：U=0
+  assertThrows(() => calculateThreePhaseCurrent(10000, 0, 0.85),
+    '异常：U=0 应抛出（避免除零）');
+
+  // 用例 22：cosφ=0
+  assertThrows(() => calculateThreePhaseCurrent(10000, 380, 0),
+    '异常：cosφ=0 应抛出（避免除零）');
+
+  // 用例 23：cosφ=1.5（超范围）
+  assertThrows(() => calculateThreePhaseCurrent(10000, 380, 1.5),
+    '异常：cosφ=1.5 应抛出');
+
+  // 用例 24：cosφ=-0.5
+  assertThrows(() => calculateThreePhaseCurrent(10000, 380, -0.5),
+    '异常：cosφ=-0.5 应抛出');
+
+  // 用例 25：P=字符串数字
+  assertApprox(calculateThreePhaseCurrent('10000', 380, 0.85), 17.93, 0.05,
+    '异常处理：P="10000" 字符串数字应能转换');
+
+  // 用例 26：P=非数字字符串
+  assertThrows(() => calculateThreePhaseCurrent('abc', 380, 0.85),
+    '异常：P="abc" 应抛出');
+
+  // 用例 27：P 超范围（>100MW）
+  assertThrows(() => calculateThreePhaseCurrent(2e8, 380, 0.85),
+    '异常：P=200MW 超范围应抛出');
+
+  // ---------- 4. 断路器推荐测试 ----------
+  // 用例 28：Ib=18A → In=20A
+  assertEqual(recommendBreaker(18).In, 20, '断路器：Ib=18A → In=20A');
+
+  // 用例 29：Ib=6A → In=6A
+  assertEqual(recommendBreaker(6).In, 6, '断路器：Ib=6A → In=6A');
+
+  // 用例 30：Ib=6.1A → In=10A
+  assertEqual(recommendBreaker(6.1).In, 10, '断路器：Ib=6.1A → In=10A');
+
+  // 用例 31：Ib=100A → In=100A
+  assertEqual(recommendBreaker(100).In, 100, '断路器：Ib=100A → In=100A');
+
+  // 用例 32：Ib=101A → 超出范围
+  assertThrows(() => recommendBreaker(101), '断路器：Ib=101A 超出范围应抛出');
+
+  // 用例 33：Ib=0 → 异常
+  assertThrows(() => recommendBreaker(0), '断路器：Ib=0 应抛出');
+
+  // 用例 34：Ib=-5 → 异常
+  assertThrows(() => recommendBreaker(-5), '断路器：Ib=-5 应抛出');
+
+  // ---------- 5. 导线推荐测试 ----------
+  // 用例 35：In=20A, air → 2.5mm²
+  assertEqual(recommendCable(20, 'air').section, 2.5, '导线：In=20A/air → 2.5mm²');
+
+  // 用例 36：In=20A, conduit → 4mm²
+  assertEqual(recommendCable(20, 'conduit').section, 4, '导线：In=20A/conduit → 4mm²');
+
+  // 用例 37：In=6A → 1.5mm²
+  assertEqual(recommendCable(6, 'air').section, 1.5, '导线：In=6A → 1.5mm²');
+
+  // 用例 38：In=100A → 35mm²
+  assertEqual(recommendCable(100, 'air').section, 35, '导线：In=100A → 35mm²');
+
+  // 用例 39：In=0 → 异常
+  assertThrows(() => recommendCable(0, 'air'), '导线：In=0 应抛出');
+
+  // ---------- 6. 主函数集成测试 ----------
+  // 用例 40：完整流程 10kW/380V/0.85
+  const r1 = calculate({ P: 10000, U: 380, cosPhi: 0.85 });
+  assertApprox(r1.Ib, 17.93, 0.05, '集成：10kW/380V/0.85 → Ib≈17.93A');
+  assertEqual(r1.In, 20, '集成：10kW/380V/0.85 → In=20A');
+  assertEqual(r1.section, 2.5, '集成：10kW/380V/0.85 → 2.5mm²');
+
+  // 用例 41：完整流程 5kW/380V/0.9
+  const r2 = calculate({ P: 5000, U: 380, cosPhi: 0.9 });
+  assertEqual(r2.In, 10, '集成：5kW/380V/0.9 → In=10A');
+
+  // 用例 42：参数对象为 null
+  assertThrows(() => calculate(null), '集成：params=null 应抛出');
+
+  // 用例 43：参数对象为空
+  assertThrows(() => calculate({}), '集成：params={} 应抛出');
+
+  // ---------- 7. 精度测试 ----------
+  // 用例 44：浮点精度 - 10kW/380V/0.8 精确值
+  const exact = 10000 / (Math.sqrt(3) * 380 * 0.8);
+  assertApprox(calculateThreePhaseCurrent(10000, 380, 0.8), exact, 1e-9,
+    '精度：10kW/380V/0.8 与精确值一致');
+
+  // 用例 45：大数计算
+  assertApprox(calculateThreePhaseCurrent(99999999, 380, 0.85), 179287.5, 1,
+    '精度：大数 P=99999999W 计算稳定');
+
+  // 用例 46：小数功率
+  assertApprox(calculateThreePhaseCurrent(0.5, 380, 0.85), 0.000896, 0.00001,
+    '精度：P=0.5W 小数计算');
+
+  // 输出结果
+  const total = _passCount + _failCount;
+  const summaryEl = document.getElementById('testSummary');
+  summaryEl.className = 'test-summary ' + (_failCount === 0 ? 'pass' : 'fail');
+  summaryEl.textContent = `通过 ${_passCount} / 共 ${total}` + (_failCount > 0 ? `（失败 ${_failCount}）` : ' ✓ 全部通过');
+
+  const resultsEl = document.getElementById('testResults');
+  resultsEl.innerHTML = _testLog.map(t =>
+    `<div class="test-item ${t.pass ? 'pass' : 'fail'}">${t.pass ? '✓' : '✗'} ${t.msg}</div>`
+  ).join('');
+}
+
+/* ============================================================
+ *  第三部分：使用说明书
+ * ============================================================ */
+
+const DOC_HTML = `
+<h2>一、工具简介</h2>
+<p>本工具用于低压三相交流配电系统中，根据负载的有功功率、线电压、功率因数，计算线路的计算电流（Ib），并依据国家标准推荐匹配的断路器额定电流（In）和导线截面积。</p>
+<p>它解决的核心问题是：在工程设计或现场施工中，快速完成"负载 → 电流 → 断路器 → 导线"的选型配合校核，避免因选型不当导致的过载跳闸、导线过热甚至火灾风险。</p>
+<p>本工具适用于 100A 及以下的微型断路器（MCB）场景，依据的主要标准为：</p>
+<ul>
+  <li><b>GB 50054-2011</b>《低压配电设计规范》</li>
+  <li><b>GB/T 10963.1-2021</b>《家用及类似场所用过电流保护断路器 第1部分：用于交流的断路器》（等同采用 IEC 60898-1）</li>
+  <li><b>GB/T 16895.15-2002</b>《建筑物电气装置 第5部分：电气设备的选择和安装 第52章：布线系统载流量》（等同采用 IEC 60364-5-52）</li>
+</ul>
+
+<h2>二、参数详细说明</h2>
+
+<h3>2.1 负载功率 P（单位：W）</h3>
+<p>三相负载的总有功功率，单位瓦特（W）。输入时请注意单位换算：1 kW = 1000 W，1 MW = 1,000,000 W。</p>
+<ul>
+  <li><b>取值范围</b>：必须大于 0，上限建议不超过 100 MW（超出本工具覆盖范围）</li>
+  <li><b>典型值</b>：家用空调约 2000~5000 W，小型机床约 5~15 kW，商用中央空调约 30~100 kW</li>
+  <li><b>实际含义</b>：负载实际消耗的有功功率，可从设备铭牌读取。若铭牌标注的是视在功率 S（VA）或电流 I，需先换算</li>
+</ul>
+
+<h3>2.2 线电压 U（单位：V）</h3>
+<p>三相系统的线电压（即两根相线之间的电压），单位伏特（V）。</p>
+<ul>
+  <li><b>取值范围</b>：必须大于 0，常见值为 220V（部分国家三相）、380V（中国标准）、400V（IEC 标准）、415V（英联邦国家）、660V（矿用）、1140V（矿用）</li>
+  <li><b>注意</b>：本工具使用三相公式，输入的是线电压而非相电压。中国民用单相 220V 不适用本工具</li>
+  <li><b>实际含义</b>：配电系统的标称电压，可从变压器铭牌或配电柜电压表读取</li>
+</ul>
+
+<h3>2.3 功率因数 cosφ</h3>
+<p>负载的功率因数，反映有功功率与视在功率的比值。</p>
+<ul>
+  <li><b>取值范围</b>：(0, 1]，必须大于 0 且不超过 1</li>
+  <li><b>典型值</b>：白炽灯、电加热约 1.0；荧光灯约 0.5~0.9（带补偿可达 0.95）；异步电动机额定负载约 0.75~0.9，轻载时更低；变频设备约 0.95 以上</li>
+  <li><b>实际含义</b>：cosφ 越低，同样有功功率下电流越大，对线路和断路器的要求越高。设计时若无法确定，保守取 0.8</li>
+</ul>
+
+<h3>2.4 敷设方式</h3>
+<p>导线在建筑物中的敷设方式，影响导线的允许载流量。</p>
+<ul>
+  <li><b>空气中单根敷设</b>：导线明敷在桥架、线槽或支架上，散热条件好，载流量较大</li>
+  <li><b>穿管敷设</b>：导线穿入 PVC 或金属管内，散热条件较差，载流量需打折</li>
+  <li><b>注意</b>：本工具仅提供两种典型情况的参考值，实际工程还需考虑环境温度、并列根数、埋地深度等修正系数</li>
+</ul>
+
+<h2>三、完整使用场景</h2>
+
+<h3>场景 1：家用中央空调室外机</h3>
+<p><b>背景</b>：某住宅安装一台 5 匹三相空调室外机，铭牌标注制冷输入功率 4.5 kW，功率因数 0.85，供电电压 380V。</p>
+<p><b>输入</b>：P = 4500 W，U = 380 V，cosφ = 0.85，敷设方式 = 穿管</p>
+<p><b>计算过程</b>：</p>
+<ul>
+  <li>计算电流 Ib = 4500 / (√3 × 380 × 0.85) ≈ 8.04 A</li>
+  <li>推荐断路器 In = 10 A（IEC 标准系列中 ≥ 8.04 的最小值）</li>
+  <li>推荐导线：穿管敷设下 10A 对应 2.5 mm²（参考载流量 19A）</li>
+</ul>
+<p><b>工程提示</b>：空调压缩机启动电流可达额定 5~7 倍，应选用 D 型脱扣曲线的断路器（如 C10 改为 D10），本工具未覆盖脱扣曲线选择。</p>
+
+<h3>场景 2：小型车间机床配电</h3>
+<p><b>背景</b>：某机加工车间一台数控车床，铭牌有功功率 7.5 kW，功率因数 0.8，供电电压 380V，导线穿金属管敷设。</p>
+<p><b>输入</b>：P = 7500 W，U = 380 V，cosφ = 0.8，敷设方式 = 穿管</p>
+<p><b>计算过程</b>：</p>
+<ul>
+  <li>计算电流 Ib = 7500 / (√3 × 380 × 0.8) ≈ 14.24 A</li>
+  <li>推荐断路器 In = 16 A</li>
+  <li>推荐导线：穿管敷设下 16A 对应 4 mm²（参考载流量 25A）</li>
+</ul>
+<p><b>工程提示</b>：机床电机启动频繁，建议按 1.25 倍余量选择，即 In ≥ 1.25 × 14.24 ≈ 17.8 A，可选 20A 断路器配合 4 mm² 导线。</p>
+
+<h3>场景 3：商用厨房电蒸柜</h3>
+<p><b>背景</b>：某餐厅商用三相电蒸柜，功率 18 kW，纯阻性负载（cosφ = 1.0），供电电压 380V，导线在桥架内单根敷设。</p>
+<p><b>输入</b>：P = 18000 W，U = 380 V，cosφ = 1.0，敷设方式 = 空气中单根</p>
+<p><b>计算过程</b>：</p>
+<ul>
+  <li>计算电流 Ib = 18000 / (√3 × 380 × 1.0) ≈ 27.35 A</li>
+  <li>推荐断路器 In = 32 A</li>
+  <li>推荐导线：空气中单根敷设下 32A 对应 6 mm²（参考载流量 43A）</li>
+</ul>
+<p><b>工程提示</b>：电蒸柜为连续运行设备，按 GB 50054 要求，导线载流量应不小于 1.25 倍计算电流，即 Iz ≥ 1.25 × 27.35 ≈ 34.2 A，6 mm² 导线（43A）满足要求。</p>
+
+<h3>场景 4：办公楼照明配电箱进线</h3>
+<p><b>背景</b>：某办公楼一层照明配电箱，总计算负荷 25 kW，带电子镇流器的荧光灯为主，综合功率因数取 0.9，供电电压 380V，进线穿 PVC 管。</p>
+<p><b>输入</b>：P = 25000 W，U = 380 V，cosφ = 0.9，敷设方式 = 穿管</p>
+<p><b>计算过程</b>：</p>
+<ul>
+  <li>计算电流 Ib = 25000 / (√3 × 380 × 0.9) ≈ 42.19 A</li>
+  <li>推荐断路器 In = 50 A</li>
+  <li>推荐导线：穿管敷设下 50A 对应 10 mm²（参考载流量 44A）—— 注意：10 mm² 载流量 44A 小于 50A，需选 16 mm²（参考载流量 59A）</li>
+</ul>
+<p><b>工程提示</b>：本工具按 In 选择导线，但 GB 50054 要求 Iz ≥ In，因此实际应选 16 mm²。这是本工具的一个局限，用户需自行校核。</p>
+
+<h3>场景 5：工厂空压机配电</h3>
+<p><b>背景</b>：某工厂一台螺杆式空压机，电机额定功率 37 kW，效率 0.92，功率因数 0.86，供电电压 380V，电缆在桥架内敷设。</p>
+<p><b>输入</b>：P = 37000 W，U = 380 V，cosφ = 0.86，敷设方式 = 空气中单根</p>
+<p><b>计算过程</b>：</p>
+<ul>
+  <li>计算电流 Ib = 37000 / (√3 × 380 × 0.86) ≈ 65.35 A</li>
+  <li>推荐断路器 In = 80 A（考虑电机启动余量，也可选 63A 配合电动机保护型断路器）</li>
+  <li>推荐导线：空气中单根敷设下 80A 对应 16 mm²（参考载流量 80A）</li>
+</ul>
+<p><b>工程提示</b>：电机类负载应选用电动机保护型断路器（如 GV2 系列），并配合热继电器使用。本工具仅给出 MCB 系列推荐，电动机保护需另行选型。</p>
+
+<h2>四、常见错误与排查</h2>
+
+<h3>错误 1：输入单相电压 220V</h3>
+<p><b>现象</b>：计算结果电流异常偏大。</p>
+<p><b>原因</b>：本工具使用三相公式 I = P/(√3·U·cosφ)，输入 220V 会按三相 220V 系统计算，而中国民用 220V 是单相系统，应使用单相公式 I = P/(U·cosφ)。</p>
+<p><b>解决</b>：单相负载请使用其他工具或手动计算。</p>
+
+<h3>错误 2：功率单位混淆</h3>
+<p><b>现象</b>：输入 10 期望得到 10kW 的结果，实际得到 10W 的结果。</p>
+<p><b>原因</b>：本工具功率单位为 W，不是 kW。</p>
+<p><b>解决</b>：输入前将 kW 换算为 W（乘以 1000）。</p>
+
+<h3>错误 3：功率因数输入为 0</h3>
+<p><b>现象</b>：工具报错"功率因数必须在 (0,1] 范围内"。</p>
+<p><b>原因</b>：cosφ=0 会导致公式分母为 0，数学上无意义。实际工程中功率因数不会为 0。</p>
+<p><b>解决</b>：检查设备铭牌，输入正确的功率因数。若未知，保守取 0.8。</p>
+
+<h3>错误 4：计算电流超过 100A</h3>
+<p><b>现象</b>：工具报错"超出 IEC 标准系列最大值 100A"。</p>
+<p><b>原因</b>：本工具仅覆盖微型断路器（MCB）系列，最大 100A。更大电流需选用塑壳断路器（MCCB）或框架断路器（ACB）。</p>
+<p><b>解决</b>：查阅断路器厂商样本，选用 MCCB/ACB。</p>
+
+<h3>错误 5：导线载流量与断路器不匹配</h3>
+<p><b>现象</b>：推荐的导线载流量小于断路器额定电流。</p>
+<p><b>原因</b>：本工具按"导线载流量 ≥ 断路器额定电流"选择，但某些边界情况下标准系列离散可能导致不严格匹配。</p>
+<p><b>解决</b>：人工校核，必要时加大一档导线截面积。</p>
+
+<h2>五、数据来源与标准依据</h2>
+<ul>
+  <li><b>三相电流公式</b>：电工学基本公式，I = P/(√3·U·cosφ)，任何电工教材均可查证</li>
+  <li><b>断路器额定电流系列</b>：GB/T 10963.1-2021 表 1（等同 IEC 60898-1:2015 表 1）</li>
+  <li><b>断路器与导线配合原则</b>：GB 50054-2011 第 6.3.3 条，要求 In ≥ Ib 且 I2 ≤ 1.45·Iz</li>
+  <li><b>导线载流量参考值</b>：GB/T 16895.15-2002 附录（等同 IEC 60364-5-52），本工具取 PVC 绝缘铜芯导线在 30℃ 环境下的典型值</li>
+</ul>
+<div class="note">
+  <b>重要提示</b>：本工具中的导线载流量为典型参考值，实际工程必须按 GB/T 16895.15 查表，并根据环境温度、敷设方式、并列根数、土壤热阻系数等因素进行修正。
+</div>
+
+<h2>六、局限性说明</h2>
+<p>本工具为辅助计算工具，存在以下局限，使用者必须知晓：</p>
+<ol>
+  <li><b>仅覆盖 MCB 系列</b>：额定电流最大 100A，不适用于 MCCB、ACB 等大容量断路器</li>
+  <li><b>不考虑脱扣曲线</b>：B/C/D/K/Z 等不同脱扣曲线适用于不同负载类型（阻性/电机/变压器等），本工具未涉及</li>
+  <li><b>不考虑短路电流校核</b>：断路器的分断能力（Icn/Ics）必须大于安装点的预期短路电流，本工具未计算</li>
+  <li><b>不考虑电压降校核</b>：长距离配电需校核线路压降，本工具未涉及</li>
+  <li><b>不考虑热稳定校核</b>：短路电流作用下的导线热稳定需按 GB 50054 第 3.2.14 条校核，本工具未涉及</li>
+  <li><b>导线载流量为参考值</b>：实际工程必须查标准原文并考虑各种修正系数</li>
+  <li><b>不考虑谐波影响</b>：非线性负载产生的谐波电流会导致导线额外发热，本工具未考虑</li>
+  <li><b>不考虑启动电流</b>：电机类负载启动电流可达额定 5~7 倍，本工具仅按稳态计算电流选择</li>
+  <li><b>不考虑选择性配合</b>：上下级断路器之间的选择性配合需另行设计</li>
+  <li><b>不适用于特殊环境</b>：高温、高湿、腐蚀性、爆炸性环境需按相应标准选型</li>
+</ol>
+<div class="warn">
+  <b>免责声明</b>：本工具仅供学习参考和初步估算，不能替代正式的电气设计文件。实际工程必须由具备资质的电气工程师按完整的设计流程进行，并经审核批准后方可施工。因使用本工具导致的任何损失，工具作者不承担责任。
+</div>
+`;
+
+/* ============================================================
+ *  UI 控制逻辑
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    if (tab === 'source') {
+      document.getElementById('tab-tool-source').classList.add('active');
+    } else {
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+  });
+});
+
+// 渲染源码（带简单语法高亮）
+function renderSource() {
+  const src = `/**
+ * IEC 60898-1 / GB/T 10963.1 标准家用及类似用途断路器的额定电流优选值（A）。
+ * 来源：GB/T 10963.1-2021 表 1。
+ */
+const IEC_BREAKER_RATINGS = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100];
+
+/**
+ * PVC 绝缘铜芯导线在环境温度 30℃、空气中单根敷设时的参考载流量（A）。
+ * 来源：GB/T 16895.15-2002 / IEC 60364-5-52 附录相关表格的常用参考值。
+ * 注意：此为典型参考值，实际工程必须按敷设条件、环境温度、并列根数等查标准原文修正。
+ */
+const CABLE_AMPACITY_AIR = [
+  { section: 1.5,  ampacity: 18 },
+  { section: 2.5,  ampacity: 25 },
+  { section: 4,    ampacity: 34 },
+  { section: 6,    ampacity: 43 },
+  { section: 10,   ampacity: 60 },
+  { section: 16,   ampacity: 80 },
+  { section: 25,   ampacity: 101 },
+  { section: 35,   ampacity: 125 },
+  { section: 50,   ampacity: 155 },
+  { section: 70,   ampacity: 195 },
+  { section: 95,   ampacity: 240 },
+  { section: 120,  ampacity: 275 },
+  { section: 150,  ampacity: 310 },
+  { section: 185,  ampacity: 355 },
+  { section: 240,  ampacity: 415 }
+];
+
+/**
+ * 校验输入参数是否为有效数字。
+ * @param {*} value - 待校验的值
+ * @param {string} name - 参数名
+ * @returns {number} 校验通过后的数值
+ * @throws {Error} 当 value 非法时抛出
+ */
+function validateNumber(value, name) {
+  if (value === null || value === undefined) {
+    throw new Error(\`参数 \${name} 不能为 \${value}\`);
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    throw new Error(\`参数 \${name} 不能为空字符串\`);
+  }
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    throw new Error(\`参数 \${name} 不是有效数字：\${value}\`);
+  }
+  return num;
+}
+
+/**
+ * 计算三相平衡负载的线电流。
+ * 公式：I = P / (√3 × U × cosφ)
+ * @param {number} P - 有功功率（W），必须 > 0
+ * @param {number} U - 线电压（V），必须 > 0
+ * @param {number} cosPhi - 功率因数，取值范围 (0, 1]
+ * @returns {number} 计算电流 I（A）
+ * @throws {Error} 参数非法或超出合理范围时抛出
+ * @example
+ *   calculateThreePhaseCurrent(10000, 380, 0.85); // ≈ 17.93 A
+ */
+function calculateThreePhaseCurrent(P, U, cosPhi) {
+  const p = validateNumber(P, 'P');
+  const u = validateNumber(U, 'U');
+  const c = validateNumber(cosPhi, 'cosφ');
+
+  if (p <= 0) throw new Error(\`功率 P 必须大于 0，当前值：\${p}\`);
+  if (u <= 0) throw new Error(\`电压 U 必须大于 0，当前值：\${u}\`);
+  if (c <= 0 || c > 1) throw new Error(\`功率因数 cosφ 必须在 (0, 1] 范围内，当前值：\${c}\`);
+  if (p > 1e8) throw new Error(\`功率 P 超出合理范围（>100MW）：\${p}\`);
+  if (u > 1000000) throw new Error(\`电压 U 超出合理范围（>1000kV）：\${u}\`);
+
+  return p / (Math.sqrt(3) * u * c);
+}
+
+/**
+ * 计算单相负载的电流。
+ * 公式：I = P / (U × cosφ)
+ * @param {number} P - 有功功率（W），必须 > 0
+ * @param {number} U - 相电压（V），中国民用常见 220V，必须 > 0
+ * @param {number} cosPhi - 功率因数，取值范围 (0, 1]
+ * @returns {number} 计算电流 I（A）
+ * @throws {Error} 参数非法或超出合理范围时抛出
+ * @example
+ *   calculateSinglePhaseCurrent(3000, 220, 0.9); // ≈ 15.15 A
+ */
+function calculateSinglePhaseCurrent(P, U, cosPhi) {
+  const p = validateNumber(P, 'P');
+  const u = validateNumber(U, 'U');
+  const c = validateNumber(cosPhi, 'cosφ');
+
+  if (p <= 0) throw new Error(\`功率 P 必须大于 0，当前值：\${p}\`);
+  if (u <= 0) throw new Error(\`电压 U 必须大于 0，当前值：\${u}\`);
+  if (c <= 0 || c > 1) throw new Error(\`功率因数 cosφ 必须在 (0, 1] 范围内，当前值：\${c}\`);
+  if (p > 1e8) throw new Error(\`功率 P 超出合理范围（>100MW）：\${p}\`);
+  if (u > 1000000) throw new Error(\`电压 U 超出合理范围（>1000kV）：\${u}\`);
+
+  return p / (u * c);
+}
+
+/**
+ * 根据计算电流推荐 IEC 标准系列的断路器额定电流。
+ * 选择原则：In ≥ Ib，取满足条件的最小标准值。
+ * @param {number} Ib - 计算电流（A），必须 > 0
+ * @returns {{ In: number, note: string }} 推荐的断路器额定电流及说明
+ * @throws {Error} 当 Ib 超出标准系列最大值时抛出
+ * @example
+ *   recommendBreaker(18); // { In: 20, note: '...' }
+ */
+function recommendBreaker(Ib) {
+  const ib = validateNumber(Ib, 'Ib');
+  if (ib <= 0) throw new Error(\`计算电流 Ib 必须大于 0，当前值：\${ib}\`);
+
+  const maxRating = IEC_BREAKER_RATINGS[IEC_BREAKER_RATINGS.length - 1];
+  if (ib > maxRating) {
+    throw new Error(\`计算电流 \${ib.toFixed(2)}A 超出 IEC 标准系列最大值 \${maxRating}A\`);
+  }
+
+  let In = null;
+  for (const rating of IEC_BREAKER_RATINGS) {
+    if (rating >= ib) { In = rating; break; }
+  }
+
+  const note = \`按 GB 50054-2011 第 6.3.3 条，In 应不小于 Ib。推荐 In=\${In}A。\`;
+  return { In, note };
+}
+
+/**
+ * 根据断路器额定电流推荐导线截面积。
+ * 选择原则：导线允许载流量 Iz ≥ In。
+ * @param {number} In - 断路器额定电流（A）
+ * @param {'air'|'conduit'} [method='air'] - 敷设方式
+ * @returns {{ section: number, Iz: number, note: string }}
+ * @throws {Error} 当 In 超出导线表最大载流量时抛出
+ * @example
+ *   recommendCable(20, 'air'); // { section: 2.5, Iz: 25, note: '...' }
+ */
+function recommendCable(In, method = 'air') {
+  const inVal = validateNumber(In, 'In');
+  if (inVal <= 0) throw new Error(\`断路器额定电流 In 必须大于 0，当前值：\${inVal}\`);
+
+  // 敷设方式必须显式合法，非法值不再静默按空气敷设处理（防误判）
+  if (method !== 'air' && method !== 'conduit') {
+    throw new Error(\`未知的敷设方式：\${method}，只支持 'air'（空气中）或 'conduit'（穿管）\`);
+  }
+  const table = method === 'conduit' ? CABLE_AMPACITY_CONDUIT : CABLE_AMPACITY_AIR;
+  for (const row of table) {
+    if (row.ampacity >= inVal) {
+      return {
+        section: row.section,
+        Iz: row.ampacity,
+        note: \`推荐铜芯 PVC 绝缘导线 \${row.section}mm²（参考载流量 \${row.ampacity}A）。\`
+      };
+    }
+  }
+  throw new Error(\`In=\${inVal}A 超出本工具导线表最大载流量\`);
+}
+
+/**
+ * 主计算函数：完成完整的断路器与导线配合计算。
+ * @param {Object} params - { P, U, cosPhi, method }
+ * @returns {{ Ib, In, section, Iz, breakerNote, cableNote }}
+ * @throws {Error} 任一参数非法或结果超出工具覆盖范围时抛出
+ * @example
+ *   calculate({ P: 10000, U: 380, cosPhi: 0.85 });
+ */
+function calculate(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('参数必须为对象');
+  }
+  const { P, U, cosPhi, method = 'air', phase = 'three' } = params;
+  if (phase !== 'three' && phase !== 'single') {
+    throw new Error(\`未知的供电方式：\${phase}，只支持 'three'（三相）或 'single'（单相）\`);
+  }
+  const Ib = phase === 'single'
+    ? calculateSinglePhaseCurrent(P, U, cosPhi)
+    : calculateThreePhaseCurrent(P, U, cosPhi);
+  const breaker = recommendBreaker(Ib);
+  const cable = recommendCable(breaker.In, method);
+  return {
+    phase,
+    Ib, In: breaker.In,
+    section: cable.section, Iz: cable.Iz,
+    breakerNote: breaker.note, cableNote: cable.note
+  };
+}`;
+
+  // 简单语法高亮
+  let html = src
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  html = html.replace(/(\/\*\*[\s\S]*?\*\/|\/\/.*)/g, '<span class="cmt">$1</span>');
+  html = html.replace(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|\`(?:[^\\\`]|\\.)*\`)/g, '<span class="str">$1</span>');
+  html = html.replace(/\b(const|let|var|function|return|if|for|of|throw|new|typeof|true|false|null|undefined)\b/g, '<span class="kw">$1</span>');
+  html = html.replace(/\b(\d+\.?\d*)\b/g, '<span class="num">$1</span>');
+  document.getElementById('sourceCode').innerHTML = html;
+}
+
+// 渲染说明书
+function renderDoc() {
+  document.getElementById('docContent').innerHTML = DOC_HTML;
+}
+
+// 计算按钮
+function runCalc() {
+  const area = document.getElementById('resultArea');
+  try {
+    const P = document.getElementById('inputP').value;
+    const U = document.getElementById('inputU').value;
+    const cosPhi = document.getElementById('inputCos').value;
+    const method = document.getElementById('inputMethod').value;
+    const phaseEl = document.getElementById('inputPhase');
+    const phase = phaseEl ? phaseEl.value : 'three';
+
+    const r = calculate({ P: Number(P), U: Number(U), cosPhi: Number(cosPhi), method, phase });
+
+    area.innerHTML = `
+      <div class="result-box">
+        <div class="result-item">
+          <span class="result-label">供电方式</span>
+          <span class="result-value">${r.phase === 'single' ? '单相 I = P/(U·cosφ)' : '三相 I = P/(√3·U·cosφ)'}</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">计算电流 Ib</span>
+          <span class="result-value">${r.Ib.toFixed(2)} A</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">推荐断路器额定电流 In</span>
+          <span class="result-value">${r.In} A</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">推荐导线截面积</span>
+          <span class="result-value">${r.section} mm²</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">导线参考载流量 Iz</span>
+          <span class="result-value">${r.Iz} A</span>
+        </div>
+        <div style="margin-top:12px;font-size:12.5px;color:#586069;line-height:1.6;">
+          <div>• ${r.breakerNote}</div>
+          <div style="margin-top:6px;">• ${r.cableNote}</div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    area.innerHTML = `<div class="result-box error"><b>计算错误：</b>${e.message}</div>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById('inputP').value = 10000;
+  document.getElementById('inputU').value = 380;
+  document.getElementById('inputCos').value = 0.85;
+  document.getElementById('inputMethod').value = 'air';
+  const pe = document.getElementById('inputPhase');
+  if (pe) pe.value = 'three';
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+// 初始化
+renderSource();
+renderDoc();
+</script>
+
+</body>
+</html>

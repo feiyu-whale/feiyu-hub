@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📐 古今中外度量衡</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #2a1e12 0%, #14100b 60%, #0a0806 100%); overflow-x:hidden; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#ede0cc;
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:600px; overflow:hidden; }
+  .back { display:inline-block; text-decoration:none; color:#a98b5f; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #4a3a22; border-radius:20px; }
+  h1 { font-size:12px; color:#e8c877; text-align:center; margin-bottom:4px; letter-spacing:1px; }
+  .sub { text-align:center; color:#8a7350; font-size:12px; margin-bottom:18px; }
+
+  /* 分类 tabs */
+  .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:18px; }
+  .tabs button { padding:11px 4px; font-size:14px; font-weight:700; color:#b59a6f; background:#1e160e;
+    border:1px solid #43331e; border-radius:10px; cursor:pointer; font-family:inherit; transition:.15s; }
+  .tabs button.on { background:linear-gradient(160deg,#b8860b,#7a5208); color:#fff8e7; border-color:#e8c877; }
+
+  /* 换算行 */
+  .row { background:#191208; border:1px solid #3d2f1c; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .row .lbl { font-size:11px; color:#8a7350; margin-bottom:6px; letter-spacing:1px; }
+  .line { display:flex; gap:8px; align-items:stretch; }
+  .line select { flex:1 1 50%; min-width:0; }
+  input[type=text], select {
+    background:#0b0805; border:1px solid #4a3a22; border-radius:9px; padding:11px 12px;
+    color:#f0e4cf; font-size:15px; font-family:inherit; width:100%;
+  }
+  input[type=text]:focus, select:focus { outline:none; border-color:#e8c877; }
+  input[type=text] { flex:1 1 auto; min-width:0; }
+  .swapbar { display:flex; justify-content:center; margin:6px 0 10px; }
+  .swap { background:#241a0e; border:1px solid #5a4526; color:#e8c877; border-radius:50%; width:42px; height:42px;
+    font-size:12px; cursor:pointer; line-height:1; }
+  .swap:active { background:#3a2a14; }
+
+  /* 结果提示 */
+  .hint { text-align:center; color:#8a7350; font-size:12px; margin-top:14px; line-height:1.8; min-height:20px; }
+  .hint b { color:#e8c877; }
+  .anchor { margin-top:18px; background:#141009; border:1px dashed #43331e; border-radius:10px; padding:12px 14px;
+    font-size:12.5px; color:#b59a6f; line-height:1.9; word-break:break-word; }
+  .anchor h3 { font-size:13px; color:#e8c877; margin-bottom:6px; }
+  .anchor .v { color:#f0e4cf; font-weight:700; }
+
+  .ver { text-align:center; color:#3a2f1e; font-size:10px; margin-top:22px; }
+  .foot { text-align:center; color:#4a3a22; font-size:11px; margin-top:14px; line-height:1.8; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回工具区</a>
+  <h1>📐 古今中外度量衡</h1>
+  <div class="sub">一尺各朝各不同 · 先选朝代，再换算</div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="row">
+    <div class="lbl">从</div>
+    <div class="line">
+      <select id="srcGroup"></select>
+      <select id="srcUnit"></select>
+    </div>
+    <div style="margin-top:8px"><input type="text" id="srcVal" value="1" inputmode="decimal"></div>
+  </div>
+
+  <div class="swapbar"><button class="swap" id="swap" title="交换">⇅</button></div>
+
+  <div class="row">
+    <div class="lbl">到</div>
+    <div class="line">
+      <select id="tgtGroup"></select>
+      <select id="tgtUnit"></select>
+    </div>
+    <div style="margin-top:8px"><input type="text" id="tgtVal" readonly></div>
+  </div>
+
+  <div class="hint" id="hint"></div>
+
+  <div class="anchor" id="anchor"></div>
+
+  <div class="foot">🐳 大肥鱼出品 · 数据来源见底部说明</div>
+  <div class="ver">v2-加古罗马 20261017</div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+'use strict';
+  const $ = id => document.getElementById(id);
+  let curCat = "length";
+
+  // 古罗马分组用拉丁原名做键，显示时「中文（拉丁名）」
+  var ROME_PREFIX = { length:"rome", volume:"rome", weight:"rome" };
+  function isRomeGroup(gid){ return gid === "rome"; }
+  function unitName(k, gid){
+    var cn = MEASURE_UNIT_NAMES[k];
+    if (isRomeGroup(gid)) {
+      var latin = k.replace(/_/g, " ");
+      return cn ? (cn + "（" + latin + "）") : latin;
+    }
+    return cn || k;
+  }
+  // 兼容旧调用（只传键时）
+  function unitNamePlain(k){ return MEASURE_UNIT_NAMES[k] || k.replace(/_/g," "); }
+  function fmt(n){
+    if (!isFinite(n)) return "—";
+    if (n === 0) return "0";
+    const a = Math.abs(n);
+    if (a >= 1e15 || a < 1e-9) return n.toExponential(6);
+    if (a >= 1) return (+n.toFixed(6)).toString();
+    return (+n.toPrecision(6)).toString();
+  }
+
+  function renderTabs(){
+    $("tabs").innerHTML = "";
+    Object.keys(MEASURE_DATA).forEach(cat => {
+      const b = document.createElement("button");
+      b.textContent = MEASURE_CAT_NAMES[cat] || cat;
+      if (cat === curCat) b.className = "on";
+      b.onclick = () => { curCat = cat; buildAll(); };
+      $("tabs").appendChild(b);
+    });
+  }
+
+  function fillGroups(sel, keep){
+    const cat = MEASURE_DATA[curCat];
+    const prev = keep ? sel.value : null;
+    sel.innerHTML = "";
+    Object.keys(cat.groups).forEach(gid => {
+      const o = document.createElement("option");
+      o.value = gid; o.textContent = cat.groups[gid].name;
+      sel.appendChild(o);
+    });
+    if (prev && cat.groups[prev]) sel.value = prev;
+  }
+
+  function fillUnits(sel, groupId, keep){
+    const cat = MEASURE_DATA[curCat];
+    const prev = keep ? sel.value : null;
+    sel.innerHTML = "";
+    const units = cat.groups[groupId].units;
+    Object.keys(units).forEach(u => {
+      const o = document.createElement("option");
+      o.value = u; o.textContent = unitName(u, groupId);
+      sel.appendChild(o);
+    });
+    if (prev && units[prev] != null) sel.value = prev;
+  }
+
+  function buildAll(){
+    renderTabs();
+    fillGroups($("srcGroup"));
+    fillGroups($("tgtGroup"));
+    // 默认：源=第一个非公制朝代，目标=公制(现代)；若没有则前后
+    const cat = MEASURE_DATA[curCat];
+    const gids = Object.keys(cat.groups);
+    const modernIdx = gids.indexOf("modern");
+    $("srcGroup").value = gids.find(g => g !== "modern") || gids[0];
+    if (modernIdx >= 0) $("tgtGroup").value = "modern";
+    fillUnits($("srcUnit"), $("srcGroup").value);
+    fillUnits($("tgtUnit"), $("tgtGroup").value);
+    // 默认选一个"代表单位"（尺/升/斤优先）
+    pickDefaultUnit($("srcUnit"), ["chi","sheng","jin","liang","dou","cun"]);
+    pickDefaultUnit($("tgtUnit"), ["cm","ml","g","m","l","kg"]);
+    calc();
+    renderAnchor();
+  }
+
+  function pickDefaultUnit(sel, prefs){
+    for (const p of prefs) {
+      if ([...sel.options].some(o => o.value === p)) { sel.value = p; return; }
+    }
+  }
+
+  function calc(){
+    const cat = MEASURE_DATA[curCat];
+    const sg = $("srcGroup").value, su = $("srcUnit").value;
+    const tg = $("tgtGroup").value, tu = $("tgtUnit").value;
+    const v = parseFloat($("srcVal").value);
+    const sUnits = cat.groups[sg]?.units || {};
+    const tUnits = cat.groups[tg]?.units || {};
+    if (isNaN(v) || sUnits[su] == null || tUnits[tu] == null) {
+      $("tgtVal").value = "";
+      $("hint").innerHTML = "";
+      return;
+    }
+    const baseVal = v * sUnits[su];               // 转到基准单位
+    const out = baseVal / tUnits[tu];             // 从基准转到目标
+    $("tgtVal").value = fmt(out);
+    const sName = cat.groups[sg].name, tName = cat.groups[tg].name;
+    $("hint").innerHTML = sName + " <b>" + v + " " + unitName(su, sg) + "</b> = "
+      + tName + " <b>" + fmt(out) + " " + unitName(tu, tg) + "</b>";
+  }
+
+  function renderAnchor(){
+    const cat = MEASURE_DATA[curCat];
+    const u = cat.baseKey;
+    let rows = "";
+    Object.keys(cat.groups).forEach(gid => {
+      const g = cat.groups[gid];
+      if (gid === "modern") return;
+      if (g.units[u] != null) {
+        rows += "<div>「" + g.name + "」 1 " + unitName(u) + " = 基准 1 " + unitName(u)
+          + "（该制式中 1 " + unitName(u) + " ≈ " + fmt(g.units[u]) + " " + unitName(u) + "）</div>";
+      }
+    });
+    // 更直观：给出各朝代"一尺/一升/一斤 = 多少公制"
+    const anchorUnit = { length:"chi", volume:"sheng", weight:"jin" }[curCat];
+    const anchorBase = { length:"cm", volume:"ml", weight:"g" }[curCat];
+    let better = "<h3>各朝代「1 " + unitName(anchorUnit) + "」≈ 公制</h3>";
+    Object.keys(cat.groups).forEach(gid => {
+      const g = cat.groups[gid];
+      const f = g.units[anchorUnit];
+      if (f != null) better += "<div>" + g.name + "：1 " + unitName(anchorUnit)
+        + " ≈ <span class='v'>" + fmt(f) + "</span> " + unitName(anchorBase) + "</div>";
+    });
+    $("anchor").innerHTML = better;
+  }
+
+  // 事件
+  ["srcGroup","srcUnit","tgtGroup","tgtUnit","srcVal"].forEach(id => {
+    $(id).addEventListener("input", () => {
+      if (id === "srcGroup") fillUnits($("srcUnit"), $("srcGroup").value);
+      if (id === "tgtGroup") fillUnits($("tgtUnit"), $("tgtGroup").value);
+      calc();
+    });
+    $(id).addEventListener("change", () => {
+      if (id === "srcGroup") fillUnits($("srcUnit"), $("srcGroup").value);
+      if (id === "tgtGroup") fillUnits($("tgtUnit"), $("tgtGroup").value);
+      calc();
+    });
+  });
+  $("swap").onclick = () => {
+    const sg=$("srcGroup").value, su=$("srcUnit").value, sv=$("srcVal").value;
+    $("srcGroup").value=$("tgtGroup").value; fillUnits($("srcUnit"),$("srcGroup").value);
+    $("tgtGroup").value=sg; fillUnits($("tgtUnit"),$("tgtGroup").value);
+    $("srcUnit").value=$("tgtUnit").value; $("tgtUnit").value=su;
+    $("srcVal").value=$("tgtVal").value || sv;
+    calc();
+  };
+
+  buildAll();
+})();
+</script>
+</body>
+</html>

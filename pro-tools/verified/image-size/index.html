@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片尺寸与分辨率工具 · 完整交付物</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 26px; margin-bottom: 8px; color: #1a2b4a; }
+  .subtitle { color: #7f8c9b; font-size: 14px; margin-bottom: 24px; }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #e1e8ed;
+    margin-bottom: 20px;
+    background: #fff;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 20px;
+    cursor: pointer;
+    background: #fff;
+    border: none;
+    font-size: 15px;
+    color: #5a6c7d;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+  }
+  .tab:hover { background: #f8fafc; color: #1a2b4a; }
+  .tab.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    font-weight: 600;
+  }
+  .panel { display: none; background: #fff; padding: 28px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .panel.active { display: block; }
+  pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+  }
+  .run-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .run-btn:hover { background: #1d4ed8; }
+  #test-output {
+    background: #0f172a;
+    color: #a7f3d0;
+    padding: 20px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .doc h2 { font-size: 20px; margin: 28px 0 14px; color: #1a2b4a; border-left: 4px solid #2563eb; padding-left: 12px; }
+  .doc h3 { font-size: 16px; margin: 20px 0 10px; color: #334155; }
+  .doc p { margin-bottom: 12px; }
+  .doc ul, .doc ol { margin: 10px 0 14px 24px; }
+  .doc li { margin-bottom: 6px; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  .doc th, .doc td { border: 1px solid #e1e8ed; padding: 8px 12px; text-align: left; }
+  .doc th { background: #f1f5f9; font-weight: 600; }
+  .doc code { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-size: 13px; color: #c7254e; }
+  .doc .warn { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 14px 0; border-radius: 4px; }
+  .doc .info { background: #dbeafe; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 14px 0; border-radius: 4px; }
+  .doc .danger { background: #fee2e2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 14px 0; border-radius: 4px; }
+  .version {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    font-size: 11px;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 999;
+  }
+  .calc { padding:12px 4px; }
+  .calc h3 { font-size:15px; margin:0 0 10px; color:#333; }
+  .calc .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .calc label { font-size:13px; color:#666; min-width:64px; }
+  .calc input { width:110px; padding:6px 8px; border:1px solid #ccc; border-radius:5px; font-size:14px; }
+  .calc .out { background:#f7f7f7; border:1px solid #e2e2e2; border-radius:6px; padding:10px 12px;
+    font-size:13px; line-height:1.9; color:#333; white-space:pre-wrap; }
+  .calc .out b { color:#1a6b4a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>图片尺寸与分辨率工具</h1>
+  <div class="subtitle">像素 · DPI · 物理尺寸互算 / 打印尺寸估算 / 社交媒体尺寸参考</div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="calc">🧮 计算器</button>
+    <button class="tab" data-tab="source">第一部分 · JS 源码</button>
+    <button class="tab" data-tab="test">第二部分 · 单元测试</button>
+    <button class="tab" data-tab="doc">第三部分 · 使用说明书</button>
+  </div>
+
+  <!-- 计算器（2026-10-24 补：此前只有源码/测试/说明书，无输入界面） -->
+  <div class="panel active" id="panel-calc">
+    <div class="calc">
+      <h3>像素 ↔ 物理尺寸</h3>
+      <div class="row">
+        <label>宽度(px)</label><input type="number" id="c-w" value="3000" min="0" step="1">
+        <label>高度(px)</label><input type="number" id="c-h" value="2000" min="0" step="1">
+      </div>
+      <div class="row">
+        <label>DPI</label><input type="number" id="c-dpi" value="300" min="1" step="1">
+        <label>目标 DPI</label><input type="number" id="c-target" value="300" min="1" step="1">
+      </div>
+      <div class="row"><button class="run-btn" id="c-run">计算</button></div>
+      <div id="c-out" class="out">输入像素与 DPI 后点「计算」</div>
+
+      <h3 style="margin-top:22px">反算：给定物理尺寸 → 需要多少像素</h3>
+      <div class="row">
+        <label>宽(cm)</label><input type="number" id="c-cm-w" value="10" min="0" step="0.1">
+        <label>高(cm)</label><input type="number" id="c-cm-h" value="6.67" min="0" step="0.1">
+        <label>DPI</label><input type="number" id="c-cm-dpi" value="300" min="1" step="1">
+      </div>
+      <div class="row"><button class="run-btn" id="c-run2">反算像素</button></div>
+      <div id="c-out2" class="out">输入厘米与 DPI 后点「反算像素」</div>
+    </div>
+  </div>
+
+  <!-- 第一部分：源码 -->
+  <div class="panel active" id="panel-source">
+    <pre id="source-code"></pre>
+  </div>
+
+  <!-- 第二部分：测试 -->
+  <div class="panel" id="panel-test">
+    <button class="run-btn" id="run-test">▶ 运行全部单元测试</button>
+    <div id="test-output">点击按钮运行测试…</div>
+  </div>
+
+  <!-- 第三部分：说明书 -->
+  <div class="panel" id="panel-doc">
+    <div class="doc" id="doc-content"></div>
+  </div>
+</div>
+
+<div class="version">v2.1.0-补计算界面 20261024</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，无外部依赖）
+ * ============================================================ */
+const SOURCE_CODE = `/**
+ * 图片尺寸与分辨率互算工具
+ * 纯函数实现，无外部依赖，可在浏览器直接运行
+ *
+ * 核心公式：
+ *   物理尺寸(英寸) = 像素 / DPI
+ *   物理尺寸(cm)   = 像素 / DPI × 2.54
+ *   像素           = 物理尺寸(英寸) × DPI
+ *   DPI            = 像素 / 物理尺寸(英寸)
+ */
+
+/**
+ * 判断是否为有效数字（排除 NaN、Infinity、非数字类型）
+ * @param {*} v - 待校验值
+ * @returns {boolean}
+ */
+function isValidNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * 像素 → 英寸
+ * @param {number} pixels - 像素值，必须 >= 0
+ * @param {number} dpi - 每英寸点数，必须 > 0
+ * @returns {number} 英寸值
+ * @throws {Error} 参数非法时抛出
+ */
+function pixelsToInches(pixels, dpi) {
+  if (!isValidNumber(pixels) || pixels < 0) {
+    throw new Error('pixels 必须为非负有限数字');
+  }
+  if (!isValidNumber(dpi) || dpi <= 0) {
+    throw new Error('dpi 必须为正有限数字');
+  }
+  return pixels / dpi;
+}
+
+/**
+ * 像素 → 厘米
+ * @param {number} pixels - 像素值，必须 >= 0
+ * @param {number} dpi - 每英寸点数，必须 > 0
+ * @returns {number} 厘米值
+ */
+function pixelsToCm(pixels, dpi) {
+  return pixelsToInches(pixels, dpi) * 2.54;
+}
+
+/**
+ * 像素 → 毫米
+ * @param {number} pixels - 像素值，必须 >= 0
+ * @param {number} dpi - 每英寸点数，必须 > 0
+ * @returns {number} 毫米值
+ */
+function pixelsToMm(pixels, dpi) {
+  return pixelsToInches(pixels, dpi) * 25.4;
+}
+
+/**
+ * 英寸 → 像素
+ * @param {number} inches - 英寸值，必须 >= 0
+ * @param {number} dpi - 每英寸点数，必须 > 0
+ * @returns {number} 像素值（四舍五入到整数）
+ */
+function inchesToPixels(inches, dpi) {
+  if (!isValidNumber(inches) || inches < 0) {
+    throw new Error('inches 必须为非负有限数字');
+  }
+  if (!isValidNumber(dpi) || dpi <= 0) {
+    throw new Error('dpi 必须为正有限数字');
+  }
+  return Math.round(inches * dpi);
+}
+
+/**
+ * 厘米 → 像素
+ * @param {number} cm - 厘米值，必须 >= 0
+ * @param {number} dpi - 每英寸点数，必须 > 0
+ * @returns {number} 像素值（四舍五入到整数）
+ */
+function cmToPixels(cm, dpi) {
+  return inchesToPixels(cm / 2.54, dpi);
+}
+
+/**
+ * 毫米 → 像素
+ * @param {number} mm - 毫米值，必须 >= 0
+ * @param {number} dpi - 每英寸点数，必须 > 0
+ * @returns {number} 像素值（四舍五入到整数）
+ */
+function mmToPixels(mm, dpi) {
+  return inchesToPixels(mm / 25.4, dpi);
+}
+
+/**
+ * 根据像素与物理尺寸反算 DPI
+ * @param {number} pixels - 像素值，必须 > 0
+ * @param {number} inches - 物理尺寸（英寸），必须 > 0
+ * @returns {number} DPI 值
+ */
+function calculateDpi(pixels, inches) {
+  if (!isValidNumber(pixels) || pixels <= 0) {
+    throw new Error('pixels 必须为正有限数字');
+  }
+  if (!isValidNumber(inches) || inches <= 0) {
+    throw new Error('inches 必须为正有限数字');
+  }
+  return pixels / inches;
+}
+
+/**
+ * 估算打印尺寸（返回带误差范围的结果）
+ * 说明：实际打印尺寸受打印机、纸张、驱动缩放、色彩模式等影响，
+ * 本函数仅给出理论值与合理误差区间。
+ *
+ * @param {number} widthPx - 宽度像素
+ * @param {number} heightPx - 高度像素
+ * @param {number} dpi - 目标 DPI（如 300）
+ * @returns {{ widthCm: number, heightCm: number, tolerance: string, note: string }}
+ */
+function estimatePrintSize(widthPx, heightPx, dpi) {
+  if (!isValidNumber(widthPx) || widthPx <= 0 ||
+      !isValidNumber(heightPx) || heightPx <= 0 ||
+      !isValidNumber(dpi) || dpi <= 0) {
+    throw new Error('参数必须为正有限数字');
+  }
+  const wCm = pixelsToCm(widthPx, dpi);
+  const hCm = pixelsToCm(heightPx, dpi);
+
+  let note = '理论值';
+  if (dpi < 150) note = '低分辨率，打印可能可见像素颗粒';
+  else if (dpi < 200) note = '普通质量，适合远距离观看';
+  else if (dpi < 300) note = '良好质量，适合一般印刷';
+  else if (dpi < 600) note = '高质量，适合精细印刷';
+  else note = '超高质量，普通印刷难以体现差异';
+
+  return {
+    widthCm: +wCm.toFixed(2),
+    heightCm: +hCm.toFixed(2),
+    tolerance: '±2%（受打印机、纸张、驱动影响）',
+    note: note
+  };
+}
+
+/**
+ * 返回常见社交媒体推荐尺寸（参考值）
+ * 注意：各平台官方文档会不定期调整，本表仅供参考，
+ * 实际使用请以各平台最新官方文档为准。
+ *
+ * @returns {Array<{platform: string, type: string, width: number, height: number, ratio: string, note: string}>}
+ */
+function getSocialMediaSizes() {
+  return [
+    { platform: '微信公众号', type: '封面大图', width: 900, height: 383, ratio: '2.35:1', note: '头条封面' },
+    { platform: '微信公众号', type: '次条封面', width: 200, height: 200, ratio: '1:1', note: '次条封面' },
+    { platform: '微信朋友圈', type: '单图', width: 1080, height: 1080, ratio: '1:1', note: '推荐正方形' },
+    { platform: '微信朋友圈', type: '竖图', width: 1080, height: 1440, ratio: '3:4', note: '信息流占位更大' },
+    { platform: '微博', type: '配图', width: 1080, height: 1080, ratio: '1:1', note: '推荐尺寸' },
+    { platform: '小红书', type: '竖图', width: 1080, height: 1440, ratio: '3:4', note: '信息流推荐' },
+    { platform: '小红书', type: '方图', width: 1080, height: 1080, ratio: '1:1', note: '通用' },
+    { platform: '抖音', type: '封面', width: 1080, height: 1920, ratio: '9:16', note: '竖屏全屏' },
+    { platform: 'B 站', type: '视频封面', width: 1146, height: 717, ratio: '16:10', note: '投稿封面' },
+    { platform: 'Instagram', type: 'Post', width: 1080, height: 1080, ratio: '1:1', note: '正方形' },
+    { platform: 'Instagram', type: 'Story/Reels', width: 1080, height: 1920, ratio: '9:16', note: '竖屏全屏' },
+    { platform: 'Facebook', type: 'Post', width: 1200, height: 630, ratio: '1.91:1', note: '链接分享' },
+    { platform: 'X (Twitter)', type: 'Post', width: 1600, height: 900, ratio: '16:9', note: '推荐比例' },
+    { platform: 'YouTube', type: '缩略图', width: 1280, height: 720, ratio: '16:9', note: '最小宽 640' },
+    { platform: 'LinkedIn', type: 'Post', width: 1200, height: 627, ratio: '1.91:1', note: '分享图' }
+  ];
+}
+
+/**
+ * 根据给定像素与 DPI，查找最接近的社交媒体尺寸
+ * @param {number} widthPx - 宽度像素
+ * @param {number} heightPx - 高度像素
+ * @returns {Array<{platform: string, type: string, width: number, height: number, ratio: string, note: string, match: string}>}
+ */
+function matchSocialMediaSize(widthPx, heightPx) {
+  if (!isValidNumber(widthPx) || widthPx <= 0 ||
+      !isValidNumber(heightPx) || heightPx <= 0) {
+    throw new Error('宽高必须为正有限数字');
+  }
+  const ratio = widthPx / heightPx;
+  const sizes = getSocialMediaSizes();
+  return sizes
+    .map(s => {
+      const sr = s.width / s.height;
+      const diff = Math.abs(ratio - sr) / sr;
+      let match = '不匹配';
+      if (diff < 0.02) match = '比例高度匹配';
+      else if (diff < 0.08) match = '比例接近';
+      return { ...s, match: match, diff: +(diff * 100).toFixed(1) };
+    })
+    .filter(s => s.match !== '不匹配')
+    .sort((a, b) => a.diff - b.diff);
+}
+
+/**
+ * 格式化带误差范围的结果
+ * @param {number} value - 数值
+ * @param {number} tolerancePercent - 误差百分比（如 2 表示 ±2%）
+ * @param {number} [digits=2] - 小数位数
+ * @returns {string} 形如 "10.00 cm（±2%：9.80 ~ 10.20）"
+ */
+function formatWithTolerance(value, tolerancePercent, digits) {
+  if (digits === undefined) digits = 2;
+  if (!isValidNumber(value) || !isValidNumber(tolerancePercent)) {
+    throw new Error('参数必须为有限数字');
+  }
+  const d = Math.pow(10, digits);
+  const v = Math.round(value * d) / d;
+  const delta = Math.round(value * tolerancePercent / 100 * d) / d;
+  return v.toFixed(digits) + '（±' + tolerancePercent + '%：' +
+    (v - delta).toFixed(digits) + ' ~ ' + (v + delta).toFixed(digits) + '）';
+}`;
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS，自带 assert，≥30 个）
+ * ============================================================ */
+function runTests() {
+  const output = document.getElementById('test-output');
+  const log = [];
+  let passed = 0, failed = 0;
+  const results = [];
+
+  function assert(name, fn) {
+    try {
+      fn();
+      passed++;
+      results.push('✓ ' + name);
+    } catch (e) {
+      failed++;
+      results.push('✗ ' + name + ' → ' + e.message);
+    }
+  }
+
+  function assertClose(actual, expected, eps, msg) {
+    if (Math.abs(actual - expected) > eps) {
+      throw new Error((msg || '') + ' 期望 ' + expected + '，实际 ' + actual + '（eps=' + eps + '）');
+    }
+  }
+
+  function assertThrows(fn, msg) {
+    let threw = false;
+    try { fn(); } catch (e) { threw = true; }
+    if (!threw) throw new Error(msg || '期望抛出异常但未抛出');
+  }
+
+  function assertEqual(actual, expected, msg) {
+    if (actual !== expected) {
+      throw new Error((msg || '') + ' 期望 ' + expected + '，实际 ' + actual);
+    }
+  }
+
+  // === pixelsToInches ===
+  assert('T01 pixelsToInches 300px@300dpi=1in', () => {
+    assertClose(pixelsToInches(300, 300), 1, 1e-9);
+  });
+  assert('T02 pixelsToInches 150px@300dpi=0.5in', () => {
+    assertClose(pixelsToInches(150, 300), 0.5, 1e-9);
+  });
+  assert('T03 pixelsToInches 0px=0in', () => {
+    assertEqual(pixelsToInches(0, 300), 0);
+  });
+  assert('T04 pixelsToInches 大数 100000px@300dpi', () => {
+    assertClose(pixelsToInches(100000, 300), 333.333333, 1e-4);
+  });
+  assert('T05 pixelsToInches 负数抛错', () => {
+    assertThrows(() => pixelsToInches(-1, 300));
+  });
+  assert('T06 pixelsToInches dpi=0 抛错', () => {
+    assertThrows(() => pixelsToInches(100, 0));
+  });
+  assert('T07 pixelsToInches NaN 抛错', () => {
+    assertThrows(() => pixelsToInches(NaN, 300));
+  });
+  assert('T08 pixelsToInches Infinity 抛错', () => {
+    assertThrows(() => pixelsToInches(Infinity, 300));
+  });
+  assert('T09 pixelsToInches 字符串抛错', () => {
+    assertThrows(() => pixelsToInches('100', 300));
+  });
+  assert('T10 pixelsToInches null 抛错', () => {
+    assertThrows(() => pixelsToInches(null, 300));
+  });
+
+  // === pixelsToCm ===
+  assert('T11 pixelsToCm 300px@300dpi=2.54cm', () => {
+    assertClose(pixelsToCm(300, 300), 2.54, 1e-9);
+  });
+  assert('T12 pixelsToCm 0px=0cm', () => {
+    assertEqual(pixelsToCm(0, 300), 0);
+  });
+  assert('T13 pixelsToCm 负数抛错', () => {
+    assertThrows(() => pixelsToCm(-10, 300));
+  });
+
+  // === pixelsToMm ===
+  assert('T14 pixelsToMm 300px@300dpi=25.4mm', () => {
+    assertClose(pixelsToMm(300, 300), 25.4, 1e-9);
+  });
+
+  // === inchesToPixels ===
+  assert('T15 inchesToPixels 1in@300dpi=300px', () => {
+    assertEqual(inchesToPixels(1, 300), 300);
+  });
+  assert('T16 inchesToPixels 0.5in@300dpi=150px', () => {
+    assertEqual(inchesToPixels(0.5, 300), 150);
+  });
+  assert('T17 inchesToPixels 四舍五入 0.505in@300dpi=152px', () => {
+    assertEqual(inchesToPixels(0.505, 300), 152);
+  });
+  assert('T18 inchesToPixels 0in=0px', () => {
+    assertEqual(inchesToPixels(0, 300), 0);
+  });
+  assert('T19 inchesToPixels 负数抛错', () => {
+    assertThrows(() => inchesToPixels(-1, 300));
+  });
+
+  // === cmToPixels ===
+  assert('T20 cmToPixels 2.54cm@300dpi=300px', () => {
+    assertEqual(cmToPixels(2.54, 300), 300);
+  });
+  assert('T21 cmToPixels 10cm@300dpi≈1181px', () => {
+    assertEqual(cmToPixels(10, 300), 1181);
+  });
+
+  // === mmToPixels ===
+  assert('T22 mmToPixels 25.4mm@300dpi=300px', () => {
+    assertEqual(mmToPixels(25.4, 300), 300);
+  });
+
+  // === calculateDpi ===
+  assert('T23 calculateDpi 300px/1in=300dpi', () => {
+    assertEqual(calculateDpi(300, 1), 300);
+  });
+  assert('T24 calculateDpi 600px/2in=300dpi', () => {
+    assertEqual(calculateDpi(600, 2), 300);
+  });
+  assert('T25 calculateDpi pixels=0 抛错', () => {
+    assertThrows(() => calculateDpi(0, 1));
+  });
+  assert('T26 calculateDpi inches=0 抛错', () => {
+    assertThrows(() => calculateDpi(300, 0));
+  });
+
+  // === estimatePrintSize ===
+  assert('T27 estimatePrintSize 3000x2400@300dpi', () => {
+    const r = estimatePrintSize(3000, 2400, 300);
+    assertClose(r.widthCm, 25.4, 0.01);
+    assertClose(r.heightCm, 20.32, 0.01);
+  });
+  assert('T28 estimatePrintSize 低 dpi 提示', () => {
+    const r = estimatePrintSize(1000, 1000, 100);
+    if (!/低分辨率/.test(r.note)) throw new Error('note 应提示低分辨率');
+  });
+  assert('T29 estimatePrintSize 参数非法抛错', () => {
+    assertThrows(() => estimatePrintSize(-1, 100, 300));
+  });
+
+  // === getSocialMediaSizes ===
+  assert('T30 getSocialMediaSizes 返回数组且非空', () => {
+    const s = getSocialMediaSizes();
+    if (!Array.isArray(s) || s.length === 0) throw new Error('应为非空数组');
+  });
+  assert('T31 getSocialMediaSizes 每项字段完整', () => {
+    const s = getSocialMediaSizes();
+    s.forEach(item => {
+      ['platform','type','width','height','ratio','note'].forEach(k => {
+        if (!(k in item)) throw new Error('缺少字段 ' + k);
+      });
+    });
+  });
+  assert('T32 getSocialMediaSizes 宽高为正整数', () => {
+    const s = getSocialMediaSizes();
+    s.forEach(item => {
+      if (!Number.isInteger(item.width) || item.width <= 0) throw new Error('width 非法');
+      if (!Number.isInteger(item.height) || item.height <= 0) throw new Error('height 非法');
+    });
+  });
+
+  // === matchSocialMediaSize ===
+  assert('T33 matchSocialMediaSize 1080x1080 匹配 1:1', () => {
+    const m = matchSocialMediaSize(1080, 1080);
+    if (m.length === 0) throw new Error('应至少匹配一项');
+    if (!m.some(x => x.ratio === '1:1')) throw new Error('应匹配 1:1');
+  });
+  assert('T34 matchSocialMediaSize 1080x1920 匹配 9:16', () => {
+    const m = matchSocialMediaSize(1080, 1920);
+    if (!m.some(x => x.ratio === '9:16')) throw new Error('应匹配 9:16');
+  });
+  assert('T35 matchSocialMediaSize 参数非法抛错', () => {
+    assertThrows(() => matchSocialMediaSize(0, 100));
+  });
+
+  // === formatWithTolerance ===
+  assert('T36 formatWithTolerance 10±2%', () => {
+    const s = formatWithTolerance(10, 2);
+    if (!/10.00/.test(s)) throw new Error('格式不符：' + s);
+    if (!/9.80/.test(s) || !/10.20/.test(s)) throw new Error('区间不符：' + s);
+  });
+  assert('T37 formatWithTolerance 参数非法抛错', () => {
+    assertThrows(() => formatWithTolerance(NaN, 2));
+  });
+
+  // === 互逆运算一致性 ===
+  assert('T38 互逆：pixelsToInches → inchesToPixels', () => {
+    const px = 1234, dpi = 300;
+    const inch = pixelsToInches(px, dpi);
+    const back = inchesToPixels(inch, dpi);
+    if (Math.abs(back - px) > 1) throw new Error('互逆误差过大：' + back);
+  });
+  assert('T39 互逆：pixelsToCm → cmToPixels', () => {
+    const px = 2000, dpi = 300;
+    const cm = pixelsToCm(px, dpi);
+    const back = cmToPixels(cm, dpi);
+    if (Math.abs(back - px) > 1) throw new Error('互逆误差过大：' + back);
+  });
+  assert('T40 互逆：calculateDpi 反推', () => {
+    const px = 1800, inch = 6;
+    const dpi = calculateDpi(px, inch);
+    assertEqual(dpi, 300);
+  });
+
+  // === 浮点精度 ===
+  assert('T41 浮点：0.1+0.2 类场景不崩溃', () => {
+    const r = pixelsToCm(300, 300);
+    if (Math.abs(r - 2.54) > 1e-9) throw new Error('精度异常');
+  });
+  assert('T42 极小 dpi 0.001 不抛错', () => {
+    const r = pixelsToInches(1, 0.001);
+    assertEqual(r, 1000);
+  });
+  assert('T43 极大像素 1e9 不抛错', () => {
+    const r = pixelsToInches(1e9, 300);
+    assertClose(r, 3333333.33, 0.01);
+  });
+
+  // 输出
+  const total = passed + failed;
+  log.push('========== 单元测试结果 ==========');
+  log.push('');
+  results.forEach(r => log.push(r));
+  log.push('');
+  log.push('----------------------------------');
+  log.push('通过 ' + passed + ' / 共 ' + total + (failed === 0 ? '  ✅ 全部通过' : '  ❌ 存在失败'));
+  output.textContent = log.join('\\n');
+}
+
+/* ============================================================
+ * 第三部分：使用说明书（≥2000 字）
+ * ============================================================ */
+const DOC_CONTENT = `
+<h2>一、工具简介</h2>
+<p>本工具用于解决「图片像素尺寸、DPI（每英寸点数）、物理打印尺寸」三者之间的换算问题，并提供常见社交媒体推荐尺寸参考。典型使用场景包括：</p>
+<ul>
+  <li>拿到一张图，想知道它打印出来有多大；</li>
+  <li>知道要打印多大，反推需要多少像素；</li>
+  <li>已知像素和物理尺寸，反推 DPI；</li>
+  <li>做新媒体配图时，快速查对平台推荐尺寸。</li>
+</ul>
+<p>本工具为纯前端实现，不依赖任何外部库，所有计算均为纯函数，可在浏览器控制台直接运行。</p>
+
+<h2>二、核心概念</h2>
+<h3>2.1 像素（Pixel, px）</h3>
+<p>像素是数字图像的最小组成单元。一张 1920×1080 的图片，表示横向有 1920 个像素点，纵向有 1080 个像素点。像素本身没有物理大小，它只是一个「数量」。</p>
+
+<h3>2.2 DPI（Dots Per Inch）</h3>
+<p>DPI 表示「每英寸包含的点数」。在图像领域，它用来描述像素密度：同样 300 像素，放在 1 英寸里就是 300 DPI，放在 2 英寸里就是 150 DPI。DPI 越高，单位长度内的像素越多，细节越丰富。</p>
+<p>印刷行业常见参考值（需查标准原文确认具体场景要求）：</p>
+<ul>
+  <li>72 DPI：屏幕显示传统参考值（现代 Retina 屏已不适用）；</li>
+  <li>150 DPI：报纸、远距离观看的喷绘；</li>
+  <li>300 DPI：一般彩色印刷的常用参考值；</li>
+  <li>600 DPI 及以上：精细印刷、艺术品复制。</li>
+</ul>
+
+<h3>2.3 物理尺寸</h3>
+<p>物理尺寸指打印或显示在实物介质上的长度，常用单位有英寸（inch）、厘米（cm）、毫米（mm）。换算关系：1 英寸 = 2.54 厘米 = 25.4 毫米（此为国际单位制定义，精确值）。</p>
+
+<h3>2.4 核心公式</h3>
+<p>三者关系由以下公式确定：</p>
+<ul>
+  <li>物理尺寸（英寸）= 像素 ÷ DPI</li>
+  <li>物理尺寸（厘米）= 像素 ÷ DPI × 2.54</li>
+  <li>像素 = 物理尺寸（英寸）× DPI</li>
+  <li>DPI = 像素 ÷ 物理尺寸（英寸）</li>
+</ul>
+
+<h2>三、参数详解</h2>
+<table>
+  <tr><th>函数</th><th>参数</th><th>含义</th><th>约束</th></tr>
+  <tr><td>pixelsToInches</td><td>pixels, dpi</td><td>像素转英寸</td><td>pixels ≥ 0，dpi &gt; 0</td></tr>
+  <tr><td>pixelsToCm</td><td>pixels, dpi</td><td>像素转厘米</td><td>同上</td></tr>
+  <tr><td>pixelsToMm</td><td>pixels, dpi</td><td>像素转毫米</td><td>同上</td></tr>
+  <tr><td>inchesToPixels</td><td>inches, dpi</td><td>英寸转像素</td><td>inches ≥ 0，dpi &gt; 0</td></tr>
+  <tr><td>cmToPixels</td><td>cm, dpi</td><td>厘米转像素</td><td>同上</td></tr>
+  <tr><td>mmToPixels</td><td>mm, dpi</td><td>毫米转像素</td><td>同上</td></tr>
+  <tr><td>calculateDpi</td><td>pixels, inches</td><td>反算 DPI</td><td>pixels &gt; 0，inches &gt; 0</td></tr>
+  <tr><td>estimatePrintSize</td><td>widthPx, heightPx, dpi</td><td>估算打印尺寸</td><td>三者均 &gt; 0</td></tr>
+  <tr><td>getSocialMediaSizes</td><td>无</td><td>返回社媒尺寸参考表</td><td>—</td></tr>
+  <tr><td>matchSocialMediaSize</td><td>widthPx, heightPx</td><td>按宽高比例匹配社媒尺寸</td><td>两者均 &gt; 0</td></tr>
+  <tr><td>formatWithTolerance</td><td>value, tolerancePercent</td><td>格式化带误差的结果</td><td>均为有限数字</td></tr>
+</table>
+
+<h2>四、使用场景</h2>
+
+<h3>场景 1：判断一张图能否冲印 6 寸照片</h3>
+<p>6 寸照片的物理尺寸为 4×6 英寸（约 10.2×15.2 厘米）。若要求 300 DPI，则至少需要 1200×1800 像素。手机拍摄的 4000×3000 像素照片，按 300 DPI 打印可达约 25.4×33.9 厘米，冲 6 寸绰绰有余。</p>
+<p>调用示例：</p>
+<pre>estimatePrintSize(4000, 3000, 300);
+// → { widthCm: 33.87, heightCm: 25.4, tolerance: '±2%...', note: '高质量...' }</pre>
+
+<h3>场景 2：为公众号做封面图</h3>
+<p>微信公众号头条封面推荐比例为 2.35:1，参考尺寸 900×383。调用 <code>getSocialMediaSizes()</code> 可快速查得。若已有 2000 像素宽的素材，可按比例计算高度：2000 ÷ 2.35 ≈ 851 像素。</p>
+
+<h3>场景 3：线下易拉宝设计</h3>
+<p>常见易拉宝尺寸 80×200 厘米。若按 150 DPI（远距离观看足够），所需像素为：</p>
+<pre>cmToPixels(80, 150)  // → 4724
+cmToPixels(200, 150) // → 11811</pre>
+<p>即至少需要约 4724×11811 像素的图。注意：大幅喷绘通常不需要 300 DPI，150 DPI 甚至 72 DPI 已足够，过高的像素反而增加文件体积。</p>
+
+<h3>场景 4：反推扫描件的 DPI</h3>
+<p>扫描了一张 A4 纸（21×29.7 厘米 = 8.27×11.69 英寸），得到 4960×7014 像素的图。反算 DPI：</p>
+<pre>calculateDpi(4960, 8.27)  // → 约 600 DPI</pre>
+<p>说明这是一份 600 DPI 的高精度扫描。</p>
+
+<h3>场景 5：判断现有图片适合哪些社交平台</h3>
+<p>有一张 1080×1440 的图，调用 <code>matchSocialMediaSize(1080, 1440)</code>，会返回比例匹配的平台列表（如小红书竖图、Instagram 竖版等），方便一次性多平台分发。</p>
+
+<h3>场景 6：印刷厂要求 300 DPI，检查文件是否达标</h3>
+<p>拿到一张 2480×3508 像素的图，印刷厂要求 A4（21×29.7 厘米）尺寸 300 DPI。反算：</p>
+<pre>calculateDpi(2480, 8.27)  // → 约 300 DPI</pre>
+<p>刚好达标。</p>
+
+<h2>五、常见错误</h2>
+<ol>
+  <li><b>混淆 DPI 与 PPI</b>：严格意义上 DPI 指打印机的「墨点数/英寸」，PPI 指图像的「像素数/英寸」。日常使用中两者常混用，本工具按行业习惯使用 DPI 一词。</li>
+  <li><b>以为图片自带「固定 DPI」</b>：JPEG/PNG 文件中的 DPI 只是一个元数据标签，修改它不会改变像素数量，只会影响某些软件默认显示的物理尺寸。真正决定清晰度的是像素总数。</li>
+  <li><b>屏幕显示与打印混为一谈</b>：屏幕显示由「设备物理像素 + 系统缩放」决定，与 DPI 标签无直接关系。本工具计算的是「打印到实物介质」的场景。</li>
+  <li><b>忽略大幅喷绘的 DPI 递减</b>：观看距离越远，所需 DPI 越低。楼顶广告牌可能只需 30~50 DPI。</li>
+  <li><b>传入非数字参数</b>：本工具对 NaN、Infinity、负数、字符串、null 等非法输入会抛出异常，调用方需提前校验。</li>
+</ol>
+
+<h2>六、数据依据</h2>
+<ul>
+  <li>1 英寸 = 2.54 厘米：国际单位制定义，精确值。</li>
+  <li>印刷常用 300 DPI：行业惯例，参考 GB/T 7705-2008《平版装潢印刷品》等标准中的质量要求（具体数值需查标准原文）。</li>
+  <li>社交媒体尺寸：来源于各平台公开的设计规范文档。由于平台会不定期调整，本表仅作参考，实际使用请以各平台最新官方文档为准。</li>
+  <li>分辨率测量方法：可参考 ISO 12233:2017《摄影 - 电子静态相机 - 分辨率测量》（需查标准原文确认具体条款）。</li>
+</ul>
+<div class="warn">⚠️ 本工具未直接嵌入任何标准原文数值。涉及合规性判断（如出版物印刷质量是否达标）时，请务必查阅对应标准原文或咨询专业印刷机构。</div>
+
+<h2>七、精度与误差说明（有限精准原则）</h2>
+<p>现实变量是无限的，本工具只做到「方法准、输入项准、结果给误差范围」，<b>不承诺绝对精确</b>。</p>
+
+<h3>7.1 算准了什么</h3>
+<ul>
+  <li><b>数学公式本身</b>：像素、DPI、物理尺寸三者的换算基于定义式，计算过程使用 IEEE 754 双精度浮点数，在输入合法的前提下，公式层面的结果是确定的。</li>
+  <li><b>单位换算常数</b>：1 英寸 = 2.54 厘米为国际定义，精确无误。</li>
+  <li><b>社媒尺寸表</b>：所列数值为公开参考值，表内数据本身是确定的（但平台可能更新）。</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<ul>
+  <li><b>打印机实际输出</b>：不同打印机、不同纸张、不同驱动设置、是否「适应页面」缩放，都会让实际打印尺寸偏离理论值。</li>
+  <li><b>图像元数据 DPI 标签</b>：如前所述，文件中的 DPI 标签可被任意修改，不代表图像真实密度。</li>
+  <li><b>屏幕显示尺寸</b>：本工具不处理屏幕显示场景，屏幕尺寸由设备物理像素、系统缩放、浏览器缩放共同决定。</li>
+  <li><b>观看距离与感知分辨率</b>：人眼在不同距离下对分辨率的感知不同，本工具不做感知层面的判断。</li>
+  <li><b>色彩模式与印刷网点</b>：RGB 与 CMYK 转换、加网方式等会影响最终印刷效果，本工具不涉及。</li>
+  <li><b>浮点数精度</b>：JavaScript 使用双精度浮点数，极端大数或极端小数场景可能出现 1e-15 级别的舍入误差。</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<ul>
+  <li><b>公式换算误差</b>：在常规输入范围（像素 &lt; 1e9，DPI 在 1~10000 之间）内，浮点舍入误差通常小于 1e-10，可忽略。</li>
+  <li><b>打印尺寸误差</b>：理论值与实际打印尺寸之间，家用/办公打印机通常在 ±2%~5%，专业印刷设备可控制在 ±1% 以内。本工具 <code>estimatePrintSize</code> 默认给出 ±2% 的误差区间提示。</li>
+  <li><b>社媒尺寸匹配</b>：比例差异在 2% 以内视为「高度匹配」，2%~8% 视为「接近」，超过 8% 视为「不匹配」。</li>
+</ul>
+
+<div class="info">💡 简言之：本工具能准确告诉你「按公式应该是什么」，但无法告诉你「实际打印出来一定是什么」。涉及关键印刷任务时，请务必以实物打样为准。</div>
+
+<h2>八、局限性</h2>
+<ol>
+  <li><b>不处理图像文件</b>：本工具只做数值计算，不读取、不修改任何图片文件。需要用户自行提供像素数与 DPI。</li>
+  <li><b>不保证社媒尺寸时效性</b>：平台规范会更新，本表为编写时的参考值，不保证长期有效。</li>
+  <li><b>不替代专业印前软件</b>：专业印刷需使用 Adobe Photoshop、Illustrator 等软件的印前检查功能，本工具仅作辅助估算。</li>
+  <li><b>不处理非矩形图像</b>：所有计算基于矩形宽高，不适用于圆形、异形裁切等场景。</li>
+  <li><b>不处理 HDR / 宽色域</b>：本工具仅关注几何尺寸，不涉及色彩空间、位深度等。</li>
+  <li><b>浮点数极限</b>：极大数（&gt; 1e15）或极小数（&lt; 1e-15）可能出现精度损失，这是 JavaScript 语言本身的限制。</li>
+</ol>
+
+<h2>九、快速参考表</h2>
+<table>
+  <tr><th>常见尺寸</th><th>像素（300 DPI）</th><th>像素（150 DPI）</th><th>像素（72 DPI）</th></tr>
+  <tr><td>1 英寸</td><td>300 px</td><td>150 px</td><td>72 px</td></tr>
+  <tr><td>6 寸照片 (4×6 in)</td><td>1200×1800</td><td>600×900</td><td>288×432</td></tr>
+  <tr><td>A4 (21×29.7 cm)</td><td>2480×3508</td><td>1240×1754</td><td>595×842</td></tr>
+  <tr><td>A3 (29.7×42 cm)</td><td>3508×4961</td><td>1754×2480</td><td>842×1191</td></tr>
+  <tr><td>名片 (90×54 mm)</td><td>1063×638</td><td>531×319</td><td>255×153</td></tr>
+</table>
+
+<h2>十、结语</h2>
+<p>本工具的目标是提供一个「方法正确、输入严谨、结果带误差范围」的辅助计算能力。它不能替代专业印前流程，也不能保证实际打印结果与理论值完全一致。在涉及重要印刷品、合规性检查、商业发布等场景时，请务必结合实物打样、专业软件与最新官方文档综合判断。</p>
+<p>使用本工具前，请确认你已理解「有限精准原则」：我们提供的是「在给定输入下，按定义公式应得的结果」，而不是「现实世界一定会呈现的结果」。</p>
+`;
+
+/* ============================================================
+ * 页面初始化
+ * ============================================================ */
+document.getElementById('source-code').textContent = SOURCE_CODE;
+document.getElementById('doc-content').innerHTML = DOC_CONTENT;
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 测试运行按钮
+document.getElementById('run-test').addEventListener('click', runTests);
+
+// 把源码中的函数暴露到全局，以便测试使用
+eval(SOURCE_CODE);
+
+/* ==== 计算器逻辑（2026-10-24 新增）==== */
+function fmt(n, d) {
+  if (!isFinite(n)) return '—';
+  return Number(n.toFixed(d == null ? 2 : d)).toString();
+}
+function initCalc() {
+  var runBtn = document.getElementById('c-run');
+  var runBtn2 = document.getElementById('c-run2');
+  if (!runBtn) return;
+
+  runBtn.addEventListener('click', function () {
+    var out = document.getElementById('c-out');
+    try {
+      var w = parseFloat(document.getElementById('c-w').value);
+      var h = parseFloat(document.getElementById('c-h').value);
+      var dpi = parseFloat(document.getElementById('c-dpi').value);
+      var target = parseFloat(document.getElementById('c-target').value);
+      if (!isFinite(w) || !isFinite(h) || !isFinite(dpi) || !isFinite(target)) {
+        out.textContent = '请填写有效的数字';
+        return;
+      }
+      var lines = [];
+      lines.push('原始：' + w + ' × ' + h + ' px @ ' + dpi + ' DPI');
+      lines.push('物理尺寸：' + fmt(pixelsToCm(w, dpi)) + ' × ' + fmt(pixelsToCm(h, dpi)) + ' cm'
+        + '（' + fmt(pixelsToInches(w, dpi)) + ' × ' + fmt(pixelsToInches(h, dpi)) + ' in）');
+      lines.push('毫米：' + fmt(pixelsToMm(w, dpi), 1) + ' × ' + fmt(pixelsToMm(h, dpi), 1) + ' mm');
+      if (target !== dpi) {
+        lines.push('');
+        lines.push('若按 ' + target + ' DPI 打印：' + fmt(pixelsToCm(w, target)) + ' × ' + fmt(pixelsToCm(h, target)) + ' cm');
+        lines.push('  注：同一张图 DPI 越高，打印出来越小，像素总数不变。');
+      }
+      var est = estimatePrintSize(w, h, target);
+      if (est && est.widthCm != null) {
+        lines.push('');
+        lines.push('打印尺寸估算（' + target + ' DPI）：' + fmt(est.widthCm) + ' × ' + fmt(est.heightCm) + ' cm');
+        if (est.tolerance) lines.push('误差范围：' + est.tolerance);
+        if (est.note) lines.push(est.note);
+      }
+      out.textContent = lines.join('\n');
+    } catch (e) {
+      out.textContent = '计算出错：' + e.message;
+    }
+  });
+
+  runBtn2.addEventListener('click', function () {
+    var out = document.getElementById('c-out2');
+    try {
+      var cw = parseFloat(document.getElementById('c-cm-w').value);
+      var ch = parseFloat(document.getElementById('c-cm-h').value);
+      var dpi = parseFloat(document.getElementById('c-cm-dpi').value);
+      if (!isFinite(cw) || !isFinite(ch) || !isFinite(dpi)) {
+        out.textContent = '请填写有效的数字';
+        return;
+      }
+      var pw = Math.round(cmToPixels(cw, dpi));
+      var ph = Math.round(cmToPixels(ch, dpi));
+      out.textContent = '目标：' + cw + ' × ' + ch + ' cm @ ' + dpi + ' DPI\n'
+        + '需要像素：<b>' + pw + ' × ' + ph + ' px</b>\n'
+        + '合计约 ' + fmt(pw * ph / 1000000, 2) + ' 百万像素';
+    } catch (e) {
+      out.textContent = '计算出错：' + e.message;
+    }
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCalc);
+} else {
+  initCalc();
+}
+
+</script>
+</body>
+</html>

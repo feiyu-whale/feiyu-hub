@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚖️ 平仄检测</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:640px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:15px; font-family:inherit; resize:vertical; min-height:80px; line-height:1.8; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:8px; margin-top:4px; }
+  .ch { text-align:center; padding:8px 2px; border-radius:8px; background:#100b1c; }
+  .ch .z { font-size:11px; color:#e8e0f0; }
+  .ch .p { font-size:12px; margin-top:3px; font-weight:700; }
+  .ch .p.平 { color:#a8f0c0; }
+  .ch .p.仄 { color:#ffb3c8; }
+  .ch .p.中 { color:#8a7fb0; }
+  .ch .p.na { color:#5a4f80; }
+  .legend { font-size:12px; color:#8a7fb0; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+  .hint { font-size:12px; color:#6a5f90; margin-top:6px; line-height:1.6; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>⚖️ 平仄检测</h1>
+  <div class="sub">输入诗句 → 逐字标注平仄（依平水韵）</div>
+
+  <div class="card">
+    <div class="lbl">输入诗句（每句一行）</div>
+    <textarea id="in" placeholder="如：白日依山尽&#10;黄河入海流">白日依山尽
+黄河入海流</textarea>
+    <div class="hint">平=平声 · 仄=仄声（上/去/入）· 中=平仄两读 · na=未收录</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div id="out"></div>
+  </div>
+  <div class="ver">v1.0.0-平仄检测 20261016</div>
+</div>
+<script>
+// 【ping-ze】平仄检测（逐字标平仄）。依赖：单字平仄表(MIT)。输入：诗句；输出：逐字平仄标注。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：charlesix59/chinese_word_rhyme (MIT, (c) 2023 Charles 闵)
+// 平仄取单字平仄表；平水韵中含"入声"韵部者判仄。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var WT = null, PS = null;
+
+  function loadTune(){
+    if(WT) return Promise.resolve(WT);
+    return fetch("../rhyme/data/wordtune.js.json").then(function(r){return r.json();}).then(function(j){ WT=j.map; return WT; });
+  }
+  function loadPS(){
+    if(PS) return Promise.resolve(PS);
+    return fetch("../rhyme/data/pingshui.js.json").then(function(r){return r.json();}).then(function(j){ PS=j; return j; });
+  }
+
+  // 判断单字平仄：优先平仄表
+  function tuneOf(ch){
+    var t = WT ? WT[ch] : null;
+    if(t) return t;   // "平" / "仄" / "平仄"(两读)
+    return "na";
+  }
+
+  function render(){
+    var text = $("in").value;
+    if(!text.trim()){ $("out").innerHTML = "<div class='hint' style='text-align:center'>输入诗句后显示</div>"; return; }
+    Promise.all([loadTune(), loadPS()]).then(function(){
+      var lines = text.split("\n");
+      var html = "";
+      lines.forEach(function(line){
+        var chars = Array.from(line).filter(function(c){ return c.trim().length > 0; });
+        if(!chars.length) return;
+        html += "<div style='margin-bottom:10px'><div class='row'>";
+        chars.forEach(function(c){
+          var isHan = /[\u4e00-\u9fa5]/.test(c);
+          var t = isHan ? tuneOf(c) : "na";
+          var disp = t === "平仄" ? "中" : t;
+          var cls = t === "平仄" ? "中" : (t === "平" ? "平" : (t === "仄" ? "仄" : "na"));
+          html += '<div class="ch"><div class="z">'+c+'</div><div class="p '+cls+'">'+
+            (cls==="na" ? "—" : cls) + '</div></div>';
+        });
+        html += "</div></div>";
+      });
+      $("out").innerHTML = html;
+    }).catch(function(e){
+      $("out").innerHTML = "<div class='hint'>数据加载失败："+e.message+"</div>";
+    });
+  }
+  $("in").addEventListener("input", render);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>酱油等级标准查询</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f1e8;
+    color: #3a2e1f;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 16px;
+    padding-bottom: 60px;
+  }
+  .container { max-width: 640px; margin: 0 auto; }
+  h1 {
+    font-size: 22px;
+    text-align: center;
+    margin-bottom: 4px;
+    color: #5a3a1a;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #8a6a4a;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(90, 58, 26, 0.08);
+  }
+  .card h2 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #5a3a1a;
+    border-left: 4px solid #b8860b;
+    padding-left: 8px;
+  }
+  .input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .input-group input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #d4c4a8;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #faf7f0;
+    color: #3a2e1f;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #b8860b;
+    background: #fff;
+  }
+  .unit {
+    font-size: 13px;
+    color: #8a6a4a;
+    white-space: nowrap;
+  }
+  .result {
+    padding: 14px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 12px;
+    transition: all 0.3s;
+  }
+  .result.empty { background: #f0ebe0; color: #8a6a4a; font-weight: normal; }
+  .result.special { background: linear-gradient(135deg, #f5d76e, #d4a017); color: #fff; }
+  .result.first { background: linear-gradient(135deg, #7cb342, #558b2f); color: #fff; }
+  .result.second { background: linear-gradient(135deg, #5c9bd6, #2e6cb5); color: #fff; }
+  .result.third { background: linear-gradient(135deg, #a89078, #7a6550); color: #fff; }
+  .result.fail { background: #e57373; color: #fff; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid #e8dcc4;
+  }
+  th {
+    background: #f5ead0;
+    color: #5a3a1a;
+    font-weight: bold;
+  }
+  tr:last-child td { border-bottom: none; }
+  .grade-special { color: #b8860b; font-weight: bold; }
+  .grade-first { color: #558b2f; font-weight: bold; }
+  .grade-second { color: #2e6cb5; font-weight: bold; }
+  .grade-third { color: #7a6550; font-weight: bold; }
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #f5a623;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin: 10px 0;
+    color: #5a3a1a;
+  }
+  .note strong { color: #b8860b; }
+  .info {
+    background: #e8f0f8;
+    border-left: 4px solid #2e6cb5;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin: 10px 0;
+  }
+  .ref {
+    background: #f5f1e8;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #5a3a1a;
+    line-height: 1.8;
+  }
+  .ref h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #5a3a1a;
+  }
+  .ref ul { padding-left: 20px; }
+  .ref li { margin-bottom: 4px; }
+  .version {
+    position: fixed;
+    right: 8px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #a89078;
+    background: rgba(255,255,255,0.85);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  .tag-mandatory { background: #e57373; color: #fff; }
+  .tag-recommended { background: #7cb342; color: #fff; }
+  .tag-industry { background: #5c9bd6; color: #fff; }
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .compare-item {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .compare-item.safety {
+    background: #ffebee;
+    border: 1px solid #e57373;
+  }
+  .compare-item.quality {
+    background: #e8f5e9;
+    border: 1px solid #7cb342;
+  }
+  .compare-item h4 {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  @media (max-width: 400px) {
+    .compare { grid-template-columns: 1fr; }
+    body { font-size: 13px; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🫗 酱油等级标准查询</h1>
+  <p class="subtitle">依据 GB/T 18186-2000 · GB 2717-2018</p>
+
+  <div class="card">
+    <h2>🔍 等级查询</h2>
+    <p style="font-size:13px;color:#8a6a4a;margin-bottom:10px;">
+      输入酱油标签上标注的「氨基酸态氮」含量，查询其质量等级（仅适用于酿造酱油）。
+    </p>
+    <div class="input-group">
+      <input type="number" id="nitrogen" step="0.01" min="0" max="2" placeholder="例如 0.8">
+      <span class="unit">g/100mL</span>
+    </div>
+    <div id="result" class="result empty">请输入氨基酸态氮含量</div>
+  </div>
+
+  <div class="card">
+    <h2>📊 酿造酱油等级标准</h2>
+    <p style="font-size:13px;color:#8a6a4a;margin-bottom:10px;">
+      依据 GB/T 18186-2000《酿造酱油》表 1 理化要求，按氨基酸态氮含量分为 4 个等级：
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>等级</th>
+          <th>氨基酸态氮<br>(g/100mL)</th>
+          <th>品质说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="grade-special">⭐ 特级</td>
+          <td>≥ 0.80</td>
+          <td style="text-align:left;font-size:12px;">鲜味最浓，品质最优</td>
+        </tr>
+        <tr>
+          <td class="grade-first">🥇 一级</td>
+          <td>≥ 0.70</td>
+          <td style="text-align:left;font-size:12px;">鲜味浓郁，品质优良</td>
+        </tr>
+        <tr>
+          <td class="grade-second">🥈 二级</td>
+          <td>≥ 0.55</td>
+          <td style="text-align:left;font-size:12px;">鲜味适中</td>
+        </tr>
+        <tr>
+          <td class="grade-third">🥉 三级</td>
+          <td>≥ 0.40</td>
+          <td style="text-align:left;font-size:12px;">达到最低等级要求</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>💡 提示：</strong>等级看「氨基酸态氮」，不看价格。高价酱油未必是特级，要看标签标注的实测值。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚖️ 安全标准 vs 质量等级</h2>
+    <p style="font-size:13px;color:#8a6a4a;margin-bottom:10px;">
+      酱油有两套标准体系，作用不同：
+    </p>
+    <div class="compare">
+      <div class="compare-item safety">
+        <h4>🛡️ GB 2717-2018</h4>
+        <div><span class="tag tag-mandatory">强制</span></div>
+        <p style="margin-top:6px;">食品安全国家标准<br>规定「能不能吃」<br>氨基酸态氮 ≥ 0.4 g/100mL<br>+ 污染物、微生物限量</p>
+      </div>
+      <div class="compare-item quality">
+        <h4>🏆 GB/T 18186-2000</h4>
+        <div><span class="tag tag-recommended">推荐</span></div>
+        <p style="margin-top:6px;">酿造酱油产品标准<br>规定「好不好」<br>按氨基酸态氮分 4 个等级<br>企业可自愿采用</p>
+      </div>
+    </div>
+    <div class="info">
+      <strong>📌 关系：</strong>所有酱油必须先满足 GB 2717 的安全底线（氨基酸态氮 ≥ 0.4 g/100mL 为最低门槛）；在此基础上，酿造酱油可按 GB/T 18186 进一步分级。GB 2717 中其他安全指标（污染物、真菌毒素、微生物等）完整限量需查阅标准原文。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🧪 配制酱油说明</h2>
+    <p style="font-size:13px;color:#8a6a4a;margin-bottom:10px;">
+      本页面等级仅适用于「酿造酱油」。配制酱油另有标准：
+    </p>
+    <ul style="font-size:13px;padding-left:20px;line-height:1.8;">
+      <li><strong>配制酱油</strong>曾执行 <span class="tag tag-industry">行业</span> SB/T 10336《配制酱油》</li>
+      <li>以酿造酱油为主体，添加酸水解植物蛋白调味液、食品添加剂等配制而成</li>
+      <li>⚠️ 根据国家市场监管总局 2021 年《关于加强酱油和食醋质量安全监督管理的公告》，酱油生产企业不得再生产标示为「配制酱油」的产品</li>
+    </ul>
+    <div class="note">
+      <strong>🔎 选购建议：</strong>看配料表，只有水、大豆（或脱脂大豆）、小麦（或麸皮）、食盐等天然原料的是酿造酱油；含「酸水解植物蛋白调味液」「焦糖色」「呈味核苷酸二钠」等多为调配产品，需留意产品类别标注。
+    </div>
+  </div>
+
+  <div class="ref">
+    <h3>📚 数据依据</h3>
+    <ul>
+      <li><strong>GB/T 18186-2000</strong>《酿造酱油》—— 表 1 理化要求（氨基酸态氮分级指标）</li>
+      <li><strong>GB 2717-2018</strong>《食品安全国家标准 酱油》—— 理化指标、污染物限量、真菌毒素限量、微生物限量</li>
+      <li><strong>SB/T 10336</strong>《配制酱油》—— 商务部行业标准</li>
+      <li>市场监管总局《关于加强酱油和食醋质量安全监督管理的公告》（2021 年）</li>
+    </ul>
+    <p style="margin-top:8px;font-size:11px;color:#8a6a4a;">
+      注：本工具核心数据（氨基酸态氮 4 级阈值）来源于 GB/T 18186-2000 表 1；GB 2717-2018 中污染物、真菌毒素、微生物等完整限量表值需查阅标准原文。
+    </p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-酱油等级 20261021</div>
+
+<script>
+(function() {
+  var input = document.getElementById('nitrogen');
+  var result = document.getElementById('result');
+
+  // GB/T 18186-2000 表 1 酿造酱油氨基酸态氮分级阈值
+  var grades = [
+    { name: '⭐ 特级', min: 0.80, cls: 'special' },
+    { name: '🥇 一级', min: 0.70, cls: 'first' },
+    { name: '🥈 二级', min: 0.55, cls: 'second' },
+    { name: '🥉 三级', min: 0.40, cls: 'third' }
+  ];
+
+  // GB 2717-2018 酱油安全底线
+  var SAFETY_MIN = 0.40;
+
+  function update() {
+    var raw = input.value.trim();
+    if (raw === '') {
+      result.className = 'result empty';
+      result.textContent = '请输入氨基酸态氮含量';
+      return;
+    }
+    var val = parseFloat(raw);
+    if (isNaN(val)) {
+      result.className = 'result fail';
+      result.textContent = '❌ 请输入有效数字';
+      return;
+    }
+    if (val < 0) {
+      result.className = 'result fail';
+      result.textContent = '❌ 数值不能为负';
+      return;
+    }
+    if (val < SAFETY_MIN) {
+      result.className = 'result fail';
+      result.textContent = '❌ 低于 GB 2717 安全底线（≥' + SAFETY_MIN.toFixed(2) + '），不合格';
+      return;
+    }
+    for (var i = 0; i < grades.length; i++) {
+      if (val >= grades[i].min) {
+        result.className = 'result ' + grades[i].cls;
+        result.textContent = grades[i].name + '（' + val.toFixed(2) + ' g/100mL）';
+        return;
+      }
+    }
+  }
+
+  input.addEventListener('input', update);
+  input.addEventListener('change', update);
+})();
+</script>
+</body>
+</html>

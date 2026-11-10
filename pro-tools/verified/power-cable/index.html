@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电线电缆选型工具 v2.0.0</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; padding-bottom: 40px; }
+header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+header h1 { font-size: 24px; }
+header p { font-size: 14px; opacity: 0.8; margin-top: 5px; }
+nav { background: white; border-bottom: 1px solid #ddd; display: flex; padding: 0 20px; flex-wrap: wrap; }
+nav button { background: none; border: none; padding: 12px 20px; cursor: pointer; font-size: 14px; color: #666; border-bottom: 3px solid transparent; }
+nav button.active { color: #2c3e50; border-bottom-color: #3498db; font-weight: bold; }
+nav button:hover { background: #f8f9fa; }
+main { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+.tab-content { display: none; background: white; padding: 25px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.tab-content.active { display: block; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 500; }
+.form-group input, .form-group select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #3498db; }
+.form-group small { font-size: 11px; color: #999; margin-top: 3px; }
+button.primary { background: #3498db; color: white; border: none; padding: 10px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+button.primary:hover { background: #2980b9; }
+.result { margin-top: 20px; padding: 18px; background: #ecf0f1; border-radius: 4px; }
+.result h3 { color: #2c3e50; margin-bottom: 10px; }
+.result-item { margin: 5px 0; font-size: 14px; }
+.result-warn { color: #8a6d3b; font-size: 12px; margin-top: 12px; padding: 10px; background: #fcf8e3; border-left: 3px solid #f0ad4e; }
+.result-success { color: #3c763d; font-size: 16px; font-weight: bold; padding: 10px; background: #dff0d8; border-left: 3px solid #3c763d; margin-bottom: 10px; }
+.result-fail { color: #a94442; font-size: 16px; font-weight: bold; padding: 10px; background: #f2dede; border-left: 3px solid #a94442; margin-bottom: 10px; }
+table.detail-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+table.detail-table th, table.detail-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
+table.detail-table th { background: #ecf0f1; }
+table.detail-table tr.pass { background: #dff0d8; }
+table.detail-table tr.fail { background: #f9f9f9; color: #999; }
+pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px; line-height: 1.5; max-height: 600px; overflow-y: auto; }
+code { font-family: Consolas, Monaco, "Courier New", monospace; }
+.test-output { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; font-family: Consolas, monospace; font-size: 12px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
+.test-pass { color: #4ec9b0; }
+.test-fail { color: #f48771; }
+.test-summary { font-size: 16px; font-weight: bold; margin-top: 10px; padding: 12px; background: #ecf0f1; border-radius: 4px; }
+.doc-content h2 { color: #2c3e50; margin: 25px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #3498db; font-size: 20px; }
+.doc-content h3 { color: #34495e; margin: 18px 0 10px; font-size: 16px; }
+.doc-content p { margin: 8px 0; text-indent: 2em; font-size: 14px; }
+.doc-content ul, .doc-content ol { margin: 10px 0 10px 30px; font-size: 14px; }
+.doc-content li { margin: 5px 0; }
+.doc-content table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+.doc-content th, .doc-content td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+.doc-content th { background: #ecf0f1; }
+.doc-content .scenario { background: #f9f9f9; padding: 15px; margin: 12px 0; border-left: 4px solid #3498db; }
+.doc-content .scenario h4 { color: #2c3e50; margin-bottom: 8px; }
+.doc-content .note { background: #fef5e7; padding: 10px; border-left: 3px solid #e67e22; margin: 10px 0; font-size: 13px; }
+.doc-content .note p { text-indent: 0; margin: 3px 0; }
+.version-tag { position: fixed; bottom: 10px; right: 10px; font-size: 11px; color: #999; background: rgba(255,255,255,0.95); padding: 3px 8px; border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+h2.section-title { color: #2c3e50; margin-bottom: 15px; font-size: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>电线电缆选型工具</h1>
+  <p>按载流量、电压损失、短路热稳定三条件选线 · 依据 GB 50054 / GB/T 16895</p>
+</header>
+<nav>
+  <button class="tab-btn active" data-tab="tool">选型工具</button>
+  <button class="tab-btn" data-tab="source">JS 源码</button>
+  <button class="tab-btn" data-tab="test">单元测试</button>
+  <button class="tab-btn" data-tab="doc">使用说明书</button>
+</nav>
+<main>
+  <section id="tab-tool" class="tab-content active">
+    <h2 class="section-title">输入参数</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>计算电流 I (A)</label>
+        <input type="number" id="current" value="100" min="0" step="0.1">
+        <small>负载计算电流，单位安培</small>
+      </div>
+      <div class="form-group">
+        <label>线路长度 L (m)</label>
+        <input type="number" id="length" value="100" min="0" step="1">
+        <small>单根线路长度，单位米</small>
+      </div>
+      <div class="form-group">
+        <label>线电压 U (V)</label>
+        <input type="number" id="voltage" value="380" min="0" step="1">
+        <small>三相系统线电压，常用 380V</small>
+      </div>
+      <div class="form-group">
+        <label>功率因数 cosφ</label>
+        <input type="number" id="powerFactor" value="0.8" min="0" max="1" step="0.01">
+        <small>0~1 之间，电动机典型 0.8</small>
+      </div>
+      <div class="form-group">
+        <label>导体材料</label>
+        <select id="material">
+          <option value="copper">铜 (ρ=0.0175 Ω·mm²/m)</option>
+          <option value="aluminum">铝 (ρ=0.0283 Ω·mm²/m)</option>
+        </select>
+        <small>20℃ 直流电阻率</small>
+      </div>
+      <div class="form-group">
+        <label>绝缘类型</label>
+        <select id="insulation">
+          <option value="PVC">PVC (k=115/76)</option>
+          <option value="XLPE">XLPE (k=143/94)</option>
+        </select>
+        <small>影响短路热稳定 k 系数</small>
+      </div>
+      <div class="form-group">
+        <label>短路电流 I_k (A)</label>
+        <input type="number" id="shortCircuitCurrent" value="10000" min="0" step="100">
+        <small>安装点预期短路电流有效值</small>
+      </div>
+      <div class="form-group">
+        <label>短路持续时间 t (s)</label>
+        <input type="number" id="shortCircuitDuration" value="0.1" min="0" step="0.01">
+        <small>保护电器动作时间</small>
+      </div>
+      <div class="form-group">
+        <label>单位长度电抗 X (Ω/m)</label>
+        <input type="number" id="xPerMeter" value="0.00008" min="0" step="0.00001">
+        <small>默认 0.00008（约 0.08 Ω/km）</small>
+      </div>
+      <div class="form-group">
+        <label>允许电压损失 ΔU%</label>
+        <input type="number" id="maxVoltageDropPercent" value="5" min="0" step="0.1">
+        <small>电动机 ≤5%，照明 ≤3%</small>
+      </div>
+      <div class="form-group">
+        <label>载流量修正系数</label>
+        <input type="number" id="correctionFactor" value="1" min="0.1" max="1" step="0.01">
+        <small>考虑温度、并列、敷设方式等</small>
+      </div>
+    </div>
+    <button class="primary" onclick="runSelection()">开始选线</button>
+    <div id="result" class="result" style="display:none;"></div>
+  </section>
+
+  <section id="tab-source" class="tab-content">
+    <h2 class="section-title">核心算法源码</h2>
+    <p style="margin:10px 0;color:#666;font-size:13px;">纯函数实现，无外部依赖，可直接在浏览器运行。所有函数均有完整 JSDoc 注释（含 @param / @returns / @throws / @example）。</p>
+    <pre id="sourceCode"><code></code></pre>
+  </section>
+
+  <section id="tab-test" class="tab-content">
+    <h2 class="section-title">单元测试</h2>
+    <p style="margin-bottom:15px;color:#666;font-size:13px;">纯 JS 实现，不依赖 Jest / Mocha。覆盖正常值、边界值、异常输入、精度问题。</p>
+    <button class="primary" onclick="runAllTests()" style="margin-bottom:15px;">运行全部测试</button>
+    <div id="testSummary" class="test-summary" style="display:none;"></div>
+    <div id="testOutput" class="test-output" style="margin-top:15px;"></div>
+  </section>
+
+  <section id="tab-doc" class="tab-content">
+    <div class="doc-content" id="docContent"></div>
+  </section>
+</main>
+<div class="version-tag">v2.0.1-修-eval作用域 20261025</div>
+
+<script>
+/* ============================================================
+   第一部分：核心算法源码（字符串形式，便于展示与执行）
+   ============================================================ */
+const CORE_SOURCE = `'use strict';
+
+/**
+ * 电线电缆选型核心算法模块
+ *
+ * 依据标准：
+ *   - GB 50054-2011 《低压配电设计规范》
+ *   - GB/T 16895 (IEC 60364) 《建筑物电气装置》
+ *   - GB/T 3956-2008 《电缆的导体》
+ *
+ * 核心公式：
+ *   1. 导体单位长度电阻：R' = ρ / S
+ *   2. 三相电压损失：ΔU% = (√3·I·L·(R'·cosφ + X'·sinφ)) / U × 100
+ *   3. 短路热稳定：S_min = I_k · √t / k
+ */
+
+/**
+ * 标准截面积序列（GB/T 3956-2008 第1种、第2种导体）
+ * 单位：mm²
+ * @type {number[]}
+ */
+const STANDARD_SECTIONS = [
+  1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95,
+  120, 150, 185, 240, 300, 400, 500
+];
+
+/**
+ * 20℃ 导体直流电阻率（GB/T 3956-2008 表2/表3）
+ * @type {Object}
+ * @property {number} copper   - 不镀金属退火铜导体，0.0175 Ω·mm²/m
+ * @property {number} aluminum - 铝导体，0.0283 Ω·mm²/m
+ */
+const RESISTIVITY = {
+  copper: 0.0175,
+  aluminum: 0.0283
+};
+
+/**
+ * 短路热稳定系数 k（参考 GB 50054-2011 附录 F）
+ * 注意：实际取值需查标准原文，此处为常用参考值
+ * @type {Object}
+ */
+const K_FACTOR = {
+  copperPVC: 115,
+  copperXLPE: 143,
+  aluminumPVC: 76,
+  aluminumXLPE: 94
+};
+
+/**
+ * 参考载流量表
+ * 条件：PVC 绝缘，空气中 30℃，单根敷设，参考 GB/T 16895.15
+ * 重要说明：此表仅为参考值，实际工程必须按 GB/T 16895.15 查表，
+ * 并根据环境温度、敷设方式、并列根数等因素进行修正。
+ * @type {Object}
+ */
+const AMPACITY_TABLE = {
+  copper: {
+    1.5: 18, 2.5: 25, 4: 34, 6: 43, 10: 60, 16: 80, 25: 101,
+    35: 126, 50: 153, 70: 196, 95: 238, 120: 276, 150: 319,
+    185: 363, 240: 435, 300: 500, 400: 590, 500: 680
+  },
+  aluminum: {
+    2.5: 19, 4: 26, 6: 34, 10: 46, 16: 62, 25: 78,
+    35: 97, 50: 119, 70: 152, 95: 185, 120: 214, 150: 247,
+    185: 281, 240: 337, 300: 387, 400: 456, 500: 527
+  }
+};
+
+/**
+ * 计算导体单位长度直流电阻
+ *
+ * 公式：R' = ρ / S
+ * 其中 ρ 为电阻率（Ω·mm²/m），S 为导体截面积（mm²）
+ *
+ * @param {number} rho     - 电阻率，单位 Ω·mm²/m。铜为 0.0175，铝为 0.0283（20℃）
+ * @param {number} section - 导体标称截面积，单位 mm²，必须为正数
+ * @returns {number} 单位长度电阻，单位 Ω/m
+ * @throws {Error} 当 rho 或 section 不是正数时抛出异常
+ * @example
+ * calcRPerMeter(0.0175, 50);  // 返回 0.00035（Ω/m）
+ * calcRPerMeter(0.0283, 25);  // 返回 0.001132（Ω/m）
+ */
+function calcRPerMeter(rho, section) {
+  if (typeof rho !== 'number' || isNaN(rho)) {
+    throw new Error('电阻率必须是数字');
+  }
+  if (rho <= 0) {
+    throw new Error('电阻率必须为正数');
+  }
+  if (typeof section !== 'number' || isNaN(section)) {
+    throw new Error('截面积必须是数字');
+  }
+  if (section <= 0) {
+    throw new Error('截面积必须为正数');
+  }
+  return rho / section;
+}
+
+/**
+ * 计算三相交流系统电压损失百分比
+ *
+ * 公式：ΔU% = (√3 · I · L · (R'·cosφ + X'·sinφ)) / U × 100
+ *
+ * 其中：
+ *   - I      为计算电流（A）
+ *   - L      为线路长度（m）
+ *   - R'     为单位长度电阻（Ω/m）
+ *   - X'     为单位长度电抗（Ω/m）
+ *   - U      为线电压（V）
+ *   - cosφ   为功率因数
+ *   - sinφ   = √(1 - cos²φ)
+ *
+ * @param {number} current     - 计算电流，单位 A，必须 ≥ 0
+ * @param {number} length      - 线路长度，单位 m，必须 ≥ 0
+ * @param {number} rPerMeter   - 单位长度电阻，单位 Ω/m，必须 ≥ 0
+ * @param {number} xPerMeter   - 单位长度电抗，单位 Ω/m，必须 ≥ 0
+ * @param {number} voltage     - 线电压，单位 V，必须 > 0
+ * @param {number} powerFactor - 功率因数 cosφ，必须在 [0, 1] 区间
+ * @returns {number} 电压损失百分比（%）
+ * @throws {Error} 当任一参数超出允许范围时抛出异常
+ * @example
+ * calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 380, 0.8);
+ * // 返回约 1.495（%）
+ */
+function calcVoltageDrop3Phase(current, length, rPerMeter, xPerMeter, voltage, powerFactor) {
+  if (typeof current !== 'number' || isNaN(current)) throw new Error('电流必须是数字');
+  if (current < 0) throw new Error('电流不能为负数');
+  if (typeof length !== 'number' || isNaN(length)) throw new Error('长度必须是数字');
+  if (length < 0) throw new Error('长度不能为负数');
+  if (typeof rPerMeter !== 'number' || isNaN(rPerMeter)) throw new Error('电阻必须是数字');
+  if (rPerMeter < 0) throw new Error('电阻不能为负数');
+  if (typeof xPerMeter !== 'number' || isNaN(xPerMeter)) throw new Error('电抗必须是数字');
+  if (xPerMeter < 0) throw new Error('电抗不能为负数');
+  if (typeof voltage !== 'number' || isNaN(voltage)) throw new Error('电压必须是数字');
+  if (voltage <= 0) throw new Error('电压必须为正数');
+  if (typeof powerFactor !== 'number' || isNaN(powerFactor)) throw new Error('功率因数必须是数字');
+  if (powerFactor < 0 || powerFactor > 1) throw new Error('功率因数必须在0~1之间');
+
+  const sinPhi = Math.sqrt(Math.max(0, 1 - powerFactor * powerFactor));
+  const drop = Math.sqrt(3) * current * length *
+               (rPerMeter * powerFactor + xPerMeter * sinPhi);
+  return (drop / voltage) * 100;
+}
+
+/**
+ * 计算短路热稳定所需的最小导体截面积
+ *
+ * 公式：S_min = I_k · √t / k
+ *
+ * 依据：GB 50054-2011 第 3.2.14 条
+ *
+ * @param {number} shortCircuitCurrent - 短路电流有效值，单位 A，必须 ≥ 0
+ * @param {number} duration            - 短路持续时间，单位 s，必须 ≥ 0
+ * @param {number} kFactor             - 热稳定系数 k，必须 > 0
+ * @returns {number} 最小截面积，单位 mm²
+ * @throws {Error} 当参数超出允许范围时抛出异常
+ * @example
+ * calcMinSectionForShortCircuit(10000, 0.1, 115);
+ * // 返回约 27.50（mm²），应选 35mm²
+ */
+function calcMinSectionForShortCircuit(shortCircuitCurrent, duration, kFactor) {
+  if (typeof shortCircuitCurrent !== 'number' || isNaN(shortCircuitCurrent)) {
+    throw new Error('短路电流必须是数字');
+  }
+  if (shortCircuitCurrent < 0) throw new Error('短路电流不能为负数');
+  if (typeof duration !== 'number' || isNaN(duration)) throw new Error('时间必须是数字');
+  if (duration < 0) throw new Error('时间不能为负数');
+  if (typeof kFactor !== 'number' || isNaN(kFactor)) throw new Error('k系数必须是数字');
+  if (kFactor <= 0) throw new Error('k系数必须为正数');
+
+  if (shortCircuitCurrent === 0 || duration === 0) return 0;
+  return (shortCircuitCurrent * Math.sqrt(duration)) / kFactor;
+}
+
+/**
+ * 获取参考载流量
+ *
+ * 重要说明：此函数返回的载流量为参考值，基于以下假设条件：
+ *   - 环境温度 30℃
+ *   - 空气中单根敷设
+ *   - PVC 绝缘
+ * 实际工程必须按 GB/T 16895.15 查表，并根据实际条件修正。
+ *
+ * @param {number} section           - 导体截面积，单位 mm²
+ * @param {string} material          - 导体材料，'copper' 或 'aluminum'
+ * @param {number} [correctionFactor=1] - 修正系数，必须在 (0, 1] 区间
+ * @returns {number} 修正后的参考载流量，单位 A
+ * @throws {Error} 当材料不支持或截面积无数据时抛出异常
+ * @example
+ * getReferenceAmpacity(50, 'copper');        // 返回 153（A）
+ * getReferenceAmpacity(50, 'copper', 0.8);   // 返回 122.4（A）
+ */
+function getReferenceAmpacity(section, material, correctionFactor) {
+  if (correctionFactor === undefined) correctionFactor = 1;
+  if (typeof section !== 'number' || isNaN(section)) throw new Error('截面积必须是数字');
+  if (section <= 0) throw new Error('截面积必须为正数');
+  if (typeof material !== 'string') throw new Error('材料必须是字符串');
+  if (!AMPACITY_TABLE[material]) throw new Error('不支持的材料：' + material);
+  if (typeof correctionFactor !== 'number' || isNaN(correctionFactor)) {
+    throw new Error('修正系数必须是数字');
+  }
+  if (correctionFactor <= 0 || correctionFactor > 1) {
+    throw new Error('修正系数必须在(0,1]区间');
+  }
+
+  const base = AMPACITY_TABLE[material][section];
+  if (base === undefined) {
+    throw new Error('截面积 ' + section + ' mm² 无参考数据，需查 GB/T 16895.15 原文');
+  }
+  return base * correctionFactor;
+}
+
+/**
+ * 电线电缆选型主函数
+ *
+ * 按载流量、电压损失、短路热稳定三个条件选择最小满足要求的标准截面积。
+ *
+ * @param {Object} params                          - 选线参数
+ * @param {number} params.current                  - 计算电流，A
+ * @param {number} params.length                   - 线路长度，m
+ * @param {number} params.voltage                  - 线电压，V
+ * @param {number} params.powerFactor              - 功率因数 cosφ
+ * @param {string} [params.material='copper']      - 导体材料
+ * @param {string} [params.insulation='PVC']       - 绝缘类型
+ * @param {number} [params.shortCircuitCurrent=0]  - 短路电流，A
+ * @param {number} [params.shortCircuitDuration=0] - 短路持续时间，s
+ * @param {number} [params.xPerMeter=0.00008]      - 单位长度电抗，Ω/m
+ * @param {number} [params.maxVoltageDropPercent=5]- 允许电压损失，%
+ * @param {number} [params.correctionFactor=1]     - 载流量修正系数
+ * @returns {Object} 选线结果
+ * @returns {number|null} returns.selectedSection          - 推荐截面积 mm²；null 表示无满足条件的规格
+ * @returns {number}       returns.minSectionForShortCircuit - 短路热稳定要求的最小截面积
+ * @returns {Array}        returns.details                 - 各规格校验详情
+ * @throws {Error} 当必要参数缺失或非法时抛出异常
+ * @example
+ * selectCable({
+ *   current: 100, length: 100, voltage: 380, powerFactor: 0.8,
+ *   material: 'copper', insulation: 'PVC',
+ *   shortCircuitCurrent: 10000, shortCircuitDuration: 0.1
+ * });
+ * // 返回 { selectedSection: 35, minSectionForShortCircuit: 27.5, details: [...] }
+ */
+function selectCable(params) {
+  if (!params || typeof params !== 'object') throw new Error('参数必须是对象');
+
+  const current = params.current;
+  const length = params.length;
+  const voltage = params.voltage;
+  const powerFactor = params.powerFactor;
+  const material = params.material || 'copper';
+  const insulation = params.insulation || 'PVC';
+  const shortCircuitCurrent = params.shortCircuitCurrent !== undefined ? params.shortCircuitCurrent : 0;
+  const shortCircuitDuration = params.shortCircuitDuration !== undefined ? params.shortCircuitDuration : 0;
+  const xPerMeter = params.xPerMeter !== undefined ? params.xPerMeter : 0.00008;
+  const maxVoltageDropPercent = params.maxVoltageDropPercent !== undefined ? params.maxVoltageDropPercent : 5;
+  const correctionFactor = params.correctionFactor !== undefined ? params.correctionFactor : 1;
+
+  if (typeof current !== 'number' || isNaN(current) || current < 0) throw new Error('电流参数非法');
+  if (typeof length !== 'number' || isNaN(length) || length < 0) throw new Error('长度参数非法');
+  if (typeof voltage !== 'number' || isNaN(voltage) || voltage <= 0) throw new Error('电压参数非法');
+  if (typeof powerFactor !== 'number' || isNaN(powerFactor) || powerFactor < 0 || powerFactor > 1) {
+    throw new Error('功率因数参数非法');
+  }
+  if (!RESISTIVITY[material]) throw new Error('不支持的材料');
+  const kKey = material + insulation;
+  if (!K_FACTOR[kKey]) throw new Error('不支持的绝缘类型');
+
+  const rho = RESISTIVITY[material];
+  const kFactor = K_FACTOR[kKey];
+
+  const minSectionSC = calcMinSectionForShortCircuit(
+    shortCircuitCurrent, shortCircuitDuration, kFactor
+  );
+
+  let selectedSection = null;
+  const details = [];
+
+  for (const section of STANDARD_SECTIONS) {
+    const detail = { section: section };
+
+    if (section < minSectionSC) {
+      detail.pass = false;
+      detail.reason = '短路热稳定不满足（需要 ≥ ' + minSectionSC.toFixed(2) + ' mm²）';
+      details.push(detail);
+      continue;
+    }
+
+    const rPerMeter = calcRPerMeter(rho, section);
+    const vd = calcVoltageDrop3Phase(
+      current, length, rPerMeter, xPerMeter, voltage, powerFactor
+    );
+    detail.voltageDrop = vd;
+    detail.voltageDropPass = vd <= maxVoltageDropPercent;
+
+    let ampacity = null;
+    let ampacityPass = null;
+    try {
+      ampacity = getReferenceAmpacity(section, material, correctionFactor);
+      ampacityPass = ampacity >= current;
+    } catch (e) {
+      ampacityPass = null;
+    }
+    detail.ampacity = ampacity;
+    detail.ampacityPass = ampacityPass;
+
+    if (detail.voltageDropPass && (ampacityPass === true || ampacityPass === null)) {
+      detail.pass = true;
+      details.push(detail);
+      if (selectedSection === null) selectedSection = section;
+    } else {
+      detail.pass = false;
+      const reasons = [];
+      if (!detail.voltageDropPass) reasons.push('电压损失超标');
+      if (ampacityPass === false) reasons.push('载流量不足');
+      detail.reason = reasons.join('；');
+      details.push(detail);
+    }
+  }
+
+  return {
+    selectedSection: selectedSection,
+    minSectionForShortCircuit: minSectionSC,
+    details: details
+  };
+}`;
+
+// 执行核心代码（使函数在全局可用）
+// 注意：CORE_SOURCE 头部带 'use strict'，直接 eval 会让函数声明锁在 eval 自身作用域里，
+// 外部（UI 按钮、测试）全都拿不到 selectCable 等函数。故剥掉指令序言后再求值。
+(function () {
+  var src = CORE_SOURCE.replace(/^s*'use strict';?/, '').replace(/^s*"use strict";?/, '');
+  (0, eval)(src);
+})();
+
+/* ============================================================
+   第二部分：单元测试（纯 JS 实现，至少 30 个用例）
+   ============================================================ */
+let passCount = 0;
+let totalCount = 0;
+const testResults = [];
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message || '断言失败');
+}
+
+function assertClose(actual, expected, tolerance, message) {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error(message + ': 期望 ' + expected + '±' + tolerance + '，实际 ' + actual);
+  }
+}
+
+function assertThrows(fn, message) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (!threw) throw new Error(message + ': 期望抛出异常但未抛出');
+}
+
+function test(name, fn) {
+  totalCount++;
+  try {
+    fn();
+    passCount++;
+    testResults.push({ name: name, pass: true });
+  } catch (e) {
+    testResults.push({ name: name, pass: false, error: e.message });
+  }
+}
+
+function runAllTests() {
+  passCount = 0;
+  totalCount = 0;
+  testResults.length = 0;
+
+  // ===== calcRPerMeter 测试（12 个）=====
+  test('calcRPerMeter: 铜 50mm² → 0.00035', () => {
+    assertClose(calcRPerMeter(0.0175, 50), 0.00035, 1e-9, '铜50');
+  });
+  test('calcRPerMeter: 铝 50mm² → 0.000566', () => {
+    assertClose(calcRPerMeter(0.0283, 50), 0.000566, 1e-9, '铝50');
+  });
+  test('calcRPerMeter: 铜 10mm² → 0.00175', () => {
+    assertClose(calcRPerMeter(0.0175, 10), 0.00175, 1e-9, '铜10');
+  });
+  test('calcRPerMeter: 铜 1.5mm² → 0.011667', () => {
+    assertClose(calcRPerMeter(0.0175, 1.5), 0.0116667, 1e-4, '铜1.5');
+  });
+  test('calcRPerMeter: 铜 240mm² → 0.0000729', () => {
+    assertClose(calcRPerMeter(0.0175, 240), 0.0000729167, 1e-8, '铜240');
+  });
+  test('calcRPerMeter: 铜 500mm² → 0.000035', () => {
+    assertClose(calcRPerMeter(0.0175, 500), 0.000035, 1e-9, '铜500');
+  });
+  test('calcRPerMeter: rho=0 抛异常', () => {
+    assertThrows(() => calcRPerMeter(0, 50), 'rho=0');
+  });
+  test('calcRPerMeter: rho=-1 抛异常', () => {
+    assertThrows(() => calcRPerMeter(-1, 50), 'rho=-1');
+  });
+  test('calcRPerMeter: section=0 抛异常', () => {
+    assertThrows(() => calcRPerMeter(0.0175, 0), 'section=0');
+  });
+  test('calcRPerMeter: rho=null 抛异常', () => {
+    assertThrows(() => calcRPerMeter(null, 50), 'rho=null');
+  });
+  test('calcRPerMeter: section=NaN 抛异常', () => {
+    assertThrows(() => calcRPerMeter(0.0175, NaN), 'section=NaN');
+  });
+  test('calcRPerMeter: section=undefined 抛异常', () => {
+    assertThrows(() => calcRPerMeter(0.0175, undefined), 'section=undefined');
+  });
+
+  // ===== calcVoltageDrop3Phase 测试（10 个）=====
+  test('calcVoltageDrop3Phase: 典型值 cosφ=0.8 → 1.495%', () => {
+    const vd = calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 380, 0.8);
+    assertClose(vd, 1.495, 0.01, '典型值');
+  });
+  test('calcVoltageDrop3Phase: cosφ=1 → 1.595%', () => {
+    const vd = calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 380, 1);
+    assertClose(vd, 1.595, 0.01, 'cosφ=1');
+  });
+  test('calcVoltageDrop3Phase: cosφ=0.6 → 1.249%', () => {
+    const vd = calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 380, 0.6);
+    assertClose(vd, 1.249, 0.01, 'cosφ=0.6');
+  });
+  test('calcVoltageDrop3Phase: I=0 → 0%', () => {
+    const vd = calcVoltageDrop3Phase(0, 100, 0.00035, 0.00008, 380, 0.8);
+    assertClose(vd, 0, 1e-9, 'I=0');
+  });
+  test('calcVoltageDrop3Phase: L=0 → 0%', () => {
+    const vd = calcVoltageDrop3Phase(100, 0, 0.00035, 0.00008, 380, 0.8);
+    assertClose(vd, 0, 1e-9, 'L=0');
+  });
+  test('calcVoltageDrop3Phase: I<0 抛异常', () => {
+    assertThrows(() => calcVoltageDrop3Phase(-10, 100, 0.00035, 0.00008, 380, 0.8), 'I<0');
+  });
+  test('calcVoltageDrop3Phase: U=0 抛异常', () => {
+    assertThrows(() => calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 0, 0.8), 'U=0');
+  });
+  test('calcVoltageDrop3Phase: cosφ=1.5 抛异常', () => {
+    assertThrows(() => calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 380, 1.5), 'cosφ=1.5');
+  });
+  test('calcVoltageDrop3Phase: cosφ=-0.5 抛异常', () => {
+    assertThrows(() => calcVoltageDrop3Phase(100, 100, 0.00035, 0.00008, 380, -0.5), 'cosφ=-0.5');
+  });
+  test('calcVoltageDrop3Phase: 浮点精度（极小值）', () => {
+    const vd = calcVoltageDrop3Phase(1, 1, 0.0175, 0.00008, 380, 1);
+    assert(vd > 0 && vd < 0.001, '浮点精度');
+  });
+
+  // ===== calcMinSectionForShortCircuit 测试（8 个）=====
+  test('calcMinSectionForShortCircuit: 10kA 0.1s k=115 → 27.50', () => {
+    const s = calcMinSectionForShortCircuit(10000, 0.1, 115);
+    assertClose(s, 27.498, 0.01, '10kA');
+  });
+  test('calcMinSectionForShortCircuit: 5kA 0.2s k=143 → 15.64', () => {
+    const s = calcMinSectionForShortCircuit(5000, 0.2, 143);
+    assertClose(s, 15.636, 0.01, '5kA');
+  });
+  test('calcMinSectionForShortCircuit: 20kA 0.05s k=115 → 38.89', () => {
+    const s = calcMinSectionForShortCircuit(20000, 0.05, 115);
+    assertClose(s, 38.888, 0.01, '20kA');
+  });
+  test('calcMinSectionForShortCircuit: I=0 → 0', () => {
+    const s = calcMinSectionForShortCircuit(0, 0.1, 115);
+    assertClose(s, 0, 1e-9, 'I=0');
+  });
+  test('calcMinSectionForShortCircuit: t=0 → 0', () => {
+    const s = calcMinSectionForShortCircuit(10000, 0, 115);
+    assertClose(s, 0, 1e-9, 't=0');
+  });
+  test('calcMinSectionForShortCircuit: I<0 抛异常', () => {
+    assertThrows(() => calcMinSectionForShortCircuit(-100, 0.1, 115), 'I<0');
+  });
+  test('calcMinSectionForShortCircuit: k=0 抛异常', () => {
+    assertThrows(() => calcMinSectionForShortCircuit(10000, 0.1, 0), 'k=0');
+  });
+  test('calcMinSectionForShortCircuit: k=-1 抛异常', () => {
+    assertThrows(() => calcMinSectionForShortCircuit(10000, 0.1, -1), 'k=-1');
+  });
+
+  // ===== getReferenceAmpacity 测试（8 个）=====
+  test('getReferenceAmpacity: 铜 50mm² → 153A', () => {
+    assertClose(getReferenceAmpacity(50, 'copper'), 153, 0.01, '铜50');
+  });
+  test('getReferenceAmpacity: 铝 50mm² → 119A', () => {
+    assertClose(getReferenceAmpacity(50, 'aluminum'), 119, 0.01, '铝50');
+  });
+  test('getReferenceAmpacity: 铜 10mm² → 60A', () => {
+    assertClose(getReferenceAmpacity(10, 'copper'), 60, 0.01, '铜10');
+  });
+  test('getReferenceAmpacity: 修正系数 0.8 → 122.4A', () => {
+    assertClose(getReferenceAmpacity(50, 'copper', 0.8), 122.4, 0.01, '修正0.8');
+  });
+  test('getReferenceAmpacity: 未知材料 抛异常', () => {
+    assertThrows(() => getReferenceAmpacity(50, 'gold'), '未知材料');
+  });
+  test('getReferenceAmpacity: 未知截面积 抛异常', () => {
+    assertThrows(() => getReferenceAmpacity(3, 'copper'), '未知截面积');
+  });
+  test('getReferenceAmpacity: 修正系数=0 抛异常', () => {
+    assertThrows(() => getReferenceAmpacity(50, 'copper', 0), '修正=0');
+  });
+  test('getReferenceAmpacity: 修正系数=1.5 抛异常', () => {
+    assertThrows(() => getReferenceAmpacity(50, 'copper', 1.5), '修正=1.5');
+  });
+
+  // ===== selectCable 测试（9 个）=====
+  test('selectCable: 典型场景 → 35mm²', () => {
+    const result = selectCable({
+      current: 100, length: 100, voltage: 380, powerFactor: 0.8,
+      material: 'copper', insulation: 'PVC',
+      shortCircuitCurrent: 10000, shortCircuitDuration: 0.1
+    });
+    assert(result.selectedSection === 35, '应选35mm²，实际' + result.selectedSection);
+  });
+  test('selectCable: 载流量主导 → 95mm²', () => {
+    const result = selectCable({
+      current: 200, length: 10, voltage: 380, powerFactor: 0.8,
+      material: 'copper', insulation: 'PVC',
+      shortCircuitCurrent: 1000, shortCircuitDuration: 0.1
+    });
+    assert(result.selectedSection === 95, '应选95mm²，实际' + result.selectedSection);
+  });
+  test('selectCable: 电压损失主导 → 50mm²', () => {
+    const result = selectCable({
+      current: 50, length: 300, voltage: 380, powerFactor: 0.8,
+      material: 'copper', insulation: 'PVC',
+      shortCircuitCurrent: 1000, shortCircuitDuration: 0.1,
+      maxVoltageDropPercent: 3
+    });
+    assert(result.selectedSection === 50, '应选50mm²，实际' + result.selectedSection);
+  });
+  test('selectCable: 短路热稳定主导 → 120mm²', () => {
+    const result = selectCable({
+      current: 20, length: 10, voltage: 380, powerFactor: 0.8,
+      material: 'copper', insulation: 'PVC',
+      shortCircuitCurrent: 30000, shortCircuitDuration: 0.2
+    });
+    assert(result.selectedSection === 120, '应选120mm²，实际' + result.selectedSection);
+  });
+  test('selectCable: 铝导体 → 35mm²', () => {
+    const result = selectCable({
+      current: 80, length: 50, voltage: 380, powerFactor: 0.8,
+      material: 'aluminum', insulation: 'PVC',
+      shortCircuitCurrent: 5000, shortCircuitDuration: 0.1
+    });
+    assert(result.selectedSection === 35, '应选35mm²，实际' + result.selectedSection);
+  });
+  test('selectCable: 参数为 null 抛异常', () => {
+    assertThrows(() => selectCable(null), 'null');
+  });
+  test('selectCable: 缺少必要参数 抛异常', () => {
+    assertThrows(() => selectCable({}), '缺少参数');
+  });
+  test('selectCable: 电流为负 抛异常', () => {
+    assertThrows(() => selectCable({
+      current: -10, length: 100, voltage: 380, powerFactor: 0.8
+    }), '电流为负');
+  });
+  test('selectCable: 功率因数超范围 抛异常', () => {
+    assertThrows(() => selectCable({
+      current: 100, length: 100, voltage: 380, powerFactor: 1.2
+    }), '功率因数超范围');
+  });
+
+  displayTestResults();
+}
+
+function displayTestResults() {
+  const output = document.getElementById('testOutput');
+  const summary = document.getElementById('testSummary');
+
+  let html = '';
+  testResults.forEach((r, i) => {
+    if (r.pass) {
+      html += '<div class="test-pass">✓ 用例 ' + (i + 1) + ': ' + r.name + '</div>';
+    } else {
+      html += '<div class="test-fail">✗ 用例 ' + (i + 1) + ': ' + r.name + ' —— ' + r.error + '</div>';
+    }
+  });
+  output.innerHTML = html;
+
+  summary.style.display = 'block';
+  summary.innerHTML = '通过 <span style="color:#27ae60;">' + passCount + '</span> / 共 <span>' + totalCount + '</span>';
+  console.log('通过 ' + passCount + ' / 共 ' + totalCount);
+}
+
+/* ============================================================
+   第三部分：使用说明书
+   ============================================================ */
+const DOC_CONTENT = `
+<h2>一、工具简介</h2>
+<p>本工具用于低压配电系统中电线电缆的截面积选型。在工程设计中，电缆截面积的选择需要同时满足三个基本条件：载流量条件（电缆在长期运行中不过热）、电压损失条件（保证末端用电设备电压在允许范围内）、短路热稳定条件（在短路故障下导体不被烧毁）。本工具按照上述三个条件，结合国家标准要求，自动遍历标准截面积序列，给出满足全部条件的最小推荐截面积。</p>
+<p>本工具适用于三相交流 50Hz 低压配电系统（通常 U ≤ 1000V），可用于初步设计阶段的电缆选型估算。最终选型结果仍需由注册电气工程师结合具体工程条件复核确认。</p>
+
+<h2>二、适用标准</h2>
+<p>本工具的计算方法与参数取值依据以下国家标准：</p>
+<ul>
+  <li><strong>GB 50054-2011</strong>《低压配电设计规范》——短路热稳定校验、导体截面积选择的基本原则</li>
+  <li><strong>GB/T 16895</strong>（等同采用 IEC 60364）《建筑物电气装置》——载流量查表、电压损失计算</li>
+  <li><strong>GB/T 3956-2008</strong>《电缆的导体》——标准截面积序列、导体电阻率</li>
+  <li><strong>GB 50052-2009</strong>《供配电系统设计规范》——电压损失允许值</li>
+</ul>
+<div class="note">
+  <p><strong>注意：</strong>不同版本的标准可能存在参数差异，请以现行有效版本为准。本工具中的 k 系数、参考载流量表等数据均标注了来源，实际工程应查标准原文复核。</p>
+</div>
+
+<h2>三、核心算法</h2>
+<h3>3.1 导体电阻计算</h3>
+<p>导体单位长度直流电阻按下式计算：</p>
+<p style="text-align:center;font-family:monospace;">R' = ρ / S</p>
+<p>其中 ρ 为 20℃ 导体电阻率（铜 0.0175 Ω·mm²/m，铝 0.0283 Ω·mm²/m，依据 GB/T 3956-2008），S 为导体标称截面积（mm²）。需要注意的是，实际工作温度下导体电阻会升高，本工具采用 20℃ 电阻率进行计算，结果偏于保守（即计算出的电压损失略小于实际值）。</p>
+
+<h3>3.2 三相电压损失计算</h3>
+<p>三相交流系统电压损失百分比按下式计算：</p>
+<p style="text-align:center;font-family:monospace;">ΔU% = (√3 · I · L · (R'·cosφ + X'·sinφ)) / U × 100</p>
+<p>其中 I 为计算电流（A），L 为线路长度（m），R' 为单位长度电阻（Ω/m），X' 为单位长度电抗（Ω/m），U 为线电压（V），cosφ 为功率因数。该公式来源于交流电路的相量分析，是 GB/T 16895 推荐的简化计算方法。</p>
+
+<h3>3.3 短路热稳定校验</h3>
+<p>导体在短路电流作用下的热稳定校验按下式：</p>
+<p style="text-align:center;font-family:monospace;">S_min = I_k · √t / k</p>
+<p>其中 I_k 为短路电流有效值（A），t 为短路持续时间（s），k 为热稳定系数。该公式依据 GB 50054-2011 第 3.2.14 条。k 值与导体材料、绝缘类型、初始与最终温度有关，本工具提供的参考值如下：</p>
+<table>
+  <tr><th>导体材料</th><th>绝缘类型</th><th>k 值（参考）</th></tr>
+  <tr><td>铜</td><td>PVC</td><td>115</td></tr>
+  <tr><td>铜</td><td>XLPE</td><td>143</td></tr>
+  <tr><td>铝</td><td>PVC</td><td>76</td></tr>
+  <tr><td>铝</td><td>XLPE</td><td>94</td></tr>
+</table>
+<div class="note">
+  <p><strong>重要：</strong>上述 k 值为常用参考值，实际取值需查 GB 50054-2011 附录 F 原文。不同标准版本、不同绝缘温度等级对应的 k 值可能不同。</p>
+</div>
+
+<h3>3.4 载流量校验</h3>
+<p>电缆的允许载流量需按 GB/T 16895.15 查表确定，并根据实际敷设条件进行修正。本工具内置了一张参考载流量表（基于 PVC 绝缘、空气中 30℃、单根敷设的典型条件），并允许用户输入综合修正系数。该参考表仅供估算使用，实际工程必须查标准原文。</p>
+
+<h2>四、参数详细说明</h2>
+<table>
+  <tr><th>参数名</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+  <tr><td>计算电流 I</td><td>A</td><td>≥ 0</td><td>负载的计算电流（考虑需要系数、同时系数后的值），是载流量校验与电压损失计算的依据</td></tr>
+  <tr><td>线路长度 L</td><td>m</td><td>≥ 0</td><td>从电源点到负载点的单根线路长度。电压损失与长度成正比</td></tr>
+  <tr><td>线电压 U</td><td>V</td><td>> 0</td><td>三相系统的线电压，常用 380V、400V、660V 等</td></tr>
+  <tr><td>功率因数 cosφ</td><td>—</td><td>[0, 1]</td><td>负载的功率因数。电动机典型值 0.8~0.85，照明负载接近 1</td></tr>
+  <tr><td>导体材料</td><td>—</td><td>铜 / 铝</td><td>决定电阻率 ρ 的取值</td></tr>
+  <tr><td>绝缘类型</td><td>—</td><td>PVC / XLPE</td><td>决定短路热稳定 k 系数</td></tr>
+  <tr><td>短路电流 I_k</td><td>A</td><td>≥ 0</td><td>安装点的预期短路电流有效值，需由系统短路计算得出</td></tr>
+  <tr><td>短路持续时间 t</td><td>s</td><td>≥ 0</td><td>保护电器（断路器、熔断器）的动作时间</td></tr>
+  <tr><td>单位长度电抗 X</td><td>Ω/m</td><td>≥ 0</td><td>电缆的单位长度电抗，低压电缆典型值 0.07~0.10 Ω/km（即 0.00007~0.00010 Ω/m）</td></tr>
+  <tr><td>允许电压损失 ΔU%</td><td>%</td><td>≥ 0</td><td>电动机一般 ≤5%，照明 ≤3%，具体按 GB 50052</td></tr>
+  <tr><td>载流量修正系数</td><td>—</td><td>(0, 1]</td><td>综合环境温度、敷设方式、并列根数等因素的修正系数。例如环境温度 40℃ 时约 0.82，多根并列时按 GB/T 16895.15 查表</td></tr>
+</table>
+
+<h2>五、实际使用场景</h2>
+
+<div class="scenario">
+<h4>场景 1：车间电动机供电回路</h4>
+<p><strong>背景：</strong>某车间一台 55kW 三相异步电动机，额定电流约 100A，功率因数 0.85，从配电室供电，线路长度 80m，采用铜芯 PVC 绝缘电缆在桥架内敷设，安装点短路电流 15kA，断路器动作时间 0.1s。</p>
+<p><strong>输入：</strong>I=100A，L=80m，U=380V，cosφ=0.85，材料=铜，绝缘=PVC，I_k=15000A，t=0.1s，X=0.00008 Ω/m，允许 ΔU%=5%，修正系数=0.9（考虑桥架内多根并列）。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>短路热稳定要求：S_min = 15000 × √0.1 / 115 = 41.24 mm²，需 ≥ 50mm²</li>
+  <li>50mm² 铜缆载流量（修正后）：153 × 0.9 = 137.7A > 100A ✓</li>
+  <li>50mm² 电压损失：R'=0.0175/50=0.00035，ΔU% ≈ 1.13% < 5% ✓</li>
+</ul>
+<p><strong>结果：</strong>推荐截面积 <strong>50 mm²</strong>。</p>
+</div>
+
+<div class="scenario">
+<h4>场景 2：长距离照明干线</h4>
+<p><strong>背景：</strong>某厂区道路照明干线，总计算电流 40A，功率因数 0.9，线路长度 400m，采用铜芯电缆，允许电压损失 ≤3%（照明要求严格），短路电流 6kA，动作时间 0.1s。</p>
+<p><strong>输入：</strong>I=40A，L=400m，U=380V，cosφ=0.9，材料=铜，绝缘=PVC，I_k=6000A，t=0.1s，允许 ΔU%=3%，修正系数=1。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>短路热稳定要求：S_min = 6000 × √0.1 / 115 = 16.49 mm²，需 ≥ 25mm²</li>
+  <li>载流量：10mm²(60A) 即可满足 40A，但受短路热稳定限制需 ≥ 25mm²</li>
+  <li>25mm² 电压损失：R'=0.0175/25=0.0007，ΔU% ≈ 4.16% > 3% ✗</li>
+  <li>35mm² 电压损失：R'=0.0005，ΔU% ≈ 3.06% > 3% ✗</li>
+  <li>50mm² 电压损失：R'=0.00035，ΔU% ≈ 2.24% < 3% ✓</li>
+</ul>
+<p><strong>结果：</strong>推荐截面积 <strong>50 mm²</strong>（电压损失条件主导）。</p>
+</div>
+
+<div class="scenario">
+<h4>场景 3：铝导体替代方案</h4>
+<p><strong>背景：</strong>某临时施工用电，为降低成本拟采用铝芯电缆，计算电流 120A，线路长度 60m，短路电流 8kA，动作时间 0.2s。</p>
+<p><strong>输入：</strong>I=120A，L=60m，U=380V，cosφ=0.8，材料=铝，绝缘=PVC，I_k=8000A，t=0.2s，允许 ΔU%=5%，修正系数=1。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>短路热稳定要求：S_min = 8000 × √0.2 / 76 = 46.74 mm²，需 ≥ 50mm²</li>
+  <li>50mm² 铝缆载流量：119A < 120A ✗</li>
+  <li>70mm² 铝缆载流量：152A > 120A ✓</li>
+  <li>70mm² 电压损失：R'=0.0283/70=0.000404，ΔU% ≈ 0.93% < 5% ✓</li>
+</ul>
+<p><strong>结果：</strong>推荐截面积 <strong>70 mm²</strong>（铝导体，载流量条件主导）。</p>
+</div>
+
+<div class="scenario">
+<h4>场景 4：大容量馈线（短路热稳定主导）</h4>
+<p><strong>背景：</strong>某变电站低压侧馈线，计算电流 300A，线路很短仅 5m，但安装点短路电流高达 40kA，断路器动作时间 0.2s，采用铜芯 XLPE 电缆。</p>
+<p><strong>输入：</strong>I=300A，L=5m，U=400V，cosφ=0.85，材料=铜，绝缘=XLPE，I_k=40000A，t=0.2s，允许 ΔU%=5%，修正系数=0.85（高温环境）。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>短路热稳定要求：S_min = 40000 × √0.2 / 143 = 124.87 mm²，需 ≥ 150mm²</li>
+  <li>150mm² 铜缆载流量（修正后）：319 × 0.85 = 271.15A < 300A ✗</li>
+  <li>185mm² 铜缆载流量（修正后）：363 × 0.85 = 308.55A > 300A ✓</li>
+  <li>185mm² 电压损失：L=5m 极短，ΔU% ≈ 0.04% < 5% ✓</li>
+</ul>
+<p><strong>结果：</strong>推荐截面积 <strong>185 mm²</strong>（短路热稳定与载流量共同主导）。</p>
+</div>
+
+<div class="scenario">
+<h4>场景 5：小功率远距离控制回路</h4>
+<p><strong>背景：</strong>某远程控制回路，计算电流 5A，线路长度 500m，功率因数 1（纯阻性负载），允许电压损失 ≤5%，短路电流 2kA，动作时间 0.05s。</p>
+<p><strong>输入：</strong>I=5A，L=500m，U=380V，cosφ=1，材料=铜，绝缘=PVC，I_k=2000A，t=0.05s，允许 ΔU%=5%，修正系数=1。</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>短路热稳定要求：S_min = 2000 × √0.05 / 115 = 3.89 mm²，需 ≥ 4mm²</li>
+  <li>载流量：1.5mm²(18A) 即可满足 5A，但受短路热稳定限制需 ≥ 4mm²</li>
+  <li>4mm² 电压损失：R'=0.0175/4=0.004375，ΔU% ≈ 3.79% < 5% ✓</li>
+</ul>
+<p><strong>结果：</strong>推荐截面积 <strong>4 mm²</strong>（短路热稳定条件主导）。</p>
+</div>
+
+<h2>六、常见错误与排查</h2>
+<ol>
+  <li><strong>选不出截面积（结果为 null）：</strong>通常是因为允许电压损失设置过小，或载流量修正系数过小，导致所有标准截面积都无法同时满足三个条件。建议先放宽允许电压损失，或检查修正系数是否合理。</li>
+  <li><strong>电压损失计算结果偏大：</strong>检查线路长度是否输入正确（应为单根长度，不是来回总长）；检查单位长度电抗 X 是否合理（低压电缆通常 0.07~0.10 Ω/km）。</li>
+  <li><strong>载流量校验不通过：</strong>修正系数输入过小。修正系数应综合考虑环境温度、敷设方式、并列根数等因素，具体数值需查 GB/T 16895.15。一般情况下修正系数在 0.6~1.0 之间。</li>
+  <li><strong>短路热稳定要求截面积过大：</strong>检查短路电流 I_k 与动作时间 t 的取值。I_k 应由系统短路计算得出，不应随意放大；t 应取保护电器的实际动作时间（含燃弧时间）。</li>
+  <li><strong>参数输入异常（报错）：</strong>检查是否有空值、负数、超范围值。功率因数必须在 0~1 之间，电压必须为正数。</li>
+</ol>
+
+<h2>七、数据来源与标准依据</h2>
+<table>
+  <tr><th>数据项</th><th>来源</th><th>备注</th></tr>
+  <tr><td>电阻率 ρ（铜 0.0175，铝 0.0283）</td><td>GB/T 3956-2008 表 2、表 3</td><td>20℃ 直流电阻率</td></tr>
+  <tr><td>标准截面积序列</td><td>GB/T 3956-2008</td><td>第 1 种、第 2 种导体</td></tr>
+  <tr><td>短路热稳定公式</td><td>GB 50054-2011 第 3.2.14 条</td><td>S = I_k·√t / k</td></tr>
+  <tr><td>k 系数参考值</td><td>GB 50054-2011 附录 F</td><td>需查标准原文确认</td></tr>
+  <tr><td>参考载流量表</td><td>GB/T 16895.15（IEC 60364-5-52）</td><td>参考值，需按实际条件修正</td></tr>
+  <tr><td>电压损失公式</td><td>GB/T 16895 系列 / 通用电路理论</td><td>三相系统简化计算</td></tr>
+  <tr><td>电压损失允许值</td><td>GB 50052-2009</td><td>电动机 ≤5%，照明 ≤3%</td></tr>
+</table>
+
+<h2>八、局限性说明</h2>
+<p>本工具为辅助估算工具，存在以下局限性，使用者应充分了解：</p>
+<ol>
+  <li><strong>载流量数据为参考值：</strong>内置载流量表基于特定条件（PVC 绝缘、空气中 30℃、单根敷设），实际工程必须按 GB/T 16895.15 查表并根据实际条件修正。本工具仅提供一个综合修正系数输入，无法替代标准中的详细修正表格。</li>
+  <li><strong>不考虑交流电阻效应：</strong>本工具使用直流电阻率计算，未考虑集肤效应、邻近效应导致的交流电阻增大。对于大截面电缆（≥ 240mm²），交流电阻可能明显大于直流电阻，电压损失计算结果会偏小。</li>
+  <li><strong>电抗值为估算值：</strong>电缆电抗与截面积、排列方式、间距等有关，本工具采用固定默认值 0.08 Ω/km，对精确计算可能有偏差。</li>
+  <li><strong>不考虑温度对电阻的影响：</strong>电阻率采用 20℃ 值，实际工作温度（如 PVC 绝缘 70℃、XLPE 绝缘 90℃）下电阻会升高约 20%~30%，电压损失计算结果偏于乐观。</li>
+  <li><strong>仅适用于三相平衡系统：</strong>公式针对三相平衡负载，单相、两相或三相不平衡系统不适用。</li>
+  <li><strong>不考虑谐波影响：</strong>非线性负载产生的谐波电流会增加额外损耗与电压损失，本工具未考虑。</li>
+  <li><strong>不考虑敷设方式细节：</strong>直埋、穿管、桥架、架空等不同敷设方式的散热条件差异很大，本工具仅通过修正系数粗略考虑。</li>
+  <li><strong>短路电流为给定值：</strong>本工具不进行系统短路计算，I_k 需由用户另行计算或测量得到。</li>
+  <li><strong>不替代专业设计：</strong>本工具仅用于初步估算，正式工程设计应由注册电气工程师按完整规范进行，并考虑本工具未涵盖的所有因素。</li>
+</ol>
+<div class="note">
+  <p><strong>免责声明：</strong>本工具提供的计算结果仅供参考，不构成工程设计依据。因使用本工具产生的任何后果，由使用者自行承担。实际工程请以现行有效国家标准为准，并由具备相应资质的专业人员复核确认。</p>
+</div>
+`;
+
+/* ============================================================
+   UI 逻辑
+   ============================================================ */
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 显示源码
+document.getElementById('sourceCode').querySelector('code').textContent = CORE_SOURCE;
+
+// 显示说明书
+document.getElementById('docContent').innerHTML = DOC_CONTENT;
+
+// 选线执行
+function runSelection() {
+  const resultDiv = document.getElementById('result');
+  resultDiv.style.display = 'block';
+
+  try {
+    const params = {
+      current: parseFloat(document.getElementById('current').value),
+      length: parseFloat(document.getElementById('length').value),
+      voltage: parseFloat(document.getElementById('voltage').value),
+      powerFactor: parseFloat(document.getElementById('powerFactor').value),
+      material: document.getElementById('material').value,
+      insulation: document.getElementById('insulation').value,
+      shortCircuitCurrent: parseFloat(document.getElementById('shortCircuitCurrent').value),
+      shortCircuitDuration: parseFloat(document.getElementById('shortCircuitDuration').value),
+      xPerMeter: parseFloat(document.getElementById('xPerMeter').value),
+      maxVoltageDropPercent: parseFloat(document.getElementById('maxVoltageDropPercent').value),
+      correctionFactor: parseFloat(document.getElementById('correctionFactor').value)
+    };
+
+    const result = selectCable(params);
+
+    let html = '';
+    if (result.selectedSection !== null) {
+      html += '<div class="result-success">✓ 推荐截面积：' + result.selectedSection + ' mm²</div>';
+    } else {
+      html += '<div class="result-fail">✗ 无满足全部条件的标准截面积，请调整参数</div>';
+    }
+    html += '<div class="result-item">短路热稳定要求最小截面积：' + result.minSectionForShortCircuit.toFixed(2) + ' mm²</div>';
+    html += '<table class="detail-table"><tr><th>截面积(mm²)</th><th>载流量(A)</th><th>电压损失(%)</th><th>结果</th><th>原因</th></tr>';
+    result.details.forEach(d => {
+      const cls = d.pass ? 'pass' : 'fail';
+      const status = d.pass ? '✓' : '✗';
+      const ampStr = d.ampacity !== null ? d.ampacity.toFixed(1) : '—';
+      const vdStr = d.voltageDrop !== undefined ? d.voltageDrop.toFixed(3) : '—';
+      const reason = d.reason || (d.pass ? '满足全部条件' : '');
+      html += '<tr class="' + cls + '"><td>' + d.section + '</td><td>' + ampStr + '</td><td>' + vdStr + '</td><td>' + status + '</td><td>' + reason + '</td></tr>';
+    });
+    html += '</table>';
+    html += '<div class="result-warn"><strong>重要提示：</strong>本工具载流量数据为参考值（基于 PVC 绝缘、空气中 30℃、单根敷设），实际工程必须按 GB/T 16895.15 查表并根据实际条件修正。k 系数等参数需查 GB 50054-2011 原文确认。本工具仅用于初步估算，正式设计应由注册电气工程师复核。</div>';
+
+    resultDiv.innerHTML = html;
+  } catch (e) {
+    resultDiv.innerHTML = '<div class="result-fail">✗ 计算错误：' + e.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>

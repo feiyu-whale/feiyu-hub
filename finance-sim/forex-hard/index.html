@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>💱 时光机炒外汇 · 困难版</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    margin:0; min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 0%, #16241a 0%, #0a120c 55%, #050805 100%);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#d8e8c8; padding:16px 12px 40px; user-select:none;
+  }
+  .back { display:inline-block; text-decoration:none; color:#8aa06a; font-size:13px; margin-bottom:10px;
+    padding:5px 11px; border:1px solid #3a4c22; border-radius:20px; }
+  .back:active { background:#1c2610; }
+  h1 { font-size:22px; text-align:center; color:#a8d060; font-weight:700; letter-spacing:1px; margin:2px 0 4px; }
+  .sub { text-align:center; color:#7a8f5a; font-size:12px; margin-bottom:12px; line-height:1.6; }
+  .warn { text-align:center; color:#b0a05a; font-size:11px; margin-bottom:14px; line-height:1.5;
+    background:#1a1a10; border:1px solid #3a3a1c; border-radius:8px; padding:6px 10px; }
+  .panel { max-width:720px; margin:0 auto; background:linear-gradient(160deg,#1a2814,#0e1610);
+    border:1px solid #3a5a28; border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+  .toprow { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .date { font-size:20px; font-weight:700; color:#a8d060; }
+  .cash { font-size:14px; color:#c8e0a0; }
+  .cash b { color:#e0f0c0; }
+  .asset { font-size:13px; color:#8aa06a; }
+  .asset b { color:#c8e0a0; }
+  .ctrl { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button { background:#243818; border:1px solid #4a6a2a; color:#c8e0a0; font-size:14px;
+    padding:9px 14px; border-radius:9px; cursor:pointer; font-family:inherit; }
+  button:active { background:#33502a; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  select { background:#243818; border:1px solid #4a6a2a; color:#c8e0a0; font-size:14px;
+    padding:9px 10px; border-radius:9px; font-family:inherit; }
+  input { background:#12200e; border:1px solid #2e4a20; border-radius:9px; color:#c8e0a0;
+    font-family:inherit; font-size:14px; padding:9px; }
+  h3 { font-size:14px; color:#8aa06a; margin:14px 0 8px; letter-spacing:1px; }
+  .pair { display:flex; justify-content:space-between; align-items:center; padding:10px 12px;
+    background:#12200e; border:1px solid #2e4a20; border-radius:10px; margin-bottom:8px; cursor:pointer; }
+  .pair.sel { border-color:#a8d060; box-shadow:0 0 0 1px #a8d060 inset; }
+  .pair .nm { font-size:15px; font-weight:700; color:#c8e0a0; }
+  .pair .px { font-size:12px; color:#8aa06a; margin-top:2px; }
+  .pair .px b { color:#e0f0c0; }
+  .pair .chg { font-size:12px; }
+  .pair .chg.up { color:#e07070; }
+  .pair .chg.down { color:#70c070; }
+  .msg { margin-top:10px; font-size:13px; color:#c8b060; min-height:20px; line-height:1.5; }
+  .msg.err { color:#e07070; }
+  .msg.ok { color:#90d070; }
+  .lev { font-size:13px; color:#c8b060; background:#1e1a08; border:1px solid #4a3a18;
+    border-radius:8px; padding:8px 11px; margin-bottom:7px; line-height:1.7; }
+  .lev .lr { color:#e0a060; font-weight:700; }
+  .lev .liq { color:#e07070; }
+  .lev button { padding:5px 10px; font-size:12px; margin-left:6px; }
+  .chart-wrap { position:relative; height:170px; background:#0a1408; border:1px solid #2e4a20;
+    border-radius:10px; margin-bottom:10px; overflow:hidden; }
+  .idx { font-size:12px; color:#8aa06a; background:#12200e; border:1px solid #2e4a20;
+    border-radius:8px; padding:8px 11px; margin-bottom:10px; line-height:1.7; }
+  .idx b { color:#e0f0c0; font-size:14px; }
+  .idx .up { color:#e07070; }
+  .idx .down { color:#70c070; }
+  .row2 { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .row2 label { font-size:12px; color:#8aa06a; }
+  .order { background:#0f1c0c; border:1px solid #2e4a20; border-radius:10px; padding:12px; margin-top:10px; }
+  .order .orow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:9px; }
+  .order .orow span { font-size:12px; color:#8aa06a; min-width:52px; }
+  .tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:4px;
+    background:#2a3a1a; color:#a8c080; margin-left:5px; }
+  .tag.long { background:#3a1a1a; color:#e09090; }
+  .tag.short { background:#1a2a3a; color:#90b0e0; }
+  .ver { text-align:center; font-size:10px; color:#4a5a4a; margin-top:18px; }
+  .pop { position:fixed; inset:0; background:rgba(0,0,0,.78); display:flex; align-items:center;
+    justify-content:center; padding:20px; z-index:100; }
+  .pop .box { background:linear-gradient(160deg,#1a2814,#0e1610); border:1px solid #4a6a2a;
+    border-radius:14px; padding:20px 18px; max-width:380px; width:100%; line-height:1.8; font-size:13px; }
+  .pop .box h3 { margin-top:0; font-size:16px; color:#a8d060; }
+  .pop .box button { width:100%; margin-top:14px; }
+  .hide { display:none !important; }
+  .jumprisk { margin-top:10px; padding:8px 11px; font-size:12px; color:#c8a060;
+    background:#1e1608; border:1px solid #4a3a18; border-radius:8px; text-align:center; }
+  .jumprisk b { color:#ffc040; font-size:15px; }
+  .jumprisk.hot { border-color:#e07040; background:#2a1408; }
+  .jumprisk.hot b { color:#ff8040; }
+  /* 2026-10-24 跳跃震动 */
+  @keyframes quake {
+    0%   { transform:translate(0,0) rotate(0deg); }
+    12%  { transform:translate(-7px,4px) rotate(-0.7deg); }
+    25%  { transform:translate(6px,-5px) rotate(0.6deg); }
+    38%  { transform:translate(-5px,-4px) rotate(-0.5deg); }
+    50%  { transform:translate(5px,5px) rotate(0.5deg); }
+    63%  { transform:translate(-4px,3px) rotate(-0.4deg); }
+    75%  { transform:translate(4px,-3px) rotate(0.3deg); }
+    88%  { transform:translate(-2px,2px) rotate(-0.2deg); }
+    100% { transform:translate(0,0) rotate(0deg); }
+  }
+  body.quake { animation: quake 0.85s ease-out; }
+  .jumpbox { border-color:#e04040 !important; }
+  .jumpbox h3 { color:#ff7070 !important; }
+  .jumpbox .big { font-size:26px; font-weight:700; text-align:center; margin:6px 0 12px; }
+</style>
+</head>
+<body>
+<a class="back" href="../">← 回理财模拟</a>
+<h1>💱 时光机炒外汇 <span style="font-size:14px;color:#e0a060">· 困难版</span></h1>
+<div class="sub">2000 年开局 · <b style="color:#e0a060">时间线不一定是真的</b> · 数据全是真实历史汇率</div>
+<div class="warn">⚠️ 本游戏模拟的是：<b>加杠杆会死人</b>。真实外汇市场不讲情面——<b>别拿生活费去赌</b>。</div>
+
+<div class="panel">
+  <div class="toprow">
+    <div class="date" id="curDate">—</div>
+    <div style="text-align:right">
+      <div class="cash">现金 <b id="cash">¥10,000</b></div>
+      <div class="asset">净资产 <b id="netWorth">¥10,000</b></div>
+      <div class="asset">已用保证金 <b id="usedMargin">¥0</b></div>
+    </div>
+  </div>
+  <div class="ctrl">
+    <button id="stepBtn">▶ 下一天</button>
+    <select id="stepMode">
+      <option value="day">每次 +1 天</option>
+      <option value="week">每次 +1 周</option>
+      <option value="month">每次 +1 月</option>
+    </select>
+    <button id="resetBtn">↻ 重开</button>
+  </div>
+  <div class="msg" id="msg"></div>
+  <div class="jumprisk" id="jumpRisk">📡 时空跳跃概率：<b>1%</b>　<span style="font-size:11px;color:#8a7a5a">（每次不跳 +1%，跳完重置）</span></div>
+</div>
+
+<div class="panel">
+  <h3>📉 行情</h3>
+  <div class="idx" id="idxBox">—</div>
+  <div class="chart-wrap"><canvas id="chart" style="width:100%;height:100%"></canvas></div>
+  <div id="pairList"></div>
+  <div class="order" id="orderBox" style="display:none">
+    <div class="orow">
+      <span>方向</span>
+      <select id="dirSel"><option value="long">做多</option><option value="short">做空</option></select>
+      <span>杠杆</span>
+      <select id="levSel">
+        <option value="1">1 倍（全款）</option>
+        <option value="5">5 倍</option>
+        <option value="10">10 倍</option>
+        <option value="20">20 倍</option>
+        <option value="30">30 倍</option>
+        <option value="40">40 倍</option>
+        <option value="50">50 倍</option>
+        <option value="56">56 倍</option>
+      </select>
+    </div>
+    <div class="orow">
+      <span>保证金</span>
+      <input id="marginAmt" type="number" min="1" placeholder="人民币金额" style="flex:1">
+      <button id="maxBtn">全部</button>
+    </div>
+    <div class="orow">
+      <button id="openBtn" style="flex:1">开仓</button>
+    </div>
+    <div style="font-size:11px;color:#6a7a4a;line-height:1.7">
+      名义仓位 = 保证金 × 杠杆。强平价按维持保证金率分档计算。<br>
+      融资利息按日计（年化 12%），从保证金里扣，扣光即爆仓。
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>⚡ 持仓 <span style="font-size:11px;color:#a08080;font-weight:400">（借来的钱也在打，赢十倍、输光光）</span></h3>
+  <div id="levBody"><div style="color:#6a7a4a;font-size:13px">暂无持仓</div></div>
+</div>
+
+<div class="ver">v1.0.0-困难版 20261024</div>
+<div class="pop hide" id="jumpPop">
+  <div class="box jumpbox">
+    <h3>⚡ 交易所数据缺失</h3>
+    <div class="big" id="jumpBig">跳过 XX 天</div>
+    <div id="jumpDetail"></div>
+    <button id="jumpOk">继续</button>
+  </div>
+</div>
+
+<div class="pop" id="introPop">
+  <div class="box">
+    <h3>⚠️ 困难模式</h3>
+    真实外汇市场里，<b>一瞬间蒸发和暴涨都是很常见的</b>。<br><br>
+    这里的数据<b>完全真实</b>——每一个价格，都是历史上真实发生过的那一天。<br><br>
+    但是，<b>时间线不一定</b>。<br><br>
+    你会从 2000 年出发，但<b>不知道自己现在到底是哪一天</b>。历史会在你不注意的时候，悄悄跳过几天、几周。<br><br>
+    <span style="color:#e0a060">记住：你以为的"下周"，可能已经是"下个月"。</span>
+    <button id="introOk">我知道了，开始</button>
+  </div>
+</div>
+
+
+<script>
+(function(){
+'use strict';
+
+/* ============ 数据加载 ============ */
+var FX = null;
+var PAIRS = [];
+var state = { i:0, cash:10000, pos:[], log:[], over:false };
+/* 困难版：真实年份进度 seq（0→N），与显示日期 i 解耦 */
+var HARD = { seq:0, jumpProb:0.01, jumps:0, totalDays:0, jumpMarks:[] };  // jumpMarks: [{seqFrom, seqTo, span}]
+
+var LEV_RATE_YEAR = 0.12;
+var LEV_RATE_DAY = LEV_RATE_YEAR / 365;
+var LIQ_FEE = 0.005;
+
+function levMR(L){
+  if(L<=1)  return 0.05;
+  if(L<=5)  return 0.02;
+  if(L<=10) return 0.01;
+  if(L<=25) return 0.005;
+  if(L<=50) return 0.0025;
+  return 0.002;      // 56 倍
+}
+
+/* ============ 困难版核心：时间线映射 ============ */
+/* 规则：
+ *  - 每天默认前进 1 天；跳的概率从 1% 起，每不跳一次 +1%，跳了就重置回 1%
+ *  - 跳的跨度 2~30 天，按偏正态取（小跳多、大跳少，30 天极罕见）
+ *  - 只向前，绝不回头
+ */
+function gaussJumpSpan(){
+  // 用 Box-Muller 取标准正态，映射到 2~30，偏向小值
+  var u = 0, v = 0;
+  while(u === 0) u = Math.random();
+  while(v === 0) v = Math.random();
+  var z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  // 均值 0，标准差 1，取绝对值后缩放：z 越大越少
+  var a = Math.abs(z);
+  if(a > 3) a = 3;                    // 截断在 3σ
+  // a=0 → 2 天；a=3 → 30 天
+  var span = Math.round(2 + (a / 3) * 28);
+  return Math.max(2, Math.min(30, span));
+}
+
+function hardAdvanceSeq(maxLen){
+  // 返回这一轮前进的天数
+  if(Math.random() < HARD.jumpProb){
+    var span = gaussJumpSpan();
+    var from = HARD.seq;
+    HARD.jumpProb = 0.01;          // 跳完重置
+    HARD.jumps++;
+    HARD.seq = Math.min(HARD.seq + span, maxLen - 1);
+    HARD.jumpMarks.push({ from: from, to: HARD.seq, span: span });
+    if(HARD.jumpMarks.length > 20) HARD.jumpMarks.shift();
+    return { span: span, jumped: true, from: from, to: HARD.seq };
+  } else {
+    HARD.jumpProb = Math.min(1, HARD.jumpProb + 0.01);
+    HARD.seq = Math.min(HARD.seq + 1, maxLen - 1);
+    return { span: 1, jumped: false };
+  }
+}
+
+function fmt(n, d){
+  if(!isFinite(n)) return '—';
+  return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:d==null?2:d, maximumFractionDigits:d==null?2:d});
+}
+function pct(n){ return (n>=0?'+':'') + (n*100).toFixed(2) + '%'; }
+
+/* ============ 历史事件库（已核实） ============
+ * 每条都有数据佐证或公开来源核实，未核实的标注 verified:false 且不参与弹窗
+ */
+var FX_EVENTS = [
+  { date:'2005-07-21', verified:true, title:'人民币汇率形成机制改革（7·21 汇改）',
+    desc:'中国人民银行宣布：人民币不再盯住单一美元，改为参考一篮子货币、有管理的浮动汇率制度。',
+    impact:'数据佐证：当日 USD/CNY 单日变动 -2.01%，是 27 年里唯一一次超过 2% 的波动。' },
+  { date:'2008-09-15', verified:true, title:'雷曼兄弟破产 · 全球金融海啸',
+    desc:'拥有 158 年历史的美国第四大投行雷曼兄弟，于当地时间凌晨正式提交破产申请，次贷危机全面引爆。',
+    impact:'数据佐证：此后数月，EUR/USD、GBP/USD、AUD/USD、USD/CAD 等多个货币对连续出现单日 2% 以上的剧烈波动。' },
+  { date:'2008-12-16', verified:true, title:'美联储降息至 0-0.25% · 首次量化宽松',
+    desc:'美联储将联邦基金利率下调至 0-0.25% 区间，为历史首次零利率，并启动量化宽松。',
+    impact:'数据佐证：12-18 瑞郎单日 -5.48%，12-19 欧元单日 -4.63%，市场剧烈重定价。' },
+  { date:'2015-01-15', verified:true, title:'瑞士央行意外取消瑞郎汇率下限',
+    desc:'瑞士央行出人意料地宣布取消已实施三年之久的瑞郎对欧元汇率上限，同时降息至 -0.75%。',
+    impact:'来源：多家财经媒体报道。瑞郎当日暴涨逾 20%，欧元/瑞郎跌至 2011 年 9 月以来最低，多家外汇交易商爆仓。' }
+];
+
+/* 查找跳跃区间内的事件 */
+function findEventsBetween(fromSeq, toSeq){
+  var p0 = PAIRS[0];
+  if(!p0) return [];
+  var d0 = FX[p0].dates;
+  var dFrom = d0[Math.min(fromSeq, d0.length-1)];
+  var dTo   = d0[Math.min(toSeq, d0.length-1)];
+  var hits = [];
+  for(var i=0;i<FX_EVENTS.length;i++){
+    var e = FX_EVENTS[i];
+    if(!e.verified) continue;
+    if(e.date >= dFrom && e.date <= dTo) hits.push(e);
+  }
+  return hits;
+}
+
+/* ============ 加载数据 ============ */
+fetch('fx-data.json').then(function(r){ return r.json(); }).then(function(d){
+  FX = d.pairs;
+  PAIRS = Object.keys(FX);
+  initState();
+  renderAll();
+}).catch(function(e){
+  document.getElementById('msg').textContent = '数据加载失败：' + e.message;
+});
+
+function initState(){
+  state = { i:0, cash:10000, pos:[], log:[], over:false };
+  HARD = { seq:0, jumpProb:0.01, jumps:0, totalDays:0, jumpMarks:[] };
+  document.getElementById('msg').textContent = '';
+}
+
+function bindIntro(){
+  var pop = document.getElementById('introPop');
+  var ok = document.getElementById('introOk');
+  if(ok) ok.addEventListener('click', function(){ pop.classList.add('hide'); });
+  var jp = document.getElementById('jumpPop');
+  var jok = document.getElementById('jumpOk');
+  if(jok) jok.addEventListener('click', function(){ jp.classList.add('hide'); });
+}
+
+/* 当前日期（真实版 = 数据里的真实日期） */
+function curDate(){
+  var p = FX[PAIRS[0]];
+  if(!p || !p.dates.length) return '';
+  return p.dates[Math.min(state.i, p.dates.length-1)];
+}
+
+/* 某货币对在 index 处的价格 */
+function priceAt(pairCode, idx){
+  var p = FX[pairCode];
+  if(!p) return null;
+  idx = Math.max(0, Math.min(idx, p.rates.length-1));
+  return p.rates[idx];
+}
+
+/* 某货币对在第 idx 天的涨跌幅 */
+function changeAt(pairCode, idx){
+  if(idx <= 0) return 0;
+  var a = priceAt(pairCode, idx-1), b = priceAt(pairCode, idx);
+  if(!a) return 0;
+  return (b-a)/a;
+}
+
+/* ============ 渲染 ============ */
+function renderAll(){
+  renderTop();
+  renderIndex();
+  renderPairs();
+  renderChart();
+  renderPositions();
+}
+
+function renderRisk(){
+  var el = document.getElementById('jumpRisk');
+  if(!el) return;
+  var pctv = Math.round(HARD.jumpProb * 100);
+  el.innerHTML = '📡 时空跳跃概率：<b>' + pctv + '%</b>　<span style="font-size:11px;color:#8a7a5a">' +
+    (HARD.jumps > 0 ? '（已跳 ' + HARD.jumps + ' 次）' : '（每次不跳 +1%，跳完重置）') + '</span>';
+  if(HARD.jumpProb >= 0.3) el.classList.add('hot');
+  else el.classList.remove('hot');
+}
+
+function renderTop(){
+  renderRisk();
+  document.getElementById('curDate').textContent = curDate();
+  document.getElementById('cash').textContent = '¥' + fmt(state.cash);
+  document.getElementById('netWorth').textContent = '¥' + fmt(netWorth());
+  var used = 0;
+  for(var i=0;i<state.pos.length;i++) used += state.pos[i].margin;
+  document.getElementById('usedMargin').textContent = '¥' + fmt(used);
+}
+
+function netWorth(){
+  var v = state.cash;
+  for(var i=0;i<state.pos.length;i++){
+    var p = state.pos[i];
+    v += p.margin + pnl(p);
+  }
+  return v;
+}
+
+function pnl(p){
+  var cur = priceAt(p.pair, state.i);
+  if(cur == null) return 0;
+  var diff = cur - p.entry;
+  if(p.dir === 'short') diff = -diff;
+  return p.units * diff;
+}
+
+function renderIndex(){
+  var box = document.getElementById('idxBox');
+  if(!PAIRS.length){ box.textContent = '—'; return; }
+  // 显示选中的货币对，默认第一个
+  var code = curPairCode || PAIRS[0];
+  var p = FX[code];
+  var cur = priceAt(code, state.i);
+  var chg = changeAt(code, state.i);
+  var cls = chg > 0 ? 'up' : (chg < 0 ? 'down' : '');
+  box.innerHTML = '<b>' + code + '</b>　<span class="' + cls + '">' + fmt(cur, code.indexOf('JPY')>0?3:5) + '　' +
+    (chg>=0?'▲':'▼') + pct(chg) + '</span>' +
+    '<br><span style="font-size:11px">区间 ' + fmt(p.min,4) + ' ~ ' + fmt(p.max,4) + '　共 ' + p.count + ' 个交易日</span>';
+}
+
+var curPairCode = null;
+
+function renderPairs(){
+  var box = document.getElementById('pairList');
+  if(!PAIRS.length){ box.innerHTML = ''; return; }
+  var html = '';
+  for(var i=0;i<PAIRS.length;i++){
+    var code = PAIRS[i];
+    var cur = priceAt(code, state.i);
+    var chg = changeAt(code, state.i);
+    var cls = chg > 0 ? 'up' : (chg < 0 ? 'down' : '');
+    var sel = (curPairCode === code) ? ' sel' : '';
+    html += '<div class="pair' + sel + '" data-code="' + code + '">' +
+      '<div><div class="nm">' + code + '</div>' +
+      '<div class="px">现价 <b>' + fmt(cur, code.indexOf('JPY')>0?3:5) + '</b></div></div>' +
+      '<div class="chg ' + cls + '">' + (chg>=0?'+':'') + (chg*100).toFixed(2) + '%</div></div>';
+  }
+  box.innerHTML = html;
+  var els = box.querySelectorAll('.pair');
+  for(var j=0;j<els.length;j++){
+    els[j].addEventListener('click', function(){
+      curPairCode = this.getAttribute('data-code');
+      renderAll();
+      document.getElementById('orderBox').style.display = '';
+    });
+  }
+}
+
+/* 简单走势图（最近 90 天） */
+function renderChart(){
+  var cv = document.getElementById('chart');
+  if(!cv) return;
+  var dpr = window.devicePixelRatio || 1;
+  var w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  var code = curPairCode || PAIRS[0];
+  if(!code) return;
+  var p = FX[code];
+  var N = 90;
+  var start = Math.max(0, state.i - N + 1);
+  var vals = [];
+  var idxs = [];
+  for(var i0=start;i0<=state.i;i0++){ vals.push(p.rates[i0]); idxs.push(i0); }
+  if(vals.length < 2) return;
+
+  // 收集本窗口内的跳跃段（用于画虚空）
+  var voids = [];
+  for(var v0=0; v0<HARD.jumpMarks.length; v0++){
+    var m = HARD.jumpMarks[v0];
+    if(m.to >= start && m.from <= state.i){
+      var x1 = ((m.from - start)/(state.i - start || 1)) * (w-8) + 4;
+      var x2 = ((m.to   - start)/(state.i - start || 1)) * (w-8) + 4;
+      voids.push({ x1: x1, x2: x2, span: m.span });
+    }
+  }
+
+  var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals);
+  var pad = (mx-mn) * 0.15 || 0.001;
+  mx += pad; mn -= pad;
+  function toX(k){ return (k/(vals.length-1)) * (w-8) + 4; }
+  function toY(v){ return h - 8 - ((v-mn)/(mx-mn)) * (h-16); }
+
+  // ① 先画马赛克噪点（虚空区背景）
+  for(var q=0;q<voids.length;q++){
+    var vd = voids[q];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(vd.x1, 0, Math.max(2, vd.x2 - vd.x1), h);
+    ctx.clip();
+    // 噪点
+    for(var n=0;n<260;n++){
+      var nx = vd.x1 + Math.random()*(vd.x2-vd.x1);
+      var ny = Math.random()*h;
+      var g = 30 + Math.random()*70;
+      ctx.fillStyle = 'rgba(' + g + ',' + (g+10) + ',' + g + ',0.85)';
+      ctx.fillRect(nx, ny, 3+Math.random()*3, 3+Math.random()*3);
+    }
+    // 暗底
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(vd.x1, 0, Math.max(2, vd.x2-vd.x1), h);
+    ctx.restore();
+  }
+
+  // ② 正常折线
+  ctx.beginPath();
+  for(var k=0;k<vals.length;k++){
+    var x = toX(k), y = toY(vals[k]);
+    if(k===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  var rising = vals[vals.length-1] >= vals[0];
+  ctx.strokeStyle = rising ? '#e07070' : '#70c070';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  // ③ 填充
+  ctx.lineTo(w-4, h-8); ctx.lineTo(4, h-8); ctx.closePath();
+  ctx.fillStyle = rising ? 'rgba(224,112,112,0.12)' : 'rgba(112,192,112,0.12)';
+  ctx.fill();
+
+  // ④ 虚空区：红色虚线 + 文字标注（画在折线之上，盖住）
+  for(var q2=0;q2<voids.length;q2++){
+    var vd2 = voids[q2];
+    var cx = (vd2.x1 + vd2.x2) / 2;
+
+    // 红色虚线（竖直）
+    ctx.save();
+    ctx.setLineDash([5,4]);
+    ctx.strokeStyle = '#e04040';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, 6);
+    ctx.lineTo(cx, h-6);
+    ctx.stroke();
+    ctx.restore();
+
+    // 标注文字
+    var label = '[时间未知 - 跨度' + vd2.span + '天]';
+    ctx.font = 'bold 10px sans-serif';
+    var tw = ctx.measureText(label).width;
+    var bx = Math.min(Math.max(cx - tw/2 - 5, 2), w - tw - 12);
+    ctx.fillStyle = 'rgba(60,10,10,0.92)';
+    ctx.fillRect(bx, h/2 - 9, tw + 10, 18);
+    ctx.strokeStyle = '#e04040';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, h/2 - 9, tw + 10, 18);
+    ctx.fillStyle = '#ff8080';
+    ctx.fillText(label, bx + 5, h/2 + 4);
+  }
+
+  // ⑤ 价格刻度
+  ctx.fillStyle = '#6a7a4a';
+  ctx.font = '10px sans-serif';
+  ctx.fillText(fmt(mx,4), 6, 12);
+  ctx.fillText(fmt(mn,4), 6, h-4);
+}
+
+function renderPositions(){
+  var box = document.getElementById('levBody');
+  if(!state.pos.length){
+    box.innerHTML = '<div style="color:#6a7a4a;font-size:13px">暂无持仓</div>';
+    return;
+  }
+  var html = '';
+  for(var i=0;i<state.pos.length;i++){
+    var p = state.pos[i];
+    var cur = priceAt(p.pair, state.i);
+    var g = pnl(p);
+    var rate = g / p.margin;
+    var dirTxt = p.dir === 'long' ? '<span class="tag long">做多</span>' : '<span class="tag short">做空</span>';
+    html += '<div class="lev">' + p.pair + ' ' + dirTxt + ' <span class="lr">' + p.L + '×</span>　' +
+      '保证金 ¥' + fmt(p.margin) + '<br>' +
+      '开仓 ' + fmt(p.entry, p.pair.indexOf('JPY')>0?3:5) + ' → 现价 ' + fmt(cur, p.pair.indexOf('JPY')>0?3:5) + '<br>' +
+      '浮动 <b style="color:' + (g>=0?'#90d070':'#e07070') + '">' + (g>=0?'+':'') + '¥' + fmt(g) + '（' + pct(rate) + '）</b><br>' +
+      '<span class="liq">强平价 ' + fmt(liqPrice(p), p.pair.indexOf('JPY')>0?3:5) + '</span>' +
+      '<button data-close="' + i + '">平仓</button></div>';
+  }
+  box.innerHTML = html;
+  var btns = box.querySelectorAll('button[data-close]');
+  for(var j=0;j<btns.length;j++){
+    btns[j].addEventListener('click', function(){
+      closePos(parseInt(this.getAttribute('data-close'),10));
+    });
+  }
+}
+
+/* 强平价：多 = 开仓价 × (1 − 1/L + MR)；空 = 开仓价 × (1 + 1/L − MR) */
+function liqPrice(p){
+  var mr = levMR(p.L);
+  if(p.dir === 'long') return p.entry * (1 - 1/p.L + mr);
+  return p.entry * (1 + 1/p.L - mr);
+}
+
+/* ============ 操作 ============ */
+function setMsg(t, cls){
+  var el = document.getElementById('msg');
+  el.textContent = t;
+  el.className = 'msg' + (cls?' '+cls:'');
+}
+
+function openPos(){
+  if(state.over){ setMsg('已经爆仓出局，请重开','err'); return; }
+  if(!curPairCode){ setMsg('先选一个货币对','err'); return; }
+  var dir = document.getElementById('dirSel').value;
+  var L = parseInt(document.getElementById('levSel').value,10) || 1;
+  var margin = parseFloat(document.getElementById('marginAmt').value);
+  if(!isFinite(margin) || margin <= 0){ setMsg('请输入有效的保证金金额','err'); return; }
+  if(margin > state.cash + 0.001){ setMsg('保证金不能超过现金 ¥' + fmt(state.cash),'err'); return; }
+
+  var entry = priceAt(curPairCode, state.i);
+  var units = (margin * L) / entry;     // 名义仓位 / 价格 = 单位数
+
+  state.cash -= margin;
+  state.pos.push({
+    pair: curPairCode, dir: dir, L: L, margin: margin,
+    entry: entry, units: units, lastDay: state.i
+  });
+  document.getElementById('marginAmt').value = '';
+  setMsg('已用 ' + L + ' 倍杠杆' + (dir==='long'?'做多':'做空') + ' ' + curPairCode +
+    '，保证金 ¥' + fmt(margin) + '；强平价 ' + fmt(liqPrice(state.pos[state.pos.length-1]),5), 'ok');
+  renderAll();
+}
+
+function closePos(idx){
+  var p = state.pos[idx];
+  if(!p) return;
+  var g = pnl(p);
+  var back = p.margin + g - Math.abs(p.margin * LIQ_FEE);
+  state.cash += Math.max(0, back);
+  state.pos.splice(idx,1);
+  setMsg('平仓 ' + p.pair + '，结算 ¥' + fmt(back) + '（浮动 ' + (g>=0?'+':'') + '¥' + fmt(g) + '）', g>=0?'ok':'');
+  renderAll();
+}
+
+/* 推进 */
+function advance(){
+  if(state.over) return;
+  var mode = document.getElementById('stepMode').value;
+  var rounds = 1;
+  if(mode === 'week') rounds = 5;
+  else if(mode === 'month') rounds = 21;
+
+  var maxLen = 1e9;
+  for(var i=0;i<PAIRS.length;i++) maxLen = Math.min(maxLen, FX[PAIRS[i]].rates.length);
+
+  var lastJump = null;
+  window.__lastJumpEvents = [];
+  // 困难版：每次只前进 1 天或跳跃，但日期映射由 HARD.seq 决定
+  for(var r=0;r<rounds && !state.over;r++){
+    if(state.i >= maxLen - 1) break;
+    var res = hardAdvanceSeq(maxLen);
+    if(res.jumped){
+      lastJump = res.span;
+      var evs = findEventsBetween(res.from, res.to);
+      if(evs.length) window.__lastJumpEvents = (window.__lastJumpEvents || []).concat(evs);
+    }
+    // 逐日推进：跳过的每一天都要结算（扣利息 + 查强平）
+    var fromI = state.i;
+    var toI = HARD.seq;
+    for(var d=fromI+1; d<=toI && !state.over; d++){
+      state.i = d;
+      HARD.totalDays++;
+      settleDay();
+      // 强平后若已破产，跳出
+      if(state.over) break;
+    }
+    state.i = toI;
+  }
+  if(lastJump) showJumpEffect(lastJump);
+  renderAll();
+}
+
+/* 跳跃特效：震动 + 弹窗结算 */
+var jumpDetailCache = '';
+function showJumpEffect(span){
+  // 每次弹窗都重新读取（事件列表由 advance 里写入）
+  // 记录跳跃前后的持仓结果（settleDay 已跑过，这里从日志里取）
+  document.body.classList.add('quake');
+  setTimeout(function(){ document.body.classList.remove('quake'); }, 900);
+
+  var pop = document.getElementById('jumpPop');
+  var big = document.getElementById('jumpBig');
+  var det = document.getElementById('jumpDetail');
+  if(!pop) return;
+
+  big.textContent = '跳过 ' + span + ' 天';
+  var lines = [];
+  lines.push('由于交易所数据缺失，系统已跳过 <b>' + span + '</b> 天。');
+  lines.push('<span style="color:#e0a060">在这段时间内，你的杠杆仓位经历了地狱般的洗礼。</span>');
+
+  // 跳跃期间的历史事件
+  var evs = (window.__lastJumpEvents || []);
+  if(evs.length){
+    lines.push('');
+    lines.push('<b style="color:#ffd060">📰 这段空白期里，世界发生了大事：</b>');
+    for(var ei=0; ei<evs.length; ei++){
+      var e = evs[ei];
+      lines.push('<div style="margin:7px 0;padding:8px 10px;background:#2a1a08;border-left:3px solid #e0a060;border-radius:5px">' +
+        '<b style="color:#ffd060">' + e.date + '　' + e.title + '</b><br>' +
+        '<span style="font-size:12px;color:#c8b090">' + e.desc + '</span><br>' +
+        '<span style="font-size:11px;color:#8aa06a">' + e.impact + '</span></div>');
+    }
+  }
+
+  // 结算后的持仓状态
+  if(state.pos.length){
+    lines.push('');
+    lines.push('<b>幸存仓位：</b>');
+    for(var i=0;i<state.pos.length;i++){
+      var q = state.pos[i];
+      var g = pnl(q);
+      var c = g >= 0 ? '#90d070' : '#e07070';
+      lines.push('· ' + q.pair + ' ' + q.L + '×　浮动 <b style="color:' + c + '">' +
+        (g>=0?'+':'') + '¥' + fmt(g) + '（' + pct(g/q.margin) + '）</b>');
+    }
+  } else {
+    lines.push('');
+    lines.push('<b style="color:#ff7070">持仓已全部清空。</b>');
+    if(!state.over) lines.push('要么你在跳跃中爆了仓，要么你本来就空仓。');
+  }
+
+  if(state.over) lines.push('<br><b style="color:#ff7070">💀 资金已归零。</b>');
+
+  det.innerHTML = lines.join('<br>');
+  pop.classList.remove('hide');
+}
+
+function settleDay(){
+  // 1) 融资利息
+  for(var i=state.pos.length-1;i>=0;i--){
+    var p = state.pos[i];
+    if(p.L <= 1 && p.dir === 'long') continue;
+    var days = state.i - (p.lastDay || state.i);
+    if(days <= 0) continue;
+    var notional = p.margin * p.L;
+    var interest = notional * LEV_RATE_DAY * days;
+    p.margin -= interest;
+    p.lastDay = state.i;
+    if(p.margin <= 0){
+      state.pos.splice(i,1);
+      setMsg(curDate() + ' 【利息爆仓】' + p.pair + ' · 融资利息吃光保证金','err');
+    }
+  }
+
+  // 2) 检查强平
+  for(var j=state.pos.length-1;j>=0;j--){
+    var q = state.pos[j];
+    var cur = priceAt(q.pair, state.i);
+    var liq = liqPrice(q);
+    var hit = (q.dir === 'long') ? (cur <= liq) : (cur >= liq);
+    if(hit){
+      state.pos.splice(j,1);
+      // 强平：本金归零，还要扣违约金
+      state.cash = Math.max(0, state.cash - q.margin * LIQ_FEE);
+      setMsg(curDate() + ' 【爆仓·强平】' + q.pair + ' ' + q.L + '× · 触发强平价 ' +
+        fmt(liq,5) + '，保证金 ¥' + fmt(q.margin) + ' 全部亏光','err');
+    }
+  }
+
+  // 3) 破产判定
+  if(state.cash <= 0 && state.pos.length === 0){
+    state.over = true;
+    setMsg('💀 资金归零，游戏结束。点「重开」再来一局。','err');
+    document.getElementById('stepBtn').disabled = true;
+  }
+}
+
+/* ============ 事件 ============ */
+document.getElementById('stepBtn').addEventListener('click', advance);
+document.getElementById('resetBtn').addEventListener('click', function(){
+  initState();
+  HARD = { seq:0, jumpProb:0.01, jumps:0, totalDays:0, jumpMarks:[] };
+  state.i = 0;
+  curPairCode = null;
+  document.getElementById('stepBtn').disabled = false;
+  document.getElementById('orderBox').style.display = 'none';
+  var ip = document.getElementById('introPop');
+  if(ip) ip.classList.remove('hide');
+  renderAll();
+  setMsg('已重开，2000 年出发');
+});
+document.getElementById('openBtn').addEventListener('click', openPos);
+document.getElementById('maxBtn').addEventListener('click', function(){
+  document.getElementById('marginAmt').value = Math.floor(state.cash);
+});
+
+window.addEventListener('resize', renderChart);
+bindIntro();
+
+})();
+</script>
+</body>
+</html>

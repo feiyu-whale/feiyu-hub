@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>输液速度与滴速计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#dbe7f5;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+header{padding:14px 16px;background:#0d1e33;border-bottom:1px solid #1d3a5c}
+h1{margin:0;font-size:18px;color:#4a9eff}
+.sub{font-size:12px;color:#7d96b3;margin-top:3px}
+nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;background:#0d1e33;border-bottom:1px solid #1d3a5c}
+nav button{background:#12283f;color:#9fc0e0;border:1px solid #1d3a5c;padding:6px 11px;border-radius:6px;font-size:13px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#04121f;border-color:#4a9eff;font-weight:600}
+main{max-width:900px;margin:0 auto;padding:14px 16px 60px}
+.card{background:#0e1f33;border:1px solid #1d3a5c;border-radius:10px;padding:13px;margin-bottom:13px}
+.card h2{font-size:14px;margin:0 0 9px;color:#4a9eff;border-left:3px solid #4a9eff;padding-left:8px}
+label{display:block;font-size:12px;color:#8fa9c4;margin:0 0 3px}
+input,select{width:100%;background:#0a1628;border:1px solid #24486f;color:#e6f0fb;border-radius:6px;padding:7px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(max-width:540px){.grid{grid-template-columns:1fr}}
+button.go{width:100%;margin-top:11px;background:#4a9eff;color:#04121f;border:0;padding:10px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
+.err{color:#ff8a8a;font-size:13px;margin-top:7px;min-height:18px}
+.res{font-size:14px;margin:5px 0}
+.res b{color:#6fe3a0;font-size:20px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{border-bottom:1px solid #1d3a5c;padding:5px 4px;text-align:left;vertical-align:top;word-break:break-word}
+th{color:#8fa9c4;font-weight:500}
+.formula{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#9fc0e0;background:#0a1628;border:1px solid #1d3a5c;border-radius:6px;padding:8px;margin-top:9px;word-break:break-word}
+pre{background:#0a1628;border:1px solid #1d3a5c;border-radius:6px;padding:9px;overflow:auto;font-size:12px;color:#a9c8e8;max-height:58vh}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#5c7796;background:#0a1628;border:1px solid #1d3a5c;padding:2px 6px;border-radius:4px}
+.hide{display:none}
+.ok{color:#6fe3a0}.bad{color:#ff8a8a}
+ul{padding-left:20px;margin:6px 0}
+li{font-size:13px;margin:3px 0}
+</style>
+</head>
+<body>
+<header><h1>输液速度与滴速计算器</h1><div class="sub">mL/h ↔ gtt/min · 滴系数 10/15/20/60 gtt/mL · 输注时间与剩余量估算</div></header>
+<nav>
+<button id="btn-calc" class="on" onclick="showTab('calc')">计算工具</button>
+<button id="btn-code" onclick="showTab('code')">JS 源码</button>
+<button id="btn-test" onclick="showTab('test')">单元测试</button>
+<button id="btn-help" onclick="showTab('help')">使用说明</button>
+</nav>
+<main>
+<section id="tab-calc">
+<div class="card">
+<h2>输入参数</h2>
+<div class="grid">
+<div><label>计算模式</label><select id="mode" onchange="modeUI()">
+<option value="A">A 已知 mL/h → 求 gtt/min</option>
+<option value="B">B 已知 gtt/min → 求 mL/h</option>
+<option value="C">C 已知总量+时间 → 求速度</option>
+</select></div>
+<div><label>输液器滴系数（gtt/mL）</label><select id="df">
+<option value="20" selected>20 — 标准重力输液器</option>
+<option value="10">10 — 专用输液器</option>
+<option value="15">15 — 专用输液器</option>
+<option value="60">60 — 微量/精密输液器</option>
+</select></div>
+<div id="w-mlh"><label>流速（mL/h）</label><input id="mlh" type="number" step="any" placeholder="如 125"></div>
+<div id="w-gtt" class="hide"><label>滴速（gtt/min）</label><input id="gtt" type="number" step="any" placeholder="如 40"></div>
+<div id="w-time" class="hide"><label>输注时间（min）</label><input id="time" type="number" step="any" placeholder="如 240"></div>
+<div><label>患者类型（安全范围参考）</label><select id="pt">
+<option value="adult">成人</option><option value="child">儿童</option><option value="infant">婴幼儿</option>
+</select></div>
+<div><label>液体总量 / 待输量（mL）<span id="reqC" class="hide">· 模式C必填</span></label><input id="vol" type="number" step="any" placeholder="如 500（可选）"></div>
+<div><label>剩余量（mL，可选）</label><input id="rem" type="number" step="any" placeholder="如 250"></div>
+</div>
+<button class="go" onclick="run()">计 算</button>
+<div class="err" id="err"></div>
+</div>
+<div class="card"><h2>计算结果</h2><div id="out"><div class="res" style="color:#7d96b3">请输入参数后点击「计算」</div></div></div>
+<div class="card"><h2>常用输液量参考</h2><table>
+<tr><th>规格</th><th>20 gtt/mL 下总滴数</th><th>常见用途</th></tr>
+<tr><td>100 mL</td><td>2000 滴</td><td>小剂量静滴 / 抗菌药物</td></tr>
+<tr><td>250 mL</td><td>5000 滴</td><td>常规静滴</td></tr>
+<tr><td>500 mL</td><td>10000 滴</td><td>常规静滴 / 补液</td></tr>
+<tr><td>1000 mL</td><td>20000 滴</td><td>大量补液</td></tr>
+</table><div class="formula">包装规格为常见市售规格（经验值）；总滴数 = 容量(mL) × 滴系数(gtt/mL)。</div></div>
+</section>
+
+<section id="tab-code" class="hide">
+<div class="card"><h2>核心纯函数源码</h2>
+<div class="formula">以下函数无副作用、不依赖 DOM，可单独复制做单元测试。</div>
+<pre id="src"></pre></div>
+</section>
+
+<section id="tab-test" class="hide">
+<div class="card"><h2>单元测试（10 例）</h2>
+<button class="go" onclick="runTests()">运行全部测试</button>
+<div id="tout" style="margin-top:10px"></div></div>
+</section>
+
+<section id="tab-help" class="hide">
+<div class="card"><h2>使用说明</h2><ul>
+<li>模式 A：由泵速 mL/h 反推滴速；模式 B：由护士数滴 gtt/min 反推 mL/h；模式 C：由总量与输注时间求两个速度。</li>
+<li>滴系数必须与实际所用输液器一致，不同滴系数换算结果差异很大。</li>
+<li>液体总量用于换算总滴数与输完所需时间；剩余量用于估算还需多久输完，均可不填。</li>
+<li>所有输入均做空值、非数字、越界校验，异常时显示中文提示，不输出 NaN。</li>
+<li>结果仅供核对参考，临床执行须遵医嘱并核对患者与药品。</li>
+</ul></div>
+<div class="card"><h2>公式与出处</h2><table>
+<tr><th>项目</th><th>取值 / 公式</th><th>出处</th></tr>
+<tr><td>滴系数 20 gtt/mL</td><td>20 滴蒸馏水 = 1 mL ±0.1 mL</td><td>GB 8368-2018《一次性使用输液器 重力输液式》（等同采用 ISO 8536-4）</td></tr>
+<tr><td>滴系数 60 gtt/mL</td><td>微量 / 精密输液器微滴</td><td>本参数为行业经验值，未经标准核对</td></tr>
+<tr><td>滴系数 10 / 15 gtt/mL</td><td>部分专用输液器</td><td>本参数为行业经验值，未经标准核对</td></tr>
+<tr><td>滴速换算</td><td>gtt/min = mL/h × 滴系数 ÷ 60</td><td>《基础护理学》（人民卫生出版社）：每分钟滴数 = 液体总量(mL) × 滴系数 ÷ 输液时间(min)</td></tr>
+<tr><td>流速换算</td><td>mL/h = 总量(mL) × 60 ÷ 时间(min)</td><td>同上式代数变形</td></tr>
+<tr><td>剩余时间</td><td>min = 剩余量(mL) ÷ 流速(mL/h) × 60</td><td>由上式变形</td></tr>
+<tr><td>成人 40~60 / 儿童 20~40 / 婴幼儿 15~30 gtt/min</td><td>安全范围参考（20 gtt/mL 输液器）</td><td>本参数为临床护理常规经验值，未经标准核对，须遵医嘱</td></tr>
+</table></div>
+</section>
+</main>
+<div class="ver">v1.0.0-infusion-rate 20261108</div>
+<script>
+var $=function(i){return document.getElementById(i)};
+function mlhToGtt(mlh,df){return mlh*df/60}
+function gttToMlh(gtt,df){return gtt*60/df}
+function volTimeToMlh(vol,min){return vol*60/min}
+function timeForVol(vol,mlh){return vol/mlh*60}
+function fmt(n){return Math.round(n*100)/100}
+function num(v,nm,lo,hi,req){
+ if(v===''||v===null||v===undefined){if(req)throw new Error(nm+'不能为空');return null}
+ var n=Number(v);
+ if(!isFinite(n))throw new Error(nm+'必须是有效数字');
+ if(n<lo||n>hi)throw new Error(nm+'应在 '+lo+' ~ '+hi+' 之间');
+ return n;
+}
+var RG={adult:[40,60],child:[20,40],infant:[15,30]},NM={adult:'成人',child:'儿童',infant:'婴幼儿'};
+function showTab(t){
+ ['calc','code','test','help'].forEach(function(k){
+  $('tab-'+k).classList.toggle('hide',k!==t);
+  $('btn-'+k).classList.toggle('on',k===t);
+ });
+}
+function modeUI(){
+ var m=$('mode').value;
+ $('w-mlh').classList.toggle('hide',m!=='A');
+ $('w-gtt').classList.toggle('hide',m!=='B');
+ $('w-time').classList.toggle('hide',m!=='C');
+ $('reqC').classList.toggle('hide',m!=='C');
+}
+function run(){
+ var e=$('err'),o=$('out');e.textContent='';
+ try{
+  var m=$('mode').value,df=Number($('df').value),pt=$('pt').value;
+  var vol=num($('vol').value,'液体总量',0.1,10000,m==='C');
+  var tm=num($('time').value,'输注时间',1,14400,m==='C');
+  var rem=num($('rem').value,'剩余量',0,10000,false);
+  var mlh,gtt,fml;
+  if(m==='A'){
+   mlh=num($('mlh').value,'流速',0.1,3000,true);
+   gtt=mlhToGtt(mlh,df);
+   fml='gtt/min = mL/h × 滴系数 ÷ 60 = '+fmt(mlh)+' × '+df+' ÷ 60 = '+fmt(gtt);
+  }else if(m==='B'){
+   gtt=num($('gtt').value,'滴速',1,500,true);
+   mlh=gttToMlh(gtt,df);
+   fml='mL/h = gtt/min × 60 ÷ 滴系数 = '+fmt(gtt)+' × 60 ÷ '+df+' = '+fmt(mlh);
+  }else{
+   mlh=volTimeToMlh(vol,tm);
+   gtt=mlhToGtt(mlh,df);
+   fml='mL/h = 总量 × 60 ÷ 时间 = '+fmt(vol)+' × 60 ÷ '+fmt(tm)+' = '+fmt(mlh)+'；gtt/min = '+fmt(mlh)+' × '+df+' ÷ 60 = '+fmt(gtt);
+  }
+  if(rem!==null&&vol!==null&&rem>vol)throw new Error('剩余量不能大于液体总量');
+  var r=RG[pt],inR=(gtt>=r[0]&&gtt<=r[1]);
+  var h='<div class="res">滴速 <b>'+fmt(gtt)+'</b> gtt/min　流速 <b>'+fmt(mlh)+'</b> mL/h</div>';
+  h+='<table><tr><th>中间量</th><th>数值</th></tr>';
+  h+='<tr><td>每分钟流量</td><td>'+fmt(mlh/60)+' mL/min</td></tr>';
+  h+='<tr><td>每秒钟滴数</td><td>'+fmt(gtt/60)+' gtt/s</td></tr>';
+  h+='<tr><td>滴系数</td><td>'+df+' gtt/mL</td></tr>';
+  if(vol!==null)h+='<tr><td>总滴数（按 '+fmt(vol)+' mL）</td><td>'+fmt(vol*df)+' 滴</td></tr>';
+  if(vol!==null){var t1=timeForVol(vol,mlh);h+='<tr><td>输完全部 '+fmt(vol)+' mL 需时</td><td>'+fmt(t1)+' min ≈ '+(t1/60).toFixed(2)+' h</td></tr>';}
+  if(rem!==null&&rem>0){var t2=timeForVol(rem,mlh);h+='<tr><td>剩余 '+fmt(rem)+' mL 需时</td><td>'+fmt(t2)+' min ≈ '+(t2/60).toFixed(2)+' h</td></tr>';}
+  h+='</table>';
+  h+='<div class="formula">公式：'+fml+'</div>';
+  h+='<div class="res '+(inR?'ok':'bad')+'" style="margin-top:9px">安全提示：'+NM[pt]+'参考滴速 '+r[0]+'~'+r[1]+' gtt/min（20 gtt/mL 输液器，临床经验值）。当前 '+fmt(gtt)+' gtt/min '+(inR?'在参考范围内。':'超出参考范围，请核对医嘱。')+'</div>';
+  o.innerHTML=h;
+ }catch(ex){
+  o.innerHTML='<div class="res" style="color:#7d96b3">输入有误，未计算</div>';
+  e.textContent='⚠ '+ex.message;
+ }
+}
+var CASES=[
+ ['mlhToGtt(60,20)',20,mlhToGtt(60,20)],
+ ['mlhToGtt(100,15)',25,mlhToGtt(100,15)],
+ ['mlhToGtt(30,10)',5,mlhToGtt(30,10)],
+ ['gttToMlh(60,20)',180,gttToMlh(60,20)],
+ ['gttToMlh(20,60)',20,gttToMlh(20,60)],
+ ['gttToMlh(40,10)',240,gttToMlh(40,10)],
+ ['volTimeToMlh(500,240)',125,volTimeToMlh(500,240)],
+ ['volTimeToMlh(250,120)',125,volTimeToMlh(250,120)],
+ ['timeForVol(500,125)',240,timeForVol(500,125)],
+ ['timeForVol(100,50)',120,timeForVol(100,50)]
+];
+function runTests(){
+ var h='',p=0;
+ CASES.forEach(function(c,i){
+  var ok=Math.abs(c[2]-c[1])<1e-6;if(ok)p++;
+  h+='<div class="'+(ok?'ok':'bad')+'">'+(ok?'✔ PASS':'✘ FAIL')+' #'+(i+1)+' '+c[0]+' = '+c[2]+'（期望 '+c[1]+'）</div>';
+ });
+ $('tout').innerHTML='<div class="res">通过 '+p+' / '+CASES.length+'</div>'+h;
+}
+$('src').textContent=[mlhToGtt,gttToMlh,volTimeToMlh,timeForVol,num].map(String).join('\n\n');
+</script>
+</body>
+</html>

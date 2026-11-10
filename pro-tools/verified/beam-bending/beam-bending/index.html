@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简支梁弯矩计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  padding-bottom: 40px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+}
+h1 {
+  text-align: center;
+  font-size: 20px;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8e8e8;
+}
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  background: #fafafa;
+  transition: border-color 0.2s;
+}
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #4a90d9;
+  background: #fff;
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+.form-row .form-group {
+  flex: 1;
+}
+.preset-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.preset-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: #555;
+  cursor: pointer;
+}
+.preset-btn:active {
+  background: #e0e0e0;
+}
+.btn-calc {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #4a90d9, #357abd);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.btn-calc:active {
+  opacity: 0.85;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.result-item:last-child {
+  border-bottom: none;
+}
+.result-label {
+  font-size: 14px;
+  color: #555;
+}
+.result-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.result-unit {
+  font-size: 12px;
+  color: #888;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.formula-box {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.8;
+}
+.formula-box .formula {
+  font-family: "Times New Roman", serif;
+  font-style: italic;
+  color: #333;
+  font-size: 14px;
+}
+.source-section {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.8;
+}
+.source-section p {
+  margin-bottom: 6px;
+}
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #aaa;
+}
+.diagram {
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  white-space: pre-line;
+  line-height: 1.4;
+  font-family: monospace;
+}
+.error-msg {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 8px;
+  display: none;
+}
+.tab-group {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 13px;
+  border: none;
+  background: #f5f5f5;
+  color: #555;
+  cursor: pointer;
+  text-align: center;
+  border-right: 1px solid #d9d9d9;
+  transition: all 0.2s;
+}
+.tab-btn:last-child {
+  border-right: none;
+}
+.tab-btn.active {
+  background: #4a90d9;
+  color: #fff;
+  font-weight: 600;
+}
+.tab-btn:active {
+  opacity: 0.8;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📐 简支梁弯矩计算</h1>
+  <p class="subtitle">最大弯矩 · 最大剪力 · 最大挠度</p>
+
+  <div class="card">
+    <div class="card-title">📋 工况选择</div>
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="switchCase(0)">简支+均布</button>
+      <button class="tab-btn" onclick="switchCase(1)">简支+集中</button>
+      <button class="tab-btn" onclick="switchCase(2)">简支+端弯矩</button>
+      <button class="tab-btn" onclick="switchCase(3)">悬臂+均布</button>
+    </div>
+    <div class="diagram" id="diagram"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ 参数输入</div>
+    <div class="form-group">
+      <label>跨度 l（m）</label>
+      <input type="number" id="span" value="6" min="0.01" step="0.1">
+    </div>
+    <div class="form-group">
+      <label id="loadLabel">均布荷载 q（kN/m）</label>
+      <input type="number" id="load" value="10" min="0" step="0.1">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>弹性模量 E（GPa）</label>
+        <input type="number" id="E" value="200" min="0.01" step="1">
+        <div class="preset-btns">
+          <button class="preset-btn" onclick="setE(200)">钢 200</button>
+          <button class="preset-btn" onclick="setE(30)">混凝土 30</button>
+          <button class="preset-btn" onclick="setE(70)">铝 70</button>
+          <button class="preset-btn" onclick="setE(10)">木材 10</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>惯性矩 I（cm⁴）</label>
+        <input type="number" id="I" value="10000" min="0.01" step="1">
+      </div>
+    </div>
+    <button class="btn-calc" onclick="calculate()">🔢 计算</button>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="card-title">📊 计算结果</div>
+    <div class="result-item">
+      <span class="result-label">📍 最大弯矩 M<sub>max</sub></span>
+      <span class="result-value" id="resM">—<span class="result-unit">kN·m</span></span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">✂️ 最大剪力 V<sub>max</sub></span>
+      <span class="result-value" id="resV">—<span class="result-unit">kN</span></span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">📏 最大挠度 f<sub>max</sub></span>
+      <span class="result-value" id="resF">—<span class="result-unit">mm</span></span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">📐 跨高比 f/l</span>
+      <span class="result-value" id="resRatio">—</span>
+    </div>
+    <div class="formula-box" id="formulaBox"></div>
+  </div>
+
+  <div class="card source-section">
+    <div class="card-title">📚 数据来源</div>
+    <p><strong>1. 计算公式依据：</strong></p>
+    <p>• 孙训方、方孝淑、关来泰 编，《材料力学》（第五版），高等教育出版社。各工况弯矩、剪力、挠度公式均为该教材标准推导结果。</p>
+    <p>• 刘鸿文 编，《材料力学》（第六版），高等教育出版社。挠度公式与上述教材一致。</p>
+    <p><strong>2. 公式汇总：</strong></p>
+    <p>• 简支梁均布荷载：M=ql²/8，V=ql/2，f=5ql⁴/(384EI)</p>
+    <p>• 简支梁跨中集中荷载：M=Pl/4，V=P/2，f=Pl³/(48EI)</p>
+    <p>• 简支梁两端等弯矩：M=M₀，V=0，f=M₀l²/(8EI)</p>
+    <p>• 悬臂梁均布荷载：M=ql²/2，V=ql，f=ql⁴/(8EI)</p>
+    <p><strong>3. 说明：</strong></p>
+    <p>• 以上公式适用于线弹性、小变形、等截面直梁。</p>
+    <p>• 挠度计算未考虑剪切变形影响（对细长梁可忽略）。</p>
+    <p>• 弹性模量 E 和惯性矩 I 的参考值需根据实际材料和截面查相应标准确定。</p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-简支梁弯矩计算 20261021</div>
+
+<script>
+var currentCase = 0;
+
+var caseInfo = [
+  {
+    name: '简支梁 + 均布荷载',
+    loadLabel: '均布荷载 q（kN/m）',
+    loadDefault: 10,
+    diagram:
+      '    q q q q q q q q q q q q\n' +
+      '    ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓\n' +
+      '    ━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '   △                    ○\n' +
+      '   A━━━━━━━━━━━━━━━━━━━━B\n' +
+      '   |←──────── l ────────→|',
+    formula:
+      '<b>计算公式：</b><br>' +
+      '<span class="formula">M<sub>max</sub> = ql² / 8</span>（跨中截面）<br>' +
+      '<span class="formula">V<sub>max</sub> = ql / 2</span>（支座处）<br>' +
+      '<span class="formula">f<sub>max</sub> = 5ql⁴ / (384EI)</span>（跨中挠度）'
+  },
+  {
+    name: '简支梁 + 跨中集中荷载',
+    loadLabel: '集中荷载 P（kN）',
+    loadDefault: 50,
+    diagram:
+      '              P\n' +
+      '              ↓\n' +
+      '    ━━━━━━━━━━┿━━━━━━━━━━\n' +
+      '   △          │          ○\n' +
+      '   A━━━━━━━━━━┿━━━━━━━━━━B\n' +
+      '   |←─── l/2 ──→←── l/2 ──→|',
+    formula:
+      '<b>计算公式：</b><br>' +
+      '<span class="formula">M<sub>max</sub> = Pl / 4</span>（跨中截面）<br>' +
+      '<span class="formula">V<sub>max</sub> = P / 2</span>（支座处）<br>' +
+      '<span class="formula">f<sub>max</sub> = Pl³ / (48EI)</span>（跨中挠度）'
+  },
+  {
+    name: '简支梁 + 两端等弯矩',
+    loadLabel: '端部弯矩 M₀（kN·m）',
+    loadDefault: 20,
+    diagram:
+      '    M₀ ↻              ↺ M₀\n' +
+      '    ━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '   △                    ○\n' +
+      '   A━━━━━━━━━━━━━━━━━━━━B\n' +
+      '   |←──────── l ────────→|\n' +
+      '   （纯弯状态，全梁弯矩=M₀）',
+    formula:
+      '<b>计算公式：</b><br>' +
+      '<span class="formula">M<sub>max</sub> = M₀</span>（全梁等弯矩）<br>' +
+      '<span class="formula">V<sub>max</sub> = 0</span>（无横向力）<br>' +
+      '<span class="formula">f<sub>max</sub> = M₀l² / (8EI)</span>（跨中挠度）'
+  },
+  {
+    name: '悬臂梁 + 均布荷载',
+    loadLabel: '均布荷载 q（kN/m）',
+    loadDefault: 10,
+    diagram:
+      '    q q q q q q q q q q q q\n' +
+      '    ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓\n' +
+      '    ━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '   ▓▓                    ○\n' +
+      '   ▓▓A━━━━━━━━━━━━━━━━━━━B\n' +
+      '   |←──────── l ────────→|\n' +
+      '   （A端固定，B端自由）',
+    formula:
+      '<b>计算公式：</b><br>' +
+      '<span class="formula">M<sub>max</sub> = ql² / 2</span>（固定端）<br>' +
+      '<span class="formula">V<sub>max</sub> = ql</span>（固定端）<br>' +
+      '<span class="formula">f<sub>max</sub> = ql⁴ / (8EI)</span>（自由端挠度）'
+  }
+];
+
+function switchCase(idx) {
+  currentCase = idx;
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].className = 'tab-btn' + (i === idx ? ' active' : '');
+  }
+  var info = caseInfo[idx];
+  document.getElementById('loadLabel').textContent = info.loadLabel;
+  document.getElementById('load').value = info.loadDefault;
+  document.getElementById('diagram').textContent = info.diagram;
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function setE(val) {
+  document.getElementById('E').value = val;
+}
+
+function calculate() {
+  var errEl = document.getElementById('errorMsg');
+  errEl.style.display = 'none';
+
+  var l = parseFloat(document.getElementById('span').value);
+  var load = parseFloat(document.getElementById('load').value);
+  var E = parseFloat(document.getElementById('E').value);
+  var I = parseFloat(document.getElementById('I').value);
+
+  if (isNaN(l) || l <= 0) {
+    showError('请输入有效的跨度值（>0）');
+    return;
+  }
+  if (isNaN(load) || load < 0) {
+    showError('请输入有效的荷载值（≥0）');
+    return;
+  }
+  if (isNaN(E) || E <= 0) {
+    showError('请输入有效的弹性模量（>0）');
+    return;
+  }
+  if (isNaN(I) || I <= 0) {
+    showError('请输入有效的惯性矩（>0）');
+    return;
+  }
+
+  // Unit conversion:
+  // E in GPa → E * 1e6 kN/m²
+  // I in cm⁴ → I * 1e-8 m⁴
+  // EI in kN·m² = E * 1e6 * I * 1e-8 = E * I * 1e-2
+  var EI = E * I * 1e-2; // kN·m²
+
+  var M, V, f; // M in kN·m, V in kN, f in m
+
+  switch (currentCase) {
+    case 0: // 简支+均布
+      M = load * l * l / 8;
+      V = load * l / 2;
+      f = 5 * load * Math.pow(l, 4) / (384 * EI);
+      break;
+    case 1: // 简支+集中
+      M = load * l / 4;
+      V = load / 2;
+      f = load * Math.pow(l, 3) / (48 * EI);
+      break;
+    case 2: // 简支+端弯矩
+      M = load;
+      V = 0;
+      f = load * l * l / (8 * EI);
+      break;
+    case 3: // 悬臂+均布
+      M = load * l * l / 2;
+      V = load * l;
+      f = load * Math.pow(l, 4) / (8 * EI);
+      break;
+  }
+
+  // Convert f to mm
+  var f_mm = f * 1000;
+
+  // f/l ratio
+  var ratio = f / l;
+  var ratioStr;
+  if (ratio === 0) {
+    ratioStr = '0';
+  } else {
+    var inv = l / f;
+    ratioStr = '1/' + formatNum(inv);
+  }
+
+  document.getElementById('resM').innerHTML = formatNum(M) + '<span class="result-unit">kN·m</span>';
+  document.getElementById('resV').innerHTML = formatNum(V) + '<span class="result-unit">kN</span>';
+  document.getElementById('resF').innerHTML = formatNum(f_mm) + '<span class="result-unit">mm</span>';
+  document.getElementById('resRatio').innerHTML = ratioStr;
+
+  var info = caseInfo[currentCase];
+  document.getElementById('formulaBox').innerHTML = info.formula +
+    '<br><br><b>代入数值：</b><br>' +
+    'l = ' + l + ' m，' +
+    (currentCase === 2 ? 'M₀ = ' + load + ' kN·m' :
+     (currentCase === 1 ? 'P = ' + load + ' kN' : 'q = ' + load + ' kN/m')) +
+    '，E = ' + E + ' GPa，I = ' + I + ' cm⁴<br>' +
+    'EI = ' + formatNum(EI) + ' kN·m²';
+
+  document.getElementById('resultCard').style.display = 'block';
+}
+
+function showError(msg) {
+  var errEl = document.getElementById('errorMsg');
+  errEl.textContent = '⚠️ ' + msg;
+  errEl.style.display = 'block';
+}
+
+function formatNum(n) {
+  if (n === 0) return '0';
+  if (Math.abs(n) >= 10000) {
+    return n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  if (Math.abs(n) >= 100) {
+    return n.toFixed(2);
+  }
+  if (Math.abs(n) >= 1) {
+    return n.toFixed(4);
+  }
+  if (Math.abs(n) >= 0.001) {
+    return n.toFixed(6);
+  }
+  return n.toExponential(4);
+}
+
+// Initialize
+switchCase(0);
+</script>
+</body>
+</html>

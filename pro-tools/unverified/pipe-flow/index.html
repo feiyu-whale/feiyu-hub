@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管道流量流速计算工具 v2.1.2-修审查问题 20261108</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6f8;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e5ea;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .tab {
+    padding: 14px 22px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #5a6b7b;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab:hover { color: #1e3c72; }
+  .tab.active {
+    color: #1e3c72;
+    border-bottom-color: #1e3c72;
+    font-weight: 600;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 17px;
+    color: #1e3c72;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eef1f5;
+  }
+  .card h3 {
+    font-size: 15px;
+    color: #2a5298;
+    margin: 16px 0 10px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: #5a6b7b;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d5dbe3;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    background: #fff;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: #2a5298;
+    box-shadow: 0 0 0 3px rgba(42,82,152,0.1);
+  }
+  .field .hint {
+    font-size: 11px;
+    color: #8a97a6;
+    margin-top: 4px;
+  }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-primary {
+    background: #1e3c72;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #16305c; }
+  .btn-secondary {
+    background: #eef1f5;
+    color: #2c3e50;
+  }
+  .btn-secondary:hover { background: #e1e5ea; }
+  .result-box {
+    background: #f8fafc;
+    border: 1px solid #e1e5ea;
+    border-left: 4px solid #2a5298;
+    padding: 16px 20px;
+    border-radius: 4px;
+    margin-top: 16px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .result-box.error {
+    border-left-color: #c0392b;
+    background: #fdf2f0;
+    color: #c0392b;
+  }
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e1e5ea;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-item .label { color: #5a6b7b; }
+  .result-item .value { color: #1e3c72; font-weight: 600; font-family: "SF Mono", Consolas, monospace; }
+  pre.code-block {
+    background: #1e2733;
+    color: #e6e9ed;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    font-family: "SF Mono", Consolas, "Courier New", monospace;
+    max-height: 600px;
+  }
+  .test-summary {
+    padding: 14px 20px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .test-summary.pass { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+  .test-summary.fail { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+  .test-log {
+    background: #1e2733;
+    color: #e6e9ed;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .test-log .pass-line { color: #7ee787; }
+  .test-log .fail-line { color: #ff7b72; }
+  .doc-section { margin-bottom: 28px; }
+  .doc-section h2 {
+    font-size: 18px;
+    color: #1e3c72;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eef1f5;
+  }
+  .doc-section h3 {
+    font-size: 15px;
+    color: #2a5298;
+    margin: 18px 0 8px;
+  }
+  .doc-section p { margin-bottom: 10px; font-size: 14px; }
+  .doc-section ul, .doc-section ol { margin: 8px 0 12px 24px; font-size: 14px; }
+  .doc-section li { margin-bottom: 6px; }
+  .doc-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc-section th, .doc-section td {
+    border: 1px solid #d5dbe3;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc-section th { background: #f4f6f8; font-weight: 600; color: #1e3c72; }
+  .doc-section .scenario {
+    background: #f8fafc;
+    border: 1px solid #e1e5ea;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .doc-section .scenario h4 {
+    color: #1e3c72;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    font-size: 11px;
+    color: #8a97a6;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid #e1e5ea;
+    z-index: 100;
+  }
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 3px;
+  }
+  .warn {
+    background: #fdf2f0;
+    border-left: 4px solid #c0392b;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 3px;
+    color: #721c24;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>管道流量流速计算工具</h1>
+  <p>基于 Q=v·A、Re=vd/ν、Colebrook-White 方程、Darcy-Weisbach 公式 · 依据《流体力学》教科书</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-panel="calc">计算器</div>
+  <div class="tab" data-panel="source">JS 源码</div>
+  <div class="tab" data-panel="test">单元测试</div>
+  <div class="tab" data-panel="doc">使用说明书</div>
+</div>
+
+<div class="container">
+
+  <!-- 计算器 -->
+  <div class="panel active" id="panel-calc">
+    <div class="card">
+      <h2>基本参数输入</h2>
+      <div class="grid">
+        <div class="field">
+          <label>计算模式</label>
+          <select id="mode">
+            <option value="Q">已知 v、d，求 Q（流量）</option>
+            <option value="v">已知 Q、d，求 v（流速）</option>
+            <option value="d">已知 Q、v，求 d（管径）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>水温 T (℃)</label>
+          <input type="number" id="temp" value="20" step="0.1" min="0" max="100">
+          <div class="hint">用于查表获取运动粘度 ν，范围 0~100℃</div>
+        </div>
+        <div class="field">
+          <label>管内径 d (m)</label>
+          <input type="number" id="diameter" value="0.1" step="0.001" min="0">
+          <div class="hint">单位：米。例如 DN100 钢管内径约 0.1m</div>
+        </div>
+        <div class="field">
+          <label>流速 v (m/s)</label>
+          <input type="number" id="velocity" value="1.5" step="0.01" min="0">
+          <div class="hint">经济流速：给水 1.0~1.5 m/s，排水 0.7~1.5 m/s（经验值，标准条文未核对，仅供参考）</div>
+        </div>
+        <div class="field">
+          <label>流量 Q (m³/s)</label>
+          <input type="number" id="flowrate" value="" step="0.0001" min="0">
+          <div class="hint">1 m³/s = 1000 L/s = 3600 m³/h</div>
+        </div>
+        <div class="field">
+          <label>管长 L (m)</label>
+          <input type="number" id="length" value="100" step="1" min="0">
+          <div class="hint">用于计算沿程水头损失</div>
+        </div>
+        <div class="field">
+          <label>管壁绝对粗糙度 ε (mm)</label>
+          <input type="number" id="roughness" value="0.15" step="0.01" min="0">
+          <div class="hint">新钢管 0.05~0.1；旧钢管 0.5~1.0；塑料管 0.001~0.01；混凝土 0.3~3.0</div>
+          <div class="hint" style="color:#c0392b;">⚠ 本工具粗糙度推荐值为经验值，未经标准原文核对，仅供估算参考</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnCalc">计算</button>
+        <button class="btn btn-secondary" id="btnReset">重置</button>
+        <button class="btn btn-secondary" id="btnFillExample">填入示例</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>计算结果</h2>
+      <div id="resultArea">
+        <div style="color:#8a97a6;font-size:13px;">请输入参数后点击"计算"按钮。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 源码 -->
+  <div class="panel" id="panel-source">
+    <div class="card">
+      <h2>核心算法 JS 源码（纯函数，无外部依赖）</h2>
+      <p style="font-size:13px;color:#5a6b7b;margin-bottom:12px;">
+        所有函数均为纯函数，带完整 JSDoc 注释，可直接在浏览器控制台运行。
+      </p>
+      <pre class="code-block" id="sourceCode"></pre>
+    </div>
+  </div>
+
+  <!-- 测试 -->
+  <div class="panel" id="panel-test">
+    <div class="card">
+      <h2>单元测试（用例总数以实际运行结果为准，约 50+ 个）</h2>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn btn-primary" id="btnRunTests">运行全部测试</button>
+      </div>
+      <div id="testSummary" style="margin-top:16px;"></div>
+      <div class="test-log" id="testLog" style="margin-top:12px;">点击"运行全部测试"查看结果…</div>
+    </div>
+  </div>
+
+  <!-- 说明书 -->
+  <div class="panel" id="panel-doc">
+    <div class="card">
+      <div class="doc-section">
+        <h2>一、工具简介</h2>
+        <p>本工具用于圆形满管压力流体的水力计算，覆盖以下核心问题：</p>
+        <ul>
+          <li><b>流量-流速-管径互算</b>：基于连续性方程 Q = v·A，A = πd²/4，已知三者之二求第三。</li>
+          <li><b>雷诺数 Re</b>：Re = vd/ν，用于判别流态（层流 / 过渡区 / 湍流）。</li>
+          <li><b>沿程阻力系数 λ</b>：层流按 λ = 64/Re（Hagen-Poiseuille）；湍流按 Colebrook-White 隐式方程迭代求解，光滑管区亦提供 Blasius 经验公式作为参考。</li>
+          <li><b>沿程水头损失 hf</b>：按 Darcy-Weisbach 公式 hf = λ·(L/d)·(v²/2g)。</li>
+          <li><b>水的运动粘度 ν</b>：按温度（0~100℃）查表并线性插值，数据源自 IAPWS 推荐值。</li>
+        </ul>
+        <p>适用介质：常压清水。适用流态：层流、湍流（过渡区结果仅供参考，工程上通常按湍流处理或避免在该区运行）。</p>
+      </div>
+
+      <div class="doc-section">
+        <h2>二、参数说明</h2>
+        <table>
+          <tr><th>参数</th><th>符号</th><th>单位</th><th>取值范围</th><th>含义</th></tr>
+          <tr><td>管内径</td><td>d</td><td>m</td><td>&gt; 0</td><td>管道内径。注意：公称直径 DN 不等于内径，需查对应管材标准（如 GB/T 17395、GB/T 13663）。</td></tr>
+          <tr><td>流速</td><td>v</td><td>m/s</td><td>≥ 0</td><td>断面平均流速。经济流速：生活给水 1.0~1.5 m/s（称引自 GB 50015，未注明条款号，未经标准核对，仅供参考），消防给水 ≤ 2.5 m/s。</td></tr>
+          <tr><td>流量</td><td>Q</td><td>m³/s</td><td>≥ 0</td><td>体积流量。1 m³/s = 3600 m³/h = 1000 L/s。</td></tr>
+          <tr><td>水温</td><td>T</td><td>℃</td><td>0 ~ 100</td><td>用于查表得运动粘度 ν。超出范围将抛出异常。</td></tr>
+          <tr><td>管长</td><td>L</td><td>m</td><td>≥ 0</td><td>计算沿程损失的直管段长度。</td></tr>
+          <tr><td>绝对粗糙度</td><td>ε</td><td>mm</td><td>≥ 0</td><td>管壁粗糙突起平均高度。新钢管 0.05~0.1 mm；旧钢管 0.5~1.0 mm；塑料管 0.001~0.01 mm；混凝土管 0.3~3.0 mm。</td></tr>
+          <tr><td>运动粘度</td><td>ν</td><td>m²/s</td><td>—</td><td>由水温查表得到，20℃清水约 1.004×10⁻⁶ m²/s。</td></tr>
+          <tr><td>重力加速度</td><td>g</td><td>m/s²</td><td>9.81</td><td>本工具固定取 9.81 m/s²。</td></tr>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h2>三、实际使用场景</h2>
+
+        <div class="scenario">
+          <h4>场景 1：已知管径与流速，求流量（住宅给水立管校核）</h4>
+          <p><b>背景</b>：某住宅楼给水立管采用 DN100 镀锌钢管（内径约 0.106 m），设计流速取 1.2 m/s，水温 15℃，校核流量是否满足 12 L/s 的供水需求。</p>
+          <p><b>输入</b>：d = 0.106 m，v = 1.2 m/s，T = 15℃</p>
+          <p><b>结果</b>：A = π×0.106²/4 ≈ 0.008825 m²；Q = 1.2 × 0.008825 ≈ 0.01059 m³/s = 10.59 L/s。</p>
+          <p><b>结论</b>：流量略小于 12 L/s 的设计需求，需提高流速或加大管径。</p>
+        </div>
+
+        <div class="scenario">
+          <h4>场景 2：已知流量与管径，求流速及水头损失（消防主管校核）</h4>
+          <p><b>背景</b>：某厂区消防主管 DN150（内径 0.154 m），长度 200 m，设计流量 30 L/s，水温 20℃，管材为使用 5 年的焊接钢管（ε = 0.2 mm），校核流速与沿程水头损失。</p>
+          <p><b>输入</b>：Q = 0.03 m³/s，d = 0.154 m，L = 200 m，T = 20℃，ε = 0.2 mm</p>
+          <p><b>结果</b>：v = Q/A ≈ 1.61 m/s；Re ≈ 2.47×10⁵（湍流）；λ ≈ 0.021（Colebrook，ε/d=0.0013）；hf = 0.021×(200/0.154)×(1.61²/19.62) ≈ 3.6 m。</p>
+          <p><b>结论</b>：流速在消防规范允许范围（≤2.5 m/s）内；沿程损失约 3.6 m 需计入水泵扬程。</p>
+        </div>
+
+        <div class="scenario">
+          <h4>场景 3：已知流量与流速，反算管径（新建给水管选型）</h4>
+          <p><b>背景</b>：某小区入户总管设计流量 50 m³/h（≈ 0.01389 m³/s），经济流速取 1.2 m/s，求所需管径。</p>
+          <p><b>输入</b>：Q = 0.01389 m³/s，v = 1.2 m/s</p>
+          <p><b>结果</b>：d = √(4Q/(πv)) ≈ 0.1208 m = 120.8 mm。</p>
+          <p><b>结论</b>：向上取标准管径，选 DN125（内径约 0.13 m）或 DN150，实际流速将低于经济流速。</p>
+        </div>
+
+        <div class="scenario">
+          <h4>场景 4：高温水系统（采暖供回水 80℃）</h4>
+          <p><b>背景</b>：某采暖系统供水管 DN80（内径 0.08 m），流量 5 m³/h，水温 80℃，管长 50 m，钢管 ε = 0.1 mm，求水头损失。</p>
+          <p><b>输入</b>：Q = 5/3600 ≈ 0.001389 m³/s，d = 0.08 m，T = 80℃，L = 50 m，ε = 0.1 mm</p>
+          <p><b>结果</b>：v ≈ 0.276 m/s；ν(80℃) ≈ 3.65×10⁻⁷ m²/s；Re ≈ 6.04×10⁴（湍流）；λ ≈ 0.0201；hf = 0.0201×(50/0.08)×(0.276²/19.62) ≈ 0.049 m。</p>
+          <p><b>结论</b>：高温水粘度低，Re 较大；水头损失较小，循环泵选型可按此估算。</p>
+        </div>
+
+        <div class="scenario">
+          <h4>场景 5：层流工况验证（小管径高粘度流体）</h4>
+          <p><b>背景</b>：实验室毛细管 d = 0.002 m，流速 0.05 m/s，水温 5℃（ν ≈ 1.519×10⁻⁶ m²/s），验证层流公式。</p>
+          <p><b>输入</b>：v = 0.05 m/s，d = 0.002 m，T = 5℃</p>
+          <p><b>结果</b>：Re = 0.05×0.002/1.519e-6 ≈ 65.8（层流）；λ = 64/Re ≈ 0.972。</p>
+          <p><b>结论</b>：Re 远小于 2000，确为层流，λ 按 Hagen-Poiseuille 公式计算。</p>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <h2>四、常见错误与排查</h2>
+        <ul>
+          <li><b>单位错误</b>：最常见。管径必须输入米（m），不是毫米；流量必须输入 m³/s，不是 L/s 或 m³/h。工具内部不做单位换算，请在输入前自行换算。</li>
+          <li><b>公称直径 DN 当作内径</b>：DN100 钢管的实际内径因壁厚不同而异（约 100~106 mm），需查 GB/T 17395 或管材样本。</li>
+          <li><b>粗糙度单位</b>：本工具粗糙度输入单位为 mm，需转换为 m 参与计算（内部已处理）。</li>
+          <li><b>温度超范围</b>：水温必须在 0~100℃ 之间，超出将报错。常压水超过 100℃ 为汽态，本工具不适用。</li>
+          <li><b>过渡区（2000 ≤ Re ≤ 4000）</b>：流态不稳定，λ 计算结果仅供参考，工程设计应避免在此区运行。</li>
+          <li><b>局部损失未计入</b>：本工具仅计算沿程损失，弯头、阀门、变径等局部损失需按 ζ·v²/(2g) 另行计算并叠加。</li>
+          <li><b>非圆形管道</b>：本工具仅适用于圆形满管。矩形风管、非满流排水管需用水力直径 Dh = 4A/P 近似，精度有限。</li>
+        </ul>
+      </div>
+
+      <div class="doc-section">
+        <h2>五、数据来源与标准依据</h2>
+        <ul>
+          <li><b>连续性方程 Q = v·A</b>：质量守恒在不可压缩流体中的表达，任何《流体力学》教科书（如吴望一《流体力学》、张兆顺《湍流》、Frank M. White《Fluid Mechanics》）均有推导。</li>
+          <li><b>层流 λ = 64/Re</b>：Hagen-Poiseuille 定律的无量纲形式，理论精确解。</li>
+          <li><b>Colebrook-White 方程</b>：C.F. Colebrook (1939) 提出的湍流阻力系数隐式方程，被 ISO、ASME、GB 广泛采纳。</li>
+          <li><b>Blasius 公式 λ = 0.3164/Re^0.25</b>：适用于光滑管 4000 &lt; Re &lt; 10⁵ 的经验公式。</li>
+          <li><b>Darcy-Weisbach 公式</b>：hf = λ·(L/d)·(v²/2g)，国际通用的沿程损失计算公式。</li>
+          <li><b>水的运动粘度查表</b>：数值标注为 IAPWS（国际水和水蒸汽性质协会）推荐值，但未注明具体表号/条款，<span style="color:#c0392b;">该表出处不可核验，仅供参考</span>。</li>
+          <li><b>相关国标</b>：
+            <ul>
+              <li>GB 50015-2019《建筑给水排水设计标准》——生活给水经济流速（未注明具体条款号，本工具未核对原文）</li>
+              <li>GB 50013-2018《室外给水设计标准》——输配水管网水力计算</li>
+              <li>GB 50974-2014《消防给水及消火栓系统技术规范》——消防管流速限制</li>
+              <li>GB/T 17395-2008《无缝钢管尺寸、外形、重量及允许偏差》——钢管内径查取</li>
+              <li>GB/T 13663-2018《给水用聚乙烯（PE）管材》——PE 管内径查取</li>
+            </ul>
+          </li>
+        </ul>
+        <div class="note">注：粗糙度推荐值、经济流速范围等工程数据需查对应标准原文或设计手册，本工具给出的是常用参考值。另：本工具参数均为经验值，未经标准核对；ν 查表数值出处不可核验，重要工程请查权威物性表。</div>
+      </div>
+
+      <div class="doc-section">
+        <h2>六、局限性说明</h2>
+        <ul>
+          <li><b>仅适用于圆形满管压力流</b>：非圆形截面、非满流（如排水重力流）、明渠流不适用。</li>
+          <li><b>仅适用于清水</b>：含沙水、污水、油类、高粘度流体的 ν 不同，本工具不提供相应查表。</li>
+          <li><b>不计算局部损失</b>：弯头、三通、阀门、变径等局部水头损失需另行计算。</li>
+          <li><b>不计算水泵扬程与管网平差</b>：仅做单管段水力计算，复杂管网需用 Hardy-Cross 等方法。</li>
+          <li><b>温度范围受限</b>：仅支持 0~100℃ 常压液态水；高温高压水、蒸汽需用水蒸汽物性表。</li>
+          <li><b>过渡区结果不可靠</b>：2000 ≤ Re ≤ 4000 区间流态不稳定，λ 计算值仅供参考。</li>
+          <li><b>粗糙度取值主观</b>：实际管道粗糙度随使用年限、结垢、腐蚀变化，本工具按输入值计算，不自动修正。</li>
+          <li><b>不考虑管道坡度与高程差</b>：位置水头变化需用户自行在伯努利方程中处理。</li>
+          <li><b>浮点精度</b>：JavaScript 使用 IEEE 754 双精度，极小/极大数值可能出现舍入误差，工程计算中建议保留 4~6 位有效数字。</li>
+        </ul>
+        <div class="warn">本工具用于工程估算与教学演示，重要工程设计请以注册工程师签字的计算书为准，并符合现行国家/行业标准。</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="version-tag">v2.1.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心算法 JS 源码（纯函数，无外部依赖）
+ * ============================================================ */
+
+/**
+ * 计算圆形管道截面积
+ * @param {number} d - 管道内径，单位：m，必须 > 0
+ * @returns {number} 截面积，单位：m²
+ * @throws {Error} 当 d 非有限正数时抛出
+ * @example
+ * calcArea(0.1); // => 0.007853981633974483
+ */
+function calcArea(d) {
+  if (typeof d !== 'number' || !Number.isFinite(d)) {
+    throw new Error('calcArea: 管径 d 必须是有限数字');
+  }
+  if (d <= 0) {
+    throw new Error('calcArea: 管径 d 必须大于 0');
+  }
+  return Math.PI * d * d / 4;
+}
+
+/**
+ * 由流速和管径计算体积流量
+ * @param {number} v - 断面平均流速，单位：m/s，必须 >= 0
+ * @param {number} d - 管道内径，单位：m，必须 > 0
+ * @returns {number} 体积流量 Q，单位：m³/s
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calcFlowRate(1.5, 0.1); // => 0.011780972450961724
+ */
+function calcFlowRate(v, d) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    throw new Error('calcFlowRate: 流速 v 必须是有限数字');
+  }
+  if (v < 0) {
+    throw new Error('calcFlowRate: 流速 v 不能为负');
+  }
+  return v * calcArea(d);
+}
+
+/**
+ * 由流量和管径计算流速
+ * @param {number} Q - 体积流量，单位：m³/s，必须 >= 0
+ * @param {number} d - 管道内径，单位：m，必须 > 0
+ * @returns {number} 断面平均流速 v，单位：m/s
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calcVelocity(0.01, 0.1); // => 1.2732395447351628
+ */
+function calcVelocity(Q, d) {
+  if (typeof Q !== 'number' || !Number.isFinite(Q)) {
+    throw new Error('calcVelocity: 流量 Q 必须是有限数字');
+  }
+  if (Q < 0) {
+    throw new Error('calcVelocity: 流量 Q 不能为负');
+  }
+  return Q / calcArea(d);
+}
+
+/**
+ * 由流量和流速反算管径
+ * @param {number} Q - 体积流量，单位：m³/s，必须 > 0
+ * @param {number} v - 断面平均流速，单位：m/s，必须 > 0
+ * @returns {number} 管道内径 d，单位：m
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calcDiameter(0.01, 1.5); // => 0.09213177092004933
+ */
+function calcDiameter(Q, v) {
+  if (typeof Q !== 'number' || !Number.isFinite(Q)) {
+    throw new Error('calcDiameter: 流量 Q 必须是有限数字');
+  }
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    throw new Error('calcDiameter: 流速 v 必须是有限数字');
+  }
+  if (Q <= 0 || v <= 0) {
+    throw new Error('calcDiameter: Q 和 v 必须大于 0');
+  }
+  return Math.sqrt(4 * Q / (Math.PI * v));
+}
+
+/**
+ * 水的运动粘度查表（0~100℃，线性插值）
+ * 数据来源标注为 IAPWS 推荐值，但无具体表号可核验，数值仅供参考
+ * @param {number} T - 水温，单位：℃，范围 [0, 100]
+ * @returns {number} 运动粘度 ν，单位：m²/s
+ * @throws {Error} 温度超范围或非数字时抛出
+ * @example
+ * getKinematicViscosity(20); // => 1.004e-6
+ */
+function getKinematicViscosity(T) {
+  if (typeof T !== 'number' || !Number.isFinite(T)) {
+    throw new Error('getKinematicViscosity: 温度 T 必须是有限数字');
+  }
+  if (T < 0 || T > 100) {
+    throw new Error('getKinematicViscosity: 温度 T 必须在 0~100 ℃ 之间');
+  }
+  // 温度-运动粘度对照表（ν 单位：m²/s）
+  const table = [
+    [0,   1.787e-6],
+    [5,   1.519e-6],
+    [10,  1.306e-6],
+    [15,  1.139e-6],
+    [20,  1.004e-6],
+    [25,  0.893e-6],
+    [30,  0.801e-6],
+    [40,  0.658e-6],
+    [50,  0.553e-6],
+    [60,  0.475e-6],
+    [70,  0.413e-6],
+    [80,  0.365e-6],
+    [90,  0.326e-6],
+    [100, 0.282e-6]
+  ];
+  if (T <= table[0][0]) return table[0][1];
+  if (T >= table[table.length - 1][0]) return table[table.length - 1][1];
+  for (let i = 0; i < table.length - 1; i++) {
+    const [t1, n1] = table[i];
+    const [t2, n2] = table[i + 1];
+    if (T >= t1 && T <= t2) {
+      const ratio = (T - t1) / (t2 - t1);
+      return n1 + ratio * (n2 - n1);
+    }
+  }
+  return table[table.length - 1][1];
+}
+
+/**
+ * 计算雷诺数
+ * @param {number} v - 流速，单位：m/s，>= 0
+ * @param {number} d - 管径，单位：m，> 0
+ * @param {number} nu - 运动粘度，单位：m²/s，> 0
+ * @returns {number} 雷诺数 Re（无量纲）
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calcReynoldsNumber(1.0, 0.1, 1.004e-6); // => 99601.59
+ */
+function calcReynoldsNumber(v, d, nu) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    throw new Error('calcReynoldsNumber: v 必须是有限数字');
+  }
+  if (typeof d !== 'number' || !Number.isFinite(d) || d <= 0) {
+    throw new Error('calcReynoldsNumber: d 必须是有限正数');
+  }
+  if (typeof nu !== 'number' || !Number.isFinite(nu) || nu <= 0) {
+    throw new Error('calcReynoldsNumber: nu 必须是有限正数');
+  }
+  if (v < 0) {
+    throw new Error('calcReynoldsNumber: v 不能为负');
+  }
+  return v * d / nu;
+}
+
+/**
+ * 判别流态
+ * @param {number} Re - 雷诺数
+ * @returns {string} 'laminar' | 'transitional' | 'turbulent'
+ * @throws {Error} Re 非法时抛出
+ * @example
+ * judgeFlowRegime(1000); // => 'laminar'
+ */
+function judgeFlowRegime(Re) {
+  if (typeof Re !== 'number' || !Number.isFinite(Re)) {
+    throw new Error('judgeFlowRegime: Re 必须是有限数字');
+  }
+  if (Re < 0) {
+    throw new Error('judgeFlowRegime: Re 不能为负');
+  }
+  if (Re < 2000) return 'laminar';
+  if (Re <= 4000) return 'transitional';
+  return 'turbulent';
+}
+
+/**
+ * 计算沿程阻力系数 λ
+ * 层流（Re < 2000）：λ = 64/Re（Hagen-Poiseuille）
+ * 湍流（Re > 4000）：Colebrook-White 方程迭代求解
+ *   1/√λ = -2·log10( ε/(3.7d) + 2.51/(Re·√λ) )
+ * 过渡区（2000 ≤ Re ≤ 4000）：按湍流处理并给出警告标记
+ * @param {number} Re - 雷诺数，必须 > 0
+ * @param {number} d - 管径，单位：m，> 0
+ * @param {number} epsilon - 绝对粗糙度，单位：m，>= 0
+ * @returns {{lambda: number, regime: string, method: string}} λ 值、流态、计算方法
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calcFrictionFactor(100000, 0.1, 0.00015).lambda; // => 约 0.018
+ */
+function calcFrictionFactor(Re, d, epsilon) {
+  if (typeof Re !== 'number' || !Number.isFinite(Re) || Re <= 0) {
+    throw new Error('calcFrictionFactor: Re 必须是有限正数');
+  }
+  if (typeof d !== 'number' || !Number.isFinite(d) || d <= 0) {
+    throw new Error('calcFrictionFactor: d 必须是有限正数');
+  }
+  if (typeof epsilon !== 'number' || !Number.isFinite(epsilon) || epsilon < 0) {
+    throw new Error('calcFrictionFactor: epsilon 必须是非负有限数字');
+  }
+
+  const regime = judgeFlowRegime(Re);
+
+  if (regime === 'laminar') {
+    return { lambda: 64 / Re, regime: regime, method: 'Hagen-Poiseuille (64/Re)' };
+  }
+
+  // 湍流或过渡区：Colebrook-White 迭代
+  // 初始猜测采用 Swamee-Jain 显式近似
+  const epsRel = epsilon / d;
+  let lambda;
+  if (Re < 4000) {
+    // 过渡区：用 Re=4000 的 Colebrook 作为起点
+    lambda = 0.25 / Math.pow(Math.log10(epsRel / 3.7 + 5.74 / Math.pow(4000, 0.9)), 2);
+  } else {
+    lambda = 0.25 / Math.pow(Math.log10(epsRel / 3.7 + 5.74 / Math.pow(Re, 0.9)), 2);
+  }
+
+  // 固定点迭代
+  const maxIter = 200;
+  const tol = 1e-12;
+  for (let i = 0; i < maxIter; i++) {
+    const sqrtL = Math.sqrt(lambda);
+    const rhs = -2.0 * Math.log10(epsRel / 3.7 + 2.51 / (Re * sqrtL));
+    const newLambda = 1.0 / (rhs * rhs);
+    if (Math.abs(newLambda - lambda) < tol) {
+      lambda = newLambda;
+      break;
+    }
+    lambda = newLambda;
+  }
+
+  return { lambda: lambda, regime: regime, method: 'Colebrook-White (iterative)' };
+}
+
+/**
+ * Blasius 公式（光滑管湍流经验公式，4000 < Re < 1e5）
+ * @param {number} Re - 雷诺数
+ * @returns {number} 沿程阻力系数 λ
+ * @throws {Error} Re 超出适用范围时抛出
+ * @example
+ * calcFrictionFactorBlasius(50000); // => 0.02092
+ */
+function calcFrictionFactorBlasius(Re) {
+  if (typeof Re !== 'number' || !Number.isFinite(Re)) {
+    throw new Error('calcFrictionFactorBlasius: Re 必须是有限数字');
+  }
+  if (Re <= 4000 || Re >= 1e5) {
+    throw new Error('calcFrictionFactorBlasius: Re 应在 4000~1e5 之间');
+  }
+  return 0.3164 / Math.pow(Re, 0.25);
+}
+
+/**
+ * 计算沿程水头损失（Darcy-Weisbach 公式）
+ * hf = λ · (L/d) · (v²/(2g))
+ * @param {number} lambda - 沿程阻力系数（无量纲），> 0
+ * @param {number} L - 管长，单位：m，>= 0
+ * @param {number} d - 管径，单位：m，> 0
+ * @param {number} v - 流速，单位：m/s，>= 0
+ * @param {number} [g=9.81] - 重力加速度，单位：m/s²
+ * @returns {number} 沿程水头损失 hf，单位：m
+ * @throws {Error} 参数非法时抛出
+ * @example
+ * calcHeadLoss(0.02, 100, 0.1, 1.5); // => 约 1.019（0.02×1000×1.5²/19.62）
+ */
+function calcHeadLoss(lambda, L, d, v, g = 9.81) {
+  if (typeof lambda !== 'number' || !Number.isFinite(lambda) || lambda < 0) {
+    throw new Error('calcHeadLoss: lambda 必须是非负有限数字');
+  }
+  if (typeof L !== 'number' || !Number.isFinite(L) || L < 0) {
+    throw new Error('calcHeadLoss: L 必须是非负有限数字');
+  }
+  if (typeof d !== 'number' || !Number.isFinite(d) || d <= 0) {
+    throw new Error('calcHeadLoss: d 必须是有限正数');
+  }
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) {
+    throw new Error('calcHeadLoss: v 必须是非负有限数字');
+  }
+  if (typeof g !== 'number' || !Number.isFinite(g) || g <= 0) {
+    throw new Error('calcHeadLoss: g 必须是有限正数');
+  }
+  return lambda * (L / d) * (v * v / (2 * g));
+}
+
+/**
+ * 综合计算入口：根据模式计算所有水力参数
+ * @param {Object} opts - 参数对象
+ * @param {'Q'|'v'|'d'} opts.mode - 计算模式
+ * @param {number} opts.d - 管径 (m)，模式为 'd' 时可缺省
+ * @param {number} opts.v - 流速 (m/s)，模式为 'v' 时可缺省
+ * @param {number} opts.Q - 流量 (m³/s)，模式为 'Q' 时可缺省
+ * @param {number} opts.T - 水温 (℃)
+ * @param {number} opts.L - 管长 (m)
+ * @param {number} opts.epsilon - 绝对粗糙度 (mm)
+ * @returns {Object} 包含所有计算结果的对象
+ * @throws {Error} 参数非法时抛出
+ */
+function computeAll(opts) {
+  const { mode, T, L, epsilon: epsMm } = opts;
+  const epsilon = epsMm / 1000; // mm -> m
+  const nu = getKinematicViscosity(T);
+  let d, v, Q;
+
+  if (mode === 'Q') {
+    v = opts.v; d = opts.d;
+    if (v == null || d == null) throw new Error('模式 Q 需要提供 v 和 d');
+    Q = calcFlowRate(v, d);
+  } else if (mode === 'v') {
+    Q = opts.Q; d = opts.d;
+    if (Q == null || d == null) throw new Error('模式 v 需要提供 Q 和 d');
+    v = calcVelocity(Q, d);
+  } else if (mode === 'd') {
+    Q = opts.Q; v = opts.v;
+    if (Q == null || v == null) throw new Error('模式 d 需要提供 Q 和 v');
+    d = calcDiameter(Q, v);
+  } else {
+    throw new Error('未知模式: ' + mode);
+  }
+
+  const A = calcArea(d);
+  const Re = calcReynoldsNumber(v, d, nu);
+  const fr = calcFrictionFactor(Re, d, epsilon);
+  const hf = calcHeadLoss(fr.lambda, L, d, v);
+
+  return {
+    mode, d, v, Q, A, T, nu, L, epsilon,
+    Re, regime: fr.regime, method: fr.method, lambda: fr.lambda, hf
+  };
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，不依赖 Jest/Mocha）
+ * ============================================================ */
+
+const TEST_RESULTS = [];
+
+/**
+ * 断言函数
+ * @param {string} name - 用例名称
+ * @param {boolean} cond - 断言条件
+ * @param {string} detail - 失败时的详情
+ */
+function assert(name, cond, detail) {
+  TEST_RESULTS.push({ name, pass: !!cond, detail: detail || '' });
+}
+
+/**
+ * 近似相等断言（处理浮点误差）
+ * @param {string} name - 用例名称
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} [tol=1e-6] - 容差
+ */
+function assertClose(name, actual, expected, tol = 1e-6) {
+  const pass = Math.abs(actual - expected) <= tol;
+  TEST_RESULTS.push({
+    name,
+    pass,
+    detail: pass ? '' : `期望 ${expected}，实际 ${actual}，差 ${Math.abs(actual - expected)}`
+  });
+}
+
+/**
+ * 异常断言：期望函数抛出错误
+ * @param {string} name - 用例名称
+ * @param {Function} fn - 被测函数
+ */
+function assertThrows(name, fn) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  TEST_RESULTS.push({ name, pass: threw, detail: threw ? '' : '期望抛出异常但未抛出' });
+}
+
+function runAllTests() {
+  TEST_RESULTS.length = 0;
+
+  // ---------- calcArea ----------
+  assertClose('calcArea: d=0.1', calcArea(0.1), Math.PI * 0.01 / 4, 1e-12);
+  assertClose('calcArea: d=0.5', calcArea(0.5), Math.PI * 0.25 / 4, 1e-12);
+  assertClose('calcArea: d=1.0', calcArea(1.0), Math.PI / 4, 1e-12);
+  assertClose('calcArea: d=0.001 (小管径)', calcArea(0.001), Math.PI * 1e-6 / 4, 1e-18);
+  assertThrows('calcArea: d=0 抛错', () => calcArea(0));
+  assertThrows('calcArea: d=-1 抛错', () => calcArea(-1));
+  assertThrows('calcArea: d=null 抛错', () => calcArea(null));
+  assertThrows('calcArea: d=undefined 抛错', () => calcArea(undefined));
+  assertThrows('calcArea: d=NaN 抛错', () => calcArea(NaN));
+  assertThrows('calcArea: d="" 抛错', () => calcArea(''));
+
+  // ---------- calcFlowRate ----------
+  assertClose('calcFlowRate: v=1.5, d=0.1', calcFlowRate(1.5, 0.1), 1.5 * Math.PI * 0.01 / 4, 1e-12);
+  assertClose('calcFlowRate: v=0, d=0.1 (边界)', calcFlowRate(0, 0.1), 0, 1e-15);
+  assertClose('calcFlowRate: v=10, d=0.5', calcFlowRate(10, 0.5), 10 * Math.PI * 0.25 / 4, 1e-10);
+  assertThrows('calcFlowRate: v=-1 抛错', () => calcFlowRate(-1, 0.1));
+  assertThrows('calcFlowRate: d=0 抛错', () => calcFlowRate(1, 0));
+  assertThrows('calcFlowRate: v=NaN 抛错', () => calcFlowRate(NaN, 0.1));
+
+  // ---------- calcVelocity ----------
+  assertClose('calcVelocity: Q=0.01, d=0.1', calcVelocity(0.01, 0.1), 0.01 / (Math.PI * 0.01 / 4), 1e-10);
+  assertClose('calcVelocity: Q=0, d=0.1 (边界)', calcVelocity(0, 0.1), 0, 1e-15);
+  assertClose('calcVelocity: Q=1, d=1', calcVelocity(1, 1), 1 / (Math.PI / 4), 1e-12);
+  assertThrows('calcVelocity: Q=-1 抛错', () => calcVelocity(-1, 0.1));
+  assertThrows('calcVelocity: d=0 抛错', () => calcVelocity(1, 0));
+  assertThrows('calcVelocity: Q=null 抛错', () => calcVelocity(null, 0.1));
+
+  // ---------- calcDiameter ----------
+  assertClose('calcDiameter: Q=0.01, v=1.5', calcDiameter(0.01, 1.5), Math.sqrt(4 * 0.01 / (Math.PI * 1.5)), 1e-12);
+  assertThrows('calcDiameter: Q=0 抛错', () => calcDiameter(0, 1));
+  assertThrows('calcDiameter: v=0 抛错', () => calcDiameter(1, 0));
+  assertThrows('calcDiameter: Q=undefined 抛错', () => calcDiameter(undefined, 1));
+
+  // ---------- getKinematicViscosity ----------
+  assertClose('nu(20℃)', getKinematicViscosity(20), 1.004e-6, 1e-15);
+  assertClose('nu(0℃)', getKinematicViscosity(0), 1.787e-6, 1e-15);
+  assertClose('nu(100℃)', getKinematicViscosity(100), 0.282e-6, 1e-15);
+  assertClose('nu(7.5℃) 插值', getKinematicViscosity(7.5),
+    (1.519e-6 + 1.306e-6) / 2, 1e-15);
+  assertClose('nu(35℃) 插值', getKinematicViscosity(35),
+    0.801e-6 + 0.5 * (0.658e-6 - 0.801e-6), 1e-15);
+  assertThrows('nu(-1℃) 抛错', () => getKinematicViscosity(-1));
+  assertThrows('nu(101℃) 抛错', () => getKinematicViscosity(101));
+  assertThrows('nu=NaN 抛错', () => getKinematicViscosity(NaN));
+  assertThrows('nu="" 抛错', () => getKinematicViscosity(''));
+
+  // ---------- calcReynoldsNumber ----------
+  assertClose('Re: v=1, d=0.1, nu=1e-6', calcReynoldsNumber(1, 0.1, 1e-6), 100000, 1e-6);
+  assertClose('Re: v=0 (边界)', calcReynoldsNumber(0, 0.1, 1e-6), 0, 1e-15);
+  assertClose('Re: 典型自来水', calcReynoldsNumber(1.5, 0.1, 1.004e-6), 1.5 * 0.1 / 1.004e-6, 1);
+  assertThrows('Re: v=-1 抛错', () => calcReynoldsNumber(-1, 0.1, 1e-6));
+  assertThrows('Re: nu=0 抛错', () => calcReynoldsNumber(1, 0.1, 0));
+
+  // ---------- judgeFlowRegime ----------
+  assert('regime: Re=1000 层流', judgeFlowRegime(1000) === 'laminar');
+  assert('regime: Re=1999 层流', judgeFlowRegime(1999) === 'laminar');
+  assert('regime: Re=2000 过渡', judgeFlowRegime(2000) === 'transitional');
+  assert('regime: Re=3000 过渡', judgeFlowRegime(3000) === 'transitional');
+  assert('regime: Re=4000 过渡', judgeFlowRegime(4000) === 'transitional');
+  assert('regime: Re=4001 湍流', judgeFlowRegime(4001) === 'turbulent');
+  assert('regime: Re=1e6 湍流', judgeFlowRegime(1e6) === 'turbulent');
+  assertThrows('regime: Re=-1 抛错', () => judgeFlowRegime(-1));
+
+  // ---------- calcFrictionFactor ----------
+  // 层流
+  assertClose('lambda 层流 Re=1000', calcFrictionFactor(1000, 0.1, 0.0001).lambda, 64 / 1000, 1e-10);
+  assertClose('lambda 层流 Re=500', calcFrictionFactor(500, 0.1, 0.0001).lambda, 64 / 500, 1e-10);
+  // 湍流 Blasius 验证（光滑管，Re=50000，ε=0）
+  const blasiusRef = calcFrictionFactorBlasius(50000);
+  assertClose('lambda 湍流 Re=50000 光滑管 ≈ Blasius',
+    calcFrictionFactor(50000, 0.1, 0).lambda, blasiusRef, 0.002);
+  // 湍流粗糙管（Re=1e5, d=0.1, ε=0.15mm=0.00015m）
+  const lambda1 = calcFrictionFactor(1e5, 0.1, 0.00015).lambda;
+  assert('lambda 湍流 Re=1e5 粗糙管 合理范围', lambda1 > 0.015 && lambda1 < 0.025);
+  // 高 Re
+  const lambda2 = calcFrictionFactor(1e7, 0.1, 0.00015).lambda;
+  // 2026-10-29 修：ε/D=0.0015 时 Colebrook 精确值 0.02175，原上限 0.02 写错，永远过不了
+  assert('lambda 湍流 Re=1e7 合理范围', lambda2 > 0.015 && lambda2 < 0.03);
+  assertThrows('lambda: Re=0 抛错', () => calcFrictionFactor(0, 0.1, 0.0001));
+  assertThrows('lambda: Re=-1 抛错', () => calcFrictionFactor(-1, 0.1, 0.0001));
+  assertThrows('lambda: ε=-1 抛错', () => calcFrictionFactor(1e5, 0.1, -0.0001));
+
+  // ---------- calcFrictionFactorBlasius ----------
+  assertClose('Blasius Re=50000', calcFrictionFactorBlasius(50000), 0.3164 / Math.pow(50000, 0.25), 1e-10);
+  assertThrows('Blasius Re=3000 抛错', () => calcFrictionFactorBlasius(3000));
+  assertThrows('Blasius Re=2e5 抛错', () => calcFrictionFactorBlasius(2e5));
+
+  // ---------- calcHeadLoss ----------
+  assertClose('hf: λ=0.02, L=100, d=0.1, v=1',
+    calcHeadLoss(0.02, 100, 0.1, 1), 0.02 * 1000 * 1 / (2 * 9.81), 1e-10);
+  assertClose('hf: L=0 (边界)', calcHeadLoss(0.02, 0, 0.1, 1), 0, 1e-15);
+  assertClose('hf: v=0 (边界)', calcHeadLoss(0.02, 100, 0.1, 0), 0, 1e-15);
+  assertThrows('hf: λ=-0.01 抛错', () => calcHeadLoss(-0.01, 100, 0.1, 1));
+  assertThrows('hf: d=0 抛错', () => calcHeadLoss(0.02, 100, 0, 1));
+
+  // ---------- computeAll 综合 ----------
+  const r1 = computeAll({ mode: 'Q', v: 1.5, d: 0.1, T: 20, L: 100, epsilon: 0.15 });
+  assertClose('computeAll Q 模式', r1.Q, 1.5 * Math.PI * 0.01 / 4, 1e-12);
+  assert('computeAll regime 湍流', r1.regime === 'turbulent');
+
+  const r2 = computeAll({ mode: 'v', Q: 0.01, d: 0.1, T: 20, L: 100, epsilon: 0.15 });
+  assertClose('computeAll v 模式', r2.v, 0.01 / (Math.PI * 0.01 / 4), 1e-10);
+
+  const r3 = computeAll({ mode: 'd', Q: 0.01, v: 1.5, T: 20, L: 100, epsilon: 0.15 });
+  assertClose('computeAll d 模式', r3.d, Math.sqrt(4 * 0.01 / (Math.PI * 1.5)), 1e-12);
+
+  // 浮点精度：验证 0.1 + 0.2 类型问题不会污染结果
+  assertClose('浮点: calcArea(0.3) 精度',
+    calcArea(0.3), Math.PI * 0.09 / 4, 1e-14);
+
+  // 打印结果
+  const passed = TEST_RESULTS.filter(r => r.pass).length;
+  const total = TEST_RESULTS.length;
+  console.log(`通过 ${passed} / 共 ${total}`);
+  return { passed, total, results: TEST_RESULTS };
+}
+
+/* ============================================================
+ *  UI 绑定
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+// 展示源码
+document.getElementById('sourceCode').textContent =
+  '/* 核心算法源码（完整 JSDoc 注释见页面 <script> 标签内）*/\n\n' +
+  [calcArea, calcFlowRate, calcVelocity, calcDiameter,
+   getKinematicViscosity, calcReynoldsNumber, judgeFlowRegime,
+   calcFrictionFactor, calcFrictionFactorBlasius, calcHeadLoss, computeAll]
+    .map(fn => fn.toString())
+    .join('\n\n');
+
+// 计算按钮
+document.getElementById('btnCalc').addEventListener('click', () => {
+  const resultArea = document.getElementById('resultArea');
+  try {
+    const mode = document.getElementById('mode').value;
+    const T = parseFloat(document.getElementById('temp').value);
+    const d = parseFloat(document.getElementById('diameter').value);
+    const v = parseFloat(document.getElementById('velocity').value);
+    const Q = parseFloat(document.getElementById('flowrate').value);
+    const L = parseFloat(document.getElementById('length').value);
+    const epsMm = parseFloat(document.getElementById('roughness').value);
+
+    const labels = { T: '水温 T', d: '管径 d', v: '流速 v', Q: '流量 Q', L: '管长 L', epsMm: '粗糙度 ε' };
+    const ids = { T: 'temp', d: 'diameter', v: 'velocity', Q: 'flowrate', L: 'length', epsMm: 'roughness' };
+    const vals = { T, d, v, Q, L, epsMm };
+    const required = { Q: ['T','d','v','L','epsMm'], v: ['T','d','Q','L','epsMm'], d: ['T','Q','v','L','epsMm'] }[mode] || [];
+    for (const k of required) {
+      if (Number.isNaN(vals[k])) {
+        const empty = String(document.getElementById(ids[k]).value).trim() === '';
+        throw new Error('参数「' + labels[k] + '」' + (empty ? '未填写' : '不是有效数字，请检查输入'));
+      }
+    }
+
+    const opts = { mode, T, L, epsilon: epsMm };
+    if (mode === 'Q') { opts.v = v; opts.d = d; }
+    else if (mode === 'v') { opts.Q = Q; opts.d = d; }
+    else if (mode === 'd') { opts.Q = Q; opts.v = v; }
+
+    const r = computeAll(opts);
+
+    const regimeText = {
+      laminar: '层流 (Re < 2000)',
+      transitional: '过渡区 (2000 ≤ Re ≤ 4000) ⚠ 结果仅供参考',
+      turbulent: '湍流 (Re > 4000)'
+    };
+
+    resultArea.className = 'result-box';
+    resultArea.innerHTML =
+      `<div class="result-item"><span class="label">计算模式</span><span class="value">${mode === 'Q' ? '求流量 Q' : mode === 'v' ? '求流速 v' : '求管径 d'}</span></div>` +
+      `<div class="result-item"><span class="label">管径 d</span><span class="value">${r.d.toExponential(6)} m = ${(r.d * 1000).toFixed(3)} mm</span></div>` +
+      `<div class="result-item"><span class="label">截面积 A</span><span class="value">${r.A.toExponential(6)} m²</span></div>` +
+      `<div class="result-item"><span class="label">流速 v</span><span class="value">${r.v.toFixed(6)} m/s</span></div>` +
+      `<div class="result-item"><span class="label">流量 Q</span><span class="value">${r.Q.toExponential(6)} m³/s = ${(r.Q * 1000).toFixed(4)} L/s = ${(r.Q * 3600).toFixed(3)} m³/h</span></div>` +
+      `<div class="result-item"><span class="label">水温 T</span><span class="value">${r.T} ℃</span></div>` +
+      `<div class="result-item"><span class="label">运动粘度 ν</span><span class="value">${r.nu.toExponential(4)} m²/s</span></div>` +
+      `<div class="result-item"><span class="label">雷诺数 Re</span><span class="value">${r.Re.toExponential(4)}</span></div>` +
+      `<div class="result-item"><span class="label">流态</span><span class="value">${regimeText[r.regime]}</span></div>` +
+      `<div class="result-item"><span class="label">沿程阻力系数 λ</span><span class="value">${r.lambda.toExponential(4)}（${r.method}）</span></div>` +
+      `<div class="result-item"><span class="label">管长 L</span><span class="value">${r.L} m</span></div>` +
+      `<div class="result-item"><span class="label">绝对粗糙度 ε</span><span class="value">${(r.epsilon * 1000).toFixed(4)} mm</span></div>` +
+      `<div class="result-item"><span class="label">沿程水头损失 hf</span><span class="value">${r.hf.toFixed(4)} m</span></div>`;
+  } catch (e) {
+    resultArea.className = 'result-box error';
+    resultArea.textContent = '❌ 计算错误：' + e.message;
+  }
+});
+
+// 重置
+document.getElementById('btnReset').addEventListener('click', () => {
+  document.getElementById('temp').value = 20;
+  document.getElementById('diameter').value = 0.1;
+  document.getElementById('velocity').value = 1.5;
+  document.getElementById('flowrate').value = '';
+  document.getElementById('length').value = 100;
+  document.getElementById('roughness').value = 0.15;
+  document.getElementById('mode').value = 'Q';
+  document.getElementById('resultArea').innerHTML = '<div style="color:#8a97a6;font-size:13px;">请输入参数后点击"计算"按钮。</div>';
+  document.getElementById('resultArea').className = 'result-box';
+});
+
+// 填入示例
+document.getElementById('btnFillExample').addEventListener('click', () => {
+  document.getElementById('mode').value = 'v';
+  document.getElementById('temp').value = 20;
+  document.getElementById('diameter').value = 0.154;
+  document.getElementById('flowrate').value = 0.03;
+  document.getElementById('length').value = 200;
+  document.getElementById('roughness').value = 0.2;
+});
+
+// 运行测试
+document.getElementById('btnRunTests').addEventListener('click', () => {
+  const summary = document.getElementById('testSummary');
+  const log = document.getElementById('testLog');
+  const { passed, total, results } = runAllTests();
+  const allPass = passed === total;
+  summary.className = 'test-summary ' + (allPass ? 'pass' : 'fail');
+  summary.textContent = `通过 ${passed} / 共 ${total}` + (allPass ? ' ✅ 全部通过' : ' ❌ 存在失败');
+  log.innerHTML = results.map(r =>
+    `<div class="${r.pass ? 'pass-line' : 'fail-line'}">${r.pass ? '✓' : '✗'} ${r.name}${r.pass ? '' : ' — ' + r.detail}</div>`
+  ).join('');
+  console.log(`通过 ${passed} / 共 ${total}`);
+});
+</script>
+
+</body>
+</html>

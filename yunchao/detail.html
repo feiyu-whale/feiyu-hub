@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>详情 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .hero { background:linear-gradient(135deg,#1e3a5f,#312e81); padding:18px 14px; text-align:center; }
+  .hero .ava { font-size:52px; }
+  .hero h2 { font-size:17px; margin:6px 0 3px; }
+  .hero .meta { font-size:11.5px; color:#a5b4fc; }
+  .kvs { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:12px; }
+  .kv { background:var(--card); border:1px solid var(--line); border-radius:9px; padding:8px; text-align:center; }
+  .kv b { display:block; font-size:14px; color:var(--cyan); }
+  .kv span { font-size:9.5px; color:var(--dim); }
+  .intro { margin:0 12px 12px; background:var(--card); border:1px solid var(--line);
+           border-radius:10px; padding:11px; font-size:12.5px; }
+  .intro h4 { font-size:12px; color:var(--dim); font-weight:500; margin-bottom:5px; }
+  .svc { display:flex; justify-content:space-between; align-items:center;
+         background:var(--card); border:1px solid var(--line);
+         border-radius:9px; padding:10px; margin-bottom:7px; }
+  .svc.on { border-color:var(--cyan); }
+  .svc .t { font-size:12.5px; }
+  .svc .s { font-size:10.5px; color:var(--dim); }
+
+  /* 增值项 */
+  .addon { display:flex; justify-content:space-between; align-items:center;
+           background:var(--card); border:1px solid var(--line);
+           border-radius:9px; padding:10px; margin-bottom:7px; cursor:pointer; }
+  .addon.on { border-color:var(--gold); background:#2a2210; }
+  .addon .cb { width:17px; height:17px; border-radius:5px; border:1.5px solid var(--line);
+               display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; }
+  .addon.on .cb { background:var(--gold); border-color:var(--gold); color:#1a1205; }
+  .addon-body { flex:1; margin:0 9px; }
+  .addon .n { font-size:12.5px; }
+  .addon .note { font-size:10.5px; color:var(--dim); }
+
+  /* 底部结算条 */
+  .checkout {
+    position:fixed; left:0; right:0; bottom:52px; z-index:55;
+    background:rgba(20,32,52,.98); backdrop-filter:blur(9px);
+    border-top:1px solid var(--line); padding:10px 12px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .checkout .info { flex:1; font-size:11px; color:var(--dim); }
+  .checkout .total { font-size:15px; color:var(--gold); font-weight:700; }
+  .checkout .total small { font-size:10px; font-weight:400; color:var(--dim); }
+</style>
+</head>
+<body data-tab="index">
+
+<div class="topbar">
+  <a href="index.html" style="font-size:16px">←</a>
+  <div class="logo" id="pageTitle">详情</div>
+  <div style="flex:1"></div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+
+<div id="main"></div>
+
+<div class="checkout" id="checkout" style="display:none">
+  <div class="info">
+    <div id="selInfo">未选择服务</div>
+    <div class="total" id="totalPrice">0 <small>白饭</small></div>
+  </div>
+  <button class="btn" id="goOrder">立即下单</button>
+</div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+const params = new URLSearchParams(location.search);
+const wid = params.get('id');
+const sid = params.get('sid');
+
+let curWorker = null;      // 选中的打手
+let curService = null;     // 选中的服务
+let addons = [];           // 选中的增值项
+
+const box = document.getElementById('main');
+
+/* ============ 渲染 ============ */
+function render() {
+  if (wid) return renderWorker(wid);
+  if (sid) return renderService(sid);
+  return renderGameList();
+}
+
+/* ---- 从打手进入 ---- */
+function renderWorker(id) {
+  const w = YC.WORKERS.find(x => x.id === id);
+  if (!w) { box.innerHTML = '<div class="empty"><span class="icon">❓</span>打手不存在</div>'; return; }
+  curWorker = w;
+  document.getElementById('pageTitle').textContent = w.name;
+
+  const credit = YCUtil.creditOf(S, w.id);
+  const avg = YCUtil.avgOfReviews(S, w.id);
+  const myReviews = S.reviews[w.id] || [];
+  const svcs = YC.SERVICES.filter(s => !s.gid || w.games.includes(s.gid));
+
+  box.innerHTML = `
+    <div class="hero">
+      <div class="ava">${w.avatar}</div>
+      <h2>${w.name} <span class="rank ${w.rank}">${w.rank}</span></h2>
+      <div class="meta">${w.online ? '🟢 在线' : '⚫ 离线'} · ${w.tags.join(' / ')}</div>
+      <div class="meta" style="margin-top:3px">${w.games.map(g => YCUtil.gameIcon(g) + YCUtil.gameName(g)).join('　')}</div>
+    </div>
+    <div class="kvs">
+      <div class="kv"><b>${credit}</b><span>信用分</span></div>
+      <div class="kv"><b>${w.goodRate}%</b><span>好评率</span></div>
+      <div class="kv"><b>${w.orders}</b><span>接单量</span></div>
+      <div class="kv"><b>${avg || '—'}</b><span>评分</span></div>
+    </div>
+    <div class="intro"><h4>简介</h4>${w.intro}<br>
+      <span style="font-size:11px;color:#7d93ad">押金 ${w.deposit} 白饭（虚拟）</span>
+    </div>
+
+    <div class="section">
+      <div class="section-title">可选服务</div>
+      ${svcs.map(s => {
+        const t = YCUtil.tierOf(s.tier);
+        return `<div class="svc" data-s="${s.id}">
+          <div>
+            <div class="t">${YCUtil.gameIcon(s.gid)} ${s.title}
+              <span style="font-size:9.5px;color:${t.color}">${t.name}</span></div>
+            <div class="s">${s.sub} · ${s.dur}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="price">${s.price}<small>白饭</small></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="section" id="addonSection" style="display:none">
+      <div class="section-title">增值服务（可多选）</div>
+      ${YC.ADDONS.map(a => `
+        <div class="addon" data-a="${a.id}">
+          <div class="cb">✓</div>
+          <div class="addon-body">
+            <div class="n">${a.name}</div>
+            <div class="note">${a.note}</div>
+          </div>
+          <div class="price" style="font-size:12px">+${a.price}</div>
+        </div>`).join('')}
+    </div>
+
+    ${myReviews.length ? `
+      <div class="section">
+        <div class="section-title">最近评价（${myReviews.length}）</div>
+        ${myReviews.slice(-3).reverse().map(r => `
+          <div class="order">
+            <div class="order-body">
+              <div class="order-row"><span>评分</span><span style="color:#fbbf24">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span></div>
+              ${r.text ? `<div class="order-row"><span>评价</span><span style="max-width:65%;text-align:right">${YCSec.esc(r.text)}</span></div>` : ''}
+              <div class="order-row"><span>时间</span><span>${YCUtil.time(r.at)}</span></div>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+  `;
+
+  box.querySelectorAll('[data-s]').forEach(el => {
+    el.onclick = () => {
+      box.querySelectorAll('[data-s]').forEach(x => x.classList.remove('on'));
+      el.classList.add('on');
+      curService = YC.SERVICES.find(x => x.id === el.dataset.s);
+      document.getElementById('addonSection').style.display = '';
+      updateCheckout();
+    };
+  });
+
+  box.querySelectorAll('[data-a]').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.a;
+      if (addons.includes(id)) { addons = addons.filter(x => x !== id); el.classList.remove('on'); }
+      else { addons.push(id); el.classList.add('on'); }
+      updateCheckout();
+    };
+  });
+
+  document.getElementById('checkout').style.display = '';
+  updateCheckout();
+}
+
+/* ---- 从服务进入：列出能接的打手 ---- */
+function renderService(id) {
+  const s = YC.SERVICES.find(x => x.id === id);
+  if (!s) { box.innerHTML = '<div class="empty"><span class="icon">❓</span>服务不存在</div>'; return; }
+  curService = s;
+  const t = YCUtil.tierOf(s.tier);
+  document.getElementById('pageTitle').textContent = s.title;
+
+  let workers = YC.WORKERS.slice();
+  if (s.gid) workers = workers.filter(w => w.games.includes(s.gid));
+
+  box.innerHTML = `
+    <div class="banner" style="margin-top:12px">
+      <h2>${YCUtil.gameIcon(s.gid)} ${s.title}</h2>
+      <p>${s.desc}</p>
+      <p style="margin-top:4px;font-size:10.5px;color:#a5b4fc">
+        档位 ${t.name} · 时长 ${s.dur} · 已售 ${s.sold}
+      </p>
+    </div>
+    <div class="section">
+      <div class="section-title">可接单的打手（${workers.filter(w => w.online).length} 在线）</div>
+      ${workers.map(w => {
+        const avg = YCUtil.avgOfReviews(S, w.id);
+        return `<div class="worker" data-w="${w.id}">
+          <div class="worker-avatar">${w.avatar}<i class="online-dot ${w.online ? 'on' : 'off'}"></i></div>
+          <div class="worker-info">
+            <div class="worker-name">${w.name}<span class="rank ${w.rank}">${w.rank}</span></div>
+            <div class="worker-tags">${w.tags.map(x => `<span>${x}</span>`).join('')}</div>
+            <div class="worker-meta">信用 ${YCUtil.creditOf(S, w.id)} · 好评 ${w.goodRate}%${avg ? ` · ⭐${avg}` : ''}</div>
+          </div>
+          <div class="worker-right">
+            <button class="btn btn-sm" data-pick="${w.id}" ${w.online ? '' : 'disabled'}>
+              ${w.online ? '点他' : '离线'}
+            </button>
+          </div>
+        </div>`;
+      }).join('') || '<div class="empty"><span class="icon">😴</span>暂无打手接这个游戏</div>'}
+    </div>
+  `;
+
+  box.querySelectorAll('[data-pick]').forEach(b => {
+    b.onclick = e => {
+      e.stopPropagation();
+      location.href = 'detail.html?id=' + b.dataset.pick + '&sid=' + s.id;
+    };
+  });
+}
+
+/* ---- 首页跳进来没带参数 ---- */
+function renderGameList() {
+  box.innerHTML = `
+    <div class="section">
+      <div class="section-title">选择游戏</div>
+      <div class="grid">
+        ${YC.GAMES.map(g => `
+          <div class="card" data-g="${g.id}">
+            <div class="card-thumb">${g.icon}</div>
+            <div class="card-body">
+              <div class="card-title">${g.name}</div>
+              <div class="card-sub">${g.genre}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  box.querySelectorAll('[data-g]').forEach(el => {
+    el.onclick = () => location.href = 'index.html';
+  });
+}
+
+/* ============ 结算 ============ */
+function updateCheckout() {
+  if (!curService) {
+    document.getElementById('selInfo').textContent = '未选择服务';
+    document.getElementById('totalPrice').innerHTML = '0 <small>白饭</small>';
+    document.getElementById('goOrder').disabled = true;
+    return;
+  }
+  const total = YCUtil.calcPrice(curService.price, addons, S);
+  const names = addons.map(a => (YC.ADDONS.find(x => x.id === a) || {}).name).filter(Boolean);
+  document.getElementById('selInfo').textContent =
+    curService.title + (names.length ? ' + ' + names.join('/') : '');
+  document.getElementById('totalPrice').innerHTML = total + ' <small>白饭</small>';
+  document.getElementById('goOrder').disabled = false;
+}
+
+/* ============ 下单 ============ */
+document.getElementById('goOrder').onclick = () => {
+  if (S.role !== 'boss') { YCApp.toast('只有老板身份可以下单', true); return; }
+  const w = curWorker;
+  if (!w) { YCApp.toast('未选择打手', true); return; }
+  if (!w.online) { YCApp.toast('该打手当前离线', true); return; }
+
+  const total = YCUtil.calcPrice(curService.price, addons, S);
+  const firstOff = !S.firstOrderUsed ? 20 : 0;
+  const baseSum = total + firstOff;
+
+  if (S.baofan < total) { YCApp.toast('白饭不够，当前 ' + S.baofan, true); return; }
+
+  const names = addons.map(a => (YC.ADDONS.find(x => x.id === a) || {}).name).filter(Boolean);
+
+  YCApp.modal('确认下单', `
+    <div class="modal-row"><span>打手</span><span>${w.avatar} ${w.name}</span></div>
+    <div class="modal-row"><span>服务</span><span>${curService.title}</span></div>
+    ${names.length ? `<div class="modal-row"><span>增值</span><span>${names.join('、')}</span></div>` : ''}
+    <div class="modal-row"><span>原价</span><span>${baseSum} 白饭</span></div>
+    ${firstOff ? `<div class="modal-row"><span>首单立减</span><span style="color:#4ade80">-${firstOff}</span></div>` : ''}
+    <div class="modal-row"><span>应付</span><span style="color:#fbbf24">${YCUtil.money(total)}</span></div>
+    <div class="modal-row"><span>支付后</span><span style="color:#4ade80">${YCUtil.money(S.baofan - total)}</span></div>
+    <p style="font-size:11px;color:#7d93ad;margin-top:10px">演示系统，扣除虚拟白饭，无真实交易。</p>
+  `, [
+    {
+      t: '确认支付', fn: () => {
+        const oid = YCUtil.nextId(S);
+        S.baofan -= total;
+        S.firstOrderUsed = true;
+        S.orders.unshift({
+          id: oid, workerId: w.id, workerName: w.name, workerAvatar: w.avatar,
+          service: curService.title, serviceId: curService.id,
+          gid: curService.gid, addons: addons.slice(),
+          price: total, priceBase: baseSum,
+          status: YCStatus.PENDING,
+          createdAt: Date.now(),
+          history: [{ to: YCStatus.PENDING, at: Date.now() }]
+        });
+        YCApp.save();
+        YCApp.toast('下单成功，等待打手接单');
+        setTimeout(() => location.href = 'orders.html', 600);
+      }
+    },
+    { t: '取消', cls: 'btn-ghost' }
+  ]);
+};
+
+/* ---- 从打手页带 sid 进来 ---- */
+if (wid && sid) {
+  const s = YC.SERVICES.find(x => x.id === sid);
+  if (s) curService = s;
+}
+
+render();
+if (wid && sid && curService) {
+  // 自动选中对应服务
+  const el = box.querySelector(`[data-s="${curService.id}"]`);
+  if (el) el.click();
+}
+YCApp.renderTabbar('index');
+</script>
+</body>
+</html>

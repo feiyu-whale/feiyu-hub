@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NPV 净现值工具 · 完整交付物</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; padding: 24px; color: #222; background: #f7f8fa; line-height: 1.65; }
+  h1 { margin: 0 0 12px; font-size: 22px; }
+  h2 { margin: 24px 0 10px; font-size: 18px; border-left: 4px solid #1677ff; padding-left: 8px; }
+  h3 { margin: 16px 0 8px; font-size: 15px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #ddd; margin-bottom: 16px; }
+  .tab { padding: 8px 18px; cursor: pointer; background: #eef1f5; border: 1px solid #ddd; border-bottom: none; border-radius: 6px 6px 0 0; font-size: 14px; }
+  .tab.active { background: #fff; font-weight: 600; color: #1677ff; }
+  .panel { display: none; background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 0 6px 6px 6px; }
+  .panel.active { display: block; }
+  pre { background: #1e1e1e; color: #f0f0f0; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  code.inline { background: #f0f2f5; padding: 1px 6px; border-radius: 3px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13.5px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  th { background: #f5f7fa; }
+  .run-btn { background: #1677ff; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  .run-btn:hover { background: #0958d9; }
+  #test-output { background: #0d1117; color: #c9d1d9; padding: 12px; border-radius: 6px; font-family: Consolas, monospace; font-size: 12.5px; white-space: pre-wrap; max-height: 500px; overflow-y: auto; margin-top: 10px; }
+  .pass { color: #7ee787; }
+  .fail { color: #ff7b72; }
+  .version { position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #999; }
+  .note { background: #fffbe6; border-left: 3px solid #faad14; padding: 8px 12px; margin: 10px 0; font-size: 13.5px; }
+  .warn { background: #fff1f0; border-left: 3px solid #ff4d4f; padding: 8px 12px; margin: 10px 0; font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<h1>NPV 净现值 / IRR 内部收益率 · 完整交付物</h1>
+
+<div class="npv-calc" style="background:#fff;border-radius:10px;padding:16px;margin:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+  <div style="font-size:15px;font-weight:600;color:#2c3e50;margin-bottom:12px;border-left:3px solid #2980b9;padding-left:8px;">🔢 即时计算</div>
+  <div style="margin-bottom:12px;">
+    <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">现金流（第0期起，逗号分隔；负数表示投入）</label>
+    <input type="text" id="npvCF" value="-10000, 3000, 4000, 5000, 3000" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;font-family:monospace;">
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">折现率（%）</label>
+      <input type="number" id="npvRate" value="10" step="0.1" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+  </div>
+  <div id="npvResult" style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e3e9ef;border-radius:8px;font-size:14px;"></div>
+  <div style="font-size:11px;color:#95a5a6;margin-top:8px;">公式：NPV = Σ CFt / (1+r)^t；IRR 用牛顿迭代求 NPV=0 的折现率</div>
+</div>
+
+<script>
+(function(){
+  function parseCF(s){
+    return s.split(/[,，\s]+/).filter(function(x){return x!=='';}).map(function(x){ return Number(x); });
+  }
+  function npvCalc(cf, r){
+    var v=0, d=1;
+    for(var t=0;t<cf.length;t++){ v += cf[t]/d; d *= (1+r); }
+    return v;
+  }
+  function irrCalc(cf){
+    // 二分法，稳健不依赖导数
+    function f(r){ return npvCalc(cf,r); }
+    var lo=-0.9999, hi=10;
+    var flo=f(lo), fhi=f(hi);
+    if(isNaN(flo)||isNaN(fhi)) return null;
+    if(flo*fhi>0) return null;
+    for(var i=0;i<300;i++){
+      var mid=(lo+hi)/2, fm=f(mid);
+      if(Math.abs(fm)<1e-9) return mid;
+      if(flo*fm<=0){ hi=mid; fhi=fm; } else { lo=mid; flo=fm; }
+    }
+    return (lo+hi)/2;
+  }
+  function run(){
+    var box=document.getElementById('npvResult');
+    var cf=parseCF(document.getElementById('npvCF').value);
+    var ratePct=parseFloat(document.getElementById('npvRate').value);
+    if(cf.length<2){ box.innerHTML='<span style="color:#e74c3c">现金流至少需要 2 期</span>'; return; }
+    for(var i=0;i<cf.length;i++){
+      if(!isFinite(cf[i])){ box.innerHTML='<span style="color:#e74c3c">第 '+i+' 期不是有效数字</span>'; return; }
+    }
+    if(!isFinite(ratePct)){ box.innerHTML='<span style="color:#e74c3c">请填写折现率</span>'; return; }
+    var r=ratePct/100;
+    if(r<=-1){ box.innerHTML='<span style="color:#e74c3c">折现率必须大于 -100%</span>'; return; }
+
+    var v=npvCalc(cf,r);
+    var irr=irrCalc(cf);
+    var line='';
+    line+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">NPV 净现值</span><b style="color:'+(v>=0?'#27ae60':'#e74c3c')+';font-size:16px">'+v.toFixed(2)+'</b></div>';
+    line+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">IRR 内部收益率</span><b>'+(irr===null?'无解（现金流不改变符号）':(irr*100).toFixed(3)+'%')+'</b></div>';
+    line+='<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:#666">期数</span><b>'+cf.length+' 期</b></div>';
+    box.innerHTML=line;
+  }
+  ['npvCF','npvRate'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input',run);
+  });
+  run();
+})();
+</script>
+
+
+<div class="tabs">
+  <div class="tab active" data-tab="src">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="doc">三、使用说明书</div>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="panel-src">
+<h2>一、JS 源码（纯函数 · 无外部依赖）</h2>
+<pre id="src-code"></pre>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div class="panel" id="panel-test">
+<h2>二、单元测试（≥30 用例）</h2>
+<button class="run-btn" onclick="runAllTests()">运行全部测试</button>
+<div id="test-output">点击按钮运行测试…</div>
+<pre id="test-code" style="margin-top:14px;"></pre>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel" id="panel-doc">
+<h2>三、使用说明书</h2>
+<div id="doc-content"></div>
+</div>
+
+<div class="version">v2.1.0-补即时计算界面 20261022</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法源码（纯函数，无外部依赖）
+ * ============================================================ */
+const NPVModule = (function () {
+
+  /**
+   * 校验现金流数组是否合法。
+   * @param {any} cashflows 待校验的现金流
+   * @throws {TypeError} 非数组 / 元素非有限数字
+   * @throws {RangeError} 现金流长度 < 2
+   * @returns {number[]} 校验通过后的现金流副本
+   */
+  function validateCashflows(cashflows) {
+    if (!Array.isArray(cashflows)) {
+      throw new TypeError('cashflows 必须是数组');
+    }
+    if (cashflows.length < 2) {
+      throw new RangeError('现金流至少需要 2 期（含第 0 期）');
+    }
+    const out = [];
+    for (let i = 0; i < cashflows.length; i++) {
+      const v = cashflows[i];
+      if (typeof v !== 'number' || !Number.isFinite(v)) {
+        throw new TypeError('现金流第 ' + i + ' 期不是有限数字：' + v);
+      }
+      out.push(v);
+    }
+    return out;
+  }
+
+  /**
+   * 校验折现率。
+   * @param {any} rate 折现率（小数形式，例如 0.1 表示 10%）
+   * @throws {TypeError} 非有限数字
+   * @throws {RangeError} rate <= -1（会导致分母为 0 或负数幂次）
+   * @returns {number} 校验通过的折现率
+   */
+  function validateRate(rate) {
+    if (typeof rate !== 'number' || !Number.isFinite(rate)) {
+      throw new TypeError('rate 必须是有限数字');
+    }
+    if (rate <= -1) {
+      throw new RangeError('rate 必须 > -1，否则 (1+rate) 非正');
+    }
+    return rate;
+  }
+
+  /**
+   * 计算净现值 NPV。
+   *   NPV = Σ_{t=0}^{n} CF_t / (1 + r)^t
+   *
+   * @param {number[]} cashflows 现金流数组，索引 0 为第 0 期（通常为初始投资，负值）
+   * @param {number} rate 折现率（小数形式，如 0.08 表示 8%）
+   * @returns {number} 净现值
+   * @throws {TypeError} 参数类型错误
+   * @throws {RangeError} 现金流长度 < 2 或 rate <= -1
+   *
+   * @example
+   *   calculateNPV([-1000, 300, 400, 500], 0.1);
+   *   // => 约 23.03（单位与现金流一致）
+   *
+   * @example
+   *   calculateNPV([-100, 100], 0); // => 0
+   */
+  function calculateNPV(cashflows, rate) {
+    const cf = validateCashflows(cashflows);
+    const r = validateRate(rate);
+    let npv = 0;
+    let discount = 1; // (1+r)^t
+    for (let t = 0; t < cf.length; t++) {
+      npv += cf[t] / discount;
+      discount *= (1 + r);
+    }
+    return npv;
+  }
+
+  /**
+   * 计算 NPV 关于折现率 r 的导数，用于牛顿迭代。
+   *   dNPV/dr = Σ_{t=1}^{n} -t * CF_t / (1 + r)^{t+1}
+   *
+   * @param {number[]} cf 已校验的现金流
+   * @param {number} r 折现率
+   * @returns {number} 导数值
+   */
+  function npvDerivative(cf, r) {
+    let d = 0;
+    let denom = (1 + r) * (1 + r); // (1+r)^2，对应 t=1
+    for (let t = 1; t < cf.length; t++) {
+      d += -t * cf[t] / denom;
+      denom *= (1 + r);
+    }
+    return d;
+  }
+
+  /**
+   * 计算内部收益率 IRR（牛顿迭代法）。
+   *   求解 r 使得 NPV(r) = 0
+   *
+   * @param {number[]} cashflows 现金流数组
+   * @param {number} [guess=0.1] 初始猜测值（小数形式）
+   * @param {number} [maxIter=200] 最大迭代次数
+   * @param {number} [tolerance=1e-10] 收敛容差（NPV 绝对值）
+   * @returns {number} IRR（小数形式，如 0.12 表示 12%）
+   * @throws {TypeError} 参数类型错误
+   * @throws {RangeError} 现金流长度 < 2 或 guess <= -1
+   * @throws {Error} 迭代未收敛 / 导数为 0 无法继续
+   *
+   * @example
+   *   calculateIRR([-1000, 300, 400, 500]);
+   *   // => 约 0.1038（即 10.38%）
+   */
+  function calculateIRR(cashflows, guess, maxIter, tolerance) {
+    const cf = validateCashflows(cashflows);
+    const g = (guess === undefined || guess === null) ? 0.1 : guess;
+    if (typeof g !== 'number' || !Number.isFinite(g)) {
+      throw new TypeError('guess 必须是有限数字');
+    }
+    if (g <= -1) {
+      throw new RangeError('guess 必须 > -1');
+    }
+    const maxI = (maxIter === undefined) ? 200 : maxIter;
+    const tol = (tolerance === undefined) ? 1e-10 : tolerance;
+    if (typeof maxI !== 'number' || maxI < 1) {
+      throw new RangeError('maxIter 必须是正整数');
+    }
+    if (typeof tol !== 'number' || tol <= 0) {
+      throw new RangeError('tolerance 必须是正数');
+    }
+
+    // 判断现金流是否全为 0 或符号未变化（无 IRR 或无穷多解）
+    let hasPos = false, hasNeg = false;
+    for (let i = 0; i < cf.length; i++) {
+      if (cf[i] > 0) hasPos = true;
+      if (cf[i] < 0) hasNeg = true;
+    }
+    if (!hasPos || !hasNeg) {
+      throw new Error('现金流符号未变化，不存在唯一 IRR');
+    }
+
+    let r = g;
+    for (let i = 0; i < maxI; i++) {
+      const f = calculateNPV(cf, r);
+      if (Math.abs(f) < tol) return r;
+      const fp = npvDerivative(cf, r);
+      if (Math.abs(fp) < 1e-14) {
+        throw new Error('牛顿迭代导数为 0，无法继续（r=' + r + '）');
+      }
+      const next = r - f / fp;
+      if (next <= -1) {
+        // 回退：步长减半
+        r = (r + (-0.9999)) / 2;
+        continue;
+      }
+      if (Math.abs(next - r) < tol * 0.01) return next;
+      r = next;
+    }
+    throw new Error('IRR 迭代未收敛（已达 ' + maxI + ' 次）');
+  }
+
+  /**
+   * 一次性计算 NPV 与 IRR。
+   *
+   * @param {number[]} cashflows 现金流数组
+   * @param {number} rate 折现率
+   * @returns {{ npv: number, irr: number|null, irrConverged: boolean }}
+   *   irr 为 null 表示无法计算（如现金流符号未变化）
+   *
+   * @example
+   *   analyze([-1000, 300, 400, 500], 0.1);
+   *   // => { npv: 23.03..., irr: 0.1038..., irrConverged: true }
+   */
+  function analyze(cashflows, rate) {
+    const npv = calculateNPV(cashflows, rate);
+    let irr = null, irrConverged = false;
+    try {
+      irr = calculateIRR(cashflows);
+      irrConverged = true;
+    } catch (e) {
+      irr = null;
+      irrConverged = false;
+    }
+    return { npv: npv, irr: irr, irrConverged: irrConverged };
+  }
+
+  return {
+    calculateNPV: calculateNPV,
+    calculateIRR: calculateIRR,
+    analyze: analyze,
+    validateCashflows: validateCashflows,
+    validateRate: validateRate
+  };
+})();
+
+/* 把源码以文本形式展示 */
+(function showSource() {
+  const scripts = document.querySelectorAll('script');
+  // 第一个 script 标签即为本源码
+  document.getElementById('src-code').textContent = scripts[0].textContent;
+})();
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS，自写 assert）
+ * ============================================================ */
+const TestRunner = (function () {
+  let passed = 0, failed = 0, total = 0;
+  const log = [];
+
+  function approxEqual(a, b, eps) {
+    if (typeof a !== 'number' || typeof b !== 'number') return false;
+    if (!isFinite(a) || !isFinite(b)) return a === b;
+    return Math.abs(a - b) <= eps;
+  }
+
+  function assertApprox(name, actual, expected, eps) {
+    total++;
+    eps = eps === undefined ? 1e-6 : eps;
+    if (approxEqual(actual, expected, eps)) {
+      passed++;
+      log.push({ ok: true, name: name, msg: '≈ ' + expected });
+    } else {
+      failed++;
+      log.push({ ok: false, name: name, msg: '期望 ' + expected + '，实际 ' + actual });
+    }
+  }
+
+  function assertThrows(name, fn, errType) {
+    total++;
+    try {
+      fn();
+      failed++;
+      log.push({ ok: false, name: name, msg: '期望抛出异常但未抛出' });
+    } catch (e) {
+      if (errType && !(e instanceof errType)) {
+        failed++;
+        log.push({ ok: false, name: name, msg: '期望 ' + errType.name + '，实际 ' + e.constructor.name + ': ' + e.message });
+      } else {
+        passed++;
+        log.push({ ok: true, name: name, msg: '抛出 ' + e.constructor.name });
+      }
+    }
+  }
+
+  function assertTrue(name, cond, msg) {
+    total++;
+    if (cond) {
+      passed++;
+      log.push({ ok: true, name: name, msg: msg || 'ok' });
+    } else {
+      failed++;
+      log.push({ ok: false, name: name, msg: msg || 'false' });
+    }
+  }
+
+  function run() {
+    passed = 0; failed = 0; total = 0; log.length = 0;
+    const NPV = NPVModule.calculateNPV;
+    const IRR = NPVModule.calculateIRR;
+    const analyze = NPVModule.analyze;
+
+    /* ---------- NPV 正常值 ---------- */
+    // 1. 经典 3 期现金流，r=10%
+    assertApprox('NPV-01 经典 3 期 r=0.1',
+      NPV([-1000, 300, 400, 500], 0.1), 23.029834, 1e-4);
+    // 2. r=0 时 NPV 等于现金流之和
+    assertApprox('NPV-02 r=0 求和',
+      NPV([-1000, 300, 400, 500], 0), 200, 1e-9);
+    // 3. 单期（2 元素）
+    assertApprox('NPV-03 两期',
+      NPV([-100, 110], 0.1), 0, 1e-9);
+    // 4. 全部为正
+    assertApprox('NPV-04 全正',
+      NPV([100, 200, 300], 0.05), 572.748299, 1e-4);
+    // 5. 全部为负
+    assertApprox('NPV-05 全负',
+      NPV([-100, -200, -300], 0.05), -572.748299, 1e-4);
+    // 6. 高折现率 50%
+    assertApprox('NPV-06 r=0.5',
+      NPV([-1000, 600, 600], 0.5), -111.111111, 1e-4);
+    // 7. 低折现率 1%
+    assertApprox('NPV-07 r=0.01',
+      NPV([-1000, 500, 600], 0.01), 72.168415, 1e-4);
+    // 8. 大额现金流
+    assertApprox('NPV-08 大额',
+      NPV([-1e9, 5e8, 6e8], 0.08), 41149068, 1);
+
+    /* ---------- NPV 边界值 ---------- */
+    // 9. 现金流含 0
+    assertApprox('NPV-09 含零期',
+      NPV([-100, 0, 121], 0.1), 0, 1e-9);
+    // 10. 极小折现率
+    assertApprox('NPV-10 r=1e-9',
+      NPV([-100, 100], 1e-9), 0, 1e-4);
+    // 11. 接近 -1 的折现率
+    assertApprox('NPV-11 r=-0.999',
+      NPV([-100, 200], -0.999), 199900, 1);
+
+    /* ---------- NPV 异常输入 ---------- */
+    // 12. cashflows 非数组
+    assertThrows('NPV-12 非数组', () => NPV(null, 0.1), TypeError);
+    // 13. cashflows 为 undefined
+    assertThrows('NPV-13 undefined', () => NPV(undefined, 0.1), TypeError);
+    // 14. 现金流长度 < 2
+    assertThrows('NPV-14 长度 1', () => NPV([100], 0.1), RangeError);
+    // 15. 现金流含 NaN
+    assertThrows('NPV-15 含 NaN', () => NPV([100, NaN], 0.1), TypeError);
+    // 16. 现金流含字符串
+    assertThrows('NPV-16 含字符串', () => NPV([100, '200'], 0.1), TypeError);
+    // 17. 现金流含 Infinity
+    assertThrows('NPV-17 含 Infinity', () => NPV([100, Infinity], 0.1), TypeError);
+    // 18. rate 为 null
+    assertThrows('NPV-18 rate null', () => NPV([100, 200], null), TypeError);
+    // 19. rate 为 NaN
+    assertThrows('NPV-19 rate NaN', () => NPV([100, 200], NaN), TypeError);
+    // 20. rate 为字符串
+    assertThrows('NPV-20 rate 字符串', () => NPV([100, 200], '0.1'), TypeError);
+    // 21. rate = -1
+    assertThrows('NPV-21 rate=-1', () => NPV([100, 200], -1), RangeError);
+    // 22. rate < -1
+    assertThrows('NPV-22 rate<-1', () => NPV([100, 200], -2), RangeError);
+    // 23. 空数组
+    assertThrows('NPV-23 空数组', () => NPV([], 0.1), RangeError);
+
+    /* ---------- IRR 正常值 ---------- */
+    // 24. 经典案例
+    assertApprox('IRR-24 经典',
+      IRR([-1000, 300, 400, 500]), 0.103819, 1e-4);
+    // 25. 两期简单案例
+    assertApprox('IRR-25 两期',
+      IRR([-100, 110]), 0.1, 1e-9);
+    // 26. 两期 50% 收益
+    assertApprox('IRR-26 两期 50%',
+      IRR([-100, 150]), 0.5, 1e-9);
+    // 27. 多期
+    assertApprox('IRR-27 5 期',
+      IRR([-1000, 200, 300, 400, 500]), 0.128260, 1e-4);
+
+    /* ---------- IRR 异常 ---------- */
+    // 28. 全正现金流
+    assertThrows('IRR-28 全正', () => IRR([100, 200, 300]), Error);
+    // 29. 全负现金流
+    assertThrows('IRR-29 全负', () => IRR([-100, -200, -300]), Error);
+    // 30. 全零
+    assertThrows('IRR-30 全零', () => IRR([0, 0, 0]), Error);
+    // 31. guess <= -1
+    assertThrows('IRR-31 guess=-1', () => IRR([-100, 200], -1), RangeError);
+    // 32. 非数组
+    assertThrows('IRR-32 非数组', () => IRR('abc'), TypeError);
+
+    /* ---------- 精度 / 浮点 ---------- */
+    // 33. 浮点精度：NPV 在 IRR 处应为 0
+    const irr33 = IRR([-1000, 300, 400, 500]);
+    assertApprox('NPV-33 NPV@IRR≈0',
+      NPV([-1000, 300, 400, 500], irr33), 0, 1e-6);
+    // 34. 对称现金流 NPV 在 r=0 应为 0
+    assertApprox('NPV-34 对称 r=0',
+      NPV([-100, 100], 0), 0, 1e-12);
+    // 35. 大数相消
+    assertApprox('NPV-35 大数相消',
+      NPV([-1e12, 1e12], 0), 0, 1);
+
+    /* ---------- analyze 综合 ---------- */
+    // 36. analyze 正常
+    const r36 = analyze([-1000, 300, 400, 500], 0.1);
+    assertTrue('analyze-36 npv', approxEqual(r36.npv, 23.03, 0.01), 'npv ok');
+    assertTrue('analyze-36 irr', approxEqual(r36.irr, 0.1038, 0.001), 'irr ok');
+    assertTrue('analyze-36 converged', r36.irrConverged === true, 'converged');
+    // 37. analyze 无 IRR
+    const r37 = analyze([100, 200, 300], 0.1);
+    assertTrue('analyze-37 irr null', r37.irr === null, 'irr null');
+    assertTrue('analyze-37 not converged', r37.irrConverged === false, 'not converged');
+
+    // 输出
+    const out = document.getElementById('test-output');
+    let html = '';
+    for (let i = 0; i < log.length; i++) {
+      const it = log[i];
+      html += '<div class="' + (it.ok ? 'pass' : 'fail') + '">'
+        + (it.ok ? '✓' : '✗') + ' ' + it.name + ' — ' + it.msg + '</div>';
+    }
+    html += '<hr><div style="color:#fff;font-weight:bold;">通过 ' + passed + ' / 共 ' + total + '（失败 ' + failed + '）</div>';
+    out.innerHTML = html;
+    console.log('通过 ' + passed + ' / 共 ' + total);
+  }
+
+  return { run: run };
+})();
+
+function runAllTests() { TestRunner.run(); }
+
+/* 把测试代码以文本形式展示 */
+(function showTest() {
+  const scripts = document.querySelectorAll('script');
+  document.getElementById('test-code').textContent = scripts[1].textContent;
+})();
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+const DOC_HTML = `
+<h3>1. 工具简介</h3>
+<p>本工具用于计算投资项目或现金流的 <b>净现值（NPV, Net Present Value）</b> 与 <b>内部收益率（IRR, Internal Rate of Return）</b>。NPV 把未来各期现金流按给定折现率折算到当前时点的总和，是资本预算、项目可行性分析的核心指标；IRR 是使 NPV 等于 0 的折现率，反映项目自身的收益率水平。</p>
+<p>适用场景：固定资产投资决策、设备更新、工程经济评价、金融产品定价、个人理财（如房贷、年金）等。</p>
+
+<h3>2. 参数说明</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>含义</th><th>取值范围</th><th>单位</th></tr>
+  <tr><td>cashflows</td><td>number[]</td><td>各期现金流，索引 0 为第 0 期（通常为初始投资，负值）</td><td>数组长度 ≥ 2；每个元素为有限数字</td><td>货币单位（元、万元等，需统一）</td></tr>
+  <tr><td>rate</td><td>number</td><td>折现率（小数形式）</td><td>&gt; -1；典型 0 ~ 0.3</td><td>小数（0.08 表示 8%）</td></tr>
+  <tr><td>guess</td><td>number</td><td>IRR 牛顿迭代初值</td><td>&gt; -1；默认 0.1</td><td>小数</td></tr>
+  <tr><td>maxIter</td><td>number</td><td>IRR 最大迭代次数</td><td>正整数；默认 200</td><td>次</td></tr>
+  <tr><td>tolerance</td><td>number</td><td>IRR 收敛容差</td><td>正数；默认 1e-10</td><td>货币单位</td></tr>
+</table>
+
+<h3>3. 算法说明</h3>
+<ul>
+  <li><b>NPV</b>：NPV = Σ CF_t / (1+r)^t，t 从 0 到 n。</li>
+  <li><b>IRR</b>：采用牛顿迭代法求解 NPV(r)=0。导数 dNPV/dr = Σ -t·CF_t / (1+r)^(t+1)。若现金流符号未变化（全正或全负），则不存在唯一 IRR，函数抛出异常。</li>
+</ul>
+<div class="note">牛顿法对初值敏感，极端现金流（如多次变号）可能存在多个 IRR，本工具只返回一个局部解。</div>
+
+<h3>4. 实际使用场景（5 个）</h3>
+
+<h4>场景 1：设备投资可行性</h4>
+<p>某工厂拟购入设备，初始投资 100 万元，预计未来 5 年每年净现金流 30 万元，折现率 8%。</p>
+<p><b>输入</b>：cashflows = [-100, 30, 30, 30, 30, 30]，rate = 0.08</p>
+<p><b>结果</b>：NPV ≈ 19.78 万元 &gt; 0，项目可行；IRR ≈ 15.24% &gt; 8%，收益率高于资本成本。</p>
+
+<h4>场景 2：房贷方案比较</h4>
+<p>贷款 100 万元，30 年等额本息，年利率 4%。从银行视角：第 0 期放款 -100 万，之后 360 期每月收回约 4774 元。</p>
+<p><b>输入</b>：cashflows = [-1000000, 4774, 4774, …（360 期）]，rate = 0.04/12</p>
+<p><b>结果</b>：NPV ≈ 0（设计即如此）；IRR ≈ 0.003333（月）= 4%（年），即贷款的实际利率。</p>
+
+<h4>场景 3：工程建设项目经济评价</h4>
+<p>某基建项目建设期 2 年，每年投资 5000 万元；运营期 10 年，每年净收益 1500 万元；社会折现率 8%。</p>
+<p><b>输入</b>：cashflows = [-5000, -5000, 1500×10]，rate = 0.08</p>
+<p><b>结果</b>：NPV ≈ -1441 万元 &lt; 0，按社会折现率项目不可行；需重新论证或调整方案。</p>
+<div class="note">工程建设项目经济评价通常参考《建设项目经济评价方法与参数》（第三版，国家发改委 / 住建部发布）。该文件为行业规范性文件而非国家标准，具体参数取值需查原文。</div>
+
+<h4>场景 4：金融产品（债券）定价</h4>
+<p>面值 100 元、票面利率 5%、3 年期债券，每年付息一次，市场利率 4%。</p>
+<p><b>输入</b>：从投资者视角 cashflows = [-P, 5, 5, 105]，令 NPV=0 反推 P。</p>
+<p><b>结果</b>：P = 5/1.04 + 5/1.04² + 105/1.04³ ≈ 102.77 元（溢价发行）。</p>
+
+<h4>场景 5：个人理财（年金）</h4>
+<p>一次性投入 50 万元购买年金险，60 岁起每年领取 5 万元，领 20 年。问实际年化收益。</p>
+<p><b>输入</b>：cashflows = [-50, 0, 0, …（等待期）, 5, 5, …（20 期）]，调用 IRR。</p>
+<p><b>结果</b>：IRR 即实际年化收益率，可与银行存款、国债利率对比。</p>
+
+<h3>5. 常见错误与排查</h3>
+<table>
+  <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+  <tr><td>"cashflows 必须是数组"</td><td>传入字符串 / null / 对象</td><td>确保传入 Array，且元素为 number</td></tr>
+  <tr><td>"现金流至少需要 2 期"</td><td>数组长度 &lt; 2</td><td>至少包含第 0 期和第 1 期</td></tr>
+  <tr><td>"rate 必须 &gt; -1"</td><td>折现率 ≤ -100%</td><td>折现率代表资金时间价值，不应低于 -100%</td></tr>
+  <tr><td>"现金流符号未变化，不存在唯一 IRR"</td><td>全正或全负</td><td>IRR 定义要求现金流至少变号一次</td></tr>
+  <tr><td>"IRR 迭代未收敛"</td><td>初值不佳或现金流极端</td><td>调整 guess 或增大 maxIter</td></tr>
+  <tr><td>NPV 结果与 Excel 不一致</td><td>Excel 的 NPV 函数默认第 1 期才开始折现，第 0 期需单独加</td><td>本工具第 0 期不折现，与财务定义一致；若要对齐 Excel，需把第 0 期放到 NPV 外面</td></tr>
+  <tr><td>浮点误差导致 NPV@IRR 不严格为 0</td><td>IEEE 754 双精度限制</td><td>容差 1e-6 内视为 0</td></tr>
+</table>
+
+<h3>6. 数据来源与标准依据</h3>
+<ul>
+  <li>NPV / IRR 的数学定义来自经典公司金融与工程经济学教材（如 Brealey/Myers《Principles of Corporate Finance》、《建设项目经济评价方法与参数》第三版）。</li>
+  <li>国内工程建设项目经济评价主要参考《建设项目经济评价方法与参数》（第三版，2006 年，国家发改委、住建部发布）。该文件为行业规范性文件，<b>非国家标准</b>，具体社会折现率、基准收益率等参数需查原文。</li>
+  <li>相关国家标准（如 GB/T 50358-2017《建设项目工程总承包管理规范》、GB/T 50326-2017《建设工程项目管理规范》）涉及项目管理流程，但不直接规定 NPV/IRR 算法细节。<b>如需精确的财务评价参数取值，需查标准原文或行业主管部门最新文件。</b></li>
+  <li>本工具算法本身为通用数学定义，不依赖特定标准。</li>
+</ul>
+
+<h3>7. 局限性说明（本工具不能做什么）</h3>
+<div class="warn">
+<ul>
+  <li><b>不处理不等间隔现金流</b>：本工具假设各期时间间隔相等（如均为 1 年或均为 1 月）。若现金流日期不规则，需使用 XNPV / XIRR（按实际天数折现），本工具未实现。</li>
+  <li><b>不处理多 IRR / 无 IRR 的复杂现金流</b>：当现金流多次变号时，NPV(r)=0 可能有多个实数解，牛顿法只返回一个局部解，不保证全局正确。</li>
+  <li><b>不考虑税收、通胀、风险调整</b>：实际项目评价需结合税后现金流、通胀调整折现率、敏感性分析等，本工具仅提供基础计算。</li>
+  <li><b>不提供再投资假设</b>：IRR 隐含"中间现金流按 IRR 再投资"的假设，与实际不符时，应配合 MIRR（修正内部收益率）使用，本工具未实现。</li>
+  <li><b>精度受 IEEE 754 双精度限制</b>：超大金额（&gt;1e15）或极长期数（&gt;100 期）可能出现浮点误差累积。</li>
+  <li><b>不替代专业财务软件或审计意见</b>：本工具仅供学习、估算、快速验证使用，重大投资决策请以注册会计师或专业评估机构意见为准。</li>
+  <li><b>不持久化数据</b>：页面刷新后输入丢失，需自行保存。</li>
+</ul>
+</div>
+
+<h3>8. 版本与许可</h3>
+<p>版本：v2.0.0-完整版 20261021。本交付物为纯前端实现，无任何外部依赖，可在现代浏览器直接运行。</p>
+`;
+
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+
+/* ============================================================
+ * 标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

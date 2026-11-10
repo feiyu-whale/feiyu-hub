@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔢 字数统计</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:14px; font-family:inherit; resize:vertical; min-height:120px; line-height:1.6; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .stat { display:flex; justify-content:space-between; padding:9px 12px; background:#100b1c; border-radius:9px;
+    margin-bottom:7px; font-size:14px; }
+  .stat .k { color:#9a8fc0; }
+  .stat .v { color:#b8a0ff; font-weight:700; font-family:ui-monospace,monospace; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+  .btn { background:#241a3a; border:1px solid #4a3d70; color:#c8b3ff; border-radius:8px; padding:6px 12px;
+    font-size:12px; cursor:pointer; font-family:inherit; margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>🔢 字数统计</h1>
+  <div class="sub">中文字数 · 英文词数 · 标点 · 段落 · 阅读时长</div>
+
+  <div class="card">
+    <div class="lbl">粘贴或输入文本（实时统计）</div>
+    <textarea id="in" placeholder="把文章贴进来…"></textarea>
+    <button class="btn" id="clr">清空</button>
+  </div>
+
+  <div class="card">
+    <div class="lbl">统计结果</div>
+    <div id="out"></div>
+  </div>
+  <div class="ver">v1.0.0-字数统计 20261016</div>
+</div>
+<script>
+// 【wordcount】统计文本字数——中文字数/英文词数/标点/段落/阅读时长。
+// 依赖：无（纯字符串处理）。输入：文本；输出：各项统计数值。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：中英文常用字数统计口径（中文按字、英文按词）；纯字符串处理，无外部数据。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  function analyze(t){
+    var noSpace = t.replace(/\s/g, "");
+    // 中文（含扩展 CJK）
+    var han = (t.match(/[\u4e00-\u9fa5\u3400-\u4dbf]/g) || []).length;
+    // 英文词（连续字母）
+    var enWords = (t.match(/[A-Za-z]+/g) || []).length;
+    // 数字串
+    var nums = (t.match(/\d+/g) || []).length;
+    // 标点（中英常见）
+    var punct = (t.match(/[\u3000-\u303f\uff00-\uffef!-\/:-@\[-`{-~]/g) || []).length;
+    // 段落（非空行）
+    var paras = t.split(/\n+/).filter(function(s){ return s.trim().length > 0; }).length;
+    // 行数
+    var lines = t.length ? t.split("\n").length : 0;
+    // 字符总数
+    var chars = t.length;
+    var charsNoSpace = noSpace.length;
+
+    // 阅读时长：中文 300字/分，英文 200词/分
+    var minutes = (han / 300) + (enWords / 200);
+    var readMin = minutes < 1 ? (minutes > 0 ? "不足 1 分钟" : "0") : Math.ceil(minutes) + " 分钟";
+
+    return {
+      "字符总数（含空格）": chars,
+      "字符总数（不含空格）": charsNoSpace,
+      "中文字数": han,
+      "英文单词数": enWords,
+      "数字串数": nums,
+      "标点符号数": punct,
+      "段落数": paras,
+      "行数": lines,
+      "阅读时长（≈）": readMin,
+    };
+  }
+
+  function render(){
+    var t = $("in").value;
+    var r = analyze(t);
+    $("out").innerHTML = Object.keys(r).map(function(k){
+      return '<div class="stat"><span class="k">'+k+'</span><span class="v">'+r[k]+'</span></div>';
+    }).join("");
+  }
+
+  $("in").addEventListener("input", render);
+  $("clr").onclick = function(){ $("in").value = ""; render(); };
+  render();
+})();
+</script>
+</body>
+</html>

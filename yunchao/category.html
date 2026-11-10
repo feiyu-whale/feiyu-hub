@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>分类 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .layout { display:flex; height:calc(100vh - 140px); }
+  .side {
+    width:88px; flex-shrink:0; background:var(--bg2);
+    border-right:1px solid var(--line); overflow-y:auto;
+  }
+  .side div {
+    padding:13px 8px; font-size:12px; color:var(--dim); text-align:center;
+    border-left:3px solid transparent; cursor:pointer;
+  }
+  .side div.on { background:var(--card); color:var(--cyan); border-left-color:var(--cyan); font-weight:600; }
+  .main { flex:1; overflow-y:auto; padding:10px 11px; }
+  .cat-head { font-size:13px; font-weight:600; margin:6px 0 9px; display:flex; align-items:center; gap:6px; }
+  .cat-head::before { content:''; width:3px; height:12px; border-radius:2px;
+    background:linear-gradient(180deg,var(--cyan),var(--blue)); }
+  .item {
+    display:flex; gap:9px; background:var(--card); border:1px solid var(--line);
+    border-radius:9px; padding:9px; margin-bottom:7px; cursor:pointer;
+  }
+  .item .ic { width:44px; height:44px; border-radius:9px; flex-shrink:0;
+              display:flex; align-items:center; justify-content:center; font-size:21px;
+              background:linear-gradient(135deg,#1e3a5f,#312e81); }
+  .item .bd { flex:1; min-width:0; }
+  .item .t { font-size:12.5px; font-weight:600; }
+  .item .s { font-size:10.5px; color:var(--dim); margin-top:2px;
+             overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .p { font-size:13px; color:var(--gold); font-weight:700; white-space:nowrap; }
+  .item .p small { font-size:9.5px; font-weight:400; color:var(--dim); }
+  .filter-bar { display:flex; gap:6px; padding:9px 11px 0; overflow-x:auto; }
+  .filter-bar span { padding:4px 11px; border-radius:13px; font-size:11.5px;
+    background:var(--card); color:var(--dim); border:1px solid var(--line); white-space:nowrap; }
+  .filter-bar span.on { background:var(--cyan); color:#04121f; font-weight:600; border-color:transparent; }
+</style>
+</head>
+<body data-tab="category">
+
+<div class="topbar">
+  <div class="logo">分类</div>
+  <div class="search">
+    <span style="color:#7d93ad;font-size:12px">🔍</span>
+    <input id="q" placeholder="搜索服务">
+  </div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+
+<div class="filter-bar" id="tiers"></div>
+
+<div class="layout">
+  <div class="side" id="side"></div>
+  <div class="main" id="main"></div>
+</div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+let activeGame = 'all';
+let activeTier = 'all';
+
+/* 档位筛选 */
+const TIER_OPTS = [{ k:'all', n:'全部价' }].concat(
+  YC.TIERS.map(t => ({ k: t.id, n: t.name })));
+document.getElementById('tiers').innerHTML = TIER_OPTS
+  .map(t => `<span class="${t.k === activeTier ? 'on' : ''}" data-t="${t.k}">${t.n}</span>`).join('');
+document.querySelectorAll('#tiers span').forEach(el => {
+  el.onclick = () => {
+    activeTier = el.dataset.t;
+    document.querySelectorAll('#tiers span').forEach(x =>
+      x.classList.toggle('on', x.dataset.t === activeTier));
+    renderMain();
+  };
+});
+
+/* 左侧游戏列表 */
+function renderSide() {
+  const list = [{ id:'all', name:'全部', icon:'🎮' }].concat(YC.GAMES);
+  document.getElementById('side').innerHTML = list.map(g =>
+    `<div class="${g.id === activeGame ? 'on' : ''}" data-g="${g.id}">
+       <div style="font-size:17px">${g.icon}</div>${g.name}
+     </div>`).join('');
+  document.querySelectorAll('#side div').forEach(el => {
+    el.onclick = () => { activeGame = el.dataset.g; renderSide(); renderMain(); };
+  });
+}
+
+/* 右侧服务 */
+function renderMain() {
+  const kw = (document.getElementById('q').value || '').trim();
+  let list = YC.SERVICES.slice();
+
+  if (activeGame !== 'all') list = list.filter(s => s.gid === activeGame);
+  if (activeTier !== 'all') list = list.filter(s => s.tier === activeTier);
+  if (kw) list = list.filter(s =>
+    s.title.includes(kw) || s.sub.includes(kw) || s.desc.includes(kw));
+
+  const box = document.getElementById('main');
+  const title = activeGame === 'all' ? '全部服务' : YCUtil.gameName(activeGame);
+
+  if (!list.length) {
+    box.innerHTML = `<div class="empty"><span class="icon">📦</span>该条件下暂无服务</div>`;
+    return;
+  }
+
+  box.innerHTML = `<div class="cat-head">${title}（${list.length}）</div>` +
+    list.map(s => {
+      const t = YCUtil.tierOf(s.tier);
+      return `<div class="item" data-sid="${s.id}">
+        <div class="ic">${YCUtil.gameIcon(s.gid)}</div>
+        <div class="bd">
+          <div class="t">${s.title} <span style="font-size:9px;color:${t.color}">${t.name}</span></div>
+          <div class="s">${s.desc}</div>
+          <div class="s">${s.dur} · 已售 ${s.sold}</div>
+        </div>
+        <div class="p">${s.price}<small>白饭</small></div>
+      </div>`;
+    }).join('');
+
+  box.querySelectorAll('[data-sid]').forEach(el => {
+    el.onclick = () => location.href = 'detail.html?sid=' + el.dataset.sid;
+  });
+}
+
+document.getElementById('q').oninput = renderMain;
+
+renderSide();
+renderMain();
+YCApp.renderTabbar('category');
+</script>
+</body>
+</html>

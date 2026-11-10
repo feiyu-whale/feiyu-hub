@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汉字部件拆解工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  padding: 20px 10px 60px;
+  color: #2c3e50;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+header {
+  text-align: center;
+  padding: 20px 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+header h1 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+header p {
+  font-size: 13px;
+  opacity: 0.95;
+}
+.input-section {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+}
+.input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+input[type="text"] {
+  flex: 1;
+  padding: 12px 15px;
+  border: 2px solid #e0e6ed;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s;
+  min-width: 0;
+}
+input[type="text"]:focus {
+  border-color: #667eea;
+}
+button {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  white-space: nowrap;
+}
+button:active {
+  transform: scale(0.95);
+}
+.hint {
+  font-size: 13px;
+  color: #7f8c8d;
+}
+.result-section {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  display: none;
+}
+.result-section.show {
+  display: block;
+}
+.char-display {
+  text-align: center;
+  font-size: 80px;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-family: "KaiTi", "STKaiti", "SimSun", serif;
+  color: #2c3e50;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.info-item {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid #667eea;
+}
+.info-item.full {
+  grid-column: 1 / -1;
+}
+.info-label {
+  font-size: 13px;
+  color: #7f8c8d;
+  margin-bottom: 4px;
+}
+.info-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  word-break: break-all;
+}
+.error-msg {
+  background: #fff3cd;
+  color: #856404;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 3px solid #ffc107;
+  display: none;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+.error-msg.show {
+  display: block;
+}
+.source-section {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.source-section h2 {
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: #667eea;
+}
+.source-section ul {
+  padding-left: 20px;
+}
+.source-section li {
+  margin-bottom: 5px;
+}
+.source-section .note {
+  margin-top: 10px;
+  color: #7f8c8d;
+  font-size: 13px;
+}
+.version {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  font-size: 11px;
+  color: #95a5a6;
+  background: rgba(255,255,255,0.8);
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 100;
+}
+@media (max-width: 480px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  .char-display {
+    font-size: 60px;
+    padding: 15px;
+  }
+  header h1 {
+    font-size: 20px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📖 汉字部件拆解</h1>
+    <p>输入汉字，查看部首、笔画、结构、部件、造字法、五笔编码</p>
+  </header>
+  
+  <div class="input-section">
+    <div class="input-row">
+      <input type="text" id="charInput" placeholder="请输入一个汉字，如：明" maxlength="1">
+      <button onclick="analyze()">🔍 拆解</button>
+    </div>
+    <div class="hint">💡 提示：输入单个汉字后点击"拆解"或按回车键</div>
+  </div>
+  
+  <div class="error-msg" id="errorMsg"></div>
+  
+  <div class="result-section" id="resultSection">
+    <div class="char-display" id="charDisplay"></div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">📌 部首</div>
+        <div class="info-value" id="bushou"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">✏️ 笔画数</div>
+        <div class="info-value" id="bihua"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">🏗️ 结构</div>
+        <div class="info-value" id="jiegou"></div>
+      </div>
+      <div class="info-item full">
+        <div class="info-label">🧩 拆解部件</div>
+        <div class="info-value" id="buji"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">🎨 造字法</div>
+        <div class="info-value" id="zaofa"></div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">⌨️ 五笔编码</div>
+        <div class="info-value" id="wubi"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="source-section">
+    <h2>📚 数据来源</h2>
+    <ul>
+      <li>《现代汉语通用字笔顺规范》（国家语委、新闻出版署，1997年发布）</li>
+      <li>《汉字部件规范》（GF 3001-1997，国家语言文字工作委员会）</li>
+      <li>GB 13000.1-1993《信息技术 通用多八位编码字符集》（等同采用 ISO/IEC 10646-1）</li>
+      <li>《说文解字》（东汉·许慎）——造字法"六书"分类依据</li>
+      <li>五笔字型汉字输入法（王永民，1983年发明）</li>
+    </ul>
+    <p class="note">⚠️ 本工具内置常用汉字数据，未收录的字将提示"暂无数据"。具体部件拆分细节、笔顺规范以标准原文为准。</p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-汉字拆解 20261021</div>
+
+<script>
+const charData = {
+  '一': {bushou:'一',bihua:1,jiegou:'独体',buji:'一',zaofa:'指事',wubi:'GGLL'},
+  '二': {bushou:'二',bihua:2,jiegou:'独体',buji:'二',zaofa:'指事',wubi:'FGG'},
+  '三': {bushou:'一',bihua:3,jiegou:'独体',buji:'三',zaofa:'指事',wubi:'DGGG'},
+  '十': {bushou:'十',bihua:2,jiegou:'独体',buji:'十',zaofa:'指事',wubi:'FGH'},
+  '人': {bushou:'人',bihua:2,jiegou:'独体',buji:'人',zaofa:'象形',wubi:'WWWW'},
+  '大': {bushou:'大',bihua:3,jiegou:'独体',buji:'大',zaofa:'象形',wubi:'DDDD'},
+  '小': {bushou:'小',bihua:3,jiegou:'独体',buji:'小',zaofa:'象形',wubi:'IHTY'},
+  '口': {bushou:'口',bihua:3,jiegou:'独体',buji:'口',zaofa:'象形',wubi:'KKKK'},
+  '山': {bushou:'山',bihua:3,jiegou:'独体',buji:'山',zaofa:'象形',wubi:'MMMM'},
+  '水': {bushou:'水',bihua:4,jiegou:'独体',buji:'水',zaofa:'象形',wubi:'IIII'},
+  '火': {bushou:'火',bihua:4,jiegou:'独体',buji:'火',zaofa:'象形',wubi:'OOOO'},
+  '日': {bushou:'日',bihua:4,jiegou:'独体',buji:'日',zaofa:'象形',wubi:'JJJJ'},
+  '月': {bushou:'月',bihua:4,jiegou:'独体',buji:'月',zaofa:'象形',wubi:'EEEE'},
+  '木': {bushou:'木',bihua:4,jiegou:'独体',buji:'木',zaofa:'象形',wubi:'SSSS'},
+  '金': {bushou:'金',bihua:8,jiegou:'独体',buji:'金',zaofa:'象形',wubi:'QQQQ'},
+  '土': {bushou:'土',bihua:3,jiegou:'独体',buji:'土',zaofa:'象形',wubi:'FFFF'},
+  '田': {bushou:'田',bihua:5,jiegou:'独体',buji:'田',zaofa:'象形',wubi:'LLLL'},
+  '目': {bushou:'目',bihua:5,jiegou:'独体',buji:'目',zaofa:'象形',wubi:'HHHH'},
+  '手': {bushou:'手',bihua:4,jiegou:'独体',buji:'手',zaofa:'象形',wubi:'RTGH'},
+  '足': {bushou:'足',bihua:7,jiegou:'上下',buji:'口+止',zaofa:'象形',wubi:'KHHU'},
+  '耳': {bushou:'耳',bihua:6,jiegou:'独体',buji:'耳',zaofa:'象形',wubi:'BGHG'},
+  '女': {bushou:'女',bihua:3,jiegou:'独体',buji:'女',zaofa:'象形',wubi:'VVVV'},
+  '子': {bushou:'子',bihua:3,jiegou:'独体',buji:'子',zaofa:'象形',wubi:'BBBB'},
+  '心': {bushou:'心',bihua:4,jiegou:'独体',buji:'心',zaofa:'象形',wubi:'NYNY'},
+  '刀': {bushou:'刀',bihua:2,jiegou:'独体',buji:'刀',zaofa:'象形',wubi:'VNT'},
+  '力': {bushou:'力',bihua:2,jiegou:'独体',buji:'力',zaofa:'象形',wubi:'LNT'},
+  '王': {bushou:'王',bihua:4,jiegou:'独体',buji:'王',zaofa:'象形',wubi:'GGGG'},
+  '车': {bushou:'车',bihua:4,jiegou:'独体',buji:'车',zaofa:'象形',wubi:'LG'},
+  '马': {bushou:'马',bihua:3,jiegou:'独体',buji:'马',zaofa:'象形',wubi:'CNNG'},
+  '鱼': {bushou:'鱼',bihua:8,jiegou:'上下',buji:'⺈+田+一',zaofa:'象形',wubi:'QG'},
+  '鸟': {bushou:'鸟',bihua:5,jiegou:'独体',buji:'鸟',zaofa:'象形',wubi:'QYNG'},
+  '虫': {bushou:'虫',bihua:6,jiegou:'独体',buji:'虫',zaofa:'象形',wubi:'JHNY'},
+  '石': {bushou:'石',bihua:5,jiegou:'半包围',buji:'厂+口',zaofa:'象形',wubi:'DGTG'},
+  '雨': {bushou:'雨',bihua:8,jiegou:'独体',buji:'雨',zaofa:'象形',wubi:'FGHY'},
+  '风': {bushou:'风',bihua:4,jiegou:'半包围',buji:'几+乂',zaofa:'形声',wubi:'MQI'},
+  '天': {bushou:'大',bihua:4,jiegou:'上下',buji:'一+大',zaofa:'会意',wubi:'GDI'},
+  '地': {bushou:'土',bihua:6,jiegou:'左右',buji:'土+也',zaofa:'形声',wubi:'FBN'},
+  '上': {bushou:'一',bihua:3,jiegou:'独体',buji:'上',zaofa:'指事',wubi:'H'},
+  '下': {bushou:'一',bihua:3,jiegou:'独体',buji:'下',zaofa:'指事',wubi:'GH'},
+  '中': {bushou:'丨',bihua:4,jiegou:'独体',buji:'口+丨',zaofa:'指事',wubi:'KHK'},
+  '内': {bushou:'冂',bihua:4,jiegou:'包围',buji:'冂+人',zaofa:'会意',wubi:'MWI'},
+  '外': {bushou:'夕',bihua:5,jiegou:'左右',buji:'夕+卜',zaofa:'会意',wubi:'QHY'},
+  '男': {bushou:'田',bihua:7,jiegou:'上下',buji:'田+力',zaofa:'会意',wubi:'LLB'},
+  '好': {bushou:'女',bihua:6,jiegou:'左右',buji:'女+子',zaofa:'会意',wubi:'VBG'},
+  '明': {bushou:'日',bihua:8,jiegou:'左右',buji:'日+月',zaofa:'会意',wubi:'JEG'},
+  '林': {bushou:'木',bihua:8,jiegou:'左右',buji:'木+木',zaofa:'会意',wubi:'SSY'},
+  '森': {bushou:'木',bihua:12,jiegou:'品字形',buji:'木+木+木',zaofa:'会意',wubi:'SSSU'},
+  '休': {bushou:'亻',bihua:6,jiegou:'左右',buji:'亻+木',zaofa:'会意',wubi:'WSY'},
+  '看': {bushou:'目',bihua:9,jiegou:'半包围',buji:'手+目',zaofa:'会意',wubi:'RHHF'},
+  '花': {bushou:'艹',bihua:7,jiegou:'上下',buji:'艹+化',zaofa:'形声',wubi:'AWXB'},
+  '草': {bushou:'艹',bihua:9,jiegou:'上下',buji:'艹+早',zaofa:'形声',wubi:'AJJ'},
+  '树': {bushou:'木',bihua:9,jiegou:'左中右',buji:'木+又+寸',zaofa:'形声',wubi:'SCF'},
+  '星': {bushou:'日',bihua:9,jiegou:'上下',buji:'日+生',zaofa:'形声',wubi:'JTG'},
+  '早': {bushou:'日',bihua:6,jiegou:'上下',buji:'日+十',zaofa:'会意',wubi:'JHNH'},
+  '晚': {bushou:'日',bihua:11,jiegou:'左右',buji:'日+免',zaofa:'形声',wubi:'JQKQ'},
+  '春': {bushou:'日',bihua:9,jiegou:'上下',buji:'三+人+日',zaofa:'会意',wubi:'DWJF'},
+  '夏': {bushou:'夂',bihua:10,jiegou:'上下',buji:'一+自+夂',zaofa:'会意',wubi:'DHTU'},
+  '秋': {bushou:'禾',bihua:9,jiegou:'左右',buji:'禾+火',zaofa:'形声',wubi:'TOY'},
+  '冬': {bushou:'夂',bihua:5,jiegou:'上下',buji:'夂+两点',zaofa:'会意',wubi:'TUU'},
+  '东': {bushou:'一',bihua:5,jiegou:'独体',buji:'东',zaofa:'象形',wubi:'AII'},
+  '西': {bushou:'西',bihua:6,jiegou:'独体',buji:'西',zaofa:'象形',wubi:'SG'},
+  '南': {bushou:'十',bihua:9,jiegou:'上下',buji:'十+冂+￥',zaofa:'形声',wubi:'FMUF'},
+  '北': {bushou:'匕',bihua:5,jiegou:'左右',buji:'丬+匕',zaofa:'会意',wubi:'UX'},
+  '学': {bushou:'子',bihua:8,jiegou:'上下',buji:'⺍+冖+子',zaofa:'形声',wubi:'IPBF'},
+  '校': {bushou:'木',bihua:10,jiegou:'左右',buji:'木+交',zaofa:'形声',wubi:'SUQ'},
+  '教': {bushou:'攵',bihua:11,jiegou:'左右',buji:'孝+攵',zaofa:'形声',wubi:'FTBT'},
+  '师': {bushou:'巾',bihua:6,jiegou:'左右',buji:'丨+帀',zaofa:'形声',wubi:'JGMH'},
+  '书': {bushou:'乛',bihua:4,jiegou:'独体',buji:'书',zaofa:'形声',wubi:'NNHY'},
+  '字': {bushou:'子',bihua:6,jiegou:'上下',buji:'宀+子',zaofa:'形声',wubi:'PBF'},
+  '文': {bushou:'文',bihua:4,jiegou:'独体',buji:'文',zaofa:'象形',wubi:'YYGY'},
+  '言': {bushou:'言',bihua:7,jiegou:'独体',buji:'言',zaofa:'象形',wubi:'YYYY'},
+  '话': {bushou:'讠',bihua:8,jiegou:'左右',buji:'讠+舌',zaofa:'形声',wubi:'YTDG'},
+  '说': {bushou:'讠',bihua:9,jiegou:'左右',buji:'讠+兑',zaofa:'形声',wubi:'YUKQ'},
+  '读': {bushou:'讠',bihua:10,jiegou:'左右',buji:'讠+卖',zaofa:'形声',wubi:'YFND'},
+  '写': {bushou:'冖',bihua:5,jiegou:'上下',buji:'冖+与',zaofa:'形声',wubi:'PGNG'},
+  '画': {bushou:'田',bihua:8,jiegou:'半包围',buji:'一+田+凵',zaofa:'会意',wubi:'GLBJ'},
+  '图': {bushou:'囗',bihua:8,jiegou:'全包围',buji:'囗+啚',zaofa:'形声',wubi:'LTUK'},
+  '数': {bushou:'攵',bihua:13,jiegou:'左右',buji:'米+女+攵',zaofa:'形声',wubi:'OVTY'},
+  '理': {bushou:'王',bihua:11,jiegou:'左右',buji:'王+里',zaofa:'形声',wubi:'GJG'},
+  '法': {bushou:'氵',bihua:8,jiegou:'左右',buji:'氵+去',zaofa:'形声',wubi:'IFCY'},
+  '年': {bushou:'干',bihua:6,jiegou:'上下',buji:'𠂉+干',zaofa:'形声',wubi:'RHFK'},
+  '时': {bushou:'日',bihua:7,jiegou:'左右',buji:'日+寸',zaofa:'形声',wubi:'JFY'},
+  '分': {bushou:'刀',bihua:4,jiegou:'上下',buji:'八+刀',zaofa:'会意',wubi:'WVB'},
+  '点': {bushou:'灬',bihua:9,jiegou:'上下',buji:'占+灬',zaofa:'形声',wubi:'HKOU'},
+  '线': {bushou:'纟',bihua:8,jiegou:'左右',buji:'纟+戋',zaofa:'形声',wubi:'XGT'},
+  '面': {bushou:'面',bihua:9,jiegou:'独体',buji:'面',zaofa:'象形',wubi:'DMJD'},
+  '体': {bushou:'亻',bihua:7,jiegou:'左右',buji:'亻+本',zaofa:'形声',wubi:'WSGG'},
+  '形': {bushou:'彡',bihua:7,jiegou:'左右',buji:'开+彡',zaofa:'形声',wubi:'GAE'},
+  '声': {bushou:'士',bihua:7,jiegou:'上下',buji:'士+尸+几',zaofa:'形声',wubi:'FNR'},
+  '音': {bushou:'音',bihua:9,jiegou:'上下',buji:'立+日',zaofa:'形声',wubi:'UJF'},
+  '光': {bushou:'儿',bihua:6,jiegou:'上下',buji:'⺌+一+儿',zaofa:'会意',wubi:'IQB'},
+  '电': {bushou:'田',bihua:5,jiegou:'独体',buji:'曰+乚',zaofa:'形声',wubi:'JNV'},
+  '高': {bushou:'高',bihua:10,jiegou:'上下',buji:'亠+口+冂+口',zaofa:'象形',wubi:'YMKF'},
+  '长': {bushou:'长',bihua:4,jiegou:'独体',buji:'长',zaofa:'象形',wubi:'TAYI'},
+  '多': {bushou:'夕',bihua:6,jiegou:'上下',buji:'夕+夕',zaofa:'会意',wubi:'QQU'},
+  '来': {bushou:'木',bihua:7,jiegou:'独体',buji:'来',zaofa:'象形',wubi:'GOI'},
+  '去': {bushou:'厶',bihua:5,jiegou:'上下',buji:'土+厶',zaofa:'会意',wubi:'FCU'},
+  '出': {bushou:'凵',bihua:5,jiegou:'独体',buji:'出',zaofa:'象形',wubi:'BMK'},
+  '开': {bushou:'廾',bihua:4,jiegou:'独体',buji:'开',zaofa:'会意',wubi:'GA'},
+  '关': {bushou:'丷',bihua:6,jiegou:'上下',buji:'丷+天',zaofa:'会意',wubi:'UDU'},
+  '有': {bushou:'月',bihua:6,jiegou:'半包围',buji:'𠂇+月',zaofa:'会意',wubi:'DEF'},
+  '这': {bushou:'辶',bihua:7,jiegou:'半包围',buji:'文+辶',zaofa:'形声',wubi:'YPI'},
+  '里': {bushou:'里',bihua:7,jiegou:'上下',buji:'田+土',zaofa:'会意',wubi:'JFD'},
+  '前': {bushou:'刂',bihua:9,jiegou:'上下',buji:'䒑+月+刂',zaofa:'会意',wubi:'UEJJ'},
+  '后': {bushou:'口',bihua:6,jiegou:'半包围',buji:'丿+一+口',zaofa:'会意',wubi:'RGKD'},
+  '左': {bushou:'工',bihua:5,jiegou:'半包围',buji:'𠂇+工',zaofa:'会意',wubi:'DAN'},
+  '右': {bushou:'口',bihua:5,jiegou:'半包围',buji:'𠂇+口',zaofa:'会意',wubi:'DKF'},
+  '我': {bushou:'戈',bihua:7,jiegou:'独体',buji:'我',zaofa:'象形',wubi:'TRNT'},
+  '你': {bushou:'亻',bihua:7,jiegou:'左右',buji:'亻+尔',zaofa:'形声',wubi:'WQIY'},
+  '他': {bushou:'亻',bihua:5,jiegou:'左右',buji:'亻+也',zaofa:'形声',wubi:'WBN'},
+  '是': {bushou:'日',bihua:9,jiegou:'上下',buji:'日+正',zaofa:'会意',wubi:'JGHU'},
+  '的': {bushou:'白',bihua:8,jiegou:'左右',buji:'白+勺',zaofa:'形声',wubi:'RQYY'},
+  '了': {bushou:'乛',bihua:2,jiegou:'独体',buji:'了',zaofa:'象形',wubi:'BNH'},
+  '在': {bushou:'土',bihua:6,jiegou:'半包围',buji:'𠂇+土',zaofa:'形声',wubi:'DHFD'},
+  '不': {bushou:'一',bihua:4,jiegou:'独体',buji:'不',zaofa:'象形',wubi:'GII'},
+  '为': {bushou:'丶',bihua:4,jiegou:'独体',buji:'为',zaofa:'象形',wubi:'YL'},
+  '以': {bushou:'人',bihua:4,jiegou:'左右',buji:'㇀+人+丶',zaofa:'象形',wubi:'NYWY'},
+  '对': {bushou:'寸',bihua:5,jiegou:'左右',buji:'又+寸',zaofa:'会意',wubi:'CFY'},
+  '与': {bushou:'一',bihua:3,jiegou:'独体',buji:'与',zaofa:'象形',wubi:'GNGD'},
+  '而': {bushou:'而',bihua:6,jiegou:'独体',buji:'而',zaofa:'象形',wubi:'DMJJ'},
+  '之': {bushou:'丶',bihua:3,jiegou:'独体',buji:'之',zaofa:'指事',wubi:'PPPP'},
+  '也': {bushou:'乙',bihua:3,jiegou:'独体',buji:'也',zaofa:'象形',wubi:'BNHN'},
+  '家': {bushou:'宀',bihua:10,jiegou:'上下',buji:'宀+豕',zaofa:'会意',wubi:'PEU'},
+  '国': {bushou:'囗',bihua:8,jiegou:'全包围',buji:'囗+玉',zaofa:'形声',wubi:'LGYI'},
+  '民': {bushou:'氏',bihua:5,jiegou:'独体',buji:'民',zaofa:'象形',wubi:'NA'},
+  '主': {bushou:'丶',bihua:5,jiegou:'独体',buji:'主',zaofa:'指事',wubi:'YGD'},
+  '工': {bushou:'工',bihua:3,jiegou:'独体',buji:'工',zaofa:'象形',wubi:'A'},
+  '农': {bushou:'冖',bihua:6,jiegou:'独体',buji:'农',zaofa:'形声',wubi:'PE'},
+  '商': {bushou:'亠',bihua:11,jiegou:'上下',buji:'亠+八+口+冂+八',zaofa:'形声',wubi:'UMW'},
+  '老': {bushou:'老',bihua:6,jiegou:'半包围',buji:'耂+匕',zaofa:'会意',wubi:'FTXB'},
+  '父': {bushou:'父',bihua:4,jiegou:'独体',buji:'父',zaofa:'象形',wubi:'WQ'},
+  '母': {bushou:'母',bihua:5,jiegou:'独体',buji:'母',zaofa:'象形',wubi:'XGU'},
+  '兄': {bushou:'儿',bihua:5,jiegou:'上下',buji:'口+儿',zaofa:'会意',wubi:'MQB'},
+  '姐': {bushou:'女',bihua:8,jiegou:'左右',buji:'女+且',zaofa:'形声',wubi:'VEGG'},
+  '哥': {bushou:'口',bihua:10,jiegou:'上下',buji:'可+可',zaofa:'会意',wubi:'SKSK'},
+  '儿': {bushou:'儿',bihua:2,jiegou:'独体',buji:'儿',zaofa:'象形',wubi:'QT'},
+  '生': {bushou:'生',bihua:5,jiegou:'独体',buji:'生',zaofa:'象形',wubi:'TGD'},
+  '会': {bushou:'人',bihua:6,jiegou:'上下',buji:'人+云',zaofa:'会意',wubi:'WFCU'},
+  '能': {bushou:'月',bihua:10,jiegou:'左右',buji:'厶+月+匕+匕',zaofa:'形声',wubi:'CEXX'},
+  '行': {bushou:'行',bihua:6,jiegou:'左右',buji:'彳+亍',zaofa:'象形',wubi:'TFHH'},
+  '所': {bushou:'户',bihua:8,jiegou:'左右',buji:'户+斤',zaofa:'形声',wubi:'RNRH'},
+  '到': {bushou:'刂',bihua:8,jiegou:'左右',buji:'至+刂',zaofa:'形声',wubi:'GCFJ'},
+  '起': {bushou:'走',bihua:10,jiegou:'左右',buji:'走+己',zaofa:'形声',wubi:'FHNV'},
+  '都': {bushou:'阝',bihua:10,jiegou:'左右',buji:'者+阝',zaofa:'形声',wubi:'FTJB'},
+  '得': {bushou:'彳',bihua:11,jiegou:'左右',buji:'彳+日+一+寸',zaofa:'形声',wubi:'TJGF'},
+  '就': {bushou:'尢',bihua:12,jiegou:'左右',buji:'京+尤',zaofa:'形声',wubi:'YIDN'},
+  '当': {bushou:'彐',bihua:6,jiegou:'上下',buji:'⺌+彐',zaofa:'形声',wubi:'IVF'},
+  '百': {bushou:'白',bihua:6,jiegou:'上下',buji:'一+白',zaofa:'形声',wubi:'DJF'},
+  '千': {bushou:'十',bihua:3,jiegou:'独体',buji:'千',zaofa:'指事',wubi:'TFK'},
+  '万': {bushou:'一',bihua:3,jiegou:'独体',buji:'万',zaofa:'象形',wubi:'DNV'}
+};
+
+function analyze() {
+  const input = document.getElementById('charInput').value.trim();
+  const errorMsg = document.getElementById('errorMsg');
+  const resultSection = document.getElementById('resultSection');
+  
+  errorMsg.classList.remove('show');
+  resultSection.classList.remove('show');
+  
+  if (!input) {
+    showError('请输入一个汉字');
+    return;
+  }
+  
+  if (input.length > 1) {
+    showError('请输入单个汉字');
+    return;
+  }
+  
+  const char = input.charAt(0);
+  const code = char.charCodeAt(0);
+  if (code < 0x4E00 || code > 0x9FFF) {
+    showError('请输入一个有效的汉字');
+    return;
+  }
+  
+  const data = charData[char];
+  if (!data) {
+    showError(`暂无"${char}"的拆解数据，请尝试其他常用汉字（本工具收录约150个常用字）`);
+    return;
+  }
+  
+  document.getElementById('charDisplay').textContent = char;
+  document.getElementById('bushou').textContent = data.bushou;
+  document.getElementById('bihua').textContent = data.bihua + ' 画';
+  document.getElementById('jiegou').textContent = data.jiegou;
+  document.getElementById('buji').textContent = data.buji;
+  document.getElementById('zaofa').textContent = data.zaofa;
+  document.getElementById('wubi').textContent = data.wubi;
+  
+  resultSection.classList.add('show');
+  resultSection.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+function showError(msg) {
+  const errorMsg = document.getElementById('errorMsg');
+  errorMsg.textContent = '⚠️ ' + msg;
+  errorMsg.classList.add('show');
+}
+
+document.getElementById('charInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') analyze();
+});
+</script>
+</body>
+</html>

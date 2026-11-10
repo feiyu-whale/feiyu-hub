@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>离合器扭矩计算工具 v2.0.1-修审查问题 20261108</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #f4f6f9; color: #222; line-height: 1.6;
+  }
+  header {
+    background: #1f3a5f; color: #fff; padding: 18px 24px;
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+  .tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #dcdfe6;
+    padding: 0 16px;
+  }
+  .tab {
+    padding: 12px 22px; cursor: pointer; font-size: 14px;
+    border-bottom: 3px solid transparent; color: #555;
+  }
+  .tab.active { color: #1f3a5f; border-bottom-color: #1f3a5f; font-weight: 600; }
+  .panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff; border-radius: 8px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 18px;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  label { display: block; font-size: 13px; color: #444; margin-bottom: 4px; }
+  input, select {
+    width: 100%; padding: 8px 10px; border: 1px solid #cfd3da;
+    border-radius: 4px; font-size: 14px;
+  }
+  input:focus, select:focus { outline: none; border-color: #1f3a5f; }
+  .hint { font-size: 12px; color: #888; margin-top: 2px; }
+  button {
+    background: #1f3a5f; color: #fff; border: none; padding: 10px 22px;
+    border-radius: 4px; font-size: 14px; cursor: pointer;
+  }
+  button:hover { background: #2a4d7a; }
+  button.secondary { background: #6c757d; }
+  button.secondary:hover { background: #545b62; }
+  .result {
+    background: #f0f7ff; border-left: 4px solid #1f3a5f;
+    padding: 14px 18px; margin-top: 16px; border-radius: 4px;
+  }
+  .result .row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .result .row b { color: #1f3a5f; }
+  .error { color: #c0392b; background: #fdecea; padding: 10px; border-radius: 4px; }
+  .warn { color: #8a6d3b; background: #fcf8e3; padding: 10px; border-radius: 4px; font-size: 13px; }
+  .test-log {
+    background: #1e1e1e; color: #d4d4d4; padding: 16px;
+    border-radius: 6px; font-family: Consolas, monospace;
+    font-size: 13px; max-height: 500px; overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .pass { color: #6abf69; }
+  .fail { color: #e06c75; }
+  .summary { font-size: 15px; margin-bottom: 12px; font-weight: 600; }
+  h2 { color: #1f3a5f; border-bottom: 2px solid #e5e9f0; padding-bottom: 6px; }
+  h3 { color: #2a4d7a; margin-top: 22px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  th, td { border: 1px solid #dcdfe6; padding: 8px 10px; font-size: 13px; text-align: left; }
+  th { background: #f0f3f7; }
+  .version {
+    position: fixed; right: 12px; bottom: 8px;
+    font-size: 11px; color: #999;
+  }
+  .formula {
+    background: #fafbfc; padding: 10px 14px; border-radius: 4px;
+    font-family: "Cambria Math", Georgia, serif; font-size: 14px;
+    border: 1px dashed #cfd3da; margin: 8px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>离合器扭矩计算工具</h1>
+  <p>摩擦式离合器 · 基于《机械设计手册》均匀磨损假设 · 仅供工程估算参考</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">计算器</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<!-- 计算器 -->
+<div class="panel active" id="panel-calc">
+  <div class="card">
+    <h2>计算模式</h2>
+    <select id="mode">
+      <option value="torque">已知压紧力 → 求传递扭矩</option>
+      <option value="force">已知传递扭矩 → 求所需压紧力</option>
+      <option value="both">同时计算扭矩、压紧力、比压</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <h2>输入参数</h2>
+    <div class="warn">本工具参数为经验值，未经标准核对，仅供工程估算参考。</div>
+    <div class="grid">
+      <div>
+        <label>摩擦系数 μ</label>
+        <input type="number" id="mu" step="0.001" min="0.001" max="1.5" value="0.30">
+        <div class="hint">干式石棉基 0.25~0.35；粉末冶金干式 0.3~0.5；湿式粉末冶金 0.06~0.12</div>
+      </div>
+      <div>
+        <label>压紧力 F (N)</label>
+        <input type="number" id="F" step="1" value="5000">
+        <div class="hint">弹簧或液压施加的轴向总压紧力；在「已知扭矩→求压紧力」模式下本项可不填</div>
+      </div>
+      <div>
+        <label>目标扭矩 T (N·m)</label>
+        <input type="number" id="T" step="1" value="300">
+        <div class="hint">离合器需要传递的设计扭矩；在「已知压紧力→求扭矩」模式下本项可不填</div>
+      </div>
+      <div>
+        <label>摩擦片外径 D₂ (mm)</label>
+        <input type="number" id="D2" step="1" value="250">
+      </div>
+      <div>
+        <label>摩擦片内径 D₁ (mm)</label>
+        <input type="number" id="D1" step="1" value="160">
+      </div>
+      <div>
+        <label>摩擦面数 z</label>
+        <input type="number" id="z" step="1" min="1" value="2">
+        <div class="hint">单片离合器 z=2；多片离合器 z=2n（n 为从动片数）</div>
+      </div>
+      <div>
+        <label>安全系数 K</label>
+        <input type="number" id="K" step="0.1" value="1.5">
+        <div class="hint">储备系数，通常 1.3~2.5，依工况选取</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <button onclick="runCalc()">计算</button>
+      <button class="secondary" onclick="resetForm()">重置</button>
+    </div>
+    <div id="calcResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>常用摩擦系数参考</h2>
+    <table>
+      <tr><th>摩擦副材料</th><th>工况</th><th>μ 参考范围</th></tr>
+      <tr><td>石棉基 / 铸铁</td><td>干式</td><td>0.25 ~ 0.35</td></tr>
+      <tr><td>粉末冶金 / 铸铁</td><td>干式</td><td>0.30 ~ 0.50</td></tr>
+      <tr><td>粉末冶金 / 钢</td><td>湿式（油冷）</td><td>0.06 ~ 0.12</td></tr>
+      <tr><td>有机材料 / 钢</td><td>湿式</td><td>0.08 ~ 0.14</td></tr>
+      <tr><td>陶瓷基 / 钢</td><td>干式</td><td>0.35 ~ 0.55</td></tr>
+    </table>
+    <div class="warn">上表为经验参考范围，具体数值需以材料供应商提供的数据或相关标准为准。</div>
+  </div>
+</div>
+
+<!-- 单元测试 -->
+<div class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试</h2>
+    <p>共 30+ 个测试用例，覆盖正常值、边界值、异常输入、精度与反算一致性。</p>
+    <button onclick="runAllTests()">运行全部测试</button>
+    <div id="testSummary" class="summary" style="margin-top:14px;"></div>
+    <div id="testLog" class="test-log"></div>
+  </div>
+</div>
+
+<!-- 使用说明书 -->
+<div class="panel" id="panel-doc">
+  <div class="card">
+    <h2>使用说明书</h2>
+
+    <h3>一、工具用途</h3>
+    <p>本工具用于摩擦式离合器的扭矩估算，主要解决三类工程问题：</p>
+    <ol>
+      <li>已知压紧力、摩擦系数、摩擦片尺寸与摩擦面数，估算可传递的扭矩；</li>
+      <li>已知需要传递的设计扭矩，反推所需的轴向压紧力；</li>
+      <li>校核摩擦面的比压是否在许用范围内。</li>
+    </ol>
+    <p>适用对象：机械设计工程师、车辆传动系统工程师、设备维护与改造人员，用于方案选型阶段的快速估算与校核。</p>
+    <p class="warn"><b>重要提示：</b>本工具基于《机械设计手册》中"均匀磨损假设"推导，所得结果为理论估算值，用于方案论证与初步选型。实际产品必须经过试验验证，并考虑温度、润滑、磨损、材料分散性等因素。</p>
+
+    <h3>二、计算原理</h3>
+    <p>依据《机械设计手册》（成大先 主编，化学工业出版社）中摩擦离合器章节，在"均匀磨损假设"下，摩擦面平均半径为：</p>
+    <div class="formula">
+      R<sub>m</sub> = (2/3) × (R₂³ − R₁³) / (R₂² − R₁²)
+    </div>
+    <p>其中 R₂ 为摩擦片外半径，R₁ 为内半径（单位：m）。</p>
+    <div class="warn">
+      <strong>口径说明（重要）：</strong>本工具统一采用<strong>均匀磨损假设</strong>下的
+      R<sub>m</sub>=(2/3)(R₂³−R₁³)/(R₂²−R₁²)。传统设计手册中另有 R<sub>m</sub>=(R₁+R₂)/2 或 (D₁+D₂)/4 的简化口径，
+      两者结果相差约 1%~2%（本式略大）。<strong>若你沿用的手册/教材用的是简化口径，请勿把本工具结果与那套表格直接混用</strong>，
+      否则扭矩会偏大约 1%~2%。
+    </div>
+    <p>离合器可传递的扭矩为：</p>
+    <div class="formula">
+      T = μ × F × R<sub>m</sub> × z
+    </div>
+    <p>其中 μ 为摩擦系数，F 为轴向压紧力（N），z 为摩擦面数。</p>
+    <p>摩擦面比压（平均比压）为：</p>
+    <div class="formula">
+      p = F / [ π × (R₂² − R₁²) ]
+    </div>
+    <p>反推压紧力：</p>
+    <div class="formula">
+      F = T / (μ × R<sub>m</sub> × z)
+    </div>
+    <p>考虑储备系数 K 后的设计压紧力：</p>
+    <div class="formula">
+      F<sub>design</sub> = K × F
+    </div>
+
+    <h3>三、参数详解</h3>
+    <table>
+      <tr><th>参数</th><th>符号</th><th>单位</th><th>含义与取值建议</th></tr>
+      <tr><td>摩擦系数</td><td>μ</td><td>—</td><td>取决于摩擦副材料与工况。干式石棉基 0.25~0.35；粉末冶金干式 0.3~0.5；湿式粉末冶金 0.06~0.12。具体以材料供应商数据为准。</td></tr>
+      <tr><td>压紧力</td><td>F</td><td>N</td><td>弹簧或液压系统施加的轴向总力。设计时应考虑弹簧衰减、温度影响。</td></tr>
+      <tr><td>目标扭矩</td><td>T</td><td>N·m</td><td>离合器需要传递的最大工作扭矩，通常取发动机最大扭矩或工况峰值扭矩。</td></tr>
+      <tr><td>外径</td><td>D₂</td><td>mm</td><td>摩擦片外径，受安装空间限制。</td></tr>
+      <tr><td>内径</td><td>D₁</td><td>mm</td><td>摩擦片内径。通常 D₁/D₂ = 0.55~0.75，过小会削弱刚度，过大则降低扭矩容量。</td></tr>
+      <tr><td>摩擦面数</td><td>z</td><td>—</td><td>单片离合器 z=2；多片离合器 z=2n（n 为从动片数）。</td></tr>
+      <tr><td>储备系数</td><td>K</td><td>—</td><td>考虑工况波动、磨损衰减的安全裕度。轿车 1.4~1.8；货车 1.6~2.2；工程机械 2.0~3.0。具体需查相关标准或设计手册。</td></tr>
+    </table>
+
+    <h3>四、使用场景</h3>
+
+    <h4>场景 1：轿车干式单片离合器选型</h4>
+    <p>某 1.5L 发动机最大扭矩 150 N·m，选用干式石棉基摩擦片（μ≈0.30），外径 240 mm，内径 160 mm，单片 z=2，储备系数 K=1.6。</p>
+    <p>按工具口径复算：R<sub>m</sub>=(2/3)(0.120³−0.080³)/(0.120²−0.080²)=0.101333 m；若取 F=5000 N，则 T=0.30×5000×0.101333×2=<strong>304 N·m</strong>，平均比压 p=5000/[π(0.120²−0.080²)]=<strong>0.199 MPa</strong>。反之若只需传递 150 N·m，则 F=150/(0.30×0.101333×2)=2467 N，乘储备系数 K=1.6 后设计压紧力约 <strong>3948 N</strong>。工程师据此判断是否满足要求，并调整压紧力或摩擦片尺寸。</p>
+
+    <h4>场景 2：工程机械多片湿式离合器设计</h4>
+    <p>装载机传动系统需传递 2000 N·m，采用湿式粉末冶金摩擦片（μ≈0.10），外径 320 mm，内径 220 mm，4 个从动片（z=8）。</p>
+    <p>工具反推所需压紧力约 18309 N，比压约 0.4317 MPa，在湿式粉末冶金许用比压（经验参考值 2.0~4.0 MPa，<strong>无标准条款出处</strong>）范围内，方案可行。</p>
+    <div class="formula" style="font-size:13px;line-height:1.9;">
+      复算过程（可自行核对）：<br>
+      R₁=0.110 m，R₂=0.160 m → R<sub>m</sub>=(2/3)(0.160³−0.110³)/(0.160²−0.110²)=<strong>0.136543 m</strong><br>
+      F = 2000 / (0.10 × 0.136543 × 8) = <strong>18309 N</strong><br>
+      A = π(0.160²−0.110²) = 0.042412 m²<br>
+      p = 18309 / 0.042412 = 431,700 Pa = <strong>0.4317 MPa</strong>
+    </div>
+
+    <h4>场景 3：现有离合器改造校核</h4>
+    <p>设备改造后负载增加，原离合器压紧弹簧力由 4000 N 增至 5500 N，需校核是否仍能可靠传递扭矩。输入原摩擦片尺寸与摩擦系数，工具给出新扭矩容量，与原工作扭矩对比判断。</p>
+
+    <h4>场景 4：摩擦片磨损后的寿命评估</h4>
+    <p>摩擦片磨损后厚度减小，但外径内径变化不大，主要影响是压紧力因弹簧行程变化而下降。通过输入磨损后的实际压紧力，估算剩余扭矩容量，判断是否需要更换。</p>
+
+    <h4>场景 5：多方案对比</h4>
+    <p>在方案阶段，对比"增大外径"与"增加摩擦面数"两种方案的扭矩容量、压紧力需求、比压水平，辅助决策。多次调整参数，工具即时给出结果，便于横向比较。</p>
+
+    <h3>五、常见错误</h3>
+    <ol>
+      <li><b>单位混淆：</b>外径内径必须输入 mm，工具内部会转换为 m 参与计算；扭矩单位 N·m，压紧力单位 N。</li>
+      <li><b>摩擦面数误填：</b>单片离合器 z=2（两个摩擦面），不是 1；多片离合器 z=2n，n 为从动片数。</li>
+      <li><b>摩擦系数取值不当：</b>干式与湿式差异巨大，不可混用；同一材料在不同温度、速度下 μ 也会变化。</li>
+      <li><b>忽略储备系数：</b>理论扭矩不等于可用扭矩，必须乘以储备系数 K 作为设计依据。</li>
+      <li><b>比压超限：</b>计算出的比压若超过材料许用值，摩擦片会快速磨损甚至烧蚀，必须调整参数。</li>
+      <li><b>内外径比例失调：</b>D₁/D₂ 过小则摩擦片刚度不足易变形；过大则扭矩容量下降。一般 0.55~0.75。</li>
+      <li><b>把估算当最终结果：</b>本工具为理论估算，实际产品必须经过台架试验与整车/整机验证。</li>
+    </ol>
+
+    <h3>六、数据依据</h3>
+    <p>本工具的计算公式与参数范围主要参考：</p>
+    <ul>
+      <li>《机械设计手册》（成大先 主编，化学工业出版社）摩擦离合器章节；</li>
+      <li>《机械设计》（濮良贵 主编，高等教育出版社）相关章节；</li>
+      <li>GB/T 5797 系列（车辆离合器相关标准）—— <strong>本工具未引用其任何具体条款，仅列出备查</strong>；</li>
+      <li>JB/T 5986 系列（多片湿式离合器）—— <strong>本工具未引用其任何具体条款，仅列出备查</strong>。</li>
+    </ul>
+    <p class="warn">注：标准的具体条款号、最新修订版本、许用比压的精确数值，需查阅标准原文确认。本工具给出的参考范围为手册常见值，不作为合规性依据。</p>
+
+    <h3>七、精度与误差说明（有限精准原则）</h3>
+    <p>现实中的物理变量是无限的，本工具遵循"方法准、输入项准、结果给误差范围"的原则，<b>不承诺绝对精确</b>。</p>
+
+    <p><b>① 算准了什么：</b></p>
+    <ul>
+      <li>在"均匀磨损假设"下，平均半径 R<sub>m</sub> 的解析公式计算是精确的；</li>
+      <li>在给定 μ、F、R<sub>m</sub>、z 的前提下，扭矩 T = μFR<sub>m</sub>z 的算术计算是精确的；</li>
+      <li>浮点运算遵循 IEEE 754 双精度，相对误差在 10⁻¹⁵ 量级。</li>
+    </ul>
+
+    <p><b>② 哪些因素没算进去：</b></p>
+    <ul>
+      <li>摩擦系数 μ 随温度、滑动速度、表面状态、润滑条件的变化；</li>
+      <li>摩擦片的实际磨损不均匀（"均匀磨损"本身是理想化假设）；</li>
+      <li>离心力对压紧力的影响（高速工况）；</li>
+      <li>摩擦片翘曲、翘曲引起的接触不均；</li>
+      <li>润滑油的粘度变化、油膜厚度对湿式离合器 μ 的影响；</li>
+      <li>弹簧在高温下的刚度衰减；</li>
+      <li>材料性能的批次分散性；</li>
+      <li>动态接合过程中的冲击载荷与热负荷。</li>
+    </ul>
+
+    <p><b>③ 误差大概多大：</b></p>
+    <ul>
+      <li>在工况稳定、参数选取合理的前提下，理论扭矩与实际扭矩的偏差通常在 <b>±10% ~ ±20%</b> 范围；</li>
+      <li>若摩擦系数取值偏差 10%，则扭矩结果偏差约 10%（线性关系）；</li>
+      <li>极端工况（高温、高速、润滑不良）下，偏差可能超过 ±30%；</li>
+      <li>因此，本工具结果仅用于方案估算，<b>不可直接作为产品验收依据</b>。</li>
+    </ul>
+
+    <h3>八、局限性</h3>
+    <ol>
+      <li>仅适用于干式/湿式摩擦片式离合器，不适用于电磁离合器、液力耦合器、牙嵌离合器等其他类型；</li>
+      <li>仅计算稳态扭矩容量，不计算接合过程中的滑摩功、温升、寿命；</li>
+      <li>不考虑摩擦片的花键强度、钢片刚度、压盘热变形等结构问题；</li>
+      <li>不提供符合性判定，是否满足具体标准需用户自行核对标准原文；</li>
+      <li>所有输入参数需用户自行提供，工具不内置材料数据库；D₁/D₂ 比值超出 0.3~0.9 时将阻断计算并提示。</li>
+    </ol>
+
+    <h3>九、免责声明</h3>
+    <p>本工具为辅助估算工具，不对因使用本工具结果导致的任何工程决策、产品失效、人身财产损失承担责任。涉及安全的关键零部件设计，必须由具备资质的工程师依据现行有效标准完成，并经过充分的试验验证。</p>
+
+  </div>
+</div>
+
+<div class="version">v2.0.1-修审查问题 20261108</div>
+
+<script>
+/* =========================================================
+ * 第一部分：JS 源码（纯函数，完整 JSDoc）
+ * ========================================================= */
+
+/**
+ * 计算摩擦面平均半径（基于均匀磨损假设）
+ * 公式：Rm = (2/3) * (R2^3 - R1^3) / (R2^2 - R1^2)
+ *
+ * @param {number} R1 - 摩擦片内半径，单位 m，必须 > 0
+ * @param {number} R2 - 摩擦片外半径，单位 m，必须 > R1
+ * @returns {number} 平均半径 Rm，单位 m
+ * @throws {Error} 输入非法时抛出异常
+ */
+function calcMeanRadius(R1, R2) {
+  if (typeof R1 !== 'number' || typeof R2 !== 'number') {
+    throw new Error('R1、R2 必须为数字');
+  }
+  if (!isFinite(R1) || !isFinite(R2)) {
+    throw new Error('R1、R2 必须为有限数');
+  }
+  if (R1 <= 0 || R2 <= 0) {
+    throw new Error('R1、R2 必须大于 0');
+  }
+  if (R1 >= R2) {
+    throw new Error('R1 必须小于 R2');
+  }
+  var R1_2 = R1 * R1, R2_2 = R2 * R2;
+  var R1_3 = R1_2 * R1, R2_3 = R2_2 * R2;
+  return (2 / 3) * (R2_3 - R1_3) / (R2_2 - R1_2);
+}
+
+/**
+ * 计算摩擦面积（单面）
+ * 公式：A = π * (R2^2 - R1^2)
+ *
+ * @param {number} R1 - 内半径，单位 m
+ * @param {number} R2 - 外半径，单位 m
+ * @returns {number} 摩擦面积，单位 m^2
+ * @throws {Error} 输入非法时抛出异常
+ */
+function calcFrictionArea(R1, R2) {
+  if (typeof R1 !== 'number' || typeof R2 !== 'number') {
+    throw new Error('R1、R2 必须为数字');
+  }
+  if (R1 <= 0 || R2 <= 0 || R1 >= R2) {
+    throw new Error('R1、R2 必须满足 0 < R1 < R2');
+  }
+  return Math.PI * (R2 * R2 - R1 * R1);
+}
+
+/**
+ * 计算摩擦面平均比压
+ * 公式：p = F / (π * (R2^2 - R1^2))
+ *
+ * @param {number} F - 轴向压紧力，单位 N，必须 > 0
+ * @param {number} R1 - 内半径，单位 m
+ * @param {number} R2 - 外半径，单位 m
+ * @returns {number} 平均比压，单位 Pa
+ * @throws {Error} 输入非法时抛出异常
+ */
+function calcSpecificPressure(F, R1, R2) {
+  if (typeof F !== 'number' || typeof R1 !== 'number' || typeof R2 !== 'number') {
+    throw new Error('F、R1、R2 必须为数字');
+  }
+  if (F <= 0) {
+    throw new Error('F 必须大于 0');
+  }
+  if (R1 <= 0 || R2 <= 0 || R1 >= R2) {
+    throw new Error('R1、R2 必须满足 0 < R1 < R2');
+  }
+  return F / calcFrictionArea(R1, R2);
+}
+
+/**
+ * 计算离合器可传递的扭矩
+ * 公式：T = μ * F * Rm * z
+ *
+ * @param {number} mu - 摩擦系数，必须 > 0
+ * @param {number} F - 轴向压紧力，单位 N，必须 > 0
+ * @param {number} R1 - 内半径，单位 m
+ * @param {number} R2 - 外半径，单位 m
+ * @param {number} z - 摩擦面数，正整数
+ * @returns {number} 传递扭矩，单位 N·m
+ * @throws {Error} 输入非法时抛出异常
+ */
+function calcTorque(mu, F, R1, R2, z) {
+  if (typeof mu !== 'number' || typeof F !== 'number' ||
+      typeof R1 !== 'number' || typeof R2 !== 'number' || typeof z !== 'number') {
+    throw new Error('所有参数必须为数字');
+  }
+  if (mu <= 0) throw new Error('μ 必须大于 0');
+  if (F <= 0) throw new Error('F 必须大于 0');
+  if (!Number.isInteger(z) || z <= 0) throw new Error('z 必须为正整数');
+  var Rm = calcMeanRadius(R1, R2);
+  return mu * F * Rm * z;
+}
+
+/**
+ * 根据目标扭矩反推所需压紧力
+ * 公式：F = T / (μ * Rm * z)
+ *
+ * @param {number} T - 目标扭矩，单位 N·m，必须 > 0
+ * @param {number} mu - 摩擦系数，必须 > 0
+ * @param {number} R1 - 内半径，单位 m
+ * @param {number} R2 - 外半径，单位 m
+ * @param {number} z - 摩擦面数，正整数
+ * @returns {number} 所需压紧力，单位 N
+ * @throws {Error} 输入非法时抛出异常
+ */
+function calcClampingForce(T, mu, R1, R2, z) {
+  if (typeof T !== 'number' || typeof mu !== 'number' ||
+      typeof R1 !== 'number' || typeof R2 !== 'number' || typeof z !== 'number') {
+    throw new Error('所有参数必须为数字');
+  }
+  if (T <= 0) throw new Error('T 必须大于 0');
+  if (mu <= 0) throw new Error('μ 必须大于 0');
+  if (!Number.isInteger(z) || z <= 0) throw new Error('z 必须为正整数');
+  var Rm = calcMeanRadius(R1, R2);
+  return T / (mu * Rm * z);
+}
+
+/**
+ * 输入参数综合校验（返回错误信息字符串，合法返回 null）
+ *
+ * @param {object} params - 参数对象
+ * @param {number} params.mu - 摩擦系数
+ * @param {number} params.F - 压紧力 N
+ * @param {number} params.T - 目标扭矩 N·m
+ * @param {number} params.D1 - 内径 mm
+ * @param {number} params.D2 - 外径 mm
+ * @param {number} params.z - 摩擦面数
+ * @param {number} params.K - 储备系数
+ * @returns {string|null} 错误信息或 null
+ */
+function validateInput(params, mode) {
+  /* 修正：mode 未传时（如直接单步校验）默认按 'both' 处理，
+     否则 F/T 的正负校验会被整体跳过，F=-1 也能通过 */
+  if (!mode) mode = 'both';
+  if (!params || typeof params !== 'object') return '参数对象缺失';
+  var fields = ['mu', 'F', 'T', 'D1', 'D2', 'z', 'K'];
+  for (var i = 0; i < fields.length; i++) {
+    var k = fields[i];
+    if ((k === 'F' && mode === 'force') || (k === 'T' && mode === 'torque')) continue;
+    if (typeof params[k] !== 'number' || !isFinite(params[k])) {
+      return '参数 ' + k + ' 必须为有限数字';
+    }
+  }
+  if (params.mu <= 0 || params.mu > 1.5) return '摩擦系数 μ 超出合理范围 (0, 1.5]';
+  if ((mode === 'torque' || mode === 'both') && params.F <= 0) return '压紧力 F 必须大于 0';
+  if ((mode === 'force' || mode === 'both') && params.T <= 0) return '目标扭矩 T 必须大于 0';
+  if (params.D1 <= 0 || params.D2 <= 0) return '直径必须大于 0';
+  if (params.D1 >= params.D2) return '内径 D1 必须小于外径 D2';
+  if (!Number.isInteger(params.z) || params.z <= 0) return '摩擦面数 z 必须为正整数';
+  if (params.K <= 0) return '储备系数 K 必须大于 0';
+  var ratio = params.D1 / params.D2;
+  if (ratio < 0.3 || ratio > 0.9) return 'D1/D2 比值 ' + ratio.toFixed(2) + ' 超出允许范围 0.3~0.9，请复核';
+  return null;
+}
+
+/**
+ * 完整计算流程：根据模式返回结果对象
+ *
+ * @param {string} mode - 计算模式：'torque' | 'force' | 'both'
+ * @param {object} params - 输入参数
+ * @returns {object} 计算结果
+ */
+function runFullCalc(mode, params) {
+  var err = validateInput(params, mode);
+  if (err) return { error: err };
+  var R1 = params.D1 / 2000;   // D1 为直径(mm)，除以 2000 得半径(m)
+  var R2 = params.D2 / 2000;   // D2 为直径(mm)，除以 2000 得半径(m)
+  var Rm = calcMeanRadius(R1, R2);
+  var A = calcFrictionArea(R1, R2);
+  var result = {
+    Rm_m: Rm,
+    Rm_mm: Rm * 1000,
+    area_m2: A,
+    area_mm2: A * 1e6
+  };
+  if (mode === 'torque' || mode === 'both') {
+    result.T_Nm = calcTorque(params.mu, params.F, R1, R2, params.z);
+    result.p_Pa = calcSpecificPressure(params.F, R1, R2);
+    result.p_MPa = result.p_Pa / 1e6;
+    result.p_input_MPa = result.p_MPa;   // 按用户输入 F 算的比压，不被反算分支覆盖
+  }
+  if (mode === 'force' || mode === 'both') {
+    result.F_N = calcClampingForce(params.T, params.mu, R1, R2, params.z);
+    result.F_design_N = result.F_N * params.K;
+    // 反算压紧力对应的比压单独存放，不覆盖按输入 F 算出的 p_MPa
+    result.p_from_force_Pa = calcSpecificPressure(result.F_N, R1, R2);
+    result.p_from_force_MPa = result.p_from_force_Pa / 1e6;
+    result.p_design_Pa = calcSpecificPressure(result.F_design_N, R1, R2);
+    result.p_design_MPa = result.p_design_Pa / 1e6;
+    if (result.p_MPa === undefined) {
+      result.p_Pa = result.p_from_force_Pa;
+      result.p_MPa = result.p_from_force_MPa;
+    }
+  }
+  return result;
+}
+
+/* =========================================================
+ * 第二部分：单元测试（30+ 个）
+ * ========================================================= */
+
+var testResults = [];
+
+function assert(cond, msg) {
+  if (cond) {
+    testResults.push({ pass: true, msg: msg });
+  } else {
+    testResults.push({ pass: false, msg: msg });
+  }
+}
+
+function assertApprox(actual, expected, tol, msg) {
+  var ok = Math.abs(actual - expected) <= tol;
+  testResults.push({
+    pass: ok,
+    msg: msg + ' [期望 ' + expected + ', 实际 ' + actual + ', 容差 ' + tol + ']'
+  });
+}
+
+function assertThrows(fn, msg) {
+  var threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  testResults.push({ pass: threw, msg: msg });
+}
+
+function runAllTests() {
+  testResults = [];
+
+  // ---- calcMeanRadius 正常值 ----
+  // R1=0.08, R2=0.125 → Rm = (2/3)*(0.125^3-0.08^3)/(0.125^2-0.08^2)
+  // 0.125^3=0.001953125, 0.08^3=0.000512, 差=0.001441125
+  // 0.125^2=0.015625, 0.08^2=0.0064, 差=0.009225
+  // Rm = (2/3)*0.001441125/0.009225 = 0.10414634…
+  // 修正：原期望 0.104183 是笔算失误，实际应为 0.1041463
+  assertApprox(calcMeanRadius(0.08, 0.125), 0.1041463, 1e-5,
+    '平均半径：R1=80mm R2=125mm');
+
+  // R1=0.05, R2=0.1
+  // 0.1^3-0.05^3 = 0.001-0.000125 = 0.000875
+  // 0.1^2-0.05^2 = 0.01-0.0025 = 0.0075
+  // Rm = (2/3)*0.000875/0.0075 = 0.077777...
+  assertApprox(calcMeanRadius(0.05, 0.1), 0.0777778, 1e-5,
+    '平均半径：R1=50mm R2=100mm');
+
+  // 接近相等：R1=0.099, R2=0.1 → 应接近 0.0995
+  assertApprox(calcMeanRadius(0.099, 0.1), 0.0995, 1e-4,
+    '平均半径：R1 接近 R2 时趋近 (R1+R2)/2');
+
+  // ---- calcMeanRadius 异常 ----
+  assertThrows(function(){ calcMeanRadius(-0.1, 0.2); }, '平均半径：R1 负数抛错');
+  assertThrows(function(){ calcMeanRadius(0, 0.2); }, '平均半径：R1=0 抛错');
+  assertThrows(function(){ calcMeanRadius(0.2, 0.1); }, '平均半径：R1>=R2 抛错');
+  assertThrows(function(){ calcMeanRadius(0.1, 0.1); }, '平均半径：R1=R2 抛错');
+  assertThrows(function(){ calcMeanRadius('a', 0.2); }, '平均半径：非数字抛错');
+  assertThrows(function(){ calcMeanRadius(NaN, 0.2); }, '平均半径：NaN 抛错');
+  assertThrows(function(){ calcMeanRadius(Infinity, 0.2); }, '平均半径：Infinity 抛错');
+
+  // ---- calcFrictionArea ----
+  // A = π*(0.125^2 - 0.08^2) = π*0.009225 ≈ 0.028976
+  assertApprox(calcFrictionArea(0.08, 0.125), Math.PI * 0.009225, 1e-8,
+    '摩擦面积：R1=80mm R2=125mm');
+  assertThrows(function(){ calcFrictionArea(0.2, 0.1); }, '摩擦面积：R1>=R2 抛错');
+  assertThrows(function(){ calcFrictionArea(-0.1, 0.2); }, '摩擦面积：R1 负数抛错');
+
+  // ---- calcSpecificPressure ----
+  // F=5000, R1=0.08, R2=0.125 → p = 5000 / (π*0.009225) ≈ 172443 Pa
+  assertApprox(calcSpecificPressure(5000, 0.08, 0.125), 5000 / (Math.PI * 0.009225), 1,
+    '比压：F=5000N R1=80 R2=125');
+  assertThrows(function(){ calcSpecificPressure(0, 0.08, 0.125); }, '比压：F=0 抛错');
+  assertThrows(function(){ calcSpecificPressure(-100, 0.08, 0.125); }, '比压：F 负数抛错');
+
+  // ---- calcTorque ----
+  // μ=0.3, F=5000, R1=0.08, R2=0.125, z=2
+  // T = 0.3 * 5000 * 0.1041463 * 2 = 312.44 N·m
+  assertApprox(calcTorque(0.3, 5000, 0.08, 0.125, 2), 312.44, 0.5,
+    '扭矩：μ=0.3 F=5000 R1=80 R2=125 z=2');
+
+  // z=4 时扭矩翻倍
+  assertApprox(calcTorque(0.3, 5000, 0.08, 0.125, 4), 625.58, 1,
+    '扭矩：z=4 时翻倍');
+
+  // μ 翻倍，扭矩翻倍
+  assertApprox(calcTorque(0.6, 5000, 0.08, 0.125, 2), 625.58, 1,
+    '扭矩：μ 翻倍则扭矩翻倍');
+
+  assertThrows(function(){ calcTorque(0, 5000, 0.08, 0.125, 2); }, '扭矩：μ=0 抛错');
+  assertThrows(function(){ calcTorque(0.3, 0, 0.08, 0.125, 2); }, '扭矩：F=0 抛错');
+  assertThrows(function(){ calcTorque(0.3, 5000, 0.08, 0.125, 0); }, '扭矩：z=0 抛错');
+  assertThrows(function(){ calcTorque(0.3, 5000, 0.08, 0.125, 1.5); }, '扭矩：z 非整数抛错');
+
+  // ---- calcClampingForce ----
+  // T=312.44, μ=0.3, R1=0.08, R2=0.125, z=2 → F ≈ 5000
+  assertApprox(calcClampingForce(312.44, 0.3, 0.08, 0.125, 2), 5000, 5,
+    '反推压紧力：与正向计算一致');
+
+  // 反算一致性：T → F → T
+  var T0 = 500;
+  var F0 = calcClampingForce(T0, 0.35, 0.1, 0.16, 4);
+  var T1 = calcTorque(0.35, F0, 0.1, 0.16, 4);
+  assertApprox(T1, T0, 1e-6, '反算一致性：T→F→T 闭环');
+
+  assertThrows(function(){ calcClampingForce(0, 0.3, 0.08, 0.125, 2); }, '反推压紧力：T=0 抛错');
+  assertThrows(function(){ calcClampingForce(-100, 0.3, 0.08, 0.125, 2); }, '反推压紧力：T 负数抛错');
+
+  // ---- validateInput ----
+  assert(validateInput({ mu:0.3, F:5000, T:300, D1:160, D2:250, z:2, K:1.5 }) === null,
+    '校验：合法输入返回 null');
+  assert(validateInput({ mu:0, F:5000, T:300, D1:160, D2:250, z:2, K:1.5 }) !== null,
+    '校验：μ=0 报错');
+  assert(validateInput({ mu:0.3, F:-1, T:300, D1:160, D2:250, z:2, K:1.5 }) !== null,
+    '校验：F 负数报错');
+  assert(validateInput({ mu:0.3, F:5000, T:300, D1:260, D2:250, z:2, K:1.5 }) !== null,
+    '校验：D1>=D2 报错');
+  assert(validateInput({ mu:0.3, F:5000, T:300, D1:160, D2:250, z:0, K:1.5 }) !== null,
+    '校验：z=0 报错');
+  assert(validateInput({ mu:0.3, F:5000, T:300, D1:160, D2:250, z:2, K:-1 }) !== null,
+    '校验：K 负数报错');
+  assert(validateInput(null) !== null, '校验：null 参数报错');
+
+  // ---- 精度 / 浮点 ----
+  // 0.1 + 0.2 经典问题，验证工具对浮点不敏感
+  var r1 = calcMeanRadius(0.1, 0.1 + 0.2);
+  assert(typeof r1 === 'number' && isFinite(r1), '浮点：0.1+0.2 作为 R2 仍可计算');
+
+  // 极小差值
+  var r2 = calcMeanRadius(0.1, 0.1001);
+  assert(r2 > 0.1 && r2 < 0.1001, '浮点：R1 极接近 R2 时 Rm 在二者之间');
+
+  // 大数值
+  var bigT = calcTorque(0.3, 1e6, 0.5, 1.0, 10);
+  assert(isFinite(bigT) && bigT > 0, '大数值：F=1e6 仍可计算');
+
+  // ---- runFullCalc 集成 ----
+  var res = runFullCalc('both', { mu:0.3, F:5000, T:300, D1:160, D2:250, z:2, K:1.5 });
+  assert(!res.error && res.T_Nm > 0 && res.F_N > 0 && res.p_MPa > 0,
+    '集成：both 模式返回完整结果');
+  // 直径→半径 回归测试（D1=160mm D2=250mm → R1=0.08 R2=0.125）
+  // Rm=(2/3)*(0.125^3-0.08^3)/(0.125^2-0.08^2)=0.10415 m；T=0.3*5000*0.10415*2=312.44 N·m
+  assertApprox(res.Rm_mm, 104.15, 0.05, '集成：平均半径按直径/2 计算（Rm≈104.15mm）');
+  assertApprox(res.T_Nm, 312.44, 0.5, '集成：扭矩按真实半径计算（T≈312.44 N·m）');
+  assertApprox(res.p_MPa, 0.17253, 0.001, '集成：比压按用户输入 F=5000 计算（p≈0.17253 MPa）');
+  assert(res.Rm_mm < 125, '集成：Rm 必须小于外半径 R2=125mm');
+
+  var res2 = runFullCalc('torque', { mu:0.3, F:5000, T:300, D1:160, D2:250, z:2, K:1.5 });
+  assert(!res2.error && res2.T_Nm > 0 && res2.F_N === undefined,
+    '集成：torque 模式不返回 F_N');
+
+  var res3 = runFullCalc('force', { mu:0.3, F:5000, T:300, D1:160, D2:250, z:2, K:1.5 });
+  assert(!res3.error && res3.F_N > 0 && res3.T_Nm === undefined,
+    '集成：force 模式不返回 T_Nm');
+
+  var res4 = runFullCalc('both', { mu:0, F:5000, T:300, D1:160, D2:250, z:2, K:1.5 });
+  assert(res4.error !== undefined, '集成：非法输入返回 error');
+
+  // 渲染结果
+  var passCount = testResults.filter(function(r){ return r.pass; }).length;
+  var total = testResults.length;
+  var sumEl = document.getElementById('testSummary');
+  sumEl.textContent = '通过 ' + passCount + ' / 共 ' + total;
+  sumEl.style.color = passCount === total ? '#2e7d32' : '#c0392b';
+
+  var logEl = document.getElementById('testLog');
+  logEl.innerHTML = '';
+  testResults.forEach(function(r, i) {
+    var line = document.createElement('div');
+    line.className = r.pass ? 'pass' : 'fail';
+    line.textContent = (r.pass ? '✓ ' : '✗ ') + '用例 ' + (i + 1) + '：' + r.msg;
+    logEl.appendChild(line);
+  });
+}
+
+/* =========================================================
+ * 界面交互
+ * ========================================================= */
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+  });
+  document.querySelectorAll('.panel').forEach(function(el) {
+    el.classList.toggle('active', el.id === 'panel-' + tab);
+  });
+}
+document.querySelectorAll('.tab').forEach(function(el) {
+  el.addEventListener('click', function() { switchTab(el.getAttribute('data-tab')); });
+});
+
+function getNum(id) {
+  var v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) ? NaN : v;
+}
+
+function runCalc() {
+  var mode = document.getElementById('mode').value;
+  var params = {
+    mu: getNum('mu'),
+    F: getNum('F'),
+    T: getNum('T'),
+    D1: getNum('D1'),
+    D2: getNum('D2'),
+    z: getNum('z'),
+    K: getNum('K')
+  };
+  var res = runFullCalc(mode, params);
+  var box = document.getElementById('calcResult');
+  if (res.error) {
+    box.innerHTML = '<div class="error"><b>输入错误：</b>' + res.error + '</div>';
+    return;
+  }
+  var html = '<div class="result">';
+  html += '<div class="row"><span>平均半径 R<sub>m</sub></span><b>' + res.Rm_mm.toFixed(2) + ' mm (' + res.Rm_m.toExponential(4) + ' m)</b></div>';
+  html += '<div class="row"><span>单面摩擦面积</span><b>' + res.area_mm2.toFixed(1) + ' mm²</b></div>';
+  if (mode === 'torque' || mode === 'both') {
+    html += '<div class="row"><span>理论传递扭矩 T</span><b>' + res.T_Nm.toFixed(2) + ' N·m</b></div>';
+    html += '<div class="row"><span>平均比压 p</span><b>' + res.p_MPa.toFixed(3) + ' MPa</b></div>';
+  }
+  if (mode === 'force' || mode === 'both') {
+    html += '<div class="row"><span>所需压紧力 F</span><b>' + res.F_N.toFixed(1) + ' N</b></div>';
+    html += '<div class="row"><span>考虑储备系数 K=' + params.K + ' 后的设计压紧力</span><b>' + res.F_design_N.toFixed(1) + ' N</b></div>';
+    html += '<div class="row"><span>所需压紧力下比压（不含 K）</span><b>' + res.p_from_force_MPa.toFixed(3) + ' MPa</b></div>';
+    html += '<div class="row"><span>设计压紧力下比压（含 K）</span><b>' + res.p_design_MPa.toFixed(3) + ' MPa</b></div>';
+  }
+  html += '</div>';
+  html += '<div class="warn" style="margin-top:12px;">' +
+    '以上为基于"均匀磨损假设"的理论估算，实际扭矩受温度、润滑、磨损不均、材料分散性等因素影响，' +
+    '偏差通常在 ±10%~±20%，不可直接作为产品验收依据。详见《使用说明书》"精度与误差说明"章节。</div>';
+  box.innerHTML = html;
+}
+
+function resetForm() {
+  document.getElementById('mu').value = 0.30;
+  document.getElementById('F').value = 5000;
+  document.getElementById('T').value = 300;
+  document.getElementById('D1').value = 160;
+  document.getElementById('D2').value = 250;
+  document.getElementById('z').value = 2;
+  document.getElementById('K').value = 1.5;
+  document.getElementById('calcResult').innerHTML = '';
+}
+</script>
+
+</body>
+</html>

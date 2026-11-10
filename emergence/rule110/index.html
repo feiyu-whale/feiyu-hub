@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>1️⃣ 一维自动机 · Rule 110</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #06080e; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; user-select: none; color: #dbeafe;
+    display: flex; align-items: center; justify-content: center; }
+  #wrap { position: relative; width: 100%; max-width: 720px; height: 100%; max-height: 100vh; display: flex; flex-direction: column; }
+  canvas { display: block; width: 100%; flex: 1 1 auto; touch-action: none; image-rendering: pixelated; background: #06080e; }
+  .hud { position: absolute; top: 10px; left: 14px; right: 14px; display: flex; justify-content: space-between;
+    font-size: 14px; font-weight: 700; pointer-events: none; text-shadow: 0 2px 6px rgba(0,0,0,.9); z-index: 5; }
+  .hud .rule { color: #9fd8ff; } .hud .row { color: #b0a0ff; text-align: right; }
+  .hud small { display:block; font-size:10px; font-weight:400; color:#5b7a99; }
+  .controls { flex: 0 0 auto; padding: 7px 10px calc(7px + env(safe-area-inset-bottom));
+    background: linear-gradient(0deg,#0d141c,#0b0f14); border-top: 1px solid #1c2a38; }
+  .row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .row:last-child { margin-bottom: 0; }
+  .lbl { font-size: 12px; color: #7fa8c8; min-width: 40px; }
+  input[type=range] { flex: 1; accent-color: #8f7dff; height: 22px; }
+  .val { font-size: 13px; font-weight: 700; color: #b0a0ff; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+  button { flex: 1; padding: 8px 5px; font-size: 13px; font-weight: 700; color: #cfe9ff; background: #16273a;
+    border: 1px solid #2e5f8e; border-radius: 9px; cursor: pointer; font-family: inherit; transition: .15s; white-space: nowrap; }
+  button:active { transform: scale(.96); }
+  button.primary { background: linear-gradient(160deg,#5a4dc9,#372f8a); border-color:#8f7dff; color:#fff; }
+  button.on { background: linear-gradient(160deg,#b0a0ff,#8f7dff); color:#06121f; border-color:#b0a0ff; }
+  .rulebox { display: flex; gap: 4px; }
+  .rulebox button { padding: 6px 3px; font-size: 11.5px; flex: 1; }
+  .ver { position: absolute; bottom: calc(4px + env(safe-area-inset-bottom)); right: 10px; font-size: 10px; color: #2b3f52; z-index: 6; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <div class="rule">Rule <span id="ruleNum">110</span><small>一维自动机</small></div>
+    <div class="row">第 <span id="rowNum">0</span> 行<small>从上往下演化</small></div>
+  </div>
+  <div class="controls">
+    <div class="row rulebox">
+      <button data-rule="110">Rule 110</button>
+      <button data-rule="30">Rule 30</button>
+      <button data-rule="90">Rule 90</button>
+      <button data-rule="184">Rule 184</button>
+    </div>
+    <div class="row">
+      <span class="lbl">速度</span>
+      <input type="range" id="slider" min="1" max="30" value="12">
+      <span class="val" id="spdVal">12 行/秒</span>
+    </div>
+    <div class="row">
+      <button class="primary" id="playBtn">▶ 开始</button>
+      <button id="stepBtn">⏭ 单步</button>
+      <button id="clearBtn">⟲ 重来</button>
+    </div>
+  </div>
+  <div class="ver">v1.0.0-Rule110 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W=0,H=0,DPR=1;
+  var N=201;                 // 细胞数（奇数，中间起点）
+  var CELL=4, offX=0;
+  var rule=110;
+  var cur, next;
+  var rows=[];               // 已绘制行（每行一个 Uint8Array）——为了滚动显示
+  var maxRows=0;
+  var rowCount=0;
+  var STATE='paused', speed=12, acc=0;
+  var RULE_TABLE={};
+
+  // 预计算规则表：8 种邻域 -> 输出
+  function buildTable(r){
+    var t=new Uint8Array(8);
+    for (var i=0;i<8;i++) t[i] = (r>>i)&1;
+    return t;
+  }
+
+  function resize(){
+    var r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+    CELL=Math.max(2, Math.floor(W/N));
+    offX=(W-N*CELL)/2;
+    maxRows=Math.floor(H/CELL);
+    redrawAll();
+  }
+  window.addEventListener('resize', resize);
+
+  function initRow(){
+    cur=new Uint8Array(N);
+    cur[Math.floor(N/2)]=1;
+    rows=[cur.slice()];
+    rowCount=1;
+    recomputeWH();
+  }
+  function recomputeWH(){}
+
+  function stepRow(){
+    next=new Uint8Array(N);
+    var t=RULE_TABLE[rule];
+    for (var i=0;i<N;i++){
+      var l=cur[(i-1+N)%N], c=cur[i], rr=cur[(i+1)%N];
+      var k=(l<<2)|(c<<1)|rr;
+      next[i]=t[k];
+    }
+    cur=next;
+    rows.push(cur.slice());
+    rowCount++;
+    if (rows.length>maxRows+2) rows.shift();
+  }
+
+  function cellColor(v){ return v? '#9fd8ff':'#06080e'; }
+
+  function draw(){
+    ctx.fillStyle='#06080e'; ctx.fillRect(0,0,W,H);
+    // 从底部往上或顶部往下？用"从上往下"：最新的行在底部，旧的往上顶
+    // rows[0] 最旧。绘制时对齐底部最后 maxRows 行
+    var start = Math.max(0, rows.length-maxRows);
+    var y=0;
+    for (var ri=start; ri<rows.length; ri++){
+      var row=rows[ri];
+      var py=y*CELL;
+      for (var x=0;x<N;x++){
+        if (row[x]){ ctx.fillStyle='#9fd8ff'; ctx.fillRect(offX+x*CELL, py, CELL, CELL); }
+      }
+      y++;
+    }
+  }
+  function redrawAll(){ draw(); updateHUD(); }
+  function updateHUD(){
+    document.getElementById('ruleNum').textContent=rule;
+    document.getElementById('rowNum').textContent=rowCount-1;
+  }
+
+  // ---- 控件 ----
+  var playBtn=document.getElementById('playBtn');
+  playBtn.addEventListener('click', function(){
+    STATE=STATE==='playing'?'paused':'playing';
+    playBtn.textContent=STATE==='playing'?'⏸ 暂停':'▶ 开始';
+    playBtn.classList.toggle('on', STATE==='playing');
+  });
+  document.getElementById('stepBtn').addEventListener('click', function(){ stepRow(); draw(); updateHUD(); });
+  document.getElementById('clearBtn').addEventListener('click', function(){ initRow(); draw(); updateHUD(); });
+  document.querySelectorAll('.rulebox button').forEach(function(b){
+    b.addEventListener('click', function(){
+      rule=+b.dataset.rule; RULE_TABLE[rule]=buildTable(rule);
+      initRow(); draw(); updateHUD();
+    });
+  });
+  var slider=document.getElementById('slider');
+  slider.addEventListener('input', function(){ speed=+slider.value; document.getElementById('spdVal').textContent=speed+' 行/秒'; });
+
+  // ---- 主循环 ----
+  var last=performance.now();
+  function loop(now){
+    var dt=now-last; last=now;
+    if (STATE==='playing'){
+      acc += dt/1000;
+      var per=1/speed, guard=0;
+      while (acc>=per && guard<20){ stepRow(); acc-=per; guard++; }
+      if (guard>0){ draw(); updateHUD(); }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  RULE_TABLE[rule]=buildTable(rule);
+  initRow();
+  resize();
+  requestAnimationFrame(function(t){ last=t; loop(t); });
+})();
+</script>
+</body>
+</html>

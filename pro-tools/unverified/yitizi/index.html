@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>异体字与正体字对照查询</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 16px;
+    padding-bottom: 40px;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #2c3e50;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .search-box {
+    display: flex;
+    gap: 8px;
+  }
+  .search-box input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+  }
+  .search-box button {
+    padding: 10px 20px;
+    background: #3498db;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .search-box button:active {
+    background: #2980b9;
+  }
+  .result {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #3498db;
+  }
+  .result-item {
+    margin-bottom: 8px;
+  }
+  .result-label {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-right: 8px;
+  }
+  .result-value {
+    color: #555;
+  }
+  .char-big {
+    font-size: 48px;
+    text-align: center;
+    margin: 16px 0;
+    color: #2c3e50;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 6px 12px;
+    background: #e9ecef;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+  }
+  .tab.active {
+    background: #3498db;
+    color: #fff;
+  }
+  .entry-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .entry-item {
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+  .entry-item:active {
+    background: #e9ecef;
+  }
+  .entry-item .main-char {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .entry-item .sub-chars {
+    font-size: 13px;
+    color: #666;
+  }
+  .note {
+    font-size: 13px;
+    color: #856404;
+    margin-top: 8px;
+    padding: 8px;
+    background: #fff3cd;
+    border-radius: 4px;
+  }
+  .source {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .version {
+    position: fixed;
+    bottom: 8px;
+    right: 8px;
+    font-size: 11px;
+    color: #999;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 4px;
+  }
+  .empty {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+  }
+  .highlight {
+    color: #e74c3c;
+    font-weight: bold;
+  }
+  .identity-note {
+    font-size: 13px;
+    color: #856404;
+    margin-top: 8px;
+    padding: 8px;
+    background: #fff3cd;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📖 异体字与正体字对照</h1>
+  <p class="subtitle">依据《通用规范汉字表》（2013）、《第一批异体字整理表》（1955）</p>
+  <div class="note" style="text-align:center; margin-bottom:12px;">⚠️ 醒目提示：本工具 58 条数据的来源仅标注了标准名称，未注明表次/组号，<strong>均未经标准原文逐条核对</strong>（实际可查证 0/58）。本工具参数为经验性整理，请以标准原文为准，切勿直接引用。</div>
+  
+  <div class="card">
+    <div class="section-title">🔍 单字查询</div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="输入一个汉字，如：峯">
+      <button onclick="doSearch()">查询</button>
+    </div>
+    <div id="result"></div>
+  </div>
+  
+  <div class="card">
+    <div class="section-title">📚 分类浏览</div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('all', this)">全部</div>
+      <div class="tab" onclick="switchTab('pure', this)">纯异体</div>
+      <div class="tab" onclick="switchTab('fanjian', this)">繁简+异体</div>
+      <div class="tab" onclick="switchTab('fan', this)">纯繁简</div>
+    </div>
+    <div id="entryList" class="entry-list"></div>
+    <div class="note">
+      💡 提示：本工具仅收录常用异体字。完整《第一批异体字整理表》收录 810 组，需查标准原文。<br>⚠️ 本工具条目未注明具体表次/组号，颗粒度不足，请以标准原文为准。
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="section-title">📋 数据依据</div>
+    <p><strong>1.《第一批异体字整理表》</strong>（1955年12月文化部、中国文字改革委员会发布）</p>
+    <p style="margin-left:16px;">收录异体字 810 组，每组选定一个为"选用字"（即正体），其余为异体字，在出版物中停止使用。</p>
+    <p style="margin-top:8px;"><strong>2.《简化字总表》</strong>（1964年发布，1986年重新发表）</p>
+    <p style="margin-left:16px;">收录简化字 2235 个，规定了繁体字与简化字的对应关系。</p>
+    <p style="margin-top:8px;"><strong>3.《通用规范汉字表》</strong>（2013年国务院公布）</p>
+    <p style="margin-left:16px;">收录规范汉字 8105 字，是现行汉字的规范标准。</p>
+    <div class="note" style="margin-top:12px;">
+      ⚠️ 说明：本工具仅收录常用异体字对照，完整数据请查阅上述标准原文。部分字在不同历史时期归属有调整，以最新《通用规范汉字表》为准。<br>
+      ⚠️ 本工具未反映《通用规范汉字表》（2013）对《第一批异体字整理表》的恢复调整：部分原异体字（如「喆」「淼」等）已恢复为规范字，本工具未逐一核对更新，相关条目归属可能已过时。
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.2-异体字查询-修审查问题 20261108</div>
+
+<script>
+// 数据：每条记录包含规范字、繁体、异体、来源、类型
+const entries = [
+  // 纯异体字（非繁简关系，来自《第一批异体字整理表》）
+  { "规范字": "峰", "繁体": "峰", "异体": ["峯"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "床", "繁体": "床", "异体": ["牀"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "群", "繁体": "群", "异体": ["羣"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "村", "繁体": "村", "异体": ["邨"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "朵", "繁体": "朵", "异体": ["朶"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "年", "繁体": "年", "异体": ["秊"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "略", "繁体": "略", "异体": ["畧"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "岩", "繁体": "岩", "异体": ["巖", "嵒"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "野", "繁体": "野", "异体": ["埜"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "吟", "繁体": "吟", "异体": ["唫"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "猿", "繁体": "猿", "异体": ["猨"], "来源": "《第一批异体字整理表》", "类型": "pure" },
+  { "规范字": "板", "繁体": "闆", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "克", "繁体": "剋", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "朱", "繁体": "硃", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "致", "繁体": "緻", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  
+  // 繁简+异体
+  { "规范字": "众", "繁体": "眾", "异体": ["衆"], "来源": "《简化字总表》《第一批异体字整理表》", "类型": "fanjian" },
+  { "规范字": "并", "繁体": "並", "异体": ["竝"], "来源": "《简化字总表》《第一批异体字整理表》", "类型": "fanjian" },
+  { "规范字": "迹", "繁体": "跡", "异体": ["蹟"], "来源": "《简化字总表》《第一批异体字整理表》", "类型": "fanjian" },
+  { "规范字": "回", "繁体": "迴", "异体": ["囘", "囬"], "来源": "《简化字总表》《第一批异体字整理表》", "类型": "fanjian" },
+  { "规范字": "台", "繁体": "臺", "异体": ["檯", "颱"], "来源": "《简化字总表》《第一批异体字整理表》", "类型": "fanjian" },
+  { "规范字": "里", "繁体": "裏", "异体": ["裡"], "来源": "《简化字总表》《第一批异体字整理表》", "类型": "fanjian" },
+  { "规范字": "苏", "繁体": "蘇", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  
+  // 纯繁简（来自《简化字总表》）
+  { "规范字": "面", "繁体": "麵", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "发", "繁体": "髮", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "丑", "繁体": "醜", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "淀", "繁体": "澱", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "范", "繁体": "範", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "丰", "繁体": "豐", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "后", "繁体": "後", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "胡", "繁体": "鬍", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "伙", "繁体": "夥", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "姜", "繁体": "薑", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "困", "繁体": "睏", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "苹", "繁体": "蘋", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "仆", "繁体": "僕", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "朴", "繁体": "樸", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "确", "繁体": "確", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "适", "繁体": "適", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "松", "繁体": "鬆", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "涂", "繁体": "塗", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "万", "繁体": "萬", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "佣", "繁体": "傭", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "与", "繁体": "與", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "园", "繁体": "園", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "制", "繁体": "製", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "筑", "繁体": "築", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "准", "繁体": "準", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "猫", "繁体": "貓", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "猪", "繁体": "豬", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "够", "繁体": "夠", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "干", "繁体": "乾", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "干", "繁体": "幹", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "系", "繁体": "係", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "系", "繁体": "繫", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "历", "繁体": "曆", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "历", "繁体": "歷", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "钟", "繁体": "鐘", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "钟", "繁体": "鍾", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "坛", "繁体": "壇", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "签", "繁体": "簽", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "签", "繁体": "籤", "异体": [], "来源": "《简化字总表》", "类型": "fan" },
+  { "规范字": "须", "繁体": "須", "异体": [], "来源": "《简化字总表》", "类型": "fan" }
+];
+
+// 建立索引：所有字（规范字、繁体、异体） -> 条目索引数组
+const index = {};
+entries.forEach((entry, idx) => {
+  const chars = [entry["规范字"], entry["繁体"], ...entry["异体"]];
+  chars.forEach(ch => {
+    if (!index[ch]) index[ch] = [];
+    if (!index[ch].includes(idx)) index[ch].push(idx);
+  });
+});
+
+let currentTab = 'all';
+
+function doSearch() {
+  const input = document.getElementById('searchInput').value.trim();
+  const resultDiv = document.getElementById('result');
+  
+  if (!input) {
+    resultDiv.innerHTML = '<div class="empty">请输入一个汉字</div>';
+    return;
+  }
+  
+  if (Array.from(input).length > 1) {
+    resultDiv.innerHTML = '<div class="empty">请输入单个汉字</div>';
+    return;
+  }
+  
+  const ch = Array.from(input)[0];
+  const indices = index[ch];
+  
+  if (!indices || indices.length === 0) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'empty';
+    emptyDiv.textContent = `未找到「${ch}」的相关记录`;
+    const tip = document.createElement('span');
+    tip.style.fontSize = '13px';
+    tip.style.color = '#999';
+    tip.textContent = '本工具仅收录常用异体字，完整数据请查标准原文';
+    emptyDiv.appendChild(document.createElement('br'));
+    emptyDiv.appendChild(tip);
+    resultDiv.innerHTML = '';
+    resultDiv.appendChild(emptyDiv);
+    return;
+  }
+  
+  let html = '';
+  indices.forEach(idx => {
+    const entry = entries[idx];
+    html += `<div class="result">`;
+    html += `<div class="char-big">${entry["规范字"]}</div>`;
+    html += `<div class="result-item"><span class="result-label">规范字（正体）：</span><span class="result-value highlight">${entry["规范字"]}</span></div>`;
+    html += `<div class="result-item"><span class="result-label">繁体：</span><span class="result-value">${entry["繁体"]}</span></div>`;
+    if (entry["异体"].length > 0) {
+      html += `<div class="result-item"><span class="result-label">异体：</span><span class="result-value">${entry["异体"].join('、')}</span></div>`;
+    } else {
+      html += `<div class="result-item"><span class="result-label">异体：</span><span class="result-value">无</span></div>`;
+    }
+    html += `<div class="source">📖 来源：${entry["来源"]}</div>`;
+    
+    // 说明当前查询字在该条目中的身份
+    let identity = '';
+    if (ch === entry["规范字"]) identity = '规范字（正体）';
+    else if (ch === entry["繁体"]) identity = '繁体字';
+    else if (entry["异体"].includes(ch)) identity = '异体字';
+    if (identity) {
+      html += `<div class="identity-note">💡 「${ch}」在此组中为：${identity}</div>`;
+    }
+    html += `</div>`;
+  });
+  
+  resultDiv.innerHTML = html;
+}
+
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  const listDiv = document.getElementById('entryList');
+  let filtered = entries;
+  if (currentTab !== 'all') {
+    filtered = entries.filter(e => e["类型"] === currentTab);
+  }
+  
+  let html = '';
+  filtered.forEach((entry) => {
+    const allChars = [entry["规范字"]];
+    if (entry["繁体"] !== entry["规范字"]) allChars.push(entry["繁体"]);
+    entry["异体"].forEach(ch => {
+      if (!allChars.includes(ch)) allChars.push(ch);
+    });
+    
+    html += `<div class="entry-item" onclick="searchChar('${entry["规范字"]}')">`;
+    html += `<span class="main-char">${entry["规范字"]}</span>`;
+    html += `<span class="sub-chars">${allChars.slice(1).join('/') || '—'}</span>`;
+    html += `</div>`;
+  });
+  
+  listDiv.innerHTML = html || '<div class="empty">无数据</div>';
+}
+
+function searchChar(ch) {
+  document.getElementById('searchInput').value = ch;
+  doSearch();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 回车查询
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') doSearch();
+});
+
+// 初始化
+renderList();
+</script>
+</body>
+</html>

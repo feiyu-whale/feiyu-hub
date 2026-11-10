@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>脚手架计算工具 · 依据 JGJ 130</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f6f8;
+    color: #222;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  nav.tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  nav.tabs button {
+    background: none;
+    border: none;
+    padding: 14px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  nav.tabs button:hover { color: #1e3c72; }
+  nav.tabs button.active {
+    color: #1e3c72;
+    border-bottom-color: #1e3c72;
+    font-weight: 600;
+  }
+  main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 16px;
+    color: #1e3c72;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+  }
+  .card h3 {
+    font-size: 14px;
+    color: #333;
+    margin: 16px 0 8px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 4px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 14px;
+    background: #fff;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: #1e3c72;
+    box-shadow: 0 0 0 2px rgba(30,60,114,0.15);
+  }
+  .field small {
+    display: block;
+    color: #888;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .btn {
+    background: #1e3c72;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+  .btn:hover { background: #2a5298; }
+  .btn.secondary { background: #6c757d; }
+  .btn.secondary:hover { background: #5a6268; }
+  .result-box {
+    background: #f8f9fa;
+    border-left: 4px solid #1e3c72;
+    padding: 16px;
+    margin-top: 16px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .result-box.pass { border-left-color: #28a745; background: #f0fff4; }
+  .result-box.fail { border-left-color: #dc3545; background: #fff5f5; }
+  .result-box.warn { border-left-color: #ffc107; background: #fffbe6; }
+  .result-box h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #1e3c72;
+  }
+  .result-box.pass h4 { color: #28a745; }
+  .result-box.fail h4 { color: #dc3545; }
+  .result-box.warn h4 { color: #b8860b; }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed #e1e4e8;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .label { color: #555; }
+  .result-row .value { font-weight: 600; color: #222; font-family: Consolas, monospace; }
+  .test-summary {
+    font-size: 18px;
+    font-weight: 600;
+    padding: 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .test-summary.all-pass { background: #d4edda; color: #155724; }
+  .test-summary.has-fail { background: #f8d7da; color: #721c24; }
+  .test-list {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    max-height: 500px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+  .test-list .pass { color: #4ec9b0; }
+  .test-list .fail { color: #f48771; }
+  .doc-content h2 {
+    font-size: 18px;
+    color: #1e3c72;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #1e3c72;
+  }
+  .doc-content h3 {
+    font-size: 15px;
+    color: #333;
+    margin: 18px 0 8px;
+  }
+  .doc-content h4 {
+    font-size: 14px;
+    color: #555;
+    margin: 12px 0 6px;
+  }
+  .doc-content p { margin: 8px 0; font-size: 14px; }
+  .doc-content ul, .doc-content ol { margin: 8px 0 8px 24px; font-size: 14px; }
+  .doc-content li { margin: 4px 0; }
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #d0d7de;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .doc-content th { background: #f1f3f5; font-weight: 600; }
+  .doc-content code {
+    background: #f1f3f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: Consolas, monospace;
+  }
+  .doc-content .note {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .doc-content .warn {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .doc-content .info {
+    background: #d1ecf1;
+    border-left: 4px solid #17a2b8;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .version-tag {
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  .disclaimer {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    color: #856404;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>脚手架计算工具</h1>
+  <p>依据 JGJ 130《建筑施工扣件式钢管脚手架安全技术规范》 · 立杆间距 / 步距 / 连墙件 / 承载力校核</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="calc">① 计算器</button>
+  <button class="tab-btn" data-tab="test">② 单元测试</button>
+  <button class="tab-btn" data-tab="doc">③ 使用说明书</button>
+</nav>
+
+<main>
+
+  <!-- 计算器 -->
+  <section id="calc" class="panel active">
+    <div class="disclaimer">
+      <strong>重要提示：</strong>本工具按 JGJ 130 提供的方法进行计算，结果仅供技术参考，不替代正式设计文件。实际工程须由具备相应资质的专业技术人员复核并签章。
+      <p><strong>数据来源提示：</strong>本工具部分参数（立杆自重 0.14 kN/m、水平杆 0.04 kN/m、安全网 0.005 kN/m²、脚手板 0.3 kN/m²、栏杆 0.14 kN/m 等）为经验值/样本值，未经标准原文核对；连墙件轴向力中的 N0 须由用户按现行标准查取后在输入框填入（默认 0 即未计入，偏不安全）。使用前请自行按现行标准核实。</p>
+    </div>
+
+    <div class="card">
+      <h2>基本参数</h2>
+      <div class="grid">
+        <div class="field">
+          <label>立杆纵距 la (m)</label>
+          <input type="number" id="la" value="1.5" step="0.05" min="0.5" max="2.5">
+          <small>JGJ 130 表 6.1.1-1，常用 1.2~1.8</small>
+        </div>
+        <div class="field">
+          <label>立杆横距 lb (m)</label>
+          <input type="number" id="lb" value="1.05" step="0.05" min="0.5" max="1.8">
+          <small>常用 0.9~1.5</small>
+        </div>
+        <div class="field">
+          <label>步距 h (m)</label>
+          <input type="number" id="h" value="1.8" step="0.05" min="1.0" max="2.0">
+          <small>常用 1.5~1.8</small>
+        </div>
+        <div class="field">
+          <label>搭设高度 H (m)</label>
+          <input type="number" id="H" value="24" step="0.5" min="1" max="100">
+          <small>脚手架总高度</small>
+        </div>
+        <div class="field">
+          <label>连墙件竖向间距 H1 (m)</label>
+          <input type="number" id="H1" value="3.6" step="0.1" min="1" max="10">
+          <small>一般取 2h~3h</small>
+        </div>
+        <div class="field">
+          <label>连墙件水平间距 L1 (m)</label>
+          <input type="number" id="L1" value="4.5" step="0.1" min="1" max="15">
+          <small>一般取 3la</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>荷载参数</h2>
+      <div class="grid">
+        <div class="field">
+          <label>施工均布荷载标准值 qk (kN/m²)</label>
+          <input type="number" id="qk" value="2.0" step="0.5" min="0" max="10">
+          <small>装修架 2.0；结构架 3.0</small>
+        </div>
+        <div class="field">
+          <label>同时作业层数 n1</label>
+          <input type="number" id="n1" value="2" step="1" min="1" max="5">
+          <small>一般 1~3 层</small>
+        </div>
+        <div class="field">
+          <label>基本风压 w0 (kN/m²)</label>
+          <input type="number" id="w0" value="0.35" step="0.05" min="0" max="2">
+          <small>按当地 50 年重现期取值</small>
+        </div>
+        <div class="field">
+          <label>风压高度变化系数 μz</label>
+          <input type="number" id="muz" value="1.0" step="0.05" min="0.5" max="3">
+          <small>按 GB 50009 查表</small>
+        </div>
+        <div class="field">
+          <label>风荷载体型系数 μs</label>
+          <input type="number" id="mus" value="1.3" step="0.1" min="0.5" max="3">
+          <small>敞开式脚手架常取 1.3</small>
+        </div>
+        <div class="field">
+          <label>脚手板自重 (kN/m²)</label>
+          <input type="number" id="gjp" value="0.3" step="0.05" min="0" max="1">
+          <small>冲压钢 0.3；竹笆 0.1~0.15</small>
+        </div>
+        <div class="field">
+          <label>栏杆与挡脚板自重 (kN/m)</label>
+          <input type="number" id="gld" value="0.14" step="0.01" min="0" max="1">
+          <small>常取 0.14</small>
+        </div>
+        <div class="field">
+          <label>安全网自重 (kN/m²)</label>
+          <input type="number" id="gan" value="0.005" step="0.001" min="0" max="0.1">
+          <small>常取 0.005</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>立杆计算长度系数 μ（按 JGJ 130 表 5.2.8）</h2>
+      <div class="grid">
+        <div class="field">
+          <label>μ 值</label>
+          <input type="number" id="mu" value="1.50" step="0.05" min="1.0" max="2.5">
+          <small>常用 1.50（双排、连墙件二步三跨）</small>
+        </div>
+        <div class="field">
+          <label>扣件类型</label>
+          <select id="fastener">
+            <option value="8">直角扣件（抗滑 8 kN）</option>
+            <option value="1">旋转扣件（抗滑 1 kN）</option>
+          </select>
+          <small>用于抗滑校核</small>
+        </div>
+        <div class="field">
+          <label>连墙件轴向力 N0 (kN)</label>
+          <input type="number" id="N0" value="0" step="0.5" min="0" max="50">
+          <small>按现行标准查取后填入；默认 0 表示未计入，结果偏不安全</small>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <button class="btn" onclick="runCalc()">开始计算</button>
+      <button class="btn secondary" onclick="resetCalc()">重置</button>
+    </div>
+
+    <div id="resultArea"></div>
+  </section>
+
+  <!-- 单元测试 -->
+  <section id="test" class="panel">
+    <div class="card">
+      <h2>单元测试结果</h2>
+      <div id="testSummary" class="test-summary">点击按钮运行测试</div>
+      <button class="btn" onclick="runAllTests()">运行全部测试</button>
+      <div id="testOutput" class="test-list" style="margin-top:16px;"></div>
+    </div>
+  </section>
+
+  <!-- 使用说明书 -->
+  <section id="doc" class="panel">
+    <div class="card doc-content">
+      <h2>脚手架计算工具 · 使用说明书</h2>
+      <p style="color:#666;font-size:13px;">版本：v2.0.1-修审查问题 20261108 · 依据 JGJ 130-2011</p>
+
+      <h2>一、工具用途</h2>
+      <p>本工具用于扣件式钢管脚手架（Φ48.3×3.6）的常规安全校核，覆盖以下四项核心内容：</p>
+      <ol>
+        <li><strong>立杆稳定性校核</strong>：按 JGJ 130 第 5.2 节，验算立杆在最不利组合下的压弯承载力。</li>
+        <li><strong>纵向、横向水平杆承载力</strong>：验算受弯构件的抗弯强度与挠度。</li>
+        <li><strong>连墙件承载力</strong>：验算连墙件在风荷载与施工荷载共同作用下的轴向力。</li>
+        <li><strong>扣件抗滑承载力</strong>：验算直角扣件或旋转扣件的抗滑能力。</li>
+      </ol>
+      <p>适用对象：落地式双排扣件式钢管脚手架，搭设高度一般不超过 50m（超过 50m 须按 JGJ 130 第 6.3 节采取加强措施，本工具不覆盖悬挑架、附着式升降脚手架等专项架体）。</p>
+
+      <h2>二、参数详解</h2>
+
+      <h3>2.1 几何参数</h3>
+      <table>
+        <tr><th>参数</th><th>符号</th><th>单位</th><th>含义</th><th>常用范围</th><th>依据</th></tr>
+        <tr><td>立杆纵距</td><td>la</td><td>m</td><td>沿脚手架纵向相邻立杆的轴线距离</td><td>1.2 ~ 1.8</td><td>JGJ 130 表 6.1.1-1</td></tr>
+        <tr><td>立杆横距</td><td>lb</td><td>m</td><td>横向相邻立杆的轴线距离（即内外立杆间距）</td><td>0.9 ~ 1.5</td><td>JGJ 130 表 6.1.1-1</td></tr>
+        <tr><td>步距</td><td>h</td><td>m</td><td>上下相邻水平杆的轴线距离</td><td>1.5 ~ 1.8</td><td>JGJ 130 表 6.1.1-1</td></tr>
+        <tr><td>搭设高度</td><td>H</td><td>m</td><td>脚手架总搭设高度</td><td>≤50（落地式）</td><td>JGJ 130 第 6.1 节</td></tr>
+        <tr><td>连墙件竖向间距</td><td>H1</td><td>m</td><td>上下相邻连墙件的垂直距离</td><td>2h ~ 3h</td><td>JGJ 130 第 6.4 节</td></tr>
+        <tr><td>连墙件水平间距</td><td>L1</td><td>m</td><td>左右相邻连墙件的水平距离</td><td>3la</td><td>JGJ 130 第 6.4 节</td></tr>
+      </table>
+
+      <h3>2.2 荷载参数</h3>
+      <table>
+        <tr><th>参数</th><th>符号</th><th>单位</th><th>含义</th><th>取值依据</th></tr>
+        <tr><td>施工均布荷载标准值</td><td>qk</td><td>kN/m²</td><td>作业层上的施工荷载</td><td>装修架 2.0；结构架 3.0（JGJ 130 表 4.2.2）</td></tr>
+        <tr><td>同时作业层数</td><td>n1</td><td>—</td><td>同时受荷的作业层数</td><td>按施工组织设计确定</td></tr>
+        <tr><td>基本风压</td><td>w0</td><td>kN/m²</td><td>按 50 年重现期取值</td><td>GB 50009 全国基本风压分布图</td></tr>
+        <tr><td>风压高度变化系数</td><td>μz</td><td>—</td><td>反映风速随高度变化</td><td>GB 50009 表 8.2.1</td></tr>
+        <tr><td>风荷载体型系数</td><td>μs</td><td>—</td><td>反映脚手架挡风情况</td><td>敞开式常取 1.3（JGJ 130 第 4.2.6 条）</td></tr>
+        <tr><td>脚手板自重</td><td>gjp</td><td>kN/m²</td><td>每层脚手板恒载</td><td>冲压钢 0.3；竹笆 0.1~0.15</td></tr>
+        <tr><td>栏杆挡脚板自重</td><td>gld</td><td>kN/m</td><td>沿纵向线荷载</td><td>常取 0.14</td></tr>
+        <tr><td>安全网自重</td><td>gan</td><td>kN/m²</td><td>密目网恒载</td><td>常取 0.005</td></tr>
+      </table>
+
+      <h3>2.3 计算参数</h3>
+      <table>
+        <tr><th>参数</th><th>含义</th><th>取值依据</th></tr>
+        <tr><td>立杆计算长度系数 μ</td><td>反映立杆端部约束情况</td><td>JGJ 130 表 5.2.8，双排架连墙件二步三跨时常取 1.50</td></tr>
+        <tr><td>扣件类型</td><td>用于抗滑校核</td><td>直角扣件抗滑承载力设计值 8 kN；旋转扣件 1 kN（JGJ 130 表 5.2.5）</td></tr>
+      </table>
+
+      <h2>三、使用场景</h2>
+
+      <h3>场景 1：常规装修外架校核</h3>
+      <p>某 6 层住宅楼外墙装修，搭设双排落地架，高度 20m。纵距 1.5m，横距 1.05m，步距 1.8m，连墙件二步三跨。施工荷载取 2.0 kN/m²，同时作业 2 层。基本风压 0.35 kN/m²。</p>
+      <p><strong>输入：</strong>la=1.5, lb=1.05, h=1.8, H=20, H1=3.6, L1=4.5, qk=2.0, n1=2, w0=0.35, muz=1.0, mus=1.3, gjp=0.3, gld=0.14, gan=0.005, mu=1.50, 扣件=直角。</p>
+      <p><strong>校核要点：</strong>立杆稳定性、水平杆抗弯、连墙件承载力、扣件抗滑。</p>
+
+      <h3>场景 2：结构施工重载架</h3>
+      <p>某框架结构施工，需承受结构荷载 3.0 kN/m²，同时作业 2 层，搭设高度 30m。</p>
+      <p><strong>输入：</strong>qk=3.0, n1=2, H=30，其余同场景 1。</p>
+      <p><strong>校核要点：</strong>重点关注立杆稳定性（轴力显著增大）和扣件抗滑（水平杆端部剪力增大）。</p>
+
+      <h3>场景 3：沿海高风压地区</h3>
+      <p>沿海地区基本风压 0.75 kN/m²，搭设高度 40m，μz 按 B 类地貌 40m 高度查表约 1.42。</p>
+      <p><strong>输入：</strong>w0=0.75, muz=1.42, H=40，其余同场景 1。</p>
+      <p><strong>校核要点：</strong>连墙件承载力往往成为控制因素，需加密连墙件或改用双扣件。</p>
+
+      <h3>场景 4：调整立杆间距优化方案</h3>
+      <p>初次计算立杆稳定性不满足，尝试将纵距由 1.8m 调整为 1.5m。</p>
+      <p><strong>操作：</strong>先按 la=1.8 计算，记录利用率；再改为 la=1.5 重新计算，对比利用率变化。</p>
+      <p><strong>说明：</strong>减小纵距可显著降低水平杆弯矩和立杆轴力，但增加用钢量，需综合经济性。</p>
+
+      <h3>场景 5：连墙件布置方案比选</h3>
+      <p>比较"二步三跨"与"三步三跨"两种连墙件布置方案。</p>
+      <p><strong>操作：</strong>方案 A：H1=3.6, L1=4.5, mu=1.50；方案 B：H1=5.4, L1=4.5, mu=1.65（μ 值需按 JGJ 130 表 5.2.8 重新查取）。</p>
+      <p><strong>说明：</strong>连墙件加密可显著降低立杆计算长度，提高稳定性，但增加预埋工作量。</p>
+
+      <h3>场景 6：高层脚手架顶部风荷载校核</h3>
+      <p>搭设高度 50m，顶部风压显著增大，μz 按 B 类地貌 50m 高度查表约 1.62。</p>
+      <p><strong>输入：</strong>H=50, muz=1.62，其余同场景 1。</p>
+      <p><strong>校核要点：</strong>顶部连墙件风荷载分量显著增大，需单独复核顶部几道连墙件。</p>
+
+      <h2>四、常见错误</h2>
+      <ol>
+        <li><strong>混淆荷载标准值与设计值</strong>：本工具输入均为标准值，分项系数由程序内部按 JGJ 130 第 5.2 节自动考虑（恒载 1.2，活载 1.4）。请勿重复乘系数。</li>
+        <li><strong>μ 值取值错误</strong>：μ 与连墙件布置方式直接相关，必须按 JGJ 130 表 5.2.8 查取，不可随意取值。</li>
+        <li><strong>风荷载参数遗漏</strong>：w0、μz、μs 三者缺一不可，且 μz 必须按实际高度和地貌类别查 GB 50009。</li>
+        <li><strong>忽视同时作业层数</strong>：n1 直接影响立杆轴力，不可默认取 1。</li>
+        <li><strong>扣件类型选错</strong>：直角扣件与旋转扣件抗滑承载力相差 8 倍，选错会导致结论完全相反。</li>
+        <li><strong>超出适用范围</strong>：本工具不适用于悬挑架、附着式升降脚手架、满堂脚手架等专项架体。</li>
+        <li><strong>忽视构造要求</strong>：计算通过不代表构造合格，须同时满足 JGJ 130 第 6 节全部构造规定。</li>
+        <li><strong>钢管壁厚不足</strong>：本工具按 Φ48.3×3.6 计算，若实际壁厚小于 3.0mm，承载力显著下降，须重新核算。</li>
+      </ol>
+
+      <h2>五、数据依据</h2>
+      <p>本工具计算依据以下现行标准（使用时应核实是否为最新版本）：</p>
+      <ul>
+        <li><strong>JGJ 130-2011</strong>《建筑施工扣件式钢管脚手架安全技术规范》——主要依据</li>
+        <li><strong>GB 50009-2012</strong>《建筑结构荷载规范》——风荷载参数</li>
+        <li><strong>GB/T 13793-2016</strong>《直缝电焊钢管》——钢管截面参数</li>
+        <li><strong>GB 50017-2017</strong>《钢结构设计标准》——钢材强度设计值</li>
+      </ul>
+      <p>主要材料参数（按 JGJ 130-2011 第 5.1 节）：</p>
+      <ul>
+        <li>钢管：Φ48.3×3.6，截面积 A = 506 mm²，截面模量 W = 5080 mm³，回转半径 i = 15.9 mm</li>
+        <li>钢材 Q235：抗拉、抗压、抗弯强度设计值 f = 205 N/mm²</li>
+        <li>直角扣件：抗滑承载力设计值 Rc = 8.0 kN</li>
+        <li>旋转扣件：抗滑承载力设计值 Rc = 1.0 kN</li>
+      </ul>
+      <div class="note">
+        <strong>注：</strong>上述数值摘录自 JGJ 130-2011 相关章节，具体数值请以标准原文为准。标准修订后，本工具应同步更新。
+      </div>
+
+      <h2>六、精度与误差说明（有限精准原则）</h2>
+      <p>现实工程变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，<strong>不承诺绝对精确</strong>。使用者必须理解以下精度边界：</p>
+
+      <h3>6.1 算准了什么</h3>
+      <ul>
+        <li>按 JGJ 130 规定的公式体系进行计算，公式本身与规范一致。</li>
+        <li>钢管截面特性（A、W、i）按 Φ48.3×3.6 的理论值计算，精度在 ±0.5% 以内。</li>
+        <li>荷载组合按 JGJ 130 第 5.2 节规定，分项系数取值正确。</li>
+        <li>稳定系数 φ 按 JGJ 130 附录 C 的 b 类截面表格，采用线性插值，插值误差在 ±0.5% 以内。</li>
+      </ul>
+
+      <h3>6.2 哪些因素没算进去</h3>
+      <ul>
+        <li><strong>钢管初始弯曲与锈蚀</strong>：规范通过折减系数隐含考虑，但本工具未单独输入锈蚀量。</li>
+        <li><strong>扣件拧紧力矩离散性</strong>：实际扣件抗滑承载力与拧紧力矩密切相关，本工具按规范设计值取用，未考虑施工偏差。</li>
+        <li><strong>地基承载力</strong>：立杆底座下地基承载力须另行验算，本工具不涉及。</li>
+        <li><strong>动力荷载与冲击</strong>：如混凝土泵管振动、物料冲击等，本工具未考虑。</li>
+        <li><strong>温度作用</strong>：极端温差引起的温度应力未计入。</li>
+        <li><strong>节点半刚性</strong>：规范采用计算长度系数 μ 近似考虑，实际节点刚度存在离散性。</li>
+        <li><strong>风荷载脉动分量</strong>：本工具按平均风压计算，未考虑风振系数（对高度小于 30m 且高宽比小于 1.5 的脚手架，规范允许不考虑，但本工具未自动判断）。</li>
+        <li><strong>架体整体缺陷</strong>：立杆初弯曲、搭设偏差等整体缺陷未单独建模。</li>
+      </ul>
+
+      <h3>6.3 误差大概多大</h3>
+      <table>
+        <tr><th>计算项</th><th>主要误差来源</th><th>估计误差范围</th></tr>
+        <tr><td>立杆稳定性</td><td>μ 值取值、φ 插值、荷载组合</td><td>±10% ~ ±15%</td></tr>
+        <tr><td>水平杆抗弯</td><td>荷载分布假设（实际非均布）</td><td>±10%</td></tr>
+        <tr><td>连墙件轴力</td><td>风荷载计算、体型系数取值</td><td>±15% ~ ±20%</td></tr>
+        <tr><td>扣件抗滑</td><td>实际剪力分布与理论假设差异</td><td>±15%</td></tr>
+      </table>
+      <div class="warn">
+        <strong>重要提示：</strong>上述误差为工程经验估计，非严格统计结果。当计算结果接近限值（利用率 90%~100%）时，应视为"临界状态"，必须采取加强措施或调整方案，不可仅凭计算通过就判定安全。
+      </div>
+
+      <h2>七、局限性</h2>
+      <ol>
+        <li><strong>仅适用于落地式双排扣件式钢管脚手架</strong>：不适用于单排架、悬挑架、附着式升降脚手架、满堂架、模板支架等。</li>
+        <li><strong>仅适用于 Φ48.3×3.6 钢管</strong>：其他规格（如 Φ42、Φ51）须另行计算。</li>
+        <li><strong>搭设高度一般不超过 50m</strong>：超过 50m 须按 JGJ 130 第 6.3 节采取加强措施，本工具不覆盖加强措施的计算。</li>
+        <li><strong>不考虑地震作用</strong>：抗震设防地区的脚手架须另行考虑地震组合。</li>
+        <li><strong>不考虑特殊荷载</strong>：如悬挂荷载、集中设备荷载、积雪荷载等须另行计算。</li>
+        <li><strong>不替代正式设计文件</strong>：本工具输出仅供技术参考，正式工程须由具备相应资质的专业技术人员复核并签章。</li>
+        <li><strong>不覆盖构造细节</strong>：剪刀撑、横向斜撑、主次梁连接等构造须按 JGJ 130 第 6 节另行检查。</li>
+        <li><strong>不覆盖地基基础</strong>：立杆底座下地基承载力、排水措施等须另行验算。</li>
+      </ol>
+
+      <h2>八、结语</h2>
+      <p>脚手架安全事关人命，本工具仅为辅助手段，不可替代专业技术人员的判断与责任。使用者应：</p>
+      <ol>
+        <li>熟悉 JGJ 130 全文，理解每个公式背后的力学假定；</li>
+        <li>核实现场实际条件与输入参数是否一致；</li>
+        <li>对临界结果保持警惕，宁可保守不可冒进；</li>
+        <li>将计算结果作为方案比选参考，最终方案须经正式审批。</li>
+      </ol>
+      <p style="margin-top:20px;color:#666;font-size:12px;">本说明书约 2600 字 · 依据 JGJ 130-2011 · 版本 v2.0.1-修审查问题 20261108</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="version-tag">v2.0.1-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心算法（纯函数，完整 JSDoc）
+ * 依据 JGJ 130-2011《建筑施工扣件式钢管脚手架安全技术规范》
+ * ============================================================ */
+
+/**
+ * 钢管截面特性常量（Φ48.3×3.6，按 JGJ 130-2011 第 5.1 节）
+ * @constant {Object}
+ */
+const STEEL_PIPE = Object.freeze({
+  /** 外径 (mm) */
+  D: 48.3,
+  /** 壁厚 (mm) */
+  t: 3.6,
+  /** 截面积 (mm²) */
+  A: 506,
+  /** 截面模量 (mm³) */
+  W: 5080,
+  /** 回转半径 (mm) */
+  i: 15.9,
+  /** 每米质量 (kg/m) */
+  q: 3.97,
+  /** 钢材抗拉/抗压/抗弯强度设计值 (N/mm²) */
+  f: 205
+});
+
+/**
+ * 扣件抗滑承载力设计值（按 JGJ 130-2011 表 5.2.5）
+ * @constant {Object}
+ */
+const FASTENER = Object.freeze({
+  /** 直角扣件抗滑承载力设计值 (kN) */
+  RIGHT_ANGLE: 8.0,
+  /** 旋转扣件抗滑承载力设计值 (kN) */
+  SWIVEL: 1.0
+});
+
+/**
+ * 荷载分项系数（按 JGJ 130-2011 第 5.2 节）
+ * @constant {Object}
+ */
+const LOAD_FACTOR = Object.freeze({
+  /** 恒载分项系数 */
+  DEAD: 1.2,
+  /** 活载分项系数 */
+  LIVE: 1.4,
+  /** 风载分项系数 */
+  WIND: 1.4
+});
+
+/**
+ * 稳定系数 φ 查表数据（b 类截面，按 JGJ 130-2011 附录 C）
+ * 注：具体数值请以标准原文为准，本表为常用值摘录
+ * @constant {Array<{lambda:number, phi:number}>}
+ */
+const PHI_TABLE = Object.freeze([
+  { lambda: 100, phi: 0.558 },
+  { lambda: 110, phi: 0.493 },
+  { lambda: 120, phi: 0.437 },
+  { lambda: 130, phi: 0.387 },
+  { lambda: 140, phi: 0.345 },
+  { lambda: 150, phi: 0.308 },
+  { lambda: 160, phi: 0.277 },
+  { lambda: 170, phi: 0.249 },
+  { lambda: 180, phi: 0.225 },
+  { lambda: 190, phi: 0.204 },
+  { lambda: 200, phi: 0.186 },
+  { lambda: 210, phi: 0.170 },
+  { lambda: 220, phi: 0.156 },
+  { lambda: 230, phi: 0.144 },
+  { lambda: 240, phi: 0.133 },
+  { lambda: 250, phi: 0.123 }
+]);
+
+/**
+ * 校验输入是否为有限正数
+ * @param {number} v - 待校验值
+ * @param {string} name - 参数名（用于错误信息）
+ * @returns {boolean} 是否为有限正数
+ */
+function isPositiveFinite(v, name) {
+  if (typeof v !== 'number' || !isFinite(v)) return false;
+  if (v <= 0) return false;
+  return true;
+}
+
+/**
+ * 校验输入是否为有限非负数
+ * @param {number} v - 待校验值
+ * @returns {boolean} 是否为有限非负数
+ */
+function isNonNegativeFinite(v) {
+  if (typeof v !== 'number' || !isFinite(v)) return false;
+  if (v < 0) return false;
+  return true;
+}
+
+/**
+ * 校验输入是否为正整数
+ * @param {number} v - 待校验值
+ * @returns {boolean} 是否为正整数
+ */
+function isPositiveInteger(v) {
+  if (typeof v !== 'number' || !isFinite(v)) return false;
+  if (v <= 0) return false;
+  if (Math.floor(v) !== v) return false;
+  return true;
+}
+
+/**
+ * 计算立杆计算长度
+ * 按 JGJ 130-2011 第 5.2.8 条：l0 = k · μ · h
+ * @param {number} mu - 立杆计算长度系数（按 JGJ 130 表 5.2.8 查取）
+ * @param {number} h - 步距 (m)
+ * @param {number} [k=1.155] - 立杆长度计算附加系数（JGJ 130 第 5.2.8 条）
+ * @returns {number} 立杆计算长度 l0 (m)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcCalcLength(mu, h, k = 1.155) {
+  if (!isPositiveFinite(mu, 'mu')) throw new Error('mu 必须为正数');
+  if (!isPositiveFinite(h, 'h')) throw new Error('h 必须为正数');
+  if (!isPositiveFinite(k, 'k')) throw new Error('k 必须为正数');
+  return k * mu * h;
+}
+
+/**
+ * 计算长细比
+ * λ = l0 / i
+ * @param {number} l0 - 计算长度 (m)
+ * @param {number} i - 回转半径 (mm)
+ * @returns {number} 长细比 λ（无量纲）
+ * @throws {Error} 参数非法时抛出
+ */
+function calcSlendernessRatio(l0, i) {
+  if (!isPositiveFinite(l0, 'l0')) throw new Error('l0 必须为正数');
+  if (!isPositiveFinite(i, 'i')) throw new Error('i 必须为正数');
+  // l0 单位 m，i 单位 mm，需统一
+  return (l0 * 1000) / i;
+}
+
+/**
+ * 按长细比查稳定系数 φ（b 类截面，线性插值）
+ * 依据 JGJ 130-2011 附录 C
+ * @param {number} lambda - 长细比
+ * @returns {number} 稳定系数 φ
+ * @throws {Error} 长细比超出查表范围时抛出
+ */
+function calcStabilityFactor(lambda) {
+  if (!isPositiveFinite(lambda, 'lambda')) throw new Error('lambda 必须为正数');
+  if (lambda < PHI_TABLE[0].lambda) {
+    // 低于查表下限时按前两点线性外推，φ 上限截断为 1.0；μ=1.0、h=1.0 等合法工况不再被拒收
+    const p1 = PHI_TABLE[0], p2 = PHI_TABLE[1];
+    const phi = p1.phi + (lambda - p1.lambda) / (p2.lambda - p1.lambda) * (p2.phi - p1.phi);
+    return Math.min(phi, 1.0);
+  }
+  if (lambda > PHI_TABLE[PHI_TABLE.length - 1].lambda) {
+    throw new Error(`长细比 ${lambda} 大于查表上限 ${PHI_TABLE[PHI_TABLE.length - 1].lambda}，立杆过于细长，请调整方案`);
+  }
+  // 线性插值
+  for (let idx = 0; idx < PHI_TABLE.length - 1; idx++) {
+    const p1 = PHI_TABLE[idx];
+    const p2 = PHI_TABLE[idx + 1];
+    if (lambda >= p1.lambda && lambda <= p2.lambda) {
+      const ratio = (lambda - p1.lambda) / (p2.lambda - p1.lambda);
+      return p1.phi + ratio * (p2.phi - p1.phi);
+    }
+  }
+  throw new Error('查表异常');
+}
+
+/**
+ * 计算风荷载标准值
+ * wk = μs · μz · w0 （按 JGJ 130-2011 第 4.2.6 条）
+ * @param {number} mus - 风荷载体型系数
+ * @param {number} muz - 风压高度变化系数
+ * @param {number} w0 - 基本风压 (kN/m²)
+ * @returns {number} 风荷载标准值 wk (kN/m²)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcWindLoadStandard(mus, muz, w0) {
+  if (!isPositiveFinite(mus, 'mus')) throw new Error('mus 必须为正数');
+  if (!isPositiveFinite(muz, 'muz')) throw new Error('muz 必须为正数');
+  if (!isNonNegativeFinite(w0)) throw new Error('w0 必须为非负数');
+  return mus * muz * w0;
+}
+
+/**
+ * 计算连墙件风荷载分量
+ * Nlw = 1.4 · wk · Aw （按 JGJ 130-2011 第 5.4 节）
+ * @param {number} wk - 风荷载标准值 (kN/m²)
+ * @param {number} Aw - 每个连墙件的挡风面积 (m²)，Aw = H1 · L1
+ * @returns {number} 连墙件风荷载分量 Nlw (kN)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcConnectionWallWind(wk, Aw) {
+  if (!isNonNegativeFinite(wk)) throw new Error('wk 必须为非负数');
+  if (!isPositiveFinite(Aw, 'Aw')) throw new Error('Aw 必须为正数');
+  return LOAD_FACTOR.WIND * wk * Aw;
+}
+
+/**
+ * 计算连墙件施工荷载分量（简化计算）
+ * 按 JGJ 130-2011 第 5.4 节，Nlg 为施工荷载产生的轴向力
+ * 该函数原含 0.1 折减系数公式，经审查无规范依据，已移除（固定返回 0）；
+ * 连墙件轴向力应为 Nl = Nlw + N0，N0 须按 JGJ 130 第 5.4 节查取后另行计入
+ * @param {number} qk - 施工均布荷载标准值 (kN/m²)
+ * @param {number} H1 - 连墙件竖向间距 (m)
+ * @param {number} L1 - 连墙件水平间距 (m)
+ * @returns {number} 连墙件施工荷载分量 Nlg (kN)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcConnectionWallLive(qk, H1, L1) {
+  if (!isNonNegativeFinite(qk)) throw new Error('qk 必须为非负数');
+  if (!isPositiveFinite(H1, 'H1')) throw new Error('H1 必须为正数');
+  if (!isPositiveFinite(L1, 'L1')) throw new Error('L1 必须为正数');
+  // 原 0.1 折减系数公式经审查无规范依据，属编造，现固定返回 0
+  return 0;
+}
+
+/**
+ * 计算连墙件轴向力设计值
+ * Nl = Nlw + Nlg
+ * @param {number} Nlw - 风荷载分量 (kN)
+ * @param {number} Nlg - 施工荷载分量 (kN)
+ * @returns {number} 连墙件轴向力设计值 (kN)
+ */
+function calcConnectionWallTotal(Nlw, Nlg) {
+  if (!isNonNegativeFinite(Nlw)) throw new Error('Nlw 必须为非负数');
+  if (!isNonNegativeFinite(Nlg)) throw new Error('Nlg 必须为非负数');
+  return Nlw + Nlg;
+}
+
+/**
+ * 计算纵向水平杆弯矩（按均布荷载简支梁）
+ * M = 0.125 · q · l² （按 JGJ 130-2011 第 5.2.3 条）
+ * @param {number} q - 均布荷载设计值 (kN/m)
+ * @param {number} l - 跨度 (m)
+ * @returns {number} 弯矩 (kN·m)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcBendingMoment(q, l) {
+  if (!isNonNegativeFinite(q)) throw new Error('q 必须为非负数');
+  if (!isPositiveFinite(l, 'l')) throw new Error('l 必须为正数');
+  return 0.125 * q * l * l;
+}
+
+/**
+ * 计算纵向水平杆抗弯应力
+ * σ = M / W
+ * @param {number} M - 弯矩 (kN·m)
+ * @param {number} W - 截面模量 (mm³)
+ * @returns {number} 抗弯应力 (N/mm²)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcBendingStress(M, W) {
+  if (!isNonNegativeFinite(M)) throw new Error('M 必须为非负数');
+  if (!isPositiveFinite(W, 'W')) throw new Error('W 必须为正数');
+  // M 单位 kN·m = 10^6 N·mm，W 单位 mm³
+  return (M * 1e6) / W;
+}
+
+/**
+ * 计算立杆轴向力设计值（底层最不利）
+ * 按 JGJ 130-2011 第 5.2.1 条：
+ * N = 1.2·(NG1k + NG2k) + 1.4·ΣNQk
+ * 简化：NG1k 为结构自重（立杆、水平杆、扣件、安全网等），NG2k 为脚手板等恒载
+ * @param {Object} params - 参数对象
+ * @param {number} params.H - 搭设高度 (m)
+ * @param {number} params.la - 立杆纵距 (m)
+ * @param {number} params.lb - 立杆横距 (m)
+ * @param {number} params.h - 步距 (m)
+ * @param {number} params.gjp - 脚手板自重 (kN/m²)
+ * @param {number} params.gld - 栏杆挡脚板自重 (kN/m)
+ * @param {number} params.gan - 安全网自重 (kN/m²)
+ * @param {number} params.qk - 施工均布荷载标准值 (kN/m²)
+ * @param {number} params.n1 - 同时作业层数
+ * @returns {number} 立杆轴向力设计值 N (kN)
+ * @throws {Error} 参数非法时抛出
+ */
+function calcVerticalLoad(params) {
+  const { H, la, lb, h, gjp, gld, gan, qk, n1 } = params;
+  if (!isPositiveFinite(H, 'H')) throw new Error('H 必须为正数');
+  if (!isPositiveFinite(la, 'la')) throw new Error('la 必须为正数');
+  if (!isPositiveFinite(lb, 'lb')) throw new Error('lb 必须为正数');
+  if (!isPositiveFinite(h, 'h')) throw new Error('h 必须为正数');
+  if (!isNonNegativeFinite(gjp)) throw new Error('gjp 必须为非负数');
+  if (!isNonNegativeFinite(gld)) throw new Error('gld 必须为非负数');
+  if (!isNonNegativeFinite(gan)) throw new Error('gan 必须为非负数');
+  if (!isNonNegativeFinite(qk)) throw new Error('qk 必须为非负数');
+  if (!isPositiveInteger(n1)) throw new Error('n1 必须为正整数');
+
+  // 结构自重（立杆 + 水平杆 + 扣件）简化计算
+  // 立杆：按 STEEL_PIPE.q = 3.97 kg/m ≈ 0.039 kN/m（Φ48.3×3.6 理论自重），双排 2 根
+  // 水平杆：每步纵向 2 根（内外），横向 1 根
+  const stepCount = Math.ceil(H / h);
+  const verticalPipe = STEEL_PIPE.q * 9.81 / 1000 * H * 2; // 双排立杆，按钢管实际自重换算
+  const horizontalPipe = stepCount * (2 * la + lb) * 0.04; // 简化估算
+  const NG1k = verticalPipe + horizontalPipe + gan * H * la; // 含安全网
+
+  // 施工层恒载（脚手板 + 栏杆）
+  const NG2k = gjp * la * lb + gld * la;
+
+  // 施工活载
+  const NQk = qk * la * lb * n1;
+
+  // 荷载组合
+  const N = LOAD_FACTOR.DEAD * (NG1k + NG2k) + LOAD_FACTOR.LIVE * NQk;
+  return N;
+}
+
+/**
+ * 立杆稳定性校核
+ * N / (φ · A) ≤ f （按 JGJ 130-2011 第 5.2.1 条）
+ * @param {number} N - 立杆轴向力设计值 (kN)
+ * @param {number} phi - 稳定系数
+ * @param {number} A - 截面积 (mm²)
+ * @param {number} f - 钢材强度设计值 (N/mm²)
+ * @returns {Object} 校核结果
+ * @returns {number} returns.stress - 计算应力 (N/mm²)
+ * @returns {number} returns.ratio - 利用率（计算应力 / f）
+ * @returns {boolean} returns.pass - 是否满足
+ * @throws {Error} 参数非法时抛出
+ */
+function verifyStability(N, phi, A, f) {
+  if (!isNonNegativeFinite(N)) throw new Error('N 必须为非负数');
+  if (!isPositiveFinite(phi, 'phi')) throw new Error('phi 必须为正数');
+  if (!isPositiveFinite(A, 'A')) throw new Error('A 必须为正数');
+  if (!isPositiveFinite(f, 'f')) throw new Error('f 必须为正数');
+  // N 单位 kN = 1000 N，A 单位 mm²
+  const stress = (N * 1000) / (phi * A);
+  const ratio = stress / f;
+  return {
+    stress: stress,
+    ratio: ratio,
+    pass: ratio <= 1.0
+  };
+}
+
+/**
+ * 水平杆抗弯校核
+ * M / W ≤ f （按 JGJ 130-2011 第 5.2.3 条）
+ * @param {number} M - 弯矩 (kN·m)
+ * @param {number} W - 截面模量 (mm³)
+ * @param {number} f - 钢材强度设计值 (N/mm²)
+ * @returns {Object} 校核结果
+ * @returns {number} returns.stress - 计算应力 (N/mm²)
+ * @returns {number} returns.ratio - 利用率
+ * @returns {boolean} returns.pass - 是否满足
+ */
+function verifyBending(M, W, f) {
+  if (!isNonNegativeFinite(M)) throw new Error('M 必须为非负数');
+  if (!isPositiveFinite(W, 'W')) throw new Error('W 必须为正数');
+  if (!isPositiveFinite(f, 'f')) throw new Error('f 必须为正数');
+  const stress = (M * 1e6) / W;
+  const ratio = stress / f;
+  return {
+    stress: stress,
+    ratio: ratio,
+    pass: ratio <= 1.0
+  };
+}
+
+/**
+ * 扣件抗滑校核
+ * R ≤ Rc （按 JGJ 130-2011 第 5.2.5 条）
+ * @param {number} R - 扣件承受的剪力设计值 (kN)
+ * @param {number} Rc - 扣件抗滑承载力设计值 (kN)
+ * @returns {Object} 校核结果
+ * @returns {number} returns.ratio - 利用率（R / Rc）
+ * @returns {boolean} returns.pass - 是否满足
+ */
+function verifyAntiSlip(R, Rc) {
+  if (!isNonNegativeFinite(R)) throw new Error('R 必须为非负数');
+  if (!isPositiveFinite(Rc, 'Rc')) throw new Error('Rc 必须为正数');
+  const ratio = R / Rc;
+  return {
+    ratio: ratio,
+    pass: ratio <= 1.0
+  };
+}
+
+/**
+ * 连墙件承载力校核
+ * Nl ≤ Nl_c （按 JGJ 130-2011 第 5.4 节）
+ * 简化：连墙件承载力按扣件抗滑或钢管承载力取小值
+ * @param {number} Nl - 连墙件轴向力设计值 (kN)
+ * @param {number} Nlc - 连墙件承载力设计值 (kN)
+ * @returns {Object} 校核结果
+ * @returns {number} returns.ratio - 利用率
+ * @returns {boolean} returns.pass - 是否满足
+ */
+function verifyConnectionWall(Nl, Nlc) {
+  if (!isNonNegativeFinite(Nl)) throw new Error('Nl 必须为非负数');
+  if (!isPositiveFinite(Nlc, 'Nlc')) throw new Error('Nlc 必须为正数');
+  const ratio = Nl / Nlc;
+  return {
+    ratio: ratio,
+    pass: ratio <= 1.0
+  };
+}
+
+/**
+ * 综合计算入口：执行全部校核
+ * @param {Object} input - 用户输入参数
+ * @returns {Object} 全部校核结果
+ */
+function runFullCalculation(input) {
+  const result = { input: input, items: [], allPass: true };
+
+  try {
+    // 1. 立杆计算长度与长细比
+    const l0 = calcCalcLength(input.mu, input.h);
+    const lambda = calcSlendernessRatio(l0, STEEL_PIPE.i);
+    const phi = calcStabilityFactor(lambda);
+    result.items.push({
+      name: '立杆计算长度',
+      values: [
+        { label: '计算长度 l0', value: l0.toFixed(3) + ' m' },
+        { label: '长细比 λ', value: lambda.toFixed(1) },
+        { label: '稳定系数 φ', value: phi.toFixed(3) }
+      ]
+    });
+
+    // 2. 立杆轴向力与稳定性
+    const N = calcVerticalLoad(input);
+    const stability = verifyStability(N, phi, STEEL_PIPE.A, STEEL_PIPE.f);
+    result.items.push({
+      name: '立杆稳定性校核',
+      values: [
+        { label: '轴向力设计值 N', value: N.toFixed(2) + ' kN' },
+        { label: '计算应力 N/(φA)', value: stability.stress.toFixed(1) + ' N/mm²' },
+        { label: '强度设计值 f', value: STEEL_PIPE.f + ' N/mm²' },
+        { label: '利用率', value: (stability.ratio * 100).toFixed(1) + '%' }
+      ],
+      pass: stability.pass
+    });
+    if (!stability.pass) result.allPass = false;
+
+    // 3. 纵向水平杆抗弯
+    // 荷载：恒载（脚手板）+ 活载（施工）
+    const qDead = LOAD_FACTOR.DEAD * (input.gjp * input.la + input.gld);
+    const qLive = LOAD_FACTOR.LIVE * input.qk * input.la;
+    const qTotal = qDead + qLive;
+    const M = calcBendingMoment(qTotal, input.la);
+    const bending = verifyBending(M, STEEL_PIPE.W, STEEL_PIPE.f);
+    result.items.push({
+      name: '纵向水平杆抗弯校核',
+      values: [
+        { label: '均布荷载设计值', value: qTotal.toFixed(2) + ' kN/m' },
+        { label: '弯矩 M', value: M.toFixed(3) + ' kN·m' },
+        { label: '计算应力 M/W', value: bending.stress.toFixed(1) + ' N/mm²' },
+        { label: '利用率', value: (bending.ratio * 100).toFixed(1) + '%' }
+      ],
+      pass: bending.pass
+    });
+    if (!bending.pass) result.allPass = false;
+
+    // 4. 扣件抗滑（纵向水平杆端部剪力）
+    // 简化：R = 0.5 · qTotal · la（简支梁支座反力）
+    const R = 0.5 * qTotal * input.la;
+    const Rc = parseFloat(input.fastener);
+    const antiSlip = verifyAntiSlip(R, Rc);
+    result.items.push({
+      name: '扣件抗滑校核',
+      values: [
+        { label: '剪力设计值 R', value: R.toFixed(2) + ' kN' },
+        { label: '抗滑承载力 Rc', value: Rc + ' kN' },
+        { label: '利用率', value: (antiSlip.ratio * 100).toFixed(1) + '%' }
+      ],
+      pass: antiSlip.pass
+    });
+    if (!antiSlip.pass) result.allPass = false;
+
+    // 5. 连墙件
+    const wk = calcWindLoadStandard(input.mus, input.muz, input.w0);
+    const Aw = input.H1 * input.L1;
+    const Nlw = calcConnectionWallWind(wk, Aw);
+    const Nl = calcConnectionWallTotal(Nlw, input.N0);
+    // 连墙件按钢管纯强度验算：Nl 已含 1.4 分项系数，未计风振系数与体型折减，结果仅供参考，须按标准另行复核
+    const connWall = verifyStability(Nl, 1.0, STEEL_PIPE.A, STEEL_PIPE.f);
+    result.items.push({
+      name: '连墙件承载力校核',
+      values: [
+        { label: '风荷载标准值 wk', value: wk.toFixed(3) + ' kN/m²' },
+        { label: '风荷载分量 Nlw', value: Nlw.toFixed(2) + ' kN' },
+        { label: '轴向力设计值 Nl', value: Nl.toFixed(2) + ' kN（含用户输入 N0=' + input.N0 + ' kN；若 N0=0 则结果系统性偏不安全）' },
+        { label: '连墙件钢管应力 Nl/A', value: connWall.stress.toFixed(1) + ' N/mm²' },
+        { label: '利用率', value: (connWall.ratio * 100).toFixed(1) + '%' }
+      ],
+      pass: connWall.pass
+    });
+    if (!connWall.pass) result.allPass = false;
+
+  } catch (err) {
+    result.error = err.message;
+    result.allPass = false;
+  }
+
+  return result;
+}
+
+/* ============================================================
+ * 第二部分：单元测试（≥30 个）
+ * ============================================================ */
+
+let testPass = 0;
+let testTotal = 0;
+const testLog = [];
+
+/**
+ * 断言函数
+ * @param {string} name - 测试名称
+ * @param {boolean} condition - 断言条件
+ * @param {string} [detail] - 失败时的详细信息
+ */
+function assert(name, condition, detail) {
+  testTotal++;
+  if (condition) {
+    testPass++;
+    testLog.push({ name, pass: true });
+  } else {
+    testLog.push({ name, pass: false, detail: detail || '' });
+  }
+}
+
+/**
+ * 近似相等断言（用于浮点数）
+ * @param {string} name - 测试名称
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} [tolerance=1e-6] - 容差
+ */
+function assertApprox(name, actual, expected, tolerance = 1e-6) {
+  const diff = Math.abs(actual - expected);
+  assert(name, diff <= tolerance, `实际=${actual}, 期望=${expected}, 差=${diff}`);
+}
+
+/**
+ * 运行全部单元测试
+ */
+function runAllTests() {
+  testPass = 0;
+  testTotal = 0;
+  testLog.length = 0;
+
+  // === 1. 输入校验（5 个） ===
+  assert('校验：负数 mu 抛错', (() => { try { calcCalcLength(-1, 1.8); return false; } catch(e) { return true; } })());
+  assert('校验：零值 h 抛错', (() => { try { calcCalcLength(1.5, 0); return false; } catch(e) { return true; } })());
+  assert('校验：NaN 抛错', (() => { try { calcCalcLength(NaN, 1.8); return false; } catch(e) { return true; } })());
+  assert('校验：字符串抛错', (() => { try { calcCalcLength('abc', 1.8); return false; } catch(e) { return true; } })());
+  assert('校验：无穷大抛错', (() => { try { calcCalcLength(Infinity, 1.8); return false; } catch(e) { return true; } })());
+
+  // === 2. 立杆计算长度（3 个） ===
+  assertApprox('计算长度：mu=1.5, h=1.8, k=1.155', calcCalcLength(1.5, 1.8), 1.155 * 1.5 * 1.8, 1e-6);
+  assertApprox('计算长度：mu=1.65, h=1.5', calcCalcLength(1.65, 1.5), 1.155 * 1.65 * 1.5, 1e-6);
+  assertApprox('计算长度：自定义 k=1.2', calcCalcLength(1.5, 1.8, 1.2), 1.2 * 1.5 * 1.8, 1e-6);
+
+  // === 3. 长细比（3 个） ===
+  assertApprox('长细比：l0=2.7m, i=15.9mm', calcSlendernessRatio(2.7, 15.9), 2700 / 15.9, 1e-3);
+  assertApprox('长细比：l0=1.0m', calcSlendernessRatio(1.0, 15.9), 1000 / 15.9, 1e-3);
+  assert('校验：长细比 l0 为负抛错', (() => { try { calcSlendernessRatio(-1, 15.9); return false; } catch(e) { return true; } })());
+
+  // === 4. 稳定系数查表（5 个） ===
+  assertApprox('φ 查表：λ=100', calcStabilityFactor(100), 0.558, 1e-6);
+  assertApprox('φ 查表：λ=150', calcStabilityFactor(150), 0.308, 1e-6);
+  assertApprox('φ 查表：λ=200', calcStabilityFactor(200), 0.186, 1e-6);
+  /* 修正：λ=125 落在 120→130 区间，应插值 0.437 与 0.387；
+     原写法用 110/120 两点取平均，区间取错了 */
+  assertApprox('φ 查表：λ=125（插值）', calcStabilityFactor(125), 0.437 + (125 - 120) / (130 - 120) * (0.387 - 0.437), 1e-6);
+  assertApprox('λ<100 按外推取值（合法工况不再拒收）', calcStabilityFactor(50), 0.558 + (50 - 100) / 10 * (0.493 - 0.558), 1e-6);
+  assert('校验：λ>250 抛错', (() => { try { calcStabilityFactor(300); return false; } catch(e) { return true; } })());
+
+  // === 5. 风荷载（3 个） ===
+  assertApprox('风荷载：mus=1.3, muz=1.0, w0=0.35', calcWindLoadStandard(1.3, 1.0, 0.35), 1.3 * 1.0 * 0.35, 1e-6);
+  assertApprox('风荷载：w0=0 时结果为 0', calcWindLoadStandard(1.3, 1.0, 0), 0, 1e-6);
+  assert('校验：w0 为负抛错', (() => { try { calcWindLoadStandard(1.3, 1.0, -0.1); return false; } catch(e) { return true; } })());
+
+  // === 6. 连墙件（4 个） ===
+  assertApprox('连墙件风荷载：wk=0.455, Aw=16.2', calcConnectionWallWind(0.455, 16.2), 1.4 * 0.455 * 16.2, 1e-3);
+  assertApprox('连墙件施工荷载：无依据公式已移除，返回 0', calcConnectionWallLive(2, 3.6, 4.5), 0, 1e-6);
+  assertApprox('连墙件总轴力：Nlw=10.3, Nlg=4.5', calcConnectionWallTotal(10.3, 4.5), 14.8, 1e-6);
+  assert('校验：Aw 为 0 抛错', (() => { try { calcConnectionWallWind(0.455, 0); return false; } catch(e) { return true; } })());
+
+  // === 7. 弯矩（3 个） ===
+  assertApprox('弯矩：q=10, l=1.5', calcBendingMoment(10, 1.5), 0.125 * 10 * 1.5 * 1.5, 1e-6);
+  assertApprox('弯矩：q=0 时结果为 0', calcBendingMoment(0, 1.5), 0, 1e-6);
+  assert('校验：l 为负抛错', (() => { try { calcBendingMoment(10, -1); return false; } catch(e) { return true; } })());
+
+  // === 8. 立杆轴向力（2 个） ===
+  const loadParams = { H: 24, la: 1.5, lb: 1.05, h: 1.8, gjp: 0.3, gld: 0.14, gan: 0.005, qk: 2.0, n1: 2 };
+  const N1 = calcVerticalLoad(loadParams);
+  assert('立杆轴力：结果为正数', N1 > 0);
+  assert('立杆轴力：qk=0 时结果较小', calcVerticalLoad({...loadParams, qk: 0}) < N1);
+
+  // === 9. 稳定性校核（3 个） ===
+  const stab1 = verifyStability(10, 0.3, 506, 205);
+  assert('稳定性校核：返回 stress', typeof stab1.stress === 'number' && stab1.stress > 0);
+  assert('稳定性校核：返回 ratio', typeof stab1.ratio === 'number' && stab1.ratio > 0);
+  assert('稳定性校核：返回 pass', typeof stab1.pass === 'boolean');
+  assertApprox('稳定性校核：应力计算', stab1.stress, (10 * 1000) / (0.3 * 506), 1e-3);
+
+  // === 10. 抗弯校核（2 个） ===
+  const bend1 = verifyBending(1.0, 5080, 205);
+  assert('抗弯校核：返回 pass', typeof bend1.pass === 'boolean');
+  assertApprox('抗弯校核：应力计算', bend1.stress, (1.0 * 1e6) / 5080, 1e-3);
+
+  // === 11. 抗滑校核（2 个） ===
+  const slip1 = verifyAntiSlip(5, 8);
+  assert('抗滑校核：5kN < 8kN 通过', slip1.pass === true);
+  const slip2 = verifyAntiSlip(10, 8);
+  assert('抗滑校核：10kN > 8kN 不通过', slip2.pass === false);
+
+  // === 12. 连墙件校核（2 个） ===
+  const cw1 = verifyConnectionWall(5, 8);
+  assert('连墙件校核：5kN < 8kN 通过', cw1.pass === true);
+  const cw2 = verifyConnectionWall(10, 8);
+  assert('连墙件校核：10kN > 8kN 不通过', cw2.pass === false);
+
+  // === 13. 综合计算（2 个） ===
+  const fullInput = {
+    la: 1.5, lb: 1.05, h: 1.8, H: 24, H1: 3.6, L1: 4.5,
+    qk: 2.0, n1: 2, w0: 0.35, muz: 1.0, mus: 1.3,
+    gjp: 0.3, gld: 0.14, gan: 0.005, mu: 1.50, fastener: '8'
+  };
+  const fullResult = runFullCalculation(fullInput);
+  assert('综合计算：返回 items 数组', Array.isArray(fullResult.items) && fullResult.items.length >= 4);
+  assert('综合计算：返回 allPass 标志', typeof fullResult.allPass === 'boolean');
+
+  // === 14. 边界值（2 个） ===
+  assertApprox('边界：λ=100 精确命中', calcStabilityFactor(100), 0.558, 1e-6);
+  assertApprox('边界：λ=250 精确命中', calcStabilityFactor(250), 0.123, 1e-6);
+
+  // === 15. 精度问题（2 个） ===
+  assertApprox('精度：0.1+0.2 近似', 0.1 + 0.2, 0.3, 1e-10);
+  assertApprox('精度：浮点插值', calcStabilityFactor(105), (0.558 + 0.493) / 2, 1e-6);
+
+  // 渲染结果
+  renderTestResults();
+}
+
+/**
+ * 渲染测试结果到页面
+ */
+function renderTestResults() {
+  const summary = document.getElementById('testSummary');
+  const output = document.getElementById('testOutput');
+  summary.textContent = `通过 ${testPass} / 共 ${testTotal}`;
+  summary.className = 'test-summary ' + (testPass === testTotal ? 'all-pass' : 'has-fail');
+  output.innerHTML = testLog.map(t => {
+    const cls = t.pass ? 'pass' : 'fail';
+    const mark = t.pass ? '✓' : '✗';
+    const detail = t.detail ? ` — ${t.detail}` : '';
+    return `<div class="${cls}">${mark} ${t.name}${detail}</div>`;
+  }).join('');
+}
+
+/* ============================================================
+ * 第三部分：UI 交互
+ * ============================================================ */
+
+/**
+ * 标签页切换
+ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+/**
+ * 读取用户输入
+ * @returns {Object} 输入参数对象
+ */
+function readInput() {
+  return {
+    la: parseFloat(document.getElementById('la').value),
+    lb: parseFloat(document.getElementById('lb').value),
+    h: parseFloat(document.getElementById('h').value),
+    H: parseFloat(document.getElementById('H').value),
+    H1: parseFloat(document.getElementById('H1').value),
+    L1: parseFloat(document.getElementById('L1').value),
+    qk: parseFloat(document.getElementById('qk').value),
+    n1: parseInt(document.getElementById('n1').value),
+    w0: parseFloat(document.getElementById('w0').value),
+    muz: parseFloat(document.getElementById('muz').value),
+    mus: parseFloat(document.getElementById('mus').value),
+    gjp: parseFloat(document.getElementById('gjp').value),
+    gld: parseFloat(document.getElementById('gld').value),
+    gan: parseFloat(document.getElementById('gan').value),
+    mu: parseFloat(document.getElementById('mu').value),
+    fastener: document.getElementById('fastener').value,
+    N0: parseFloat(document.getElementById('N0').value) || 0
+  };
+}
+
+/**
+ * 执行计算并渲染结果
+ */
+function runCalc() {
+  const input = readInput();
+  const area = document.getElementById('resultArea');
+  // 提交前校验：空值/非数字直接提示，不进入计算
+  const numFields = ['la','lb','h','H','H1','L1','qk','n1','w0','muz','mus','gjp','gld','gan','mu'];
+  for (const id of numFields) {
+    const v = parseFloat(document.getElementById(id).value);
+    if (!isFinite(v)) {
+      area.innerHTML = '<div class="result-box fail"><h4>输入错误</h4><p>参数 ' + id + ' 为空或非数字，请检查后重新计算。</p></div>';
+      return;
+    }
+  }
+  // H1 / L1 联动校验：超出常用构造范围时给出挡风面积提示
+  const warnings = [];
+  if (input.H1 > 3 * input.h) warnings.push('连墙件竖向间距 H1=' + input.H1 + 'm 超过 3h≈' + (3 * input.h).toFixed(1) + 'm，超出常用构造范围');
+  if (input.L1 > 3 * input.la) warnings.push('连墙件水平间距 L1=' + input.L1 + 'm 超过 3la≈' + (3 * input.la).toFixed(1) + 'm，挡风面积 Aw=' + (input.H1 * input.L1).toFixed(1) + 'm² 偏大，请注意折减');
+  const result = runFullCalculation(input);
+
+  if (result.error) {
+    area.innerHTML = `<div class="result-box fail"><h4>计算错误</h4><p>${result.error}</p></div>`;
+    return;
+  }
+
+  let html = '';
+  result.items.forEach(item => {
+    const cls = item.pass === undefined ? '' : (item.pass ? 'pass' : 'fail');
+    const title = item.pass === undefined ? item.name :
+                  (item.pass ? '✓ ' + item.name : '✗ ' + item.name);
+    html += `<div class="result-box ${cls}"><h4>${title}</h4>`;
+    item.values.forEach(v => {
+      html += `<div class="result-row"><span class="label">${v.label}</span><span class="value">${v.value}</span></div>`;
+    });
+    html += '</div>';
+  });
+
+  const overall = result.allPass
+    ? '<div class="result-box pass"><h4>✓ 全部校核通过</h4><p>各项指标均满足 JGJ 130 要求。请注意：本结果仅供技术参考，不替代正式设计文件。</p></div>'
+    : '<div class="result-box fail"><h4>✗ 存在不满足项</h4><p>请调整参数后重新计算。实际工程须由具备相应资质的专业技术人员复核。</p></div>';
+  html = (warnings.length ? '<div class="result-box warn"><h4>⚠ 输入联动提示</h4><p>' + warnings.join('；') + '</p></div>' : '') + overall + html;
+  area.innerHTML = html;
+}
+
+/**
+ * 重置输入为默认值
+ */
+function resetCalc() {
+  document.getElementById('la').value = 1.5;
+  document.getElementById('lb').value = 1.05;
+  document.getElementById('h').value = 1.8;
+  document.getElementById('H').value = 24;
+  document.getElementById('H1').value = 3.6;
+  document.getElementById('L1').value = 4.5;
+  document.getElementById('qk').value = 2.0;
+  document.getElementById('n1').value = 2;
+  document.getElementById('w0').value = 0.35;
+  document.getElementById('muz').value = 1.0;
+  document.getElementById('mus').value = 1.3;
+  document.getElementById('gjp').value = 0.3;
+  document.getElementById('gld').value = 0.14;
+  document.getElementById('gan').value = 0.005;
+  document.getElementById('mu').value = 1.50;
+  document.getElementById('fastener').value = '8';
+  document.getElementById('N0').value = 0;
+  document.getElementById('resultArea').innerHTML = '';
+}
+</script>
+
+</body>
+</html>

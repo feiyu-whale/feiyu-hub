@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>摩尔质量计算工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;background:#f5f7fa;color:#1a1a2e;line-height:1.7;padding:20px;max-width:1100px;margin:0 auto}
+h1{text-align:center;font-size:1.8rem;margin:20px 0 10px;color:#16213e}
+h2{font-size:1.3rem;margin:24px 0 12px;color:#0f3460;border-bottom:2px solid #e2e8f0;padding-bottom:6px}
+h3{font-size:1.1rem;margin:18px 0 8px;color:#1a365d}
+h4{font-size:1rem;margin:12px 0 6px;color:#2d3748}
+p{margin:8px 0;text-indent:2em}
+p.no-indent{text-indent:0}
+.subtitle{text-align:center;color:#666;margin-bottom:24px;font-size:0.95rem}
+.calc-box{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:24px}
+.calc-box label{font-weight:600;margin-right:8px}
+.calc-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.calc-row input{flex:1;min-width:200px;padding:10px 14px;border:2px solid #d1d5db;border-radius:8px;font-size:1rem;transition:border-color .2s}
+.calc-row input:focus{outline:none;border-color:#3b82f6}
+.calc-row button{padding:10px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;transition:background .2s;white-space:nowrap}
+.calc-row button:hover{background:#2563eb}
+.result-box{margin-top:14px;padding:14px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;font-size:1.05rem;min-height:48px;display:flex;align-items:center}
+.result-box.error{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+.tabs{display:flex;gap:4px;margin-bottom:0;border-bottom:2px solid #e2e8f0}
+.tab-btn{padding:10px 20px;background:#e2e8f0;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:0.95rem;transition:all .2s;color:#475569}
+.tab-btn.active{background:#3b82f6;color:#fff}
+.tab-btn:hover:not(.active){background:#cbd5e1}
+.tab-content{display:none;background:#fff;border-radius:0 0 12px 12px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.08);min-height:400px}
+.tab-content.active{display:block}
+pre{background:#1e293b;color:#e2e8f0;padding:20px;border-radius:8px;overflow-x:auto;font-size:0.85rem;line-height:1.6;max-height:70vh;overflow-y:auto}
+pre code{font-family:"Fira Code","Source Code Pro",Consolas,"Courier New",monospace}
+.test-controls{margin-bottom:16px;display:flex;gap:10px;align-items:center}
+.test-controls button{padding:10px 24px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer}
+.test-controls button:hover{background:#059669}
+#test-results{white-space:pre-wrap;word-break:break-all;font-size:0.85rem;line-height:1.8}
+.pass-line{color:#22c55e}
+.fail-line{color:#ef4444}
+.summary-line{color:#3b82f6;font-weight:bold;font-size:1rem;margin-top:10px;display:block}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left;font-size:0.9rem}
+th{background:#f1f5f9;font-weight:600}
+.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px;margin:12px 0}
+.warn-box::before{content:"⚠ ";font-weight:bold}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin:12px 0}
+.version-badge{position:fixed;bottom:12px;right:16px;font-size:0.75rem;color:#94a3b8;background:#fff;padding:4px 10px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.1);z-index:999}
+ul,ol{margin:8px 0 8px 2em}
+li{margin:4px 0}
+.scene{background:#f8fafc;border-left:4px solid #3b82f6;padding:14px 18px;margin:14px 0;border-radius:0 8px 8px 0}
+.scene strong{color:#1e40af}
+code.inline{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.9em;color:#be185d;font-family:"Fira Code",Consolas,monospace}
+</style>
+</head>
+<body>
+
+<h1>摩尔质量计算工具</h1>
+<p class="subtitle">输入化学式，自动计算摩尔质量（g/mol）——支持括号嵌套与结晶水</p>
+
+<div class="calc-box">
+  <div class="calc-row">
+    <label for="formula-input">化学式：</label>
+    <input type="text" id="formula-input" placeholder="例如：CuSO4.5H2O 或 Ca(OH)2" autocomplete="off">
+    <button onclick="doCalculate()">计 算</button>
+  </div>
+  <div class="result-box" id="result-box">请输入化学式后点击「计算」</div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab(0)">JS 源码</button>
+  <button class="tab-btn" onclick="showTab(1)">单元测试</button>
+  <button class="tab-btn" onclick="showTab(2)">使用说明书</button>
+</div>
+
+<div id="tab-0" class="tab-content active">
+  <pre><code id="source-display"></code></pre>
+</div>
+
+<div id="tab-1" class="tab-content">
+  <div class="test-controls">
+    <button onclick="runAllTests()">▶ 运行全部测试</button>
+    <span id="test-summary" style="font-weight:600;color:#3b82f6"></span>
+  </div>
+  <pre id="test-results">点击「运行全部测试」开始执行……</pre>
+</div>
+
+<div id="tab-2" class="tab-content">
+
+<h2>一、工具概述</h2>
+<p>摩尔质量计算工具是一款基于 Web 的化学物质摩尔质量（分子量）计算工具。用户只需输入化学式，工具即可自动解析并计算该物质的摩尔质量，结果以 g/mol（克每摩尔）为单位输出。</p>
+<p>本工具解决的核心问题是：在化学实验、教学和科研中，经常需要快速查询或计算某种化学物质的摩尔质量。传统方式需要查阅手册、记忆各元素的原子量后手动加和计算，本工具将这一过程自动化，提高了效率和准确性。</p>
+
+<h3>主要功能</h3>
+<ul>
+  <li>支持 118 种化学元素（氢 H 至鿫 Og）</li>
+  <li>支持括号嵌套，如 Ca(OH)₂、Al₂(SO₄)₃、((NH₄)₂SO₄)</li>
+  <li>支持结晶水表示，如 CuSO₄·5H₂O、Na₂CO₃·10H₂O</li>
+  <li>支持 Unicode 下标数字（H₂O）和普通数字（H2O）两种输入方式</li>
+  <li>支持多种结晶水分隔符（中点 ·、英文句号 .）</li>
+  <li>纯前端实现，零外部依赖，无需网络连接，可直接在浏览器中运行</li>
+</ul>
+
+<h2>二、参数说明</h2>
+
+<h3>输入参数：化学式（formula）</h3>
+<table>
+  <tr><th>属性</th><th>说明</th></tr>
+  <tr><td>类型</td><td>string（字符串）</td></tr>
+  <tr><td>取值范围</td><td>由合法元素符号、数字、括号、结晶水分隔符组成的字符串</td></tr>
+  <tr><td>单位</td><td>无（输入为字符串格式的化学式）</td></tr>
+  <tr><td>实际含义</td><td>表示一种化学物质的分子式或实验式</td></tr>
+</table>
+
+<h4>合法字符说明</h4>
+<ol>
+  <li><strong>元素符号</strong>：首字母大写，第二个字母（如有）小写。如 H、He、Na、Fe、U</li>
+  <li><strong>数字</strong>：表示该元素或括号内原子团的个数。支持普通数字（0-9）和 Unicode 下标（₀₁₂₃₄₅₆₇₈₉）</li>
+  <li><strong>括号</strong>：圆括号 ()，用于表示原子团，可多层嵌套</li>
+  <li><strong>结晶水分隔符</strong>：中点 ·（U+00B7）或英文句号 .（U+002E），后接数字和水分子式</li>
+</ol>
+
+<h4>输入限制</h4>
+<ul>
+  <li>不接受 null、undefined、空字符串、非字符串类型</li>
+  <li>不接受非化学式内容（如中文、特殊符号等）</li>
+  <li>元素符号必须大小写正确（如 "na" 不合法，必须写 "Na"）</li>
+  <li>括号必须成对出现</li>
+  <li>数字不能出现在化学式开头（化学计量数不属于分子式的一部分）</li>
+</ul>
+
+<h3>输出：摩尔质量</h3>
+<table>
+  <tr><th>属性</th><th>说明</th></tr>
+  <tr><td>类型</td><td>number（数字）</td></tr>
+  <tr><td>单位</td><td>g/mol（克每摩尔）</td></tr>
+  <tr><td>精度</td><td>与原子量数据精度一致，通常为小数点后 2–4 位</td></tr>
+  <tr><td>实际含义</td><td>1 摩尔该物质的质量</td></tr>
+</table>
+
+<h2>三、完整使用场景</h2>
+
+<div class="scene">
+<h4>场景 1：基础化合物的摩尔质量计算</h4>
+<p class="no-indent"><strong>需求：</strong>计算水（H₂O）的摩尔质量</p>
+<p class="no-indent"><strong>输入：</strong><code class="inline">H2O</code> 或 <code class="inline">H₂O</code></p>
+<p class="no-indent"><strong>计算过程：</strong></p>
+<ul>
+  <li>H: 2 × 1.008 = 2.016</li>
+  <li>O: 1 × 15.999 = 15.999</li>
+  <li>合计：2.016 + 15.999 = <strong>18.015 g/mol</strong></li>
+</ul>
+<p class="no-indent"><strong>应用：</strong>在配制溶液时，需要知道水的摩尔质量以进行物质的量与质量之间的换算。例如，配制 1 L 纯水约需 18.015 g（在标准条件下约 18 mL）。</p>
+</div>
+
+<div class="scene">
+<h4>场景 2：含括号原子团的化合物</h4>
+<p class="no-indent"><strong>需求：</strong>计算氢氧化钙 Ca(OH)₂ 的摩尔质量</p>
+<p class="no-indent"><strong>输入：</strong><code class="inline">Ca(OH)2</code></p>
+<p class="no-indent"><strong>计算过程：</strong></p>
+<ul>
+  <li>Ca: 1 × 40.078 = 40.078</li>
+  <li>O: 2 × 15.999 = 31.998</li>
+  <li>H: 2 × 1.008 = 2.016</li>
+  <li>合计：40.078 + 31.998 + 2.016 = <strong>74.092 g/mol</strong></li>
+</ul>
+<p class="no-indent"><strong>应用：</strong>在建筑工业中，氢氧化钙（熟石灰）是常用材料。计算其摩尔质量有助于进行中和反应配比，例如用 Ca(OH)₂ 中和含 H₂SO₄ 的废水时，需要根据摩尔质量确定投加量。</p>
+</div>
+
+<div class="scene">
+<h4>场景 3：含结晶水的化合物</h4>
+<p class="no-indent"><strong>需求：</strong>计算五水硫酸铜 CuSO₄·5H₂O 的摩尔质量</p>
+<p class="no-indent"><strong>输入：</strong><code class="inline">CuSO4.5H2O</code> 或 <code class="inline">CuSO₄·5H₂O</code></p>
+<p class="no-indent"><strong>计算过程：</strong></p>
+<ul>
+  <li>Cu: 1 × 63.546 = 63.546</li>
+  <li>S: 1 × 32.06 = 32.060</li>
+  <li>O（硫酸根中）: 4 × 15.999 = 63.996</li>
+  <li>5H₂O: 5 × (2 × 1.008 + 15.999) = 5 × 18.015 = 90.075</li>
+  <li>合计：63.546 + 32.060 + 63.996 + 90.075 = <strong>249.677 g/mol</strong></li>
+</ul>
+<p class="no-indent"><strong>应用：</strong>在实验室配制铜离子标准溶液时，通常使用五水硫酸铜晶体（蓝色），需要知道包含结晶水在内的完整摩尔质量才能准确称量。若需配制 0.1 mol/L CuSO₄ 溶液 500 mL，需称取 249.677 × 0.05 ≈ 12.48 g 五水硫酸铜。</p>
+</div>
+
+<div class="scene">
+<h4>场景 4：复杂嵌套括号化合物</h4>
+<p class="no-indent"><strong>需求：</strong>计算磷酸钙 Ca₃(PO₄)₂ 的摩尔质量</p>
+<p class="no-indent"><strong>输入：</strong><code class="inline">Ca3(PO4)2</code></p>
+<p class="no-indent"><strong>计算过程：</strong></p>
+<ul>
+  <li>Ca: 3 × 40.078 = 120.234</li>
+  <li>P: 2 × 30.974 = 61.948</li>
+  <li>O: 8 × 15.999 = 127.992</li>
+  <li>合计：120.234 + 61.948 + 127.992 = <strong>310.174 g/mol</strong></li>
+</ul>
+<p class="no-indent"><strong>应用：</strong>磷酸钙是骨骼和牙齿的主要无机成分，在生物医学和材料科学研究中需要精确计算其摩尔质量。在制备羟基磷灰石生物陶瓷时，磷酸钙的摩尔质量是计算原料配比的基础数据。</p>
+</div>
+
+<div class="scene">
+<h4>场景 5：有机化合物的摩尔质量</h4>
+<p class="no-indent"><strong>需求：</strong>计算葡萄糖 C₆H₁₂O₆ 的摩尔质量</p>
+<p class="no-indent"><strong>输入：</strong><code class="inline">C6H12O6</code></p>
+<p class="no-indent"><strong>计算过程：</strong></p>
+<ul>
+  <li>C: 6 × 12.011 = 72.066</li>
+  <li>H: 12 × 1.008 = 12.096</li>
+  <li>O: 6 × 15.999 = 95.994</li>
+  <li>合计：72.066 + 12.096 + 95.994 = <strong>180.156 g/mol</strong></li>
+</ul>
+<p class="no-indent"><strong>应用：</strong>在生物化学和食品科学中，葡萄糖是最基本的单糖。其摩尔质量是计算血糖浓度（mmol/L 与 mg/dL 之间的换算）、发酵反应物配比、细胞培养基配制等的基础数据。例如，血糖 180 mg/dL 即约等于 10 mmol/L。</p>
+</div>
+
+<div class="scene">
+<h4>场景 6：含结晶水的复盐</h4>
+<p class="no-indent"><strong>需求：</strong>计算十水合四硼酸钠（硼砂）Na₂B₄O₇·10H₂O 的摩尔质量</p>
+<p class="no-indent"><strong>输入：</strong><code class="inline">Na2B4O7.10H2O</code></p>
+<p class="no-indent"><strong>计算过程：</strong></p>
+<ul>
+  <li>Na: 2 × 22.990 = 45.980</li>
+  <li>B: 4 × 10.81 = 43.240</li>
+  <li>O（硼酸根中）: 7 × 15.999 = 111.993</li>
+  <li>10H₂O: 10 × 18.015 = 180.150</li>
+  <li>合计：45.980 + 43.240 + 111.993 + 180.150 = <strong>381.363 g/mol</strong></li>
+</ul>
+<p class="no-indent"><strong>应用：</strong>硼砂是常用的基准物质，用于标定盐酸标准溶液。在分析化学实验中，准确知道其含结晶水的摩尔质量是保证标定精度的前提。</p>
+</div>
+
+<h2>四、常见错误与排查</h2>
+
+<h3>错误 1：元素符号大小写错误</h3>
+<p class="no-indent"><strong>现象：</strong>输入 <code class="inline">nacl</code> 或 <code class="inline">NACL</code>，工具报错。</p>
+<p class="no-indent"><strong>原因：</strong>化学元素符号有严格的大小写规则——第一个字母必须大写，第二个字母（如有）必须小写。"na" 不是合法元素符号。</p>
+<p class="no-indent"><strong>解决：</strong>正确输入为 <code class="inline">NaCl</code>。</p>
+
+<h3>错误 2：括号不匹配</h3>
+<p class="no-indent"><strong>现象：</strong>输入 <code class="inline">Ca(OH2</code>（缺少右括号），工具报错。</p>
+<p class="no-indent"><strong>原因：</strong>括号必须成对出现，解析器在遇到不匹配的括号时会抛出异常。</p>
+<p class="no-indent"><strong>解决：</strong>检查并确保每个左括号 ( 都有对应的右括号 )。</p>
+
+<h3>错误 3：非法元素符号</h3>
+<p class="no-indent"><strong>现象：</strong>输入 <code class="inline">Xx2O</code>，工具报错"未知元素: Xx"。</p>
+<p class="no-indent"><strong>原因：</strong>Xx 不是已知的化学元素符号。</p>
+<p class="no-indent"><strong>解决：</strong>检查元素符号拼写是否正确，可参考元素周期表。</p>
+
+<h3>错误 4：空输入或非字符串输入</h3>
+<p class="no-indent"><strong>现象：</strong>传入空字符串、null 或 undefined，工具报错。</p>
+<p class="no-indent"><strong>原因：</strong>工具要求输入必须是非空字符串。</p>
+<p class="no-indent"><strong>解决：</strong>确保输入为非空字符串。</p>
+
+<h3>错误 5：结晶水格式错误</h3>
+<p class="no-indent"><strong>现象：</strong>输入 <code class="inline">CuSO45H2O</code>（缺少分隔符），计算结果不正确。</p>
+<p class="no-indent"><strong>原因：</strong>结晶水部分必须用 · 或 . 与主体化学式分隔，否则解析器会将 "45" 理解为 O 的下标。</p>
+<p class="no-indent"><strong>解决：</strong>正确输入为 <code class="inline">CuSO4.5H2O</code> 或 <code class="inline">CuSO₄·5H₂O</code>。</p>
+
+<h3>错误 6：数字出现在开头</h3>
+<p class="no-indent"><strong>现象：</strong>输入 <code class="inline">2H2O</code>，工具报错。</p>
+<p class="no-indent"><strong>原因：</strong>化学式不能以数字开头。化学计量数（如 "2H₂O" 中的 2）不属于分子式的一部分。</p>
+<p class="no-indent"><strong>解决：</strong>去掉开头的数字，输入 <code class="inline">H2O</code>。</p>
+
+<h2>五、数据来源与标准依据</h2>
+
+<h3>原子量数据</h3>
+<p>本工具使用的原子量数据来源于国际纯粹与应用化学联合会（IUPAC）发布的标准原子量表。具体参考：</p>
+<ul>
+  <li><strong>IUPAC "Atomic Weights of the Elements 2021"</strong>（IUPAC 2021 年标准原子量）</li>
+  <li>发表于 <em>Pure and Applied Chemistry</em>, 2022, Vol. 94, No. 3, pp. 265–272</li>
+  <li>由 IUPAC 同位素丰度与原子量委员会（CIAAW）编制并维护</li>
+</ul>
+
+<h3>关于国家标准</h3>
+<p>经查阅，目前中国尚未发布独立的、专门规定化学元素原子量数值的国家标准文件。国内化学教育、科研和工业中使用的原子量数据均以 IUPAC 推荐值为准。部分教材和化学手册可能引用较早版本的 IUPAC 数据（如 2013 版、2016 版），个别元素的数值可能因修订而略有差异。</p>
+
+<div class="info-box">
+<strong>说明：</strong>对于具有可变同位素组成的元素（如 Li、B、C、N、O、S 等），IUPAC 给出的是原子量区间（如碳的原子量区间为 [12.009, 12.015]）而非单一值。本工具使用的是 IUPAC 公布的"常规原子量"（conventional atomic weight），即一个便于一般化学计算使用的代表性单一值。
+</div>
+
+<h3>数据更新</h3>
+<p>原子量数据会随测量技术的进步而更新。本工具中的数据基于 2021 年版 IUPAC 标准原子量表。如需最新数据，请访问 IUPAC 官方网站（https://iupac.org/）查询。</p>
+
+<h2>六、局限性说明</h2>
+
+<div class="warn-box">以下列出本工具的已知局限性，请在使用时注意。</div>
+
+<ol>
+  <li><strong>不支持同位素精确质量计算：</strong>本工具使用元素的常规原子量（天然同位素丰度加权平均值），不支持特定同位素的精确质量计算。例如，无法计算 ¹³C 标记化合物的精确分子量。如需同位素精确质量，需使用专门的同位素质量表。</li>
+
+  <li><strong>不支持非整比化合物：</strong>对于化学式中含有小数计量数的非整比化合物（如 Fe₀.₉₅O），本工具不支持小数下标输入。</li>
+
+  <li><strong>不验证化学合理性：</strong>本工具仅从语法层面解析化学式并计算质量，不验证该化学式是否代表一个真实存在的稳定化学物质。例如，"NaCl₅" 在化学上不合理，但工具仍会计算其数学上的质量。</li>
+
+  <li><strong>不支持聚合物重复单元：</strong>对于高分子聚合物，不支持重复单元表示法（如 (C₂H₄)ₙ 中的 n）。</li>
+
+  <li><strong>浮点精度限制：</strong>由于使用 JavaScript 的 IEEE 754 双精度浮点数进行计算，在极端情况下可能存在微小的浮点误差（通常在 10⁻¹² 量级）。对一般化学计算无实际影响，但在需要极高精度的场合应注意。</li>
+
+  <li><strong>放射性元素数据为近似值：</strong>对于没有稳定同位素的放射性元素（如 Tc、Pm 及原子序数 ≥ 84 的部分元素），本工具使用该元素最稳定（或最常见）同位素的质量数作为近似值，而非严格意义上的标准原子量。这些值仅供估算参考，不应在精确计算中使用。</li>
+
+  <li><strong>不处理溶剂化物（结晶水除外）：</strong>本工具仅支持结晶水（·nH₂O）的便捷计算。对于其他溶剂化物（如乙醇合物、氨合物等），用户需将溶剂分子直接写入化学式中（如 <code class="inline">CoCl2.6NH3</code>），工具可以正确计算。</li>
+
+  <li><strong>不支持离子电荷：</strong>本工具计算的是中性分子的摩尔质量。对于离子（如 SO₄²⁻），由于电子质量极小（约 0.00055 g/mol/电子），得失电子对摩尔质量的影响可忽略不计，因此离子和对应中性物种的计算结果在实际应用中可视为相同。</li>
+</ol>
+
+</div>
+
+<div class="version-badge">v2.0.0-完整版 20261021</div>
+
+<script id="main-script">
+// ============================================================
+//  摩尔质量计算工具 —— 核心算法
+//  版本：v2.0.0-完整版 20261021
+//  原子量数据来源：IUPAC "Atomic Weights of the Elements 2021"
+//  发表于 Pure and Applied Chemistry, 2022, Vol.94, No.3
+// ============================================================
+
+/**
+ * 标准原子量数据表。
+ * 数据来源：IUPAC 2021 标准原子量（conventional atomic weights）。
+ * 对于放射性元素（无稳定同位素），使用该元素最稳定/最常见同位素的质量数作为近似值。
+ * @type {Object<string, number>}
+ */
+const ATOMIC_WEIGHTS = {
+  H:1.008,He:4.0026,Li:6.94,Be:9.0122,B:10.81,
+  C:12.011,N:14.007,O:15.999,F:18.998,Ne:20.180,
+  Na:22.990,Mg:24.305,Al:26.982,Si:28.085,P:30.974,
+  S:32.06,Cl:35.45,Ar:39.948,K:39.098,Ca:40.078,
+  Sc:44.956,Ti:47.867,V:50.942,Cr:51.996,Mn:54.938,
+  Fe:55.845,Co:58.933,Ni:58.693,Cu:63.546,Zn:65.38,
+  Ga:69.723,Ge:72.630,As:74.922,Se:78.971,Br:79.904,
+  Kr:83.798,Rb:85.468,Sr:87.62,Y:88.906,Zr:91.224,
+  Nb:92.906,Mo:95.95,Tc:98,Ru:101.07,Rh:102.91,
+  Pd:106.42,Ag:107.87,Cd:112.41,In:114.82,Sn:118.71,
+  Sb:121.76,Te:127.60,I:126.90,Xe:131.29,Cs:132.91,
+  Ba:137.33,La:138.91,Ce:140.12,Pr:140.91,Nd:144.24,
+  Pm:145,Sm:150.36,Eu:151.96,Gd:157.25,Tb:158.93,
+  Dy:162.50,Ho:164.93,Er:167.26,Tm:168.93,Yb:173.05,
+  Lu:174.97,Hf:178.49,Ta:180.95,W:183.84,Re:186.21,
+  Os:190.23,Ir:192.22,Pt:195.08,Au:196.97,Hg:200.59,
+  Tl:204.38,Pb:207.2,Bi:208.98,Po:209,At:210,
+  Rn:222,Fr:223,Ra:226,Ac:227,Th:232.04,Pa:231.04,
+  U:238.03,Np:237,Pu:244,Am:243,Cm:247,
+  Bk:247,Cf:251,Es:252,Fm:257,Md:258,
+  No:259,Lr:266,Rf:267,Db:268,Sg:269,
+  Bh:270,Hs:269,Mt:278,Ds:281,Rg:282,
+  Cn:285,Nh:286,Fl:289,Mc:290,Lv:293,
+  Ts:294,Og:294
+};
+
+/**
+ * Unicode 下标数字到普通数字的映射表。
+ * @type {Object<string, string>}
+ */
+const SUBSCRIPT_MAP = {
+  '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4',
+  '₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'
+};
+
+/**
+ * 获取指定元素的原子量。
+ *
+ * @param {string} symbol - 元素符号（如 "H"、"Na"、"Fe"）
+ * @returns {number} 该元素的标准原子量（g/mol）
+ * @throws {Error} 当元素符号不在原子量数据表中时抛出异常
+ * @example
+ *   getAtomicWeight("H");   // 1.008
+ *   getAtomicWeight("Na");  // 22.990
+ *   getAtomicWeight("Fe");  // 55.845
+ *   getAtomicWeight("Xx");  // throws Error("未知元素: Xx")
+ */
+function getAtomicWeight(symbol) {
+  if (!(symbol in ATOMIC_WEIGHTS)) {
+    throw new Error('未知元素: ' + symbol);
+  }
+  return ATOMIC_WEIGHTS[symbol];
+}
+
+/**
+ * 对化学式字符串进行预处理和标准化。
+ * 将 Unicode 下标数字转换为普通数字，将中点 · 和点操作符 ⋅ 统一为英文句号 .，
+ * 并去除所有空白字符。
+ *
+ * @param {string} formula - 原始化学式字符串
+ * @returns {string} 标准化后的化学式字符串
+ * @throws {TypeError} 当输入不是字符串类型时抛出异常
+ * @example
+ *   normalizeFormula("H₂O");       // "H2O"
+ *   normalizeFormula("CuSO₄·5H₂O"); // "CuSO4.5H2O"
+ *   normalizeFormula(" Ca(OH)2 ");  // "Ca(OH)2"
+ */
+function normalizeFormula(formula) {
+  if (typeof formula !== 'string') {
+    throw new TypeError('输入必须是字符串类型，当前类型为: ' + typeof formula);
+  }
+  // 去除空白
+  var result = formula.replace(/\s+/g, '');
+  // 替换 Unicode 下标数字
+  for (var sub in SUBSCRIPT_MAP) {
+    result = result.split(sub).join(SUBSCRIPT_MAP[sub]);
+  }
+  // 统一结晶水分隔符
+  result = result.replace(/[·⋅∙・]/g, '.');
+  return result;
+}
+
+/**
+ * 将标准化后的化学式字符串分解为词法单元（token）数组。
+ *
+ * 词法单元类型包括：
+ * - ELEMENT：元素符号（如 "Na"、"Fe"）
+ * - NUMBER：正整数（如 2、10）
+ * - LPAREN：左括号 "("
+ * - RPAREN：右括号 ")"
+ * - DOT：结晶水分隔符 "."
+ *
+ * @param {string} formula - 标准化后的化学式字符串（已调用 normalizeFormula）
+ * @returns {Array<{type: string, value: *}>} 词法单元数组
+ * @throws {Error} 当遇到无法识别的字符时抛出异常
+ * @example
+ *   tokenize("H2O");
+ *   // [{type:"ELEMENT",value:"H"}, {type:"NUMBER",value:2}, {type:"ELEMENT",value:"O"}]
+ *
+ *   tokenize("Ca(OH)2");
+ *   // [{type:"ELEMENT",value:"Ca"}, {type:"LPAREN",value:"("},
+ *   //  {type:"ELEMENT",value:"O"}, {type:"ELEMENT",value:"H"},
+ *   //  {type:"RPAREN",value:")"}, {type:"NUMBER",value:2}]
+ */
+function tokenize(formula) {
+  var tokens = [];
+  var i = 0;
+  var len = formula.length;
+
+  while (i < len) {
+    var ch = formula[i];
+
+    if (ch === '(') {
+      tokens.push({ type: 'LPAREN', value: '(' });
+      i++;
+    } else if (ch === ')') {
+      tokens.push({ type: 'RPAREN', value: ')' });
+      i++;
+    } else if (ch === '.') {
+      tokens.push({ type: 'DOT', value: '.' });
+      i++;
+    } else if (ch >= 'A' && ch <= 'Z') {
+      var symbol = ch;
+      i++;
+      if (i < len && formula[i] >= 'a' && formula[i] <= 'z') {
+        symbol += formula[i];
+        i++;
+      }
+      tokens.push({ type: 'ELEMENT', value: symbol });
+    } else if (ch >= '0' && ch <= '9') {
+      var numStr = '';
+      while (i < len && formula[i] >= '0' && formula[i] <= '9') {
+        numStr += formula[i];
+        i++;
+      }
+      tokens.push({ type: 'NUMBER', value: parseInt(numStr, 10) });
+    } else {
+      throw new Error('无法识别的字符: "' + ch + '" (位置 ' + i + ')');
+    }
+  }
+
+  return tokens;
+}
+
+/**
+ * 解析化学式并计算其摩尔质量。
+ *
+ * 支持的功能：
+ * - 元素符号与下标数字（如 H2O、Fe2O3）
+ * - 括号嵌套（如 Ca(OH)2、Al2(SO4)3、((NH4)2SO4)）
+ * - 结晶水（如 CuSO4.5H2O、Na2CO3.10H2O）
+ * - Unicode 下标数字（如 H₂O）
+ *
+ * 算法采用递归下降解析：
+ * 1. 先对输入进行标准化（normalizeFormula）
+ * 2. 词法分析（tokenize）
+ * 3. 递归下降解析，遇到 DOT 时将其后部分视为结晶水并乘以相应系数
+ *
+ * @param {string} formula - 化学式字符串（支持 Unicode 下标和中点分隔符）
+ * @returns {number} 摩尔质量，单位 g/mol
+ * @throws {TypeError} 当输入不是字符串类型时抛出异常
+ * @throws {Error} 当输入为空字符串时抛出异常
+ * @throws {Error} 当化学式包含非法字符、未知元素、不匹配括号等语法错误时抛出异常
+ * @example
+ *   calculateMolarMass("H2O");          // 18.015
+ *   calculateMolarMass("Ca(OH)2");      // 74.092
+ *   calculateMolarMass("CuSO4.5H2O");   // 249.677
+ *   calculateMolarMass("H₂O");          // 18.015（Unicode 下标）
+ *   calculateMolarMass("Fe");           // 55.845
+ */
+function calculateMolarMass(formula) {
+  // 输入验证
+  if (typeof formula !== 'string') {
+    throw new TypeError('输入必须是字符串类型，当前类型为: ' + typeof formula);
+  }
+  var normalized = normalizeFormula(formula);
+  if (normalized === '') {
+    throw new Error('化学式不能为空');
+  }
+
+  var tokens = tokenize(normalized);
+  if (tokens.length === 0) {
+    throw new Error('化学式不能为空');
+  }
+
+  var pos = 0;
+
+  /**
+   * 解析一个"片段"（formula part），即不含 DOT 的连续化学式部分。
+   * 片段由若干 term 组成，每个 term 是元素或括号组，后可跟数字表示个数。
+   *
+   * @returns {number} 该片段的累计质量
+   */
+  function parsePart() {
+    var mass = 0;
+
+    while (pos < tokens.length &&
+           tokens[pos].type !== 'RPAREN' &&
+           tokens[pos].type !== 'DOT') {
+
+      if (tokens[pos].type === 'ELEMENT') {
+        var element = tokens[pos].value;
+        pos++;
+        var count = 1;
+        if (pos < tokens.length && tokens[pos].type === 'NUMBER') {
+          count = tokens[pos].value;
+          pos++;
+        }
+        mass += getAtomicWeight(element) * count;
+
+      } else if (tokens[pos].type === 'LPAREN') {
+        pos++; // 跳过 "("
+        var innerMass = parsePart();
+        if (pos >= tokens.length || tokens[pos].type !== 'RPAREN') {
+          throw new Error('括号不匹配：缺少右括号 ")"');
+        }
+        pos++; // 跳过 ")"
+        var multiplier = 1;
+        if (pos < tokens.length && tokens[pos].type === 'NUMBER') {
+          multiplier = tokens[pos].value;
+          pos++;
+        }
+        mass += innerMass * multiplier;
+
+      } else {
+        throw new Error('意外的词法单元: ' + tokens[pos].type +
+                        ' (值: ' + tokens[pos].value + ')');
+      }
+    }
+
+    return mass;
+  }
+
+  // 解析主体化学式
+  var totalMass = parsePart();
+
+  // 处理结晶水部分（可有多段，虽然实际中很少见）
+  while (pos < tokens.length && tokens[pos].type === 'DOT') {
+    pos++; // 跳过 "."
+    var waterMultiplier = 1;
+    if (pos < tokens.length && tokens[pos].type === 'NUMBER') {
+      waterMultiplier = tokens[pos].value;
+      pos++;
+    }
+    var waterMass = parsePart();
+    totalMass += waterMass * waterMultiplier;
+  }
+
+  // 检查是否所有 token 都已消费
+  if (pos < tokens.length) {
+    throw new Error('化学式解析异常：在位置 ' + pos +
+                    ' 处有多余内容 (' + tokens[pos].type + ')');
+  }
+
+  return totalMass;
+}
+
+/**
+ * 将摩尔质量四舍五入到指定小数位数。
+ *
+ * @param {number} mass - 原始摩尔质量值
+ * @param {number} [decimals=4] - 保留的小数位数（非负整数）
+ * @returns {number} 四舍五入后的摩尔质量
+ * @throws {TypeError} 当 mass 不是数字或 decimals 不是非负整数时抛出异常
+ * @example
+ *   roundMolarMass(18.01528, 2);  // 18.02
+ *   roundMolarMass(18.01528, 0);  // 18
+ *   roundMolarMass(249.677, 1);   // 249.7
+ */
+function roundMolarMass(mass, decimals) {
+  if (typeof mass !== 'number' || isNaN(mass)) {
+    throw new TypeError('mass 必须是有效数字');
+  }
+  if (decimals === undefined) decimals = 4;
+  if (typeof decimals !== 'number' || decimals < 0 || !Number.isInteger(decimals)) {
+    throw new TypeError('decimals 必须是非负整数');
+  }
+  var factor = Math.pow(10, decimals);
+  return Math.round(mass * factor) / factor;
+}
+
+/**
+ * 验证化学式字符串是否合法（不会抛出异常，返回布尔值）。
+ *
+ * @param {string} formula - 待验证的化学式字符串
+ * @returns {boolean} 如果化学式合法返回 true，否则返回 false
+ * @example
+ *   validateFormula("H2O");       // true
+ *   validateFormula("Ca(OH)2");   // true
+ *   validateFormula("nacl");      // false
+ *   validateFormula("");          // false
+ *   validateFormula(null);        // false
+ */
+function validateFormula(formula) {
+  try {
+    var result = calculateMolarMass(formula);
+    return typeof result === 'number' && !isNaN(result) && result >= 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ============================================================
+//  测试框架与测试用例
+// ============================================================
+
+var testPassed = 0;
+var testTotal = 0;
+var testLog = [];
+
+/**
+ * 通用断言函数。
+ * @param {boolean} condition - 断言条件
+ * @param {string} name - 测试名称
+ * @param {string} [details] - 失败时的详细信息
+ */
+function assert(condition, name, details) {
+  testTotal++;
+  if (condition) {
+    testPassed++;
+    testLog.push({ pass: true, name: name });
+  } else {
+    testLog.push({ pass: false, name: name, details: details || '' });
+  }
+}
+
+/**
+ * 近似值断言（用于浮点数比较）。
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @param {string} name - 测试名称
+ */
+function assertApprox(actual, expected, tolerance, name) {
+  var diff = Math.abs(actual - expected);
+  var ok = diff < tolerance;
+  assert(ok, name,
+    '期望 ≈' + expected + '（容差 ' + tolerance + '），实际 ' + actual + '，差值 ' + diff);
+}
+
+/**
+ * 异常断言（期望函数抛出异常）。
+ * @param {Function} fn - 期望抛出异常的函数
+ * @param {string} name - 测试名称
+ */
+function assertThrows(fn, name) {
+  try {
+    fn();
+    assert(false, name, '期望抛出异常但未抛出');
+  } catch (e) {
+    assert(true, name);
+  }
+}
+
+/**
+ * 运行全部测试用例。
+ * @returns {void}
+ */
+function runAllTests() {
+  testPassed = 0;
+  testTotal = 0;
+  testLog = [];
+
+  // ──────────────────────────────────────
+  //  正常值测试（典型化学式）
+  // ──────────────────────────────────────
+
+  // 1. 水 H2O
+  assertApprox(calculateMolarMass("H2O"), 18.015, 0.001,
+    '正常值: H2O → 18.015');
+
+  // 2. 氯化钠 NaCl
+  assertApprox(calculateMolarMass("NaCl"), 58.440, 0.001,
+    '正常值: NaCl → 58.440');
+
+  // 3. 二氧化碳 CO2
+  assertApprox(calculateMolarMass("CO2"), 44.009, 0.001,
+    '正常值: CO2 → 44.009');
+
+  // 4. 硫酸 H2SO4
+  assertApprox(calculateMolarMass("H2SO4"), 98.072, 0.001,
+    '正常值: H2SO4 → 98.072');
+
+  // 5. 氢氧化钙 Ca(OH)2
+  assertApprox(calculateMolarMass("Ca(OH)2"), 74.092, 0.001,
+    '正常值: Ca(OH)2 → 74.092');
+
+  // 6. 氧化铁 Fe2O3
+  assertApprox(calculateMolarMass("Fe2O3"), 159.687, 0.001,
+    '正常值: Fe2O3 → 159.687');
+
+  // 7. 甲烷 CH4
+  assertApprox(calculateMolarMass("CH4"), 16.043, 0.001,
+    '正常值: CH4 → 16.043');
+
+  // 8. 葡萄糖 C6H12O6
+  assertApprox(calculateMolarMass("C6H12O6"), 180.156, 0.001,
+    '正常值: C6H12O6 → 180.156');
+
+  // 9. 氨 NH3
+  assertApprox(calculateMolarMass("NH3"), 17.031, 0.001,
+    '正常值: NH3 → 17.031');
+
+  // 10. 硫酸铝 Al2(SO4)3
+  assertApprox(calculateMolarMass("Al2(SO4)3"), 342.132, 0.01,
+    '正常值: Al2(SO4)3 → 342.132');
+
+  // 11. 五水硫酸铜 CuSO4.5H2O
+  assertApprox(calculateMolarMass("CuSO4.5H2O"), 249.677, 0.01,
+    '正常值: CuSO4.5H2O → 249.677');
+
+  // 12. 十水碳酸钠 Na2CO3.10H2O
+  assertApprox(calculateMolarMass("Na2CO3.10H2O"), 286.138, 0.01,
+    '正常值: Na2CO3.10H2O → 286.138');
+
+  // 13. 硝酸镁 Mg(NO3)2
+  assertApprox(calculateMolarMass("Mg(NO3)2"), 148.313, 0.01,
+    '正常值: Mg(NO3)2 → 148.313');
+
+  // 14. 高锰酸钾 KMnO4
+  assertApprox(calculateMolarMass("KMnO4"), 158.032, 0.01,
+    '正常值: KMnO4 → 158.032');
+
+  // 15. 碳酸钙 CaCO3
+  assertApprox(calculateMolarMass("CaCO3"), 100.086, 0.001,
+    '正常值: CaCO3 → 100.086');
+
+  // 16. 磷酸钙 Ca3(PO4)2
+  assertApprox(calculateMolarMass("Ca3(PO4)2"), 310.174, 0.01,
+    '正常值: Ca3(PO4)2 → 310.174');
+
+  // 17. 硼砂 Na2B4O7.10H2O
+  assertApprox(calculateMolarMass("Na2B4O7.10H2O"), 381.363, 0.01,
+    '正常值: Na2B4O7.10H2O → 381.363');
+
+  // 18. 氢氧化钠 NaOH
+  assertApprox(calculateMolarMass("NaOH"), 39.997, 0.001,
+    '正常值: NaOH → 39.997');
+
+  // 19. 盐酸 HCl
+  assertApprox(calculateMolarMass("HCl"), 36.458, 0.001,
+    '正常值: HCl → 36.458');
+
+  // 20. 硝酸银 AgNO3
+  assertApprox(calculateMolarMass("AgNO3"), 169.874, 0.01,
+    '正常值: AgNO3 → 169.874');
+
+  // 21. 乙醇 C2H5OH（即 C2H6O）
+  assertApprox(calculateMolarMass("C2H5OH"), 46.069, 0.001,
+    '正常值: C2H5OH → 46.069');
+
+  // 22. 硫酸铵 (NH4)2SO4
+  assertApprox(calculateMolarMass("(NH4)2SO4"), 132.134, 0.01,
+    '正常值: (NH4)2SO4 → 132.134');
+
+  // ──────────────────────────────────────
+  //  边界值测试
+  // ──────────────────────────────────────
+
+  // 23. 单元素 Fe
+  assertApprox(calculateMolarMass("Fe"), 55.845, 0.001,
+    '边界值: 单元素 Fe → 55.845');
+
+  // 24. 双原子分子 O2
+  assertApprox(calculateMolarMass("O2"), 31.998, 0.001,
+    '边界值: O2 → 31.998');
+
+  // 25. 最轻元素 H
+  assertApprox(calculateMolarMass("H"), 1.008, 0.001,
+    '边界值: 最轻元素 H → 1.008');
+
+  // 26. 最重天然元素 U
+  assertApprox(calculateMolarMass("U"), 238.03, 0.01,
+    '边界值: 最重天然元素 U → 238.03');
+
+  // 27. 过氧化氢 H2O2
+  assertApprox(calculateMolarMass("H2O2"), 34.014, 0.001,
+    '边界值: H2O2 → 34.014');
+
+  // 28. 元素下标为 1（等价于无下标）
+  assertApprox(calculateMolarMass("Na1Cl1"), 58.440, 0.001,
+    '边界值: Na1Cl1 → 58.440（下标1等价于无下标）');
+
+  // ──────────────────────────────────────
+  //  Unicode 下标与分隔符测试
+  // ──────────────────────────────────────
+
+  // 29. Unicode 下标 H₂O
+  assertApprox(calculateMolarMass("H₂O"), 18.015, 0.001,
+    'Unicode: H₂O → 18.015');
+
+  // 30. Unicode 下标 + 中点 CuSO₄·5H₂O
+  assertApprox(calculateMolarMass("CuSO₄·5H₂O"), 249.677, 0.01,
+    'Unicode: CuSO₄·5H₂O → 249.677');
+
+  // ──────────────────────────────────────
+  //  异常输入测试
+  // ──────────────────────────────────────
+
+  // 31. null 输入
+  assertThrows(function() { calculateMolarMass(null); },
+    '异常: null 输入应抛出异常');
+
+  // 32. undefined 输入
+  assertThrows(function() { calculateMolarMass(undefined); },
+    '异常: undefined 输入应抛出异常');
+
+  // 33. 空字符串
+  assertThrows(function() { calculateMolarMass(""); },
+    '异常: 空字符串应抛出异常');
+
+  // 34. 纯空白字符串
+  assertThrows(function() { calculateMolarMass("   "); },
+    '异常: 纯空白字符串应抛出异常');
+
+  // 35. 未知元素 Xx
+  assertThrows(function() { calculateMolarMass("Xx2O"); },
+    '异常: 未知元素 Xx 应抛出异常');
+
+  // 36. 括号不匹配（缺右括号）
+  assertThrows(function() { calculateMolarMass("Ca(OH2"); },
+    '异常: 括号不匹配应抛出异常');
+
+  // 37. 数字开头
+  assertThrows(function() { calculateMolarMass("2H2O"); },
+    '异常: 数字开头应抛出异常');
+
+  // 38. 非法字符
+  assertThrows(function() { calculateMolarMass("H2O@"); },
+    '异常: 非法字符 @ 应抛出异常');
+
+  // 39. NaN 输入
+  assertThrows(function() { calculateMolarMass(NaN); },
+    '异常: NaN 输入应抛出异常');
+
+  // 40. 数字类型输入
+  assertThrows(function() { calculateMolarMass(42); },
+    '异常: 数字类型输入应抛出异常');
+
+  // ──────────────────────────────────────
+  //  精度与四舍五入测试
+  // ──────────────────────────────────────
+
+  // 41. 浮点精度：H2O 精确到 0.001
+  var h2o = calculateMolarMass("H2O");
+  assert(Math.abs(h2o - 18.015) < 0.001,
+    '精度: H2O 与 18.015 的差值 < 0.001（实际差值: ' + Math.abs(h2o - 18.015) + '）');
+
+  // 42. 浮点精度：大分子 C6H12O6 精确到 0.01
+  var glucose = calculateMolarMass("C6H12O6");
+  assert(Math.abs(glucose - 180.156) < 0.01,
+    '精度: C6H12O6 与 180.156 的差值 < 0.01（实际差值: ' + Math.abs(glucose - 180.156) + '）');
+
+  // 43. roundMolarMass 四舍五入到 2 位
+  assert(roundMolarMass(18.01528, 2) === 18.02,
+    '四舍五入: roundMolarMass(18.01528, 2) → 18.02');
+
+  // 44. roundMolarMass 四舍五入到 0 位
+  assert(roundMolarMass(18.01528, 0) === 18,
+    '四舍五入: roundMolarMass(18.01528, 0) → 18');
+
+  // 45. roundMolarMass 四舍五入到 1 位
+  assert(roundMolarMass(249.677, 1) === 249.7,
+    '四舍五入: roundMolarMass(249.677, 1) → 249.7');
+
+  // ──────────────────────────────────────
+  //  validateFormula 测试
+  // ──────────────────────────────────────
+
+  // 46. validateFormula 合法式
+  assert(validateFormula("H2O") === true,
+    'validate: H2O 应返回 true');
+
+  // 47. validateFormula 非法式
+  assert(validateFormula("nacl") === false,
+    'validate: nacl 应返回 false');
+
+  // 48. validateFormula null
+  assert(validateFormula(null) === false,
+    'validate: null 应返回 false');
+
+  // 49. validateFormula 空字符串
+  assert(validateFormula("") === false,
+    'validate: 空字符串应返回 false');
+
+  // 50. 嵌套括号 ((NH4)2SO4)
+  assertApprox(calculateMolarMass("((NH4)2SO4)"), 132.134, 0.01,
+    '嵌套括号: ((NH4)2SO4) → 132.134');
+
+  // ──────────────────────────────────────
+  //  输出结果
+  // ──────────────────────────────────────
+  return { passed: testPassed, total: testTotal, log: testLog };
+}
+
+// ============================================================
+//  UI 逻辑
+// ============================================================
+
+/**
+ * 切换标签页。
+ * @param {number} index - 标签页索引（0=源码, 1=测试, 2=说明书）
+ * @returns {void}
+ */
+function showTab(index) {
+  var btns = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.tab-content');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+    panels[i].classList.remove('active');
+  }
+  btns[index].classList.add('active');
+  panels[index].classList.add('active');
+}
+
+/**
+ * 执行界面上的计算操作。
+ * @returns {void}
+ */
+function doCalculate() {
+  var input = document.getElementById('formula-input').value;
+  var box = document.getElementById('result-box');
+  box.classList.remove('error');
+  try {
+    var mass = calculateMolarMass(input);
+    var rounded = roundMolarMass(mass, 4);
+    box.textContent = input + '  →  摩尔质量 = ' + rounded + ' g/mol';
+  } catch (e) {
+    box.classList.add('error');
+    box.textContent = '错误: ' + e.message;
+  }
+}
+
+// 回车触发计算
+document.getElementById('formula-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doCalculate();
+});
+
+// 显示源码
+document.getElementById('source-display').textContent =
+  document.getElementById('main-script').textContent;
+
+// 运行测试并显示结果
+function displayTestResults() {
+  var result = runAllTests();
+  var el = document.getElementById('test-results');
+  var lines = [];
+  for (var i = 0; i < result.log.length; i++) {
+    var t = result.log[i];
+    if (t.pass) {
+      lines.push('✅ ' + t.name);
+    } else {
+      lines.push('❌ ' + t.name + ' —— ' + t.details);
+    }
+  }
+  lines.push('');
+  lines.push('══════════════════════════════════════');
+  lines.push('通过 ' + result.passed + ' / 共 ' + result.total);
+  if (result.passed === result.total) {
+    lines.push('🎉 全部通过！');
+  } else {
+    lines.push('⚠ 有 ' + (result.total - result.passed) + ' 个测试未通过');
+  }
+  el.textContent = lines.join('\n');
+  document.getElementById('test-summary').textContent =
+    '通过 ' + result.passed + ' / 共 ' + result.total;
+}
+</script>
+
+<script>
+// 页面加载后自动运行测试
+window.addEventListener('DOMContentLoaded', function() {
+  displayTestResults();
+});
+</script>
+
+</body>
+</html>

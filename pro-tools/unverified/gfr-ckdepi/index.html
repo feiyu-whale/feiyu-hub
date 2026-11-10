@@ -1,0 +1,145 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>eGFR 肾小球滤过率计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:14px 14px 36px;background:#0a1628;color:#dbe6f5;font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+h1{font-size:17px;margin:0 0 4px;color:#4a9eff}
+.sub{font-size:12px;color:#7e97b3;margin-bottom:12px}
+.card{background:#10233d;border:1px solid #1d3a5c;border-radius:8px;padding:12px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{flex:1 1 92px;background:#10233d;color:#9fb6d1;border:1px solid #1d3a5c;border-radius:6px;padding:8px 4px;font-size:13px;cursor:pointer}
+.tabs button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#9fb6d1;margin-bottom:4px}
+input,select{width:100%;background:#0a1628;color:#dbe6f5;border:1px solid #2a4a70;border-radius:5px;padding:7px;font-size:14px}
+input:focus,select:focus{outline:1px solid #4a9eff;border-color:#4a9eff}
+.err{color:#ff6b6b;font-size:12.5px;min-height:15px;margin-top:8px}
+button.go{width:100%;margin-top:8px;background:#4a9eff;color:#04101f;border:0;border-radius:6px;padding:10px;font-size:15px;font-weight:700;cursor:pointer}
+button.go:hover{background:#6cb2ff}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 5px;border-bottom:1px solid #1d3a5c;vertical-align:top}
+th{color:#9fb6d1;font-size:12px;font-weight:500}
+td b{color:#4a9eff;font-size:15px}
+.mid{font-size:12px;color:#8fa9c4}
+.stage{display:inline-block;padding:1px 8px;border-radius:10px;background:#1d3a5c;color:#7fd1ff;font-size:12px}
+pre{background:#061020;border:1px solid #1d3a5c;border-radius:6px;padding:10px;overflow:auto;font-size:11.5px;line-height:1.45;max-height:420px;margin:0;white-space:pre}
+code{font-family:ui-monospace,Consolas,monospace}
+.ok{color:#3ddc97}.no{color:#ff6b6b}
+.hide{display:none}
+.f{font-size:12.5px;color:#a8bdd4;line-height:1.75}
+.f b{color:#4a9eff}
+h3{font-size:13px;color:#4a9eff;margin:12px 0 4px}
+#ver{position:fixed;right:8px;bottom:6px;font-size:10.5px;color:#5c7796;background:#0a1628ee;padding:2px 6px;border-radius:4px}
+</style></head><body>
+<h1>肾小球滤过率 eGFR 计算器</h1>
+<div class="sub">CKD-EPI 2021（不含种族项）· MDRD（IDMS）· Cockcroft-Gault 三算法对比 · CKD 分期</div>
+<div class="tabs"><button class="on" data-p="calc">计算工具</button><button data-p="src">JS 源码</button><button data-p="test">单元测试</button><button data-p="doc">使用说明</button></div>
+
+<div id="calc" class="page">
+<div class="card">
+<div class="grid">
+<div><label>年龄（岁，18–120）</label><input id="age" type="number" value="60" min="18" max="120" step="1"></div>
+<div><label>性别</label><select id="sex"><option value="m">男</option><option value="f">女</option></select></div>
+<div><label>血肌酐 Scr</label><input id="scr" type="number" value="1.0" step="0.01" min="0"></div>
+<div><label>肌酐单位</label><select id="unit"><option value="mgdl">mg/dL</option><option value="umol">µmol/L</option></select></div>
+<div><label>体重（kg，Cockcroft-Gault 用）</label><input id="wt" type="number" value="70" min="20" max="300" step="0.1"></div>
+</div>
+<div class="err" id="err"></div>
+<button class="go" id="go">计算三种公式</button>
+</div>
+<div class="card hide" id="out">
+<table><thead><tr><th>算法</th><th>结果</th><th>单位</th><th>CKD 分期</th></tr></thead><tbody id="tb"></tbody></table>
+<div class="mid" id="mid" style="margin-top:8px"></div>
+</div>
+</div>
+
+<div id="src" class="page hide"><div class="card"><pre><code id="srcc"></code></pre></div></div>
+
+<div id="test" class="page hide"><div class="card">
+<button class="go" id="runtest">运行全部测试</button>
+<div id="tsum" class="mid" style="margin:10px 0"></div>
+<table><thead><tr><th>#</th><th>用例</th><th>期望</th><th>实测</th><th>状态</th></tr></thead><tbody id="tres"></tbody></table>
+</div></div>
+
+<div id="doc" class="page hide"><div class="card f">
+<h3>CKD-EPI 2021（不含种族项）</h3>
+eGFR = 142 × min(Scr/κ,1)<sup>α</sup> × max(Scr/κ,1)<sup>−1.200</sup> × 0.9938<sup>年龄</sup> × 1.012（女性）<br>
+κ = 0.7（女）/ 0.9（男）；α = −0.241（女）/ −0.302（男）。出处：Inker LA, et al. New Creatinine- and Cystatin C–Based Equations to Estimate GFR without Race. <i>N Engl J Med</i> 2021;385:1737–1749.
+<h3>MDRD（4 变量，IDMS 可溯源）</h3>
+eGFR = 175 × Scr<sup>−1.154</sup> × 年龄<sup>−0.203</sup> × 0.742（女性）。出处：Levey AS, et al. Using Standardized Serum Creatinine Values in the Modification of Diet in Renal Disease Study Equation. <i>Ann Intern Med</i> 2006;145:247–254.
+<h3>Cockcroft-Gault</h3>
+CrCl = (140 − 年龄) × 体重 / (72 × Scr) × 0.85（女性）。出处：Cockcroft DW, Gault MH. Prediction of Creatinine Clearance from Serum Creatinine. <i>Nephron</i> 1976;16:31–41.
+<h3>CKD 分期（按 eGFR）</h3>
+G1 ≥90；G2 60–89；G3a 45–59；G3b 30–44；G4 15–29；G5 &lt;15。出处：KDIGO 2012 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease. <i>Kidney Int Suppl</i> 2013;3:1–150.
+<h3>单位换算</h3>
+Scr 1 mg/dL = 88.4 µmol/L（肌酐分子量 113.12 g/mol）。
+<h3>适用人群与局限</h3>
+<b>CKD-EPI 2021：</b>≥18 岁成人、血肌酐处于稳态者，常规首选。不适用于急性肾损伤、儿童、孕妇、极端体型（BMI&lt;20 或 &gt;40）及严重肌肉量异常者。<br>
+<b>MDRD：</b>成人；eGFR&lt;60 时较可靠，&gt;60 时系统性低估，不宜用于健康人群筛查。<br>
+<b>Cockcroft-Gault：</b>输出的是肌酐清除率 CrCl（非 eGFR），主要用于药物剂量调整；体重通常取实际体重，肥胖者建议按理想体重复核。
+<h3>声明</h3>
+本工具为计算演示，结果仅供临床参考，不能替代医生诊断与实验室检查。
+</div></div>
+
+<div id="ver">v1.0.0-gfr-ckdepi 20261108</div>
+<script>
+function $(i){return document.getElementById(i)}
+function ckdepi(age,sex,scr){var k=sex=='f'?0.7:0.9,a=sex=='f'?-0.241:-0.302;return 142*Math.pow(Math.min(scr/k,1),a)*Math.pow(Math.max(scr/k,1),-1.2)*Math.pow(0.9938,age)*(sex=='f'?1.012:1)}
+function mdrd(age,sex,scr){return 175*Math.pow(scr,-1.154)*Math.pow(age,-0.203)*(sex=='f'?0.742:1)}
+function cg(age,sex,scr,wt){return (140-age)*wt/(72*scr)*(sex=='f'?0.85:1)}
+function stage(e){return e>=90?'G1':e>=60?'G2':e>=45?'G3a':e>=30?'G3b':e>=15?'G4':'G5'}
+function toMgdl(v,u){return u=='umol'?v/88.4:v}
+function compute(o){var s=toMgdl(o.scr,o.unit);return{scr:s,a:ckdepi(o.age,o.sex,s),b:mdrd(o.age,o.sex,s),c:cg(o.age,o.sex,s,o.wt)}}
+function validate(o){
+ if(!isFinite(o.age)||o.age<18||o.age>120)return '年龄需为 18–120 岁之间的数字';
+ if(!isFinite(o.scr)||o.scr<=0)return '血肌酐必须为正数';
+ if(o.unit=='mgdl'&&o.scr>35)return '血肌酐超出范围：mg/dL 应 ≤35（约 3100 µmol/L）';
+ if(o.unit=='umol'&&o.scr>3100)return '血肌酐超出范围：µmol/L 应 ≤3100';
+ if(!isFinite(o.wt)||o.wt<20||o.wt>300)return '体重需在 20–300 kg 之间（Cockcroft-Gault 必需）';
+ return ''}
+function r1(x){return Math.round(x*10)/10}
+
+$('go').onclick=function(){
+ var o={age:parseFloat($('age').value),sex:$('sex').value,scr:parseFloat($('scr').value),unit:$('unit').value,wt:parseFloat($('wt').value)};
+ var e=validate(o);$('err').textContent=e;$('out').className='card'+(e?' hide':'');
+ if(e)return;
+ var r=compute(o);
+ $('mid').textContent='中间量：Scr = '+r1(r.scr)+' mg/dL'+(o.unit=='umol'?'（'+o.scr+' µmol/L ÷ 88.4 换算）':'')+' · κ = '+(o.sex=='f'?0.7:0.9)+' · α = '+(o.sex=='f'?-0.241:-0.302);
+ var rows=[['CKD-EPI 2021',r.a,'mL/min/1.73m²',stage(r.a),'≥18岁成人首选'],
+  ['MDRD（IDMS 4变量）',r.b,'mL/min/1.73m²',stage(r.b),'eGFR<60 时较可靠'],
+  ['Cockcroft-Gault',r.c,'mL/min（CrCl）','—','药物剂量调整']];
+ $('tb').innerHTML=rows.map(function(x){return '<tr><td>'+x[0]+'<div class="mid">'+x[4]+'</div></td><td><b>'+r1(x[1]).toFixed(1)+'</b></td><td class="mid">'+x[2]+'</td><td><span class="stage">'+x[3]+'</span></td></tr>'}).join('');
+};
+
+var tabs=document.querySelectorAll('.tabs button');
+for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){
+ var p=this.dataset.p;
+ for(var j=0;j<tabs.length;j++)tabs[j].className=tabs[j]==this?'on':'';
+ ['calc','src','test','doc'].forEach(function(k){$(k).className='page'+(k==p?'':' hide')});
+};
+$('srcc').textContent=[ckdepi,mdrd,cg,stage,toMgdl,compute,validate].map(String).join('\n\n');
+
+var T=[
+ ['CKD-EPI 60岁男 Scr1.0',function(){return ckdepi(60,'m',1.0)},86.2,0.5],
+ ['CKD-EPI 50岁女 Scr0.8',function(){return ckdepi(50,'f',0.8)},89.7,0.5],
+ ['CKD-EPI 40岁男 Scr0.7',function(){return ckdepi(40,'m',0.7)},119.5,0.5],
+ ['CKD-EPI 70岁女 Scr1.5',function(){return ckdepi(70,'f',1.5)},37.3,0.5],
+ ['MDRD 60岁男 Scr1.0',function(){return mdrd(60,'m',1.0)},76.2,0.5],
+ ['MDRD 50岁女 Scr0.8',function(){return mdrd(50,'f',0.8)},75.9,0.5],
+ ['CG 60岁男 70kg Scr1.0',function(){return cg(60,'m',1.0,70)},77.8,0.3],
+ ['CG 50岁女 60kg Scr0.8',function(){return cg(50,'f',0.8,60)},79.7,0.3],
+ ['分期 45 → G3a',function(){return stage(45)},'G3a'],
+ ['分期 14.9 → G5',function(){return stage(14.9)},'G5'],
+ ['换算 88.4µmol/L → 1.0mg/dL',function(){return toMgdl(88.4,'umol')},1.0,0.0001]
+];
+$('runtest').onclick=function(){
+ var p=0,h='';
+ T.forEach(function(t,i){
+  var v;try{v=t[1]()}catch(e){v=NaN}
+  var ok=typeof t[2]=='number'?Math.abs(v-t[2])<=t[3]:String(v)===t[2];
+  if(ok)p++;
+  h+='<tr><td>'+(i+1)+'</td><td>'+t[0]+'</td><td>'+t[2]+'</td><td>'+(typeof v=='number'?v.toFixed(2):v)+'</td><td class="'+(ok?'ok':'no')+'">'+(ok?'通过 ✓':'失败 ✗')+'</td></tr>';
+ });
+ $('tsum').innerHTML='共 '+T.length+' 条：通过 <b class="ok">'+p+'</b> 条，失败 <b class="no">'+(T.length-p)+'</b> 条';
+ $('tres').innerHTML=h;
+};
+</script></body></html>

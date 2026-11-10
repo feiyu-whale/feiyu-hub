@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成语接龙</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f4f8;color:#1a202c;font-size:15px;line-height:1.6;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:12px}
+h1{text-align:center;font-size:22px;padding:16px 0 8px;color:#2d3748}
+h1 .emoji{font-size:26px}
+.subtitle{text-align:center;color:#718096;font-size:13px;margin-bottom:16px}
+.panel{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.panel-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#2d3748}
+.mode-selector{display:flex;gap:8px;margin-bottom:12px}
+.mode-btn{flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;text-align:center;transition:all .2s}
+.mode-btn.active{border-color:#4299e1;background:#ebf8ff;color:#2b6cb0;font-weight:700}
+.mode-btn:hover{border-color:#4299e1}
+.input-row{display:flex;gap:8px;margin-bottom:12px}
+.input-row input{flex:1;padding:10px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;outline:none;transition:border-color .2s}
+.input-row input:focus{border-color:#4299e1}
+.input-row button{padding:10px 16px;background:#4299e1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.input-row button:hover{background:#3182ce}
+.input-row button:disabled{background:#a0aec0;cursor:not-allowed}
+.btn-row{display:flex;gap:8px}
+.btn-secondary{flex:1;padding:8px;background:#edf2f7;color:#4a5568;border:none;border-radius:8px;font-size:13px;cursor:pointer}
+.btn-secondary:hover{background:#e2e8f0}
+.chain-area{max-height:400px;overflow-y:auto;padding:4px 0}
+.chain-item{padding:8px 12px;margin-bottom:6px;border-radius:8px;font-size:15px;display:flex;align-items:center;gap:8px;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.chain-item.user{background:#ebf8ff;border-left:3px solid #4299e1}
+.chain-item.computer{background:#fef5e7;border-left:3px solid #ed8936}
+.chain-item.system{background:#f0fff4;border-left:3px solid #48bb78;text-align:center;justify-content:center;font-size:13px;color:#276749}
+.chain-item .role{font-size:12px;color:#718096;min-width:36px}
+.chain-item .word{font-weight:700;font-size:16px}
+.chain-item .pinyin{font-size:12px;color:#a0aec0;margin-left:auto}
+.status-bar{padding:10px 12px;background:#f7fafc;border-radius:8px;font-size:13px;color:#4a5568;margin-bottom:12px;text-align:center}
+.status-bar .highlight{color:#e53e3e;font-weight:700}
+.hint-box{padding:10px 12px;background:#fffff0;border:1px solid #fefcbf;border-radius:8px;font-size:13px;color:#744210;margin-bottom:12px}
+.score-board{display:flex;justify-content:space-around;padding:10px;background:#f7fafc;border-radius:8px;margin-bottom:12px}
+.score-item{text-align:center}
+.score-item .label{font-size:12px;color:#718096}
+.score-item .value{font-size:20px;font-weight:700;color:#2d3748}
+.source-section{margin-top:20px;padding:16px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.source-section h3{font-size:14px;margin-bottom:8px;color:#2d3748}
+.source-section p{font-size:13px;color:#718096;line-height:1.8}
+.version{position:fixed;bottom:8px;right:8px;font-size:11px;color:#a0aec0}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 20px;background:#e53e3e;color:#fff;border-radius:8px;font-size:14px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.success{background:#38a169}
+@media(max-width:640px){.container{padding:8px}h1{font-size:20px}.chain-item .word{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1><span class="emoji">🐉</span> 成语接龙</h1>
+<p class="subtitle">内置成语库 · 同字/同音双模式 · 人机对战</p>
+
+<div class="panel">
+<div class="panel-title">🎮 游戏设置</div>
+<div class="mode-selector">
+<button class="mode-btn active" data-mode="char" onclick="setMode('char')">🔤 同字接龙</button>
+<button class="mode-btn" data-mode="pinyin" onclick="setMode('pinyin')">🔊 同音接龙</button>
+</div>
+<div class="input-row">
+<input type="text" id="userInput" placeholder="请输入四字成语..." maxlength="8" onkeydown="if(event.key==='Enter')submitWord()">
+<button id="submitBtn" onclick="submitWord()">出词</button>
+</div>
+<div class="btn-row">
+<button class="btn-secondary" onclick="startNewGame()">🔄 新游戏</button>
+<button class="btn-secondary" onclick="showHint()">💡 提示</button>
+<button class="btn-secondary" onclick="surrender()">🏳️ 认输</button>
+</div>
+</div>
+
+<div class="score-board">
+<div class="score-item"><div class="label">回合</div><div class="value" id="roundCount">0</div></div>
+<div class="score-item"><div class="label">你</div><div class="value" id="userScore">0</div></div>
+<div class="score-item"><div class="label">电脑</div><div class="value" id="compScore">0</div></div>
+</div>
+
+<div class="status-bar" id="statusBar">点击「新游戏」开始，或直接输入成语开始接龙</div>
+
+<div class="panel">
+<div class="panel-title">📜 接龙记录</div>
+<div class="chain-area" id="chainArea">
+<div class="chain-item system">等待开始...</div>
+</div>
+</div>
+
+<div class="hint-box" id="hintBox" style="display:none"></div>
+
+<div class="source-section">
+<h3>📚 数据来源</h3>
+<p>1. 成语收录依据：《现代汉语词典》（第7版，中国社会科学院语言研究所词典编辑室编，商务印书馆，2016年）及《汉语成语大词典》（中华书局）。<br>
+2. 拼音标注依据：《汉语拼音方案》（GB/T 16159-2012）及《现代汉语词典》注音。<br>
+3. 同字接龙规则：下一成语首字与上一成语末字相同（严格字形一致）。<br>
+4. 同音接龙规则：下一成语首字拼音（不含声调）与上一成语末字拼音（不含声调）相同。<br>
+5. 注：本工具内置成语库为常用成语子集，具体完整词条请查阅上述标准原文。</p>
+</div>
+</div>
+
+<div class="version">v1.0.0-成语接龙游戏 20261021</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// 成语库：word为成语，py为各字拼音（不含声调）
+const IDIOM_DATA=[
+"一心一意|yi,xin,yi,yi","意气风发|yi,qi,feng,fa","发愤图强|fa,fen,tu,qiang","强词夺理|qiang,ci,duo,li","理直气壮|li,zhi,qi,zhuang","壮志凌云|zhuang,zhi,ling,yun","云开雾散|yun,kai,wu,san","散兵游勇|san,bing,you,yong","勇往直前|yong,wang,zhi,qian","前功尽弃|qian,gong,jin,qi",
+"弃暗投明|qi,an,tou,ming","明察秋毫|ming,cha,qiu,hao","毫不犹豫|hao,bu,you,yu","语重心长|yu,zhong,xin,chang","长治久安|chang,zhi,jiu,an","安居乐业|an,ju,le,ye","业精于勤|ye,jing,yu,qin","勤能补拙|qin,neng,bu,zhuo","拙口钝腮|zhuo,kou,dun,sai",
+"心花怒放|xin,hua,nu,fang","放虎归山|fang,hu,gui,shan","山清水秀|shan,qing,shui,xiu","秀色可餐|xiu,se,ke,can","餐风露宿|can,feng,lu,xiu","宿弊一清|su,bi,yi,qing","清心寡欲|qing,xin,gua,yu","欲罢不能|yu,ba,bu,neng","能者多劳|neng,zhe,duo,lao","劳苦功高|lao,ku,gong,gao",
+"高瞻远瞩|gao,zhan,yuan,zhu","瞩目结舌|zhu,mu,jie,she","舍己为人|she,ji,wei,ren","人山人海|ren,shan,ren,hai","海阔天空|hai,kuo,tian,kong","空前绝后|kong,qian,jue,hou","后来居上|hou,lai,ju,shang","上行下效|shang,xing,xia,xiao","效犬马力|xiao,quan,ma,li","力不从心|li,bu,cong,xin",
+"心旷神怡|xin,kuang,shen,yi","怡然自得|yi,ran,zi,de","得心应手|de,xin,ying,shou","手到病除|shou,dao,bing,chu","除旧布新|chu,jiu,bu,xin","新陈代谢|xin,chen,dai,xie","谢天谢地|xie,tian,xie,di","地大物博|di,da,wu,bo","博古通今|bo,gu,tong,jin","今非昔比|jin,fei,xi,bi",
+"比翼双飞|bi,yi,shuang,fei","飞蛾扑火|fei,e,pu,huo","火中取栗|huo,zhong,qu,li","栗栗危惧|li,li,wei,ju","惧内之讥|ju,nei,zhi,ji","计日程功|ji,ri,cheng,gong","功败垂成|gong,bai,chui,cheng","成人之美|cheng,ren,zhi,mei","美不胜收|mei,bu,sheng,shou","收放自如|shou,fang,zi,ru",
+"如鱼得水|ru,yu,de,shui","水到渠成|shui,dao,qu,cheng","成竹在胸|cheng,zhu,zai,xiong","胸有成竹|xiong,you,cheng,zhu","竹篮打水|zhu,lan,da,shui","水落石出|shui,luo,shi,chu","出人头地|chu,ren,tou,di","地动山摇|di,dong,shan,yao","摇旗呐喊|yao,qi,ne,han","喊冤叫屈|han,yuan,jiao,qu",
+"屈指可数|qu,zhi,ke,shu","数一数二|shu,yi,shu,er","二龙戏珠|er,long,xi,zhu","珠联璧合|zhu,lian,bi,he","合情合理|he,qing,he,li","理屈词穷|li,qu,ci,qiong","穷途末路|qiong,tu,mo,lu","路不拾遗|lu,bu,shi,yi","遗臭万年|yi,chou,wan,nian","年富力强|nian,fu,li,qiang",
+"强弩之末|qiang,nu,zhi,mo","末学肤受|mo,xue,fu,shou","受宠若惊|shou,chong,ruo,jing","惊天动地|jing,tian,dong,di","地久天长|di,jiu,tian,chang","长驱直入|chang,qu,zhi,ru","入木三分|ru,mu,san,fen","分秒必争|fen,miao,bi,zheng","争先恐后|zheng,xian,kong,hou","后生可畏|hou,sheng,ke,wei",
+"畏首畏尾|wei,shou,wei,wei","尾大不掉|wei,da,bu,diao","掉以轻心|diao,yi,qing,xin","心直口快|xin,zhi,kou,kuai","快马加鞭|kuai,ma,jia,bian","鞭长莫及|bian,chang,mo,ji","及锋而试|ji,feng,er,shi","试才录用|shi,cai,lu,yong","用人不疑|yong,ren,bu,yi","疑神疑鬼|yi,shen,yi,gui",
+"鬼斧神工|gui,fu,shen,gong","工欲善事|gong,yu,shan,shi","事半功倍|shi,ban,gong,bei","倍道而行|bei,dao,er,xing","行云流水|xing,yun,liu,shui","水泄不通|shui,xie,bu,tong","通情达理|tong,qing,da,li","理直气壮|li,zhi,qi,zhuang","壮士解腕|zhuang,shi,jie,wan","腕骨之伤|wan,gu,zhi,shang",
+"天马行空|tian,ma,xing,kong","空穴来风|kong,xue,lai,feng","风调雨顺|feng,tiao,yu,shun","顺水推舟|shun,shui,tui,zhou","舟车劳顿|zhou,che,lao,dun","顿足捶胸|dun,zu,chui,xiong","胸怀大志|xiong,huai,da,zhi","志同道合|zhi,tong,dao,he","和风细雨|he,feng,xi,yu","雨过天晴|yu,guo,tian,qing",
+"晴天霹雳|qing,tian,pi,li","励精图治|li,jing,tu,zhi","治国安邦|zhi,guo,an,bang","邦家之光|bang,jia,zhi,guang","光明磊落|guang,ming,lei,luo","落花流水|luo,hua,liu,shui","水涨船高|shui,zhang,chuan,gao","高枕无忧|gao,zhen,wu,you","忧国忧民|you,guo,you,min","民以食天|min,yi,shi,tian",
+"天经地义|tian,jing,di,yi","义不容辞|yi,bu,rong,ci","辞旧迎新|ci,jiu,ying,xin","欣欣向荣|xin,xin,xiang,rong","荣华富贵|rong,hua,fu,gui","贵人多忘|gui,ren,duo,wang","望梅止渴|wang,mei,zhi,ke","刻骨铭心|ke,gu,ming,xin","心血来潮|xin,xue,lai,chao","潮鸣电掣|chao,ming,dian,che",
+"车水马龙|che,shui,ma,long","龙飞凤舞|long,fei,feng,wu","舞文弄墨|wu,wen,nong,mo","墨守成规|mo,shou,cheng,gui","规行矩步|gui,xing,ju,bu","步步为营|bu,bu,wei,ying","营私舞弊|ying,si,wu,bi","弊绝风清|bi,jue,feng,qing","清风明月|qing,feng,ming,yue","月明星稀|yue,ming,xing,xi",
+"稀奇古怪|xi,qi,gu,guai","怪力乱神|guai,li,luan,shen","神出鬼没|shen,chu,gui,mo","没齿不忘|mo,chi,bu,wang","忘恩负义|wang,en,fu,yi","义愤填膺|yi,fen,tian,ying","膺箓受图|ying,lu,shou,tu","图穷匕见|tu,qiong,bi,jian","见多识广|jian,duo,shi,guang","广开言路|guang,kai,yan,lu",
+"路遥知马力|lu,yao,zhi,ma","力挽狂澜|li,wan,kuang,lan","澜倒波随|lan,dao,bo,sui","随波逐流|sui,bo,zhu,liu","流连忘返|liu,lian,wang,fan","返璞归真|fan,pu,gui,zhen","真才实学|zhen,cai,shi,xue","学而不厌|xue,er,bu,yan","厌旧喜新|yan,jiu,xi,xin","新仇旧恨|xin,chou,jiu,hen",
+"恨之入骨|hen,zhi,ru,gu","骨瘦如柴|gu,shou,ru,chai","柴米油盐|chai,mi,you,yan","言行一致|yan,xing,yi,zhi","致远任重|zhi,yuan,ren,zhong","重于泰山|zhong,yu,tai,shan","山穷水尽|shan,qiong,shui,jin","尽善尽美|jin,shan,jin,mei","美中不足|mei,zhong,bu,zu","足智多谋|zu,zhi,duo,mou",
+"谋事在人|mou,shi,zai,ren","人定胜天|ren,ding,sheng,tian","天下为公|tian,xia,wei,gong","公而忘私|gong,er,wang,si","私心杂念|si,xin,za,nian","念念不忘|nian,nian,bu,wang","望而生畏|wang,er,sheng,wei","畏缩不前|wei,suo,bu,qian","前仆后继|qian,pu,hou,ji","继往开来|ji,wang,kai,lai",
+"来龙去脉|lai,long,qu,mai","脉脉含情|mo,mo,han,qing","情同手足|qing,tong,shou,zu","足蹈手舞|zu,dao,shou,wu","舞衫歌扇|wu,shan,ge,shan","扇风点火|shan,feng,dian,huo","火烧眉毛|huo,shao,mei,mao","毛遂自荐|mao,sui,zi,jian","荐贤举能|jian,xian,ju,neng","能言善辩|neng,yan,shan,bian",
+"辩论是非|bian,lun,shi,fei","非同小可|fei,tong,xiao,ke","可歌可泣|ke,ge,ke,qi","泣不成声|qi,bu,cheng,sheng","声东击西|sheng,dong,ji,xi","西装革履|xi,zhuang,ge,lv","履险如夷|lv,xian,ru,yi","夷然自若|yi,ran,zi,ruo","若有若无|ruo,you,ruo,wu","无中生有|wu,zhong,sheng,you",
+"有备无患|you,bei,wu,huan","患得患失|huan,de,huan,shi","失之交臂|shi,zhi,jiao,bi","臂指相用|bi,zhi,xiang,yong","用行舍藏|yong,xing,she,cang","藏龙卧虎|cang,long,wo,hu","虎头蛇尾|hu,tou,she,wei","尾生抱柱|wei,sheng,bao,zhu","柱石之坚|zhu,shi,zhi,jian","坚不可摧|jian,bu,ke,cui",
+"摧枯拉朽|cui,ku,la,xiu","朽木不可雕|xiu,mu,bu,ke","雕虫小技|diao,chong,xiao,ji","技高一筹|ji,gao,yi,chou","筹谋策划|chou,mou,ce,hua","画蛇添足|hua,she,tian,zu","足不出户|zu,bu,chu,hu","户枢不蠹|hu,shu,bu,du","蠹国害民|du,guo,hai,min","民不聊生|min,bu,liao,sheng",
+"生龙活虎|sheng,long,hu,hu","虎视眈眈|hu,shi,dan,dan","眈眈逐逐|dan,dan,zhu,zhu","逐鹿中原|zhu,luz,zhong,yuan","原形毕露|yuan,xing,bi,lu","露宿风餐|lu,su,feng,can","餐风饮露|can,feng,yin,lu","露水夫妻|lu,shui,fu,qi","妻离子散|qi,li,zi,san","散闷消愁|san,men,xiao,chou",
+"愁眉苦脸|chou,mei,ku,lian","脸红耳赤|lian,hong,er,chi","赤胆忠心|chi,dan,zhong,xin","心猿意马|xin,yuan,yi,ma","马到成功|ma,dao,cheng,gong","功成名就|gong,cheng,ming,jiu","就事论事|jiu,shi,lun,shi","事在人为|shi,zai,ren,wei","为所欲为|wei,suo,yu,wei","为富不仁|wei,fu,bu,ren",
+"仁至义尽|ren,zhi,yi,jin","尽忠报国|jin,zhong,bao,guo","国色天香|guo,se,tian,xiang","香消玉殒|xiang,xiao,yu,yun","殒身不恤|yun,shen,bu,xu","恤老怜贫|xu,lao,lian,pin","贫贱不移|pin,jian,bu,yi","移花接木|yi,hua,jie,mu","木已成舟|mu,yi,cheng,zhou","舟中敌国|zhou,zhong,di,guo",
+"国泰民安|guo,tai,min,an","安步当车|an,bu,dang,che","车殆马烦|che,dai,ma,fan","烦言碎语|fan,yan,sui,yu","语无伦次|yu,wu,lun,ci","次第花开|ci,di,hua,kai","开天辟地|kai,tian,pi,di","地老天荒|di,lao,tian,huang","荒诞不经|huang,dan,bu,jing","经天纬地|jing,tian,wei,di",
+"地广人稀|di,guang,ren,xi","稀世之宝|xi,shi,zhi,bao","宝刀不老|bao,dao,bu,lao","老当益壮|lao,dang,yi,zhuang","壮心不已|zhuang,xin,bu,yi","以逸待劳|yi,yi,dai,lao","劳民伤财|lao,min,shang,cai","财大气粗|cai,da,qi,cu","粗心大意|cu,xin,da,yi","意味深长|yi,wei,shen,chang",
+"长话短说|chang,hua,duan,shuo","说三道四|shuo,san,dao,si","四面楚歌|si,mian,chu,ge","歌舞升平|ge,wu,sheng,ping","平分秋色|ping,fen,qiu,se","色厉内荏|se,li,nei,ren","荏弱无能|ren,ruo,wu,neng","能工巧匠|neng,gong,qiao,jiang","匠心独运|jiang,xin,du,yun","运筹帷幄|yun,chou,wei,wo",
+"卧薪尝胆|wo,xin,chang,dan","胆大心细|dan,da,xin,xi","细水长流|xi,shui,chang,liu","流芳百世|liu,fang,bai,shi","世外桃源|shi,wai,tao,yuan","源远流长|yuan,yuan,liu,chang","长命百岁|chang,ming,bai,sui","岁岁平安|sui,sui,ping,an","安然无恙|an,ran,wu,yang","恙及池鱼|yang,ji,chi,yu",
+"鱼目混珠|yu,mu,hun,zhu","珠光宝气|zhu,guang,bao,qi","气壮山河|qi,zhuang,shan,he","河清海晏|he,qing,hai,yan","晏然自若|yan,ran,zi,ruo","若即若离|ruo,ji,ruo,li","离群索居|li,qun,suo,ju","居安思危|ju,an,si,wei","危言耸听|wei,yan,song,ting","听天由命|ting,tian,you,ming",
+"命中注定|ming,zhong,zhu,ding","定国安邦|ding,guo,an,bang","邦以民为本|bang,yi,min,wei","本末倒置|ben,mo,dao,zhi","置之度外|zhi,zhi,du,wai","外强中干|wai,qiang,zhong,gan","干柴烈火|gan,chai,lie,huo","火烧火燎|huo,shao,huo,liao","燎原之火|liao,yuan,zhi,huo","火树银花|huo,shu,yin,hua",
+"花好月圆|hua,hao,yue,yuan","圆木警枕|yuan,mu,jing,zhen","枕戈待旦|zhen,ge,dai,dan","旦夕祸福|dan,xi,huo,fu","福如东海|fu,ru,dong,hai","海枯石烂|hai,ku,shi,lan","烂醉如泥|lan,zui,ru,ni","泥牛入海|ni,niu,ru,hai","海底捞月|hai,di,lao,yue","月下花前|yue,xia,hua,qian",
+"前呼后拥|qian,hu,hou,yong","拥兵自重|yong,bing,zi,zhong","重蹈覆辙|chong,dao,fu,zhe","辙乱旗靡|zhe,luan,qi,mi","靡靡之音|mi,mi,zhi,yin","音容笑貌|yin,rong,xiao,mao","貌合神离|mao,he,shen,li","离经叛道|li,jing,pan,dao","道听途说|dao,ting,tu,shuo","说长道短|shuo,chang,dao,duan",
+"短兵相接|duan,bing,xiang,jie","接二连三|jie,er,lian,san","三心二意|san,xin,er,yi","意气用事|yi,qi,yong,shi","事倍功半|shi,bei,gong,ban","半途而废|ban,tu,er,fei","废寝忘食|fei,qin,wang,shi","食不果腹|shi,bu,guo,fu","腹背受敌|fu,bei,shou,di","敌众我寡|di,zhong,wo,gua",
+"寡不敌众|gua,bu,di,zhong","众志成城|zhong,zhi,cheng,cheng","城下之盟|cheng,xia,zhi,meng","盟山誓海|meng,shan,shi,hai","海誓山盟|hai,shi,shan,meng","盟约之信|meng,yue,zhi,xin","信口开河|xin,kou,kai,he","河东狮子|he,dong,shi,zi","子虚乌有|zi,xu,wu,you","有口皆碑|you,kou,jie,bei",
+"碑沉汉水|bei,chen,han,shui","水乳交融|shui,ru,jiao,rong","融会贯通|rong,hui,guan,tong","通宵达旦|tong,xiao,da,dan","旦种暮成|dan,zhong,mu,cheng","成仁取义|cheng,ren,qu,yi","义正词严|yi,zheng,ci,yan","严阵以待|yan,zhen,yi,dai","待人接物|dai,ren,jie,wu","物极必反|wu,ji,bi,fan",
+"反败为胜|fan,bai,wei,sheng","胜券在握|sheng,quan,wo,wo","握发吐哺|wo,fu,tu,bu","哺糟啜醨|bu,zao,chuoli","花言巧语|hua,yan,qiao,yu","语重心长|yu,zhong,xin,chang","长风破浪|chang,feng,po,lang","浪子回头|lang,zi,hui,tou","头头是道|tou,tou,shi,dao","道貌岸然|dao,mao,an,ran",
+"然荻读书|ran,du,shu","书声琅琅|shu,sheng,lang,lang","琅琅上口|lang,lang,shang,kou","口是心非|kou,shi,xin,fei","非驴非马|fei,lv,fei,ma","马不停蹄|ma,bu,ting,ti","蹄间三寻|ti,jian,san,xun","寻根问底|xun,gen,wen,di","底死谩生|di,si,man,sheng","生不逢时|sheng,bu,feng,shi",
+"时来运转|shi,lai,yun,zhuan","转危为安|zhuan,wei,wei,an","安贫乐道|an,pin,le,dao","道不拾遗|dao,bu,shi,yi","遗世独立|yi,shi,du,li","立竿见影|li,gan,jian,ying","影影绑绑|ying,ying,bang,bang","绑手绑脚|bang,shou,bang,jiao","脚踏实地|jiao,ta,shi,di","地覆天翻|di,fu,tian,fan",
+"翻山越岭|fan,shan,yue,ling","岭上开梅|ling,shang,kai,mei","梅妻鹤子|mei,qi,he,zi","子承父业|zi,cheng,fu,ye","业业兢兢|ye,ye,jing,jing","兢兢业业|jing,jing,ye,ye","业精于勤|ye,jing,yu,qin","勤俭持家|qin,jian,chi,jia","家喻户晓|jia,yu,hu,xiao","晓之以理|xiao,zhi,yi,li",
+"龙马精神|long,ma,jing,shen","神机妙算|shen,ji,miao,suan","算无遗策|suan,wu,yi,ce","策马扬鞭|ce,ma,yang,bian","鞭辟入里|bian,pi,ru,li","里应外合|li,ying,wai,he","合二为一|he,er,wei,yi","一马当先|yi,ma,dang,xian","先发制人|xian,fan,zhi,ren","人杰地灵|ren,jie,di,ling",
+"灵机一动|ling,ji,yi,dong","动辄得咎|dong,zhe,de,jiu","咎由自取|jiu,you,zi,qu","取长补短|qu,chang,bu,duan","短小精悍|duan,xiao,jing,han","悍然不顾|han,ran,bu,gu","顾此失彼|gu,ci,shi,bi","彼竭我盈|bi,jie,wo,ying","盈千累万|ying,qian,lei,wan","万象更新|wan,xiang,geng,xin",
+"心满意足|xin,man,yi,zu","足不出户|zu,bu,chu,hu","户限为穿|hu,xian,wei,chuan","穿针引线|chuan,zhen,yin,xian","线索中断|xian,suo,zhong,duan","断章取义|duan,zhang,qu,yi","义薄云天|yi,bo,yun,tian","天衣无缝|tian,yi,wu,feng","缝补连缀|feng,bu,lian,zhui","缀句成文|zhui,ju,cheng,wen",
+"文质彬彬|wen,zhi,bin,bin","彬彬有礼|bin,bin,you,li","礼尚往来|li,shang,wang,lai","来日方长|lai,ri,fang,chang","长驱直进|chang,qu,zhi,jin","进退两难|jin,tui,liang,nan","难能可贵|nan,neng,ke,gui","贵在知心|gui,zai,zhi,xin","心照不宣|xin,zhao,bu,xuan","宣之于口|xuan,zhi,yu,kou",
+"口蜜腹剑|kou,mi,fu,jian","剑拔弩张|jian,ba,nu,zhang","张冠李戴|zhang,guan,li,dai","戴罪立功|dai,zui,li,gong","功德无量|gong,de,wu,liang","量力而行|liang,li,er,xing","行之有效|xing,zhi,you,xiao","效死输忠|xiao,si,shu,zhong","忠言逆耳|zhong,yan,ni,er","耳濡目染|er,ru,mu,ran",
+"染苍染黄|ran,cang,ran,huang","黄粱一梦|huang,liang,yi,meng","梦寐以求|meng,mei,yi,qiu","求之不得|qiu,zhi,bu,de","得寸进尺|de,cun,jin,chi","尺有所短|chi,you,suo,duan","短叹长吁|duan,tan,chang,yu","吁天呼地|yu,tian,hu,di","地北天南|di,bei,tian,nan","南辕北辙|nan,yuan,bei,zhe",
+"辙乱旗靡|zhe,luan,qi,mi","靡不有初|mi,bu,you,chu","初出茅庐|chu,chu,mao,lu","庐山真面|lu,shan,zhen,mian","面面俱到|mian,mian,ju,dao","到此为止|dao,ci,wei,zhi","止于至善|zhi,yu,zhi,shan","善始善终|shan,shi,shan,zhong","终身大事|zhong,shen,da,shi","事与愿违|shi,yu,yuan,wei",
+"违心之论|wei,xin,zhi,lun","论功行赏|lun,gong,xing,shang","赏心悦目|shang,xin,yue,mu","目不暇接|mu,bu,xia,jie","接风洗尘|jie,feng,xi,chen","尘埃落定|chen,ai,luo,ding","定海神针|ding,hai,shen,zhen","针锋相对|zhen,feng,xiang,dui","对牛弹琴|dui,niu,tan,qin","琴棋书画|qin,qi,shu,hua",
+"画龙点睛|hua,long,dian,jing","睛目之明|jing,mu,zhi,ming","明辨是非|ming,bian,shi,fei","非亲非故|fei,qin,fei,gu","故步自封|gu,bu,zi,feng","封官许愿|feng,guan,xu,yuan","愿者上钩|yuan,zhe,shang,gou","钩心斗角|gou,xin,dou,jiao","角立杰出|jiao,li,jie,chu","出类拔萃|chu,lei,ba,cui",
+"萃于一堂|cui,yu,yi,tang","堂堂正正|tang,tang,zheng,zheng","正人君子|zheng,ren,jun,zi","子午卯酉|zi,wu,mao,you","酉时三刻|you,shi,san,ke","刻意求工|ke,yi,qiu,gong","工工整整|gong,gong,zheng,zheng","整顿乾坤|zheng,dun,qian,kun","坤天之德|kun,tian,zhi,de","德高望重|de,gao,wang,zhong",
+"重见天日|chong,jian,tian,ri","日新月异|ri,xin,yue,yi","异想天开|yi,xiang,tian,kai","开门见山|kai,men,jian,shan","山盟海誓|shan,meng,hai,shi","誓死不二|shi,si,bu,er","二姓之好|er,xing,zhi,hao","好高骛远|hao,gao,wu,yuan","远走高飞|yuan,zou,gao,fei","飞檐走壁|fei,yan,zou,bi",
+"壁垒森严|bi,lei,sen,yan","严刑峻法|yan,xing,jun,fa","法不阿贵|fa,bu,a,gui","贵贱无常|gui,jian,wu,chang","常胜将军|chang,sheng,jiang,jun","军令如山|jun,ling,ru,shan","山崩地裂|shan,beng,di,lie","裂眦嚼齿|lie,zi,jiao,chi","齿白唇红|chi,bai,chun,hong","红颜薄命|hong,yan,bo,ming",
+"命若悬丝|ming,ruo,xuan,si","丝丝入扣|si,si,ru,kou","扣人心弦|kou,ren,xin,xian","弦外之音|xian,wai,zhi,yin","音信全无|yin,xin,quan,wu","无中生有|wu,zhong,sheng,you","有始有终|you,shi,you,zhong","终南捷径|zhong,nan,jie,jing","径情直行|jing,qing,zhi,xing","行尸走肉|xing,shi,zou,rou",
+"肉眼凡胎|rou,yan,fan,tai","胎死腹中|tai,si,fu,zhong","中流砥柱|zhong,liu,di,zhu","柱石之臣|zhu,shi,zhi,chen","臣心如水|chen,xin,ru,shui","水清无鱼|shui,qing,wu,yu","鱼贯而入|yu,guan,er,ru","入乡随俗|ru,xiang,sui,su","俗不可耐|su,bu,ke,nai","耐人寻味|nai,ren,xun,wei",
+"味同嚼蜡|wei,tong,jiao,la","蜡炬成灰|la,ju,cheng,hui","灰飞烟灭|hui,fei,yan,mie","灭顶之灾|mie,ding,zhi,zai","灾难深重|zai,nan,shen,zhong","重峦叠嶂|chong,luan,die,zhang","嶂岭重重|zhang,ling,chong,chong","重振旗鼓|chong,zhen,qi,gu","鼓乐喧天|gu,yue,xuan,tian","天翻地覆|tian,fan,di,fu",
+"覆水难收|fu,shui,nan,shou","收之桑榆|shou,zhi,sang,yu","榆枋之见|yu,fang,zhi,jian","见仁见智|jian,ren,jian,zhi","智勇双全|zhi,yong,shuang,quan","全力以赴|quan,li,yi,hu","赴汤蹈火|fu,tang,dao,huo","火树琪花|huo,shu,qi,hua","花团锦簇|hua,tuan,jin,cu","簇锦团花|cu,jin,tuan,hua",
+"花枝招展|hua,zhi,zhao,zhan","展翅高飞|zhan,chi,gao,fei","飞短流长|fei,duan,liu,chang","长此以往|chang,ci,yi,wang","往返徒劳|wang,fan,tu,lao","劳燕分飞|lao,yan,fen,fei","飞扬跋扈|fei,yang,ba,hu","扈江离与|hu,jiang,li,yu","与日俱增|yu,ri,ju,zeng","增砖添瓦|zheng,zhuan,tian,wa",
+"瓦釜雷鸣|wa,fu,lei,ming","鸣锣开道|ming,luo,kai,dao","道听途说|dao,ting,tu,shuo","说一不二|shuo,yi,bu,er","二八佳人|er,ba,jia,ren","人云亦云|ren,yun,yi,yun","云蒸霞蔚|yun,zheng,xia,wei","蔚然成风|wei,ran,cheng,feng","风马牛不相及|feng,ma,niu,bu","及第成名|ji,di,cheng,ming",
+"名落孙山|ming,luo,sun,shan","山高水长|shan,gao,shui,chang","长命富贵|chang,ming,fu,gui","贵不可言|gui,bu,ke,yan","言简意赅|yan,jian,yi,gai","赅而不繁|gai,er,bu,fan","繁花似锦|fan,hua,si,jin","锦绣前程|jin,xiu,qian,cheng","程门立雪|cheng,men,li,xue","雪上加霜|xue,shang,jia,shuang",
+"霜露之悲|shuang,lu,zhi,bei","悲天悯人|bei,tian,min,ren","人浮于事|ren,fu,yu,shi","事出有因|shi,chu,you,yin","因小失大|yin,xiao,shi,da","大器晚成|da,qi,wan,cheng","成家立业|cheng,jia,li,ye","业峻鸿绩|ye,jun,hong,ji","绩学之士|ji,xue,zhi,shi","士别三日|shi,bie,san,ri",
+"日积月累|ri,ji,yue,lei","累卵之危|lei,luan,zhi,wei","危如累卵|wei,ru,lei,luan","卵与石斗|luan,yu,shi,dou","斗转星移|dou,zhuan,xing,yi","移山倒海|yi,shan,dao,hai","海纳百川|hai,na,bai,chuan","川流不息|chuan,liu,bu,xi","息息相关|xi,xi,xiang,guan","关怀备至|guan,huai,bei,zhi",
+"至理名言|zhi,li,ming,yan","言过其实|yan,guo,qi,shi","实事求是|shi,shi,qiu,shi","实至名归|shi,zhi,ming,gui","归心似箭|gui,xin,si,jian","箭在弦上|jian,zai,xian,shang","上下其手|shang,xia,qi,shou","手不释卷|shou,bu,shi,juan","卷土重来|juan,tu,lai,lai","来者不拒|lai,zhe,bu,ju",
+"拒之门外|ju,zhi,men,wai","外柔内刚|wai,rou,nei,gang","刚愎自用|gang,bi,zi,yong","用舍行藏|yong,she,xing,cang","藏污纳垢|cang,wu,na,gou","垢面蓬头|gou,mian,peng,tou","头角峥嵘|tou,jiao,zheng,rong","荣华富贵|rong,hua,fu,gui","贵耳贱目|gui,er,jian,mu","目无全牛|mu,wu,quan,niu",
+"牛刀小试|niu,dao,xiao,shi","试目以待|shi,mu,yi,dai","待价而沽|dai,jia,er,gu","沽名钓誉|gu,ming,diao,yu","誉满天下|yu,man,tian,xia","下不为例|xia,bu,wei,li","例行公事|li,xing,gong,shi","事必躬亲|shi,bi,gong,qin","亲痛仇快|qin,tong,chou,kuai","快意当前|kuai,yi,dang,qian",
+"前因后果|qian,yin,hou,guo","果不其然|guo,bu,qi,ran","然糠照薪|ran,kang,zhao,xin","薪尽火传|xin,jin,huo,chuan","传为佳话|chuan,wei,jia,hua","话不投机|hua,bu,tou,ji","机不可失|ji,bu,ke,shi","失魂落魄|shi,hun,luo,po","魄散魂飞|po,san,hun,fei","飞沙走石|fei,sha,zou,shi",
+"石破天惊|shi,po,tian,jing","惊弓之鸟|jing,gong,zhi,niao","鸟语花香|niao,yu,hua,xiang","香草美人|xiang,cao,mei,ren","人微言轻|ren,wei,yan,qing","轻车熟路|qing,che,shu,lu","路见不平|lu,jian,bu,ping","平步青云|ping,bu,qing,yun","云消雾散|yun,xiao,wu,san","散言碎语|san,yan,sui,yu"
+];
+
+// 解析成语库
+const idiomSet=new Set();
+const idiomPinyinMap={};// word -> [py1,py2,py3,py4]
+const firstCharMap={};// char -> [words]
+const firstPyMap={};// pinyin -> [words]
+const lastCharMap={};// char -> [words ending with this]
+const lastPyMap={};// pinyin -> [words ending with this]
+
+IDIOM_DATA.forEach(item=>{
+    const parts=item.split('|');
+    const word=parts[0];
+    const pyArr=parts[1].split(',');
+    if(word.length<4)return;// 只保留四字成语
+    const w4=word.substring(0,4);
+    const p4=pyArr.slice(0,4);
+    idiomSet.add(w4);
+    idiomPinyinMap[w4]=p4;
+    const fc=w4[0],lc=w4[3];
+    const fp=p4[0],lp=p4[3];
+    if(!firstCharMap[fc])firstCharMap[fc]=[];
+    firstCharMap[fc].push(w4);
+    if(!firstPyMap[fp])firstPyMap[fp]=[];
+    firstPyMap[fp].push(w4);
+    if(!lastCharMap[lc])lastCharMap[lc]=[];
+    lastCharMap[lc].push(w4);
+    if(!lastPyMap[lp])lastPyMap[lp]=[];
+    lastPyMap[lp].push(w4);
+});
+
+// 游戏状态
+let gameMode='char';// 'char' or 'pinyin'
+let chain=[];// [{word,role:'user'|'computer'|'system'}]
+let usedIdioms=new Set();
+let gameActive=false;
+let userScore=0,compScore=0,roundCount=0;
+let lastWord='';
+let lastPy='';
+
+function setMode(mode){
+    gameMode=mode;
+    document.querySelectorAll('.mode-btn').forEach(b=>{
+        b.classList.toggle('active',b.dataset.mode===mode);
+    });
+    if(gameActive){
+        showToast('切换模式将开始新游戏','success');
+        startNewGame();
+    }
+}
+
+function startNewGame(){
+    chain=[];
+    usedIdioms=new Set();
+    gameActive=true;
+    userScore=0;compScore=0;roundCount=0;
+    lastWord='';lastPy='';
+    updateScores();
+    document.getElementById('chainArea').innerHTML='<div class="chain-item system">🎬 新游戏开始！请输入第一个成语</div>';
+    document.getElementById('statusBar').innerHTML='请输入一个四字成语开始接龙';
+    document.getElementById('hintBox').style.display='none';
+    document.getElementById('userInput').value='';
+    document.getElementById('userInput').focus();
+}
+
+function submitWord(){
+    const input=document.getElementById('userInput');
+    const word=input.value.trim();
+    if(!word)return;
+    if(word.length!==4){showToast('请输入四字成语');return;}
+    if(!idiomSet.has(word)){showToast('该成语不在词库中，请换一个');return;}
+    if(usedIdioms.has(word)){showToast('该成语已经用过了');return;}
+    
+    if(chain.length>0){
+        // 验证接龙
+        if(gameMode==='char'){
+            if(word[0]!==lastWord[3]){
+                showToast('接龙失败：首字"'+word[0]+'"与上句末字"'+lastWord[3]+'"不同');return;
+            }
+        }else{
+            const wp=idiomPinyinMap[word][0];
+            if(wp!==lastPy){
+                showToast('接龙失败：首字拼音"'+wp+'"与上句末字拼音"'+lastPy+'"不同');return;
+            }
+        }
+    }
+    
+    // 用户出词成功
+    usedIdioms.add(word);
+    lastWord=word;
+    lastPy=idiomPinyinMap[word][3];
+    chain.push({word,role:'user'});
+    roundCount++;
+    userScore++;
+    updateScores();
+    addChainItem(word,'user');
+    input.value='';
+    document.getElementById('hintBox').style.display='none';
+    
+    // 检查电脑是否能接
+    setTimeout(()=>computerTurn(),800);
+}
+
+function computerTurn(){
+    const candidates=getCandidates(lastWord,lastPy);
+    if(candidates.length===0){
+        // 电脑接不上，用户赢
+        document.getElementById('statusBar').innerHTML='🎉 电脑接不上来了，你赢了！';
+        addChainItem('电脑认输，你赢了！🎉','system');
+        gameActive=false;
+        return;
+    }
+    // 随机选一个
+    const pick=candidates[Math.floor(Math.random()*candidates.length)];
+    usedIdioms.add(pick);
+    lastWord=pick;
+    lastPy=idiomPinyinMap[pick][3];
+    chain.push({word:pick,role:'computer'});
+    compScore++;
+    updateScores();
+    addChainItem(pick,'computer');
+    document.getElementById('statusBar').innerHTML='轮到你了，请接"<span class="highlight">'+pick[3]+'</span>"（拼音：'+idiomPinyinMap[pick][3]+'）';
+    
+    // 检查用户是否能接
+    const userCandidates=getCandidates(lastWord,lastPy);
+    if(userCandidates.length===0){
+        document.getElementById('statusBar').innerHTML='😢 你接不上来了，电脑赢了！';
+        addChainItem('你接不上来了，电脑赢了！','system');
+        gameActive=false;
+    }
+}
+
+function getCandidates(lastW,lastP){
+    let candidates=[];
+    if(gameMode==='char'){
+        const lc=lastW[3];
+        candidates=firstCharMap[lc]||[];
+    }else{
+        const lp=idiomPinyinMap[lastW][3];
+        candidates=firstPyMap[lp]||[];
+    }
+    return candidates.filter(w=>!usedIdioms.has(w));
+}
+
+function addChainItem(word,role){
+    const area=document.getElementById('chainArea');
+    // 移除初始提示
+    const sys=area.querySelector('.chain-item.system');
+    if(sys&&chain.length<=1&&role!=='system')sys.remove();
+    
+    const div=document.createElement('div');
+    div.className='chain-item '+role;
+    if(role==='system'){
+        div.textContent=word;
+    }else{
+        const py=idiomPinyinMap[word]?idiomPinyinMap[word].join(' '):'';
+        const roleLabel=role==='user'?'👤你':'🤖电脑';
+        div.innerHTML='<span class="role">'+roleLabel+'</span><span class="word">'+word+'</span><span class="pinyin">'+py+'</span>';
+    }
+    area.appendChild(div);
+    area.scrollTop=area.scrollHeight;
+}
+
+function updateScores(){
+    document.getElementById('roundCount').textContent=roundCount;
+    document.getElementById('userScore').textContent=userScore;
+    document.getElementById('compScore').textContent=compScore;
+}
+
+function showHint(){
+    if(!gameActive||chain.length===0){
+        showToast('请先开始游戏');return;
+    }
+    const candidates=getCandidates(lastWord,lastPy);
+    const hintBox=document.getElementById('hintBox');
+    if(candidates.length===0){
+        hintBox.innerHTML='💡 词库中没有可接的成语了';
+        hintBox.style.display='block';
+        return;
+    }
+    // 显示一个提示（首字）
+    const hint=candidates[Math.floor(Math.random()*candidates.length)];
+    hintBox.innerHTML='💡 提示：可以试试"<span style="font-weight:700;color:#744210">'+hint[0]+'___</span>"开头的成语（词库中有'+candidates.length+'个可选）';
+    hintBox.style.display='block';
+}
+
+function surrender(){
+    if(!gameActive){showToast('当前没有进行中的游戏');return;}
+    gameActive=false;
+    addChainItem('你选择了认输','system');
+    document.getElementById('statusBar').innerHTML='游戏结束，最终比分 你:'+userScore+' 电脑:'+compScore;
+}
+
+function showToast(msg,type){
+    const t=document.getElementById('toast');
+    t.textContent=msg;
+    t.className='toast show'+(type==='success'?' success':'');
+    setTimeout(()=>{t.className='toast';},2000);
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded',()=>{
+    document.getElementById('userInput').focus();
+});
+</script>
+</body>
+</html>

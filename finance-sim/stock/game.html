@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📈 时光机炒股 · 模拟</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    margin:0; min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 0%, #16241a 0%, #0a120c 55%, #050805 100%);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#d8e8c8; padding:16px 12px 40px; user-select:none;
+  }
+  .back { display:inline-block; text-decoration:none; color:#8aa06a; font-size:13px; margin-bottom:10px;
+    padding:5px 11px; border:1px solid #3a4c22; border-radius:20px; }
+  .back:active { background:#1c2610; }
+  h1 { font-size:22px; text-align:center; color:#a8d060; font-weight:700; letter-spacing:1px; margin:2px 0 4px; }
+  .sub { text-align:center; color:#7a8f5a; font-size:12px; margin-bottom:12px; line-height:1.6; }
+  .warn { text-align:center; color:#b0a05a; font-size:11px; margin-bottom:14px; line-height:1.5;
+    background:#1a1a10; border:1px solid #3a3a1c; border-radius:8px; padding:6px 10px; }
+  .panel { max-width:720px; margin:0 auto; background:linear-gradient(160deg,#1a2814,#0e1610);
+    border:1px solid #3a5a28; border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+  .toprow { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .date { font-size:20px; font-weight:700; color:#a8d060; }
+  .cash { font-size:14px; color:#c8e0a0; }
+  .cash b { color:#e0f0c0; }
+  .asset { font-size:13px; color:#8aa06a; }
+  .asset b { color:#c8e0a0; }
+  .ctrl { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button { background:#243818; border:1px solid #4a6a2a; color:#c8e0a0; font-size:14px;
+    padding:9px 14px; border-radius:9px; cursor:pointer; font-family:inherit; }
+  button:active { background:#33502a; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  select { background:#243818; border:1px solid #4a6a2a; color:#c8e0a0; font-size:14px;
+    padding:9px 10px; border-radius:9px; font-family:inherit; }
+  h3 { font-size:14px; color:#8aa06a; margin:14px 0 8px; letter-spacing:1px; }
+  .stock { display:flex; justify-content:space-between; align-items:center; padding:10px 12px;
+    background:#12200e; border:1px solid #2e4a20; border-radius:10px; margin-bottom:8px; cursor:pointer; }
+  .stock.sel { border-color:#a8d060; box-shadow:0 0 0 1px #a8d060 inset; }
+  .stock .nm { font-size:15px; font-weight:700; color:#c8e0a0; }
+  .stock .px { font-size:12px; color:#8aa06a; margin-top:2px; }
+  .stock .px b { color:#e0f0c0; }
+  .stock .chg { font-size:12px; }
+  .stock .chg.up { color:#e07070; }
+  .stock .chg.down { color:#70c070; }
+  .stock .act { display:flex; gap:6px; }
+  .stock .act button { padding:6px 12px; font-size:13px; }
+  .notlisted { opacity:.45; }
+  .notlisted .nm::after { content:"（未上市）"; font-size:11px; color:#6a7a4a; font-weight:400; }
+  .hold { font-size:13px; color:#c8b060; background:#1e1a08; border:1px solid #4a3a18;
+    border-radius:10px; padding:8px 12px; margin-bottom:8px; }
+  .msg { text-align:center; color:#e0a860; font-size:13px; min-height:18px; margin:6px 0; }
+  .log { max-height:180px; overflow-y:auto; font-size:12px; color:#7a8f5a; line-height:1.7; }
+  .log div { border-bottom:1px dashed #24381a; padding:3px 0; }
+  .ach { display:flex; flex-wrap:wrap; gap:8px; }
+  .ach .badge { font-size:12px; padding:6px 10px; border-radius:9px; border:1px solid #4a3a18;
+    background:#1e1a08; color:#c8b060; }
+  .ach .badge.locked { opacity:.35; }
+  .ach .badge.on { border-color:#d0a030; background:#2e2408; color:#f0c060; font-weight:700; }
+  .foot { text-align:center; color:#4a5a30; font-size:11px; margin-top:20px; line-height:1.8; }
+  /* 2026-10-16 市场切换（A股/美股） */
+  .mkt-switch { display:flex; gap:8px; margin-bottom:10px; }
+  .mkt-btn { flex:1; padding:9px 10px; font-size:13px; background:#12200e; color:#8aa06a;
+    border:1px solid #2e4a20; border-radius:9px; cursor:pointer; font-family:inherit; }
+  .mkt-btn.on { background:#243818; color:#e0f0c0; border-color:#a8d060; font-weight:700; }
+  .mkt-tip { font-size:11px; color:#b0a05a; background:#1a1a10; border:1px solid #3a3a1c;
+    border-radius:8px; padding:6px 10px; margin-bottom:10px; line-height:1.5; }
+  /* 2026-10-16 手动换汇 */
+  .exch-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .exch-row > span { font-size:13px; color:#8aa06a; }
+  .exch-row > b { font-size:15px; color:#e0f0c0; }
+  .exch-dir { flex:1; padding:9px; font-size:13px; background:#12200e; color:#8aa06a;
+    border:1px solid #2e4a20; border-radius:9px; cursor:pointer; font-family:inherit; }
+  .exch-dir.on { background:#243818; color:#e0f0c0; border-color:#a8d060; font-weight:700; }
+  /* 2026-10-16 市场情绪指数 */
+  .sentiment { margin-top:8px; font-size:12px; color:#a0b080; }
+  .sentiment b { color:#e0f0c0; }
+  .sentbar { display:inline-block; width:120px; height:8px; border-radius:4px; background:linear-gradient(90deg,#70c070,#d0d060,#e07070); vertical-align:middle; position:relative; margin-left:4px; }
+  .sentmark { position:absolute; top:-3px; width:3px; height:14px; background:#fff; border-radius:2px; }
+  @media (max-width:520px){
+    body { padding:12px 8px 32px; }
+    h1 { font-size:19px; }
+    .stock { padding:12px 10px; }
+    .stock .act button { padding:8px 10px; font-size:13px; }
+    .stock .nm { font-size:14px; }
+    .ctrl button, .ctrl select { padding:11px 12px; font-size:15px; }
+    .mkt-btn, .exch-dir, #exBtn, #borrowBtn, #repayBtn, #trustInBtn, #trustOutBtn { padding:11px 10px; font-size:14px; }
+    .exch-row input, #trustAmt, #debtInput, #exAmt { font-size:15px; }
+  }
+</style>
+</head>
+<body>
+  <a class="back" href="../">← 回模拟金融</a>
+  <h1>📈 时光机炒股</h1>
+  <div class="sub">2000 年开局 · 真实历史行情回放 · 虚拟资金</div>
+  <div class="warn">⚠️ 本游戏模拟的是：<b>加杠杆会死人</b>。真实市场不讲情面——<b>别拿生活费去赌</b>。</div>
+
+  <div class="panel">
+    <div class="toprow">
+      <div class="date" id="curDate">2000-01-04</div>
+      <div style="text-align:right">
+        <div class="cash">现金 <b id="cash">¥10,000</b></div>
+        <div class="asset">总资产 <b id="total">¥10,000</b></div>
+        <div class="asset" id="fxLine" style="display:none;color:#8aa06a">汇率 <b id="fxVal" style="color:#c8e0a0"></b></div>
+        <div class="asset" style="color:#8aa06a">卖出税率 <b id="taxVal" style="color:#e0b080"></b></div>
+      </div>
+    </div>
+    <div class="ctrl">
+      <button id="stepBtn">▶ 下一天</button>
+      <select id="stepMode">
+        <option value="day">每次 +1 天</option>
+        <option value="week">每次 +1 周</option>
+        <option value="month">每次 +1 月</option>
+        <option value="year">每次 +1 年</option>
+      </select>
+      <button id="resetBtn">↻ 重开</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="sentiment" id="sentiment">🧠 市场情绪：<b id="sentVal">—</b> <span id="sentBar"></span></div>
+  </div>
+
+  <!-- 2026-10-16 手动换汇（1% 服务费） -->
+  <div class="panel" id="exchPanel" style="display:none">
+    <h3>💱 换汇（服务费 1%）</h3>
+    <div class="exch">
+      <div class="exch-row">
+        <span>人民币 ¥</span><b id="exCny">0.00</b>
+        <span>美元 $</span><b id="exUsd">0.00</b>
+      </div>
+      <div class="exch-row" style="margin-top:8px">
+        <button class="exch-dir on" data-dir="buy">¥ 换 $</button>
+        <button class="exch-dir" data-dir="sell">$ 换 ¥</button>
+      </div>
+      <div class="exch-row" style="margin-top:8px">
+        <input id="exAmt" type="number" min="0" placeholder="输入金额" style="flex:1;padding:9px;background:#12200e;border:1px solid #2e4a20;border-radius:9px;color:#c8e0a0;font-family:inherit;font-size:14px">
+        <button id="exBtn" style="padding:9px 16px">兑换</button>
+        <button id="exMax" style="padding:9px 12px">全部</button>
+      </div>
+      <div class="exch-info" id="exInfo" style="font-size:11px;color:#8aa06a;margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>📊 持仓</h3>
+    <div id="holdings"><div style="color:#6a7a4a;font-size:13px">暂无持仓</div></div>
+  </div>
+
+  <!-- 2026-10-20 v7 千倍杠杆 · 杠杆仓位 -->
+  <div class="panel" id="levPanel">
+    <h3>⚡ 杠杆仓位 <span style="font-size:11px;color:#a08080;font-weight:400">（借来的钱也在打，赢十倍、输光光）</span></h3>
+    <!-- 2026-10-20 v14 困难模式开关 -->
+    <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 12px;background:#1a1410;border:1px solid #6a4a20;border-radius:9px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#e0b080">
+        <input type="checkbox" id="hardMode" style="width:16px;height:16px;cursor:pointer">
+        <b>🔥 困难模式</b>
+      </label>
+      <span id="hardTip" style="font-size:11px;color:#8a7a5a">T+1 · 跌停封死 · 停牌 · 追保催收 · 印花税佣金 · 红利税</span>
+    </div>
+    <div id="levBody"><div style="color:#6a7a4a;font-size:13px">暂无杠杆仓位</div></div>
+  </div>
+
+  <div class="panel">
+    <h3>📈 可交易股票</h3>
+    <div class="mkt-switch" id="mktSwitch">
+      <button class="mkt-btn on" data-mkt="cn">🇨🇳 A股</button>
+      <button class="mkt-btn" data-mkt="us">🌍 美股（外国股票）</button>
+    </div>
+    <div class="mkt-tip" id="mktTip" style="display:none">🌍 外国股票专区 · 数据为美股历史行情（后复权），标的与真实市场无关</div>
+    <div class="lev-sel" style="display:flex;align-items:center;gap:8px;margin:8px 0 10px;font-size:13px;color:#8aa06a">
+      <span>方向</span>
+      <select id="levDirSel" style="flex:0 0 auto">
+        <option value="long">做多（涨了赚）</option>
+        <option value="short">做空（跌了赚）</option>
+      </select>
+      <span>倍率</span>
+      <select id="levSel" style="flex:0 0 auto">
+        <option value="1">1 倍（无杠杆）</option>
+        <option value="5">5 倍</option>
+        <option value="10">10 倍</option>
+        <option value="25">25 倍（日本法定上限）</option>
+        <option value="50">50 倍</option>
+        <option value="100">100 倍</option>
+        <option value="500">500 倍</option>
+        <option value="1000">1000 倍（一根针就死）</option>
+        <option value="10000">10000 倍（开盘即爆）</option>
+      </select>
+      <span style="font-size:11px;color:#6a7a4a">维持保证金率按倍数分档 · 1000倍跌 0.05% 即爆 · 10000倍跌 0.005% 即爆 · 1 倍即普通全款买入</span>
+    </div>
+    <div id="market"></div>
+  </div>
+
+  <div class="panel">
+    <h3>📉 K 线走势 <span id="kName" style="color:#a8d060;font-weight:400">（点上方股票查看）</span></h3>
+    <canvas id="kchart" width="680" height="240" style="width:100%;max-width:680px;background:#0a120c;border:1px solid #2e4a20;border-radius:10px"></canvas>
+    <div style="font-size:11px;color:#6a7a4a;margin-top:6px;text-align:center">显示该股「上市至今」历史走势（后复权）· 蓝线=收盘价</div>
+  </div>
+
+  <!-- 2026-10-16 债务面板（随时借贷/还款） -->
+  <div class="panel" id="debtPanel">
+    <h3>🏦 钱庄（高利贷）</h3>
+    <div class="exch-row">
+      <span>当前债务</span><b id="debtAmt" style="color:#e08080">¥0.00</b>
+    </div>
+    <div class="exch-row" style="margin-top:6px">
+      <span>可借上限</span><b id="debtCap" style="color:#c8e0a0">¥0.00</b>
+      <span style="font-size:11px;color:#8aa06a">年息分档：<100万 8% / 100万~1亿 15% / >1亿 30%（利滚利）</span>
+    </div>
+    <div class="exch-row" style="margin-top:8px">
+      <input id="debtInput" type="number" min="0" placeholder="借贷 / 还款金额" style="flex:1;padding:9px;background:#12200e;border:1px solid #2e4a20;border-radius:9px;color:#c8e0a0;font-family:inherit;font-size:14px">
+      <button id="borrowBtn" style="padding:9px 14px;background:#4a1818;border-color:#8a3030;color:#f0a0a0">借贷</button>
+      <button id="repayBtn" style="padding:9px 14px">还款</button>
+    </div>
+    <div class="exch-info" id="debtTip" style="font-size:11px;color:#8aa06a;margin-top:8px">债务逐年滚利（按资产分档：8%/15%/30%），还不上会破产</div>
+  </div>
+
+  <div class="panel">
+    <h3>🏆 成就</h3>
+    <div class="ach" id="achv"></div>
+  </div>
+
+  <div class="panel">
+    <h3>📜 交易记录 <button id="exportBtn" style="float:right;padding:4px 10px;font-size:12px">导出CSV</button></h3>
+    <div class="log" id="log"><div style="color:#6a7a4a">尚无交易</div></div>
+  </div>
+
+  <!-- 2026-10-16 研报面板 -->
+  <div class="panel" id="researchPanel" style="display:none">
+    <h3>📄 研报</h3>
+    <div id="researchBody" style="font-size:13px;line-height:1.9;color:#c8d8c8">—</div>
+  </div>
+
+  <!-- 2026-10-16 打新（新股申购） -->
+  <div class="panel" id="ipoPanel" style="display:none">
+    <h3>🎫 新股申购</h3>
+    <div id="ipoBody" style="font-size:13px;line-height:1.9;color:#c8d8c8"></div>
+  </div>
+
+  <!-- 2026-10-16 NPC 论坛（散户/游资发帖） -->
+  <div class="panel" id="forumPanel">
+    <h3>💬 股吧论坛</h3>
+    <div id="forumBody" style="font-size:12px;line-height:1.7;color:#b8c8a8"></div>
+  </div>
+
+  <!-- 2026-10-16 海外信托 -->
+  <div class="panel" id="trustPanel">
+    <h3>🏝️ 海外信托</h3>
+    <div id="trustBody" style="font-size:13px;color:#c8d8c8;line-height:1.9"></div>
+  </div>
+
+  <div class="foot">🐳 大肥鱼出品 · 纯本地回放 · 零联网 · 零存储（刷新即重置）<br><b style="color:#b08050">虚拟资金随便爆，真钱只有一条命。</b></div>
+  <div class="ver" style="text-align:center;color:#3a4a2a;font-size:10px;margin-top:8px">v1.3.0-资产耗光即出局 20261031</div>
+</body>
+
+<script>
+(function(){
+  'use strict';
+  var DATA=null, DATA_CN=null, DATA_US=null, FX=null, codes=[], CFG={start:'2000-01-04'};
+  var mkt='cn'; // 2026-10-16 当前市场：cn=A股 / us=美股
+  var state={date:null, cny:10000, usd:0, debt:0, debtYear:null, research:{}, trust:null, pos:{}, log:[], ach:{}, over:false};
+  var START_CASH=10000;
+  // [2026-11-02] 专业区通关 → 初始资金 10 万；普通区 → 1 万
+  (function(){
+    try {
+      var m = document.cookie.match(/(?:^|; )feiyu_tier=([^;]*)/);
+      if (m && decodeURIComponent(m[1]) === 'pro') START_CASH = 100000;
+    } catch(e) {}
+  })();
+  var TRUST_MIN=1e7; // 信托门槛 1000 万（人民币基准）
+  // 2026-10-16 信托名（避税天堂风）；每局开局随机定 1忠0% + 1妄100% + 8个随机概率
+  var TRUST_NAMES=['开曼群岛信托','百慕大离岸信托','瑞士宝库信托','卢森堡基金信托','泽西岛家族信托','列支敦士登信托','巴哈马财富信托','马恩岛离岸信托','新加坡家族办公室','迪拜自由区信托'];
+  function trustFeeRate(balance){
+    // 管理费：千万 10% → 上亿 1%，下限 1%
+    var b=balance;
+    if(b<=0) return 0.01;
+    if(b>=1e8) return 0.01;
+    if(b<=1e7) return 0.10;
+    // 千万~上亿 线性插值/对数插值（取对数更自然：1e7→10%，1e8→1%）
+    var t=(Math.log10(b)-7)/(8-7); // 0..1
+    var rate=0.10 - t*(0.10-0.01);
+    return Math.max(0.01, rate);
+  }
+  // 每局开局随机生成 10 个信托（含概率）
+  function initTrusts(){
+    var idx=[0,1,2,3,4,5,6,7,8,9];
+    // 洗牌
+    for(var i=idx.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=idx[i];idx[i]=idx[j];idx[j]=t; }
+    var list=[];
+    for(var i=0;i<10;i++){
+      var name=TRUST_NAMES[i];
+      var prob;
+      if(i===idx[0]) prob=0.0;      // 1 忠
+      else if(i===idx[1]) prob=1.0; // 1 妄
+      else prob=Math.round((0.05+Math.random()*0.55)*100)/100; // 8 个随机 5%~60%
+      list.push({name:name, prob:prob});
+    }
+    return list;
+  }
+  var EXCH_FEE=0.01; // 2026-10-16 换汇手续费 1%（双向）
+  // 2026-10-16 开局洗牌：真实数据 ↔ 虚假名字 随机重组（每局不同）
+  // 把每市的假名抽出成池，再加权打乱配回真实数据；结果存 state.nameMap[code]=假名
+  function shuffleNames(dataObj){
+    var codes=Object.keys(dataObj);
+    var names=codes.map(function(c){ return dataObj[c].name; });
+    // Fisher-Yates 打乱名字池
+    for(var i=names.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=names[i];names[i]=names[j];names[j]=t; }
+    var map={};
+    for(var k=0;k<codes.length;k++){ map[codes[k]]=names[k]; }
+    return map;
+  }
+  // 取某只票当前局的名字（无映射则回退原始名）
+  // 2026-10-28 双市场：按代码前缀取对应市场数据
+  function dataOf(code){
+    if(!code) return null;
+    if(code.indexOf('CN-')===0) return DATA_CN && DATA_CN[code];
+    if(code.indexOf('US-')===0) return DATA_US && DATA_US[code];
+    return DATA && DATA[code];
+  }
+  function stockName(code){ var d=dataOf(code); return (state.nameMap&&state.nameMap[code])||(d&&d.name)||code; }
+  var DEBT_RATE=0.5; // （旧）一刀切年息，已废弃，改用分档动态利率
+  // 2026-10-16 分档年息（按当时资产）：<100万→8%；100万~1亿→15%；>1亿→30%
+  function debtRate(){
+    var a=totalAssets();
+    if(a<1e6) return 0.08;
+    if(a<1e8) return 0.15;
+    return 0.30;
+  }
+  var DEBT_CAP_MULT=10; // 借贷上限 = 当前总资产 × 10
+  var RESEARCH_RATIO=0.5; // 研报价格 = 当前总资产 50%
+  // 行业标签 + 基本面（按真身归的，模糊化不点名）
+  // 2026-10-16 研报数据按「中性编号」索引（与 data 文件的 key 一致）
+  var RESEARCH_DATA={
+    'CN-001':['白酒·高端消费','常年高毛利、品牌壁垒极深，是典型的长期大牛股。'],
+    'CN-002':['银行','体量巨大、盈利稳健，但成长性一般，脉动随宏观经济。'],
+    'CN-003':['新能源电池','行业龙头，景气和估值波动大，取决于产业周期。'],
+    'CN-004':['新能源车','整车与电池双主线，成长空间大但竞争激烈。'],
+    'CN-005':['银行','零售银行标杆，资产质量优秀，是一只慢牛。'],
+    'CN-006':['白酒·高端消费','高端白酒双雄之一，长期业绩确定性强。'],
+    'CN-007':['互联网/传媒','曾经的生态型巨头，扩张过快、负债纰漏，风险极高。'],
+    'CN-008':['新材料/化工','曾被认为是白马，后暴出财务造假问题。'],
+    'CN-009':['互联网/传媒','曾经的妖股，炒作退潮后一地鸡毛。'],
+    'CN-010':['面板/显示','重资产周期股，行业反转时弹性大。'],
+    'CN-011':['通信设备','老牌通信股，历经过制裁与重创。'],
+    'CN-012':['石油石化','大盘蓝筹，盈利看油价脸色。'],
+    'CN-013':['安防/电子','行业龙头，高研发、高增长。'],
+    'CN-014':['房地产','曾经的地产龙头，行业周期波动极大。'],
+    'CN-015':['轨道交通装备','央企，订单驱动、稳定但弹性小。'],
+    'CN-016':['电信运营','三大运营商之一，稳健分红型。'],
+    'CN-017':['家电/制造','家电龙头，高分红、现金流好，长期牛。'],
+    'CN-018':['证券/金融','券商龙头，与牛市高度相关、周期性极强。'],
+    'CN-019':['高铁/交通','高铁运营龙头，业绩稳定、低波。'],
+    'CN-020':['工程机械','周期制造龙头，跟基建、地产挂钩。'],
+    'CN-021':['石油石化','炼化一体化巨头，业绩跟油价相关。'],
+    // 美股
+    'US-001':['消费电子','全球消费电子龙头，品牌与生态无敌，长牛。'],
+    'US-002':['软件/云计算','企业软件与云巨头，稳健高增长。'],
+    'US-003':['半导体/芯片','AI 算力核心，景气与估值波动极大。'],
+    'US-004':['电商/云','电商+云双引擎，早期亏损后大爆发。'],
+    'US-005':['通信设备','曾经的手机霸主，错失智能机后一跟不振。'],
+    'US-006':['影像/胶卷','胶卷时代的王者，被数码革命抛弃，破产重组。'],
+    'US-007':['多元化工业','百年工业巨头，金融业务拖累后衰败。'],
+    'US-008':['银行','全球银行巨头，2008 金融危机中几乎濛临崩盘。'],
+    'US-009':['饮料/消费','全球饮料巨头，稳健分红，慢牛。'],
+    'US-010':['餐饮/连锁','全球快餐巨头，稳健长期增长。'],
+    'US-011':['娱乐/传媒','娱乐帝国，IP 独一泦二。'],
+    'US-012':['日用消费品','快消巨头，抗跌防御型。'],
+    'US-013':['医药/健康','医药巨头，稳健防御。'],
+    'US-014':['半导体/芯片','曾经的芯片王者，近年被竞争对手超过。'],
+    'US-015':['制药','大型药企，研发驱动、周期性强。'],
+    'US-016':['信息技术','老牌科技巨头，从硬件转向服务与云。'],
+    'US-017':['餐饮/连锁','曾经快速扩张的连锁咖啡，因财务造假暴瓷、退市。'],
+    'US-018':['影院/娱乐','疫情重创下的影院巨头，靠抱团炒作续命。'],
+    'US-019':['智能硬件/健身','疫情红利股，退潮后股价崩塌。'],
+    'US-020':['新能源车','造车新势力，成长预期高但獛钱严重。'],
+  };
+  // 当前市场的现金字段
+  function cashField(){ return (mkt==='us') ? 'usd' : 'cny'; }
+  function getCash(){ return state[cashField()]||0; }
+  function addCash(v){ state[cashField()]=(state[cashField()]||0)+v; }
+
+  // ===== 2026-10-16 总资产 / 债务 / 高利贷 =====
+  // 总资产（两币种均折成人民币）
+  function totalAssets(){
+    var cny=state.cny||0, usd=state.usd||0;
+    var r=fxOn(state.date);
+    // 2026-10-28 双市场：按代码前缀分市场结算，两个市场都算
+    var mvCN=0, mvUS=0, shortCN=0, shortUS=0, levAll=0;
+    for(var c in (state.pos||{})){
+      var px=priceOn(c,state.date); if(px==null) px=state.pos[c].cost||0;
+      if(c.indexOf('US-')===0) mvUS+=px*state.pos[c].shares; else mvCN+=px*state.pos[c].shares;
+    }
+    for(var s in (state.short||{})){
+      var spx=priceOn(s,state.date); if(spx==null) spx=0;
+      if(s.indexOf('US-')===0) shortUS+=spx*state.short[s].shares; else shortCN+=spx*state.short[s].shares;
+    }
+    if(state.lev){
+      for(var lc in state.lev){
+        var lp=state.lev[lc], lpx=priceOn(lc,state.date); if(lpx==null) lpx=lp.entry;
+        // 保证金与盈亏都是该市场原币种，统一折成人民币口径
+        var lvRaw = lp.margin + levPnl(lp,lpx);
+        var v = isUS(lc) ? lvRaw * r : lvRaw;
+        levAll += v;
+      }
+    }
+    // 现金：人民币直接算，美元按汇率折
+    // 持仓：A股人民币，美股按汇率折
+    // 杠杆：已在上方折成人民币
+    return cny + usd*r + (mvCN - shortCN) + (mvUS - shortUS)*r + levAll;
+  }
+  // 净资产 = 总资产 − 债务（借来的钱不算自己的，防止“借钱→资产涨→再借更多”无限循环）
+  function netWorth(){ return totalAssets() - (state.debt||0); }
+  // 债务上限 = 净资产 × 1000%（基数用净资产，堵死无限循环）
+  function debtCap(){
+    var nw=netWorth();
+    if(nw<0) return 0; // 已资不抵债 → 不能再借
+    return nw*DEBT_CAP_MULT;
+  }
+  function borrow(amt){
+    if(state.over) return;
+    if(isNaN(amt)||amt<=0){ setMsg('请输入借贷金额'); return; }
+    var cap=debtCap() - (state.debt||0);
+    if(amt>cap){ setMsg('超出可借额度（还可借 ¥'+cap.toFixed(0)+'）'); return; }
+    state.debt=(state.debt||0)+amt;
+    state.cny=(state.cny||0)+amt; // 借出为人民币（A股区用；要玩美股自己换汇）
+    state.log.unshift(state.date+' 【借贷】+¥'+amt.toFixed(2)+'（年息 '+Math.round(debtRate()*100)+'%，当前欠 ¥'+state.debt.toFixed(0)+'）');
+    setMsg('已借 ¥'+amt.toFixed(0)+'，当前年息 '+Math.round(debtRate()*100)+'%（按资产分档，利滚利）');
+    render();
+  }
+  function repay(amt){
+    if(state.over) return;
+    if(isNaN(amt)||amt<=0){ setMsg('请输入还款金额'); return; }
+    if((state.cny||0)<amt){ setMsg('人民币现金不足'); return; }
+    var pay=Math.min(amt, state.debt||0);
+    state.cny-=pay; state.debt=(state.debt||0)-pay;
+    if(state.debt<0.01) state.debt=0;
+    state.log.unshift(state.date+' 【还款】-¥'+pay.toFixed(2)+'（剩欠 ¥'+state.debt.toFixed(0)+'）');
+    setMsg('已还 ¥'+pay.toFixed(0));
+    render();
+  }
+  // ===== 2026-10-16 海外信托 =====
+  // 当前信托年（用于“每年只能存或取一次”限制）
+  function trustYear(){ return parseInt(state.date.slice(0,4),10); }
+  function trustDeposit(trustIdx, amt){
+    if(state.over) return;
+    if(isNaN(amt)||amt<=0){ setMsg('请输入存入金额'); return; }
+    if((state.cny||0)<amt){ setMsg('人民币现金不足'); return; }
+    if(!state.trust) state.trust={idx:trustIdx, balance:0, lastActYear:null};
+    if(state.trust.idx!==trustIdx){ setMsg('已选过其他信托，一局只能用一个信托'); return; }
+    if(state.trust.lastActYear===trustYear()){ setMsg('本年度已操作过信托，每年只能存或取一次'); return; }
+    state.cny-=amt; state.trust.balance+=amt; state.trust.lastActYear=trustYear();
+    state.log.unshift(state.date+' 【信托】存入 ¥'+amt.toFixed(0)+' 至 '+state.trusts[trustIdx].name);
+    setMsg('已存入信托 ¥'+amt.toFixed(0));
+    render();
+  }
+  function trustWithdraw(amt){
+    if(state.over) return;
+    if(!state.trust||state.trust.balance<=0){ setMsg('信托里没钱'); return; }
+    if(isNaN(amt)||amt<=0){ setMsg('请输入取出金额'); return; }
+    if(state.trust.lastActYear===trustYear()){ setMsg('本年度已操作过信托，每年只能存或取一次'); return; }
+    var take=Math.min(amt, state.trust.balance);
+    var tax=take*taxRate(); // 取出必须交税
+    state.trust.balance-=take;
+    state.cny=(state.cny||0)+(take-tax);
+    state.trust.lastActYear=trustYear();
+    state.log.unshift(state.date+' 【信托】取出 ¥'+take.toFixed(0)+'（交税 '+Math.round(taxRate()*100)+'% → ¥'+tax.toFixed(0)+'）');
+    setMsg('已取出 ¥'+take.toFixed(0)+'，交税 ¥'+tax.toFixed(0));
+    render();
+  }
+  // 每年信托结算：先扣管理费，再摇背叛
+  function applyTrust(){
+    if(!state.trust||state.trust.balance<=0) return;
+    var fee=state.trust.balance*trustFeeRate(state.trust.balance);
+    state.trust.balance-=fee;
+    state.log.unshift(state.date.slice(0,4)+'-01-01 【信托管理费】-¥'+fee.toFixed(0)+'（费率'+Math.round(trustFeeRate(state.trust.balance+fee)*100)+'%）');
+    // 背叛判定
+    var prob=state.trusts[state.trust.idx].prob;
+    if(Math.random()<prob){
+      var lost=state.trust.balance;
+      state.trust.balance=0;
+      state.log.unshift(state.date.slice(0,4)+'-01-01 【信托背叛！】'+state.trusts[state.trust.idx].name+' 卷走 ¥'+lost.toFixed(0));
+      showTrustBetray(state.trusts[state.trust.idx].name, lost);
+    }
+  }
+  function showTrustBetray(name, lost){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;padding:20px';
+      mask.innerHTML='<div style="background:#2a1010;border:1px solid #8a3030;border-radius:14px;padding:26px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:34px;margin-bottom:8px">🏴‍☠️</div>'+
+        '<div style="font-size:20px;font-weight:700;color:#e07070;margin-bottom:10px">信托背叛！</div>'+
+        '<div style="font-size:14px;color:#d8a0a0;line-height:1.9;margin-bottom:14px">'+
+          '<b>'+name+'</b> 卷款跑路了！<br>卷走你的 <b style="color:#e07070">¥'+lost.toFixed(0)+'</b>。<br>'+
+          '<span style="font-size:12px;color:#a08080">（避税有风险，选信托如赌命）</span>'+
+        '</div><div style="font-size:12px;color:#807070">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 300);
+  }
+  // 每年滚利：跨过一个整年 → 债务按当时资产分档利率复利
+  function applyInterest(){
+    var y=parseInt(state.date.slice(0,4),10);
+    if(state.debtYear===null){ state.debtYear=y; return; }
+    while(y>state.debtYear){
+      state.debtYear++;
+      if((state.debt||0)>0){
+        var rate=debtRate();
+        state.debt*= (1+rate);
+        state.log.unshift(state.date.slice(0,4)+'-01-01 【利息】债务滚至 ¥'+state.debt.toFixed(0)+'（+'+Math.round(rate*100)+'%复利）');
+      }
+    }
+  }
+  // 2026-10-16 融资爆仓线：维持担保比例 = 净资产 / 债务；低于 130% → 强平
+  function maintenanceRatio(){
+    var d=state.debt||0;
+    if(d<=0) return Infinity;
+    return netWorth()/d; // 净资产÷债务
+  }
+  function checkMarginCall(){
+    if(state.over) return;
+    var d=state.debt||0;
+    if(d<=0) return;
+    var mr=netWorth()/d;
+    if(mr<1.30){
+      // 强制平仓：卖掉所有股票抵债
+      var r=fxOn(state.date);
+      var sold=0;
+      for(var c in state.pos){
+        var px=priceOn(c,state.date); if(px==null) px=0;
+        var val=px*state.pos[c].shares; sold+=val;
+        // 卖出所得入当前市币种（统一折人民币处理）
+        state.cny=(state.cny||0)+(mkt==='us'? val*r : val);
+        delete state.pos[c];
+      }
+      state.log.unshift(state.date+' 【爆仓·强平】维持担保比例跌破130%，强制平仓，卖出全部持仓 ¥'+sold.toFixed(0)+' 抵债');
+      showMarginCall(sold, mr);
+    }
+  }
+  function showMarginCall(sold, mr){
+    sfxBankrupt();
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;cursor:pointer';
+      mask.innerHTML='<div style="background:#1a0a0a;border:1px solid #a03030;border-radius:14px;padding:28px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:34px;margin-bottom:8px">📉</div>'+
+        '<div style="font-size:20px;font-weight:700;color:#e06060;margin-bottom:10px">强制平仓</div>'+
+        '<div style="font-size:13px;color:#c09090;line-height:1.9;margin-bottom:14px">'+
+          '维持担保比例跌破 <b>130%</b>（当前 '+Math.round(mr*100)+'%）。<br>券商拔网线，持仓被强平 ¥'+sold.toFixed(0)+' 抵债。<br>'+
+          '<span style="font-size:12px;color:#a08080">（杠杆的代价）</span>'+
+        '</div><div style="font-size:12px;color:#807070">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 300);
+  }
+  // 破产判定：所有股票全卖 + 现金 仍 < 债务 → 破产
+  // 2026-10-31 v1.3.0 加严：净资产买不起最便宜一手 → 也判出局
+  function checkBankrupt(){
+    if(state.over) return;
+    var r=fxOn(state.date);
+    var mv=0;
+    for(var c in state.pos){ var px=priceOn(c,state.date); if(px==null) px=0; mv+=px*state.pos[c].shares; }
+    var mktUsd=(mkt==='us');
+    var liq = (state.cny||0) + (state.usd||0)*r + (mktUsd? mv*r : mv);
+    // ① 原逻辑：欠债且资不抵债
+    if((state.debt||0) > 0 && liq < state.debt){
+      state.over=true;
+      showBankrupt(liq);
+      return;
+    }
+    // ② 2026-10-31 新逻辑：净资产不够买最便宜的一手 → 已经玩不下去了
+    if(liq > 0 || (state.debt||0) === 0){
+      var cheapest = Infinity;
+      var lot = (mkt==='us') ? 1 : 100;
+      for(var i=0;i<codes.length;i++){
+        var p0 = priceOn(codes[i], state.date);
+        if(p0==null || p0<=0) continue;
+        var unit = p0*lot;
+        if(unit < cheapest) cheapest = unit;
+      }
+      if(isFinite(cheapest) && liq < cheapest){
+        state.over=true;
+        showBankrupt(liq, '钱不够买最便宜的一手（需 ' + money(cheapest) + '），翻身无望');
+        return;
+      }
+    }
+  }
+  function showBankrupt(liq, reason){
+    sfxBankrupt(); // 2026-10-16 破产警报音
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px';
+      mask.innerHTML='<div style="background:#1a0a0a;border:1px solid #a03030;border-radius:14px;padding:30px 32px;text-align:center;max-width:86%">'+
+        '<div style="font-size:40px;margin-bottom:10px">💀</div>'+
+        '<div style="font-size:22px;font-weight:700;color:#e06060;margin-bottom:12px">破 产</div>'+
+        '<div style="font-size:13px;color:#c09090;line-height:1.9;margin-bottom:6px">'+
+          (reason ? ('资产只剩 <b>¥'+liq.toFixed(2)+'</b>，'+reason+'。<br>') :
+            ('资产全卖也只值 <b>¥'+liq.toFixed(0)+'</b>，外面还欠着 <b>¥'+(state.debt||0).toFixed(0)+'</b>。<br>'))+
+          '<span style="color:#e0a060">天台的风有点大，去当空中飞人吧。 🪂</span>'+
+        '</div>'+
+        '<button onclick="location.reload()" style="margin-top:18px;padding:10px 22px;background:#3a1a1a;color:#f0a0a0;border:1px solid #8a3030;border-radius:9px;font-size:14px;cursor:pointer;font-family:inherit">重开人生</button></div>';
+      document.body.appendChild(mask);
+    }, 400);
+  }
+  // ===== 研报 =====
+  function researchPrice(){ return totalAssets()*RESEARCH_RATIO; }
+  function buyResearch(code){
+    if(state.over) return;
+    if(state.research[code]){ setMsg('这份研报已买过了'); return; }
+    var price=researchPrice();
+    var cur=getCash();
+    if(cur<price){ setMsg('现金不足（需 '+money(price)+'），可去钱庄借贷'); return; }
+    addCash(-price);
+    state.research[code]=true;
+    state.log.unshift(state.date+' 【研报】购买 '+stockName(code)+' 研报 -'+money(price));
+    setMsg('已购研报！'+stockName(code)+' 的信息已解锁');
+    render();
+    showResearch(code);
+  }
+  function showResearch(code){
+    var d=RESEARCH_DATA[code]; if(!d) return;
+    var box=document.getElementById('researchPanel'), body=document.getElementById('researchBody');
+    if(!box||!body) return;
+    box.style.display='';
+    body.innerHTML='<b>'+stockName(code)+'</b> 研报：<br>🏢 行业：<b style="color:#a8d060">'+d[0]+'</b><br>📊 基本面：'+d[1];
+  }
+  // 2026-10-16 小道消息（花钱买情报，可能是真的，也可能是庄家放出的假消息）
+  function rumorPrice(){ return totalAssets()*0.1; } // 花总资产 10%
+  function buyRumor(code){
+    if(state.over) return;
+    var price=rumorPrice();
+    if(getCash()<price){ setMsg('现金不足（需 '+money(price)+'），可去钱庄借贷'); return; }
+    addCash(-price);
+    // 60% 真消息（带动上涨）/ 40% 假消息（庄家出货，随后跌）
+    var isTrue = Math.random()<0.6;
+    var dir = isTrue ? 1 : -1;
+    state.log.unshift(state.date+' 【小道消息】买 '+stockName(code)+' 情报 -'+money(price)+'（'+(isTrue?'?':'?')+'）');
+    setMsg('买到一条小道消息…');
+    showRumor(stockName(code), isTrue);
+    render();
+  }
+  function showRumor(name, isTrue){
+    var msg = isTrue
+      ? '有主力正在建仓吸筹，传闻即将有重大利好！'
+      : '有利空消息传出，主力可能在出货…';
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;padding:20px';
+      mask.innerHTML='<div style="background:#241a10;border:1px solid #8a6a30;border-radius:14px;padding:26px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:28px;margin-bottom:8px">📨</div>'+
+        '<div style="font-size:15px;font-weight:700;color:#f0c060;margin-bottom:10px">小道消息：'+name+'</div>'+
+        '<div style="font-size:14px;color:#d8d0c0;line-height:1.9;margin-bottom:12px">'+msg+'</div>'+
+        '<div style="font-size:11px;color:#a09070">真伪难辨，自行判断。（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 250);
+  }
+  // 2026-10-16 成就阶梯（总资产）
+  var ACHS=[
+    {k:'10w', n:'小有家底', v:1e5, ic:'🥉'},
+    {k:'100w', n:'初露锋芒', v:1e6, ic:'🥈'},
+    {k:'1000w', n:'一方富贾', v:1e7, ic:'🥇'},
+    {k:'1y', n:'富甲一方', v:1e8, ic:'💎'},
+    {k:'10y', n:'坐拥金山', v:1e9, ic:'👑'},
+    {k:'100y', n:'富可敌国', v:1e10, ic:'🌟'},
+    {k:'1000y', n:'问鼎首富', v:1e11, ic:'🚀'},
+    {k:'1wy', n:'富可载史', v:1e12, ic:'👑🚀'}
+  ];
+
+  function fmt(n, currency){ return (currency==='$'?'$':'¥')+Number(n).toLocaleString('zh-CN',{maximumFractionDigits:2}); }
+  // 2026-10-16 汇率：取该日期当天或之前最近一条 USD/CNY
+  function fxOn(dateStr){
+    if(!FX) return 7.0;
+    if(FX[dateStr]!=null) return FX[dateStr];
+    // 往前找最近有汇率的一天
+    var d=new Date(dateStr+'T12:00:00');
+    for(var g=0; g<40; g++){
+      var v=FX[dstr(d)]; if(v!=null) return v;
+      d.setDate(d.getDate()-1);
+    }
+    return 7.0;
+  }
+  // 当前计价货币符号
+  function curSym(){ return (mkt==='us') ? '$' : '¥'; }
+  // 按当前市场显示金额（美股把人民币现金折成美元显示）
+  function money(cnyAmount, dateStr){
+    if(mkt==='us') return fmt(cnyAmount / fxOn(dateStr||state.date), '$');
+    return fmt(cnyAmount);
+  }
+  // 2026-10-28 双市场：按代码前缀判断该股属于哪个市场
+  function isUS(code){ return code && code.indexOf('US-')===0; }
+  function pxInCny(code, px){ return isUS(code) ? px * fxOn(state.date) : px; }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function dstr(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+  // 每只票：日期 → 收盘价
+  function priceOn(code, dateStr){
+    var _d=dataOf(code); if(!_d) return null;
+    var k=_d.k;
+    // 二分找「<= dateStr 的最后一根」
+    var lo=0, hi=k.length-1, idx=-1;
+    while(lo<=hi){ var mid=(lo+hi)>>1; if(k[mid][0]<=dateStr){ idx=mid; lo=mid+1; } else hi=mid-1; }
+    if(idx<0) return null;           // 还没上市
+    return parseFloat(k[idx][2]);    // 收盘价
+  }
+  function firstDate(code){ var _d=dataOf(code); return _d?_d.k[0][0]:'9999-99-99'; }
+
+  function advance(){
+    // 2026-10-17 修复：数据未加载完成时点击会崩（DATA 为 null）
+    if(!DATA || !codes || codes.length===0){
+      setMsg('⏳ 行情数据还在加载，请稍候…');
+      return;
+    }
+    var mode=document.getElementById('stepMode').value;
+    var d=new Date(state.date+'T12:00:00');
+    var next=new Date(d);
+    if(mode==='day') next.setDate(next.getDate()+1);
+    else if(mode==='week') next.setDate(next.getDate()+7);
+    else if(mode==='year') next.setFullYear(next.getFullYear()+1);
+    else next.setMonth(next.getMonth()+1);
+    var nd=dstr(next);
+    // 不超过数据末日
+    var maxDate=DATA[codes[0]].last;
+    for(var i=0;i<codes.length;i++){ if(DATA[codes[i]].last>maxDate) maxDate=DATA[codes[i]].last; }
+    if(nd>maxDate){ setMsg('已经到数据末日（'+maxDate+'），请重开。'); return; }
+    // 跳过「所有票都无数据」的日子（周末/停牌密度大时，顺延）
+    var guard=0;
+    while(guard++<10 && !anyPrice(nd)){
+      if(mode==='day') next.setDate(next.getDate()+1);
+      else if(mode==='week') next.setDate(next.getDate()+7);
+      else if(mode==='year') next.setFullYear(next.getFullYear()+1);
+      else next.setMonth(next.getMonth()+1);
+      nd=dstr(next);
+      if(nd>maxDate) break;
+    }
+    var prevY=parseInt(state.date.slice(0,4),10);
+    state.date=nd;
+    checkBigEvent(prevY, parseInt(nd.slice(0,4),10)); // 2026-10-16 大事件弹窗（跨年检查）
+    checkIPO(prevY, parseInt(nd.slice(0,4),10));       // 2026-10-16 打新（新股申购）
+    applyInterest();   // 2026-10-16 跨年自动滚利（按资产分档利率复利）
+    applyTrust();      // 2026-10-16 信托每年结算（管理费 + 背叛判定）
+    checkMarginCall(); // 2026-10-16 融资爆仓线（维持担保比例<130%强平）
+    applyLevInterest(); // 2026-10-20 v13 杠杆按日计息（真实券商按日结）
+    tickLevDays();      // 2026-10-20 v13 记一天持有（给应计利息算天数）
+    checkSuspend();     // 2026-10-20 v14 困难模式：随机停牌
+    checkDividend();    // 2026-10-20 v14 困难模式：分红除权 + 红利税
+    checkLeverage();   // 2026-10-20 v7 杠杆爆仓检查
+    checkDelist();     // 2026-10-16 退市检查：玩家持有的票退市→强制平仓归零 + 弹窗
+    checkBankrupt();   // 2026-10-16 破产判定
+    checkAnnualReport(prevY, parseInt(nd.slice(0,4),10)); // 2026-10-16 年终财报（12/31 强制复盘）
+    render();
+  }
+  // 2026-10-16 年终财报：每年 12/31 弹出年度报告
+  function checkAnnualReport(prevY, nowY){
+    if(nowY>prevY) showAnnualReport(prevY);
+  }
+  function showAnnualReport(year){
+    var s=state.yearStats||{win:0,lose:0,tax:0,trades:0};
+    var wr = s.trades? Math.round(s.win/s.trades*100):0;
+    var total = totalAssets();
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;padding:20px';
+      mask.innerHTML='<div style="background:#0e1a24;border:1px solid #2a5a7a;border-radius:14px;padding:26px 30px;text-align:left;max-width:88%;color:#c8d8e8;font-size:13px;line-height:2">'+
+        '<div style="font-size:18px;font-weight:700;color:#8fd0e0;text-align:center;margin-bottom:12px">📊 '+year+' 年度财报</div>'+
+        '<div>· 期末总资产：<b>'+money(total)+'</b></div>'+
+        '<div>· 本年交易笔数：<b>'+s.trades+'</b></div>'+
+        '<div>· 盈亏笔数：<b style="color:#e07070">盈 '+s.win+'</b> / <b style="color:#70c070">亏 '+s.lose+'</b></div>'+
+        '<div>· 交易胜率：<b>'+(s.trades?wr+'%':'—')+'</b></div>'+
+        '<div>· 本年纳税总额：<b style="color:#e0b080">'+money(s.tax)+'</b></div>'+
+        '<div style="font-size:11px;color:#6a8a9a;margin-top:10px;text-align:center">直面自己的投资水平。（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 300);
+    state.yearStats={win:0,lose:0,tax:0,trades:0}; // 重置下一年
+  }
+  // 2026-10-16 退市强制平仓：若玩家持有某只已到退市的票（当前日期 > 其末日，且该票已无后续数据）
+  function checkDelist(){
+    // 2026-10-20 v8 杠杆仓也纳入退市清算
+    if(state.lev){
+      for(var lk in state.lev){
+        var lv=state.lev[lk], linfo=DATA[lv.code];
+        if(linfo && linfo.last < state.date){
+          var lbar=barOn(lv.code, linfo.last);
+          var lpx=lbar?lbar.close:lv.entry;
+          var lpnl=levPnl(lv, lpx);
+          var lback=Math.max(0, lv.margin+lpnl);
+          addCash(lback);
+          delete state.lev[lk];
+          state.log.unshift(state.date+' 【杠杆退市】'+stockName(lv.code)+' '+lv.L+'倍'+(lv.dir==='short'?'空':'多')+' 退市清算，退回 '+money(lback));
+        }
+      }
+    }
+    for(var code in state.pos){
+      var info=DATA[code]; if(!info) continue;
+      // 末日已过 → 退市（末日 < 当前日期）
+      if(info.last < state.date){
+        var p=state.pos[code];
+        // 最后可得价格（末日价）用于记录
+        var lastPx=parseFloat(info.k[info.k.length-1][2]);
+        var loss=p.cost; // 归零：本金全部损失
+        addCash(0);      // 退市归零 → 不返还
+        delete state.pos[code];
+        state.log.unshift(state.date+' 【退市】'+stockName(code)+' 退市清算，持仓 '+p.shares+' 股归零（本金 -'+curSym()+(p.cost/Math.max(1,p.shares)*p.shares).toFixed(0)+'）');
+        showDelist(info, p, lastPx);
+      }
+    }
+  }
+  // 2026-10-16 退市弹窗
+  function showDelist(info, pos, lastPx){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;padding:20px';
+      mask.innerHTML='<div style="background:#2a1010;border:1px solid #8a3030;border-radius:14px;padding:26px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:34px;margin-bottom:8px">☠️</div>'+
+        '<div style="font-size:20px;font-weight:700;color:#e07070;margin-bottom:10px">强制平仓：退市清算</div>'+
+        '<div style="font-size:14px;color:#d8a0a0;line-height:1.9;margin-bottom:14px">'+
+          '你持有的 <b>'+stockName(code)+'</b> 已退市清算。<br>'+
+          '持仓 <b>'+pos.shares+' 股</b> 全部作废，<b style="color:#e07070">归零</b>。<br>'+
+          '<span style="font-size:12px;color:#a08080">（退市即血本无归——这就是没有止损的代价）</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:#807070">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 300);
+  }
+  function anyPrice(dateStr){
+    for(var i=0;i<codes.length;i++){ if(priceOn(codes[i],dateStr)!=null) return true; }
+    return false;
+  }
+
+  function buy(code){
+    var px=priceOn(code,state.date); if(px==null) return;
+    // 2026-10-16 美股按「股」买（真市场按股）；A股按「手」=100股
+    var lot = (mkt==='us') ? 1 : 100;
+    var cost=px*lot;
+    if(cost>getCash()){ setMsg('现金不足，买不起 '+(mkt==='us'?'1 股':'1 手')+'（'+lot+'股 = '+money(cost)+'）'); return; }
+    var cur=state.pos[code]||{shares:0, cost:0};
+    cur.shares+=lot; cur.cost+=cost; state.pos[code]=cur;
+    addCash(-cost);
+    state.log.unshift(state.date+' 买入 '+stockName(code)+' '+lot+'股 @ '+curSym()+px.toFixed(2));
+    sfxBuy(); // 2026-10-16 买入音效（铜钱）
+    render();
+  }
+  // ===== 2026-10-16 做空（借券卖出，跌了买回平仓赚差价）=====
+  // 做空仓：state.short[code]={shares, entry}  entry=开仓均价（欠券时的价）
+  function shortSell(code){
+    var px=priceOn(code,state.date); if(px==null){ setMsg('该股当前无价，做不了'); return; }
+    var lot = (mkt==='us') ? 1 : 100;
+    // 做空保证金：需缴 100% 保证金（相当于借到券卖出，钱先入账）
+    var proceeds=px*lot;
+    if(proceeds>getCash()){ setMsg('保证金不足，做不了（需 '+money(proceeds)+'）'); return; }
+    state.short=state.short||{};
+    var cur=state.short[code]||{shares:0, entry:0};
+    // 平均开仓价
+    var totalShares=cur.shares+lot;
+    cur.entry=(cur.entry*cur.shares + px*lot)/totalShares;
+    cur.shares=totalShares;
+    state.short[code]=cur;
+    addCash(proceeds); // 卖空所得入账（同时欠了等量券）
+    state.log.unshift(state.date+' 【做空】'+stockName(code)+' '+lot+'股 @ '+curSym()+px.toFixed(2)+'（借券卖出，待买回）');
+    sfxBuy();
+    setMsg('已做空 '+stockName(code)+' '+lot+' 股');
+    render();
+  }
+  // 买回平仓
+  function shortCover(code){
+    if(!state.short||!state.short[code]||!state.short[code].shares){ setMsg('没有空头持仓'); return; }
+    var cur=state.short[code];
+    var px=priceOn(code,state.date); if(px==null) return;
+    var lot=(mkt==='us')?1:100;
+    var sh=Math.min(lot, cur.shares);
+    var cost=px*sh;
+    if(cost>getCash()){ setMsg('现金不足，买不回（需 '+money(cost)+'）'); return; }
+    var pnl=(cur.entry-px)*sh; // 跌了赚、涨了亏
+    addCash(-cost);
+    cur.shares-=sh; if(cur.shares<=0) delete state.short[code];
+    // 做空盈亏也要记年度统计
+    trackStat(pnl, 0);
+    state.log.unshift(state.date+' 【平空】'+stockName(code)+' '+sh+'股 @ '+curSym()+px.toFixed(2)+'（'+(pnl>=0?'赚':'亏')+money(Math.abs(pnl)).replace(/^[¥$]/,'')+'）');
+    sfxSell(); if(pnl<0) sfxLoss();
+    render();
+  }
+  // 2026-10-16 梭哈：一键把当前现金全部买入该股
+  function allIn(code){
+    var px=priceOn(code,state.date); if(px==null){ setMsg('该股当前无价，买不了'); return; }
+    var lot = (mkt==='us') ? 1 : 100;
+    var unitCost = px*lot;
+    var n = Math.floor(getCash() / unitCost);
+    if(n<=0){ setMsg('现金不足，梭哈不了（起码需 '+money(unitCost)+'）'); return; }
+    var sh=n*lot, cost=px*sh;
+    var cur=state.pos[code]||{shares:0, cost:0};
+    cur.shares+=sh; cur.cost+=cost; state.pos[code]=cur;
+    addCash(-cost);
+    state.log.unshift(state.date+' 【梭哈】买入 '+stockName(code)+' '+sh+'股 @ '+curSym()+px.toFixed(2)+'（花光现金）');
+    setMsg('已梭哈 '+stockName(code)+' '+sh+' 股！');
+    sfxBuy();
+    riskBgmOn();   // 2026-10-31 v1.2.0 梭哈 → 直接拉满
+    render();
+  }
+
+  // ===== 2026-10-20 v7 千倍杠杆 =====
+  // 模型：自己出保证金（按 1/倍率 计），其余向券商借；维持保证金率 0.5%
+  // 强平价：多 = 均价×(1-1/L+MR)。跌到该价 → 本金归零、自动平仓（爆仓）
+  var LEV_MR=0.005;        // 维持保证金率（基准，实际按倍数分档，见 levMR）
+  // 2026-10-20 v13 融资年息改按日计息（真实券商按日结，年化 12% → 日息 12%/365）
+  var LEV_RATE_YEAR=0.12;
+  var LEV_RATE_DAY=LEV_RATE_YEAR/365;   // 约 0.0329%/日
+  var LIQ_FEE=0.005;                     // 强平违约金 0.5%（券商强平额外抽一笔）
+  // 2026-10-20 v13 杠杆按日计息：每次推进按「持有天数 × 年化/365 × 名义仓位」
+  function applyLevInterest(){
+    if(!state.lev) return 0;
+    var total=0;
+    for(var key in state.lev){
+      var p=state.lev[key];
+      if(p.L<=1 && p.dir!=='short') continue;   // 1 倍全款买入不算融资
+      var days=p.lastDay||0;
+      if(days<=0) continue;
+      var interest=p.notional*LEV_RATE_DAY*days;
+      p.margin-=interest;
+      p.lastDay=0;
+      total+=interest;
+      // 利息从保证金里扣，扣光了就爆
+      if(p.margin<=0){
+        delete state.lev[key];
+        state.log.unshift(state.date+' 【利息爆仓】'+stockName(p.code)+' · 融资利息吃光保证金');
+      }
+    }
+    return total;
+  }
+  // 2026-10-20 维持保证金率按倍数分档：倍数越高，券商给的维持率越低（否则高倍数开不出来）
+  // 保证「强平价 = 均价×(1 − 1/L + MR) < 均价」，即 1/L > MR
+  function levMR(L){
+      if(L<=1)  return 0.05;
+    if(L<=5)  return 0.02;
+    if(L<=10) return 0.01;
+    if(L<=25) return 0.005;
+    if(L<=50) return 0.0025;
+    if(L<=100) return 0.002;
+    if(L<=500) return 0.001;
+    if(L<=1000) return 0.0005;
+    return 0.00005;   // 2026-10-20 万倍档：强平线距开仓仅 0.005%
+  }
+  function levPick(){ var el=document.getElementById('levSel'); return el? parseInt(el.value,10)||1 : 1; }
+  // ===== 2026-10-20 v14 困难模式（默认关，开了才吃真实市场的六道苦）=====
+  var HARD = { on:false, STAMP:0.001, COMM:0.0003, SUSPEND_MIN:5, SUSPEND_MAX:15, CALL_DAYS:3 };
+  function hardOn(){ var el=document.getElementById('hardMode'); return !!(el && el.checked); }
+  function hardSync(){ HARD.on = hardOn(); }
+  // 跌停判定：跌幅≥9.9% 且收盘=最低（封死跌停，卖不出去）
+  function isLimitDown(bar){
+    return bar && bar.low===bar.close && bar.close>0;
+  }
+  function isSuspended(p){ return p && p.suspendUntil && state.date <= p.suspendUntil; }
+  // 2026-10-20 v9 高倍档第一次选择时提示一次（只提示，不拦）
+  var _levWarned=false, _levWarned10k=false;
+  var levDir='long'; // 2026-10-20 v8 杠杆方向：long=做多 / short=做空
+  function levDirPick(){ var el=document.getElementById('levDirSel'); return el? el.value : 'long'; }
+  function lotsPerHand(){ return (mkt==='us')?1:100; }
+  // 按「倍数」开仓：花掉 margin 保证金，吃下 margin×L 的仓位
+  function openLeveraged(code){
+    if(state.over) return;
+    if(!dataOf(code)) return;
+    var L=levPick();
+    var dir=levDirPick(); // 2026-10-20 v8 多空分开
+    if(L<=1 && dir!=='short'){ buy(code); return; }
+    // 2026-10-20 v10 万倍档单独提示一次（更狠，单独计数）
+    if(L>=10000 && !_levWarned10k){
+      _levWarned10k=true;
+      showLeverageWarning(L);
+    } else if(L>=500 && !_levWarned){
+      // 2026-10-20 v9 千倍档首次提示：只提示，不拦
+      _levWarned=true;
+      showLeverageWarning(L);
+    }
+    var px=execPrice(code, dir);   // 2026-10-20 v11 真实成交价：开盘价优先，跳空另算
+    if(px==null){ setMsg('该股当前无价，开不了仓'); return; }
+    var lot=lotsPerHand(), unit=px*lot;
+    var cash=getCash();
+    // 保证金不能超过现金（含 0.1% 手续费）→ 一开始就按 99.9% 现金封顶
+    var shares=Math.floor(cash*0.999*L/unit)*lot;
+    if(shares<=0){ setMsg('现金太少，连 '+(mkt==='us'?'1 股':'1 手')+' 的保证金都不够'); return; }
+    var notional=px*shares;
+    var margin=notional/L;
+    var fee=margin*0.001;
+    while(margin+fee>cash && shares>0){ shares-=lot; notional=px*shares; margin=notional/L; fee=margin*0.001; }
+    if(shares<=0){ setMsg('现金太少，开不了仓'); return; }
+    state.lev=state.lev||{};
+    var key=code+'|'+dir;              // 2026-10-20 v8 多空分开记账
+    var old=state.lev[key];
+    addCash(-(margin+fee));
+    if(old){
+      var tn=old.notional+notional;
+      old.entry=(old.entry*old.notional + px*notional)/tn;
+      old.shares+=shares; old.notional=tn; old.margin+=margin; old.fee=(old.fee||0)+fee;
+      old.L=L;
+    } else {
+      state.lev[key]={code:code, dir:dir, shares:shares, entry:px, notional:notional, margin:margin, L:L, openDate:state.date, fee:fee, lastDay:0};
+    }
+    var cur=state.lev[key];
+    var dirTxt = dir==='short' ? '做空' : '做多';
+    state.log.unshift(state.date+' 【杠杆开仓·'+dirTxt+'】'+stockName(code)+' '+L+'倍 · '+shares+'股 @ '+curSym()+px.toFixed(2)+'（名义 '+money(notional)+'，保证金 '+money(margin)+'）');
+    setMsg('已用 '+L+' 倍杠杆'+dirTxt+' '+stockName(code)+' '+shares+' 股，保证金 '+money(margin)+'；强平价 '+curSym()+levLiqPrice(cur).toFixed(4));
+    sfxBuy();
+    riskCheck();   // 2026-10-31 v1.2.0 重仓体检
+    render();
+  }
+  // 强平价：多仓跌到该价爆，空仓涨到该价爆
+  function levLiqPrice(p){
+    var L=p.L||1;
+    if(p.dir==='short') return p.entry*(1 + 1/L - levMR(L));
+    return p.entry*(1 - 1/L + levMR(L));
+  }
+  // 当前盈亏（按保证金口径）
+  function levPnl(p, px){
+    if(p.dir==='short') return (p.entry - px) * p.shares;
+    return (px - p.entry) * p.shares;
+  }
+  // 2026-10-20 v13 应计利息（展示用，不动账）：未结天数 × 日息 × 名义
+  function levAccrued(p){
+    if(!p || (p.L<=1 && p.dir!=='short')) return 0;
+    var d=p.accrued||0;
+    d+=(p.lastDay||0)*p.notional*LEV_RATE_DAY;
+    return d;
+  }
+  // 记录一天持有（每次推进给每个杠杆仓加 1 天）
+  function tickLevDays(){
+    if(!state.lev) return;
+    for(var key in state.lev){
+      state.lev[key].lastDay=(state.lev[key].lastDay||0)+1;
+      state.lev[key].holdTotal=(state.lev[key].holdTotal||0)+1;  // 2026-10-20 v14 持股天数（红利税用）
+    }
+  }
+  // 2026-10-20 v14 困难模式：追保催收弹窗（倒计时 3 个交易日）
+  function showMarginCallNotice(name, p, liq){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(20,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;cursor:pointer';
+      mask.innerHTML='<div style="background:#2a0c0c;border:2px solid #d04040;border-radius:14px;padding:26px 30px;text-align:center;max-width:88%">'+
+        '<div style="font-size:32px;margin-bottom:8px">📞</div>'+
+        '<div style="font-size:18px;font-weight:700;color:#ff6060;margin-bottom:10px">⚠️ 券商紧急通知</div>'+
+        '<div style="font-size:13px;color:#e0a8a8;line-height:2">'+
+          '<b>'+name+'</b> · '+p.L+' 倍杠杆<br>'+
+          '您的维持担保比例已跌破警戒线<br>'+
+          '强平价 '+curSym()+liq.toFixed(4)+'<br>'+
+          '<span style="color:#f0c060;font-size:15px;font-weight:700">请立刻转入现金补仓！</span><br>'+
+          '<span style="color:#ff8080">倒计时 3 个交易日，逾期将强制平仓</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:#907070;margin-top:12px">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 250);
+  }
+  // 2026-10-20 v14 困难模式：随机停牌（高杠杆持仓时触发，5~15 个交易日）
+  function checkSuspend(){
+    if(!HARD.on || !state.lev) return;
+    for(var key in state.lev){
+      var p=state.lev[key];
+      if(p.suspendUntil) continue;
+      if(p.L<100) continue;                 // 只有高杠杆才会撞上"突发利空"
+      if(Math.random()>0.002) continue;      // 约 0.2%/交易日
+      var days=HARD.SUSPEND_MIN+Math.floor(Math.random()*(HARD.SUSPEND_MAX-HARD.SUSPEND_MIN+1));
+      var d=new Date(state.date+'T12:00:00'); d.setDate(d.getDate()+days);
+      p.suspendUntil=dstr(d);
+      state.log.unshift(state.date+' 【停牌】'+stockName(p.code)+' 突发重大事项停牌 '+days+' 个交易日（融资利息照扣）');
+      showSuspend(stockName(p.code), days);
+    }
+  }
+  function showSuspend(name, days){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(10,10,20,.9);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;cursor:pointer';
+      mask.innerHTML='<div style="background:#141420;border:1px solid #4a4a8a;border-radius:14px;padding:26px 30px;text-align:center;max-width:88%">'+
+        '<div style="font-size:32px;margin-bottom:8px">⏸️</div>'+
+        '<div style="font-size:18px;font-weight:700;color:#a0b0f0;margin-bottom:10px">停 牌</div>'+
+        '<div style="font-size:13px;color:#b0b0d0;line-height:2">'+
+          '<b>'+name+'</b> 因突发重大事项停牌<br>'+
+          '预计 <b style="color:#f0c060">'+days+' 个交易日</b><br>'+
+          '<span style="color:#e08080">钱取不出来，卖不掉，融资利息每天照扣。</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:#707090;margin-top:12px">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 300);
+  }
+  // 平仓（主动止损止盈）
+  function closeLeveraged(key, quiet){
+    var p=state.lev&&state.lev[key]; if(!p) return;
+    // 2026-10-20 v14 困难模式：停牌 / T+1 / 跌停封死 → 平不掉
+    if(HARD.on && !quiet){
+      if(isSuspended(p)){ setMsg('⛔ 停牌中，无法平仓（钱取不出来，利息照扣）'); return; }
+      if(p.openDate===state.date){ setMsg('⛔ T+1 限制：今日买入，无法平仓'); return; }
+      var bb=barOn(p.code,state.date);
+      if(bb && isLimitDown(bb) && p.dir!=='short'){ setMsg('⛔ 跌停封死，卖盘为空，平仓失败'); return; }
+    }
+    var px=priceOn(p.code,state.date); if(px==null) px=p.entry;
+    var pnl=levPnl(p,px);
+    var accr=levAccrued(p);
+    // 2026-10-20 v14 困难模式：卖出佣金万三 + 印花税千一
+    var cost2=0;
+    if(HARD.on){ cost2=p.notional*(HARD.COMM+HARD.STAMP); }
+    var back=Math.max(0, p.margin+pnl-accr-cost2);   // 2026-10-20 v13 平仓先结利息
+    addCash(back);
+    delete state.lev[key];
+    if(!quiet){
+      trackStat(pnl, 0);
+      state.log.unshift(state.date+' 【杠杆平仓·'+(p.dir==='short'?'空':'多')+'】'+stockName(p.code)+' '+p.L+'倍 · '+p.shares+'股 @ '+curSym()+px.toFixed(2)+'（'+(pnl>=0?'+':'')+money(pnl)+(accr>0?'，扣利息 '+money(accr):'')+(cost2>0?'，佣金印花税 '+money(cost2):'')+'，退回保证金 '+money(back)+'）');
+      setMsg('已平仓 '+stockName(p.code)+'（'+(pnl>=0?'赚':'亏')+' '+money(Math.abs(pnl))+'）');
+      if(pnl<0) sfxLoss(); else sfxSell();
+    }
+    riskCheck();   // 2026-10-31 v1.2.0 平完重新体检
+    render();
+  }
+  // 加钱补保证金（从现金里补，降低爆仓风险）
+  function levAdd(key){
+    var p=state.lev&&state.lev[key]; if(!p) return;
+    var cash=getCash(); if(cash<=0){ setMsg('没有现金可补'); return; }
+    addCash(-cash);
+    p.margin+=cash;
+    state.log.unshift(state.date+' 【补保证金】'+stockName(p.code)+' +'+money(cash)+'（保证金共 '+money(p.margin)+'，强平价调整为 '+curSym()+levLiqPrice(p).toFixed(4)+'）');
+    setMsg('已追加保证金 '+money(cash));
+    render();
+  }
+  // 2026-10-20 v8 取当日K线（含最低/最高价）
+  function barOn(code, dateStr){
+    var _d=dataOf(code);
+    var k=_d && _d.k; if(!k) return null;
+    var lo=0, hi=k.length-1, idx=-1;
+    while(lo<=hi){ var mid=(lo+hi)>>1; if(k[mid][0]<=dateStr){ idx=mid; lo=mid+1; } else hi=mid-1; }
+    if(idx<0) return null;
+    var row=k[idx];
+    // 字段顺序：[日期, 开, 收, 高, 低, 量]
+    // 2026-10-20 v14 困难模式：带上除权分红记录（第 7 项，有才带）
+    return {date:row[0], open:parseFloat(row[1]), close:parseFloat(row[2]), high:parseFloat(row[3]), low:parseFloat(row[4]),
+            div:(row.length>6 && row[6] && typeof row[6]==='object')?row[6]:null};
+  }
+  // 2026-10-20 v14 困难模式：红利税（持股<1年 20%，1~2年 10%，满2年免征）+ 分红到账
+  function checkDividend(){
+    if(!HARD.on) return;
+    for(var key in (state.lev||{})){
+      var p=state.lev[key];
+      if(p.dir==='short') continue;             // 空头要倒付红利，简单起见只算多头
+      var bar=barOn(p.code,state.date);
+      if(!bar || !bar.div || !bar.div.fh_sh) continue;
+      if(p.lastDivDate===bar.div.djr) continue;
+      // 持有天数：按交易日近似（每次推进 +1）
+      var holdDays=p.holdTotal||0;
+      var rate = holdDays<250 ? 0.20 : (holdDays<500 ? 0.10 : 0);
+      var cashDiv = (parseFloat(bar.div.fh_sh)/10)*p.shares;   // 每10股派 X 元
+      if(cashDiv<=0) continue;
+      var tax = cashDiv*rate;
+      p.margin += (cashDiv - tax);
+      p.lastDivDate=bar.div.djr;
+      state.log.unshift(state.date+' 【分红】'+stockName(p.code)+' 每股派 '+(parseFloat(bar.div.fh_sh)/10).toFixed(3)+
+        '元，到账 '+money(cashDiv)+'，扣红利税 '+Math.round(rate*100)+'% → '+money(tax)+
+        '（持股 '+holdDays+' 个交易日，'+bar.div.FHcontent+'）');
+      setMsg('💸 '+stockName(p.code)+' 分红到账 '+money(cashDiv-tax)+'（已被扣税 '+money(tax)+'，股价已除权）');
+    }
+  }
+  // 2026-10-20 v11 真实成交价：当天开盘价（不能用昨日收盘价，否则跳空变成白送）
+  function execPrice(code, dir){
+    var bar=barOn(code, state.date);
+    if(!bar) return null;
+    // 一字板：全天最高=最低，根本成交不了
+    if(bar.high===bar.low) return null;
+    return bar.open;
+  }
+  // 每日/每次推进：检查爆仓（用盘中最低价/最高价，不看收盘）
+  function checkLeverage(){
+    if(state.over||!state.lev) return;
+    for(var key in state.lev){
+      var p=state.lev[key];
+      // 2026-10-20 v14 困难模式：停牌期间不判强平（但利息照扣，复牌再算）
+      if(HARD.on && isSuspended(p)) continue;
+      var bar=barOn(p.code,state.date);
+      if(!bar) continue;
+      var liq=levLiqPrice(p);
+      var isShort = p.dir==='short';
+      // 2026-10-20 v14 困难模式：追保催收（提前 3 个交易日警告，逾期强平）
+      if(HARD.on){
+        var danger = isShort ? (bar.high >= liq*0.95) : (bar.low <= liq*1.05);
+        if(danger && !p.marginCallDay){
+          p.marginCallDay = state.date;
+          p.callCount = 0;
+          showMarginCallNotice(stockName(p.code), p, liq);
+        }
+        if(p.marginCallDay){
+          p.callCount = (p.callCount||0) + 1;
+          if(p.callCount > HARD.CALL_DAYS){
+            state.log.unshift(state.date+' 【追保逾期】'+stockName(p.code)+' 未补仓，券商强制平仓');
+            // 落到下面的强平逻辑
+          }
+        }
+      }
+      // ===== 2026-10-28 v15 修万倍档不爆仓 =====
+      // 原逻辑只看盘中最高/最低价：日线精度只有 3 位小数，
+      // 万倍档要跌 0.005% 才爆，遇上「开盘即最低」的日子永远判不到。
+      // 修法：① 开盘价直接判 ② 收盘价也判 ③ 日终按保证金浮亏兜底
+      var hit = false, hitPx = null, hitWhy = '';
+      if(isShort){
+        if(bar.open >= liq){ hit = true; hitPx = bar.open; hitWhy = '开盘跳空'; }
+        else if(bar.high >= liq){ hit = true; hitPx = liq; hitWhy = '盘中最高'; }
+        else if(bar.close >= liq){ hit = true; hitPx = bar.close; hitWhy = '收盘'; }
+      } else {
+        if(bar.open <= liq){ hit = true; hitPx = bar.open; hitWhy = '开盘跳空'; }
+        else if(bar.low <= liq){ hit = true; hitPx = liq; hitWhy = '盘中最低'; }
+        else if(bar.close <= liq){ hit = true; hitPx = bar.close; hitWhy = '收盘'; }
+      }
+      // ③ 日终兜底：按收盘价浮亏吃掉保证金 → 也判爆（高杠杆精度不足时的最后一道）
+      if(!hit){
+        var pnlClose = isShort ? (p.entry - bar.close) * p.shares : (bar.close - p.entry) * p.shares;
+        if(pnlClose <= -p.margin){ hit = true; hitPx = bar.close; hitWhy = '日终保证金耗尽'; }
+      }
+      if(hit){
+        var px = hitPx;
+        var pnl=levPnl(p,px);
+        var feeAmt=p.notional*LIQ_FEE;              // 2026-10-20 v13 强平违约金 0.5%
+        var accr=levAccrued(p);                      // 应计未结利息
+        var lost=p.margin;
+        var owe=Math.max(0, -pnl - p.margin + feeAmt + accr);
+        delete state.lev[key];
+        if(owe>0.01){ state.debt=(state.debt||0)+owe; }
+        state.log.unshift(state.date+' 【爆仓·'+(isShort?'空':'多')+'】'+stockName(p.code)+' '+p.L+'倍 · '+(hitWhy||'盘中')+' '+curSym()+(px||liq).toFixed(4)+' 触发强平 '+curSym()+liq.toFixed(4)+'，本金 '+money(lost)+' 归零'+(feeAmt>0?'（强平费 '+money(feeAmt)+'）':'')+(owe>0.01?'，倒欠 '+money(owe):''));
+        showLiquidation(stockName(p.code), p, bar, liq, lost, owe, feeAmt, accr);
+      }
+    }
+  }
+  function showLiquidation(name, p, bar, liq, lost, owe, feeAmt, accr){
+    var isShort = p.dir==='short';
+    // 2026-10-20 v9 连续爆仓计数：3 次后提醒收手
+    state.blowups=(state.blowups||0)+1;
+    sfxBankrupt();
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;cursor:pointer';
+      mask.innerHTML='<div style="background:#1a0808;border:1px solid #c03030;border-radius:14px;padding:28px 30px;text-align:center;max-width:88%">'+
+        '<div style="font-size:38px;margin-bottom:8px">💥</div>'+
+        '<div style="font-size:22px;font-weight:700;color:#f06060;margin-bottom:10px">爆 仓 · '+(isShort?'空单':'多单')+'</div>'+
+        '<div style="font-size:13px;color:#d0a0a0;line-height:2;margin-bottom:6px">'+
+          '<b>'+name+'</b> · '+p.L+' 倍杠杆 · '+bar.date+'<br>'+
+          '开仓 '+curSym()+p.entry.toFixed(4)+' → 强平 '+curSym()+liq.toFixed(4)+'<br>'+
+          '当日'+(isShort?'最高':'最低')+' '+curSym()+(isShort?bar.high.toFixed(4):bar.low.toFixed(4))+
+         '，盘中就摸到了线（收盘 '+curSym()+bar.close.toFixed(4)+' 也救不了）。<br>'+
+          '保证金 <b style="color:#f06060">'+money(lost)+'</b> 全部归零'+
+          ((feeAmt>0||accr>0)?'<br><span style="font-size:12px;color:#c08080">券商强平费 '+money(feeAmt||0)+' · 应计利息 '+money(accr||0)+'</span>':'')+
+          (owe>0.01?'<br><span style="color:#e0a060">还倒欠券商 '+money(owe)+'（已记入债务）</span>':'')+
+        '</div>'+
+        '<div style="font-size:13px;color:#f0c060;margin:10px 0 4px;font-weight:700">在真实市场里，这也是你全部的积蓄。</div>'+
+        (state.blowups>=3?'<div style="font-size:13px;color:#e08080;margin-top:8px">已经爆了 '+state.blowups+' 次了——<b>该收手了</b>。</div>':'')+
+        '<div style="font-size:12px;color:#a07070">杠杆放大的是波动，不是胜率。（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 250);
+  }
+  // 2026-10-20 v9 高倍档首次提示（只提示，不拦）
+  function showLeverageWarning(L){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;cursor:pointer';
+      mask.innerHTML='<div style="background:#20140a;border:1px solid #a07030;border-radius:14px;padding:26px 30px;text-align:center;max-width:88%">'+
+        '<div style="font-size:32px;margin-bottom:8px">⚠️</div>'+
+        '<div style="font-size:20px;font-weight:700;color:#f0c060;margin-bottom:10px">'+L+' 倍杠杆</div>'+
+        '<div style="font-size:13px;color:#d8c8a8;line-height:2">'+
+          (L>=10000
+            ? '强平线离你的开仓价只有 <b style="color:#f06060">0.005%</b>。<br>'+
+              'A股日内振幅中位数 2.39%——<b style="color:#f06060">这个距离，开盘前就没了</b>。<br>'+
+              '<span style="color:#a09070">这不是"难赚"，是<b>数学上赚不到</b>。</span>'+
+              '<div style="margin-top:12px;padding:10px 12px;background:#2a1010;border:1px solid #7a3030;border-radius:9px">'+
+                '<b style="color:#f08080">历史回测（真实行情 · 95,880 个交易日）</b><br>'+
+                '这一档能活过当天的：<b style="color:#f06060">5.66%</b>（多） / <b style="color:#f06060">6.80%</b>（空）<br>'+
+                '<span style="color:#c09090">一百个人开仓，<b>九十四个人当天归零</b>；<br>剩下六个，多半第二天也归零。</span>'+
+              '</div>'
+            : '按历史行情回测：这个档位<b style="color:#f06060">大约每 450 个交易日只活 1 天</b>。<br>'+
+              '不是"难"，是<b>基本必爆</b>。<br>'+
+              '<span style="color:#a09070">这个档位是用来体验爆仓的，不是用来赚钱的。</span>'+
+              '<div style="margin-top:12px;padding:10px 12px;background:#2a1010;border:1px solid #7a3030;border-radius:9px">'+
+                '<b style="color:#f08080">历史回测（真实行情 · 95,880 个交易日）</b><br>'+
+                '这一档能活过当天的：<b style="color:#f06060">6.50%</b>（多） / <b style="color:#f06060">7.79%</b>（空）<br>'+
+                '<span style="color:#c09090">九十三个里死九十三？不——<b>一百个里死九十三个</b>，剩下七个第二天还得再赌一次。</span>'+
+              '</div>')+
+        '</div>'+
+        '<div style="font-size:12px;color:#807070;margin-top:12px">（点任意处关闭，照常可以开仓）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 200);
+  }
+  // 渲染杠杆仓位面板
+  function renderLev(){
+    var box=document.getElementById('levBody'); if(!box) return;
+    var any=false, h='';
+    if(state.lev){
+      for(var key in state.lev){
+        var p=state.lev[key];
+        var px=priceOn(p.code,state.date); if(px==null) px=p.entry;
+        var pnl=levPnl(p,px);
+        var liq=levLiqPrice(p);
+        var isShort=p.dir==='short';
+        var dist=(isShort?(liq-px):(px-liq))/px*100;
+        var danger = dist<5;
+        any=true;
+        h+='<div class="hold" style="border-color:'+(danger?'#a03030':'#8a6a20')+';background:'+(danger?'#1e0c0c':'#141e14')+'">'+
+           '⚡ '+(isShort?'空 ':'多 ')+stockName(p.code)+' · <b>'+p.L+'倍</b> · '+p.shares+' 股 · 均价 '+curSym()+p.entry.toFixed(4)+
+           ' → 现 '+curSym()+px.toFixed(2)+'<br>'+
+           '<span style="font-size:12px">保证金 '+money(p.margin)+' · 名义 '+money(p.notional)+
+           ' · 盈亏 <b style="color:'+(pnl>=0?'#70c070':'#e07070')+'">'+(pnl>=0?'+':'')+money(pnl).replace(/^[¥$]/,'')+'</b></span><br>'+
+           '<span style="font-size:12px;color:'+(danger?'#e07070':'#e0c080')+'">强平价 '+curSym()+liq.toFixed(4)+
+           (danger?' · ⚠️ 距爆仓仅 '+dist.toFixed(2)+'%':' · 距爆仓 '+dist.toFixed(2)+'%')+'</span>'+
+           ' <button data-levadd="'+key+'" style="padding:3px 9px;font-size:12px">补保证金</button>'+
+           ' <button data-levclose="'+key+'" style="padding:3px 9px;font-size:12px">平仓</button></div>';
+      }
+    }
+    box.innerHTML=any?h:'<div style="color:#6a7a4a;font-size:13px">暂无杠杆仓位（上方选倍率和方向 → 点「⚡杠杆」开仓）</div>';
+  }
+  // 2026-10-16 卖出收税：税率按「总资产」套档（中国区套中国表 / 美国区套美国表）
+  function taxRate(){
+    var a=totalAssets(); // 总资产（人民币计）
+    if(mkt==='us'){
+      // 美国表（按总资产折算成人民币对比，用汇率 7 粗算）
+      var usd=a/fxOn(state.date);
+      if(usd<=11925) return 0.10;
+      if(usd<=48475) return 0.12;
+      if(usd<=103350) return 0.22;
+      if(usd<=197300) return 0.24;
+      if(usd<=250525) return 0.32;
+      if(usd<=626350) return 0.35;
+      return 0.37;
+    } else {
+      // 中国表（按总资产，单位元，门槛放大到适配高资产）
+      if(a<=3.6e4) return 0.03;
+      if(a<=1.44e5) return 0.10;
+      if(a<=3.0e5) return 0.20;
+      if(a<=4.2e5) return 0.25;
+      if(a<=6.6e5) return 0.30;
+      if(a<=9.6e5) return 0.35;
+      return 0.45;
+    }
+  }
+  // 对一笔「卖出所得额」收税（不管盈亏，入账就扣），返回税额
+  function taxOn(proceeds){
+    if(proceeds<=0) return 0;
+    return proceeds*taxRate();
+  }
+  function sell(code){
+    var cur=state.pos[code]; if(!cur||!cur.shares){ setMsg('没有持仓'); return; }
+    var px=priceOn(code,state.date); if(px==null) return;
+    // 2026-10-16 A股按手卖(100股)；美股按1股卖
+    var lot = (mkt==='us') ? 1 : 100;
+    var sh=Math.min(lot,cur.shares);
+    if(code==='__ALL__') sh=cur.shares;
+    var avgCost=cur.cost/cur.shares;
+    var gain=px*sh; addCash(gain);
+    cur.shares-=sh; if(cur.shares<=0) delete state.pos[code];
+    var pl = (px - avgCost)*sh;
+    var tax = taxOn(gain); if(tax>0) addCash(-tax); // 2026-10-16 按「卖出所得额」收税（不管盈亏）
+    trackStat(pl, tax); // 2026-10-16 年度统计
+    state.log.unshift(state.date+' 卖出 '+stockName(code)+' '+sh+'股 @ '+curSym()+px.toFixed(2)+'（'+(pl>=0?'+':'')+money(pl).replace(/^[¥$]/,'')+'）'+(tax>0?' 税'+Math.round(taxRate()*100)+'% → '+money(tax):''));
+    sfxSell();
+    if(pl<0) sfxLoss();
+    render();
+  }
+  // 2026-10-16 清仓：一键卖出该股全部持仓
+  function sellAll(code){
+    var cur=state.pos[code]; if(!cur||!cur.shares){ setMsg('没有持仓'); return; }
+    var px=priceOn(code,state.date); if(px==null) return;
+    var sh=cur.shares, gain=px*sh; addCash(gain);
+    var avgCost=cur.cost/sh;
+    var pl = (px - avgCost)*sh;
+    var tax = taxOn(gain); if(tax>0) addCash(-tax); // 2026-10-16 按「卖出所得额」收税（不管盈亏）
+    trackStat(pl, tax); // 2026-10-16 年度统计
+    state.log.unshift(state.date+' 【清仓】卖出 '+stockName(code)+' '+sh+'股 @ '+curSym()+px.toFixed(2)+'（'+(pl>=0?'+':'')+money(pl).replace(/^[¥$]/,'')+'）'+(tax>0?' 税'+Math.round(taxRate()*100)+'% → '+money(tax):''));
+    delete state.pos[code];
+    setMsg('已清仓 '+stockName(code));
+    sfxSell();
+    if(pl<0) sfxLoss();
+    render();
+  }
+  // 2026-10-16 年度统计（供年终财报）
+  function trackStat(pl, tax){
+    if(!state.yearStats) state.yearStats={win:0,lose:0,tax:0,trades:0};
+    state.yearStats.trades++;
+    if(pl>=0) state.yearStats.win++; else state.yearStats.lose++;
+    state.yearStats.tax += (tax||0);
+  }
+
+  function reset(){
+    state.date=CFG.start; state.cny=START_CASH; state.usd=0; state.debt=0; state.debtYear=null; state.research={}; state.pos={}; state.log=[]; state.ach={}; state.over=false;
+    state.lev={}; // 2026-10-20 v7 杠杆仓位清空
+    // 2026-10-16 每局重开：真实数据 ↔ 虚假名字 重新打乱配对
+    state.nameMap= Object.assign(shuffleNames(DATA_CN||{}), shuffleNames(DATA_US||{}));
+    var l=document.getElementById('log'); l.innerHTML='<div style="color:#6a7a4a">尚无交易</div>';
+    var rp=document.getElementById('researchPanel'); if(rp) rp.style.display='none';
+    setMsg('');
+    render();
+  }
+
+  function checkAch(total){
+    for(var i=0;i<ACHS.length;i++){
+      var a=ACHS[i];
+      if(total>=a.v && !state.ach[a.k]){
+        state.ach[a.k]=true;
+        showAch(a);
+      }
+    }
+  }
+  function showAch(a){
+    var mask=document.createElement('div');
+    mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+    mask.innerHTML='<div style="background:#241d08;border:1px solid #a08030;border-radius:14px;padding:26px 34px;text-align:center;max-width:80%"><div style="font-size:34px;margin-bottom:8px">'+a.ic+'</div><div style="font-size:20px;font-weight:700;color:#f0c060;margin-bottom:6px">成就解锁：'+a.n+'</div><div style="font-size:13px;color:#b0a060;margin-bottom:14px">总资产突破 '+fmt(a.v)+'</div><div style="font-size:12px;color:#807040">（点任意处关闭）</div></div>';
+    mask.onclick=function(){ mask.remove(); };
+    document.body.appendChild(mask);
+  }
+  function renderAch(){
+    var box=document.getElementById('achv'); if(!box) return;
+    var h='';
+    for(var i=0;i<ACHS.length;i++){
+      var a=ACHS[i], on=!!state.ach[a.k];
+      h+='<span class="badge'+(on?' on':' locked')+'">'+a.ic+' '+a.n+' '+fmt(a.v)+'</span>';
+    }
+    box.innerHTML=h;
+  }
+
+  function setMsg(t){ document.getElementById('msg').textContent=t||''; }
+
+  // ===== 2026-10-16 第1批：情绪指数 / 大事件 / 音效 / 导出 =====
+  // 恐慌贪婪指数（0-100）：按当日大盘（全市场均涨跌）算
+  function sentimentIndex(){
+    var sum=0, n=0;
+    for(var i=0;i<codes.length;i++){
+      var p=prevPrice(codes[i],state.date), px=priceOn(codes[i],state.date);
+      if(p&&px){ sum+=(px-p)/p; n++; }
+    }
+    var avg = n? sum/n : 0;
+    // 把均涨跌映射到 0~100（-3%→0，+3%→100）
+    var v = Math.round(50 + avg/0.03*50);
+    return Math.max(0, Math.min(100, v));
+  }
+  function renderSentiment(){
+    var el=document.getElementById('sentVal'), bar=document.getElementById('sentBar');
+    if(!el) return;
+    var v=sentimentIndex();
+    var label = v>=75?'极度贪婪 😱':(v>=55?'贪婪 😀':(v>=45?'中性 😐':(v>=25?'恐慌 😨':'极度恐慌 🥶')));
+    el.textContent=v+' '+label;
+    if(bar) bar.innerHTML='<span class="sentmark" style="left:'+v+'%"></span>';
+  }
+  // 音效（WebAudio 极简、无外部文件）
+  var _ac=null;
+  function beep(freq, dur, type, vol){
+    try{
+      _ac=_ac||new (window.AudioContext||window.webkitAudioContext)();
+      var o=_ac.createOscillator(), g=_ac.createGain();
+      o.type=type||'sine'; o.frequency.value=freq;
+      o.connect(g); g.connect(_ac.destination);
+      g.gain.value=vol||0.06;
+      o.start(); o.stop(_ac.currentTime+(dur||0.1));
+    }catch(e){}
+  }
+  function sfxBuy(){ beep(880,0.09,'triangle',0.05); setTimeout(function(){beep(1320,0.09,'triangle',0.05);},70); } // 铜钱叮当
+
+  // ===== 2026-10-31 v1.2.0 重仓风险 BGM（本地文件，不上传仓库）=====
+  // 触发：杠杆≥500倍 / 梭哈 allIn / 维持担保率<200%  → 循环播放
+  // 停止：所有杠杆平掉且维持担保率回到安全线 → 淡出
+  var _riskBgm=null, _riskOn=false;
+  function riskBgmOn(){
+    if(_riskOn) return;
+    try{
+      if(!_riskBgm){
+        _riskBgm=new Audio('../../music/zhenyingxiong-dj.mp3');
+        _riskBgm.loop=true; _riskBgm.volume=0;
+      }
+      _riskBgm.play().then(function(){
+        var v=0; var t=setInterval(function(){ v=Math.min(0.55,v+0.05); _riskBgm.volume=v; if(v>=0.55) clearInterval(t); },80);
+      }).catch(function(){});
+      _riskOn=true;
+    }catch(e){}
+  }
+  function riskBgmOff(){
+    if(!_riskOn||!_riskBgm) return;
+    _riskOn=false;
+    try{
+      var v=_riskBgm.volume; var t=setInterval(function(){ v=Math.max(0,v-0.05); _riskBgm.volume=v; if(v<=0){ clearInterval(t); try{_riskBgm.pause(); _riskBgm.currentTime=0;}catch(e){} } },60);
+    }catch(e){}
+  }
+  // 风险体检：有杠杆未平 → 查倍数与维持担保率
+  function riskCheck(){
+    var high=false;
+    if(state.lev){
+      for(var k in state.lev){
+        var p=state.lev[k];
+        if(!p||!p.shares) continue;
+        if(p.L>=500) high=true;                       // 千倍及以上
+        else if(p.L>1 && levMR(p.L)>0 && p.margin>0){
+          // 维持担保比例 = 保证金 / (名义×维持率)，粗略反映爆仓距离
+          var ratio = p.margin/(p.notional*levMR(p.L));
+          if(ratio<2) high=true;                      // <200% 危险
+        }
+      }
+    }
+    if(high) riskBgmOn(); else riskBgmOff();
+  }
+  function sfxSell(){ beep(660,0.12,'sine',0.05); }
+  function sfxLoss(){ beep(180,0.35,'sawtooth',0.04); } // 叹气低音
+  function sfxBankrupt(){ // 警报
+    for(var i=0;i<4;i++) (function(k){ setTimeout(function(){ beep(k%2?620:420,0.22,'square',0.06); }, k*260); })(i);
+  }
+  // 大事件（按年份）：颜色横幅弹窗
+  var BIG_EVENTS={
+    '2007':'🔥 疯狂牛市 · 全民炒股，一万点不是梦！（随后见顶）',
+    '2008':'💀 全球金融危机 · 雷曼倒闭，哀鸿遍野',
+    '2015':'🎢 杠杆牛市 · 配资疯潮，随后股灾熔断',
+    '2020':'🦠 疫情黑天鹅 · 全球暴跌后放水救市'
+  };
+  function checkBigEvent(prevY, nowY){
+    for(var y=prevY+1;y<=nowY;y++){
+      if(BIG_EVENTS[String(y)]) showBigEvent(y, BIG_EVENTS[String(y)]);
+      if(RATE_EVENTS[String(y)]) showRateEvent(y, RATE_EVENTS[String(y)]);
+    }
+  }
+  // 2026-10-16 央行/美联储利率事件（加息→跌 / 降息→涨）
+  var RATE_EVENTS={
+    '2007':'加息周期 · 央行连续加息，市场承压（股市易跌）',
+    '2008':'大幅降息救市 · 美联储降息至零利率、放水（利好股市）',
+    '2015':'降息降准 · 央行多次放水，杠杆牛市（短期利好，风险筑高）',
+    '2020':'史诗级放水 · 美联储降息+无限量宽（大跌后暴力反弹）'
+  };
+  function showRateEvent(y, txt){
+    var up = (y==='2007'); // 加息=利空
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;padding:20px';
+      mask.innerHTML='<div style="background:'+(up?'#241414':'#0e2418')+';border:1px solid '+(up?'#8a3030':'#2a8a50')+';border-radius:14px;padding:26px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:13px;color:#8aa06a;margin-bottom:6px">🏛️ 货币政策</div>'+
+        '<div style="font-size:26px;margin-bottom:10px">'+(up?'📈 加息':'📉 降息')+'</div>'+
+        '<div style="font-size:14px;color:#d8d0c0;line-height:1.9;margin-bottom:14px">'+y+' 年：'+txt+'</div>'+
+        '<div style="font-size:12px;color:#807070">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 500);
+  }
+  function showBigEvent(y, txt){
+    var crisis = (y==='2008'||y==='2015'||y==='2020');
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:'+(crisis?'rgba(10,10,15,.82)':'rgba(40,10,10,.82)')+';display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;padding:20px';
+      mask.innerHTML='<div style="background:'+(crisis?'#14141c':'#2a1010')+';border:1px solid '+(crisis?'#4a4a6a':'#a03030')+';border-radius:14px;padding:26px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:30px;font-weight:700;color:'+(crisis?'#a0b0d0':'#f0a0a0')+';margin-bottom:10px">'+y+' 年</div>'+
+        '<div style="font-size:15px;color:#d8d0c0;line-height:1.9;margin-bottom:14px">'+txt+'</div>'+
+        '<div style="font-size:12px;color:#807070">（点任意处关闭）</div></div>';
+      mask.onclick=function(){ mask.remove(); };
+      document.body.appendChild(mask);
+    }, 300);
+  }
+  // 导出交易日志为 CSV
+  // ===== 2026-10-16 打新（新股申购）=====
+  // 新股表：年份 → {name, price}（2026-10-16 开源前：真名→虚构名）
+  var IPO_EVENTS={
+    '2006':{name:'宏伟银行', price:3.12},
+    '2007':{name:'阎罗保险', price:33.80},
+    '2010':{name:'丰野银行', price:2.68},
+    '2018':{name:'曜光电池', price:25.14},
+    '2020':{name:'飞虹铁道', price:4.88}
+  };
+  function checkIPO(prevY, nowY){
+    for(var y=prevY+1;y<=nowY;y++){
+      if(IPO_EVENTS[String(y)]) showIPO(y, IPO_EVENTS[String(y)]);
+    }
+  }
+  function showIPO(year, ipo){
+    setTimeout(function(){
+      var mask=document.createElement('div');
+      mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px';
+      mask.innerHTML='<div style="background:#101a28;border:1px solid #2a5a8a;border-radius:14px;padding:26px 30px;text-align:center;max-width:86%">'+
+        '<div style="font-size:13px;color:#8aa06a;margin-bottom:6px">🎫 新股申购</div>'+
+        '<div style="font-size:18px;font-weight:700;color:#a0c0f0;margin-bottom:10px">'+year+' 年 · '+ipo.name+'</div>'+
+        '<div style="font-size:13px;color:#d8d0c0;line-height:1.9;margin-bottom:14px">发行价约 ¥'+ipo.price.toFixed(2)+'。<br>A 股特色：中签靠运气（纯随机抽签），中到就是赚到。</div>'+
+        '<button id="ipoSubBtn" style="padding:10px 20px;background:#1a3a5a;color:#c0e0ff;border:1px solid #3a6a9a;border-radius:9px;font-size:14px;cursor:pointer;font-family:inherit">参与申购（免费）</button>'+
+        '<div style="font-size:12px;color:#807070;margin-top:10px">（点背景关闭）</div></div>';
+      mask.onclick=function(ev){ if(ev.target===mask) mask.remove(); };
+      document.body.appendChild(mask);
+      var btn=document.getElementById('ipoSubBtn');
+      if(btn) btn.onclick=function(){ doIPO(year, ipo); mask.remove(); };
+    }, 400);
+  }
+  function doIPO(year, ipo){
+    // A股打新：中签率极低（约 10% 模拟），中签后按发行价获配 1 手（100股）
+    var win=Math.random()<0.10;
+    if(win){
+      var lot=100, cost=ipo.price*lot;
+      if(getCash()<cost){ setMsg('中签了但现金不足缴纳 ¥'+cost.toFixed(0)+'，弃购'); return; }
+      addCash(-cost);
+      var code='IPO-'+year;
+      // 新股以发行价为成本入一份持仓（数据用真实涨幅特征近似，简单起见用发行价买1手）
+      state.pos[code]={shares:lot, cost:cost};
+      state.nameMap=state.nameMap||{}; state.nameMap[code]=ipo.name;
+      // 新股数据：若不在 DATA，则给一个假的线性数据占位（以发行价为基准）
+      if(!state.ipoData) state.ipoData={};
+      state.ipoData[code]=ipo.price;
+      state.log.unshift(state.date+' 【打新中签】'+ipo.name+' '+lot+'股 @ ¥'+ipo.price.toFixed(2));
+      setMsg('🎉 中签！获配 '+ipo.name+' 100 股');
+      sfxBuy();
+    } else {
+      state.log.unshift(state.date+' 【打新未中】'+ipo.name+' 申购未中签');
+      setMsg('未中签，可惜');
+    }
+    render();
+  }
+  // ===== 2026-10-16 NPC 论坛（心理噪声）=====
+  var NPC_POSTS={
+    bull:[ // 牛市顶点喊多
+      '韭菜老王：一万点不是梦！满仓干！🚀',
+      '韭菜老王：这波不上车就永远没机会了！',
+      '游资张哥：加杠杆冲，富贵险中求！'
+    ],
+    bear:[ // 暴跌喊空
+      '韭菜老王：天台见…全割了😭',
+      '游资张哥：庄家出货了，快跑！',
+      '韭菜老王：完了完了，明天肯定跌停'
+    ]
+  };
+  function renderForum(){
+    var fb=document.getElementById('forumBody'); if(!fb) return;
+    var v=sentimentIndex();
+    var pool = v>=60 ? NPC_POSTS.bull : (v<=40 ? NPC_POSTS.bear : []);
+    if(!pool.length){ fb.innerHTML='<div style="color:#6a7a4a">股吧今日风平浪静…</div>'; return; }
+    var h='';
+    pool.forEach(function(p){ h+='<div>'+p+'</div>'; });
+    h+='<div style="color:#5a6a4a;font-size:11px;margin-top:6px">※ 论坛发言纯属NPC噪声，不构成建议</div>';
+    fb.innerHTML=h;
+  }
+  function exportCsv(){
+    if(!state.log.length){ setMsg('还没有交易记录可导出'); return; }
+    var rows=['日期/记录'];
+    for(var i=state.log.length-1;i>=0;i--){ rows.push('"'+state.log[i].replace(/"/g,'""')+'"'); }
+    var csv='\ufeff'+rows.join('\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='交易记录_'+state.date+'.csv';
+    a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    setMsg('已导出 CSV');
+  }
+
+  // 2026-10-16 信托面板渲染
+  function renderTrust(){
+    var tb=document.getElementById('trustBody'); if(!tb) return;
+    var t=state.trust; var h='';
+    var bal = t? t.balance : 0;
+    h+='<div>信托余额：<b style="color:#a8d060">¥'+(bal||0).toFixed(0)+'</b>'+(t?'（'+state.trusts[t.idx].name+'）':'（未设立）')+'</div>';
+    h+='<div style="font-size:11px;color:#8aa06a">门槛：¥10,000,000（千万）· 每年可存或取一次 · 取出交税 · 管理费按规模（千万10%～上亿1%，下限1%）</div>';
+    // 信托列表（2026-10-16 藏起背叛概率——玩家只能赌）
+    h+='<div style="margin-top:10px;font-size:12px">';
+    for(var i=0;i<state.trusts.length;i++){
+      var tr=state.trusts[i];
+      var sel=(t&&t.idx===i)?' ← 已选':'';
+      h+='<div style="padding:3px 0">'+tr.name+' · 背叛概率 <b style="color:#8aa06a">？？？</b>'+sel+'</div>';
+    }
+    h+='<div style="color:#6a7a4a;font-size:11px;margin-top:4px">※ 每局 10 个信托，1 个绝不背叛、1 个必定背叛，其余概率随机——但谁是谁，只有天知道。</div>';
+    h+='</div>';
+    // 操作区
+    if(totalAssets()>=TRUST_MIN || (t&&t.balance>0)){
+      h+='<div class="exch-row" style="margin-top:10px">';
+      h+='<select id="trustSel" style="flex:1;padding:8px;background:#12200e;border:1px solid #2e4a20;border-radius:9px;color:#c8e0a0;font-family:inherit">';
+      for(var j=0;j<state.trusts.length;j++){
+        h+='<option value="'+j+'"'+(t&&t.idx===j?' selected':'')+'>'+state.trusts[j].name+'</option>';
+      }
+      h+='</select></div>';
+      h+='<div class="exch-row" style="margin-top:8px">';
+      h+='<input id="trustAmt" type="number" min="0" placeholder="金额" style="flex:1;padding:9px;background:#12200e;border:1px solid #2e4a20;border-radius:9px;color:#c8e0a0;font-family:inherit;font-size:14px">';
+      h+='<button id="trustInBtn" style="padding:9px 14px">存入</button>';
+      h+='<button id="trustOutBtn" style="padding:9px 14px;background:#4a1818;border-color:#8a3030;color:#f0a0a0">取出</button>';
+      h+='</div>';
+    } else {
+      h+='<div style="margin-top:8px;font-size:12px;color:#e0a860">总资产未达 ¥10,000,000，无法设立信托</div>';
+    }
+    tb.innerHTML=h;
+    // 绑定
+    var inB=document.getElementById('trustInBtn'), outB=document.getElementById('trustOutBtn');
+    if(inB) inB.onclick=function(){ trustDeposit(parseInt(document.getElementById('trustSel').value,10), parseFloat(document.getElementById('trustAmt').value)); document.getElementById('trustAmt').value=''; };
+    if(outB) outB.onclick=function(){ trustWithdraw(parseFloat(document.getElementById('trustAmt').value)); document.getElementById('trustAmt').value=''; };
+  }
+  function render(){
+    document.getElementById('curDate').textContent=state.date;
+    // 总资产 = 现金 + 持仓市值
+    var mv=0;
+    // 2026-10-28 双市场：总资产统一走 totalAssets()（现金+A股+美股+杠杆，全折人民币）
+    document.getElementById('cash').textContent=money(getCash());
+    document.getElementById('total').textContent=money(totalAssets());
+    // 2026-10-16 美股区显示当天汇率
+    var fxLine=document.getElementById('fxLine'), fxVal=document.getElementById('fxVal');
+    if(fxLine){ if(mkt==='us'){ fxLine.style.display=''; fxVal.textContent='1$ = '+fxOn(state.date).toFixed(4)+'¥'; } else { fxLine.style.display='none'; } }
+    // 2026-10-16 修复：推进时间后换汇面板汇率也要跟着刷新（原先只在切换市场时更新）
+    if(mkt==='us') renderExchInfo();
+    // 2026-10-16 显示当前卖出税率（按总资产套档）
+    var tv=document.getElementById('taxVal');
+    if(tv) tv.textContent=Math.round(taxRate()*100)+'%（按总资产套档）';
+    renderSentiment(); // 2026-10-16 市场情绪指数
+    renderForum();     // 2026-10-16 NPC 论坛
+    renderTrust();
+    renderLev();       // 2026-10-20 v7 杠杆仓位面板
+    // 2026-10-16 债务面板更新
+    var da=document.getElementById('debtAmt'), dc=document.getElementById('debtCap');
+    if(da){
+      var debtCny=state.debt||0;
+      da.textContent = '¥'+debtCny.toLocaleString('zh-CN',{maximumFractionDigits:0});
+      da.style.color = debtCny>0 ? '#e08080' : '#8aa06a';
+    }
+    if(dc){ dc.textContent='¥'+(debtCap()-(state.debt||0)).toFixed(0); }
+    checkAch(getCash()+mv);
+    renderAch();
+
+    // 持仓
+    var hb=document.getElementById('holdings');
+    var has=false, h='';
+    for(var c2 in state.pos){
+      has=true; var p=state.pos[c2], px2=priceOn(c2,state.date)||0;
+      var avg=p.cost/p.shares, val=px2*p.shares, prof=val-p.cost;
+      h+='<div class="hold">'+stockName(c2)+'：'+p.shares+' 股 · 均价 '+money(avg)+' → 现 '+money(px2)+' · 盈亏 <b style="color:'+(prof>=0?'#e07070':'#70c070')+'">'+(prof>=0?'+':'')+money(prof).replace(/^[¥$]/,'')+'</b>'+
+         ' <button data-sell="'+c2+'" style="padding:3px 9px;font-size:12px">卖</button>'+
+         ' <button data-sellall="'+c2+'" style="padding:3px 9px;font-size:12px">清仓</button></div>';
+    }
+    // 2026-10-16 空头持仓
+    for(var sc in (state.short||{})){
+      var sq=state.short[sc]; if(!sq.shares) continue;
+      has=true; var spx=priceOn(sc,state.date)||0;
+      var spnl=(sq.entry-spx)*sq.shares;
+      h+='<div class="hold" style="border-color:#6a3a8a">🩹空 '+stockName(sc)+'：'+sq.shares+' 股 · 开仓 '+money(sq.entry)+' → 现 '+money(spx)+' · 盈亏 <b style="color:'+(spnl>=0?'#70c070':'#e07070')+'">'+(spnl>=0?'+':'')+money(spnl).replace(/^[¥$]/,'')+'</b>'+
+         ' <button data-cover="'+sc+'" style="padding:3px 9px;font-size:12px">买回</button></div>';
+    }
+    hb.innerHTML=has?h:'<div style="color:#6a7a4a;font-size:13px">暂无持仓</div>';
+
+    // 市场
+    var mb=document.getElementById('market'), mh='';
+    for(var i=0;i<codes.length;i++){
+      var code=codes[i], info=DATA[code];
+      var px=priceOn(code,state.date);
+      var selCls=(code===selCode)?' sel':'';
+      if(px==null){
+        mh+='<div class="stock notlisted'+selCls+'" data-view="'+code+'"><div><div class="nm">'+stockName(code)+'</div><div class="px">上市日 '+info.first+'</div></div></div>';
+      } else {
+        var prev=prevPrice(code,state.date);
+        var chg=prev?(px-prev)/prev*100:0;
+        var cls=chg>0?'up':(chg<0?'down':'');
+    mh+='<div class="stock'+selCls+'" data-view="'+code+'"><div><div class="nm">'+info.name+(state.research[code]?' 📄':'')+'</div><div class="px">现价 <b>'+curSym()+px.toFixed(2)+'</b> <span class="chg '+cls+'">'+(prev?((chg>=0?'+':'')+chg.toFixed(2)+'%'):'—')+'</span></div></div>'+
+            '<div class="act"><button data-buy="'+code+'">'+(mkt==='us'?'买 1 股':'买 1 手')+'</button>'+
+            '<button data-lev="'+code+'" style="background:#3a1a1a;border-color:#a04040;color:#f0a0a0">⚡杠杆</button>'+
+            '<button data-short="'+code+'" style="background:#2a1a3a;border-color:#6a3a8a;color:#d0a0f0">做空</button>'+
+            '<button data-allin="'+code+'" style="background:#4a2a18;border-color:#8a5030;color:#f0c090">梭哈</button>'+
+            '<button data-research="'+code+'" style="background:#1a2a3a;border-color:#3a5a8a;color:#a0c0f0">'+(state.research[code]?'研报✓':'买研报')+'</button>'+
+            '<button data-rumor="'+code+'" style="background:#2a2410;border-color:#6a5a2a;color:#e0c080">小道消息</button></div></div>';
+      }
+    }
+    mb.innerHTML=mh;
+  }
+  // 2026-10-16 K线：canvas 手绘收盘价走势（零依赖）
+  var selCode=null;
+  function drawK(code){
+    selCode=code;
+    var cv=document.getElementById('kchart'); if(!cv) return;
+    var ctx=cv.getContext('2d');
+    var W=cv.width, H=cv.height, PAD=26;
+    ctx.clearRect(0,0,W,H);
+    var info=DATA[code]; if(!info) return;
+    document.getElementById('kName').textContent='（'+stockName(code)+'）';
+    var k=info.k, n=k.length; if(n<2) return;
+    var step=Math.max(1,Math.floor(n/1500));
+    // 只画到「当前时间线」为止——不提前看未来
+    var endIdx=-1, lo0=0, hi0=n-1;
+    while(lo0<=hi0){ var m0=(lo0+hi0)>>1; if(k[m0][0]<=state.date){endIdx=m0;lo0=m0+1;}else hi0=m0-1; }
+    if(endIdx<1) endIdx=1;
+    var pts=[];
+    for(var i=0;i<=endIdx;i+=step) pts.push(parseFloat(k[i][2]));
+    if(pts.length<2) return;
+    var mn=Math.min.apply(null,pts), mx=Math.max.apply(null,pts);
+    if(mx===mn) mx=mn+1;
+    var x=function(i){ return PAD + i*(W-2*PAD)/(pts.length-1); };
+    var y=function(v){ return H-PAD - (v-mn)*(H-2*PAD)/(mx-mn); };
+    ctx.strokeStyle='#1e3018'; ctx.lineWidth=1;
+    for(var g=0;g<=4;g++){ var gy=PAD+g*(H-2*PAD)/4; ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(W-PAD,gy); ctx.stroke(); }
+    ctx.strokeStyle='#7ab0f0'; ctx.lineWidth=1.6; ctx.beginPath();
+    for(var i2=0;i2<pts.length;i2++){ var px=x(i2), py=y(pts[i2]); i2?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.stroke();
+    ctx.fillStyle='#6a7a4a'; ctx.font='11px sans-serif'; ctx.textAlign='left';
+    ctx.fillText('高 '+mx.toFixed(2), PAD+2, PAD+10);
+    ctx.fillText('低 '+mn.toFixed(2), PAD+2, H-PAD-4);
+    // 当前点（线尾）
+    var cx=x(pts.length-1), cy=y(pts[pts.length-1]);
+    ctx.fillStyle='#f0c060'; ctx.beginPath(); ctx.arc(cx,cy,4,0,6.3); ctx.fill();
+    // 时间轴：左端上市日，右端当前日期
+    ctx.fillStyle='#5a6a3a'; ctx.textAlign='left'; ctx.fillText(info.first, PAD, H-6);
+    ctx.textAlign='right'; ctx.fillText(state.date, W-PAD, H-6);
+  }
+
+  function prevPrice(code, dateStr){
+    var k=DATA[code].k, lo=0, hi=k.length-1, idx=-1;
+    while(lo<=hi){ var mid=(lo+hi)>>1; if(k[mid][0]<=dateStr){ idx=mid; lo=mid+1; } else hi=mid-1; }
+    if(idx<1) return null;
+    return parseFloat(k[idx-1][2]);
+  }
+
+  // 事件委托
+  document.getElementById('market').addEventListener('click',function(e){
+    // 2026-10-17 修复：数据没加载完时点击，避免整个页面崩掉
+    if(!DATA || !codes || codes.length===0){ setMsg('⏳ 行情数据还在加载，请稍候…'); return; }
+    var b=e.target.closest('button[data-buy]');
+    if(b){ buy(b.getAttribute('data-buy')); return; }
+    var lv=e.target.closest('button[data-lev]');
+    if(lv){ openLeveraged(lv.getAttribute('data-lev')); return; }
+    var sh=e.target.closest('button[data-short]');
+    if(sh){ shortSell(sh.getAttribute('data-short')); return; }
+    var ai=e.target.closest('button[data-allin]');
+    if(ai){ allIn(ai.getAttribute('data-allin')); return; }
+    var re=e.target.closest('button[data-research]');
+    if(re){ buyResearch(re.getAttribute('data-research')); return; }
+    var ru=e.target.closest('button[data-rumor]');
+    if(ru){ buyRumor(ru.getAttribute('data-rumor')); return; }
+    var d=e.target.closest('[data-view]');
+    if(d){ drawK(d.getAttribute('data-view')); render(); }
+  });
+  document.getElementById('holdings').addEventListener('click',function(e){
+    var cv=e.target.closest('button[data-cover]'); if(cv){ shortCover(cv.getAttribute('data-cover')); return; }
+    var b=e.target.closest('button[data-sellall]'); if(b){ sellAll(b.getAttribute('data-sellall')); return; }
+    var s=e.target.closest('button[data-sell]'); if(s){ sell(s.getAttribute('data-sell')); }
+  });
+  // 2026-10-20 v7 杠杆面板：补保证金 / 平仓
+  // 2026-10-20 v14 困难模式开关
+  document.getElementById('hardMode').addEventListener('change',function(e){
+    hardSync();
+    if(HARD.on){
+      setMsg('🔥 困难模式开启：T+1 · 跌停封死 · 停牌 · 追保催收 · 印花税佣金 · 红利税');
+    } else {
+      setMsg('困难模式关闭，回到普通模式');
+    }
+  });
+  document.getElementById('levBody').addEventListener('click',function(e){
+    var add=e.target.closest('button[data-levadd]'); if(add){ levAdd(add.getAttribute('data-levadd')); return; }
+    var cls=e.target.closest('button[data-levclose]'); if(cls){ closeLeveraged(cls.getAttribute('data-levclose')); return; }
+  });
+  document.getElementById('stepBtn').addEventListener('click',advance);
+  document.getElementById('resetBtn').addEventListener('click',reset);
+  var _expBtn=document.getElementById('exportBtn'); if(_expBtn) _expBtn.addEventListener('click',exportCsv);
+
+  // 2026-10-17 进页面先弹提示：数据量较大，需加载一会儿
+  (function(){
+    var mask=document.createElement('div');
+    mask.id='loadMask';
+    mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px';
+    mask.innerHTML='<div style="background:#1a2410;border:1px solid #4a6a2a;border-radius:14px;padding:26px 28px;text-align:center;max-width:320px">'
+      +'<div style="font-size:32px;margin-bottom:12px">⏳</div>'
+      +'<div style="font-size:15px;font-weight:700;color:#a8d060;margin-bottom:10px">正在加载行情数据</div>'
+      +'<div style="font-size:13px;color:#8aa06a;line-height:1.7">本游戏数据量较大（约 13MB）<br>需要加载一会儿，请稍候…</div>'
+      +'</div>';
+    document.body.appendChild(mask);
+  })();
+
+  // 载入数据（2026-10-16 A股+美股双市）
+  Promise.all([
+    fetch('_d/stock-a.json').then(function(r){ return r.json(); }),
+    fetch('_d/stock-b.json').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
+    fetch('_d/fx-c.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(res){
+    DATA_CN=res[0]; DATA_US=res[1]; FX=res[2];
+    DATA=DATA_CN;
+    codes=Object.keys(DATA);
+    state.trusts=initTrusts(); // 2026-10-16 开局随机生成 10 个信托（1忠+1妄+8随机）
+    // 开局日期：取最早上市日
+    var earliest=codes[0];
+    for(var i=0;i<codes.length;i++){ if(DATA[codes[i]].first < DATA[earliest].first) earliest=codes[i]; }
+    CFG.start=DATA[earliest].first;
+    // 2026-10-17 加载完成，关闭提示弹窗
+    var lm=document.getElementById('loadMask'); if(lm) lm.remove();
+    reset();
+  }).catch(function(e){
+    var lm=document.getElementById('loadMask'); if(lm) lm.remove();
+    document.body.insertAdjacentHTML('afterbegin','<p style="color:#e08080;text-align:center">数据加载失败：'+e.message+'</p>');
+  });
+
+  // 2026-10-16 市场切换（A股/美股）：切换数据源 + 重建牌面
+  function switchMkt(m){
+    mkt=m;
+    DATA = (m==='us') ? DATA_US : DATA_CN;
+    codes=Object.keys(DATA);
+    document.querySelectorAll('.mkt-btn').forEach(function(b){ b.classList.toggle('on', b.dataset.mkt===m); });
+    document.getElementById('mktTip').style.display = (m==='us') ? '' : 'none';
+    document.getElementById('exchPanel').style.display = (m==='us') ? '' : 'none';
+    if(m==='us') renderExchInfo();
+    // 2026-10-28 双市场：切换只换显示的数据源，钱/持仓/日期全部保留
+    state.pos = state.pos || {};
+    state.short = state.short || {};
+    state.lev = state.lev || {};
+    // 若当前日期该市场无数据（早于上市），提示但不动
+    render();
+    drawK(codes[0]);
+    setMsg(m==='us' ? '已切到美股（资金与持仓保留，人民币/美元分开记账）' : '已切到A股（资金与持仓保留）');
+  }
+  var DATA_CN_local=null;
+  // 2026-10-16 手动换汇逻辑
+  var exchDir='buy'; // buy=¥换$, sell=$换¥
+  function renderExchInfo(){
+    var info=document.getElementById('exInfo'); if(!info) return;
+    var r=fxOn(state.date);
+    info.textContent='当前汇率 1$ = '+r.toFixed(4)+'¥ · 服务费 1%';
+    document.getElementById('exCny').textContent='¥'+Number(state.cny||0).toLocaleString('zh-CN',{maximumFractionDigits:2});
+    document.getElementById('exUsd').textContent='$'+Number(state.usd||0).toLocaleString('zh-CN',{maximumFractionDigits:2});
+  }
+  function doExchange(){
+    var amt=parseFloat(document.getElementById('exAmt').value);
+    if(isNaN(amt)||amt<=0){ setMsg('请输入要兑换的金额'); return; }
+    var r=fxOn(state.date);
+    if(exchDir==='buy'){
+      // ¥ → $：扣1%服务费
+      if(amt>state.cny){ setMsg('人民币不足'); return; }
+      var usdGot=(amt/r)*(1-EXCH_FEE);
+      state.cny-=amt; state.usd+=usdGot;
+      state.log.unshift(state.date+' 换汇 ¥'+amt.toFixed(2)+' → $'+usdGot.toFixed(2)+'（费1% ¥'+(amt*EXCH_FEE/r).toFixed(2)+'）');
+      setMsg('换得 $'+usdGot.toFixed(2));
+    } else {
+      // $ → ¥：扣1%服务费
+      if(amt>state.usd){ setMsg('美元不足'); return; }
+      var cnyGot=amt*r*(1-EXCH_FEE);
+      state.usd-=amt; state.cny+=cnyGot;
+      state.log.unshift(state.date+' 换汇 $'+amt.toFixed(2)+' → ¥'+cnyGot.toFixed(2)+'（费1%）');
+      setMsg('换得 ¥'+cnyGot.toFixed(2));
+    }
+    document.getElementById('exAmt').value='';
+    render();
+  }
+  document.querySelectorAll('.exch-dir').forEach(function(b){
+    b.addEventListener('click',function(){
+      exchDir=b.dataset.dir;
+      document.querySelectorAll('.exch-dir').forEach(function(x){ x.classList.toggle('on', x.dataset.dir===exchDir); });
+      renderExchInfo();
+    });
+  });
+  document.getElementById('exBtn').addEventListener('click',doExchange);
+  document.getElementById('exMax').addEventListener('click',function(){
+    document.getElementById('exAmt').value = (exchDir==='buy') ? (state.cny||0).toFixed(2) : (state.usd||0).toFixed(2);
+  });
+  // 2026-10-16 钱庄：借贷/还款按钮
+  document.getElementById('borrowBtn').addEventListener('click',function(){
+    borrow(parseFloat(document.getElementById('debtInput').value));
+    document.getElementById('debtInput').value='';
+  });
+  document.getElementById('repayBtn').addEventListener('click',function(){
+    repay(parseFloat(document.getElementById('debtInput').value));
+    document.getElementById('debtInput').value='';
+  });
+  document.querySelectorAll('.mkt-btn').forEach(function(b){
+    b.addEventListener('click',function(){ switchMkt(b.dataset.mkt); });
+  });
+})();
+</script>
+</body>
+</html>

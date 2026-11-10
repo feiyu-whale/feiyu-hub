@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>肥鱼音乐台</title>
+<style>
+  :root{
+    --bg:#0a0f1a; --panel:#111a2b; --line:#1e2a41; --fg:#dbe7f5; --dim:#7b8ba3;
+    --acc:#4aa8ff; --acc2:#7d5cff; --ok:#3ddc97; --warn:#ffb454;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding-bottom:calc(64px + env(safe-area-inset-bottom));
+  }
+  header{
+    padding:22px 18px 14px;
+    background:linear-gradient(135deg,rgba(74,168,255,.14),rgba(125,92,255,.12));
+    border-bottom:1px solid var(--line);
+  }
+  header h1{margin:0;font-size:19px;letter-spacing:.5px}
+  header p{margin:5px 0 0;font-size:12px;color:var(--dim)}
+  .wrap{max-width:760px;margin:0 auto;padding:16px 14px}
+
+  /* 工具卡片 */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .card{
+    display:flex;flex-direction:column;gap:6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:16px 14px;text-decoration:none;color:var(--fg);
+    transition:.18s;position:relative;overflow:hidden;
+  }
+  .card:active{transform:scale(.975);border-color:var(--acc)}
+  .card .ico{font-size:22px;line-height:1}
+  .card .nm{font-size:14px;font-weight:600}
+  .card .ds{font-size:11px;color:var(--dim);line-height:1.5}
+  .card .tag{
+    position:absolute;top:10px;right:10px;font-size:9px;
+    padding:2px 6px;border-radius:20px;background:rgba(61,220,151,.14);color:var(--ok);
+  }
+  .card .tag.srv{background:rgba(255,180,84,.14);color:var(--warn)}
+
+  /* 底部导航 */
+  nav{
+    position:fixed;left:0;right:0;bottom:0;display:flex;
+    background:rgba(17,26,43,.96);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);z-index:50;
+  }
+  nav a{
+    flex:1;text-align:center;padding:9px 0 8px;font-size:10px;
+    color:var(--dim);text-decoration:none;
+  }
+  nav a .i{display:block;font-size:17px;margin-bottom:2px}
+  nav a.on{color:var(--acc)}
+
+  /* 设置面板 */
+  .set{display:none}
+  .set.on{display:block}
+  .home{display:block}
+  .home.off{display:none}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+  .box h2{margin:0 0 4px;font-size:14px}
+  .box .hint{font-size:11px;color:var(--dim);line-height:1.7;margin-bottom:12px}
+  label{display:block;font-size:12px;color:var(--dim);margin:10px 0 5px}
+  input[type=url],input[type=text]{
+    width:100%;padding:10px 12px;font-size:13px;color:var(--fg);
+    background:#0b1421;border:1px solid var(--line);border-radius:8px;outline:none;
+  }
+  input:focus{border-color:var(--acc)}
+  .btn{
+    display:inline-block;padding:10px 18px;font-size:13px;border-radius:8px;
+    border:none;cursor:pointer;font-weight:600;
+    background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;
+  }
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);font-weight:400}
+  .row{display:flex;gap:8px;margin-top:14px}
+  .sw{display:flex;align-items:center;justify-content:space-between;
+      padding:11px 0;border-bottom:1px solid var(--line)}
+  .sw:last-child{border-bottom:none}
+  .sw .t{font-size:13px}
+  .sw .d{font-size:11px;color:var(--dim);margin-top:3px;line-height:1.5}
+  .toggle{position:relative;width:44px;height:25px;flex-shrink:0}
+  .toggle input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#243149;border-radius:25px;transition:.2s;cursor:pointer}
+  .slider:before{content:"";position:absolute;height:19px;width:19px;left:3px;top:3px;
+    background:#8798b0;border-radius:50%;transition:.2s}
+  .toggle input:checked + .slider{background:rgba(74,168,255,.35)}
+  .toggle input:checked + .slider:before{transform:translateX(19px);background:var(--acc)}
+
+  /* 高级区 */
+  #srvBox{display:none;margin-top:6px}
+  #srvBox.on{display:block}
+  .status{font-size:11px;margin-top:8px;min-height:16px}
+  .status.ok{color:var(--ok)}
+  .status.err{color:#ff6b6b}
+
+  .ver{
+    text-align:center;font-size:10px;color:#3d4a61;
+    padding:18px 0 calc(10px + env(safe-area-inset-bottom));
+  }
+  .honest{
+    background:#132033;border-left:3px solid var(--acc);
+    padding:11px 13px;border-radius:6px;font-size:11.5px;
+    color:#a8bddb;line-height:1.7;margin-bottom:12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐟 肥鱼音乐台</h1>
+  <p>纯前端 · 不联网 · 数据不出手机</p>
+</header>
+
+<div class="wrap">
+
+  <!-- ========== 首页 ========== -->
+  <div class="home" id="home">
+    <div class="grid">
+      <a class="card" href="tools/trim/">
+        <span class="ico">✂️</span>
+        <span class="nm">音频裁剪</span>
+        <span class="ds">掐头去尾、淡入淡出</span>
+        <span class="tag">本地</span>
+      </a>
+      <a class="card" href="tools/pitch/">
+        <span class="ico">🎚️</span>
+        <span class="nm">变速变调</span>
+        <span class="ds">变速不变调 / 降 key 升 key</span>
+        <span class="tag">本地</span>
+      </a>
+    </div>
+
+    <div class="honest" style="margin-top:16px">
+      🐳 所有处理都在你自己的手机上完成，没有服务器、不上传文件。<br>
+      如果哪天你想要更强的功能，可以在「设置」里接上自己的服务器——那是你的机器，你说了算。
+    </div>
+
+    <p style="font-size:11px;color:var(--dim);text-align:center;margin-top:18px">
+      更多工具陆续上线 · 有想加的告诉我
+    </p>
+  </div>
+
+  <!-- ========== 设置 ========== -->
+  <div class="set" id="set">
+    <div class="box">
+      <h2>⚙️ 高级设置</h2>
+      <div class="hint">默认全部在本地跑，不连任何服务器。下面这项是给「自己有服务器」的人准备的，普通用户保持关闭就行。</div>
+
+      <div class="sw">
+        <div>
+          <div class="t">使用自建服务器</div>
+          <div class="d">开启后，重计算任务会发到你填的地址处理</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="srvOn">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div id="srvBox">
+        <label>服务器地址</label>
+        <input type="url" id="srvUrl" placeholder="https://你的域名或IP:端口" autocomplete="off">
+        <div class="status" id="srvStatus"></div>
+        <div class="row">
+          <button class="btn" id="testBtn">测试连接</button>
+          <button class="btn ghost" id="clearBtn">清空</button>
+        </div>
+        <div class="hint" style="margin-top:12px">
+          ⚠️ 连上以后，你的音频会发到<b>那台服务器</b>处理。那台机器是你的，数据怎么存、存多久，由你自己决定——我们这边不接触。
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <h2>📱 关于性能</h2>
+      <div class="hint" id="perfInfo">检测中…</div>
+    </div>
+  </div>
+
+  <div class="ver" id="ver"></div>
+</div>
+
+<nav>
+  <a href="#" class="on" id="navHome"><span class="i">🎵</span>工具</a>
+  <a href="#" id="navSet"><span class="i">⚙️</span>设置</a>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+  var VERSION = "v1.0.0-框架初版 20261103";
+  document.getElementById("ver").textContent = VERSION;
+
+  /* ---------- 本地存储 ---------- */
+  var KEY_ON = "fy.ms.srv.on", KEY_URL = "fy.ms.srv.url";
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+  var srvOn = document.getElementById("srvOn");
+  var srvBox = document.getElementById("srvBox");
+  var srvUrl = document.getElementById("srvUrl");
+  var srvStatus = document.getElementById("srvStatus");
+
+  /* 恢复 */
+  if (lsGet(KEY_ON) === "1") { srvOn.checked = true; srvBox.classList.add("on"); }
+  if (lsGet(KEY_URL)) srvUrl.value = lsGet(KEY_URL);
+
+  srvOn.addEventListener("change", function(){
+    if (srvOn.checked) {
+      srvBox.classList.add("on");
+      lsSet(KEY_ON, "1");
+    } else {
+      srvBox.classList.remove("on");
+      lsSet(KEY_ON, "0");
+      srvStatus.textContent = "";
+      srvStatus.className = "status";
+    }
+  });
+
+  srvUrl.addEventListener("input", function(){
+    lsSet(KEY_URL, srvUrl.value.trim());
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", function(){
+    srvUrl.value = "";
+    lsDel(KEY_URL);
+    srvStatus.textContent = "";
+    srvStatus.className = "status";
+  });
+
+  /* ---------- 测试连接 ---------- */
+  document.getElementById("testBtn").addEventListener("click", function(){
+    var u = srvUrl.value.trim();
+    if (!u) { srvStatus.textContent = "先填个地址"; srvStatus.className = "status err"; return; }
+    if (!/^https?:\/\//i.test(u)) { srvStatus.textContent = "地址要以 http:// 或 https:// 开头"; srvStatus.className = "status err"; return; }
+
+    srvStatus.textContent = "正在连接…";
+    srvStatus.className = "status";
+
+    var ctrl = new AbortController();
+    var t = setTimeout(function(){ ctrl.abort(); }, 8000);
+
+    fetch(u.replace(/\/+$/, "") + "/health", { method:"GET", signal:ctrl.signal })
+      .then(function(r){
+        clearTimeout(t);
+        if (r.ok) { srvStatus.textContent = "✅ 连上了"; srvStatus.className = "status ok"; }
+        else { srvStatus.textContent = "❌ 有响应但状态 " + r.status + "（可能没有 /health 接口）"; srvStatus.className = "status err"; }
+      })
+      .catch(function(){
+        clearTimeout(t);
+        srvStatus.textContent = "❌ 连不上（超时或被浏览器拦了跨域）";
+        srvStatus.className = "status err";
+      });
+  });
+
+  /* ---------- 性能探测 ---------- */
+  (function(){
+    var cores = navigator.hardwareConcurrency || 0;
+    var mem = navigator.deviceMemory || 0;
+    var lv, txt;
+    if (!cores || cores <= 2) { lv = "低"; }
+    else if (cores <= 4) { lv = "中"; }
+    else { lv = "高"; }
+
+    txt = "这台设备：CPU " + (cores ? cores + " 核" : "未知") +
+          (mem ? " · 内存约 " + mem + " GB" : "") +
+          " · 判定为 <b>" + lv + "配</b>。<br>";
+    txt += lv === "低"
+      ? "低配设备会自动限制同时处理的任务数，长音频建议先裁剪再处理。"
+      : lv === "中"
+      ? "中配设备可以正常处理一般长度的音频。"
+      : "高配设备可以处理较长的音频，速度也更快。";
+    document.getElementById("perfInfo").innerHTML = txt;
+  })();
+
+  /* ---------- Tab 切换 ---------- */
+  var home = document.getElementById("home");
+  var set = document.getElementById("set");
+  var navHome = document.getElementById("navHome");
+  var navSet = document.getElementById("navSet");
+
+  function show(which){
+    if (which === "home") {
+      home.classList.remove("off"); set.classList.remove("on");
+      navHome.classList.add("on"); navSet.classList.remove("on");
+    } else {
+      home.classList.add("off"); set.classList.add("on");
+      navHome.classList.remove("on"); navSet.classList.add("on");
+    }
+    window.scrollTo(0,0);
+  }
+  navHome.addEventListener("click", function(e){ e.preventDefault(); show("home"); });
+  navSet.addEventListener("click", function(e){ e.preventDefault(); show("set"); });
+
+  /* ---------- 对外暴露（工具页可读） ---------- */
+  window.FYMusic = {
+    version: VERSION,
+    serverEnabled: function(){ return lsGet(KEY_ON) === "1" && !!lsGet(KEY_URL); },
+    serverUrl: function(){ return lsGet(KEY_URL) || ""; },
+    cores: function(){ return navigator.hardwareConcurrency || 1; }
+  };
+})();
+</script>
+</body>
+</html>

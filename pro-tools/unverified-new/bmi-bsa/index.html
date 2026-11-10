@@ -1,0 +1,126 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BMI 与体表面积计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe0f5;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+header{padding:14px 16px;border-bottom:2px solid #4a9eff;background:#0d1d33}
+h1{margin:0;font-size:18px;color:#4a9eff}
+.sub{font-size:12px;color:#7d94b0}
+.wrap{max-width:960px;margin:0 auto;padding:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:7px 14px;border:1px solid #1e3a5f;background:#0d1d33;color:#9bb4d0;border-radius:6px;cursor:pointer;font-size:13px}
+.tab.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+.card{background:#0d1d33;border:1px solid #1e3a5f;border-radius:8px;padding:12px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:14px;color:#4a9eff;border-left:3px solid #4a9eff;padding-left:7px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fa8c4;margin-bottom:3px}
+input,select{width:100%;padding:7px 8px;background:#071322;border:1px solid #1e3a5f;color:#e6f0fa;border-radius:5px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+button{padding:8px 18px;border:0;border-radius:6px;background:#4a9eff;color:#04101f;font-weight:700;cursor:pointer;font-size:14px}
+button.ghost{background:#12263f;color:#9bb4d0;border:1px solid #1e3a5f}
+.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.err{color:#ff7a7a;font-size:13px;margin-top:8px;min-height:18px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 4px;border-bottom:1px solid #16293f;text-align:left;vertical-align:top}
+th{color:#8fa8c4;font-weight:500;width:34%}
+.big{font-size:26px;color:#4a9eff;font-weight:700;line-height:1.2}
+.note{font-size:12px;color:#8fa8c4;background:#071322;border-left:3px solid #ffb74d;padding:8px;border-radius:0 5px 5px 0;margin-top:10px}
+pre{overflow:auto;background:#071322;border:1px solid #1e3a5f;border-radius:6px;padding:10px;font-size:11px;line-height:1.5;color:#a8c8e8;max-height:340px}
+.tag{display:inline-block;padding:1px 7px;border-radius:9px;background:#12263f;font-size:11px;color:#8fa8c4;margin-left:6px}
+.ok{color:#4ade80}.bad{color:#ff7a7a}
+footer{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4a6a8a;background:#0a1628cc;padding:2px 6px;border-radius:4px}
+@media(max-width:600px){.wrap{padding:8px}.g{grid-template-columns:1fr 1fr}th{width:38%}.big{font-size:22px}}
+</style></head><body>
+<header><h1>BMI 与体表面积计算器<span class="tag">bmi-bsa</span></h1><div class="sub">BMI 分级（WHO / 亚洲）· 理想体重 · 体表面积 · 瘦体重</div></header>
+<div class="wrap">
+<div class="tabs"><div class="tab on" data-t="calc">计算工具</div><div class="tab" data-t="code">JS 源码 / 单元测试 / 使用说明</div></div>
+
+<div id="calc">
+<div class="card"><h2>输入参数</h2>
+<div class="g">
+<div><label>性别</label><select id="sex"><option value="M">男</option><option value="F">女</option></select></div>
+<div><label>年龄（岁）</label><input id="age" type="number" value="30" step="0.1" min="0" max="120"></div>
+<div><label>身高（cm）</label><input id="hgt" type="number" value="175" step="0.1" min="30" max="250"></div>
+<div><label>体重（kg）</label><input id="wgt" type="number" value="70" step="0.1" min="1" max="400"></div>
+<div><label>BMI 分级标准</label><select id="std"><option value="WHO">WHO 国际</option><option value="ASIA">WHO 亚洲 / 中国</option></select></div>
+<div><label>体表面积公式</label><select id="bsaf"><option value="D">DuBois 1916</option><option value="M">Mosteller 1987</option><option value="H">Haycock 1978</option></select></div>
+<div><label>理想体重公式</label><select id="ibwf"><option value="B">改良 Broca</option><option value="D">Devine 1974</option></select></div>
+</div>
+<div class="btns"><button id="go">开始计算</button><button class="ghost" id="rs">重置</button></div>
+<div class="err" id="err"></div>
+</div>
+<div class="card" id="out" style="display:none"><h2>计算结果</h2><div id="res"></div></div>
+<div class="card"><h2>公式与出处</h2><div class="note">
+BMI 分级：WHO Technical Report Series 894 (2000)；亚洲标准见 WHO/IASO/IOTF Asia-Pacific (2000) 与中国肥胖问题工作组 WGOC (2002) 成人超重肥胖筛查建议。<br>
+体表面积：DuBois &amp; DuBois, Arch Intern Med 1916;17:863；Mosteller, N Engl J Med 1987;317:1098；Haycock GB et al., J Pediatr 1978;93:62。<br>
+理想体重：Devine BJ, Drug Intell Clin Pharm 1974;8:650；改良 Broca（身高−105 / −107.5）系国内临床常用经验式，本参数为行业经验值，未经标准核对。<br>
+瘦体重：Boer P, Am J Physiol 1984;246:F159（身高体重回归模型，非 DXA 实测值）。
+</div></div>
+</div>
+
+<div id="code" style="display:none">
+<div class="card"><h2>使用说明</h2><div class="note">
+1. 填写性别、年龄、身高、体重；身高 30–250 cm，体重 1–400 kg，年龄 0–120 岁，超出即报错不计算。<br>
+2. 按诊断人群选择 BMI 分级标准：国际用 WHO TRS 894，中国/亚太人群用亚洲标准（阈值低 1–2 个点）。<br>
+3. 体表面积、理想体重公式可切换，结果区同时列出其余公式值便于交叉核对。<br>
+4. 儿童青少年（&lt;18 岁）分级须查 WS/T 586-2018《学龄儿童青少年超重与肥胖筛查》或 WS/T 423-2013《7 岁以下儿童生长标准》的性别年龄别 BMI 百分位，本工具成人分级仅供参考。<br>
+5. 瘦体重 / 体脂率由回归式估算，仅作筛查参考，不能替代 DXA、BIA 等实测。
+</div></div>
+<div class="card"><h2>单元测试</h2><button id="tr">运行全部测试</button><div id="tres" style="margin-top:8px;font-size:13px"></div></div>
+<div class="card"><h2>JS 源码</h2><pre id="src"></pre></div>
+</div>
+</div>
+<footer>v1.0.0-bmi-bsa 20261108</footer>
+<script>
+var $=function(i){return document.getElementById(i)};
+function num(v){if(v===null||v===undefined||String(v).trim()==='')return null;var n=Number(v);return isFinite(n)?n:null}
+function bmi(w,h){return w/Math.pow(h/100,2)}
+function cls(b,s){if(s==='ASIA'){if(b<18.5)return'偏瘦';if(b<24)return'正常';if(b<28)return'超重';return'肥胖'}if(b<18.5)return'偏瘦';if(b<25)return'正常';if(b<30)return'超重';return'肥胖'}
+function bsaD(w,h){return 0.007184*Math.pow(w,0.425)*Math.pow(h,0.725)}
+function bsaM(w,h){return Math.sqrt(w*h/3600)}
+function bsaH(w,h){return 0.024265*Math.pow(w,0.5378)*Math.pow(h,0.3964)}
+function ibwB(h,s){return s==='M'?h-105:h-107.5}
+function ibwD(h,s){var i=Math.max(0,h/2.54-60);return (s==='M'?50:45.5)+2.3*i}
+function lbm(w,h,s){return s==='M'?0.407*w+0.267*h-19.2:0.252*w+0.473*h-48.3}
+function val(o){var e=[];if(o.age===null||o.age<0||o.age>120)e.push('年龄需在 0–120 岁');if(o.h===null||o.h<30||o.h>250)e.push('身高需在 30–250 cm');if(o.w===null||o.w<1||o.w>400)e.push('体重需在 1–400 kg');return e}
+function run(){
+ var i={sex:$('sex').value,age:num($('age').value),h:num($('hgt').value),w:num($('wgt').value),std:$('std').value,bsaf:$('bsaf').value,ibwf:$('ibwf').value};
+ var es=val(i),er=$('err'),out=$('out');
+ if(es.length){er.textContent='⚠ '+es.join('；');out.style.display='none';return}
+ er.textContent='';
+ var b=bmi(i.w,i.h),c=cls(b,i.std),B={D:bsaD(i.w,i.h),M:bsaM(i.w,i.h),H:bsaH(i.w,i.h)};
+ var ibw=i.ibwf==='B'?ibwB(i.h,i.sex):ibwD(i.h,i.sex),lm=lbm(i.w,i.h,i.sex),fat=(1-lm/i.w)*100,dw=i.w-ibw;
+ var nm={D:'DuBois 1916',M:'Mosteller 1987',H:'Haycock 1978'},fn={B:'改良 Broca',D:'Devine 1974'};
+ var cc={'偏瘦':'#4ade80','正常':'#4ade80','超重':'#ffb74d','肥胖':'#ff7a7a'}[c];
+ var t='<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">'
+ +'<div><div class="sub">BMI</div><div class="big" style="color:'+cc+'">'+b.toFixed(2)+'</div><div class="sub">kg/m² · '+c+'</div></div>'
+ +'<div><div class="sub">体表面积</div><div class="big">'+B[i.bsaf].toFixed(3)+'</div><div class="sub">m² · '+nm[i.bsaf]+'</div></div>'
+ +'<div><div class="sub">理想体重</div><div class="big">'+ibw.toFixed(1)+'</div><div class="sub">kg · '+fn[i.ibwf]+'</div></div></div>'
+ +'<table>'
+ +'<tr><th>BMI 分级依据</th><td>'+(i.std==='ASIA'?'WHO 亚太区 2000 / WGOC：18.5–23.9 正常，24–27.9 超重，≥28 肥胖':'WHO TRS 894：18.5–24.9 正常，25–29.9 超重，≥30 肥胖')+'</td></tr>'
+ +'<tr><th>其他 BSA 公式</th><td>DuBois '+B.D.toFixed(3)+' m²｜Mosteller '+B.M.toFixed(3)+' m²｜Haycock '+B.H.toFixed(3)+' m²</td></tr>'
+ +'<tr><th>瘦体重（Boer 1984）</th><td>'+lm.toFixed(1)+' kg</td></tr>'
+ +'<tr><th>体脂率估算</th><td>'+((fat>0&&fat<100)?fat.toFixed(1)+' %':'—')+'</td></tr>'
+ +'<tr><th>与理想体重差值</th><td>'+(dw>0?'+':'')+dw.toFixed(1)+' kg</td></tr>'
+ +'<tr><th>身高换算</th><td>'+(i.h/100).toFixed(3)+' m ＝ '+(i.h/2.54).toFixed(1)+' in</td></tr>'
+ +'</table>';
+ if(i.age<18)t+='<div class="note">年龄 &lt; 18 岁：儿童青少年须按 WS/T 586-2018《学龄儿童青少年超重与肥胖筛查》或 WS/T 423-2013《7 岁以下儿童生长标准》以性别年龄别 BMI 百分位判定，上表成人分级仅供参考；儿童 BSA 建议优先选 Haycock 公式，瘦体重回归式误差偏大。</div>';
+ $('res').innerHTML=t;out.style.display='block';
+}
+var T=[['BMI 70kg/175cm',bmi(70,175),22.857,0.01],['BMI 50kg/160cm',bmi(50,160),19.531,0.01],
+['WHO 27→超重',cls(27,'WHO'),'超重',0],['亚洲 24→超重',cls(24,'ASIA'),'超重',0],['亚洲 23.9→正常',cls(23.9,'ASIA'),'正常',0],
+['DuBois 70/175',bsaD(70,175),1.848,0.005],['Mosteller 70/175',bsaM(70,175),1.845,0.005],['Haycock 70/175',bsaH(70,175),1.847,0.005],
+['Broca 男175',ibwB(175,'M'),70,0.001],['Devine 男175',ibwD(175,'M'),70.46,0.01],['Boer 男70/175',lbm(70,175,'M'),56.02,0.01],
+['校验 身高250.1 报错',val({age:30,h:250.1,w:70}).length,1,0]];
+$('tr').onclick=function(){var ok=0,o=[];
+ T.forEach(function(t,k){var a=t[1],p=(typeof t[2]==='number')?Math.abs(a-t[2])<=t[3]:a===t[2];if(p)ok++;
+ o.push('<div class="'+(p?'ok':'bad')+'">'+(p?'✔':'✘')+' #'+(k+1)+' '+t[0]+' → '+(typeof a==='number'?+a.toFixed(4):a)+(p?'':'（期望 '+t[2]+'）')+'</div>')});
+ $('tres').innerHTML='<b>通过 '+ok+' / '+T.length+'</b>'+o.join('')};
+$('go').onclick=run;
+$('rs').onclick=function(){$('sex').value='M';$('age').value=30;$('hgt').value=175;$('wgt').value=70;$('std').value='WHO';$('bsaf').value='D';$('ibwf').value='B';$('err').textContent='';$('out').style.display='none'};
+Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(x){x.onclick=function(){
+ Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(y){y.classList.remove('on')});x.classList.add('on');
+ var c=x.getAttribute('data-t');$('calc').style.display=c==='calc'?'block':'none';$('code').style.display=c==='code'?'block':'none';
+ if(c==='code'&&!$('src').textContent)$('src').textContent=document.scripts[0].textContent;}});
+run();
+</script>
+</body></html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>确认下单 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .blk { margin:12px; background:var(--card); border:1px solid var(--line);
+         border-radius:11px; padding:13px; }
+  .blk-t { font-size:12.5px; font-weight:600; margin-bottom:10px; color:var(--txt); }
+  .row { display:flex; justify-content:space-between; font-size:12.5px;
+         padding:6px 0; color:#b6c8dc; }
+  .row span:first-child { color:var(--dim); }
+  .addon-row { display:flex; justify-content:space-between; align-items:center;
+               padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .addon-row:last-child { border-bottom:0; }
+  .cb { width:17px; height:17px; border-radius:5px; border:1.5px solid var(--line);
+        display:flex; align-items:center; justify-content:center; font-size:11px;
+        margin-right:9px; flex-shrink:0; }
+  .addon-row.on .cb { background:var(--gold); border-color:var(--gold); color:#1a1205; }
+  .addon-row.on { color:var(--txt); }
+
+  .time-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+  .time-grid div { background:var(--bg2); border:1px solid var(--line); border-radius:8px;
+                   padding:9px 4px; text-align:center; font-size:11.5px; color:var(--dim);
+                   cursor:pointer; }
+  .time-grid div.on { background:#0e2a3a; border-color:var(--cyan); color:var(--cyan); font-weight:600; }
+  .time-grid div.dis { opacity:.35; cursor:not-allowed; }
+
+  .sum { position:fixed; left:0; right:0; bottom:0; z-index:56;
+         background:rgba(20,32,52,.98); backdrop-filter:blur(9px);
+         border-top:1px solid var(--line);
+         padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+         display:flex; align-items:center; gap:11px; }
+  .sum .l { flex:1; font-size:10.5px; color:var(--dim); }
+  .sum .l b { display:block; font-size:18px; color:var(--gold); }
+</style>
+</head>
+<body data-tab="index" style="padding-bottom:78px">
+
+<div class="topbar">
+  <a href="javascript:history.back()" style="font-size:16px">←</a>
+  <div class="logo">确认订单</div>
+  <div style="flex:1"></div>
+</div>
+
+<div id="main"></div>
+
+<div class="sum">
+  <div class="l">
+    <span id="sumTip">合计</span>
+    <b id="sumPrice">—</b>
+  </div>
+  <button class="btn" id="payBtn" style="padding:11px 22px">提交订单</button>
+</div>
+
+<div class="version" id="ver"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+const params = new URLSearchParams(location.search);
+const wid = params.get('wid') || 'w1';
+const sid = params.get('sid');
+
+const w = YC.WORKERS.find(x => x.id === wid);
+const svc = YC.SERVICES.find(x => x.id === sid);
+
+// 声明必须写在 init() 调用之前：let 不像 var 会先初始化，
+// 后声明会导致 init() 里访问时报 "Cannot access before initialization"
+let addons = [];
+let appoint = 'now';
+
+if (!w || !svc) {
+  document.getElementById('main').innerHTML =
+    '<div class="empty" style="padding-top:100px"><span class="icon">❓</span>参数缺失</div>';
+  document.querySelector('.sum').style.display = 'none';
+} else {
+  init();
+}
+
+function init() {
+  document.getElementById('main').innerHTML = `
+    <div class="blk">
+      <div class="blk-t">服务信息</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+        <div style="width:46px;height:46px;border-radius:11px;flex-shrink:0;
+                    background:linear-gradient(135deg,#1e3a5f,#312e81);
+                    display:flex;align-items:center;justify-content:center;font-size:23px">
+          ${YCUtil.gameIcon(svc.gid)}</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;font-weight:600">${svc.title}</div>
+          <div style="font-size:11px;color:#7d93ad;margin-top:2px">
+            ${YCUtil.gameName(svc.gid)} · ${svc.dur}</div>
+        </div>
+        <div class="price">${svc.price}<small>白饭</small></div>
+      </div>
+      <div class="row"><span>打手</span><span>${w.avatar} ${w.name} <span class="rank ${w.rank}">${w.rank}</span></span></div>
+      <div class="row"><span>说明</span><span style="max-width:64%;text-align:right">${svc.desc}</span></div>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">预约时间</div>
+      <div class="time-grid" id="timeGrid">
+        <div class="on" data-t="now">立即开始</div>
+        <div data-t="30">30 分钟后</div>
+        <div data-t="60">1 小时后</div>
+        <div data-t="180">3 小时后</div>
+        <div data-t="1440">明天此时</div>
+        <div class="dis">自定义</div>
+      </div>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">增值服务（可多选）</div>
+      <div id="addonList"></div>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">费用明细</div>
+      <div id="feeBox"></div>
+    </div>
+
+    <div class="blk">
+      <div class="blk-t">备注（可选）</div>
+      <div class="field" style="margin-bottom:0">
+        <textarea id="note" rows="2" placeholder="例如：今晚八点开始，打到保底为止"></textarea>
+      </div>
+    </div>
+  `;
+
+  /* 时间选择 */
+  document.querySelectorAll('#timeGrid div').forEach(el => {
+    el.onclick = () => {
+      if (el.classList.contains('dis')) return;
+      document.querySelectorAll('#timeGrid div').forEach(x => x.classList.remove('on'));
+      el.classList.add('on');
+      appoint = el.dataset.t;
+      updateFee();
+    };
+  });
+
+  /* 增值项 */
+  document.getElementById('addonList').innerHTML = YC.ADDONS.map(a => `
+    <div class="addon-row" data-a="${a.id}">
+      <div class="cb">✓</div>
+      <div style="flex:1">
+        <div style="font-size:12.5px">${a.name}</div>
+        <div style="font-size:10.5px;color:#7d93ad">${a.note}</div>
+      </div>
+      <div class="price" style="font-size:12px">+${a.price}</div>
+    </div>`).join('');
+
+  document.querySelectorAll('.addon-row').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.a;
+      if (addons.includes(id)) { addons = addons.filter(x => x !== id); el.classList.remove('on'); }
+      else { addons.push(id); el.classList.add('on'); }
+      updateFee();
+    };
+  });
+
+  updateFee();
+}
+
+function updateFee() {
+  const base = svc.price;
+  let total = base;
+  const lines = [`<div class="row"><span>服务费用</span><span>${base} 白饭</span></div>`];
+
+  addons.forEach(aid => {
+    const a = YC.ADDONS.find(x => x.id === aid);
+    if (!a) return;
+    if (a.id === 'a1') { const d = Math.round(total * 0.2); total += d; lines.push(`<div class="row"><span>${a.name}（+20%）</span><span>+${d}</span></div>`); }
+    else if (a.id === 'a2') { const d = Math.round(total * 0.15); total += d; lines.push(`<div class="row"><span>${a.name}（+15%）</span><span>+${d}</span></div>`); }
+    else if (a.id === 'a3') { const d = Math.round(total * 0.5); total += d; lines.push(`<div class="row"><span>${a.name}（+50%）</span><span>+${d}</span></div>`); }
+    else { total += a.price; lines.push(`<div class="row"><span>${a.name}</span><span>+${a.price}</span></div>`); }
+  });
+
+  // 首单立减
+  let firstOff = 0;
+  if (!S.firstOrderUsed) {
+    firstOff = 20;
+    lines.push(`<div class="row"><span style="color:#4ade80">首单立减</span><span style="color:#4ade80">-${firstOff}</span></div>`);
+  }
+  const finalPrice = Math.max(1, total - firstOff);
+
+  lines.push(`<div class="row" style="border-top:1px dashed #1e2f4a;margin-top:7px;padding-top:9px">
+    <span>合计</span><span style="color:#fbbf24;font-size:15px;font-weight:700">${finalPrice} 白饭</span></div>`);
+  lines.push(`<div class="row"><span>当前余额</span><span>${S.baofan} 白饭</span></div>`);
+
+  document.getElementById('feeBox').innerHTML = lines.join('');
+  document.getElementById('sumPrice').textContent = finalPrice + ' 白饭';
+  document.getElementById('sumTip').textContent =
+    addons.length ? `含 ${addons.length} 项增值` : '合计';
+
+  const btn = document.getElementById('payBtn');
+  if (S.baofan < finalPrice) {
+    btn.disabled = true;
+    btn.textContent = '白饭不足';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '提交订单';
+  }
+}
+
+document.getElementById('payBtn').onclick = () => {
+  if (S.role !== 'boss') { YCApp.toast('只有老板身份可以下单', true); return; }
+
+  const base = svc.price;
+  let total = base;
+  addons.forEach(aid => {
+    const a = YC.ADDONS.find(x => x.id === aid);
+    if (!a) return;
+    if (a.id === 'a1') total += Math.round(total * 0.2);
+    else if (a.id === 'a2') total += Math.round(total * 0.15);
+    else if (a.id === 'a3') total += Math.round(total * 0.5);
+    else total += a.price;
+  });
+  const firstOff = !S.firstOrderUsed ? 20 : 0;
+  const finalPrice = Math.max(1, total - firstOff);
+
+  if (S.baofan < finalPrice) { YCApp.toast('白饭不足', true); return; }
+
+  const oid = YCUtil.nextId(S);
+  S.baofan -= finalPrice;
+  S.firstOrderUsed = true;
+  S.orders.unshift({
+    id: oid,
+    workerId: w.id, workerName: w.name, workerAvatar: w.avatar,
+    service: svc.title, serviceId: svc.id, gid: svc.gid,
+    addons: addons.slice(),
+    price: finalPrice, priceBase: base + (total - base) + firstOff,
+    appoint: appoint,
+    note: YCSec.clean((document.getElementById('note') || {}).value, 200),
+    status: YCStatus.PENDING,
+    createdAt: Date.now(),
+    history: [{ to: YCStatus.PENDING, at: Date.now() }]
+  });
+  YCApp.save();
+
+  // 成功页
+  YCApp.modal('下单成功', `
+    <div style="text-align:center;padding:6px 0 4px">
+      <div style="font-size:44px">✅</div>
+      <div style="font-size:14px;margin-top:9px">订单已提交</div>
+      <div style="font-size:11.5px;color:#7d93ad;margin-top:5px">
+        订单号 ${oid} · 已扣除 ${finalPrice} 白饭
+      </div>
+    </div>`, [
+    { t: '查看订单', fn: () => { location.href = 'orders.html'; } },
+    { t: '继续逛逛', cls: 'btn-ghost', fn: () => { location.href = 'index.html'; } }
+  ]);
+};
+</script>
+</body>
+</html>

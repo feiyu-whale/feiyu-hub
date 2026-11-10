@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>彩票中奖概率计算器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  padding-bottom: 60px;
+}
+.container { max-width: 640px; margin: 0 auto; }
+.warning {
+  background: #fff3cd;
+  border-left: 4px solid #ff9500;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.warning strong { color: #d97706; }
+h1 { font-size: 22px; margin-bottom: 8px; text-align: center; }
+.subtitle { text-align: center; color: #666; font-size: 13px; margin-bottom: 16px; }
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.tab {
+  flex: 1;
+  min-width: 70px;
+  padding: 8px 4px;
+  text-align: center;
+  background: #f5f5f7;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab.active { background: #007aff; color: #fff; }
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 16px;
+}
+.panel h2 {
+  font-size: 17px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+.panel h3 { font-size: 15px; margin: 12px 0 8px; color: #007aff; }
+.rule-box {
+  background: #f5f5f7;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0;
+}
+th, td {
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+th { background: #f5f5f7; font-weight: 600; font-size: 12px; }
+td:first-child { text-align: left; }
+.result-box {
+  background: #e8f5e9;
+  border-left: 4px solid #34c759;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.result-box.warn { background: #fff3cd; border-left-color: #ff9500; }
+.input-group {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.input-group label {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.input-group input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.btn {
+  background: #007aff;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn:active { opacity: 0.7; }
+.output {
+  background: #f5f5f7;
+  padding: 12px;
+  border-radius: 8px;
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  word-break: break-all;
+  margin-top: 8px;
+}
+.basis {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.8;
+}
+.basis h3 { font-size: 14px; color: #1d1d1f; margin-bottom: 8px; }
+.basis ul { padding-left: 20px; }
+.basis li { margin-bottom: 4px; }
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 10px;
+  color: #999;
+  background: rgba(255,255,255,0.8);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.hidden { display: none; }
+.small { font-size: 12px; color: #888; }
+.formula {
+  background: #f5f5f7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  margin: 6px 0;
+  overflow-x: auto;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="warning">
+    <strong>⚠️ 理性购彩提示</strong><br>
+    彩票是概率游戏，长期期望收益为负。本工具用数学告诉你：<b>每投 2 元，平均只能拿回约 1 元</b>。请理性购彩，量力而行，切勿沉迷。
+  </div>
+  
+  <h1>🎰 彩票中奖概率计算器</h1>
+  <p class="subtitle">用组合数学算清每一注的真实期望</p>
+  
+  <div class="tabs">
+    <button class="tab active" data-tab="ssq">🔴 双色球</button>
+    <button class="tab" data-tab="dlt">🔵 大乐透</button>
+    <button class="tab" data-tab="d3">🎲 3D/排列三</button>
+    <button class="tab" data-tab="calc">🧮 组合计算器</button>
+  </div>
+  
+  <div class="panel" id="panel-ssq">
+    <h2>🔴 双色球</h2>
+    <div class="rule-box">
+      <b>规则：</b>红球 33 选 6 + 蓝球 16 选 1，每注 2 元<br>
+      <b>总组合数：</b><span id="ssq-total"></span>
+    </div>
+    <h3>各奖等概率与期望</h3>
+    <table id="ssq-table">
+      <thead>
+        <tr><th>奖等</th><th>条件</th><th>注数</th><th>概率</th><th>奖金</th><th>期望</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="result-box" id="ssq-result"></div>
+    <p class="small">注：一、二等奖为浮动奖，按当期奖池分配，无法精确计算。上表仅计算固定奖部分期望。</p>
+  </div>
+  
+  <div class="panel hidden" id="panel-dlt">
+    <h2>🔵 大乐透</h2>
+    <div class="rule-box">
+      <b>规则：</b>前区 35 选 5 + 后区 12 选 2，每注 2 元<br>
+      <b>总组合数：</b><span id="dlt-total"></span>
+    </div>
+    <h3>各奖等概率与期望</h3>
+    <table id="dlt-table">
+      <thead>
+        <tr><th>奖等</th><th>条件</th><th>注数</th><th>概率</th><th>奖金</th><th>期望</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="result-box" id="dlt-result"></div>
+    <p class="small">注：一、二等奖为浮动奖，按当期奖池分配，无法精确计算。上表仅计算固定奖部分期望。</p>
+  </div>
+  
+  <div class="panel hidden" id="panel-d3">
+    <h2>🎲 3D / 排列三</h2>
+    <div class="rule-box">
+      <b>规则：</b>3 位数字（0-9），每注 2 元<br>
+      <b>总组合数：</b>1000（直选空间）
+    </div>
+    <h3>玩法对比</h3>
+    <table id="d3-table">
+      <thead>
+        <tr><th>玩法</th><th>条件</th><th>投注组合数</th><th>中奖概率</th><th>奖金</th><th>期望</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="result-box" id="d3-result"></div>
+    <p class="small">注：3D 与排列三规则相同，仅发行方不同（福彩 vs 体彩）。</p>
+  </div>
+  
+  <div class="panel hidden" id="panel-calc">
+    <h2>🧮 组合数计算器</h2>
+    <p class="small">计算 C(n,k) 组合数 和 A(n,k) 排列数（支持大数精确计算）</p>
+    <div class="input-group">
+      <label>n = <input type="number" id="calc-n" value="33" min="0" max="200"></label>
+      <label>k = <input type="number" id="calc-k" value="6" min="0" max="200"></label>
+      <button class="btn" onclick="calcComb()">计算</button>
+    </div>
+    <div class="formula">
+      C(n,k) = n! / (k! × (n-k)!)<br>
+      A(n,k) = n! / (n-k)!
+    </div>
+    <div class="output" id="calc-output">请输入 n 和 k 后点击"计算"</div>
+  </div>
+  
+  <div class="basis">
+    <h3>📚 数据依据</h3>
+    <ul>
+      <li>《中国福利彩票双色球游戏规则》（中彩发字〔2018〕号，现行版本）</li>
+      <li>《超级大乐透游戏规则》（体彩字〔2019〕号，现行版本）</li>
+      <li>《中国体育彩票7星彩游戏规则》《中国体育彩票3D游戏规则》《中国体育彩票排列3游戏规则》</li>
+      <li>国务院《彩票管理条例》（国务院令第554号，2009年施行）</li>
+      <li>财政部《彩票发行销售管理办法》</li>
+      <li>组合数计算基于组合数学公式 C(n,k)=n!/(k!(n-k)!)，各奖等注数由组合公式精确推导</li>
+      <li>浮动奖奖金需查当期官方公告；返奖率数据依据财政部规定（数字乐透型约 51%，数字型约 53%）</li>
+    </ul>
+  </div>
+</div>
+
+<div class="version">v1.0.0-彩票概率 20261021</div>
+
+<script>
+// 组合数计算（BigInt 精确）
+function C(n, k) {
+  n = BigInt(n); k = BigInt(k);
+  if (k < 0n || k > n) return 0n;
+  if (k === 0n || k === n) return 1n;
+  if (k > n - k) k = n - k;
+  let result = 1n;
+  for (let i = 0n; i < k; i++) {
+    result = result * (n - i) / (i + 1n);
+  }
+  return result;
+}
+
+function A(n, k) {
+  n = BigInt(n); k = BigInt(k);
+  if (k < 0n || k > n) return 0n;
+  let result = 1n;
+  for (let i = 0n; i < k; i++) {
+    result = result * (n - i);
+  }
+  return result;
+}
+
+function formatBig(n) {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function formatProb(num, den) {
+  if (num === 0n) return '0';
+  if (num === den) return '100%';
+  const ratio = Number(num) / Number(den);
+  if (ratio < 0.001) {
+    const inv = Number(den) / Number(num);
+    return '1/' + Math.round(inv).toLocaleString();
+  }
+  return (ratio * 100).toFixed(4) + '%';
+}
+
+// 双色球
+function calcSSQ() {
+  const total = C(33, 6) * C(16, 1);
+  document.getElementById('ssq-total').textContent = formatBig(total);
+  
+  const l1 = C(6,6) * C(27,0) * C(1,1) * C(15,0);
+  const l2 = C(6,6) * C(27,0) * C(1,0) * C(15,1);
+  const l3 = C(6,5) * C(27,1) * C(1,1) * C(15,0);
+  const l4a = C(6,5) * C(27,1) * C(1,0) * C(15,1);
+  const l4b = C(6,4) * C(27,2) * C(1,1) * C(15,0);
+  const l4 = l4a + l4b;
+  const l5a = C(6,4) * C(27,2) * C(1,0) * C(15,1);
+  const l5b = C(6,3) * C(27,3) * C(1,1) * C(15,0);
+  const l5 = l5a + l5b;
+  const l6a = C(6,2) * C(27,4) * C(1,1) * C(15,0);
+  const l6b = C(6,1) * C(27,5) * C(1,1) * C(15,0);
+  const l6c = C(6,0) * C(27,6) * C(1,1) * C(15,0);
+  const l6 = l6a + l6b + l6c;
+  
+  const levels = [
+    { name: '一等奖', cond: '6红+1蓝', count: l1, prize: null },
+    { name: '二等奖', cond: '6红+0蓝', count: l2, prize: null },
+    { name: '三等奖', cond: '5红+1蓝', count: l3, prize: 3000 },
+    { name: '四等奖', cond: '5红+0蓝 或 4红+1蓝', count: l4, prize: 200 },
+    { name: '五等奖', cond: '4红+0蓝 或 3红+1蓝', count: l5, prize: 10 },
+    { name: '六等奖', cond: '2红+1蓝 或 1红+1蓝 或 0红+1蓝', count: l6, prize: 5 },
+  ];
+  
+  const tbody = document.querySelector('#ssq-table tbody');
+  tbody.innerHTML = '';
+  let fixedExpect = 0n;
+  
+  for (const lv of levels) {
+    const tr = document.createElement('tr');
+    const prob = formatProb(lv.count, total);
+    let expectStr = '-';
+    if (lv.prize !== null) {
+      const expect = lv.count * BigInt(lv.prize);
+      fixedExpect += expect;
+      expectStr = (Number(expect) / Number(total)).toFixed(4) + ' 元';
+    }
+    tr.innerHTML = `
+      <td><b>${lv.name}</b></td>
+      <td style="text-align:left;font-size:12px;">${lv.cond}</td>
+      <td>${formatBig(lv.count)}</td>
+      <td>${prob}</td>
+      <td>${lv.prize === null ? '浮动' : lv.prize + ' 元'}</td>
+      <td>${expectStr}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  
+  const fixedExpectYuan = Number(fixedExpect) / Number(total);
+  const returnRate = (fixedExpectYuan / 2 * 100).toFixed(2);
+  document.getElementById('ssq-result').innerHTML = `
+    <b>📊 固定奖期望：</b>${fixedExpectYuan.toFixed(4)} 元/注<br>
+    <b>📉 固定奖回报率：</b>${returnRate}%（每投 2 元，固定奖部分平均拿回 ${fixedExpectYuan.toFixed(2)} 元）<br>
+    <b>💰 官方返奖率：</b>约 51%（含浮动奖，依据财政部规定）
+  `;
+}
+
+// 大乐透
+function calcDLT() {
+  const total = C(35, 5) * C(12, 2);
+  document.getElementById('dlt-total').textContent = formatBig(total);
+  
+  const l1 = C(5,5) * C(30,0) * C(2,2) * C(10,0);
+  const l2 = C(5,5) * C(30,0) * C(2,1) * C(10,1);
+  const l3 = C(5,5) * C(30,0) * C(2,0) * C(10,2);
+  const l4 = C(5,4) * C(30,1) * C(2,2) * C(10,0);
+  const l5 = C(5,4) * C(30,1) * C(2,1) * C(10,1);
+  const l6 = C(5,3) * C(30,2) * C(2,2) * C(10,0);
+  const l7 = C(5,4) * C(30,1) * C(2,0) * C(10,2);
+  const l8a = C(5,3) * C(30,2) * C(2,1) * C(10,1);
+  const l8b = C(5,2) * C(30,3) * C(2,2) * C(10,0);
+  const l8 = l8a + l8b;
+  const l9a = C(5,3) * C(30,2) * C(2,0) * C(10,2);
+  const l9b = C(5,2) * C(30,3) * C(2,1) * C(10,1);
+  const l9c = C(5,1) * C(30,4) * C(2,2) * C(10,0);
+  const l9d = C(5,0) * C(30,5) * C(2,2) * C(10,0);
+  const l9 = l9a + l9b + l9c + l9d;
+  
+  const levels = [
+    { name: '一等奖', cond: '5+2', count: l1, prize: null },
+    { name: '二等奖', cond: '5+1', count: l2, prize: null },
+    { name: '三等奖', cond: '5+0', count: l3, prize: 10000 },
+    { name: '四等奖', cond: '4+2', count: l4, prize: 3000 },
+    { name: '五等奖', cond: '4+1', count: l5, prize: 300 },
+    { name: '六等奖', cond: '3+2', count: l6, prize: 200 },
+    { name: '七等奖', cond: '4+0', count: l7, prize: 100 },
+    { name: '八等奖', cond: '3+1 或 2+2', count: l8, prize: 15 },
+    { name: '九等奖', cond: '3+0 或 2+1 或 1+2 或 0+2', count: l9, prize: 5 },
+  ];
+  
+  const tbody = document.querySelector('#dlt-table tbody');
+  tbody.innerHTML = '';
+  let fixedExpect = 0n;
+  
+  for (const lv of levels) {
+    const tr = document.createElement('tr');
+    const prob = formatProb(lv.count, total);
+    let expectStr = '-';
+    if (lv.prize !== null) {
+      const expect = lv.count * BigInt(lv.prize);
+      fixedExpect += expect;
+      expectStr = (Number(expect) / Number(total)).toFixed(4) + ' 元';
+    }
+    tr.innerHTML = `
+      <td><b>${lv.name}</b></td>
+      <td style="text-align:left;font-size:12px;">${lv.cond}</td>
+      <td>${formatBig(lv.count)}</td>
+      <td>${prob}</td>
+      <td>${lv.prize === null ? '浮动' : lv.prize + ' 元'}</td>
+      <td>${expectStr}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  
+  const fixedExpectYuan = Number(fixedExpect) / Number(total);
+  const returnRate = (fixedExpectYuan / 2 * 100).toFixed(2);
+  document.getElementById('dlt-result').innerHTML = `
+    <b>📊 固定奖期望：</b>${fixedExpectYuan.toFixed(4)} 元/注<br>
+    <b>📉 固定奖回报率：</b>${returnRate}%（每投 2 元，固定奖部分平均拿回 ${fixedExpectYuan.toFixed(2)} 元）<br>
+    <b>💰 官方返奖率：</b>约 51%（含浮动奖，依据财政部规定）
+  `;
+}
+
+// 3D/排列三
+function calcD3() {
+  // 直选：1000 种可能，中奖 1 种
+  // 组选三：选 2 个不同数字（一个重复），C(10,1)×C(9,1) = 90 种组合，每种对应 3 种直选排列
+  // 组选六：选 3 个不同数字，C(10,3) = 120 种组合，每种对应 6 种直选排列
+  
+  const levels = [
+    { name: '直选', cond: '3位按顺序', combo: '1000', prob: '1/1000', prize: 1040, expect: 1.040 },
+    { name: '组选三', cond: '2同1不同', combo: '90（对应270直选）', prob: '3/1000', prize: 346, expect: 1.038 },
+    { name: '组选六', cond: '3位不同', combo: '120（对应720直选）', prob: '6/1000', prize: 173, expect: 1.038 },
+  ];
+  
+  const tbody = document.querySelector('#d3-table tbody');
+  tbody.innerHTML = '';
+  
+  for (const lv of levels) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${lv.name}</b></td>
+      <td style="text-align:left;font-size:12px;">${lv.cond}</td>
+      <td style="font-size:12px;">${lv.combo}</td>
+      <td>${lv.prob}</td>
+      <td>${lv.prize} 元</td>
+      <td>${lv.expect.toFixed(3)} 元</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  
+  document.getElementById('d3-result').innerHTML = `
+    <b>📊 各玩法期望（每注 2 元）：</b><br>
+    直选：1.040 元/注（回报率 52.00%）<br>
+    组选三：1.038 元/注（回报率 51.90%）<br>
+    组选六：1.038 元/注（回报率 51.90%）<br>
+    <b>💰 官方返奖率：</b>约 53%
+  `;
+}
+
+// 组合计算器
+function calcComb() {
+  const n = parseInt(document.getElementById('calc-n').value);
+  const k = parseInt(document.getElementById('calc-k').value);
+  const output = document.getElementById('calc-output');
+  
+  if (isNaN(n) || isNaN(k) || n < 0 || k < 0 || k > n) {
+    output.textContent = '❌ 请输入有效的 n 和 k（0 ≤ k ≤ n）';
+    return;
+  }
+  
+  const c = C(n, k);
+  const a = A(n, k);
+  output.innerHTML = `
+    <b>C(${n}, ${k})</b> = ${formatBig(c)}<br>
+    <b>A(${n}, ${k})</b> = ${formatBig(a)}<br>
+    <br>
+    <span class="small">
+      含义：从 ${n} 个元素中取 ${k} 个，<br>
+      不考虑顺序有 ${formatBig(c)} 种，<br>
+      考虑顺序有 ${formatBig(a)} 种。
+    </span>
+  `;
+}
+
+// Tab 切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('panel-' + tab.dataset.tab).classList.remove('hidden');
+  });
+});
+
+// 初始化
+calcSSQ();
+calcDLT();
+calcD3();
+</script>
+</body>
+</html>

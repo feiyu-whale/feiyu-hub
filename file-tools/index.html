@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>🗂️ 文件工具箱 · 拖拽转换</title>
+<style>
+  :root{
+    --bg:#0a0f16; --txt:#d7e5f2; --dim:#7895ad;
+    --acc:#5ab0f0; --ok:#5fd39b; --err:#ef7676;
+    --ring:#1e3145; --ringHover:#2c4a68;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;overflow:hidden;
+    background:radial-gradient(1000px 600px at 50% 40%,#10283a 0%,#0a0f16 70%),var(--bg);
+    color:var(--txt);
+    font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none;
+  }
+
+  /* 背景网格 */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;
+    background-image:
+      linear-gradient(rgba(90,176,240,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(90,176,240,.05) 1px,transparent 1px);
+    background-size:34px 34px;
+  }
+
+  /* ===== 主界面 ===== */
+  .stage{
+    position:fixed;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:18px;padding:20px;
+  }
+  .logo{font-size:44px;line-height:1;animation:float 4s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  h1{font-size:22px;margin:0;letter-spacing:2px;font-weight:600}
+  .tag{font-size:13px;color:var(--dim);letter-spacing:1px;margin-top:-8px}
+
+  .hintline{
+    display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+    padding:7px 15px;border-radius:20px;background:rgba(90,176,240,.06);
+    border:1px solid rgba(90,176,240,.15);
+  }
+  .hintline kbd{
+    padding:1px 7px;border-radius:5px;background:#16283a;border:1px solid #26405a;
+    font-size:11.5px;font-family:inherit;color:#9fc4e0;
+  }
+
+  /* 拖拽进入全屏提示 */
+  .dropzone{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;opacity:0;transition:opacity .2s;z-index:5;
+  }
+  .dropzone.on{opacity:1}
+  .dropzone .frame{
+    position:absolute;inset:18px;border:2px dashed rgba(90,176,240,.45);border-radius:22px;
+    background:rgba(90,176,240,.035);transition:.2s;
+  }
+  .dropzone .txt{
+    position:relative;font-size:16px;color:#9fc4e0;letter-spacing:1px;
+    text-shadow:0 2px 20px rgba(0,0,0,.6);
+  }
+
+  /* ===== 环形菜单 ===== */
+  #donut{
+    position:fixed;width:0;height:0;z-index:20;pointer-events:none;
+  }
+  #donut svg{position:absolute;overflow:visible}
+  .seg{
+    cursor:pointer;pointer-events:auto;
+    transition:transform .16s cubic-bezier(.34,1.56,.64,1), opacity .16s;
+    transform-origin:center;
+  }
+  .seg path{transition:fill .16s, stroke .16s}
+  .seg:hover path, .seg.hot path{fill:#2c5578;stroke:#5ab0f0}
+  .seg text{
+    font-size:12.5px;fill:#cfe3f2;text-anchor:middle;pointer-events:none;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+  }
+  .seg .icon{font-size:16px}
+  @keyframes segIn{
+    from{opacity:0;transform:scale(.55)}
+    to{opacity:1;transform:scale(1)}
+  }
+  .seg{animation:segIn .26s cubic-bezier(.34,1.56,.64,1) backwards}
+
+  /* 中心 */
+  .hub{
+    position:absolute;width:78px;height:78px;left:-39px;top:-39px;border-radius:50%;
+    background:linear-gradient(160deg,#173247,#0f2233);border:1px solid #2a4a68;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:1px;font-size:11px;color:#8fb8d6;text-align:center;line-height:1.2;
+    box-shadow:0 8px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
+    animation:segIn .22s ease backwards;
+  }
+  .hub .fname{
+    font-size:9.5px;color:#6f92ad;max-width:66px;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;
+  }
+  .hub .ficon{font-size:19px}
+
+  /* 进度环 */
+  .prog{
+    position:absolute;left:-52px;top:-52px;width:104px;height:104px;
+    transform:rotate(-90deg);pointer-events:none;
+  }
+  .prog circle{fill:none;stroke-width:5;stroke-linecap:round}
+  .prog .bgc{stroke:#16283a}
+  .prog .fgc{stroke:var(--acc);transition:stroke-dashoffset .28s ease}
+
+  /* ===== 结果面板 ===== */
+  .panel{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(120%);
+    width:min(560px,calc(100vw - 32px));max-height:46vh;overflow-y:auto;
+    background:linear-gradient(180deg,rgba(20,34,48,.98),rgba(13,23,33,.98));
+    border:1px solid #23405a;border-radius:16px;padding:14px 16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.7);transition:transform .3s cubic-bezier(.34,1.4,.64,1);
+    z-index:30;
+  }
+  .panel.on{transform:translateX(-50%) translateY(0)}
+  .panel .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .panel .pt{font-size:13.5px;color:#9fc4e0;letter-spacing:.5px}
+  .panel .close{
+    background:none;border:0;color:var(--dim);font-size:19px;cursor:pointer;line-height:1;padding:0 4px;
+  }
+  .panel .close:hover{color:var(--txt)}
+  .dl{
+    display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
+    background:rgba(95,211,155,.08);border:1px solid rgba(95,211,155,.22);
+    margin-bottom:7px;text-decoration:none;color:#9ee0bd;font-size:13px;transition:.15s;
+  }
+  .dl:hover{background:rgba(95,211,155,.15)}
+  .dl .dn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dl .ds{flex:0 0 auto;font-size:11.5px;color:#6fa88a}
+  .errline{font-size:12.5px;color:var(--err);padding:5px 0}
+
+  /* 底部工具入口 */
+  .toolbar{
+    position:fixed;right:16px;bottom:16px;display:flex;gap:8px;z-index:15;
+  }
+  .tbtn{
+    padding:7px 14px;border-radius:9px;font-size:12.5px;cursor:pointer;
+    background:rgba(22,40,56,.9);border:1px solid #23405a;color:var(--dim);
+    transition:.15s;
+  }
+  .tbtn:hover{border-color:var(--acc);color:var(--txt)}
+  .tbtn.on{background:rgba(90,176,240,.16);border-color:var(--acc);color:var(--acc)}
+
+  #ver{position:fixed;left:10px;bottom:8px;font-size:10px;color:#2f465c}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="logo">🗂️</div>
+  <h1>文件工具箱</h1>
+  <div class="tag">拖进来，选个格式，松手就好</div>
+  <div class="hintline">
+    <kbd>拖拽文件</kbd> 到任意位置，光标旁会弹出可选格式
+  </div>
+</div>
+
+<!-- 拖拽时全屏提示 -->
+<div class="dropzone" id="dz">
+  <div class="frame"></div>
+  <div class="txt">松手，在这附近选个格式</div>
+</div>
+
+<!-- 环形菜单 -->
+<div id="donut" class="hidden"></div>
+
+<!-- 结果面板 -->
+<div class="panel" id="panel">
+  <div class="ph">
+    <div class="pt" id="panelTitle">转换结果</div>
+    <button class="close" id="panelClose">×</button>
+  </div>
+  <div id="panelBody"></div>
+</div>
+
+<!-- 底部工具 -->
+<div class="toolbar">
+  <div class="tbtn" id="btnPick">选择文件</div>
+</div>
+<input type="file" id="fileInput" class="hidden" multiple>
+
+<div id="ver">v2.1.0-多格式扩展 20261102</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+(function(){
+  'use strict';
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtSize(n){
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+    return (n/1048576).toFixed(2) + ' MB';
+  }
+  function extOf(name){ var m = String(name).match(/\.([^.]+)$/); return m ? m[1].toLowerCase() : ''; }
+
+  /* ========== 格式表 ========== */
+  var FORMATS = {
+    image: [
+      { id:'jpg',  label:'JPG',  icon:'🖼️', mime:'image/jpeg' },
+      { id:'png',  label:'PNG',  icon:'🖼️', mime:'image/png' },
+      { id:'webp', label:'WEBP', icon:'🖼️', mime:'image/webp' },
+      { id:'pdf',  label:'PDF',  icon:'📄', action:'img2pdf' }
+    ],
+    pdf: [
+      { id:'png',  label:'转图片', icon:'🖼️', action:'pdf2img' },
+      { id:'split',label:'按页拆分', icon:'✂️', action:'pdfsplit' }
+    ],
+    text: [
+      { id:'txt',  label:'TXT',   icon:'📝', mime:'text/plain' },
+      { id:'json', label:'JSON',  icon:'{ }', action:'tojson' },
+      { id:'csv',  label:'CSV',   icon:'▦',  action:'tocsv' },
+      { id:'yaml', label:'YAML',  icon:'≋',  action:'toyaml' }
+    ],
+    audio: [
+      { id:'wav',  label:'WAV',   icon:'🎵', action:'audio2wav' },
+      { id:'mp3',  label:'MP3',   icon:'🎵', action:'audio2mp3' },
+      { id:'m4a',  label:'M4A',   icon:'🎵', action:'audio2m4a' }
+    ],
+    video: [
+      { id:'mp4',  label:'MP4',   icon:'🎬', action:'video2mp4' },
+      { id:'webm', label:'WEBM',  icon:'🎬', action:'video2webm' },
+      { id:'gif',  label:'GIF',   icon:'🎞️', action:'video2gif' }
+    ],
+    doc: [
+      { id:'txt',  label:'转文本', icon:'📝', action:'doc2txt' },
+      { id:'pdf',  label:'转PDF',  icon:'📄', action:'doc2pdf' }
+    ],
+    zip: [
+      { id:'zip',  label:'ZIP',   icon:'📦', action:'zip2zip' },
+      { id:'ls',   label:'看内容', icon:'🔍', action:'zipList' }
+    ]
+  };
+
+  function formatsFor(file){
+    var t = file.type || '';
+    var e = extOf(file.name);
+    if (/^image\//.test(t) || /^(jpg|jpeg|png|webp|gif|bmp|heic|heif|avif|tiff?)$/.test(e)) return 'image';
+    if (t === 'application/pdf' || e === 'pdf') return 'pdf';
+    if (/^audio\//.test(t) || /^(mp3|wav|flac|m4a|aac|ogg|opus|wma|aiff?)$/.test(e)) return 'audio';
+    if (/^video\//.test(t) || /^(mp4|mov|m4v|webm|mkv|avi|flv|wmv|3gp)$/.test(e)) return 'video';
+    if (/^(docx|doc|xlsx|xls|pptx|ppt|odt|ods|epub|rtf)$/.test(e)) return 'doc';
+    if (/^(zip|rar|7z|tar|gz|tgz|bz2|xz)$/.test(e)) return 'zip';
+    if (/^text\//.test(t) || /^(txt|md|json|csv|log|yaml|yml|xml|html?)$/.test(e)) return 'text';
+    return null;
+  }
+
+  /* ========== 环形菜单绘制 ========== */
+  var donutEl = $('donut');
+  var current = null;   // { files, x, y, kind }
+  var SEG_R1 = 52, SEG_R2 = 104;
+
+  function polar(cx, cy, r, deg){
+    var rad = (deg - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  }
+  function arcPath(cx, cy, r1, r2, a0, a1){
+    var p1 = polar(cx, cy, r2, a0);
+    var p2 = polar(cx, cy, r2, a1);
+    var p3 = polar(cx, cy, r1, a1);
+    var p4 = polar(cx, cy, r1, a0);
+    var large = (a1 - a0) > 180 ? 1 : 0;
+    return [
+      'M', p1[0].toFixed(2), p1[1].toFixed(2),
+      'A', r2, r2, 0, large, 1, p2[0].toFixed(2), p2[1].toFixed(2),
+      'L', p3[0].toFixed(2), p3[1].toFixed(2),
+      'A', r1, r1, 0, large, 0, p4[0].toFixed(2), p4[1].toFixed(2),
+      'Z'
+    ].join(' ');
+  }
+
+  function showDonut(files, x, y){
+    var kind = formatsFor(files[0]);
+    if (!kind){
+      toast('不支持的文件类型：' + extOf(files[0].name));
+      return;
+    }
+    // 混合类型检查
+    for (var i=1;i<files.length;i++){
+      if (formatsFor(files[i]) !== kind){
+        toast('请选择同一类型的文件');
+        return;
+      }
+    }
+
+    current = { files: files, x: x, y: y, kind: kind };
+    var list = FORMATS[kind];
+    var n = list.length;
+    var step = 360 / n;
+    var cx = 130, cy = 130;   // svg 内坐标系
+    var size = 260;
+
+    var segs = list.map(function(f, i){
+      var a0 = i * step + 2;
+      var a1 = (i + 1) * step - 2;
+      var mid = (a0 + a1) / 2;
+      var lp = polar(cx, cy, (SEG_R1 + SEG_R2) / 2, mid);
+      return '<g class="seg" data-id="' + f.id + '" style="animation-delay:' + (i * 26) + 'ms">' +
+        '<path d="' + arcPath(cx, cy, SEG_R1, SEG_R2, a0, a1) + '" fill="#1e3145" stroke="#2a4a68" stroke-width="1"/>' +
+        '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] - 3).toFixed(1) + '" class="icon">' + f.icon + '</text>' +
+        '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 12).toFixed(1) + '">' + esc(f.label) + '</text>' +
+      '</g>';
+    }).join('');
+
+    var fname = files.length > 1 ? (files.length + ' 个文件') : files[0].name;
+    var ficon = kind === 'image' ? '🖼️' : kind === 'pdf' ? '📄' :
+                kind === 'audio' ? '🎵' : kind === 'video' ? '🎬' :
+                kind === 'doc' ? '📄' : kind === 'zip' ? '📦' : '📝';
+
+    donutEl.innerHTML =
+      '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" ' +
+      'style="left:' + (x - cx) + 'px;top:' + (y - cy) + 'px">' + segs + '</svg>' +
+      '<div class="hub" style="left:' + (x - 39) + 'px;top:' + (y - 39) + 'px">' +
+        '<span class="ficon">' + ficon + '</span>' +
+        '<span class="fname">' + esc(fname) + '</span>' +
+      '</div>';
+    donutEl.classList.remove('hidden');
+
+    // 事件绑定
+    Array.prototype.forEach.call(donutEl.querySelectorAll('.seg'), function(g){
+      g.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var id = g.getAttribute('data-id');
+        var fmt = list.filter(function(f){ return f.id === id; })[0];
+        if (fmt) runConvert(fmt);
+      });
+      g.addEventListener('mouseenter', function(){ g.classList.add('hot'); });
+      g.addEventListener('mouseleave', function(){ g.classList.remove('hot'); });
+    });
+  }
+
+  function hideDonut(){
+    donutEl.classList.add('hidden');
+    donutEl.innerHTML = '';
+    current = null;
+  }
+
+  /* ========== 转换执行 ========== */
+  var busy = false;
+
+  function showProgress(x, y){
+    var svg = donutEl.querySelector('svg');
+    if (svg) svg.style.opacity = '.25';
+    var old = donutEl.querySelector('.prog');
+    if (old) old.remove();
+    var NS = 'http://www.w3.org/2000/svg';
+    var el = document.createElementNS(NS, 'svg');
+    el.setAttribute('class', 'prog');
+    el.setAttribute('width', 104);
+    el.setAttribute('height', 104);
+    el.setAttribute('viewBox', '0 0 104 104');
+    el.style.left = (x - 52) + 'px';
+    el.style.top = (y - 52) + 'px';
+    var r = 46, c = 2 * Math.PI * r;
+    el.innerHTML =
+      '<circle class="bgc" cx="52" cy="52" r="' + r + '"/>' +
+      '<circle class="fgc" cx="52" cy="52" r="' + r + '" stroke-dasharray="' + c + '" stroke-dashoffset="' + c + '"/>';
+    donutEl.appendChild(el);
+    return function(p){
+      var fg = el.querySelector('.fgc');
+      if (fg) fg.style.strokeDashoffset = (c * (1 - p)).toFixed(1);
+    };
+  }
+
+  function loadImg(file){
+    return new Promise(function(res, rej){
+      var url = URL.createObjectURL(file);
+      var im = new Image();
+      im.onload = function(){ URL.revokeObjectURL(url); res(im); };
+      im.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('解码失败')); };
+      im.src = url;
+    });
+  }
+
+  function runConvert(fmt){
+    if (!current || busy) return;
+    var files = current.files, x = current.x, y = current.y;
+    busy = true;
+    var setP = showProgress(x, y);
+    var results = [];
+    var total = files.length, done = 0;
+
+    (async function(){
+      try{
+        for (var i=0;i<files.length;i++){
+          var f = files[i];
+          try{
+            var out = await convertOne(f, fmt);
+            if (Array.isArray(out)){
+              out.forEach(function(o){ results.push({ ok:true, name:o.name, blob:o.blob }); });
+            } else {
+              results.push({ ok:true, name: out.name, blob: out.blob });
+            }
+          }catch(e){
+            results.push({ ok:false, name: f.name, err: e.message || String(e) });
+          }
+          done++;
+          setP(done / total);
+          await new Promise(function(r){ setTimeout(r, 30); });
+        }
+      } finally {
+        setTimeout(function(){
+          hideDonut();
+          busy = false;
+          showPanel(results, fmt);
+        }, 260);
+      }
+    })();
+  }
+
+  function convertOne(file, fmt){
+    if (fmt.action === 'img2pdf') return imgToPdf(file);
+    if (fmt.action === 'pdf2img') return pdfToImg(file);
+    if (fmt.action === 'pdfsplit') return pdfSplit(file);
+    if (fmt.action === 'tojson') return textTo(file, 'json');
+    if (fmt.action === 'tocsv')  return textTo(file, 'csv');
+    if (fmt.action === 'toyaml') return textTo(file, 'yaml');
+    if (fmt.action === 'audio2wav') return audioTo(file, 'wav');
+    if (fmt.action === 'audio2mp3') return audioTo(file, 'mp3');
+    if (fmt.action === 'audio2m4a') return audioTo(file, 'm4a');
+    if (fmt.action === 'video2mp4') return videoTo(file, 'mp4');
+    if (fmt.action === 'video2webm') return videoTo(file, 'webm');
+    if (fmt.action === 'video2gif') return videoTo(file, 'gif');
+    if (fmt.action === 'doc2txt') return docToText(file);
+    if (fmt.action === 'doc2pdf') return docToPdf(file);
+    if (fmt.action === 'zip2zip') return zipTo(file, 'zip');
+    if (fmt.action === 'zipList') return zipList(file);
+    if (fmt.id === 'txt') return toText(file);
+    return imgConvert(file, fmt);
+  }
+
+  function readText(file){
+    return new Promise(function(res, rej){
+      var fr = new FileReader();
+      fr.onload = function(){ res(String(fr.result)); };
+      fr.onerror = function(){ rej(new Error('读取失败')); };
+      fr.readAsText(file, 'utf-8');
+    });
+  }
+
+  /* ---- 图片 → PDF ---- */
+  function imgToPdf(file){
+    return new Promise(function(resolve, reject){
+      var PDFLib = window.PDFLib;
+      if (!PDFLib) return reject(new Error('pdf-lib 未加载'));
+      loadImg(file).then(async function(im){
+        var doc = await PDFLib.PDFDocument.create();
+        var bytes = await file.arrayBuffer();
+        var isJpg = /\.jpe?g$/i.test(file.name) || file.type === 'image/jpeg';
+        var emb;
+        if (isJpg) emb = await doc.embedJpg(bytes);
+        else {
+          // 非 JPG 先转成 PNG 再嵌入
+          var cv = document.createElement('canvas');
+          cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+          cv.getContext('2d').drawImage(im, 0, 0);
+          var pngBuf = await new Promise(function(r){ cv.toBlob(function(b){
+            b.arrayBuffer().then(r);
+          }, 'image/png'); });
+          emb = await doc.embedPng(pngBuf);
+        }
+        var page = doc.addPage([emb.width, emb.height]);
+        page.drawImage(emb, { x:0, y:0, width: emb.width, height: emb.height });
+        var out = await doc.save();
+        resolve({
+          name: file.name.replace(/\.[^.]+$/, '') + '.pdf',
+          blob: new Blob([out], { type:'application/pdf' })
+        });
+      }).catch(reject);
+    });
+  }
+
+  /* ---- PDF → 图片（第 1 页） ---- */
+  function pdfToImg(file){
+    return Promise.reject(new Error('PDF 转图片需 pdf.js 渲染引擎，当前版本暂未内置（可用「按页拆分」导出 PDF 后再处理）'));
+  }
+
+  /* ---- PDF 按页拆分 ---- */
+  function pdfSplit(file){
+    return new Promise(async function(resolve, reject){
+      try{
+        var PDFLib = window.PDFLib;
+        if (!PDFLib) return reject(new Error('pdf-lib 未加载'));
+        var doc = await PDFLib.PDFDocument.load(await file.arrayBuffer());
+        var total = doc.getPageCount();
+        var base = file.name.replace(/\.[^.]+$/, '');
+        var outs = [];
+        for (var i=0;i<total;i++){
+          var nd = await PDFLib.PDFDocument.create();
+          var pg = await nd.copyPages(doc, [i]);
+          nd.addPage(pg[0]);
+          var b = await nd.save();
+          outs.push({ name: base + '-p' + (i+1) + '.pdf', blob: new Blob([b], {type:'application/pdf'}) });
+        }
+        resolve(outs);   // 返回数组，由 runConvert 展开
+      }catch(e){ reject(e); }
+    });
+  }
+
+  /* ---- 文本 → 数据格式 ---- */
+  function parseCSVText(text){
+    var rows = [], row = [], cell = '', inQ = false;
+    for (var i=0;i<text.length;i++){
+      var c = text[i];
+      if (inQ){
+        if (c === '"' && text[i+1] === '"'){ cell += '"'; i++; }
+        else if (c === '"') inQ = false;
+        else cell += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ','){ row.push(cell); cell = ''; }
+        else if (c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+        else if (c !== '\r') cell += c;
+      }
+    }
+    if (cell || row.length){ row.push(cell); rows.push(row); }
+    if (!rows.length) return [];
+    var head = rows[0];
+    return rows.slice(1).filter(function(r){ return r.length; }).map(function(r){
+      var o = {};
+      head.forEach(function(h, i){ o[h] = r[i] === undefined ? '' : r[i]; });
+      return o;
+    });
+  }
+  function toYAMLText(obj, indent){
+    indent = indent || 0;
+    var pad = '  '.repeat(indent);
+    var out = [];
+    Object.keys(obj).forEach(function(k){
+      var v = obj[k];
+      if (v && typeof v === 'object' && !Array.isArray(v)){
+        out.push(pad + k + ':'); out.push(toYAMLText(v, indent+1));
+      } else if (Array.isArray(v)){
+        out.push(pad + k + ':');
+        v.forEach(function(x){ out.push(pad + '  - ' + JSON.stringify(x)); });
+      } else {
+        out.push(pad + k + ': ' + (v === null ? 'null' : (typeof v === 'string' ? v : JSON.stringify(v))));
+      }
+    });
+    return out.filter(Boolean).join('\n');
+  }
+  async function textTo(file, target){
+    var txt = await readText(file);
+    var base = file.name.replace(/\.[^.]+$/, '');
+    var obj = null;
+
+    // 尝试解析源
+    var src = extOf(file.name);
+    if (src === 'json' || /^\s*[[{]/.test(txt)){ try{ obj = JSON.parse(txt); }catch(e){} }
+    if (!obj && src === 'csv'){ obj = parseCSVText(txt); }
+    if (!obj){
+      // 单行文本包装成对象
+      obj = { text: txt.trim() };
+    }
+
+    var out = '';
+    if (target === 'json') out = JSON.stringify(obj, null, 2);
+    else if (target === 'yaml') out = toYAMLText(obj);
+    else if (target === 'csv'){
+      var arr = Array.isArray(obj) ? obj : [obj];
+      var keys = Object.keys(arr[0] || {});
+      var esc2 = function(v){
+        var s2 = v === null || v === undefined ? '' : String(v);
+        return /[",\n]/.test(s2) ? '"' + s2.replace(/"/g,'""') + '"' : s2;
+      };
+      out = [keys.join(',')].concat(arr.map(function(o){
+        return keys.map(function(k){ return esc2(o[k]); }).join(',');
+      })).join('\n');
+    }
+    var ext = target === 'json' ? 'json' : target === 'yaml' ? 'yaml' : 'csv';
+    return { name: base + '.' + ext, blob: new Blob([out], {type:'text/plain;charset=utf-8'}) };
+  }
+
+  function imgConvert(file, fmt){
+    return new Promise(function(resolve, reject){
+      loadImg(file).then(function(im){
+        var w = im.naturalWidth, h = im.naturalHeight;
+        var cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        var ctx = cv.getContext('2d');
+        if (fmt.mime === 'image/jpeg'){
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, w, h);
+        }
+        ctx.drawImage(im, 0, 0, w, h);
+        cv.toBlob(function(blob){
+          if (!blob) return reject(new Error('编码失败'));
+          var base = file.name.replace(/\.[^.]+$/, '');
+          resolve({ name: base + '.' + fmt.id, blob: blob });
+        }, fmt.mime, 0.92);
+      }).catch(reject);
+    });
+  }
+
+  function toText(file){
+    return new Promise(function(resolve, reject){
+      var fr = new FileReader();
+      fr.onload = function(){
+        var base = file.name.replace(/\.[^.]+$/, '');
+        resolve({ name: base + '.txt', blob: new Blob([fr.result], {type:'text/plain;charset=utf-8'}) });
+      };
+      fr.onerror = function(){ reject(new Error('读取失败')); };
+      fr.readAsText(file);
+    });
+  }
+
+
+  /* ========== 新增：音频 / 视频 / 文档 / 压缩包（v2.1.0） ========== */
+
+  /* --- 按需加载外部库（CDN），只加载一次 --- */
+  var _libs = {};
+  function loadLib(key, url){
+    if (_libs[key]) return _libs[key];
+    _libs[key] = new Promise(function(res, rej){
+      var sc = document.createElement('script');
+      sc.src = url;
+      sc.onload = function(){ res(); };
+      sc.onerror = function(){ delete _libs[key]; rej(new Error('库加载失败（检查网络）')); };
+      document.head.appendChild(sc);
+    });
+    return _libs[key];
+  }
+
+  /* --- HEIC → 可解码图片（走 heic2any，找不到就报错） --- */
+  async function ensureDecodable(file){
+    var e = extOf(file.name);
+    if (e !== 'heic' && e !== 'heif') return file;
+    await loadLib('heic2any', 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js');
+    if (!window.heic2any) throw new Error('HEIC 解码库未加载');
+    var out = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+    var b = Array.isArray(out) ? out[0] : out;
+    return new File([b], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+  }
+
+  /* --- 音频转 WAV / MP3 / M4A --- */
+  async function audioTo(file, target){
+    var ab = await file.arrayBuffer();
+    var actx = new (window.AudioContext || window.webkitAudioContext)();
+    var buf;
+    try {
+      buf = await actx.decodeAudioData(ab);
+    } catch (err) {
+      actx.close();
+      throw new Error('这个音频格式浏览器解不了（试试先转成 wav/mp3）');
+    }
+    actx.close();
+    var base = file.name.replace(/\.[^.]+$/, '');
+
+    if (target === 'wav') {
+      return { name: base + '.wav', blob: encodeWavBuffer(buf) };
+    }
+
+    if (target === 'mp3') {
+      await loadLib('lamejs', 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js');
+      if (!window.lamejs) throw new Error('MP3 编码器未加载');
+      var enc = new window.lamejs.Mp3Encoder(buf.numberOfChannels > 1 ? 2 : 1, buf.sampleRate, 192);
+      var L = buf.getChannelData(0);
+      var R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
+      var toI16 = function(f){ var o = new Int16Array(f.length); for (var i=0;i<f.length;i++){ var v=Math.max(-1,Math.min(1,f[i])); o[i]= v<0? v*0x8000 : v*0x7fff; } return o; };
+      var l16 = toI16(L), r16 = toI16(R), chunks = [];
+      var BLOCK = 1152;
+      for (var i = 0; i < l16.length; i += BLOCK) {
+        var mp3buf = buf.numberOfChannels > 1
+          ? enc.encodeBuffer(l16.subarray(i, i+BLOCK), r16.subarray(i, i+BLOCK))
+          : enc.encodeBuffer(l16.subarray(i, i+BLOCK));
+        if (mp3buf.length) chunks.push(new Uint8Array(mp3buf));
+      }
+      var end = enc.flush();
+      if (end.length) chunks.push(new Uint8Array(end));
+      return { name: base + '.mp3', blob: new Blob(chunks, { type: 'audio/mpeg' }) };
+    }
+
+    // M4A / AAC：用 MediaRecorder 实时录（慢，但零依赖）
+    throw new Error('M4A 需要实时录制，暂未支持（用 WAV 或 MP3 吧）');
+  }
+
+  /* 把 AudioBuffer 编成 16bit WAV */
+  function encodeWavBuffer(buf){
+    var ch = buf.numberOfChannels, len = buf.length, sr = buf.sampleRate;
+    var bytes = len * ch * 2;
+    var ab = new ArrayBuffer(44 + bytes);
+    var dv = new DataView(ab);
+    var ws = function(o, t){ for (var i=0;i<t.length;i++) dv.setUint8(o+i, t.charCodeAt(i)); };
+    ws(0,'RIFF'); dv.setUint32(4, 36+bytes, true); ws(8,'WAVE');
+    ws(12,'fmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true);
+    dv.setUint16(22,ch,true); dv.setUint32(24,sr,true);
+    dv.setUint32(28, sr*ch*2, true); dv.setUint16(32, ch*2, true); dv.setUint16(34,16,true);
+    ws(36,'data'); dv.setUint32(40, bytes, true);
+    var off = 44, data = [];
+    for (var c=0;c<ch;c++) data.push(buf.getChannelData(c));
+    for (var i=0;i<len;i++){
+      for (var c2=0;c2<ch;c2++){
+        var v = Math.max(-1, Math.min(1, data[c2][i]));
+        dv.setInt16(off, v<0? v*0x8000 : v*0x7fff, true); off += 2;
+      }
+    }
+    return new Blob([ab], { type: 'audio/wav' });
+  }
+
+  /* --- 视频转格式（ffmpeg.wasm，重活） --- */
+  async function videoTo(file, target){
+    if (window.matchMedia && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      // 手机上不硬来，直接劝退
+      throw new Error('手机内存不够做视频转码，请在电脑上操作（ffmpeg 要 30MB+ 内存）');
+    }
+    await loadLib('ffmpegUmd', 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+    await loadLib('ffmpegUtil', 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/util.js');
+    var FFmpeg = window.FFmpegWASM && window.FFmpegWASM.FFmpeg;
+    var toBlobURL = window.FFmpegUtil && window.FFmpegUtil.toBlobURL;
+    if (!FFmpeg || !toBlobURL) throw new Error('ffmpeg 库未加载');
+
+    var base = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+    var ff = new FFmpeg();
+    await ff.load({
+      coreURL: await toBlobURL(base + '/ffmpeg-core.js', 'text/javascript'),
+      wasmURL: await toBlobURL(base + '/ffmpeg-core.wasm', 'application/wasm'),
+    });
+    var inName = 'in' + (extOf(file.name) ? '.' + extOf(file.name) : '.mp4');
+    var outName = 'out.' + target;
+    await ff.writeFile(inName, new Uint8Array(await file.arrayBuffer()));
+    var args = target === 'gif'
+      ? ['-i', inName, '-vf', 'fps=12,scale=640:-1:flags=lanczos', '-loop', '0', outName]
+      : target === 'webm'
+        ? ['-i', inName, '-c:v', 'libvpx-vp9', '-crf', '32', '-b:v', '0', '-c:a', 'libopus', outName]
+        : ['-i', inName, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', outName];
+    await ff.exec(args);
+    var data = await ff.readFile(outName);
+    var mime = target === 'gif' ? 'image/gif' : target === 'webm' ? 'video/webm' : 'video/mp4';
+    return { name: file.name.replace(/\.[^.]+$/, '') + '.' + target, blob: new Blob([data.buffer || data], { type: mime }) };
+  }
+
+  /* --- 文档转文本 / PDF --- */
+  async function docToText(file){
+    var e = extOf(file.name);
+    var base = file.name.replace(/\.[^.]+$/, '');
+
+    if (e === 'docx') {
+      await loadLib('mammoth', 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js');
+      if (!window.mammoth) throw new Error('docx 解析库未加载');
+      var r = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+      return { name: base + '.txt', blob: new Blob([r.value], { type: 'text/plain;charset=utf-8' }) };
+    }
+
+    if (e === 'xlsx' || e === 'xls') {
+      await loadLib('xlsx', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+      if (!window.XLSX) throw new Error('表格解析库未加载');
+      var wb = window.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      var lines = [];
+      wb.SheetNames.forEach(function(sn){
+        lines.push('=== ' + sn + ' ===');
+        lines.push(window.XLSX.utils.sheet_to_csv(wb.Sheets[sn]));
+      });
+      return { name: base + '.txt', blob: new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' }) };
+    }
+
+    if (e === 'pptx' || e === 'ppt' || e === 'odt' || e === 'ods' || e === 'rtf') {
+      throw new Error('这个格式暂未支持解析（docx / xlsx 已支持）');
+    }
+
+    if (e === 'epub') {
+      await loadLib('jszip', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+      if (!window.JSZip) throw new Error('解压库未加载');
+      var zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+      var txt = '';
+      var names = Object.keys(zip.files).filter(function(n){ return /\.x?html?$/i.test(n); }).sort();
+      for (var i = 0; i < names.length; i++) {
+        var html = await zip.files[names[i]].async('string');
+        txt += html.replace(/<script[\s\S]*?<\/script>/gi, '')
+                   .replace(/<style[\s\S]*?<\/style>/gi, '')
+                   .replace(/<[^>]+>/g, ' ')
+                   .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+                   .replace(/\s+/g, ' ') + '\n\n';
+      }
+      return { name: base + '.txt', blob: new Blob([txt], { type: 'text/plain;charset=utf-8' }) };
+    }
+
+    throw new Error('暂不支持这个文档格式');
+  }
+
+  async function docToPdf(file){
+    var t = await docToText(file);
+    var text = await t.blob.text();
+    if (!window.PDFLib) throw new Error('pdf-lib 未加载');
+    var doc = await window.PDFLib.PDFDocument.create();
+    var font = await doc.embedFont(window.PDFLib.StandardFonts.Helvetica);
+    var PAGE_W = 595, PAGE_H = 842, MARGIN = 50, LINE_H = 14, SIZE = 10;
+    var maxChars = Math.floor((PAGE_W - MARGIN*2) / (SIZE * 0.5));
+    var lines = [];
+    text.split(/\n/).forEach(function(para){
+      if (!para.trim()) { lines.push(''); return; }
+      for (var i = 0; i < para.length; i += maxChars) lines.push(para.substr(i, maxChars));
+    });
+    var perPage = Math.floor((PAGE_H - MARGIN*2) / LINE_H);
+    for (var p = 0; p * perPage < lines.length; p++){
+      var page = doc.addPage([PAGE_W, PAGE_H]);
+      var chunk = lines.slice(p * perPage, (p+1) * perPage);
+      chunk.forEach(function(ln, idx){
+        try {
+          page.drawText(ln.replace(/[^\x20-\x7E]/g, '?'), {
+            x: MARGIN, y: PAGE_H - MARGIN - idx * LINE_H, size: SIZE, font: font,
+          });
+        } catch (e) {}
+      });
+    }
+    var out = await doc.save();
+    return { name: file.name.replace(/\.[^.]+$/, '') + '.pdf', blob: new Blob([out], { type: 'application/pdf' }) };
+  }
+
+  /* --- 压缩包：重打包 / 看内容 --- */
+  async function zipTo(file){
+    await loadLib('jszip', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+    if (!window.JSZip) throw new Error('解压库未加载');
+    var e = extOf(file.name);
+    if (e !== 'zip') throw new Error('只支持 ZIP 重打包（其他格式浏览器解不开）');
+    var zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+    var out = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+    return { name: file.name.replace(/\.zip$/i, '') + '-repacked.zip', blob: out };
+  }
+
+  async function zipList(file){
+    await loadLib('jszip', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+    if (!window.JSZip) throw new Error('解压库未加载');
+    var e = extOf(file.name);
+    if (e !== 'zip') throw new Error('只支持 ZIP 查看（其他格式浏览器解不开）');
+    var zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+    var lines = [];
+    Object.keys(zip.files).forEach(function(n){
+      var f = zip.files[n];
+      lines.push((f.dir ? '[目录] ' : fmtSize(f._data ? f._data.uncompressedSize : 0) + '  ') + n);
+    });
+    var txt = file.name + ' 共 ' + lines.length + ' 项\n\n' + lines.join('\n');
+    return { name: file.name.replace(/\.zip$/i, '') + '-目录.txt', blob: new Blob([txt], { type: 'text/plain;charset=utf-8' }) };
+  }
+
+  /* ========== 结果面板 ========== */
+  function showPanel(results, fmt){
+    var okN = results.filter(function(r){ return r.ok; }).length;
+    $('panelTitle').textContent = '完成 ' + okN + ' / ' + results.length +
+      (fmt ? '　→　' + (fmt.label || fmt.id) : '');
+    $('panelBody').innerHTML = results.map(function(r){
+      if (!r.ok) return '<div class="errline">✗ ' + esc(r.name) + '：' + esc(r.err) + '</div>';
+      var url = URL.createObjectURL(r.blob);
+      return '<a class="dl" href="' + url + '" download="' + esc(r.name) + '">' +
+        '<span>⬇</span><span class="dn">' + esc(r.name) + '</span>' +
+        '<span class="ds">' + fmtSize(r.blob.size) + '</span></a>';
+    }).join('');
+    $('panel').classList.add('on');
+  }
+  $('panelClose').onclick = function(){ $('panel').classList.remove('on'); };
+
+  /* ========== 拖拽逻辑 ========== */
+  var dragCounter = 0;
+
+  window.addEventListener('dragenter', function(e){
+    e.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1) $('dz').classList.add('on');
+  });
+  window.addEventListener('dragover', function(e){ e.preventDefault(); });
+  window.addEventListener('dragleave', function(e){
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0){ dragCounter = 0; $('dz').classList.remove('on'); }
+  });
+  window.addEventListener('drop', function(e){
+    e.preventDefault();
+    dragCounter = 0;
+    $('dz').classList.remove('on');
+    var files = Array.prototype.slice.call(e.dataTransfer.files || []);
+    if (!files.length) return;
+    showDonut(files, e.clientX, e.clientY);
+  });
+
+  /* 点空白处关闭环形 */
+  window.addEventListener('click', function(e){
+    if (donutEl.classList.contains('hidden')) return;
+    if (!donutEl.contains(e.target)) hideDonut();
+  });
+  window.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') hideDonut();
+  });
+
+  /* 选择文件按钮 */
+  $('btnPick').onclick = function(){ $('fileInput').click(); };
+  $('fileInput').onchange = function(e){
+    var files = Array.prototype.slice.call(e.target.files || []);
+    if (!files.length) return;
+    showDonut(files, window.innerWidth / 2, window.innerHeight / 2);
+    e.target.value = '';
+  };
+
+  /* 简易提示 */
+  function toast(msg){
+    var el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = 'position:fixed;left:50%;top:32px;transform:translateX(-50%);' +
+      'padding:9px 18px;border-radius:10px;background:rgba(239,118,118,.16);' +
+      'border:1px solid rgba(239,118,118,.35);color:#f0a0a0;font-size:13px;z-index:99;' +
+      'transition:opacity .3s';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.style.opacity = '0'; }, 1600);
+    setTimeout(function(){ el.remove(); }, 2000);
+  }
+})();
+</script>
+</body>
+</html>

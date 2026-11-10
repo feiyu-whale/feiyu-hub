@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>声律启蒙查询</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f7f4ef;color:#2c2c2c;font-size:15px;line-height:1.8;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:16px 16px 80px}
+header{text-align:center;padding:20px 0 12px}
+header h1{font-size:22px;color:#5a3e1b;letter-spacing:2px}
+header .subtitle{font-size:13px;color:#8a7560;margin-top:4px}
+.search-box{margin:12px 0;position:relative}
+.search-box input{width:100%;padding:10px 14px 10px 36px;border:1.5px solid #d4c5b0;border-radius:8px;font-size:15px;background:#fff;outline:none;transition:border-color .2s}
+.search-box input:focus{border-color:#8b4513}
+.search-box .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px}
+.search-box .clear-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:#aaa;cursor:pointer;display:none}
+.tabs{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+.tab{flex:1;min-width:0;padding:8px 4px;border:1.5px solid #d4c5b0;border-radius:8px;background:#fff;font-size:14px;color:#5a3e1b;cursor:pointer;text-align:center;transition:all .2s;white-space:nowrap}
+.tab.active{background:#8b4513;color:#fff;border-color:#8b4513}
+.tab:hover:not(.active){background:#f0e8dc}
+.intro{background:#fff;border-radius:8px;padding:16px;margin:12px 0;border:1px solid #e8ddd0;font-size:14px;color:#5a4a3a;line-height:1.9}
+.rhyme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;margin:12px 0}
+.rhyme-btn{padding:8px 4px;border:1.5px solid #d4c5b0;border-radius:8px;background:#fff;font-size:14px;color:#5a3e1b;cursor:pointer;text-align:center;transition:all .2s;position:relative}
+.rhyme-btn:hover{background:#f0e8dc}
+.rhyme-btn.active{background:#8b4513;color:#fff;border-color:#8b4513}
+.rhyme-btn.has-content::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;background:#4caf50;border-radius:50%}
+.rhyme-btn.active.has-content::after{background:#a5d6a7}
+.detail-panel{background:#fff;border-radius:8px;padding:16px;margin:12px 0;border:1px solid #e8ddd0;display:none}
+.detail-panel.show{display:block}
+.detail-title{font-size:18px;color:#5a3e1b;font-weight:bold;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e8ddd0}
+.detail-text{font-size:16px;line-height:2.2;color:#333;margin-bottom:16px;text-align:justify;letter-spacing:0.5px}
+.pair-a{color:#b5451b;font-weight:bold;border-bottom:2px solid #b5451b;padding-bottom:1px}
+.pair-b{color:#2b6cb0;font-weight:bold;border-bottom:2px solid #2b6cb0;padding-bottom:1px}
+.pairs-section{margin-top:16px;padding-top:12px;border-top:1px dashed #d4c5b0}
+.pairs-title{font-size:14px;color:#8a7560;margin-bottom:8px;font-weight:bold}
+.pairs-list{display:flex;flex-wrap:wrap;gap:6px}
+.pair-tag{display:inline-flex;align-items:center;gap:2px;padding:3px 8px;background:#faf5ee;border:1px solid #e8ddd0;border-radius:12px;font-size:13px}
+.pair-tag .pa{color:#b5451b;font-weight:bold}
+.pair-tag .arrow{color:#aaa;margin:0 2px;font-size:12px}
+.pair-tag .pb{color:#2b6cb0;font-weight:bold}
+.legend{display:flex;gap:16px;margin:8px 0;font-size:13px;color:#8a7560}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.legend .dot-a{background:#b5451b}
+.legend .dot-b{background:#2b6cb0}
+.note-box{background:#fdf6ec;border:1px solid #f0d9a8;border-radius:8px;padding:12px;margin:12px 0;font-size:13px;color:#7a6530;line-height:1.7}
+.note-box strong{color:#5a4510}
+.search-results{margin:12px 0;display:none}
+.search-results.show{display:block}
+.search-results .sr-header{font-size:14px;color:#8a7560;margin-bottom:8px}
+.sr-item{background:#fff;border:1px solid #e8ddd0;border-radius:8px;padding:12px;margin-bottom:8px}
+.sr-item .sr-title{font-size:14px;color:#8b4513;font-weight:bold;margin-bottom:6px}
+.sr-item .sr-text{font-size:14px;line-height:1.9;color:#444}
+.sr-item .sr-text mark{background:#fff3cd;color:#333;padding:0 2px;border-radius:2px}
+.data-source{margin-top:24px;padding:16px;background:#fff;border-radius:8px;border:1px solid #e8ddd0}
+.data-source h3{font-size:15px;color:#5a3e1b;margin-bottom:10px}
+.data-source p,.data-source li{font-size:13px;color:#666;line-height:1.8}
+.data-source ul{padding-left:18px;margin:6px 0}
+.data-source li{margin-bottom:4px}
+.version{position:fixed;bottom:8px;right:12px;font-size:13px;color:#bbb;z-index:10}
+.back-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:1px solid #d4c5b0;border-radius:6px;padding:4px 10px;font-size:13px;color:#8b4513;cursor:pointer;margin-bottom:10px}
+.back-btn:hover{background:#f0e8dc}
+.section-label{font-size:13px;color:#8a7560;margin:12px 0 6px;font-weight:bold}
+.implicit-note{font-size:13px;color:#999;margin-top:8px;font-style:italic}
+@media(max-width:400px){.rhyme-grid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}.tab{font-size:13px;padding:7px 2px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>📜 声律启蒙查询</h1>
+<p class="subtitle">清·车万育撰 ｜ 韵部分卷 · 对仗标注 · 全文检索</p>
+</header>
+
+<div class="search-box">
+<span class="search-icon">🔍</span>
+<input type="text" id="searchInput" placeholder="输入关键词搜索全文…">
+<button class="clear-btn" id="clearBtn" onclick="clearSearch()">✕</button>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div id="introArea" class="intro">
+📖 <strong>声律启蒙</strong>是清代车万育所撰的蒙学读物，按平水韵分部编排，每韵含若干段对仗文句，用以训练儿童掌握平仄声律与对偶技巧。本工具收录上平声一东至四支共4韵首段原文，支持全文检索与对仗词组自动标注。其余韵部完整内容请查阅通行本原文。
+</div>
+
+<div id="searchResults" class="search-results"></div>
+
+<div id="rhymeListArea">
+<p class="section-label" id="sectionLabel">上平声（15韵）</p>
+<div class="rhyme-grid" id="rhymeGrid"></div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+<button class="back-btn" onclick="goBack()">← 返回韵部列表</button>
+<div class="detail-title" id="detailTitle"></div>
+<div class="legend"><span><span class="dot dot-a"></span>出句（上联）</span><span><span class="dot dot-b"></span>对句（下联）</span></div>
+<div class="detail-text" id="detailText"></div>
+<div class="pairs-section">
+<div class="pairs-title">📝 对仗词组标注（"X对Y"显式对仗）</div>
+<div class="pairs-list" id="pairsList"></div>
+</div>
+<p class="implicit-note">※ 隐式对仗（如"三尺剑，六钧弓""人间清暑殿，天上广寒宫"等结构对称句）未自动标注，需人工辨识。</p>
+</div>
+
+<div class="note-box" id="missingNote" style="display:none">
+<strong>⚠ 提示：</strong>本韵部原文暂未收录。完整内容请查阅通行本《声律启蒙》（推荐版本见下方「数据依据」）。
+</div>
+
+<div class="data-source">
+<h3>📋 数据依据</h3>
+<ul>
+<li><strong>原文依据：</strong>《声律启蒙》，清代车万育撰。通行版本以岳麓书社（2006年）、中华书局等出版社刊行为据。本工具所录文字参照通行整理本，个别用字可能存在版本差异。</li>
+<li><strong>韵部划分：</strong>依据平水韵（亦称"平水韵106韵"）系统。上平声15韵、下平声15韵、上声29韵、去声30韵、入声17韵，合计106韵。《声律启蒙》按此分卷编排。</li>
+<li><strong>收录范围：</strong>本工具目前收录上平声「一东」「二冬」「三江」「四支」共4韵之首段原文。其余韵部（含下平声、上声、去声全部韵目）仅列韵目名称，完整原文需查阅上述通行本。</li>
+<li><strong>对仗标注：</strong>基于原文"X对Y"格式自动提取显式对仗词组。隐式对仗（结构对称但未用"对"字者）需读者自行辨识。</li>
+<li><strong>说明：</strong>《声律启蒙》属古典文学蒙学读物，非国家强制标准文件。韵部名称依据学界通行的平水韵体系，无争议。</li>
+</ul>
+</div>
+</div>
+
+<div class="version">v1.0.0-声律启蒙查询 20261021</div>
+
+<script>
+const DATA={
+"上平声":{
+count:15,
+rhymes:["一东","二冬","三江","四支","五微","六鱼","七虞","八齐","九佳","十灰","十一真","十二文","十三元","十四寒","十五删"],
+content:{
+"一东":["云对雨，雪对风，晚照对晴空。来鸿对去燕，宿鸟对鸣虫。三尺剑，六钧弓，岭北对江东。人间清暑殿，天上广寒宫。两岸晓烟杨柳绿，一园春雨杏花红。两鬓风霜，途次早行之客；一蓑烟雨，溪边晚钓之翁。"],
+"二冬":["春对夏，秋对冬，暮鼓对晨钟。观山对玩水，绿竹对苍松。冯妇虎，叶公龙，舞蝶对鸣蛩。衔泥双紫燕，课蜜几黄蜂。春日园中莺恰恰，秋天塞外雁雍雍。秦岭云横，迢递八千远路；巫山雨洗，嵯峨十二危峰。"],
+"三江":["楼对阁，户对窗，巨海对长江。蓉裳对蕙帐，玉斝对银釭。青布幔，碧油幢，宝剑对金缸。忠心安社稷，利口覆家邦。世祖中兴延马武，桀王失道杀龙逄。秋雨潇潇，漫烂黄花都满径；春风袅袅，扶疏绿竹正盈窗。"],
+"四支":["茶对酒，赋对诗，燕子对莺儿。栽花对种竹，落絮对游丝。四目颉，一足夔，鸲鹆对鹭鸶。半池红菡萏，一架白荼蘼。几阵秋风能应候，一犁春雨甚知时。智伯恩深，国士吞变形之炭；羊公德大，邑人竖堕泪之碑。"]
+}
+},
+"下平声":{
+count:15,
+rhymes:["一先","二萧","三肴","四豪","五歌","六麻","七阳","八庚","九青","十蒸","十一尤","十二侵","十三覃","十四盐","十五咸"],
+content:{}
+},
+"上声":{
+count:29,
+rhymes:["一董","二肿","三讲","四纸","五尾","六语","七麌","八荠","九蟹","十贿","十一轸","十二吻","十三阮","十四旱","十五潸","十六铣","十七筱","十八巧","十九皓","二十哿","二十一马","二十二养","二十三梗","二十四迥","二十五有","二十六寝","二十七感","二十八俭","二十九豏"],
+content:{}
+},
+"去声":{
+count:30,
+rhymes:["一送","二宋","三绛","四寘","五未","六御","七遇","八霁","九泰","十卦","十一队","十二震","十三问","十四愿","十五翰","十六谏","十七霰","十八啸","十九效","二十号","二十一箇","二十二祃","二十三漾","二十四敬","二十五径","二十六宥","二十七沁","二十八勘","二十九艳","三十陷"],
+content:{}
+}
+};
+
+let currentCategory="上平声";
+let currentRhyme=null;
+let searchMode=false;
+
+function init(){
+renderTabs();
+renderRhymeList();
+document.getElementById("searchInput").addEventListener("input",onSearch);
+}
+
+function renderTabs(){
+const tabsEl=document.getElementById("tabs");
+tabsEl.innerHTML="";
+Object.keys(DATA).forEach(cat=>{
+const btn=document.createElement("button");
+btn.className="tab"+(cat===currentCategory?" active":"");
+btn.textContent=cat+"（"+DATA[cat].count+"韵）";
+btn.onclick=()=>switchCategory(cat);
+tabsEl.appendChild(btn);
+});
+}
+
+function switchCategory(cat){
+currentCategory=cat;
+searchMode=false;
+document.getElementById("searchInput").value="";
+document.getElementById("clearBtn").style.display="none";
+document.getElementById("searchResults").classList.remove("show");
+document.getElementById("searchResults").innerHTML="";
+document.getElementById("introArea").style.display="block";
+document.getElementById("rhymeListArea").style.display="block";
+document.getElementById("detailPanel").classList.remove("show");
+document.getElementById("missingNote").style.display="none";
+currentRhyme=null;
+renderTabs();
+renderRhymeList();
+}
+
+function renderRhymeList(){
+const grid=document.getElementById("rhymeGrid");
+const label=document.getElementById("sectionLabel");
+const cat=DATA[currentCategory];
+label.textContent=currentCategory+"（"+cat.count+"韵）";
+grid.innerHTML="";
+cat.rhymes.forEach(r=>{
+const btn=document.createElement("button");
+btn.className="rhyme-btn";
+if(cat.content[r])btn.classList.add("has-content");
+if(currentRhyme===r)btn.classList.add("active");
+btn.textContent=r;
+btn.onclick=()=>selectRhyme(r);
+grid.appendChild(btn);
+});
+}
+
+function selectRhyme(r){
+currentRhyme=r;
+searchMode=false;
+document.getElementById("searchResults").classList.remove("show");
+document.getElementById("introArea").style.display="none";
+document.getElementById("rhymeListArea").style.display="none";
+document.getElementById("missingNote").style.display="none";
+const cat=DATA[currentCategory];
+const panel=document.getElementById("detailPanel");
+if(cat.content[r]){
+const text=cat.content[r][0];
+document.getElementById("detailTitle").textContent=currentCategory+" · "+r;
+document.getElementById("detailText").innerHTML=highlightPairs(text);
+renderPairsList(text);
+panel.classList.add("show");
+}else{
+panel.classList.remove("show");
+document.getElementById("missingNote").style.display="block";
+}
+renderRhymeList();
+}
+
+function goBack(){
+currentRhyme=null;
+document.getElementById("detailPanel").classList.remove("show");
+document.getElementById("missingNote").style.display="none";
+document.getElementById("introArea").style.display="block";
+document.getElementById("rhymeListArea").style.display="block";
+renderRhymeList();
+}
+
+function highlightPairs(text){
+return text.replace(/([^，。；、]+?)对([^，。；、]+?)(?=[，。；]|$)/g,
+'<span class="pair-a">$1</span>对<span class="pair-b">$2</span>');
+}
+
+function extractPairs(text){
+const pairs=[];
+const regex=/([^，。；、]+?)对([^，。；、]+?)(?=[，。；]|$)/g;
+let m;
+while((m=regex.exec(text))!==null){
+const l=m[1].trim(),r=m[2].trim();
+if(l&&r)pairs.push([l,r]);
+}
+return pairs;
+}
+
+function renderPairsList(text){
+const pairs=extractPairs(text);
+const list=document.getElementById("pairsList");
+list.innerHTML="";
+pairs.forEach(p=>{
+const tag=document.createElement("span");
+tag.className="pair-tag";
+tag.innerHTML='<span class="pa">'+p[0]+'</span><span class="arrow">↔</span><span class="pb">'+p[1]+'</span>';
+list.appendChild(tag);
+});
+}
+
+function onSearch(){
+const q=document.getElementById("searchInput").value.trim();
+const clearBtn=document.getElementById("clearBtn");
+clearBtn.style.display=q?"block":"none";
+if(!q){
+searchMode=false;
+document.getElementById("searchResults").classList.remove("show");
+document.getElementById("searchResults").innerHTML="";
+document.getElementById("introArea").style.display="block";
+document.getElementById("rhymeListArea").style.display="block";
+document.getElementById("detailPanel").classList.remove("show");
+document.getElementById("missingNote").style.display="none";
+return;
+}
+searchMode=true;
+document.getElementById("introArea").style.display="none";
+document.getElementById("rhymeListArea").style.display="none";
+document.getElementById("detailPanel").classList.remove("show");
+document.getElementById("missingNote").style.display="none";
+const results=searchAll(q);
+renderSearchResults(results,q);
+}
+
+function clearSearch(){
+document.getElementById("searchInput").value="";
+document.getElementById("clearBtn").style.display="none";
+searchMode=false;
+document.getElementById("searchResults").classList.remove("show");
+document.getElementById("searchResults").innerHTML="";
+document.getElementById("introArea").style.display="block";
+document.getElementById("rhymeListArea").style.display="block";
+}
+
+function searchAll(query){
+const results=[];
+const q=query.toLowerCase();
+Object.keys(DATA).forEach(cat=>{
+const c=DATA[cat];
+Object.keys(c.content).forEach(rhyme=>{
+c.content[rhyme].forEach((text,si)=>{
+if(text.toLowerCase().includes(q)){
+results.push({category:cat,rhyme:rhyme,section:si+1,text:text});
+}
+});
+});
+});
+return results;
+}
+
+function renderSearchResults(results,query){
+const el=document.getElementById("searchResults");
+if(results.length===0){
+el.innerHTML='<div class="sr-header">未找到包含「'+escapeHtml(query)+'」的内容</div><div class="note-box">当前仅收录上平声一东至四支共4韵首段原文，其余韵部内容需查阅通行本。</div>';
+el.classList.add("show");
+return;
+}
+let html='<div class="sr-header">找到 '+results.length+' 条结果（关键词：「'+escapeHtml(query)+'」）</div>';
+results.forEach(r=>{
+const highlighted=highlightSearchTerm(highlightPairs(r.text),query);
+html+='<div class="sr-item"><div class="sr-title">'+r.category+' · '+r.rhyme+'（第'+r.section+'段）</div><div class="sr-text">'+highlighted+'</div></div>';
+});
+el.innerHTML=html;
+el.classList.add("show");
+}
+
+function highlightSearchTerm(html,query){
+if(!query)return html;
+const escaped=escapeRegex(query);
+const regex=new RegExp('('+escaped+')','gi');
+return html.replace(/>([^<]*)</g,function(match,text){
+return '>'+text.replace(regex,'<mark>$1</mark>')+'<';
+});
+}
+
+function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+init();
+</script>
+</body>
+</html>

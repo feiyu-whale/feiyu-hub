@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🧹 文本处理工具箱</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:13.5px; font-family:inherit; resize:vertical; min-height:100px; line-height:1.7; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btn { background:#241a3a; border:1px solid #4a3d70; color:#c8b3ff; border-radius:9px; padding:8px 13px;
+    font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn:active { transform:scale(.97); }
+  .btn.hl { background:linear-gradient(160deg,#5a4a9a,#3a2d70); border-color:#7a5fc0; color:#fff; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+  .tip { font-size:11px; color:#6a5f90; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>🧹 文本清理</h1>
+  <div class="sub">一键处理：去空行 · 去首尾空格 · 去重复行 · 排序</div>
+
+  <div class="card">
+    <div class="lbl">输入</div>
+    <textarea id="in" placeholder="粘贴文本（一行一条适合去重/排序）…"></textarea>
+    <div class="row">
+      <button class="btn hl" data-op="trimlines">去首尾空格</button>
+      <button class="btn hl" data-op="noempty">去空行</button>
+      <button class="btn hl" data-op="dedup">去重复行</button>
+      <button class="btn hl" data-op="sort">按行排序</button>
+      <button class="btn" data-op="joinspace">合并段落</button>
+      <button class="btn" data-op="clr">清空</button>
+    </div>
+    <div class="tip">「合并段落」把多行并成一行（空行变段落分隔）</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <textarea id="out" readonly></textarea>
+  </div>
+  <div class="ver">v1.0.0-文本清理 20261016</div>
+</div>
+<script>
+// 【textutil】文本清理（去空行/去首尾空格/去重/排序/合并段落）。依赖：无。输入：文本；输出：处理后文本。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：常见文本清理操作（去空行/去首尾空格/去重/排序），纯字符串处理，无外部数据。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  function run(op){
+    var s = $("in").value;
+    if(op === "clr"){ $("in").value=""; $("out").value=""; return; }
+    var lines = s.split("\n");
+    var r;
+    if(op === "trimlines") r = lines.map(function(l){ return l.trim(); }).join("\n");
+    else if(op === "noempty") r = lines.filter(function(l){ return l.trim().length > 0; }).join("\n");
+    else if(op === "dedup"){
+      var seen = {}, out = [];
+      lines.forEach(function(l){ if(!(l in seen)){ seen[l]=1; out.push(l); } });
+      r = out.join("\n");
+    }
+    else if(op === "sort") r = lines.slice().sort(function(a,b){ return a.localeCompare(b, "zh"); }).join("\n");
+    else if(op === "joinspace"){
+      // 空行分段，段内行合并
+      var paras = s.split(/\n\s*\n/);
+      r = paras.map(function(p){ return p.split("\n").map(function(l){return l.trim();}).filter(Boolean).join(""); }).filter(Boolean).join("\n\n");
+    }
+    else r = s;
+    $("out").value = r;
+  }
+  document.querySelectorAll("[data-op]").forEach(function(b){
+    b.onclick = function(){ run(b.dataset.op); };
+  });
+})();
+</script>
+</body>
+</html>

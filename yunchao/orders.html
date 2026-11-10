@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>订单 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .stars { color:#fbbf24; letter-spacing:1px; }
+  .rate-row { display:flex; gap:7px; justify-content:center; margin:12px 0; }
+  .rate-row span { font-size:30px; cursor:pointer; opacity:.35; transition:opacity .12s; }
+  .rate-row span.on, .rate-row span:hover { opacity:1; }
+</style>
+</head>
+<body data-tab="orders">
+
+<div class="topbar">
+  <a href="index.html" style="font-size:16px">←</a>
+  <div class="logo">订单</div>
+  <div style="flex:1"></div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+<div class="tabs" id="filter"></div>
+<div class="section" id="list"></div>
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+let filter = 'all';
+const FILTERS = [
+  { k: 'all', n: '全部' },
+  { k: YCStatus.PENDING, n: '待接单' },
+  { k: YCStatus.RUNNING, n: '进行中' },
+  { k: YCStatus.DELIVERED, n: '待确认' },
+  { k: YCStatus.DONE, n: '已完成' },
+  { k: YCStatus.DISPUTED, n: '争议中' }
+];
+
+function renderFilter() {
+  document.getElementById('filter').innerHTML = FILTERS
+    .map(f => `<span class="${f.k === filter ? 'on' : ''}" data-k="${f.k}">${f.n}</span>`).join('');
+  document.querySelectorAll('#filter span').forEach(el => {
+    el.onclick = () => { filter = el.dataset.k; renderFilter(); renderList(); };
+  });
+}
+
+function renderList() {
+  const role = S.role;
+  let list = S.orders.slice();
+  if (role === 'worker') list = list.filter(o => o.workerId === S.workerId);
+  if (filter !== 'all') list = list.filter(o => o.status === filter);
+
+  const box = document.getElementById('list');
+  if (!list.length) {
+    box.innerHTML = `<div class="empty"><span class="icon">📋</span>
+      ${role === 'worker' ? '你还没有接到单子' : '还没有订单'}<br><br>
+      ${role === 'boss' ? '<a href="index.html" class="btn" style="display:inline-block">去点一单</a>' : ''}
+    </div>`;
+    return;
+  }
+
+  box.innerHTML = list.map(o => {
+    const st = o.status;
+    const acts = [];
+    if (role === 'worker') {
+      if (st === YCStatus.PENDING && o.workerId === S.workerId) acts.push({ t: '接单', fn: () => transit(o.id, YCStatus.ACCEPTED) });
+      if (st === YCStatus.ACCEPTED) acts.push({ t: '开始服务', fn: () => transit(o.id, YCStatus.RUNNING) });
+      if (st === YCStatus.RUNNING) acts.push({ t: '提交交付', fn: () => transit(o.id, YCStatus.DELIVERED) });
+    } else if (role === 'boss') {
+      if (st === YCStatus.PENDING) acts.push({ t: '取消订单', cls: 'btn-ghost', fn: () => cancelOrder(o.id) });
+      if (st === YCStatus.DELIVERED) {
+        acts.push({ t: '确认完成', fn: () => transit(o.id, YCStatus.DONE) });
+        acts.push({ t: '举报', cls: 'btn-danger', fn: () => location.href = 'report.html?order=' + o.id });
+      }
+      if (st === YCStatus.RUNNING) acts.push({ t: '举报', cls: 'btn-danger', fn: () => location.href = 'report.html?order=' + o.id });
+      if (st === YCStatus.DONE && !o.rated) acts.push({ t: '去评价', cls: 'btn-gold', fn: () => rateOrder(o.id) });
+    }
+
+    const names = (o.addons || []).map(a => (YC.ADDONS.find(x => x.id === a) || {}).name).filter(Boolean);
+
+    return `
+      <div class="order" data-oid="${o.id}">
+        <div class="order-head">
+          <span class="order-no">${o.id}</span>
+          <span class="status" style="background:${YCStatus.COLOR[st]}22;color:${YCStatus.COLOR[st]}">${YCStatus.LABEL[st]}</span>
+        </div>
+        <div class="order-body">
+          <div class="order-row"><span>服务</span><span>${YCUtil.gameIcon(o.gid)} ${o.service}</span></div>
+          ${names.length ? `<div class="order-row"><span>增值</span><span>${names.join('、')}</span></div>` : ''}
+          <div class="order-row"><span>打手</span><span>${o.workerAvatar} ${o.workerName}</span></div>
+          <div class="order-row"><span>金额</span><span style="color:#fbbf24">${YCUtil.money(o.price)}</span></div>
+          <div class="order-row"><span>时间</span><span>${YCUtil.time(o.createdAt)}</span></div>
+          ${o.rated ? `<div class="order-row"><span>我的评价</span><span class="stars">${'★'.repeat(o.ratedStars)}${'☆'.repeat(5-o.ratedStars)}</span></div>` : ''}
+        </div>
+        ${acts.length ? `<div class="order-actions">
+          ${acts.map((a, i) => `<button class="btn btn-sm ${a.cls || ''}" data-i="${i}">${a.t}</button>`).join('')}
+        </div>` : ''}
+      </div>`;
+  }).join('');
+
+  box.querySelectorAll('.order').forEach((card, ci) => {
+    const o = list[ci];
+    const acts = [];
+    if (role === 'worker') {
+      if (o.status === YCStatus.PENDING && o.workerId === S.workerId) acts.push(() => transit(o.id, YCStatus.ACCEPTED));
+      if (o.status === YCStatus.ACCEPTED) acts.push(() => transit(o.id, YCStatus.RUNNING));
+      if (o.status === YCStatus.RUNNING) acts.push(() => transit(o.id, YCStatus.DELIVERED));
+    } else if (role === 'boss') {
+      if (o.status === YCStatus.PENDING) acts.push(() => cancelOrder(o.id));
+      if (o.status === YCStatus.DELIVERED) {
+        acts.push(() => transit(o.id, YCStatus.DONE));
+        acts.push(() => location.href = 'report.html?order=' + o.id);
+      }
+      if (o.status === YCStatus.RUNNING) acts.push(() => location.href = 'report.html?order=' + o.id);
+      if (o.status === YCStatus.DONE && !o.rated) acts.push(() => rateOrder(o.id));
+    }
+    card.querySelectorAll('[data-i]').forEach(b => {
+      b.onclick = () => acts[+b.dataset.i] && acts[+b.dataset.i]();
+    });
+  });
+}
+
+function transit(id, to) {
+  const r = YCStatus.apply(S, id, to);
+  if (!r.ok) { YCApp.toast(r.msg, true); return; }
+  YCApp.save();
+  YCApp.toast('已更新为「' + YCStatus.LABEL[to] + '」');
+  if (to === YCStatus.DONE) {
+    // 完成后自动弹评价
+    setTimeout(() => rateOrder(id), 500);
+  }
+  renderList();
+}
+
+function cancelOrder(id) {
+  YCApp.modal('取消订单', '<p style="font-size:12.5px;color:#7d93ad">取消后白饭将全额退回你的钱包。</p>', [
+    { t: '确认取消', cls: 'btn-danger', fn: () => {
+        const o = S.orders.find(x => x.id === id);
+        if (!o) return;
+        const r = YCStatus.apply(S, id, YCStatus.CANCELLED);
+        if (!r.ok) { YCApp.toast(r.msg, true); return; }
+        if (S.role === 'boss') S.baofan += o.price;
+        YCApp.save(); YCApp.toast('已取消，白饭已退回'); renderList();
+      }},
+    { t: '再想想', cls: 'btn-ghost' }
+  ]);
+}
+
+/* ---------- 评价 ---------- */
+function rateOrder(id) {
+  const o = S.orders.find(x => x.id === id);
+  if (!o) return;
+  let stars = 5;
+  const mask = YCApp.modal('评价这次服务', `
+    <div class="modal-row"><span>打手</span><span>${o.workerAvatar} ${o.workerName}</span></div>
+    <div class="modal-row"><span>服务</span><span>${o.service}</span></div>
+    <div class="rate-row" id="rateRow">
+      ${[1,2,3,4,5].map(i => `<span data-s="${i}" class="on">★</span>`).join('')}
+    </div>
+    <div class="field"><label>说说这次的体验（可选）</label>
+      <textarea id="rateText" rows="3" placeholder="打手态度、技术、是否守时…"></textarea>
+    </div>
+  `, [
+    { t: '提交评价', fn: () => {
+        const text = YCSec.clean((document.getElementById('rateText') || {}).value, 200);
+        S.reviews[o.workerId] = S.reviews[o.workerId] || [];
+        S.reviews[o.workerId].push({ stars, text: text.trim(), at: Date.now(), orderId: id });
+        o.rated = true;
+        o.ratedStars = stars;
+        // 差评扣信用分
+        if (stars <= 2) {
+          S.workerCredit[o.workerId] = (S.workerCredit[o.workerId] || 0) + (3 - stars) * 5;
+        }
+        YCApp.save();
+        YCApp.toast('评价已提交，感谢反馈');
+        renderList();
+      }},
+    { t: '稍后再说', cls: 'btn-ghost' }
+  ]);
+
+  const row = mask.querySelector('#rateRow');
+  row.querySelectorAll('span').forEach(el => {
+    el.onclick = () => {
+      stars = +el.dataset.s;
+      row.querySelectorAll('span').forEach(x => {
+        x.classList.toggle('on', +x.dataset.s <= stars);
+      });
+    };
+  });
+}
+
+renderFilter();
+renderList();
+YCApp.renderTabbar('orders');
+</script>
+</body>
+</html>

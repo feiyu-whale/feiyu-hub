@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>积木工坊 · 拖块搭系统</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bf-top">
+  <div class="bf-brand"><b>▦</b> 积木工坊 <em>v1.3.0-接口能跑 20261026</em></div>
+  <div class="bf-actions">
+    <span id="bfMeta" class="bf-meta">0 块 · 0 连线</span>
+    <button id="bfForgeBtn" class="bf-btn gold">＋ 造块</button>
+    <button id="bfPreviewBtn" class="bf-btn primary">预览</button>
+    <button id="bfExportBtn" class="bf-btn">导出</button>
+    <button id="bfClearBtn" class="bf-btn danger">清空</button>
+  </div>
+</header>
+
+<main class="bf-main">
+  <aside class="bf-side">
+    <div class="bf-sidehd">积木库</div>
+    <div id="bfLib" class="bf-lib"></div>
+    <div class="bf-tip">拖到右侧画布，或直接点一下<br>想要自己的块？点右上「造块」</div>
+  </aside>
+
+  <section id="bfViewport" class="bf-viewport">
+    <div id="bfCanvas" class="bf-canvas">
+      <svg id="bfWires" class="bf-wires"></svg>
+      <div id="bfNodes" class="bf-nodes"></div>
+    </div>
+    <div class="bf-hint">按住块顶部拖动 · 从圆点拉线 · 点线删线 · Ctrl+滚轮缩放</div>
+  </section>
+</main>
+
+<div id="bfToast" class="bf-toast"></div>
+
+<!-- 预览弹层 -->
+<div id="bfModal" class="bf-modal">
+  <div class="bf-modalbox">
+    <div class="bf-modalhd">
+      <span>预览</span>
+      <button id="bfModalClose" class="bf-btn">关闭</button>
+    </div>
+    <iframe id="bfPreviewFrame" class="bf-frame"></iframe>
+  </div>
+</div>
+
+<!-- 造块弹层 -->
+<div id="bfForgeModal" class="bf-modal">
+  <div class="bf-modalbox forge">
+    <div class="bf-modalhd">
+      <span>造块 · 自己做一个积木</span>
+      <button id="bfForgeClose" class="bf-btn">关闭</button>
+    </div>
+    <div class="forge-body">
+      <aside class="forge-list">
+        <div class="bf-sidehd">我的块</div>
+        <div id="bfForgeList"></div>
+        <div class="forge-tools">
+          <button id="bfBlocksExport" class="bf-btn tiny">导出块</button>
+          <button id="bfBlocksImport" class="bf-btn tiny">导入块</button>
+          <input type="file" id="bfBlocksFile" accept=".json" hidden>
+        </div>
+      </aside>
+
+      <div class="forge-form">
+        <div class="fg-row">
+          <label>名字 <input id="bfFgName" type="text" placeholder="比如：评价卡"></label>
+          <label>图标 <input id="bfFgIcon" type="text" maxlength="2" value="★"></label>
+        </div>
+        <label class="fg-full">说明 <input id="bfFgDesc" type="text" placeholder="这干什么用的，一句话"></label>
+
+        <div class="fg-cols">
+          <label class="fg-full">输入口（每行 key:名字:类型）
+            <textarea id="bfFgIn" rows="3" placeholder="rows:数据:list"></textarea>
+          </label>
+          <label class="fg-full">输出口（每行 key:名字:类型）
+            <textarea id="bfFgOut" rows="3" placeholder="out:结果:any"></textarea>
+          </label>
+        </div>
+
+        <label class="fg-full">可填字段（每行 key:名字:类型:默认值，类型可写 text / number / bool / lines）
+          <textarea id="bfFgFields" rows="3" placeholder="title:标题:text:我的块"></textarea>
+        </label>
+
+        <label class="fg-full">显示模板（HTML，用 {{字段key}} 插入值）
+          <textarea id="bfFgHtml" rows="5" placeholder="<div class=&quot;card&quot;><h3>{{title}}</h3></div>"></textarea>
+        </label>
+
+        <div class="fg-actions">
+          <input type="hidden" id="bfFgId">
+          <button id="bfFgReset" class="bf-btn">重填</button>
+          <button id="bfFgSave" class="bf-btn primary">存进块库</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="blocks.js"></script>
+<script src="api.js"></script>
+<script src="runtime.js"></script>
+<script src="editor.js"></script>
+<script src="export.js"></script>
+<script>
+bfInit();
+
+document.getElementById('bfPreviewBtn').onclick = () => {
+  const html = bfBuildSite();
+  document.getElementById('bfPreviewFrame').srcdoc = html;
+  document.getElementById('bfModal').classList.add('show');
+};
+document.getElementById('bfModalClose').onclick = () =>
+  document.getElementById('bfModal').classList.remove('show');
+
+document.getElementById('bfExportBtn').onclick = () => {
+  const html = bfBuildSite();
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-system.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  bfToast('已导出 my-system.html');
+};
+
+document.getElementById('bfClearBtn').onclick = () => {
+  if (!BF.nodes.length) return;
+  if (!confirm('清空当前所有块和连线？')) return;
+  BF.nodes = []; BF.links = [];
+  bfRenderAll(); bfSave();
+};
+
+/* ---- 造块 ---- */
+document.getElementById('bfForgeBtn').onclick = bfOpenBlockForge;
+document.getElementById('bfForgeClose').onclick = bfCloseBlockForge;
+document.getElementById('bfFgSave').onclick = bfForgeSave;
+document.getElementById('bfFgReset').onclick = bfForgeReset;
+
+document.getElementById('bfForgeList').addEventListener('click', e => {
+  const ed = e.target.closest('[data-edit]');
+  const rm = e.target.closest('[data-rm]');
+  if (ed) { bfForgeEdit(ed.dataset.edit); return; }
+  if (rm) {
+    const arr = bfLoadCustom().find(b => b.id === rm.dataset.rm);
+    if (!confirm('删掉「' + (arr ? arr.name : '') + '」？')) return;
+    bfRemoveCustom(rm.dataset.rm);
+    bfRenderForgeList();
+    bfToast('已删除');
+  }
+});
+
+document.getElementById('bfBlocksExport').onclick = bfExportBlocks;
+document.getElementById('bfBlocksImport').onclick = () =>
+  document.getElementById('bfBlocksFile').click();
+document.getElementById('bfBlocksFile').onchange = e => {
+  if (e.target.files[0]) bfImportBlocks(e.target.files[0]);
+  e.target.value = '';
+};
+</script>
+</body>
+</html>

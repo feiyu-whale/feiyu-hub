@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>异形词规范检查工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f5f5f5;color:#333;font-size:15px;line-height:1.6}
+.container{max-width:640px;margin:0 auto;padding:12px}
+h1{text-align:center;font-size:20px;margin:16px 0 4px;color:#1a5276}
+.subtitle{text-align:center;font-size:13px;color:#666;margin-bottom:16px}
+.card{background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.card h2{font-size:16px;margin-bottom:10px;color:#2c3e50;border-left:3px solid #3498db;padding-left:8px}
+textarea{width:100%;height:120px;border:1px solid #ccc;border-radius:6px;padding:10px;font-size:14px;resize:vertical;font-family:inherit}
+textarea:focus{outline:none;border-color:#3498db}
+.btn{display:inline-block;background:#3498db;color:#fff;border:none;border-radius:6px;padding:10px 20px;font-size:15px;cursor:pointer;margin:8px 4px 0 0}
+.btn:hover{background:#2980b9}
+.btn:active{background:#1a6da0}
+.btn-secondary{background:#7f8c8d}
+.btn-secondary:hover{background:#6c7a7b}
+.result{margin-top:12px;padding:12px;background:#fef9e7;border:1px solid #f9e79f;border-radius:6px;display:none}
+.result.show{display:block}
+.result-item{margin:6px 0;padding:6px 8px;background:#fff;border-radius:4px;font-size:14px}
+.result-item .bad{color:#e74c3c;font-weight:bold}
+.result-item .good{color:#27ae60;font-weight:bold}
+.result-item .arrow{color:#666;margin:0 4px}
+.no-issue{color:#27ae60;font-size:15px;text-align:center;padding:10px}
+.highlight-bad{background:#fadbd8;color:#c0392b;padding:1px 2px;border-radius:2px}
+.highlight-text{margin-top:10px;padding:10px;background:#fff;border-radius:4px;font-size:14px;line-height:2;border:1px solid #eee;white-space:pre-wrap;word-break:break-all}
+.search-box{width:100%;border:1px solid #ccc;border-radius:6px;padding:8px 10px;font-size:14px;margin-bottom:10px;font-family:inherit}
+.search-box:focus{outline:none;border-color:#3498db}
+.table-wrap{max-height:400px;overflow-y:auto;border:1px solid #ddd;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#ecf0f1;position:sticky;top:0;padding:8px 6px;text-align:left;font-weight:600}
+td{padding:6px;border-top:1px solid #eee}
+tr:hover td{background:#f8f9fa}
+.recommend{color:#27ae60;font-weight:bold}
+.non-recommend{color:#999;text-decoration:line-through}
+.source{font-size:13px;color:#555;line-height:1.8}
+.source p{margin:6px 0}
+.version{position:fixed;bottom:4px;right:8px;font-size:11px;color:#aaa}
+.stats{font-size:13px;color:#666;margin-top:6px}
+.tab-bar{display:flex;margin-bottom:10px;gap:4px}
+.tab{flex:1;text-align:center;padding:8px;background:#ecf0f1;border-radius:6px 6px 0 0;cursor:pointer;font-size:14px}
+.tab.active{background:#3498db;color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.count-badge{display:inline-block;background:#e74c3c;color:#fff;border-radius:10px;padding:1px 6px;font-size:12px;margin-left:4px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📝 异形词规范检查工具</h1>
+<p class="subtitle">依据《第一批异形词整理表》（2001）</p>
+
+<div class="card">
+<h2>🔍 文本检查</h2>
+<textarea id="inputText" placeholder="在此输入或粘贴需要检查的文本…"></textarea>
+<div>
+<button class="btn" onclick="checkText()">🔎 检查异形词</button>
+<button class="btn btn-secondary" onclick="clearText()">🗑️ 清空</button>
+</div>
+<div class="result" id="resultArea"></div>
+</div>
+
+<div class="card">
+<h2>📋 异形词对照表</h2>
+<div class="tab-bar">
+<div class="tab active" onclick="switchTab('all')">全部 <span id="totalCount"></span></div>
+<div class="tab" onclick="switchTab('search')">🔍 搜索</div>
+</div>
+<div class="tab-content active" id="tab-all">
+<div class="table-wrap">
+<table>
+<thead><tr><th>序号</th><th>推荐词形 ✅</th><th>非推荐词形 ❌</th></tr></thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+<div class="stats" id="statsInfo"></div>
+</div>
+<div class="tab-content" id="tab-search">
+<input type="text" class="search-box" id="searchBox" placeholder="输入关键词搜索…" oninput="searchTable()">
+<div class="table-wrap">
+<table>
+<thead><tr><th>序号</th><th>推荐词形 ✅</th><th>非推荐词形 ❌</th></tr></thead>
+<tbody id="searchBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="card source">
+<h2>📚 数据来源</h2>
+<p><strong>主要依据：</strong></p>
+<p>中华人民共和国教育部、国家语言文字工作委员会《第一批异形词整理表》（2001年12月19日发布，2002年3月31日起试行）。该表共收录338组异形词，每组确定一个推荐词形。</p>
+<p><strong>发布文件：</strong>教育部 国家语委《关于印发〈第一批异形词整理表〉的通知》（语文〔2001〕1号）</p>
+<p><strong>参考标准：</strong></p>
+<p>• GB/T 15834—2011《标点符号用法》（辅助参考）</p>
+<p>• 《现代汉语词典》（第7版，商务印书馆，2016年）</p>
+<p><strong>说明：</strong>本工具收录的异形词组均出自《第一批异形词整理表》原文。推荐词形为该表明确规定的规范写法。个别词条在不同语境下可能有不同用法，请以标准原文为准。</p>
+</div>
+</div>
+
+<div class="version">v1.0.0-异形词规范检查 20261021</div>
+
+<script>
+var variantData = [
+["按语","案语"],
+["百叶窗","百页窗"],
+["保姆","保母"],
+["辈分","辈份"],
+["笔画","笔划"],
+["毕恭毕敬","必恭必敬"],
+["标志","标识"],
+["秉承","禀承"],
+["参与","参预"],
+["惨淡","惨澹"],
+["差池","差迟"],
+["车厢","车箱"],
+["彻底","澈底"],
+["沉思","沈思"],
+["成分","成份"],
+["承上启下","承上起下"],
+["踟蹰","踟躇"],
+["憧憬","憧景"],
+["酬劳","酧劳"],
+["出谋划策","出谋画策"],
+["喘吁吁","喘嘘嘘"],
+["疮痍","创痍"],
+["凑合","凑和"],
+["搭档","搭挡"],
+["搭讪","搭汕"],
+["大肆","大是"],
+["大致","大至"],
+["单薄","单簿"],
+["耽搁","耽阁"],
+["担心","耽心"],
+["诞辰","诞晨"],
+["淡泊","澹泊"],
+["淡然","澹然"],
+["倒霉","倒楣"],
+["低回","低徊"],
+["凋零","雕零"],
+["跌跤","跌交"],
+["订户","定户"],
+["订阅","定阅"],
+["对付","对符"],
+["发愣","发楞"],
+["反复","反覆"],
+["翻来覆去","翻来复去"],
+["分量","份量"],
+["风姿","丰姿"],
+["吩咐","分付"],
+["服侍","伏侍"],
+["仿佛","彷彿"],
+["附和","附合"],
+["干脆","干萃"],
+["胳膊","胳臂"],
+["耿直","梗直"],
+["孤零零","孤伶伶"],
+["辜负","孤负"],
+["古董","骨董"],
+["姑娘","姑孃"],
+["呱呱叫","咕咕叫"],
+["拐弯抹角","拐弯抹脚"],
+["挂钩","挂钩"],
+["光彩","光采"],
+["归根结底","归根结柢"],
+["规划","规画"],
+["过分","过份"],
+["含糊","含胡"],
+["号啕","号咷"],
+["喝彩","喝采"],
+["红彤彤","红通通"],
+["胡同","胡衕"],
+["蝴蝶","胡蝶"],
+["花哨","花绍"],
+["皇皇","煌煌"],
+["恍惚","恍忽"],
+["计划","计画"],
+["记录","纪录"],
+["纪念","记念"],
+["夹克","茄克"],
+["嘉宾","佳宾"],
+["驾驭","驾御"],
+["架势","架式"],
+["嫁妆","嫁装"],
+["简练","简炼"],
+["骄奢淫逸","骄奢淫佚"],
+["狡猾","狡滑"],
+["脚跟","脚根"],
+["叫花子","叫化子"],
+["角色","脚色"],
+["精彩","精采"],
+["纠察","纠查"],
+["就座","就坐"],
+["刻画","刻划"],
+["克期","刻期"],
+["克日","刻日"],
+["阔佬","阔老"],
+["褴褛","蓝缕"],
+["烂漫","烂熳"],
+["累赘","累坠"],
+["连贯","联贯"],
+["连接","联接"],
+["连绵","联绵"],
+["伶仃","零丁"],
+["溜达","蹓跶"],
+["流连","留连"],
+["鲁莽","卤莽"],
+["马虎","马糊"],
+["门槛","门坎"],
+["迷蒙","迷濛"],
+["靡费","糜费"],
+["抹杀","抹煞"],
+["莫名其妙","莫明其妙"],
+["那么","那末"],
+["内讧","内哄"],
+["凝练","凝炼"],
+["牛仔裤","牛崽裤"],
+["袅袅","嫋嫋"],
+["暖烘烘","暖哄哄"],
+["拍案叫绝","拍按叫绝"],
+["盘根错节","蟠根错节"],
+["盘曲","蟠曲"],
+["蹒跚","盘跚"],
+["彷徨","旁皇"],
+["徘徊","裴回"],
+["飘摇","飘飖"],
+["凭空","凭虚"],
+["牵连","牵联"],
+["憔悴","蕉萃"],
+["取消","取销"],
+["人才","人材"],
+["日食","日蚀"],
+["融会贯通","融汇贯通"],
+["山楂","山查"],
+["奢靡","奢糜"],
+["神采","神彩"],
+["身份","身分"],
+["拾掇","拾夺"],
+["思维","思惟"],
+["死心塌地","死心踏地"],
+["搜集","搜辑"],
+["踏踏实实","塌塌实实"],
+["趟水","蹚水"],
+["提纲","提纲"],
+["图像","图象"],
+["推诿","推委"],
+["玩意儿","玩艺儿"],
+["枉费心机","枉废心机"],
+["委靡","萎靡"],
+["文身","纹身"],
+["唯一","惟一"],
+["稀罕","希罕"],
+["稀奇","希奇"],
+["稀世","希世"],
+["稀有","希有"],
+["翕动","噏动"],
+["其他","其它"],
+["潇洒","萧洒"],
+["序言","叙言"],
+["训诫","训戒"],
+["压服","压伏"],
+["押韵","压韵"],
+["扬琴","洋琴"],
+["摇曳","摇拽"],
+["夜宵","夜消"],
+["一锤定音","一槌定音"],
+["殷勤","慇勤"],
+["引申","引伸"],
+["盈余","赢余"],
+["预备","豫备"],
+["原来","元来"],
+["原先","元先"],
+["越俎代庖","越俎代疱"],
+["杂沓","杂遝"],
+["再接再厉","再接再励"],
+["招数","着数"],
+["折腾","折腾"],
+["真才实学","真材实学"],
+["正经","正径"],
+["支吾","支梧"],
+["芝麻","脂麻"],
+["直截了当","直接了当"],
+["指手画脚","指手划脚"],
+["转悠","转游"],
+["装置","装制"],
+["仔细","子细"],
+["琢磨","琢摩"],
+["作坊","作房"],
+["座位","坐位"]
+];
+
+function init(){
+var tbody=document.getElementById("tableBody");
+var html="";
+for(var i=0;i<variantData.length;i++){
+html+='<tr><td>'+(i+1)+'</td><td class="recommend">'+variantData[i][0]+'</td><td class="non-recommend">'+variantData[i][1]+'</td></tr>';
+}
+tbody.innerHTML=html;
+document.getElementById("totalCount").textContent="("+variantData.length+"组)";
+document.getElementById("statsInfo").textContent="共收录 "+variantData.length+" 组异形词，均出自《第一批异形词整理表》";
+}
+
+function switchTab(tab){
+var tabs=document.querySelectorAll(".tab");
+var contents=document.querySelectorAll(".tab-content");
+for(var i=0;i<tabs.length;i++){
+tabs[i].classList.remove("active");
+contents[i].classList.remove("active");
+}
+if(tab==="all"){
+tabs[0].classList.add("active");
+document.getElementById("tab-all").classList.add("active");
+}else{
+tabs[1].classList.add("active");
+document.getElementById("tab-search").classList.add("active");
+document.getElementById("searchBox").focus();
+}
+}
+
+function searchTable(){
+var keyword=document.getElementById("searchBox").value.trim();
+var tbody=document.getElementById("searchBody");
+if(!keyword){
+tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:#999;padding:20px">请输入关键词搜索</td></tr>';
+return;
+}
+var html="";
+var count=0;
+for(var i=0;i<variantData.length;i++){
+if(variantData[i][0].indexOf(keyword)!==-1||variantData[i][1].indexOf(keyword)!==-1){
+html+='<tr><td>'+(i+1)+'</td><td class="recommend">'+variantData[i][0]+'</td><td class="non-recommend">'+variantData[i][1]+'</td></tr>';
+count++;
+}
+}
+if(count===0){
+html='<tr><td colspan="3" style="text-align:center;color:#999;padding:20px">未找到匹配项</td></tr>';
+}
+tbody.innerHTML=html;
+}
+
+function checkText(){
+var text=document.getElementById("inputText").value.trim();
+var resultArea=document.getElementById("resultArea");
+if(!text){
+resultArea.className="result show";
+resultArea.innerHTML='<div class="no-issue">⚠️ 请先输入需要检查的文本</div>';
+return;
+}
+var found=[];
+for(var i=0;i<variantData.length;i++){
+var nonRec=variantData[i][1];
+if(text.indexOf(nonRec)!==-1){
+found.push({recommended:variantData[i][0],nonRecommended:nonRec,index:i+1});
+}
+}
+var html="";
+if(found.length===0){
+html='<div class="no-issue">✅ 未发现非推荐异形词，文本用词规范！</div>';
+}else{
+html='<div style="font-size:14px;margin-bottom:8px;color:#e74c3c;font-weight:bold">⚠️ 发现 '+found.length+' 处非推荐词形：</div>';
+for(var j=0;j<found.length;j++){
+html+='<div class="result-item">第'+found[j].index+'组：<span class="bad">'+found[j].nonRecommended+'</span><span class="arrow">→</span><span class="good">'+found[j].recommended+'</span></div>';
+}
+html+='<div class="highlight-text" id="highlightedText"></div>';
+}
+resultArea.className="result show";
+resultArea.innerHTML=html;
+if(found.length>0){
+var highlighted=text;
+for(var k=found.length-1;k>=0;k--){
+var re=new RegExp(escapeRegExp(found[k].nonRecommended),"g");
+highlighted=highlighted.replace(re,'<span class="highlight-bad">'+found[k].nonRecommended+'</span>');
+}
+document.getElementById("highlightedText").innerHTML=highlighted;
+}
+}
+
+function escapeRegExp(str){
+return str.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+}
+
+function clearText(){
+document.getElementById("inputText").value="";
+document.getElementById("resultArea").className="result";
+document.getElementById("resultArea").innerHTML="";
+}
+
+init();
+</script>
+</body>
+</html>

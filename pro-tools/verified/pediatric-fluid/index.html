@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小儿维持输液量计算器 — Holliday-Segar 4-2-1 法则</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f0f4f8;
+  color: #1a202c;
+  line-height: 1.7;
+  padding-bottom: 40px;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+h1 {
+  text-align: center;
+  font-size: 1.6em;
+  color: #2b6cb0;
+  margin: 20px 0 6px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 0.92em;
+  color: #718096;
+  margin-bottom: 20px;
+}
+/* Tabs */
+.tab-bar {
+  display: flex;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 10px 20px;
+  background: #edf2f7;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+  cursor: pointer;
+  font-size: 0.95em;
+  color: #4a5568;
+  border-radius: 6px 6px 0 0;
+  margin-right: 2px;
+  transition: background 0.2s;
+}
+.tab-btn:hover { background: #e2e8f0; }
+.tab-btn.active {
+  background: #fff;
+  color: #2b6cb0;
+  font-weight: 600;
+  border-bottom: 2px solid #fff;
+  margin-bottom: -2px;
+}
+.tab-panel {
+  display: none;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  padding: 28px;
+  border-radius: 0 0 8px 8px;
+}
+.tab-panel.active { display: block; }
+/* Calculator */
+.calc-section { margin-bottom: 24px; }
+.calc-section label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #2d3748;
+}
+.calc-section input[type="number"] {
+  width: 200px;
+  padding: 8px 12px;
+  font-size: 1.1em;
+  border: 2px solid #cbd5e0;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.calc-section input[type="number"]:focus { border-color: #4299e1; }
+.calc-btn {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 8px 24px;
+  background: #3182ce;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.calc-btn:hover { background: #2b6cb0; }
+.result-box {
+  margin-top: 20px;
+  padding: 20px;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  display: none;
+}
+.result-box.show { display: block; }
+.result-box h3 { color: #2b6cb0; margin-bottom: 12px; }
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.result-table th, .result-table td {
+  padding: 8px 14px;
+  border: 1px solid #bee3f8;
+  text-align: left;
+}
+.result-table th { background: #bee3f8; color: #2a4365; }
+.result-table td { background: #fff; }
+.highlight-val { font-size: 1.3em; font-weight: 700; color: #2b6cb0; }
+/* Warning box */
+.warning-box {
+  margin-top: 18px;
+  padding: 14px 18px;
+  background: #fff5f5;
+  border: 2px solid #fc8181;
+  border-radius: 8px;
+  color: #c53030;
+  font-weight: 600;
+  font-size: 0.95em;
+  line-height: 1.8;
+}
+.warning-box .warn-title {
+  font-size: 1.05em;
+  margin-bottom: 6px;
+  color: #9b2c2c;
+}
+/* Safety banner */
+.safety-banner {
+  margin: 16px 0;
+  padding: 14px 18px;
+  background: #fffff0;
+  border: 2px solid #ecc94b;
+  border-radius: 8px;
+  color: #744210;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+/* Documentation */
+.doc-section { margin-bottom: 28px; }
+.doc-section h2 {
+  font-size: 1.2em;
+  color: #2b6cb0;
+  border-left: 4px solid #3182ce;
+  padding-left: 10px;
+  margin-bottom: 12px;
+}
+.doc-section h3 {
+  font-size: 1.05em;
+  color: #2d3748;
+  margin: 14px 0 8px;
+}
+.doc-section p, .doc-section li {
+  font-size: 0.95em;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+.doc-section ul, .doc-section ol { padding-left: 22px; }
+/* Unit tests */
+.test-result { margin: 16px 0; }
+.test-item {
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.88em;
+  line-height: 1.6;
+}
+.test-pass { background: #f0fff4; border: 1px solid #9ae6b4; color: #276749; }
+.test-fail { background: #fff5f5; border: 1px solid #feb2b2; color: #9b2c2c; }
+.test-summary {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 1em;
+  margin-bottom: 14px;
+}
+.test-summary.all-pass { background: #c6f6d5; color: #22543d; }
+.test-summary.has-fail { background: #fed7d7; color: #9b2c2c; }
+.run-test-btn {
+  padding: 8px 24px;
+  background: #38a169;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+.run-test-btn:hover { background: #2f855a; }
+/* Version */
+.version-tag {
+  position: fixed;
+  bottom: 6px;
+  right: 12px;
+  font-size: 0.72em;
+  color: #a0aec0;
+  z-index: 999;
+}
+/* Responsive */
+@media (max-width: 640px) {
+  .container { padding: 10px; }
+  .tab-btn { padding: 8px 12px; font-size: 0.85em; }
+  .tab-panel { padding: 16px; }
+  .calc-section input[type="number"] { width: 140px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>小儿维持输液量计算器</h1>
+  <p class="subtitle">Holliday-Segar 4-2-1 法则 &nbsp;|&nbsp; 体重范围 0.5 – 100 kg</p>
+
+  <div class="safety-banner">
+    ⚕ 本工具仅供医疗卫生专业人员参考，不构成任何诊疗建议。实际临床决策须由具备资质的医师根据患者具体情况做出。
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="calc">计算器</button>
+    <button class="tab-btn" data-tab="tests">单元测试</button>
+    <button class="tab-btn" data-tab="docs">专业说明</button>
+    <button class="tab-btn" data-tab="safety">安全声明</button>
+  </div>
+
+  <!-- Tab 1: Calculator -->
+  <div id="tab-calc" class="tab-panel active">
+    <div class="calc-section">
+      <label for="weightInput">患儿体重（kg）：</label>
+      <input type="number" id="weightInput" min="0.5" max="100" step="0.1" placeholder="例如 15">
+      <button class="calc-btn" id="calcBtn" onclick="calculate()">计 算</button>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <h3>计算结果</h3>
+      <p>输入体重：<span id="resWeight" class="highlight-val"></span> kg</p>
+      <table class="result-table">
+        <thead>
+          <tr><th>体重分段</th><th>分段体重 (kg)</th><th>速率 (mL/kg/h)</th><th>分段流量 (mL/h)</th></tr>
+        </thead>
+        <tbody id="detailBody"></tbody>
+      </table>
+      <p style="margin-top:14px;">每小时维持量：<span id="resHourly" class="highlight-val"></span> mL/h</p>
+      <p>每日维持量：<span id="resDaily" class="highlight-val"></span> mL/d</p>
+      <div id="capNote" style="display:none;margin-top:14px;padding:10px 12px;border-radius:6px;font-size:13px;line-height:1.7;background:#fff4e5;color:#8a5a00;border-left:3px solid #f0a020"></div>
+    </div>
+
+    <div class="warning-box">
+      <div class="warn-title">⚠ 重要临床警示</div>
+      本公式（Holliday-Segar 4-2-1 法则）仅适用于<strong>一般儿科患者的维持输液量估算</strong>。<br>
+      以下情况<strong>不可直接使用</strong>本公式，须另行计算：<br>
+      ① 脱水补液（需额外补充累积损失量）<br>
+      ② 围手术期液体管理<br>
+      ③ 心功能不全 / 肾功能不全患者<br>
+      ④ 新生儿（尤其出生 72 h 以内）<br>
+      ⑤ 严重营养不良、烧伤、败血症等代谢异常状态<br>
+      ⑥ 需限制液体入量的疾病（如 SIADH、脑水肿）
+    </div>
+  </div>
+
+  <!-- Tab 2: Unit Tests -->
+  <div id="tab-tests" class="tab-panel">
+    <h2 style="margin-bottom:14px; color:#2b6cb0;">单元测试（10 项）</h2>
+    <button class="run-test-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="testSummary"></div>
+    <div id="testResults" class="test-result"></div>
+  </div>
+
+  <!-- Tab 3: Documentation -->
+  <div id="tab-docs" class="tab-panel">
+    <div class="doc-section">
+      <h2>一、公式来源与基本原理</h2>
+      <p>
+        本计算器所采用的公式为 <strong>Holliday-Segar 4-2-1 法则</strong>，源自 Holliday MA 与 Segar WE 于 1957 年发表在 <em>Pediatrics</em> 上的经典论文（Holliday MA, Segar WE. The maintenance need for water in parenteral fluid therapy. <em>Pediatrics</em>. 1957;19(5):823-832.）。该研究基于对儿童基础代谢率（BMR）与热量消耗之间关系的分析，提出每消耗 100 kcal 热量约需 100 mL 水，进而推导出按体重分段的维持输液速率。
+      </p>
+      <p>
+        其核心逻辑是：儿童的热量消耗与体重并非线性关系，而是呈分段线性。体重越小的儿童，单位体重的代谢率越高，因此单位体重所需液体量也越大。这一观察在当时的营养与代谢研究中有充分依据。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h2>二、公式详解与计算步骤</h2>
+      <h3>2.1 分段规则</h3>
+      <p>设患儿体重为 W（kg），每小时维持输液量 R（mL/h）按以下规则计算：</p>
+      <ol>
+        <li><strong>第一段（0 &lt; W ≤ 10 kg）：</strong>R = W × 4 mL/kg/h</li>
+        <li><strong>第二段（10 &lt; W ≤ 20 kg）：</strong>R = 10 × 4 + (W − 10) × 2 = 40 + (W − 10) × 2 mL/h</li>
+        <li><strong>第三段（W &gt; 20 kg）：</strong>R = 10 × 4 + 10 × 2 + (W − 20) × 1 = 60 + (W − 20) mL/h</li>
+      </ol>
+      <p>每日维持量 = R × 24 h。</p>
+
+      <h3>2.2 计算步骤示例</h3>
+      <p>以体重 25 kg 为例：</p>
+      <ol>
+        <li>第一段 10 kg：10 × 4 = 40 mL/h</li>
+        <li>第二段 10 kg：10 × 2 = 20 mL/h</li>
+        <li>第三段 5 kg：5 × 1 = 5 mL/h</li>
+        <li>合计：40 + 20 + 5 = 65 mL/h</li>
+        <li>每日：65 × 24 = 1560 mL/d</li>
+      </ol>
+
+      <h3>2.3 输入验证</h3>
+      <p>
+        本工具限定体重范围为 0.5 – 100 kg。低于 0.5 kg 的极低出生体重儿不在本公式验证范围内；超过 100 kg 的体重已超出儿科常见范围，且该公式在成人中的适用性未经充分验证。输入非数值、负数或零值时，工具将拒绝计算并给出提示。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h2>三、适用场景与不适用场景</h2>
+      <h3>3.1 适用场景</h3>
+      <ul>
+        <li>一般住院儿科患者（&gt;28 天龄）的静脉维持输液速率估算</li>
+        <li>术前评估中快速估算基础维持量</li>
+        <li>临床教学与考核中的标准计算方法</li>
+        <li>能正常经口进食但需静脉补充时的参考</li>
+      </ul>
+      <h3>3.2 不适用场景</h3>
+      <ul>
+        <li><strong>脱水补液：</strong>脱水患儿需额外补充累积损失量（deficit），本公式仅提供维持量（maintenance），两者不可混淆</li>
+        <li><strong>新生儿（≤28 天龄）：</strong>新生儿体液分布、肾功能成熟度与较大婴儿显著不同，需使用新生儿专用液体方案</li>
+        <li><strong>心功能不全：</strong>心衰患者需严格限制液体入量，4-2-1 法则可能导致液体过负荷</li>
+        <li><strong>肾功能不全：</strong>少尿/无尿患者需精确计算出入量平衡，不可简单套用维持量公式</li>
+        <li><strong>围手术期：</strong>术中液体管理需考虑禁食时间、第三间隙丢失、手术创伤等因素</li>
+        <li><strong>烧伤患者：</strong>需使用 Parkland 公式等专用烧伤补液方案</li>
+        <li><strong>糖尿病酮症酸中毒（DKA）：</strong>DKA 有专用补液方案，需考虑脱水纠正速度与脑水肿风险</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>四、临床与工程意义</h2>
+      <h3>4.1 临床意义</h3>
+      <p>
+        维持输液量的准确估算是儿科液体治疗的基础。液体过少可导致脱水、电解质紊乱、肾功能损害；液体过多可导致肺水肿、脑水肿、心力衰竭。Holliday-Segar 法则提供了一个简洁、标准化的起点，使临床医师能在数秒内获得合理的初始输液速率。
+      </p>
+      <p>
+        在实际工作中，该计算结果通常作为输液泵的初始设定值。护士据此配置输液液体并设定泵速。医师则需根据患者的临床反应（尿量、体重变化、电解质监测）动态调整。
+      </p>
+      <h3>4.2 工程意义</h3>
+      <p>
+        在医疗信息系统（HIS）、电子病历（EMR）和智能输液泵中，该公式常作为内嵌算法。本工具的计算逻辑可直接移植至嵌入式系统或临床决策支持系统（CDSS）。计算过程仅涉及基本算术运算，无迭代或近似，计算精度取决于浮点运算精度（IEEE 754 双精度），在临床所需的有效数字范围内（通常保留至小数点后一位）不存在可感知的舍入误差。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h2>五、已知局限与误差来源</h2>
+      <ol>
+        <li><strong>公式本身的生理学局限：</strong>4-2-1 法则基于 1950 年代的营养代谢数据推导，当代儿童的肥胖率显著升高。对于肥胖儿童，按实际体重计算可能高估维持量，部分指南建议使用理想体重或调整体重进行计算（需查原始文献确认具体推荐）。</li>
+        <li><strong>未考虑不显性失水差异：</strong>发热、环境温湿度、呼吸频率等因素可显著影响不显性失水量，本公式未纳入这些变量。</li>
+        <li><strong>未考虑尿液浓缩能力：</strong>婴幼儿肾脏浓缩功能尚未成熟，实际液体需求可能略高于公式预测值。</li>
+        <li><strong>个体差异：</strong>不同患儿的代谢率、活动水平、基础疾病状态存在显著个体差异，公式仅提供群体平均水平的估算。</li>
+        <li><strong>计算精度：</strong>本工具的计算结果为数学精确值（在浮点精度范围内），但临床使用时通常四舍五入至整数或一位小数，由此引入的舍入误差在 ±0.5 mL/h 以内，对临床决策无实质影响。</li>
+      </ol>
+    </div>
+
+    <div class="doc-section">
+      <h2>六、精度与误差说明</h2>
+      <h3>① 算准了什么</h3>
+      <p>
+        本工具严格按照 Holliday-Segar 4-2-1 法则的分段线性公式进行计算，数学运算本身在 IEEE 754 双精度浮点数范围内是精确的。对于 0.5–100 kg 范围内的任意输入，计算结果与手工验算一致，不存在算法层面的误差。
+      </p>
+      <h3>② 哪些因素没算进去</h3>
+      <ul>
+        <li>发热导致的额外液体丢失（体温每升高 1°C，不显性失水增加约 10-12%）</li>
+        <li>活动水平差异（卧床 vs. 活跃）</li>
+        <li>环境温湿度对不显性失水的影响</li>
+        <li>肥胖患者的体成分差异</li>
+        <li>具体疾病状态对液体需求的影响</li>
+        <li>电解质需求（本公式仅提供液体量，不含电解质配比）</li>
+      </ul>
+      <h3>③ 误差大概多大</h3>
+      <p>
+        在公式适用范围内，群体水平的估算误差约为 ±20-30%（相对于个体实际需求）。这意味着对于一名实际需要 500 mL/d 的患儿，公式可能给出 350-650 mL/d 的范围。这一误差幅度在临床上是可接受的起点，但强调必须根据个体反应进行调整。计算层面的数值误差可忽略不计（&lt;10⁻¹⁰ mL/h）。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h2>七、参考文献</h2>
+      <ol>
+        <li>Holliday MA, Segar WE. The maintenance need for water in parenteral fluid therapy. <em>Pediatrics</em>. 1957;19(5):823-832.</li>
+        <li>Holliday MA. Historical perspective of the role of the kidney in fluid therapy. <em>Pediatrics</em>. 1991;87(4):562-564.（需查原始文献确认具体页码）</li>
+        <li>Friedman JN. Acute intravenous fluid therapy in children: a paradigm is shifting. <em>Paediatr Child Health</em>. 2017;22(5):251-252.（需查原始文献确认）</li>
+      </ol>
+      <p style="color:#718096; font-size:0.88em; margin-top:8px;">
+        注：标注「需查原始文献确认」的条目，其核心结论方向可靠，但具体卷期页码需查阅原始数据库核实。
+      </p>
+    </div>
+  </div>
+
+  <!-- Tab 4: Safety -->
+  <div id="tab-safety" class="tab-panel">
+    <div class="doc-section">
+      <h2>医疗安全声明</h2>
+      <div style="padding:18px; background:#fff5f5; border:2px solid #fc8181; border-radius:8px; margin-bottom:20px;">
+        <p style="font-size:1.1em; font-weight:700; color:#9b2c2c; margin-bottom:10px;">
+          ⚕ 重要声明
+        </p>
+        <p style="color:#742a2a; line-height:2;">
+          <strong>本工具仅供医疗卫生专业人员参考，不构成任何诊断、治疗或用药建议。</strong><br>
+          实际临床决策须由具备执业资质的医师根据患者的具体病情、体格检查、实验室检查及其他临床信息综合判断后做出。<br>
+          本工具的计算结果不得作为唯一的临床决策依据。<br>
+          开发者不对因使用本工具产生的任何直接或间接后果承担法律责任。
+        </p>
+      </div>
+
+      <h2>适用范围与假设条件</h2>
+      <h3>适用范围</h3>
+      <ul>
+        <li>本工具仅实现 Holliday-Segar 4-2-1 法则的数学计算</li>
+        <li>适用于体重 0.5 – 100 kg 的一般儿科患者维持输液量估算</li>
+        <li>计算结果为数学精确值（浮点精度范围内），但临床意义受公式本身局限约束</li>
+      </ul>
+      <h3>假设条件</h3>
+      <ul>
+        <li>假设患儿处于正常代谢状态（无发热、无异常代谢需求）</li>
+        <li>假设患儿心、肾功能正常，无液体限制指征</li>
+        <li>假设体重输入值为准确测量的实际体重</li>
+        <li>假设使用场景为一般维持输液，非脱水纠正、非围手术期、非特殊疾病状态</li>
+        <li>假设使用者为受过专业训练的医疗卫生人员，能够判断公式的适用性</li>
+      </ul>
+      <h3>不保证事项</h3>
+      <ul>
+        <li>不保证计算结果适用于所有个体患者</li>
+        <li>不保证公式在极端体重（&lt;0.5 kg 或 &gt;100 kg）时的临床有效性</li>
+        <li>不保证公式在当代肥胖儿童群体中的准确性</li>
+        <li>不替代临床医师的专业判断</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>数据与隐私</h2>
+      <p>
+        本工具为纯前端计算，所有运算在用户浏览器本地完成，<strong>不向任何服务器传输数据</strong>。输入的体重值不会被记录、存储或传输。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h2>版本信息</h2>
+      <p>版本：v2.0.0-专业版</p>
+      <p>日期：2026-10-21</p>
+      <p>核心算法：Holliday-Segar 4-2-1 法则（1957）</p>
+    </div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.0-专业版 20261021</div>
+
+<script>
+/**
+ * ============================================================
+ * 小儿维持输液量计算器 — 核心计算模块
+ * 公式：Holliday-Segar 4-2-1 法则
+ * 文献：Holliday MA, Segar WE. The maintenance need for water
+ *       in parenteral fluid therapy. Pediatrics. 1957;19(5):823-832.
+ * ============================================================
+ */
+
+/**
+ * 根据 Holliday-Segar 4-2-1 法则计算小儿每小时维持输液量及各分段明细。
+ *
+ * 公式名称：Holliday-Segar 4-2-1 法则（又称 100-50-20 法则的速率等价形式）
+ * 文献出处：Holliday MA, Segar WE. The maintenance need for water in parenteral
+ *           fluid therapy. Pediatrics. 1957;19(5):823-832.
+ *
+ * 分段规则：
+ *   - 第一个 10 kg：4 mL/kg/h
+ *   - 第二个 10 kg（10–20 kg）：2 mL/kg/h
+ *   - 超过 20 kg 部分：1 mL/kg/h
+ *
+ * @param {number} weightKg - 患儿体重，单位 kg，有效范围 [0.5, 100]
+ * @returns {object} 计算结果对象，包含以下字段：
+ *   - {number} weight - 输入体重 (kg)
+ *   - {number} hourlyRate - 每小时维持量 (mL/h)
+ *   - {number} dailyVolume - 每日维持量 (mL/d)
+ *   - {Array<object>} segments - 各分段明细数组，每项含：
+ *       - {string} label - 分段名称
+ *       - {number} segmentWeight - 该段分配的体重 (kg)
+ *       - {number} ratePerKg - 该段速率 (mL/kg/h)
+ *       - {number} segmentFlow - 该段流量 (mL/h)
+ *   - {boolean} valid - 输入是否有效
+ *   - {string} [error] - 错误信息（仅当 valid=false 时存在）
+ */
+function calculateMaintenanceFluid(weightKg) {
+  // 输入验证
+  if (typeof weightKg !== 'number' || isNaN(weightKg)) {
+    return { valid: false, error: '输入值无效：必须为数字', weight: weightKg, hourlyRate: 0, dailyVolume: 0, segments: [] };
+  }
+  if (weightKg <= 0) {
+    return { valid: false, error: '输入值无效：体重必须大于 0', weight: weightKg, hourlyRate: 0, dailyVolume: 0, segments: [] };
+  }
+  if (weightKg < 0.5) {
+    return { valid: false, error: '输入值超出范围：本工具适用于 ≥ 0.5 kg 的患儿', weight: weightKg, hourlyRate: 0, dailyVolume: 0, segments: [] };
+  }
+  if (weightKg > 100) {
+    return { valid: false, error: '输入值超出范围：本工具适用于 ≤ 100 kg 的患儿', weight: weightKg, hourlyRate: 0, dailyVolume: 0, segments: [] };
+  }
+
+  var segments = [];
+  var hourlyRate = 0;
+  var remaining = weightKg;
+
+  // 第一段：0–10 kg，4 mL/kg/h
+  var seg1Weight = Math.min(remaining, 10);
+  if (seg1Weight > 0) {
+    segments.push({
+      label: '第一段（0–10 kg）',
+      segmentWeight: seg1Weight,
+      ratePerKg: 4,
+      segmentFlow: seg1Weight * 4
+    });
+    hourlyRate += seg1Weight * 4;
+    remaining -= seg1Weight;
+  }
+
+  // 第二段：10–20 kg，2 mL/kg/h
+  var seg2Weight = Math.min(remaining, 10);
+  if (seg2Weight > 0) {
+    segments.push({
+      label: '第二段（10–20 kg）',
+      segmentWeight: seg2Weight,
+      ratePerKg: 2,
+      segmentFlow: seg2Weight * 2
+    });
+    hourlyRate += seg2Weight * 2;
+    remaining -= seg2Weight;
+  }
+
+  // 第三段：>20 kg，1 mL/kg/h
+  if (remaining > 0) {
+    segments.push({
+      label: '第三段（>20 kg）',
+      segmentWeight: remaining,
+      ratePerKg: 1,
+      segmentFlow: remaining * 1
+    });
+    hourlyRate += remaining * 1;
+  }
+
+  // ═══ v3.0.0 修复（20261025，社区 #212 反馈）：加 100 mL/h 封顶 ═══
+  //  临床通行做法：4-2-1 法则算出后，成人/大体重儿童一般不超过 100 mL/h
+  //  否则 100 kg 算出 140 mL/h，超出生理维持量的合理上限
+  //  封顶值可参考：Nelson Textbook of Pediatrics / 各院儿科补液常规
+  var rawHourlyRate = hourlyRate;
+  var capped = false;
+  if (rawHourlyRate > 100) {
+    hourlyRate = 100;
+    capped = true;
+  }
+
+  var dailyVolume = hourlyRate * 24;
+
+  return {
+    valid: true,
+    weight: weightKg,
+    hourlyRate: hourlyRate,
+    rawHourlyRate: rawHourlyRate,
+    capped: capped,
+    dailyVolume: dailyVolume,
+    segments: segments
+  };
+}
+
+/**
+ * UI 渲染函数：读取输入、调用计算、显示结果。
+ * 无特定公式文献，为界面逻辑函数。
+ */
+function calculate() {
+  var inputEl = document.getElementById('weightInput');
+  var resultBox = document.getElementById('resultBox');
+  var rawVal = inputEl.value.trim();
+
+  if (rawVal === '') {
+    alert('请输入患儿体重');
+    resultBox.classList.remove('show');
+    return;
+  }
+
+  var weight = parseFloat(rawVal);
+  var result = calculateMaintenanceFluid(weight);
+
+  if (!result.valid) {
+    alert(result.error);
+    resultBox.classList.remove('show');
+    return;
+  }
+
+  // 渲染结果
+  document.getElementById('resWeight').textContent = result.weight;
+  document.getElementById('resHourly').textContent = roundTo1(result.hourlyRate);
+  document.getElementById('resDaily').textContent = roundTo1(result.dailyVolume);
+  // v3.0.0：封顶时给出明确提示（固定元素，不再动态插入）
+  var capNote = document.getElementById('capNote');
+  if (capNote) {
+    if (result.capped) {
+      capNote.style.display = 'block';
+      capNote.innerHTML = '⚠️ 已按 100 mL/h 封顶：4-2-1 公式原始值为 ' +
+        roundTo1(result.rawHourlyRate) + ' mL/h，超过常规维持量上限，' +
+        '已限制为 100 mL/h（2400 mL/d）。<br>' +
+        '<span style="font-size:12px;color:#a07840">依据：临床儿科补液常规，成人及大体重患儿维持量一般不超过 100 mL/h。</span>';
+    } else {
+      capNote.style.display = 'none';
+      capNote.innerHTML = '';
+    }
+  }
+
+  var tbody = document.getElementById('detailBody');
+  tbody.innerHTML = '';
+  for (var i = 0; i < result.segments.length; i++) {
+    var seg = result.segments[i];
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + seg.label + '</td>' +
+      '<td>' + roundTo1(seg.segmentWeight) + '</td>' +
+      '<td>' + seg.ratePerKg + '</td>' +
+      '<td>' + roundTo1(seg.segmentFlow) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  resultBox.classList.add('show');
+}
+
+/**
+ * 将数值四舍五入至小数点后 1 位。
+ * 纯数学工具函数，无特定文献。
+ * @param {number} val - 输入数值
+ * @returns {number} 四舍五入至 1 位小数的结果
+ */
+function roundTo1(val) {
+  return Math.round(val * 10) / 10;
+}
+
+/* ============================================================
+ * Tab 切换逻辑
+ * ============================================================ */
+(function() {
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function() {
+      for (var j = 0; j < btns.length; j++) { btns[j].classList.remove('active'); }
+      this.classList.add('active');
+      var panels = document.querySelectorAll('.tab-panel');
+      for (var k = 0; k < panels.length; k++) { panels[k].classList.remove('active'); }
+      document.getElementById('tab-' + this.getAttribute('data-tab')).classList.add('active');
+    });
+  }
+})();
+
+/* ============================================================
+ * 单元测试模块（10 项）
+ * 公式：Holliday-Segar 4-2-1 法则
+ * 文献：Holliday MA, Segar WE. Pediatrics. 1957;19(5):823-832.
+ * ============================================================
+ */
+
+/**
+ * 简单断言函数，比较实际值与期望值。
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @returns {boolean} 是否在容差范围内
+ */
+function assertApprox(actual, expected, tolerance) {
+  return Math.abs(actual - expected) <= tolerance;
+}
+
+/**
+ * 运行全部 10 项单元测试并渲染结果。
+ * 测试覆盖：正常值、边界值、极端值、非法输入。
+ */
+function runAllTests() {
+  var tests = [
+    {
+      name: '测试 1：正常体重 15 kg（第二段中间值）',
+      desc: '验证 15 kg 患儿：第一段 10×4=40，第二段 5×2=10，合计 50 mL/h，1200 mL/d',
+      input: 15,
+      expectHourly: 50,
+      expectDaily: 1200,
+      expectValid: true,
+      expectSegments: 2
+    },
+    {
+      name: '测试 2：边界值 10 kg（第一段上限）',
+      desc: '验证恰好 10 kg：仅第一段 10×4=40 mL/h，960 mL/d，不分第二段',
+      input: 10,
+      expectHourly: 40,
+      expectDaily: 960,
+      expectValid: true,
+      expectSegments: 1
+    },
+    {
+      name: '测试 3：边界值 20 kg（第二段上限）',
+      desc: '验证恰好 20 kg：第一段 40 + 第二段 20 = 60 mL/h，1440 mL/d',
+      input: 20,
+      expectHourly: 60,
+      expectDaily: 1440,
+      expectValid: true,
+      expectSegments: 2
+    },
+    {
+      name: '测试 4：最低有效体重 0.5 kg（下边界）',
+      desc: '验证 0.5 kg：0.5×4=2 mL/h，48 mL/d',
+      input: 0.5,
+      expectHourly: 2,
+      expectDaily: 48,
+      expectValid: true,
+      expectSegments: 1
+    },
+    {
+      name: '测试 5：最高有效体重 100 kg（上边界，触发封顶）',
+      desc: '验证 100 kg：原始 40+20+80=140 mL/h，封顶后 100 mL/h，2400 mL/d',
+      input: 100,
+      expectHourly: 100,
+      expectDaily: 2400,
+      expectValid: true,
+      expectSegments: 3
+    },
+    {
+      name: '测试 6：负数输入 -5 kg（非法输入）',
+      desc: '负数体重应返回 valid=false',
+      input: -5,
+      expectHourly: 0,
+      expectDaily: 0,
+      expectValid: false,
+      expectSegments: 0
+    },
+    {
+      name: '测试 7：零值输入 0 kg（非法输入）',
+      desc: '零体重应返回 valid=false',
+      input: 0,
+      expectHourly: 0,
+      expectDaily: 0,
+      expectValid: false,
+      expectSegments: 0
+    },
+    {
+      name: '测试 8：NaN 输入（非法输入）',
+      desc: 'NaN 应返回 valid=false',
+      input: NaN,
+      expectHourly: 0,
+      expectDaily: 0,
+      expectValid: false,
+      expectSegments: 0
+    },
+    {
+      name: '测试 9：超出上限 150 kg（非法输入）',
+      desc: '超过 100 kg 应返回 valid=false',
+      input: 150,
+      expectHourly: 0,
+      expectDaily: 0,
+      expectValid: false,
+      expectSegments: 0
+    },
+    {
+      name: '测试 10：小数体重 7.3 kg（精度验证）',
+      desc: '验证 7.3 kg：7.3×4=29.2 mL/h，29.2×24=700.8 mL/d',
+      input: 7.3,
+      expectHourly: 29.2,
+      expectDaily: 700.8,
+      expectValid: true,
+      expectSegments: 1
+    }
+  ];
+
+  var passCount = 0;
+  var failCount = 0;
+  var html = '';
+
+  for (var i = 0; i < tests.length; i++) {
+    var t = tests[i];
+    var result = calculateMaintenanceFluid(t.input);
+    var passed = true;
+    var details = [];
+
+    if (result.valid !== t.expectValid) {
+      passed = false;
+      details.push('valid: 期望 ' + t.expectValid + '，实际 ' + result.valid);
+    }
+
+    if (t.expectValid) {
+      if (!assertApprox(result.hourlyRate, t.expectHourly, 0.01)) {
+        passed = false;
+        details.push('hourlyRate: 期望 ' + t.expectHourly + '，实际 ' + result.hourlyRate);
+      }
+      if (!assertApprox(result.dailyVolume, t.expectDaily, 0.1)) {
+        passed = false;
+        details.push('dailyVolume: 期望 ' + t.expectDaily + '，实际 ' + result.dailyVolume);
+      }
+      if (result.segments.length !== t.expectSegments) {
+        passed = false;
+        details.push('segments: 期望 ' + t.expectSegments + ' 段，实际 ' + result.segments.length + ' 段');
+      }
+    }
+
+    if (passed) {
+      passCount++;
+      html += '<div class="test-item test-pass">✅ ' + t.name + ' — PASS<br>' +
+              '<span style="font-size:0.85em;color:#4a5568;">' + t.desc + '</span></div>';
+    } else {
+      failCount++;
+      html += '<div class="test-item test-fail">❌ ' + t.name + ' — FAIL<br>' +
+              '<span style="font-size:0.85em;">' + details.join('<br>') + '</span><br>' +
+              '<span style="font-size:0.85em;color:#4a5568;">' + t.desc + '</span></div>';
+    }
+  }
+
+  var summaryEl = document.getElementById('testSummary');
+  if (failCount === 0) {
+    summaryEl.innerHTML = '<div class="test-summary all-pass">全部通过：' + passCount + '/' + tests.length + ' ✅</div>';
+  } else {
+    summaryEl.innerHTML = '<div class="test-summary has-fail">存在失败：' + passCount + ' 通过 / ' + failCount + ' 失败，共 ' + tests.length + ' 项</div>';
+  }
+
+  document.getElementById('testResults').innerHTML = html;
+}
+</script>
+</body>
+</html>

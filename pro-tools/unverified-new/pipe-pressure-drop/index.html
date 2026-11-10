@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管道压力降计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#c9dcf5;font:13px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:14px 16px 4px}h1{margin:0;font-size:18px;color:#4a9eff}.sub{font-size:11px;color:#6f8bab;margin-top:3px}
+nav{display:flex;gap:6px;padding:8px 16px;flex-wrap:wrap;border-bottom:1px solid #17325a}
+nav button{background:#10233d;color:#8fb2d9;border:1px solid #1d3c66;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit}
+nav button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+main{padding:12px 16px 56px;max-width:1080px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.card{background:#0f2240;border:1px solid #1d3c66;border-radius:10px;padding:12px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:13px;color:#4a9eff;border-left:3px solid #4a9eff;padding-left:8px}
+label{display:block;font-size:11px;color:#8fb2d9;margin-bottom:3px}
+input,select{width:100%;background:#081729;border:1px solid #1d3c66;color:#dbe9fb;padding:7px 8px;border-radius:6px;font-size:13px;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.go{background:#4a9eff;color:#04101f;border:0;padding:10px;border-radius:8px;font-weight:700;width:100%;cursor:pointer;font-size:14px;font-family:inherit}
+.err{color:#ff7b72;font-size:12px;min-height:18px;padding:4px 2px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.res>div{background:#081729;border:1px solid #17325a;border-radius:8px;padding:8px 10px;min-width:0}
+.res b{display:block;font-size:17px;color:#4a9eff;word-break:break-all}
+.res span{font-size:11px;color:#6f8bab}
+.ok{color:#3fb950!important}.bad{color:#ff7b72!important}
+pre{background:#081729;border:1px solid #1d3c66;border-radius:8px;padding:10px;overflow:auto;font-size:11px;line-height:1.45;color:#9ecbff;margin:0}
+p{margin:0 0 9px;font-size:12px;line-height:1.7}p b{color:#7fc0ff}
+footer{position:fixed;right:6px;bottom:4px;font-size:10px;color:#3d5a80;background:#0a1628;padding:2px 6px;border-radius:4px}
+@media(max-width:520px){header h1{font-size:15px}main{padding:10px 10px 56px}pre{font-size:10px}.res b{font-size:15px}}
+</style>
+</head>
+<body>
+<header><h1>管道压力降计算器</h1><div class="sub">Darcy-Weisbach + Colebrook 迭代 · 当量长度法局部阻力 · 气体等温可压缩修正</div></header>
+<nav><button class="on" data-t="calc">计算工具</button><button data-t="src">JS 源码</button><button data-t="test">单元测试</button><button data-t="help">使用说明</button></nav>
+<main>
+<section id="p-calc">
+<div class="card"><h2>① 介质与工况</h2><div class="grid">
+<div><label>介质预设（含温度区间）</label><select id="pre"></select></div>
+<div><label>流体类型</label><select id="fluid"><option value="liquid">液体（不可压缩）</option><option value="gas">气体（等温可压缩）</option></select></div>
+<div><label>管材（绝对粗糙度 ε）</label><select id="mat"></select></div>
+<div><label>内径 D (mm)</label><input id="D" type="number" value="50" step="0.1"></div>
+<div><label>管长 L (m)</label><input id="L" type="number" value="30" step="0.1"></div>
+<div><label>体积流量 Q (m³/h)</label><input id="Q" type="number" value="10" step="0.1"></div>
+<div><label>密度 ρ (kg/m³)</label><input id="rho" type="number" value="998" step="0.1"></div>
+<div><label>动力粘度 μ (mPa·s)</label><input id="mu" type="number" value="1.005" step="0.001"></div>
+<div><label>入口绝压 P1 (kPa·a，气体必填)</label><input id="P1" type="number" value="101.3" step="0.1"></div>
+</div></div>
+<div class="card"><h2>② 局部阻力（当量长度法 K 值）</h2><div class="grid">
+<div><label>90° 弯头 数量 (K=0.75)</label><input id="n1" type="number" value="2" min="0" step="1"></div>
+<div><label>闸阀全开 数量 (K=0.17)</label><input id="n2" type="number" value="1" min="0" step="1"></div>
+<div><label>三通直通 数量 (K=0.40)</label><input id="n3" type="number" value="0" min="0" step="1"></div>
+</div></div>
+<button class="go" onclick="run()">计算压力降</button>
+<div class="err" id="err"></div>
+<div class="card"><h2>③ 计算结果</h2><div class="res" id="out"><div><span>填写参数后点击「计算压力降」</span></div></div></div>
+</section>
+<section id="p-src" hidden><div class="card"><h2>核心计算函数源码（纯函数，可独立测试）</h2><pre id="srccode"></pre></div></section>
+<section id="p-test" hidden><div class="card"><h2>单元测试</h2><button class="go" onclick="runTests()">运行全部测试</button><div class="res" id="tres" style="margin-top:10px"></div></div></section>
+<section id="p-help" hidden><div class="card"><h2>公式、参数出处与适用范围</h2>
+<p><b>1. Darcy-Weisbach</b>：ΔP = f·(L/D)·ρv²/2。出处：Crane TP-410《Flow of Fluids Through Valves, Fittings and Pipe》；《化工原理》(谭天恩等，化学工业出版社)。</p>
+<p><b>2. Colebrook-White</b>：1/√f = −2lg[ε/(3.7D)+2.51/(Re√f)]。出处：Colebrook C.F., J. Inst. Civ. Eng., 1939, 11(2):133-142。本工具以 1e-10 判据迭代，最多 80 次。</p>
+<p><b>3. 层流</b> f=64/Re（Hagen-Poiseuille）。流态判据 Re&lt;2300 层流 / 2300~4000 过渡 / &gt;4000 湍流：本参数为行业经验值，未经标准核对。</p>
+<p><b>4. 局部阻力当量长度法</b>：ΔP_local=K·ρv²/2，Le=K·D/f，总损失按 (f·L/D+ΣK) 计。弯头 0.75、闸阀全开 0.17、三通直通 0.40 取自 Crane TP-410 典型值，本参数为行业经验值，未经标准核对。</p>
+<p><b>5. 绝对粗糙度</b>（Crane TP-410 典型值，mm）：碳钢 0.046、不锈钢 0.015、铜/铝/PVC 0.0015、铸铁 0.26。</p>
+<p><b>6. 气体等温可压缩流</b>：P1²−P2²=(f·L/D+ΣK)·(ṁ/A)²·(P1/ρ1)。出处：Crane TP-410 第 3 章；《化工原理》。P1² 项为负时判为壅塞并报错。</p>
+<p><b>7. 介质物性</b>为公开物性表数据，覆盖 20~200℃ 常用区间，通过「介质预设」切换体现温度影响；物性也可手动改写。适用范围：单相满管稳态流动、直管+管件；不含换热、两相流、非牛顿流体、明渠。</p>
+</div></section>
+</main>
+<footer>v1.0.0-pipe-pressure-drop 20261108</footer>
+<script>
+var EPS={'碳钢':0.046,'不锈钢':0.015,'铜':0.0015,'铝':0.0015,'PVC':0.0015,'铸铁':0.26};
+var KW=[0.75,0.17,0.40];
+var PRE={'水 20℃':['liquid',998,1.005],'水 60℃':['liquid',983,0.469],'水 100℃':['liquid',958,0.282],'空气 20℃':['gas',1.205,0.0181],'空气 200℃':['gas',0.746,0.0259],'天然气 20℃':['gas',0.667,0.0110],'饱和蒸汽 0.5MPa(a)':['gas',2.669,0.0145],'自定义':null};
+function ff(Re,rr){
+ if(!(Re>0))return 0;
+ if(Re<2300)return 64/Re;
+ var f=0.02,i,nf;
+ for(i=0;i<80;i++){nf=Math.pow(-2*Math.log10(rr/3.7+2.51/(Re*Math.sqrt(f))),-2);if(Math.abs(nf-f)<1e-10){f=nf;break}f=nf}
+ return f;
+}
+function calc(o){
+ var D=o.D,L=o.L,Q=o.Q,rho=o.rho,mu=o.mu/1000,eps=o.eps/1000;
+ if(!isFinite(D)||!(D>0))throw Error('内径 D 必须为大于 0 的数值');
+ if(D<0.001||D>2)throw Error('内径 D 需在 1~2000 mm 范围内');
+ if(!isFinite(L)||!(L>0))throw Error('管长 L 必须为大于 0 的数值');
+ if(L>100000)throw Error('管长 L 超出范围（≤100000 m）');
+ if(!isFinite(Q)||!(Q>0))throw Error('体积流量 Q 必须为大于 0 的数值');
+ if(!isFinite(rho)||!(rho>0))throw Error('密度 ρ 必须为大于 0 的数值');
+ if(!isFinite(mu)||!(mu>0))throw Error('动力粘度 μ 必须为大于 0 的数值');
+ var ns=[o.n1,o.n2,o.n3],i;
+ for(i=0;i<3;i++){if(!isFinite(ns[i])||!(ns[i]>=0))throw Error('管件数量必须为非负数值')}
+ if(o.fluid==='gas'&&(!isFinite(o.P1)||!(o.P1>0)))throw Error('气体入口绝压 P1 必须大于 0');
+ var A=Math.PI*D*D/4,v=Q/3600/A,Re=rho*v*D/mu,f=ff(Re,eps/D);
+ var K=ns[0]*KW[0]+ns[1]*KW[1]+ns[2]*KW[2],fl=f*L/D,B=fl+K,dyn=rho*v*v/2;
+ var out={v:v,Re:Re,f:f,K:K,Le:K*D/f,fl:fl,reg:Re<2300?'层流':Re<4000?'过渡流':'湍流'};
+ if(o.fluid!=='gas'){out.dpf=fl*dyn/1000;out.dpl=K*dyn/1000;out.dp=out.dpf+out.dpl}
+ else{
+  var P1=o.P1*1000,G=rho*v,q=B*G*G*P1/rho,s=P1*P1-q;
+  if(s<=0)throw Error('压降超过入口绝压，可能发生壅塞：请增大管径或降低流量');
+  var P2=Math.sqrt(s);out.P2=P2/1000;out.dp=(P1-P2)/1000;
+  out.dpf=out.dp*fl/B;out.dpl=out.dp*K/B;
+ }
+ out.dpkm=out.dp/(L/1000);
+ return out;
+}
+function fm(x){if(!isFinite(x))return '—';var a=Math.abs(x);
+ return a>=1e5?x.toExponential(2):a>=100?x.toFixed(0):a>=1?x.toFixed(2):a>=0.01?x.toFixed(3):x.toExponential(2)}
+function run(){
+ var $=function(i){return document.getElementById(i)};
+ try{
+  var o={fluid:$('fluid').value,D:+$('D').value/1000,L:+$('L').value,Q:+$('Q').value,rho:+$('rho').value,mu:+$('mu').value,P1:+$('P1').value,n1:+$('n1').value||0,n2:+$('n2').value||0,n3:+$('n3').value||0,eps:EPS[$('mat').value]};
+  var r=calc(o),h='';
+  function it(t,v,u){h+='<div><b>'+v+'</b><span>'+t+(u?' ['+u+']':'')+'</span></div>'}
+  it('总压力降 ΔP',fm(r.dp),'kPa');
+  it('流速 v',fm(r.v),'m/s');
+  it('雷诺数 Re',fm(r.Re),'无量纲');
+  it('流态',r.reg,'');
+  it('摩阻系数 f',fm(r.f),'无量纲');
+  it('Σ 局部阻力 K',fm(r.K),'无量纲');
+  it('当量长度 Le',fm(r.Le),'m');
+  it('沿程压降',fm(r.dpf),'kPa');
+  it('局部压降',fm(r.dpl),'kPa');
+  it('单位长度压降',fm(r.dpkm),'kPa/km');
+  if(r.P2!==undefined)it('出口绝压 P2',fm(r.P2),'kPa·a');
+  $('out').innerHTML=h;$('err').textContent='';
+ }catch(e){$('out').innerHTML='<div><span>无有效结果</span></div>';$('err').textContent='⚠ '+e.message}
+}
+function runTests(){
+ var R=[],B={fluid:'liquid',D:0.05,L:10,Q:10,rho:1000,mu:1,n1:0,n2:0,n3:0,P1:101.3,eps:0.046};
+ function c(o){return calc(Object.assign({},B,o||{}))}
+ function eq(n,g,e,t){R.push([n,Math.abs(g-e)<=t,g,e])}
+ function ck(n,fn){try{fn();R.push([n,false,'未抛出异常','应报错'])}catch(e){R.push([n,true,'已拦截:'+e.message,'应报错'])}}
+ eq('层流 f=64/Re (Re=1000)',ff(1000,0),0.064,1e-9);
+ eq('光滑管湍流 f (Re=1e5)',ff(1e5,0),0.0180,0.0002);
+ eq('粗糙管 f (Re=1e6,ε/D=0.001)',ff(1e6,0.001),0.01994,0.0005);
+ eq('液体流速 v (m/s)',c().v,1.4147,0.001);
+ eq('雷诺数 Re',c().Re,70736,250);
+ eq('总压降 ΔP (kPa)',c().dp,4.552,0.15);
+ var r2=c({n1:2,n2:1,n3:1});
+ eq('局部阻力 ΣK',r2.K,2.07,1e-9);
+ eq('当量长度 Le (m)',r2.Le,4.550,0.02);
+ eq('气体小压降 ΔP (kPa)',c({fluid:'gas',rho:1.205,mu:0.0181,Q:50}).dp,0.162,0.01);
+ ck('内径 D=0 应报错',function(){c({D:0})});
+ ck('流量 Q 为负 应报错',function(){c({Q:-5})});
+ ck('气体壅塞 应报错',function(){c({fluid:'gas',rho:1.205,mu:0.0181,Q:2000,P1:5})});
+ var h='',p=0;
+ R.forEach(function(t){if(t[1])p++;h+='<div><b class="'+(t[1]?'ok':'bad')+'">'+(t[1]?'PASS':'FAIL')+'</b><span>'+t[0]+' ｜ 实得 '+fm(t[2])+' ｜ 期望 '+fm(t[3])+'</span></div>'});
+ document.getElementById('tres').innerHTML=h+'<div><b class="'+(p===R.length?'ok':'bad')+'">'+p+' / '+R.length+'</b><span>通过 / 总数</span></div>';
+}
+(function(){
+ var p=document.getElementById('pre'),m=document.getElementById('mat'),k;
+ for(k in PRE)p.add(new Option(k,k));
+ for(k in EPS)m.add(new Option(k+'  ε='+EPS[k]+' mm',k));
+ p.onchange=function(){var d=PRE[p.value];if(!d)return;
+  document.getElementById('fluid').value=d[0];document.getElementById('rho').value=d[1];document.getElementById('mu').value=d[2];run()};
+ var tabs=document.querySelectorAll('nav button'),i;
+ function tab(t){
+  ['calc','src','test','help'].forEach(function(x){document.getElementById('p-'+x).hidden=(x!==t)});
+  for(var j=0;j<tabs.length;j++)tabs[j].className=tabs[j].dataset.t===t?'on':'';
+ }
+ for(i=0;i<tabs.length;i++)tabs[i].onclick=function(){tab(this.dataset.t)};
+ document.getElementById('srccode').textContent='// 摩阻系数 ff(Re, ε/D)\n'+ff+'\n\n// 主计算 calc(o)  —— D,L 单位 m；Q 单位 m³/h；P1 单位 kPa(a)\n'+calc;
+})();
+</script>
+</body>
+</html>

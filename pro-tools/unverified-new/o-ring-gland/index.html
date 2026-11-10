@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>O 形圈沟槽尺寸计算器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a1628;color:#c9d8ea;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif;padding:10px 10px 54px;max-width:1100px;margin:0 auto}
+h1{font-size:18px;color:#4a9eff}
+h3{font-size:14px;color:#4a9eff;margin:10px 0 4px}
+.sub{font-size:12px;color:#7fa3c8;margin-top:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.tabs button{background:#10233d;border:1px solid #1d3a5f;color:#8fb3d9;padding:7px 12px;border-radius:8px;font-size:13px;cursor:pointer}
+.tabs button.on{background:#4a9eff;color:#06111f;border-color:#4a9eff;font-weight:700}
+.pn{display:none}.pn.on{display:block}
+.card{background:#10233d;border:1px solid #1d3a5f;border-radius:10px;padding:12px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+label{display:block;font-size:12px;color:#8fb3d9;margin-bottom:3px}
+input,select{width:100%;background:#0a1628;border:1px solid #24507f;color:#e6f0fa;border-radius:6px;padding:7px;font-size:13px}
+.act{width:100%;margin-top:10px;background:#4a9eff;color:#06111f;border:0;border-radius:8px;padding:11px;font-size:15px;font-weight:700;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:5px 3px;border-bottom:1px solid #1d3a5f;vertical-align:top;word-break:break-word}
+td:first-child{color:#8fb3d9;width:42%}
+.err{color:#ff9a9a;background:#2a1418;border:1px solid #6b2c33;border-radius:8px;padding:10px;font-size:13px;margin-top:10px}
+.warn{color:#ffcf7a;background:#2a2410;border:1px solid #6b5520;border-radius:8px;padding:10px;font-size:13px;margin-top:10px}
+.good{color:#7ee0a5;background:#0f2418;border-color:#1f5c37}
+pre{background:#0a1628;border:1px solid #1d3a5f;border-radius:8px;padding:10px;font-size:11px;line-height:1.45;overflow:auto;white-space:pre-wrap;max-height:62vh}
+.hint{font-size:12px;color:#7fa3c8;margin-top:8px}
+ul{padding-left:18px;font-size:13px}
+li{margin:3px 0}
+footer{position:fixed;right:8px;bottom:6px;font-size:11px;color:#5b7ea3;background:#0a1628cc;padding:2px 6px;border-radius:4px}
+@media(max-width:520px){body{padding:8px 8px 48px}td:first-child{width:48%}}
+</style>
+</head>
+<body>
+<h1>O 形圈沟槽尺寸计算器</h1>
+<p class="sub">ISO 3601-2 / GB/T 3452.3 沟槽设计思路 · 压缩率 / 拉伸率 / 填充率校核</p>
+<div class="tabs">
+<button data-p="p1" class="on">计算工具</button>
+<button data-p="p2">JS 源码</button>
+<button data-p="p3">单元测试</button>
+<button data-p="p4">使用说明</button>
+</div>
+
+<section class="pn on" id="p1"><div class="card">
+<div class="grid">
+<div><label>O 形圈内径 d1 (mm)</label><input id="d1" value="20"></div>
+<div><label>截面直径 d2 (mm)</label><input id="d2" value="2.65"></div>
+<div><label>配合面直径 D (mm)</label><input id="D" placeholder="留空则等于 d1"></div>
+<div><label>沟槽宽度 b (mm)</label><input id="b" placeholder="留空取推荐值"></div>
+<div><label>工作压力 (MPa)</label><input id="p" value="10"></div>
+<div><label>工作温度 (℃)</label><input id="temp" value="25"></div>
+<div><label>密封类型</label><select id="type"><option value="static">静密封</option><option value="recip">动密封·往复</option><option value="rotary">动密封·旋转</option></select></div>
+<div><label>沟槽形式</label><select id="pos"><option value="rod">轴用（活塞杆密封）</option><option value="bore">孔用（活塞密封）</option></select></div>
+<div><label>材料</label><select id="mat"><option>NBR</option><option>FKM</option><option>EPDM</option><option>VMQ</option><option>PU</option></select></div>
+<div><label>硬度 (邵氏 A)</label><select id="hard"><option>70</option><option>80</option><option>90</option></select></div>
+</div>
+<button class="act" id="run">计 算</button>
+<div id="out"></div>
+</div></section>
+
+<section class="pn" id="p2"><div class="card"><pre id="src"></pre></div></section>
+
+<section class="pn" id="p3"><div class="card">
+<button class="act" id="tout">运行全部测试</button>
+<div id="tout2"></div>
+</div></section>
+
+<section class="pn" id="p4"><div class="card">
+<h3>计算模型</h3>
+<p>压缩率 c 取推荐区间中值；槽深 t = d2×(1−c)；槽宽 b = k×d2（可手工覆盖）；槽底直径 dg = D+2t（轴用）或 D−2t（孔用）；拉伸率 ε = (贴合直径−d1)/d1；填充率 F = (πd2²/4)/(t·b)。</p>
+<h3>参数出处</h3>
+<ul>
+<li>沟槽尺寸体系、O 形圈截面系列：ISO 3601-2 与 GB/T 3452.3《液压气动用 O 形橡胶密封圈 沟槽尺寸》（真实标准，本工具按其设计思路建模，具体数值表请查标准原文）。</li>
+<li>O 形圈内径与截面系列：GB/T 3452.1 / ISO 3601-1。</li>
+<li>压缩率区间、槽宽系数 k、填充率上限、拉伸率上限：本参数为行业经验值，未经标准逐项核对（取自《机械设计手册》O 形密封圈章节通行取值）。</li>
+<li>材料适用温度：各胶种公开物性典型值，本参数为行业经验值，实际以供应商数据表为准。</li>
+<li>挡圈建议（&gt;10 MPa 加挡圈、&gt;20 MPa 双侧挡圈）：手册推荐经验值。</li>
+</ul>
+<h3>使用提示</h3>
+<p>空值、非数字、≤0、超范围均给出中文提示，温度允许负值。结果供工程估算与快速校核，正式设计须以标准表格及实测为准。</p>
+</div></section>
+
+<footer>v1.0.0-o-ring-gland 20261108</footer>
+<script>
+var TYPES={static:{n:'静密封',c:.20,k:1.25,fm:.85,em:.05},recip:{n:'动密封·往复',c:.12,k:1.15,fm:.80,em:.04},rotary:{n:'动密封·旋转',c:.08,k:1.20,fm:.75,em:.03}};
+var MAT={NBR:[-30,100],FKM:[-20,200],EPDM:[-50,120],VMQ:[-60,200],PU:[-30,80]};
+function pct(x){return (x*100).toFixed(2)+'%'}
+function calc(o){
+var er=[],wn=[];
+function P(v,n,lo,hi){var x=parseFloat(v);if(v===''||v==null||isNaN(x)){er.push(n+'：请输入有效数字');return NaN}if(x<=lo){er.push(n+' 必须大于 '+lo);return NaN}if(x>hi){er.push(n+' 超出范围（应 ≤'+hi+'）');return NaN}return x}
+var d1=P(o.d1,'O 形圈内径 d1',0,3000);
+var d2=P(o.d2,'截面直径 d2',0,40);
+if(er.length)return{ok:false,err:er};
+var D=(o.D===''||o.D==null)?d1:P(o.D,'配合面直径 D',0,3000);
+var bw=(o.b===''||o.b==null)?0:P(o.b,'沟槽宽度 b',-1,300);
+var pv=(o.p===''||o.p==null)?0:P(o.p,'工作压力',-1,300);
+var tp=parseFloat(o.temp);
+if(o.temp===''||o.temp==null||isNaN(tp))er.push('工作温度：请输入有效数字');
+if(er.length)return{ok:false,err:er};
+var T=TYPES[o.type]||TYPES.static;
+var c=T.c,t=d2*(1-c),b=bw>0?bw:d2*T.k;
+var A=Math.PI*d2*d2/4,Ag=t*b,F=A/Ag;
+var rod=(o.pos||'rod')==='rod';
+var dg=rod?D+2*t:D-2*t;
+var e=((rod?D:dg)-d1)/d1;
+if(Math.abs(e)>T.em)wn.push('拉伸率 '+pct(e)+' 超出 '+T.n+' 建议范围 ±'+pct(T.em));
+if(F>T.fm)wn.push('填充率 '+pct(F)+' 超过上限 '+pct(T.fm)+'，应加大沟槽宽度 b');
+var mr=MAT[o.mat]||MAT.NBR;
+if(tp<mr[0]||tp>mr[1])wn.push(o.mat+' 推荐温度 '+mr[0]+'~'+mr[1]+'℃，当前 '+tp+'℃ 超出范围');
+if(pv>10)wn.push('工作压力 '+pv+' MPa 超过 10 MPa，建议加装挡圈');
+if(pv>20)wn.push('压力超过 20 MPa，建议双侧挡圈并将硬度提高至 90 邵氏 A');
+return{ok:true,type:T.n,mat:o.mat,hard:o.hard,d1:d1,d2:d2,D:D,c:c,t:t,b:b,dg:dg,e:e,F:F,A:A,Ag:Ag,warn:wn};
+}
+function rw(k,v){return '<tr><td>'+k+'</td><td>'+v+'</td></tr>'}
+function render(r){
+var o=document.getElementById('out');
+if(!r.ok){o.innerHTML='<div class="err">'+r.err.map(function(x){return '• '+x}).join('<br>')+'</div>';return}
+var h='<div class="card"><table>'
++rw('工况','密封 '+r.type+' · 材料 '+r.mat+' · 硬度 '+r.hard+' 邵氏 A')
++rw('压缩率 c','<b>'+pct(r.c)+'</b>')
++rw('沟槽深度 t','<b>'+r.t.toFixed(3)+' mm</b>')
++rw('沟槽宽度 b','<b>'+r.b.toFixed(3)+' mm</b>')
++rw('槽底直径 dg','<b>'+r.dg.toFixed(3)+' mm</b>')
++rw('拉伸率 ε','<b>'+pct(r.e)+'</b>')
++rw('填充率 F','<b>'+pct(r.F)+'</b>')
++rw('O 圈截面积 / 沟槽截面积',r.A.toFixed(3)+' / '+r.Ag.toFixed(3)+' mm²')
++'</table><p class="hint">t = d2×(1−c)；b = k×d2（k 为槽宽系数）；F = (πd2²/4)/(t·b)；ε = (贴合直径−d1)/d1</p></div>';
+if(r.warn.length)h+='<div class="warn">'+r.warn.map(function(x){return '⚠ '+x}).join('<br>')+'</div>';
+else h+='<div class="warn good">✓ 压缩率、拉伸率、填充率与材料温度均在推荐范围内</div>';
+o.innerHTML=h;
+}
+document.getElementById('run').onclick=function(){
+var ids=['d1','d2','D','b','p','temp','type','pos','mat','hard'],o={};
+ids.forEach(function(i){o[i]=document.getElementById(i).value});
+render(calc(o));
+};
+document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('on')});
+document.querySelectorAll('.pn').forEach(function(x){x.classList.remove('on')});
+b.classList.add('on');document.getElementById(b.dataset.p).classList.add('on');
+}});
+document.getElementById('src').textContent=document.querySelector('script').textContent;
+var CASES=[
+['静密封槽深 t=d2×(1−0.20)',{d1:20,d2:2.65,D:20.5,type:'static',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.t-2.12)<1e-9}],
+['静密封默认槽宽 b=d2×1.25',{d1:20,d2:2.65,D:20.5,type:'static',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.b-3.3125)<1e-9}],
+['往复动密封槽深 t=d2×0.88',{d1:20,d2:2.65,D:20.5,type:'recip',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.t-2.332)<1e-9}],
+['旋转动密封槽深 t=d2×0.92',{d1:20,d2:2.65,D:20.5,type:'rotary',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.t-2.438)<1e-9}],
+['轴用槽底直径 dg=D+2t',{d1:20,d2:2.65,D:20.5,type:'static',pos:'rod',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.dg-24.74)<1e-9}],
+['孔用槽底直径 dg=D−2t',{d1:16,d2:2.65,D:20.5,type:'static',pos:'bore',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.dg-16.26)<1e-9}],
+['静密封填充率 F=78.54%',{d1:20,d2:2.65,D:20.5,type:'static',mat:'NBR',temp:25,p:5},function(r){return Math.abs(r.F-0.7854)<1e-4}],
+['d1=0 应报错',{d1:0,d2:2.65},function(r){return !r.ok}],
+['d2 非数字应报错',{d1:20,d2:'abc'},function(r){return !r.ok}],
+['槽宽过窄应给出填充率警告',{d1:20,d2:2.65,D:20.5,b:2.6,type:'static',mat:'NBR',temp:25,p:5},function(r){return r.ok&&r.warn.length>0}],
+['NBR 150℃ 应给出超温警告',{d1:20,d2:2.65,D:20.5,type:'static',mat:'NBR',temp:150,p:5},function(r){return r.ok&&r.warn.length>0}]
+];
+document.getElementById('tout').onclick=function(){
+var h='',ok=0;
+CASES.forEach(function(c,i){
+var r;try{r=calc(c[1])}catch(e){r={ok:false,err:[e.message]}}
+var pass=false;try{pass=c[2](r)}catch(e){}
+if(pass)ok++;
+h+='<tr><td>'+(pass?'<span style="color:#7ee0a5">通过</span>':'<span style="color:#ff9a9a">失败</span>')+'</td><td>'+(i+1)+'. '+c[0]+'</td></tr>';
+});
+document.getElementById('tout2').innerHTML='<div class="card"><p style="margin-bottom:6px">通过 '+ok+' / '+CASES.length+'</p><table>'+h+'</table></div>';
+};
+document.getElementById('run').click();
+</script>
+</body>
+</html>

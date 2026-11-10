@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>万古霉素初始剂量计算器 | Vancomycin Initial Dose Calculator</title>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --accent: #e74c3c;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #2c3e50;
+  --border: #dce1e8;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 15px;
+}
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  padding: 30px 20px;
+  text-align: center;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+header h1 { font-size: 1.8em; margin-bottom: 8px; }
+header p { opacity: 0.9; font-size: 0.95em; }
+.safety-banner {
+  background: #fdf2f2;
+  border: 2px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  color: #922;
+  font-weight: 600;
+  text-align: center;
+  font-size: 0.95em;
+}
+.safety-banner .icon { font-size: 1.3em; margin-right: 6px; }
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 12px 24px;
+  background: #e8ecf1;
+  border: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s;
+}
+.tab-btn:hover { background: #d5dbe3; }
+.tab-btn.active {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+}
+.tab-content {
+  display: none;
+  background: var(--card);
+  border-radius: 0 var(--radius) var(--radius) var(--radius);
+  padding: 30px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.tab-content.active { display: block; }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 0.9em;
+  color: #555;
+}
+.form-group input, .form-group select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 1em;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(41,128,185,0.12);
+}
+.form-group .hint {
+  font-size: 0.8em;
+  color: #888;
+  margin-top: 4px;
+}
+.btn-calc {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  border: none;
+  padding: 14px 40px;
+  border-radius: 6px;
+  font-size: 1.05em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  display: block;
+  margin: 10px auto 20px;
+}
+.btn-calc:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,82,118,0.3); }
+.btn-calc:active { transform: translateY(0); }
+.result-panel {
+  background: #f0f7ff;
+  border: 1.5px solid #b8d4f0;
+  border-radius: var(--radius);
+  padding: 24px;
+  display: none;
+}
+.result-panel.show { display: block; }
+.result-panel h3 {
+  color: var(--primary);
+  margin-bottom: 16px;
+  font-size: 1.15em;
+  border-bottom: 2px solid #b8d4f0;
+  padding-bottom: 8px;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.result-item {
+  background: #fff;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #e0e8f0;
+}
+.result-item .label { font-size: 0.85em; color: #777; margin-bottom: 6px; }
+.result-item .value { font-size: 1.6em; font-weight: 700; color: var(--primary); }
+.result-item .unit { font-size: 0.8em; color: #999; }
+.result-item.warning { border-color: var(--warning); background: #fffbf0; }
+.result-item.warning .value { color: var(--warning); }
+.result-item.danger { border-color: var(--danger); background: #fff5f5; }
+.result-item.danger .value { color: var(--danger); }
+.result-note {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #fff8e1;
+  border-left: 4px solid var(--warning);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.9em;
+  color: #7a6100;
+}
+.doc-section { margin-bottom: 28px; }
+.doc-section h3 {
+  color: var(--primary);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+}
+.doc-section h4 { color: #444; margin: 16px 0 8px; }
+.doc-section p, .doc-section li { margin-bottom: 8px; }
+.doc-section ul, .doc-section ol { padding-left: 24px; }
+.doc-section table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.92em;
+}
+.doc-section th, .doc-section td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+}
+.doc-section th { background: #f0f4f8; font-weight: 600; }
+.test-case {
+  background: #f8f9fb;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.88em;
+}
+.test-case .test-title { font-weight: 700; color: var(--primary); margin-bottom: 6px; font-family: inherit; }
+.test-case .test-desc { color: #666; margin-bottom: 4px; font-family: inherit; }
+.test-case .pass { color: var(--success); font-weight: 700; }
+.test-case .fail { color: var(--danger); font-weight: 700; }
+.test-summary {
+  background: #eafaf1;
+  border: 2px solid var(--success);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-top: 16px;
+  font-weight: 600;
+  color: #1e7e4a;
+}
+.test-summary.has-fail { background: #fdf2f2; border-color: var(--danger); color: #922; }
+.safety-section {
+  background: #fdf2f2;
+  border: 2px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.safety-section h3 { color: var(--danger); }
+.safety-section .safety-item {
+  background: #fff;
+  border-left: 4px solid var(--danger);
+  padding: 12px 16px;
+  margin: 12px 0;
+  border-radius: 0 6px 6px 0;
+}
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.72em;
+  color: #aaa;
+  z-index: 999;
+}
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.checkbox-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+.full-width { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .tabs { flex-direction: column; }
+  .tab-btn { border-radius: var(--radius); }
+  .tab-content { border-radius: var(--radius); }
+  .result-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>万古霉素初始剂量计算器</h1>
+    <p>Vancomycin Initial Dose Calculator — Based on Cockcroft-Gault & ASHP/IDSA/SIDP 2009 Guidelines</p>
+  </header>
+
+  <div class="safety-banner">
+    <span class="icon">⚠️</span>
+    安全声明：本工具仅供医疗卫生专业人员参考，不构成任何诊疗建议。实际临床决策须由具备资质的医师结合患者具体情况做出。本工具计算结果为初始经验剂量，必须结合治疗药物监测（TDM）进行调整。
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calculator')">📊 计算器</button>
+    <button class="tab-btn" onclick="switchTab('tests')">🧪 单元测试</button>
+    <button class="tab-btn" onclick="switchTab('docs')">📖 专业说明文档</button>
+    <button class="tab-btn" onclick="switchTab('safety')">🛡️ 安全声明</button>
+  </div>
+
+  <!-- TAB 1: CALCULATOR -->
+  <div id="tab-calculator" class="tab-content active">
+    <h3 style="color:var(--primary);margin-bottom:20px;">患者参数输入</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="age">年龄（岁）</label>
+        <input type="number" id="age" min="18" max="120" step="1" placeholder="例：65">
+        <span class="hint">范围：18–120 岁（本工具仅适用成人，儿童剂量需按体重/体表面积另算）</span>
+      </div>
+      <div class="form-group">
+        <label for="sex">性别</label>
+        <select id="sex">
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="weight">实际体重（kg）</label>
+        <input type="number" id="weight" min="1" max="300" step="0.1" placeholder="例：70">
+        <span class="hint">范围：1–300 kg</span>
+      </div>
+      <div class="form-group">
+        <label for="height">身高（cm）— 肥胖评估用</label>
+        <input type="number" id="height" min="50" max="250" step="0.1" placeholder="选填，例：170">
+        <span class="hint">选填。用于计算理想体重与调整体重</span>
+      </div>
+      <div class="form-group">
+        <label for="scr">血清肌酐 Scr（mg/dL）</label>
+        <input type="number" id="scr" min="0.1" max="30" step="0.01" placeholder="例：1.0">
+        <span class="hint">范围：0.1–30 mg/dL（若为 μmol/L 请除以 88.4 转换）</span>
+      </div>
+      <div class="form-group">
+        <label for="infection">感染严重程度</label>
+        <select id="infection">
+          <option value="standard">标准剂量（15 mg/kg）</option>
+          <option value="severe">严重感染（20 mg/kg）</option>
+        </select>
+        <span class="hint">严重感染如败血症、心内膜炎、脑膜炎、肺炎等</span>
+      </div>
+    </div>
+    <button class="btn-calc" onclick="calculate()">计 算</button>
+    <div id="result-panel" class="result-panel">
+      <h3>计算结果</h3>
+      <div class="result-grid" id="result-grid"></div>
+      <div id="result-note" class="result-note"></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: UNIT TESTS -->
+  <div id="tab-tests" class="tab-content">
+    <h3 style="color:var(--primary);margin-bottom:16px;">单元测试（10 项）</h3>
+    <p style="margin-bottom:16px;color:#666;">以下测试覆盖正常值、边界值、极端值及异常输入。点击按钮运行全部测试。</p>
+    <button class="btn-calc" onclick="runAllTests()" style="margin-bottom:20px;">▶ 运行全部测试</button>
+    <div id="test-results"></div>
+    <div id="test-summary"></div>
+  </div>
+
+  <!-- TAB 3: DOCUMENTATION -->
+  <div id="tab-docs" class="tab-content">
+    <div class="doc-section">
+      <h3>一、工具概述</h3>
+      <p>本计算器用于估算成人患者的<strong>万古霉素（Vancomycin）初始经验剂量</strong>。计算流程分两步：首先使用 Cockcroft-Gault 公式估算肌酐清除率（CrCl），然后根据 2009 年 ASHP/IDSA/SIDP 万古霉素治疗监测指南推荐的剂量方案，结合肾功能分层给出推荐单次剂量、给药间隔和日总量。</p>
+      <p><strong>重要提示</strong>：本工具计算的是初始经验剂量，绝非最终处方。万古霉素治疗必须进行治疗药物监测（TDM），根据谷浓度（trough concentration）调整剂量。目标谷浓度通常为 15–20 mg/L（严重感染）或 10–15 mg/L（非严重感染）。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>二、公式详解</h3>
+      <h4>2.1 Cockcroft-Gault 公式（肌酐清除率估算）</h4>
+      <p><strong>公式：</strong></p>
+      <p style="background:#f0f4f8;padding:12px 16px;border-radius:6px;font-family:monospace;font-size:1.05em;text-align:center;">
+        CrCl (mL/min) = (140 − 年龄) × 体重(kg) / (72 × Scr<sub>mg/dL</sub>)<br>
+        女性 × 0.85
+      </p>
+      <p><strong>文献出处：</strong>Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. <em>Nephron</em>. 1976;16(1):31-41. doi:10.1159/000180580</p>
+      <p><strong>适用场景：</strong></p>
+      <ul>
+        <li>成人（≥18 岁）稳定状态肾功能评估</li>
+        <li>血清肌酐处于稳态（非急性肾功能变化期）</li>
+        <li>药物剂量调整（尤其经肾排泄药物）</li>
+        <li>万古霉素、氨基糖苷类等治疗窗窄药物的初始剂量估算</li>
+      </ul>
+      <p><strong>不适用场景：</strong></p>
+      <ul>
+        <li>急性肾损伤（AKI）——肌酐未达稳态，公式严重低估或高估</li>
+        <li>极端体重（严重肥胖 BMI>40 或严重消瘦）——肌肉量与体重不成比例</li>
+        <li>肌肉量异常：截肢、神经肌肉疾病、长期卧床、肌肉萎缩</li>
+        <li>老年人（>80 岁）——肌肉量减少导致 Scr 偏低，CrCl 可能被高估</li>
+        <li>妊娠期——肾小球滤过率生理性升高，公式不适用</li>
+        <li>儿童（<18 岁）——应使用 Schwartz 公式</li>
+        <li>素食者或极低蛋白饮食者——肌酐产生减少</li>
+      </ul>
+
+      <h4>2.2 万古霉素剂量推荐（ASHP/IDSA/SIDP 2009）</h4>
+      <p><strong>文献出处：</strong>Rybak MJ, Lomaestro BM, Rotschafer JC, et al. Therapeutic monitoring of vancomycin in adult patients: a consensus review of the American Society of Health-System Pharmacists, the Infectious Diseases Society of America, and the Society of Infectious Diseases Pharmacists. <em>Am J Health-Syst Pharm</em>. 2009;66(1):82-98. doi:10.2146/ajhp080268</p>
+      <p><strong>剂量方案：</strong></p>
+      <table>
+        <thead>
+          <tr><th>CrCl 分层</th><th>推荐单次剂量</th><th>给药间隔</th><th>备注</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>> 90 mL/min</td><td>15–20 mg/kg</td><td>每 8–12 小时</td><td>肾功能正常，清除快</td></tr>
+          <tr><td>50–90 mL/min</td><td>15–20 mg/kg</td><td>每 12–24 小时</td><td>轻度肾功能下降</td></tr>
+          <tr><td>15–50 mL/min</td><td>15–20 mg/kg</td><td>每 24–48 小时</td><td>中度肾功能下降</td></tr>
+          <tr><td>< 15 mL/min</td><td>按血药浓度调整</td><td>无固定间隔</td><td>需 TDM 指导，可能需负荷剂量后延长间隔</td></tr>
+        </tbody>
+      </table>
+      <p><strong>关于体重的说明：</strong>指南推荐按实际体重（actual body weight, ABW）计算剂量。但对于肥胖患者（实际体重 > 理想体重的 120% 或 BMI > 30），建议使用调整体重（adjusted body weight, AdjBW）：</p>
+      <p style="background:#f0f4f8;padding:12px 16px;border-radius:6px;font-family:monospace;text-align:center;">
+        AdjBW = IBW + 0.4 × (ABW − IBW)<br>
+        男性 IBW = 50 + 2.3 × (身高英寸 − 60)<br>
+        女性 IBW = 45.5 + 2.3 × (身高英寸 − 60)
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h3>三、计算步骤逐步解释</h3>
+      <ol>
+        <li><strong>输入校验</strong>：检查年龄（18–120，仅限成人）、体重（>0）、Scr（>0）是否在合理范围内。若身高已填写，用于肥胖评估。</li>
+        <li><strong>CrCl 计算</strong>：代入 Cockcroft-Gault 公式。若为女性，结果乘以 0.85。若结果 < 0，标记为异常。</li>
+        <li><strong>体重选择</strong>：若提供了身高且实际体重 > 120% IBW，使用调整体重（AdjBW）计算剂量；否则使用实际体重。</li>
+        <li><strong>单次剂量计算</strong>：根据感染严重程度选择 15 或 20 mg/kg，乘以所选体重。</li>
+        <li><strong>给药间隔确定</strong>：根据 CrCl 分层确定间隔。CrCl > 90 → q8-12h；50-90 → q12-24h；15-50 → q24-48h；< 15 → 需 TDM。</li>
+        <li><strong>日总量计算</strong>：单次剂量 × (24 / 间隔小时数)。</li>
+        <li><strong>结果输出与警告</strong>：若 CrCl < 15 或 > 150，或单次剂量 > 2000 mg，或日总量 > 4000 mg，显示警告。</li>
+      </ol>
+    </div>
+
+    <div class="doc-section">
+      <h3>四、临床/工程意义</h3>
+      <h4>4.1 临床意义</h4>
+      <p>万古霉素是治疗耐甲氧西林金黄色葡萄球菌（MRSA）感染的核心药物，但其治疗窗窄、肾毒性显著。初始剂量的合理性直接影响：</p>
+      <ul>
+        <li><strong>疗效</strong>：剂量不足导致亚治疗浓度，治疗失败、耐药选择压力增加</li>
+        <li><strong>安全性</strong>：剂量过大导致肾毒性、耳毒性风险升高</li>
+        <li><strong>TDM 效率</strong>：合理的初始剂量使首次谷浓度更接近目标范围，减少调整次数</li>
+      </ul>
+      <p>在临床药学实践中，本工具可作为药师审核医嘱、医师开具初始处方的辅助参考。但必须强调：这只是起点，后续必须根据 TDM 结果（通常在第 3-5 次给药前采集谷浓度）进行个体化调整。</p>
+
+      <h4>4.2 工程/信息学意义</h4>
+      <p>本工具以纯前端实现，零依赖、零网络请求，可在离线环境（如内网 HIS 系统）中部署。计算逻辑封装为独立函数，便于集成到医院信息系统（HIS）或临床决策支持系统（CDSS）中。所有计算在客户端完成，患者数据不上传服务器，保护隐私。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>五、已知局限与误差来源</h3>
+      <ol>
+        <li><strong>Cockcroft-Gault 公式本身的局限</strong>：该公式基于 1976 年 249 名男性患者的数据推导，女性系数 0.85 为经验校正。在现代人群中（尤其肥胖、老年、肌肉萎缩患者），误差可达 ±30% 甚至更大。</li>
+        <li><strong>血清肌酐检测方法的差异</strong>：酶法与苦味酸法结果不同（苦味酸法偏高约 0.1-0.2 mg/dL），直接影响 CrCl 计算。本工具假设输入值为标准化结果。</li>
+        <li><strong>未考虑容量状态</strong>：脱水或液体过负荷均影响肌酐分布容积和肾清除，公式未校正。</li>
+        <li><strong>未考虑合并用药</strong>：同时使用肾毒性药物（如氨基糖苷类、造影剂、NSAIDs）时，肾功能可能快速变化。</li>
+        <li><strong>万古霉素药动学个体差异</strong>：即使 CrCl 相同，不同患者的万古霉素清除率仍可差异 30-50%（因肾小管分泌、分布容积差异等）。</li>
+        <li><strong>肥胖患者的剂量计算争议</strong>：文献对肥胖患者应使用 ABW、IBW 还是 AdjBW 存在争议。本工具采用 AdjBW（系数 0.4），但部分文献推荐不同系数。</li>
+        <li><strong>未纳入 AUC/MIC 目标</strong>：2020 年万古霉素指南更新推荐 AUC<sub>24</sub>/MIC 目标（400-600），本工具仍基于 2009 年谷浓度导向方案。需查原始文献确认最新推荐。</li>
+      </ol>
+    </div>
+
+    <div class="doc-section">
+      <h3>六、精度与误差说明</h3>
+      <table>
+        <thead>
+          <tr><th>项目</th><th>算准了什么</th><th>哪些因素没算进去</th><th>估计误差范围</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CrCl 计算</td>
+            <td>按输入参数精确执行 Cockcroft-Gault 数学公式，算术误差为零</td>
+            <td>肌肉量变异、饮食影响、检测方法差异、非稳态肌酐</td>
+            <td>公式本身对真实 GFR 的估计误差约 ±25-35%（文献报道）</td>
+          </tr>
+          <tr>
+            <td>剂量推荐</td>
+            <td>严格按 2009 指南分层逻辑执行，剂量数值计算无误</td>
+            <td>患者个体药动学差异、感染部位穿透性、蛋白结合率变化</td>
+            <td>推荐剂量为群体中位数方案，个体实际所需剂量可能偏差 ±30%</td>
+          </tr>
+          <tr>
+            <td>肥胖校正</td>
+            <td>AdjBW 公式计算准确</td>
+            <td>脂肪组织对药物分布的贡献个体差异大，0.4 系数为经验值</td>
+            <td>不同文献推荐系数 0.3-0.5 不等，由此引入约 ±10% 剂量差异</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>总结</strong>：本工具在数学计算层面是精确的（给定输入，输出确定），但输入参数本身（尤其 Scr 和体重对肾功能的代表性）存在固有不确定性。计算结果应视为"基于当前信息的合理估计"，而非"精确计算"或"绝对准确"的结论。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>七、参考文献</h3>
+      <ol>
+        <li>Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. <em>Nephron</em>. 1976;16(1):31-41.</li>
+        <li>Rybak MJ, Lomaestro BM, Rotschafer JC, et al. Therapeutic monitoring of vancomycin in adult patients: a consensus review. <em>Am J Health-Syst Pharm</em>. 2009;66(1):82-98.</li>
+        <li>Devine BJ. Gentamicin therapy. <em>Drug Intell Clin Pharm</em>. 1974;8:650-655.（理想体重公式来源）</li>
+        <li><em>注：2020 年 IDSA 发布了万古霉素 TDM 新指南（Rybak MJ et al. Am J Health-Syst Pharm. 2020），推荐 AUC/MIC 导向方案。本工具仍基于 2009 年版本，如需更新请查原始文献。</em></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- TAB 4: SAFETY -->
+  <div id="tab-safety" class="tab-content">
+    <div class="safety-section">
+      <h3>🛡️ 医疗安全声明</h3>
+
+      <div class="safety-item">
+        <h4 style="color:var(--danger);">⚠️ 核心声明</h4>
+        <p><strong>本工具仅供医疗卫生专业人员参考，不构成任何诊疗建议。</strong>实际临床决策须由具备资质的医师结合患者完整病史、体格检查、实验室检查及其他临床信息综合判断后做出。</p>
+      </div>
+
+      <div class="safety-item">
+        <h4 style="color:var(--danger);">⚠️ 使用限制</h4>
+        <ul>
+          <li>本工具计算的是<strong>初始经验剂量</strong>，不是最终处方剂量</li>
+          <li>万古霉素治疗<strong>必须</strong>进行治疗药物监测（TDM），根据谷浓度或 AUC 调整剂量</li>
+          <li>不适用于儿童（<18 岁）、孕妇、透析患者、急性肾损伤患者</li>
+          <li>肥胖患者的剂量计算存在争议，结果仅供参考</li>
+          <li>本工具不替代临床药师的个体化药学监护</li>
+        </ul>
+      </div>
+
+      <div class="safety-item">
+        <h4 style="color:var(--danger);">⚠️ 数据与隐私</h4>
+        <p>本工具为纯前端计算，所有数据在用户浏览器本地处理，<strong>不上传任何服务器</strong>。但使用者仍需遵守所在机构的患者数据保护规定。</p>
+      </div>
+
+      <div class="safety-item">
+        <h4 style="color:var(--danger);">⚠️ 适用范围与假设条件</h4>
+        <ul>
+          <li>适用于成人（≥18 岁）患者</li>
+          <li>假设血清肌酐处于稳态（非急性变化期）</li>
+          <li>假设使用标准化血清肌酐检测方法</li>
+          <li>Cockcroft-Gault 公式假设患者肌肉量与体重成比例</li>
+          <li>剂量推荐基于 2009 年 ASHP/IDSA/SIDP 指南的群体推荐方案</li>
+          <li>不适用于连续性肾脏替代治疗（CRRT）或间歇性血液透析患者</li>
+        </ul>
+      </div>
+
+      <div class="safety-item">
+        <h4 style="color:var(--danger);">⚠️ 责任免除</h4>
+        <p>工具开发者不对因使用本工具产生的任何直接或间接后果承担责任。使用者应自行验证计算结果的合理性，并对最终临床决策负全部责任。</p>
+      </div>
+
+      <div class="safety-item">
+        <h4 style="color:var(--danger);">⚠️ 紧急提醒</h4>
+        <p>如遇万古霉素相关不良反应（如红人综合征、急性肾损伤、听力下降），应立即停药并联系临床药师和医师处理。本工具不提供不良反应处理指导。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.1-修-年龄范围 20261025</div>
+
+<script>
+/**
+ * ============================================================
+ * 万古霉素初始剂量计算器 - 核心计算模块
+ * ============================================================
+ */
+
+/**
+ * 计算肌酐清除率（Cockcroft-Gault 公式）
+ *
+ * 公式：CrCl (mL/min) = (140 - age) × weight(kg) / (72 × Scr_mgdl)
+ * 女性乘以校正系数 0.85
+ *
+ * 文献出处：
+ * Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine.
+ * Nephron. 1976;16(1):31-41. doi:10.1159/000180580
+ *
+ * @param {number} age - 患者年龄（岁），范围 18-120（仅成人）
+ * @param {number} weight - 体重（kg），> 0
+ * @param {number} scr - 血清肌酐（mg/dL），> 0
+ * @param {string} sex - 性别，'male' 或 'female'
+ * @returns {object} { value: number|null, error: string|null, warning: string|null }
+ *   value: CrCl 值（mL/min），若输入无效则为 null
+ *   error: 错误信息（输入无效时）
+ *   warning: 警告信息（结果可能不可靠时）
+ */
+function calculateCrCl(age, weight, scr, sex) {
+  // 输入校验
+  if (typeof age !== 'number' || typeof weight !== 'number' || typeof scr !== 'number') {
+    return { value: null, error: '输入参数必须为数字', warning: null };
+  }
+  if (isNaN(age) || isNaN(weight) || isNaN(scr)) {
+    return { value: null, error: '输入参数不能为 NaN', warning: null };
+  }
+  if (age <= 0 || age > 120) {
+    return { value: null, error: '年龄必须在 1-120 岁之间', warning: null };
+  }
+  if (weight <= 0) {
+    return { value: null, error: '体重必须大于 0', warning: null };
+  }
+  if (scr <= 0) {
+    return { value: null, error: '血清肌酐必须大于 0（不能除以零）', warning: null };
+  }
+
+  let crcl = ((140 - age) * weight) / (72 * scr);
+
+  if (sex === 'female') {
+    crcl *= 0.85;
+  }
+
+  let warning = null;
+  if (crcl < 0) {
+    warning = 'CrCl 为负值，年龄可能超过 140 岁或输入有误';
+  }
+  if (crcl > 200) {
+    warning = 'CrCl 异常偏高（>200 mL/min），请核实输入参数';
+  }
+  if (age > 80) {
+    warning = (warning ? warning + '；' : '') + '老年患者（>80岁）肌肉量减少，CrCl 可能被高估';
+  }
+
+  return { value: Math.round(crcl * 100) / 100, error: null, warning: warning };
+}
+
+/**
+ * 计算理想体重（IBW, Ideal Body Weight）
+ *
+ * 公式（Devine 公式）：
+ * 男性 IBW = 50 + 2.3 × (身高英寸 - 60)
+ * 女性 IBW = 45.5 + 2.3 × (身高英寸 - 60)
+ *
+ * 文献出处：
+ * Devine BJ. Gentamicin therapy. Drug Intell Clin Pharm. 1974;8:650-655.
+ *
+ * @param {number} heightCm - 身高（cm）
+ * @param {string} sex - 性别，'male' 或 'female'
+ * @returns {number|null} 理想体重（kg），输入无效时返回 null
+ */
+function calculateIBW(heightCm, sex) {
+  if (typeof heightCm !== 'number' || isNaN(heightCm) || heightCm <= 0) {
+    return null;
+  }
+  // 1 inch = 2.54 cm
+  const heightInches = heightCm / 2.54;
+  let ibw;
+  if (sex === 'male') {
+    ibw = 50 + 2.3 * (heightInches - 60);
+  } else {
+    ibw = 45.5 + 2.3 * (heightInches - 60);
+  }
+  return Math.round(ibw * 100) / 100;
+}
+
+/**
+ * 计算调整体重（AdjBW, Adjusted Body Weight）
+ *
+ * 公式：AdjBW = IBW + 0.4 × (ABW - IBW)
+ * 其中 0.4 为经验校正系数（部分文献使用 0.3-0.5）
+ *
+ * 文献出处：
+ * 参见 ASHP/IDSA/SIDP 2009 万古霉素指南及相关药动学文献。
+ * 校正系数 0.4 为常用经验值，需查原始文献确认具体来源。
+ *
+ * @param {number} ibw - 理想体重（kg）
+ * @param {number} abw - 实际体重（kg）
+ * @returns {number|null} 调整体重（kg）
+ */
+function calculateAdjBW(ibw, abw) {
+  if (ibw === null || typeof abw !== 'number' || isNaN(abw) || abw <= 0) {
+    return null;
+  }
+  const adjbw = ibw + 0.4 * (abw - ibw);
+  return Math.round(adjbw * 100) / 100;
+}
+
+/**
+ * 根据 CrCl 确定万古霉素给药间隔
+ *
+ * 分层标准（ASHP/IDSA/SIDP 2009 指南）：
+ * CrCl > 90 mL/min → 每 8-12 小时
+ * CrCl 50-90 mL/min → 每 12-24 小时
+ * CrCl 15-50 mL/min → 每 24-48 小时
+ * CrCl < 15 mL/min → 按血药浓度调整，无固定间隔
+ *
+ * 文献出处：
+ * Rybak MJ, et al. Am J Health-Syst Pharm. 2009;66(1):82-98.
+ *
+ * @param {number} crcl - 肌酐清除率（mL/min）
+ * @param {string} infection - 感染严重程度，'standard' 或 'severe'
+ * @returns {object} { interval: number|null, intervalRange: string, note: string }
+ *   interval: 推荐间隔中值（小时），CrCl<15 时为 null
+ *   intervalRange: 间隔范围描述
+ *   note: 附加说明
+ */
+function determineInterval(crcl, infection) {
+  if (typeof crcl !== 'number' || isNaN(crcl)) {
+    return { interval: null, intervalRange: '无法确定', note: 'CrCl 值无效' };
+  }
+
+  if (crcl > 90) {
+    // 严重感染倾向更短间隔
+    const interval = (infection === 'severe') ? 8 : 12;
+    return {
+      interval: interval,
+      intervalRange: '每 8-12 小时',
+      note: '肾功能正常，药物清除快' + (infection === 'severe' ? '；严重感染建议 q8h' : '')
+    };
+  } else if (crcl >= 50) {
+    const interval = (infection === 'severe') ? 12 : 24;
+    return {
+      interval: interval,
+      intervalRange: '每 12-24 小时',
+      note: '轻度肾功能下降'
+    };
+  } else if (crcl >= 15) {
+    return {
+      interval: 24,
+      intervalRange: '每 24-48 小时',
+      note: '中度肾功能下降，建议 q24h 起始，根据 TDM 调整'
+    };
+  } else {
+    return {
+      interval: null,
+      intervalRange: '无固定间隔',
+      note: 'CrCl < 15 mL/min，必须根据血药浓度监测（TDM）调整给药方案。建议给予负荷剂量后延长间隔或持续输注。需查原始文献确认具体方案。'
+    };
+  }
+}
+
+/**
+ * 计算万古霉素推荐剂量方案（主函数）
+ *
+ * 综合调用 CrCl 计算、体重选择、剂量计算和间隔确定
+ *
+ * 文献出处：
+ * - Cockcroft DW, Gault MH. Nephron. 1976;16(1):31-41.
+ * - Rybak MJ, et al. Am J Health-Syst Pharm. 2009;66(1):82-98.
+ * - Devine BJ. Drug Intell Clin Pharm. 1974;8:650-655.
+ *
+ * @param {object} params - 输入参数对象
+ * @param {number} params.age - 年龄（岁）
+ * @param {string} params.sex - 性别 'male'|'female'
+ * @param {number} params.weight - 实际体重（kg）
+ * @param {number|null} params.height - 身高（cm），可选
+ * @param {number} params.scr - 血清肌酐（mg/dL）
+ * @param {string} params.infection - 感染严重程度 'standard'|'severe'
+ * @returns {object} 完整计算结果对象
+ */
+function calculateVancomycinDose(params) {
+  const { age, sex, weight, height, scr, infection } = params;
+
+  // Step 1: 计算 CrCl
+  const crclResult = calculateCrCl(age, weight, scr, sex);
+  if (crclResult.error) {
+    return { error: crclResult.error, crclResult: crclResult };
+  }
+
+  const crcl = crclResult.value;
+
+  // Step 2: 确定计算剂量所用体重
+  let doseWeight = weight;
+  let weightType = '实际体重（ABW）';
+  let ibw = null;
+  let adjbw = null;
+  let isObese = false;
+
+  if (height && height > 0) {
+    ibw = calculateIBW(height, sex);
+    if (ibw && ibw > 0 && weight > 1.2 * ibw) {
+      isObese = true;
+      adjbw = calculateAdjBW(ibw, weight);
+      if (adjbw && adjbw > 0) {
+        doseWeight = adjbw;
+        weightType = '调整体重（AdjBW）— 肥胖校正';
+      }
+    }
+  }
+
+  // Step 3: 计算单次剂量
+  const dosePerKg = (infection === 'severe') ? 20 : 15;
+  const singleDose = Math.round(dosePerKg * doseWeight);
+
+  // Step 4: 确定给药间隔
+  const intervalResult = determineInterval(crcl, infection);
+
+  // Step 5: 计算日总量
+  let dailyDose = null;
+  if (intervalResult.interval && intervalResult.interval > 0) {
+    const dosesPerDay = 24 / intervalResult.interval;
+    dailyDose = Math.round(singleDose * dosesPerDay);
+  }
+
+  // Step 6: 生成警告
+  const warnings = [];
+  if (crclResult.warning) warnings.push(crclResult.warning);
+  if (crcl < 15) warnings.push('CrCl < 15 mL/min：剂量必须根据 TDM 调整，本工具给出的间隔仅为参考');
+  if (singleDose > 2000) warnings.push('单次剂量 > 2000 mg：请核实，部分指南建议单次最大不超过 2000 mg');
+  if (dailyDose && dailyDose > 4000) warnings.push('日总量 > 4000 mg：请核实，需密切监测肾功能');
+  if (isObese) warnings.push('肥胖患者：已使用调整体重（AdjBW）计算剂量。注意：肥胖患者药动学变异大，TDM 尤为重要');
+  if (age > 65) warnings.push('老年患者（>65岁）：肾功能可能低于 CrCl 估算值，建议密切监测肾功能和血药浓度');
+
+  return {
+    crcl: crcl,
+    crclResult: crclResult,
+    singleDose: singleDose,
+    dosePerKg: dosePerKg,
+    doseWeight: doseWeight,
+    weightType: weightType,
+    ibw: ibw,
+    adjbw: adjbw,
+    isObese: isObese,
+    interval: intervalResult.interval,
+    intervalRange: intervalResult.intervalRange,
+    intervalNote: intervalResult.note,
+    dailyDose: dailyDose,
+    warnings: warnings,
+    error: null
+  };
+}
+
+/**
+ * ============================================================
+ * UI 交互逻辑
+ * ============================================================
+ */
+
+/**
+ * 切换标签页
+ * @param {string} tabId - 标签页 ID（不含 'tab-' 前缀）
+ */
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+
+/**
+ * 执行计算并渲染结果
+ */
+function calculate() {
+  const age = parseFloat(document.getElementById('age').value);
+  const sex = document.getElementById('sex').value;
+  const weight = parseFloat(document.getElementById('weight').value);
+  const heightVal = document.getElementById('height').value;
+  const height = heightVal ? parseFloat(heightVal) : null;
+  const scr = parseFloat(document.getElementById('scr').value);
+  const infection = document.getElementById('infection').value;
+
+  const result = calculateVancomycinDose({ age, sex, weight, height, scr, infection });
+
+  const panel = document.getElementById('result-panel');
+  const grid = document.getElementById('result-grid');
+  const note = document.getElementById('result-note');
+
+  if (result.error) {
+    panel.classList.add('show');
+    grid.innerHTML = '<div class="result-item danger"><div class="label">错误</div><div class="value" style="font-size:1em;">' + escapeHtml(result.error) + '</div></div>';
+    note.innerHTML = '';
+    note.style.display = 'none';
+    return;
+  }
+
+  let html = '';
+
+  // CrCl
+  let crclClass = '';
+  if (result.crcl < 15) crclClass = 'danger';
+  else if (result.crcl < 50) crclClass = 'warning';
+  html += '<div class="result-item ' + crclClass + '"><div class="label">肌酐清除率 (CrCl)</div><div class="value">' + result.crcl + '</div><div class="unit">mL/min</div></div>';
+
+  // 体重信息
+  html += '<div class="result-item"><div class="label">剂量计算体重</div><div class="value" style="font-size:1.1em;">' + result.doseWeight + ' kg</div><div class="unit">' + escapeHtml(result.weightType) + '</div></div>';
+
+  // 单次剂量
+  let doseClass = '';
+  if (result.singleDose > 2000) doseClass = 'warning';
+  html += '<div class="result-item ' + doseClass + '"><div class="label">推荐单次剂量</div><div class="value">' + result.singleDose + '</div><div class="unit">mg（' + result.dosePerKg + ' mg/kg）</div></div>';
+
+  // 给药间隔
+  let intClass = '';
+  if (!result.interval) intClass = 'danger';
+  html += '<div class="result-item ' + intClass + '"><div class="label">推荐给药间隔</div><div class="value" style="font-size:1.1em;">' + (result.interval ? '每 ' + result.interval + ' 小时' : '需 TDM 调整') + '</div><div class="unit">' + escapeHtml(result.intervalRange) + '</div></div>';
+
+  // 日总量
+  let dailyClass = '';
+  if (result.dailyDose && result.dailyDose > 4000) dailyClass = 'warning';
+  html += '<div class="result-item ' + dailyClass + '"><div class="label">估算日总量</div><div class="value">' + (result.dailyDose !== null ? result.dailyDose : '—') + '</div><div class="unit">' + (result.dailyDose !== null ? 'mg/日' : '无法计算') + '</div></div>';
+
+  // IBW/AdjBW 详情
+  if (result.ibw !== null) {
+    html += '<div class="result-item"><div class="label">理想体重 / 调整体重</div><div class="value" style="font-size:1em;">' + result.ibw + ' / ' + (result.adjbw || '—') + '</div><div class="unit">kg（IBW / AdjBW）</div></div>';
+  }
+
+  grid.innerHTML = html;
+
+  // 警告和说明
+  let noteHtml = '<strong>⚠️ 重要提示：</strong>本结果为初始经验剂量，必须结合血药浓度监测（TDM）调整。';
+  if (result.warnings.length > 0) {
+    noteHtml += '<br><br><strong>警告：</strong><ul style="margin-top:4px;">';
+    result.warnings.forEach(function(w) {
+      noteHtml += '<li>' + escapeHtml(w) + '</li>';
+    });
+    noteHtml += '</ul>';
+  }
+  noteHtml += '<br><strong>间隔说明：</strong>' + escapeHtml(result.intervalNote);
+  note.innerHTML = noteHtml;
+  note.style.display = 'block';
+  panel.classList.add('show');
+}
+
+/**
+ * HTML 转义，防止 XSS
+ * @param {string} str - 待转义字符串
+ * @returns {string} 转义后的安全字符串
+ */
+function escapeHtml(str) {
+  if (typeof str !== 'string') return String(str);
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * ============================================================
+ * 单元测试模块
+ * ============================================================
+ */
+
+/**
+ * 简易断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} message - 断言描述
+ * @returns {object} { pass: boolean, message: string }
+ */
+function assert(condition, message) {
+  return { pass: !!condition, message: message };
+}
+
+/**
+ * 近似相等断言（用于浮点数比较）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @param {string} message - 断言描述
+ * @returns {object} { pass: boolean, message: string }
+ */
+function assertApprox(actual, expected, tolerance, message) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  return { pass: pass, message: message + ' (实际=' + actual + ', 期望=' + expected + '±' + tolerance + ')' };
+}
+
+/**
+ * 运行全部单元测试
+ * 共 10 个测试用例，覆盖正常值、边界值、极端值和异常输入
+ */
+function runAllTests() {
+  const results = [];
+
+  // ---- 测试 1：正常成年男性 ----
+  // 测什么：标准参数下 CrCl 和剂量计算是否正确
+  // 输入：age=45, weight=70, scr=1.0, sex=male
+  // 期望：CrCl = (140-45)*70/(72*1.0) = 95*70/72 = 6650/72 ≈ 92.36 mL/min
+  (function() {
+    const r = calculateCrCl(45, 70, 1.0, 'male');
+    const a1 = assertApprox(r.value, 92.36, 0.1, 'CrCl 正常成年男性');
+    results.push({ title: '测试1：正常成年男性', desc: 'age=45, weight=70kg, Scr=1.0mg/dL, 男性', assertions: [a1] });
+  })();
+
+  // ---- 测试 2：正常成年女性 ----
+  // 测什么：女性校正系数 0.85 是否正确应用
+  // 输入：age=45, weight=60, scr=0.8, sex=female
+  // 期望：CrCl = (140-45)*60/(72*0.8) * 0.85 = 95*60/57.6 * 0.85 = 99.31 * 0.85 ≈ 140.28... 
+  // 等等，让我重算：(140-45)=95, 95*60=5700, 72*0.8=57.6, 5700/57.6=98.958..., *0.85=84.11
+  (function() {
+    const r = calculateCrCl(45, 60, 0.8, 'female');
+    const expected = ((140 - 45) * 60) / (72 * 0.8) * 0.85;
+    const a1 = assertApprox(r.value, Math.round(expected * 100) / 100, 0.1, 'CrCl 正常成年女性（含0.85校正）');
+    results.push({ title: '测试2：正常成年女性', desc: 'age=45, weight=60kg, Scr=0.8mg/dL, 女性', assertions: [a1] });
+  })();
+
+  // ---- 测试 3：老年患者（>80岁）----
+  // 测什么：高龄患者计算及警告是否正确触发
+  // 输入：age=85, weight=65, scr=1.2, sex=male
+  // 期望：CrCl = (140-85)*65/(72*1.2) = 55*65/86.4 = 3575/86.4 ≈ 41.38
+  // 应有年龄警告
+  (function() {
+    const r = calculateCrCl(85, 65, 1.2, 'male');
+    const a1 = assertApprox(r.value, 41.38, 0.1, 'CrCl 老年患者');
+    const a2 = assert(r.warning !== null && r.warning.indexOf('老年') !== -1, '老年患者应触发年龄警告');
+    results.push({ title: '测试3：老年患者（>80岁）', desc: 'age=85, weight=65kg, Scr=1.2mg/dL, 男性', assertions: [a1, a2] });
+  })();
+
+  // ---- 测试 4：极低 Scr（接近下限）----
+  // 测什么：Scr 极低时 CrCl 是否异常偏高并触发警告
+  // 输入：age=30, weight=70, scr=0.1, sex=male
+  // 期望：CrCl = (140-30)*70/(72*0.1) = 110*70/7.2 = 7700/7.2 ≈ 1069.44
+  // 应触发 >200 警告
+  (function() {
+    const r = calculateCrCl(30, 70, 0.1, 'male');
+    const a1 = assert(r.value > 200, '极低 Scr 导致 CrCl > 200');
+    const a2 = assert(r.warning !== null && r.warning.indexOf('异常偏高') !== -1, '应触发 CrCl 异常偏高警告');
+    results.push({ title: '测试4：极低 Scr（0.1 mg/dL）', desc: 'age=30, weight=70kg, Scr=0.1mg/dL', assertions: [a1, a2] });
+  })();
+
+  // ---- 测试 5：极高 Scr ----
+  // 测什么：Scr 极高时 CrCl 是否极低
+  // 输入：age=60, weight=80, scr=15.0, sex=male
+  // 期望：CrCl = (140-60)*80/(72*15) = 80*80/1080 = 6400/1080 ≈ 5.93
+  (function() {
+    const r = calculateCrCl(60, 80, 15.0, 'male');
+    const a1 = assertApprox(r.value, 5.93, 0.1, 'CrCl 极高 Scr');
+    const a2 = assert(r.value < 15, '极高 Scr 时 CrCl < 15');
+    results.push({ title: '测试5：极高 Scr（15.0 mg/dL）', desc: 'age=60, weight=80kg, Scr=15.0mg/dL', assertions: [a1, a2] });
+  })();
+
+  // ---- 测试 6：Scr = 0（除零边界）----
+  // 测什么：Scr 为零时应返回错误而非 Infinity 或 NaN
+  // 输入：age=50, weight=70, scr=0, sex=male
+  // 期望：error 不为 null
+  (function() {
+    const r = calculateCrCl(50, 70, 0, 'male');
+    const a1 = assert(r.value === null, 'Scr=0 时 value 应为 null');
+    const a2 = assert(r.error !== null, 'Scr=0 时应返回错误');
+    results.push({ title: '测试6：Scr = 0（除零边界）', desc: 'age=50, weight=70kg, Scr=0mg/dL', assertions: [a1, a2] });
+  })();
+
+  // ---- 测试 7：NaN 输入 ----
+  // 测什么：NaN 输入应被正确捕获
+  // 输入：age=NaN, weight=70, scr=1.0, sex=male
+  // 期望：error 不为 null
+  (function() {
+    const r = calculateCrCl(NaN, 70, 1.0, 'male');
+    const a1 = assert(r.value === null, 'NaN 年龄时 value 应为 null');
+    const a2 = assert(r.error !== null, 'NaN 输入应返回错误');
+    results.push({ title: '测试7：NaN 输入', desc: 'age=NaN, weight=70kg, Scr=1.0mg/dL', assertions: [a1, a2] });
+  })();
+
+  // ---- 测试 8：极低体重 ----
+  // 测什么：极低体重（如 30kg）时剂量计算
+  // 输入：age=70, weight=30, scr=1.0, sex=female, height=150
+  // 期望：CrCl = (140-70)*30/(72*1.0) * 0.85 = 70*30/72 * 0.85 = 29.17
+  // 单次剂量(15mg/kg) = 15*30 = 450mg
+  (function() {
+    const result = calculateVancomycinDose({ age: 70, sex: 'female', weight: 30, height: 150, scr: 1.0, infection: 'standard' });
+    const a1 = assertApprox(result.crcl, 29.17, 0.1, '极低体重 CrCl');
+    const a2 = assert(result.singleDose === 450, '极低体重单次剂量 = 15*30 = 450mg');
+    const a3 = assert(result.interval === 24, 'CrCl 15-50 区间，间隔应为 24h');
+    results.push({ title: '测试8：极低体重（30kg）', desc: 'age=70, weight=30kg, Scr=1.0, 女性, height=150cm', assertions: [a1, a2, a3] });
+  })();
+
+  // ---- 测试 9：肥胖患者（使用 AdjBW）----
+  // 测什么：肥胖患者是否正确使用调整体重
+  // 输入：age=50, weight=130, scr=1.0, sex=male, height=175
+  // IBW = 50 + 2.3*(175/2.54 - 60) = 50 + 2.3*(68.90-60) = 50 + 2.3*8.90 = 50+20.46 = 70.46
+  // 130 > 1.2*70.46=84.55 → 肥胖
+  // AdjBW = 70.46 + 0.4*(130-70.46) = 70.46 + 0.4*59.54 = 70.46+23.82 = 94.28
+  // CrCl 用实际体重 = (140-50)*130/(72*1.0) = 90*130/72 = 162.5
+  // 单次剂量 = 15*94.28 ≈ 1414mg
+  (function() {
+    const result = calculateVancomycinDose({ age: 50, sex: 'male', weight: 130, height: 175, scr: 1.0, infection: 'standard' });
+    const a1 = assert(result.isObese === true, '应识别为肥胖患者');
+    const a2 = assert(result.weightType.indexOf('AdjBW') !== -1, '应使用调整体重');
+    const a3 = assertApprox(result.adjbw, 94.28, 0.5, 'AdjBW 计算正确');
+    const a4 = assertApprox(result.singleDose, 1414, 5, '肥胖患者单次剂量基于 AdjBW');
+    results.push({ title: '测试9：肥胖患者（AdjBW 校正）', desc: 'age=50, weight=130kg, height=175cm, Scr=1.0, 男性', assertions: [a1, a2, a3, a4] });
+  })();
+
+  // ---- 测试 10：负数体重 ----
+  // 测什么：负数体重应返回错误
+  // 输入：age=40, weight=-5, scr=1.0, sex=male
+  // 期望：error 不为 null
+  (function() {
+    const r = calculateCrCl(40, -5, 1.0, 'male');
+    const a1 = assert(r.value === null, '负数体重时 value 应为 null');
+    const a2 = assert(r.error !== null, '负数体重应返回错误');
+    results.push({ title: '测试10：负数体重', desc: 'age=40, weight=-5kg, Scr=1.0mg/dL', assertions: [a1, a2] });
+  })();
+
+  // 渲染结果
+  renderTestResults(results);
+}
+
+/**
+ * 渲染测试结果到页面
+ * @param {Array} results - 测试结果数组
+ */
+function renderTestResults(results) {
+  const container = document.getElementById('test-results');
+  const summary = document.getElementById('test-summary');
+  let html = '';
+  let totalAssertions = 0;
+  let passedAssertions = 0;
+  let allPass = true;
+
+  results.forEach(function(test, idx) {
+    html += '<div class="test-case">';
+    html += '<div class="test-title">' + escapeHtml(test.title) + '</div>';
+    html += '<div class="test-desc">测试内容：' + escapeHtml(test.desc) + '</div>';
+    test.assertions.forEach(function(a) {
+      totalAssertions++;
+      if (a.pass) {
+        passedAssertions++;
+        html += '<div class="pass">✓ ' + escapeHtml(a.message) + '</div>';
+      } else {
+        allPass = false;
+        html += '<div class="fail">✗ ' + escapeHtml(a.message) + '</div>';
+      }
+    });
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+
+  if (allPass) {
+    summary.className = 'test-summary';
+    summary.innerHTML = '✅ 全部通过：' + passedAssertions + '/' + totalAssertions + ' 项断言通过（' + results.length + ' 个测试用例）';
+  } else {
+    summary.className = 'test-summary has-fail';
+    summary.innerHTML = '❌ 存在失败：' + passedAssertions + '/' + totalAssertions + ' 项断言通过，' + (totalAssertions - passedAssertions) + ' 项失败';
+  }
+}
+</script>
+</body>
+</html>

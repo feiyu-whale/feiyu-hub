@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔢 进制转换</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0b0f14; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe;
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:18px; }
+  .card { background:#111a24; border:1px solid #24384c; border-radius:12px; padding:12px 14px; margin-bottom:11px; }
+  .card label { display:block; font-size:12px; color:#7fa8c8; margin-bottom:6px; }
+  .row { display:flex; align-items:center; gap:8px; }
+  input[type=text] {
+    flex:1; min-width:0; background:#060a10; border:1px solid #24384c; border-radius:9px;
+    padding:11px 13px; font-size:11px; color:#9fe0ff; font-family:ui-monospace,Menlo,monospace;
+    letter-spacing:1px; outline:none;
+  }
+  input:focus { border-color:#4d8fc9; }
+  /* 超长数值：换行显示，不再被单行输入框视觉截断 */
+  input[type=text].long { font-size:14px; letter-spacing:0; word-break:break-all; height:auto; }
+  textarea.num {
+    flex:1; min-width:0; background:#060a10; border:1px solid #24384c; border-radius:9px;
+    padding:11px 13px; font-size:14px; color:#9fe0ff; font-family:ui-monospace,Menlo,monospace;
+    letter-spacing:0; outline:none; resize:vertical; word-break:break-all; line-height:1.5;
+    min-height:46px; max-height:180px;
+  }
+  textarea.num:focus { border-color:#4d8fc9; }
+  .copy { padding:9px 12px; font-size:13px; background:#16273a; color:#cfe9ff; border:1px solid #24384c;
+    border-radius:9px; cursor:pointer; font-family:inherit; }
+  .copy:active { background:#1e3a52; }
+  .base-tag { font-size:11px; color:#5b7a99; min-width:52px; }
+  .hint { text-align:center; color:#3f5a75; font-size:11px; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; color:#2b3f52; font-size:10px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🔢 进制转换</h1>
+  <div class="sub">输入任意进制，其余自动换算 · 支持 2 / 8 / 10 / 16</div>
+
+  <div class="card">
+    <label>二进制 (BIN) <span class="base-tag">0-1</span></label>
+    <div class="row"><textarea class="num" id="bin" rows="1" placeholder="如 1010" inputmode="numeric"></textarea><button class="copy" data-t="bin">复制</button></div>
+  </div>
+  <div class="card">
+    <label>八进制 (OCT) <span class="base-tag">0-7</span></label>
+    <div class="row"><textarea class="num" id="oct" rows="1" placeholder="如 12" inputmode="numeric"></textarea><button class="copy" data-t="oct">复制</button></div>
+  </div>
+  <div class="card">
+    <label>十进制 (DEC) <span class="base-tag">0-9</span></label>
+    <div class="row"><textarea class="num" id="dec" rows="1" placeholder="如 10" inputmode="numeric"></textarea><button class="copy" data-t="dec">复制</button></div>
+  </div>
+  <div class="card">
+    <label>十六进制 (HEX) <span class="base-tag">0-9 A-F</span></label>
+    <div class="row"><textarea class="num" id="hex" rows="1" placeholder="如 A" inputmode="text"></textarea><button class="copy" data-t="hex">复制</button></div>
+  </div>
+
+  <div class="hint">改任意一格，其余自动更新 🐳<br>只支持非负整数 · 已支持超长整数（BigInt，不再丢精度）</div>
+  <div class="ver">v2-BigInt超长修复 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  // 依据：进制换算的数学定义（任意进制 ⇄ 十进制，BigInt 保证整数不丢精度）。
+  var ids=['bin','oct','dec','hex'];
+  var bases={bin:2,oct:8,dec:10,hex:16};
+
+  function fromInput(id, val){
+    val=val.trim().replace(/\s/g,'');
+    if(val===''){ return {ok:true, num:null}; }
+    var clean = id==='hex' ? val.replace(/^0x/i,'') : val;
+    // 校验字符集
+    var re = id==='bin'?/^[01]+$/ : id==='oct'?/^[0-7]+$/ : id==='dec'?/^[0-9]+$/ : /^[0-9a-fA-F]+$/;
+    if(!re.test(clean)){ return {ok:false}; }
+    // 统一走 BigInt：任意长整数不丢精度
+    try{
+      var prefix = id==='bin'?'0b' : id==='oct'?'0o' : id==='hex'?'0x' : '';
+      var n = BigInt(prefix+clean);
+      return {ok:true, num:n};
+    }catch(e){
+      return {ok:false};
+    }
+  }
+
+  function setAll(n, except){
+    var map={bin:n.toString(2),oct:n.toString(8),dec:n.toString(10),hex:n.toString(16).toUpperCase()};
+    ids.forEach(function(id){
+      if(id===except) return;
+      var el=document.getElementById(id);
+      el.value=map[id];
+      el.rows = map[id].length > 24 ? 3 : 1;
+    });
+  }
+
+  function clearAll(except){
+    ids.forEach(function(id){ if(id!==except) document.getElementById(id).value=''; });
+  }
+
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    el.addEventListener('input',function(){
+      var r=fromInput(id, el.value);
+      if(r.ok){
+        el.style.borderColor='#24384c';
+        if(r.num===null){ clearAll(id); return; }
+        setAll(r.num, id);
+      } else {
+        el.style.borderColor='#a33';
+        clearAll(id);
+      }
+    });
+  });
+
+  // 复制（带 HTTP 非安全上下文兜底）
+  function doCopy(text){
+    // 1) 现代异步 API（HTTPS / localhost 可用）
+    if(navigator.clipboard && window.isSecureContext){
+      return navigator.clipboard.writeText(text);
+    }
+    // 2) 兜底：execCommand（明文 HTTP 下仍可用）
+    return new Promise(function(resolve,reject){
+      try{
+        var ta=document.createElement('textarea');
+        ta.value=text;
+        ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0';
+        ta.setAttribute('readonly','');
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        var ok=document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok?resolve():reject(new Error('execCommand failed'));
+      }catch(e){ reject(e); }
+    });
+  }
+
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click',function(){
+      var v=document.getElementById(b.dataset.t).value;
+      if(!v) return;
+      var old=b.textContent;
+      doCopy(v).then(function(){
+        b.textContent='✓已复制'; setTimeout(function(){ b.textContent=old; },900);
+      }).catch(function(){
+        b.textContent='请长按选中'; setTimeout(function(){ b.textContent=old; },1200);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

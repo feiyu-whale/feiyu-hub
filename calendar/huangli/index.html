@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📅 黄历（历法）</title>
+<link rel="stylesheet" href="../../assets/themes/skins.css">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:var(--bg); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--text);
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:520px; }
+  h1 { font-size:12px; color:var(--primary); margin-bottom:4px; text-align:center; letter-spacing:3px; }
+  .sub { color:var(--text-mute); font-size:12px; margin-bottom:16px; text-align:center; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; color:var(--text-dim); margin-bottom:10px; font-weight:700; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:14px; border-bottom:1px solid var(--border); }
+  .row:last-child { border-bottom:none; }
+  .k { color:var(--text-mute); } .v { color:var(--text); font-weight:600; }
+  .big { font-size:12px; font-weight:800; color:var(--primary); }
+  button { padding:11px; font-size:14px; font-weight:700; color:var(--text); background:rgba(0,0,0,.05);
+    border:1px solid var(--border); border-radius:10px; cursor:pointer; font-family:inherit; }
+  button:active { transform:scale(.96); }
+  input[type=date] { width:100%; background:var(--card); border:1px solid var(--border); border-radius:9px; padding:10px;
+    font-size:15px; color:var(--text); outline:none; font-family:inherit; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button { flex:1; }
+  .tabs button.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .hint { color:var(--text-mute); font-size:11px; margin-top:6px; line-height:1.7; }
+  .ver { color:var(--text-mute); font-size:10px; margin-top:10px; text-align:center; opacity:.7; }
+  .err { color:#c0392b; font-size:13px; padding:8px 0; }
+  .jq-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .jq { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:5px 11px; font-size:12px; color:var(--text-dim); }
+  .jq.now { background:var(--primary); border-color:var(--primary); color:#fff; font-weight:700; }
+  .go-btn { width:100%; margin-top:8px; background:linear-gradient(160deg,#9f1239,#6a0c26); border-color:#c33; color:#fff; font-size:15px; padding:13px; }
+</style>
+</head>
+<body class="theme-chinese">
+<div id="wrap">
+  <h1>📅 黄 历</h1>
+  <div class="sub">公历 ↔ 农历换算 · 天干地支 · 二十四节气</div>
+
+  <div class="tabs">
+    <button id="tabCal" class="on">📐 历法模式</button>
+    <button id="tabOcc">🎴 术数模式</button>
+  </div>
+
+  <!-- 历法模式 -->
+  <div id="panelCal">
+    <div class="card">
+      <h3>选一个日期</h3>
+      <input type="date" id="datePick">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="todayBtn" style="flex:1">📍 今天</button>
+        <button id="convBtn" style="flex:1">换算 →</button>
+      </div>
+      <div class="hint">本页只做历法换算（公历/农历/干支/节气），不算吉凶。</div>
+    </div>
+    <div id="calResult"></div>
+  </div>
+
+  <!-- 术数模式 -->
+  <div id="panelOcc" style="display:none">
+    <div class="card">
+      <h3>🎴 术数模式</h3>
+      <p style="font-size:13px;color:#9fb0d8;line-height:1.9">
+        要看 <b>今日宜忌、二十八宿、彭祖百忌、冲煞</b> 这些玄学内容？<br>
+        请移步「术数区」的黄历。
+      </p>
+      <a href="../../tools/li-huang/"><button class="go-btn">查看今日宜忌 ➡</button></a>
+      <div class="hint">术数区黄历 = 完整玄学版（宜忌/星宿/冲煞/彭祖百忌）。</div>
+    </div>
+  </div>
+
+  <div class="hint" style="text-align:center;margin-top:14px">
+    历法模式：客观换算，不算吉凶 · 零依赖 lunar.js<br>
+    属历法编年工具，非科学预测
+  </div>
+  <div class="ver">v1.0.0-黄历(历法版) 20261016</div>
+</div>
+
+<script src="lib/lunar.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  if(typeof Solar === 'undefined'){ $('calResult').innerHTML='<div class="err">库加载失败</div>'; return; }
+
+  var JQ = ['小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至',
+            '小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至'];
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function render(){
+    var v = $('datePick').value;
+    if(!v){ $('calResult').innerHTML='<div class="err">请选一个日期</div>'; return; }
+    var p = v.split('-').map(Number);
+    var solar = Solar.fromYmd(p[0], p[1], p[2]);
+    var lunar = solar.getLunar();
+
+    var h = '';
+    h += '<div class="card"><h3>📅 公历 / 农历</h3>';
+    h += '<div class="row"><span class="k">公历</span><span class="v">'+p[0]+' 年 '+p[1]+' 月 '+p[2]+' 日</span></div>';
+    h += '<div class="row"><span class="k">农历</span><span class="v">'+lunar.getYearInChinese()+'年 '+lunar.getMonthInChinese()+'月 '+lunar.getDayInChinese()+'</span></div>';
+    h += '<div class="row"><span class="k">生肖</span><span class="v">'+lunar.getYearShengXiao()+'</span></div>';
+    h += '</div>';
+
+    h += '<div class="card"><h3>🧭 天干地支</h3>';
+    h += '<div class="row"><span class="k">年柱</span><span class="v">'+lunar.getYearInGanZhi()+'</span></div>';
+    h += '<div class="row"><span class="k">月柱</span><span class="v">'+lunar.getMonthInGanZhi()+'</span></div>';
+    h += '<div class="row"><span class="k">日柱</span><span class="v">'+lunar.getDayInGanZhi()+'</span></div>';
+    h += '</div>';
+
+    // 当前节气 + 二十四节气名
+    var cur = lunar.getJieQi();
+    var prev = lunar.getPrevJieQi();
+    h += '<div class="card"><h3>🌿 二十四节气</h3>';
+    h += '<div class="row"><span class="k">当日节气</span><span class="v">'+(cur?cur:'—（非交节日）')+'</span></div>';
+    if(prev) h += '<div class="row"><span class="k">最近节气</span><span class="v">'+prev.getName()+' · '+prev.getSolar().toYmd()+'</span></div>';
+    h += '<div class="jq-list">';
+    JQ.forEach(function(n){ h += '<span class="jq'+(n===cur?' now':'')+'">'+n+'</span>'; });
+    h += '</div></div>';
+
+    h += '<div class="card"><h3>💡 说明</h3><div style="font-size:13px;color:#9fb0d8;line-height:1.8">';
+    h += '<p>本页为<b>历法换算</b>工具：把公历日期转成农历、天干地支、节气。</p>';
+    h += '<p>干支纪日 = 用"甲乙丙丁…"十个天干 + "子丑寅卯…"十二地支循环记日子，60 天一循环。</p>';
+    h += '<p>二十四节气 = 按太阳在黄道上的位置划分，反映季节与农事节令。</p>';
+    h += '<p style="color:#5b6a99;font-size:12px;margin-top:6px">※ 此处<b>不算吉凶宜忌</b>——那是「术数区」黄历的事。本页只做客观换算。</p>';
+    h += '</div></div>';
+
+    $('calResult').innerHTML = h;
+  }
+
+  var now = new Date();
+  $('datePick').value = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  $('todayBtn').addEventListener('click', function(){ var n=new Date(); $('datePick').value=n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate()); render(); });
+  $('convBtn').addEventListener('click', render);
+  $('datePick').addEventListener('change', render);
+
+  $('tabCal').addEventListener('click', function(){ $('tabCal').classList.add('on'); $('tabOcc').classList.remove('on'); $('panelCal').style.display=''; $('panelOcc').style.display='none'; });
+  $('tabOcc').addEventListener('click', function(){ $('tabOcc').classList.add('on'); $('tabCal').classList.remove('on'); $('panelOcc').style.display=''; $('panelCal').style.display='none'; });
+
+  render();
+})();
+</script>
+</body>
+</html>

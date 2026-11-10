@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>压杆稳定计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+    color: #2c3e50;
+    min-height: 100vh;
+    padding: 12px;
+    padding-bottom: 60px;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  header {
+    text-align: center;
+    padding: 18px 12px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(30, 60, 114, 0.25);
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  header p {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 4px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 16px;
+    color: #1e3c72;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eef2f7;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .form-group {
+    margin-bottom: 12px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  .form-group .hint {
+    font-size: 12px;
+    color: #888;
+    margin-top: 3px;
+  }
+  .input-wrap {
+    display: flex;
+    align-items: center;
+    background: #f5f7fa;
+    border: 1px solid #dfe4ec;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .input-wrap:focus-within {
+    border-color: #2a5298;
+    background: #fff;
+  }
+  .input-wrap input, .input-wrap select {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 12px;
+    font-size: 15px;
+    color: #2c3e50;
+    outline: none;
+    min-width: 0;
+    font-family: inherit;
+  }
+  .input-wrap .unit {
+    padding: 0 12px;
+    color: #7a8699;
+    font-size: 13px;
+    background: #eef2f7;
+    border-left: 1px solid #dfe4ec;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+  }
+  .support-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .support-btn {
+    padding: 10px 8px;
+    border: 2px solid #dfe4ec;
+    background: #f5f7fa;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 13px;
+    color: #555;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .support-btn:hover {
+    border-color: #2a5298;
+  }
+  .support-btn.active {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    border-color: #1e3c72;
+    box-shadow: 0 2px 6px rgba(42, 82, 152, 0.3);
+  }
+  .support-btn .mu {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .custom-mu {
+    margin-top: 8px;
+    padding: 10px;
+    background: #fffbea;
+    border: 1px dashed #e0c97a;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #7a6a2a;
+  }
+  .custom-mu label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .custom-mu input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+  .custom-mu .mu-input {
+    margin-top: 8px;
+  }
+  .btn-calc {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 4px 10px rgba(42, 82, 152, 0.3);
+    transition: transform 0.1s, box-shadow 0.2s;
+    font-family: inherit;
+  }
+  .btn-calc:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(42, 82, 152, 0.3);
+  }
+  .result-section {
+    display: none;
+  }
+  .result-section.show {
+    display: block;
+  }
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f5f7fa;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .result-item .label {
+    color: #555;
+  }
+  .result-item .value {
+    color: #1e3c72;
+    font-weight: 600;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 15px;
+  }
+  .result-item.highlight {
+    background: linear-gradient(135deg, #fff5e6 0%, #ffe8c2 100%);
+    border: 1px solid #f5c77e;
+  }
+  .result-item.highlight .value {
+    color: #b8741a;
+    font-size: 16px;
+  }
+  .status-box {
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .status-box.ok {
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    color: #2e7d32;
+  }
+  .status-box.warn {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    color: #e65100;
+  }
+  .status-box.err {
+    background: #ffebee;
+    border-left: 4px solid #f44336;
+    color: #c62828;
+  }
+  .formula-box {
+    background: #f8f9fc;
+    border: 1px solid #e4e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #445;
+    line-height: 1.8;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .source-section {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.8;
+  }
+  .source-section ul {
+    padding-left: 20px;
+    margin-top: 6px;
+  }
+  .source-section li {
+    margin-bottom: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 10px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #888;
+    background: rgba(255,255,255,0.8);
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 100;
+  }
+  @media (max-width: 400px) {
+    .support-grid { grid-template-columns: 1fr; }
+    header h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📐 压杆稳定计算</h1>
+    <p>欧拉临界力 · 长细比 · 临界应力</p>
+  </header>
+
+  <div class="card">
+    <h2>📥 基本参数</h2>
+
+    <div class="form-group">
+      <label>材料弹性模量 E</label>
+      <div class="input-wrap">
+        <input type="number" id="E" value="206000" step="any" inputmode="decimal">
+        <span class="unit">MPa</span>
+      </div>
+      <div class="hint">常用值：Q235/Q345钢 ≈ 2.06×10⁵ MPa；铝合金 ≈ 7.0×10⁴ MPa</div>
+    </div>
+
+    <div class="form-group">
+      <label>截面惯性矩 I（最小主惯性矩）</label>
+      <div class="input-wrap">
+        <input type="number" id="I" value="1000000" step="any" inputmode="decimal">
+        <span class="unit">mm⁴</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>截面面积 A</label>
+      <div class="input-wrap">
+        <input type="number" id="A" value="1000" step="any" inputmode="decimal">
+        <span class="unit">mm²</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>杆件几何长度 L</label>
+      <div class="input-wrap">
+        <input type="number" id="L" value="2000" step="any" inputmode="decimal">
+        <span class="unit">mm</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>材料比例极限 σp（用于判断欧拉公式适用范围）</label>
+      <div class="input-wrap">
+        <input type="number" id="sigmaP" value="200" step="any" inputmode="decimal">
+        <span class="unit">MPa</span>
+      </div>
+      <div class="hint">Q235钢比例极限约 200 MPa；若仅做弹性稳定分析可忽略此项</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔩 支承条件（长度系数 μ）</h2>
+    <div class="support-grid">
+      <button class="support-btn active" data-mu="1" onclick="selectSupport(this)">
+        两端铰支<span class="mu">μ = 1.0</span>
+      </button>
+      <button class="support-btn" data-mu="2" onclick="selectSupport(this)">
+        一端固定一端自由<span class="mu">μ = 2.0</span>
+      </button>
+      <button class="support-btn" data-mu="0.5" onclick="selectSupport(this)">
+        两端固定<span class="mu">μ = 0.5</span>
+      </button>
+      <button class="support-btn" data-mu="0.7" onclick="selectSupport(this)">
+        一端固定一端铰支<span class="mu">μ = 0.7</span>
+      </button>
+    </div>
+    <div class="custom-mu">
+      <label>
+        <input type="checkbox" id="customMuChk" onchange="toggleCustomMu()">
+        使用自定义 μ 值
+      </label>
+      <div class="mu-input" id="customMuWrap" style="display:none;">
+        <div class="input-wrap">
+          <input type="number" id="muCustom" value="1.0" step="any" inputmode="decimal">
+          <span class="unit">μ</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn-calc" onclick="calculate()">🧮 开始计算</button>
+  </div>
+
+  <div class="card result-section" id="resultSection">
+    <h2>📊 计算结果</h2>
+    <div id="resultContent"></div>
+  </div>
+
+  <div class="card source-section">
+    <h2>📚 数据来源</h2>
+    <ul>
+      <li>欧拉临界力公式 P<sub>cr</sub> = π²EI / (μL)²，长细比 λ = μL / i，临界应力 σ<sub>cr</sub> = π²E / λ²，均出自经典《材料力学》教材（如刘鸿文《材料力学》、孙训芳《材料力学》、Hibbeler《Mechanics of Materials》）中的压杆稳定章节。</li>
+      <li>四种典型支承的长度系数 μ = 1.0 / 2.0 / 0.5 / 0.7 为材料力学教材中的标准理论值。</li>
+      <li>惯性半径 i = √(I/A)；临界长细比 λ<sub>p</sub> = π√(E/σ<sub>p</sub>)，欧拉公式仅适用于 λ ≥ λ<sub>p</sub> 的大柔度杆（弹性失稳）。</li>
+      <li>钢结构设计中 μ 的取值还可参考 GB 50017《钢结构设计标准》中关于计算长度的相关规定；本工具采用理论值，工程设计请以现行规范为准。</li>
+      <li>中柔度、小柔度杆的临界应力需采用经验公式（如直线公式、抛物线公式）或查稳定系数表，本工具不涵盖。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="version">v1.0.0-压杆稳定 20261021</div>
+
+<script>
+(function(){
+  'use strict';
+
+  window.selectSupport = function(btn){
+    if(document.getElementById('customMuChk').checked){
+      document.getElementById('customMuChk').checked = false;
+      toggleCustomMu();
+    }
+    document.querySelectorAll('.support-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  };
+
+  window.toggleCustomMu = function(){
+    var chk = document.getElementById('customMuChk');
+    var wrap = document.getElementById('customMuWrap');
+    wrap.style.display = chk.checked ? 'block' : 'none';
+    if(chk.checked){
+      document.querySelectorAll('.support-btn').forEach(function(b){ b.classList.remove('active'); });
+    }
+  };
+
+  function getMu(){
+    if(document.getElementById('customMuChk').checked){
+      var v = parseFloat(document.getElementById('muCustom').value);
+      if(isNaN(v) || v <= 0) return NaN;
+      return v;
+    }
+    var active = document.querySelector('.support-btn.active');
+    if(!active) return NaN;
+    return parseFloat(active.getAttribute('data-mu'));
+  }
+
+  function fmtNum(n, digits){
+    if(!isFinite(n)) return '—';
+    if(digits === undefined){
+      if(Math.abs(n) >= 1000) digits = 2;
+      else if(Math.abs(n) >= 1) digits = 3;
+      else digits = 4;
+    }
+    return Number(n).toFixed(digits);
+  }
+
+  function fmtSci(n){
+    if(!isFinite(n)) return '—';
+    if(n === 0) return '0';
+    var exp = Math.floor(Math.log10(Math.abs(n)));
+    if(exp >= 6 || exp <= -3){
+      return n.toExponential(3);
+    }
+    return fmtNum(n, 3);
+  }
+
+  window.calculate = function(){
+    var E = parseFloat(document.getElementById('E').value);
+    var I = parseFloat(document.getElementById('I').value);
+    var A = parseFloat(document.getElementById('A').value);
+    var L = parseFloat(document.getElementById('L').value);
+    var sigmaP = parseFloat(document.getElementById('sigmaP').value);
+    var mu = getMu();
+
+    var errors = [];
+    if(isNaN(E) || E <= 0) errors.push('弹性模量 E 必须为正数');
+    if(isNaN(I) || I <= 0) errors.push('惯性矩 I 必须为正数');
+    if(isNaN(A) || A <= 0) errors.push('截面积 A 必须为正数');
+    if(isNaN(L) || L <= 0) errors.push('杆长 L 必须为正数');
+    if(isNaN(mu) || mu <= 0) errors.push('长度系数 μ 必须为正数');
+    if(isNaN(sigmaP) || sigmaP <= 0) errors.push('比例极限 σp 必须为正数');
+
+    var section = document.getElementById('resultSection');
+    var content = document.getElementById('resultContent');
+
+    if(errors.length > 0){
+      section.classList.add('show');
+      content.innerHTML = '<div class="status-box err"><strong>⚠️ 输入错误：</strong><br>' + errors.join('<br>') + '</div>';
+      return;
+    }
+
+    // 计算长度
+    var L0 = mu * L;
+    // 惯性半径
+    var i = Math.sqrt(I / A);
+    // 长细比
+    var lambda = L0 / i;
+    // 临界长细比
+    var lambdaP = Math.PI * Math.sqrt(E / sigmaP);
+    // 欧拉临界力 (N)
+    var Pcr = (Math.PI * Math.PI * E * I) / (L0 * L0);
+    // 临界应力 (MPa)
+    var sigmaCr = Pcr / A;
+    // 也可由 σcr = π²E / λ² 验证
+    var sigmaCr2 = (Math.PI * Math.PI * E) / (lambda * lambda);
+
+    var applicable = lambda >= lambdaP;
+
+    var html = '';
+    html += '<div class="result-item"><span class="label">计算长度 μL</span><span class="value">' + fmtNum(L0, 2) + ' mm</span></div>';
+    html += '<div class="result-item"><span class="label">惯性半径 i = √(I/A)</span><span class="value">' + fmtNum(i, 3) + ' mm</span></div>';
+    html += '<div class="result-item"><span class="label">长细比 λ = μL / i</span><span class="value">' + fmtNum(lambda, 2) + '</span></div>';
+    html += '<div class="result-item"><span class="label">临界长细比 λ<sub>p</sub> = π√(E/σ<sub>p</sub>)</span><span class="value">' + fmtNum(lambdaP, 2) + '</span></div>';
+
+    html += '<div class="result-item highlight"><span class="label">欧拉临界力 P<sub>cr</sub></span><span class="value">' + fmtSci(Pcr) + ' N (' + fmtNum(Pcr/1000, 3) + ' kN)</span></div>';
+    html += '<div class="result-item highlight"><span class="label">临界应力 σ<sub>cr</sub></span><span class="value">' + fmtNum(sigmaCr, 3) + ' MPa</span></div>';
+
+    if(applicable){
+      html += '<div class="status-box ok"><strong>✅ 适用欧拉公式</strong><br>λ = ' + fmtNum(lambda,2) + ' ≥ λ<sub>p</sub> = ' + fmtNum(lambdaP,2) + '，属于大柔度杆（弹性失稳），上述 P<sub>cr</sub>、σ<sub>cr</sub> 结果有效。</div>';
+    } else {
+      html += '<div class="status-box warn"><strong>⚠️ 不适用欧拉公式</strong><br>λ = ' + fmtNum(lambda,2) + ' &lt; λ<sub>p</sub> = ' + fmtNum(lambdaP,2) + '，属于中/小柔度杆，失稳时已进入弹塑性阶段。上述按欧拉公式算出的 P<sub>cr</sub>、σ<sub>cr</sub> <strong>偏于不安全</strong>，应采用经验公式（直线公式、抛物线公式）或查稳定系数 φ 表（参见 GB 50017）。</div>';
+    }
+
+    html += '<div style="margin-top:12px;"><strong>📝 计算过程：</strong></div>';
+    html += '<div class="formula-box">';
+    html += 'μ = ' + fmtNum(mu, 3) + '\n';
+    html += '计算长度 L₀ = μ·L = ' + fmtNum(mu,3) + ' × ' + fmtNum(L,2) + ' = ' + fmtNum(L0,2) + ' mm\n';
+    html += '惯性半径 i = √(I/A) = √(' + fmtNum(I,2) + '/' + fmtNum(A,2) + ') = ' + fmtNum(i,3) + ' mm\n';
+    html += '长细比 λ = L₀/i = ' + fmtNum(L0,2) + '/' + fmtNum(i,3) + ' = ' + fmtNum(lambda,2) + '\n';
+    html += '临界长细比 λp = π·√(E/σp) = π·√(' + fmtNum(E,2) + '/' + fmtNum(sigmaP,2) + ') = ' + fmtNum(lambdaP,2) + '\n';
+    html += 'Pcr = π²·E·I / L₀²\n';
+    html += '    = π² × ' + fmtNum(E,2) + ' × ' + fmtNum(I,2) + ' / (' + fmtNum(L0,2) + ')²\n';
+    html += '    = ' + fmtSci(Pcr) + ' N = ' + fmtNum(Pcr/1000,3) + ' kN\n';
+    html += 'σcr = Pcr/A = ' + fmtSci(Pcr) + ' / ' + fmtNum(A,2) + ' = ' + fmtNum(sigmaCr,3) + ' MPa\n';
+    html += '（验证：π²E/λ² = ' + fmtNum(sigmaCr2,3) + ' MPa）';
+    html += '</div>';
+
+    content.innerHTML = html;
+    section.classList.add('show');
+    section.scrollIntoView({behavior:'smooth', block:'start'});
+  };
+})();
+</script>
+</body>
+</html>

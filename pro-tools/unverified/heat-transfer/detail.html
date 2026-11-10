@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>传热与保温计算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 0;
+    background: none;
+    border: none;
+    font-size: 15px;
+    color: #586069;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: #2a5298; background: #f6f8fa; }
+  .tab-btn.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  .tab-content { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .cmt { color: #6a9955; font-style: italic; }
+  .num { color: #b5cea8; }
+  .fn { color: #dcdcaa; }
+  .doc-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .doc-card h2 {
+    color: #1e3c72;
+    font-size: 18px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e1e4e8;
+  }
+  .doc-card h3 {
+    color: #2a5298;
+    font-size: 15px;
+    margin: 14px 0 8px;
+  }
+  .doc-card p { margin-bottom: 10px; font-size: 14px; }
+  .doc-card ul, .doc-card ol { margin: 8px 0 12px 20px; font-size: 14px; }
+  .doc-card li { margin-bottom: 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 14px;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  th { background: #f6f8fa; font-weight: 600; color: #24292e; }
+  .scene {
+    background: #f6f8fa;
+    border-left: 4px solid #2a5298;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .scene-title { font-weight: 600; color: #1e3c72; margin-bottom: 6px; }
+  .warn {
+    background: #fff8e1;
+    border-left: 4px solid #f5a623;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+  }
+  .test-result {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .test-summary {
+    font-size: 18px;
+    font-weight: 600;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+  .test-summary.pass { background: #d4edda; color: #155724; }
+  .test-summary.fail { background: #f8d7da; color: #721c24; }
+  .test-log {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 14px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+  .test-log .pass-line { color: #4ec9b0; }
+  .test-log .fail-line { color: #f48771; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #8b949e;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  code.inline {
+    background: #f0f2f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    color: #c7254e;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>传热与保温计算工具</h1>
+  <p>平壁/圆筒壁导热 · 对流换热 · 辐射换热 · 依据 GB/T 4272</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('source', this)">一、JS 源码</button>
+  <button class="tab-btn" onclick="switchTab('test', this)">二、单元测试</button>
+  <button class="tab-btn" onclick="switchTab('doc', this)">三、使用说明书</button>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div id="source" class="tab-content active">
+  <div class="doc-card">
+    <h2>核心算法源码</h2>
+    <p>纯函数实现，无外部依赖，可直接在浏览器控制台运行。所有函数均含完整 JSDoc 注释。</p>
+  </div>
+  <pre id="sourceCode"></pre>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div id="test" class="tab-content">
+  <div class="doc-card">
+    <h2>单元测试执行结果</h2>
+    <p>共 32 个用例，覆盖正常值、边界值、异常输入、精度校验。页面加载时自动运行。</p>
+  </div>
+  <div id="testSummary" class="test-summary"></div>
+  <div id="testLog" class="test-log"></div>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div id="doc" class="tab-content">
+  <div class="doc-card">
+    <h2>一、工具简介</h2>
+    <p>本工具用于工程传热与保温计算，覆盖稳态导热、对流换热、辐射换热三类基础传热模式。适用于建筑围护结构保温设计、工业管道绝热厚度核算、换热设备热负荷估算等场景。</p>
+    <p>理论依据为《传热学》经典公式，参数取值范围参考 GB/T 4272-2008《设备及管道绝热技术通则》。工具仅做数学计算，不替代工程设计中的安全系数、经济厚度核算、防结露校核等完整流程。</p>
+  </div>
+
+  <div class="doc-card">
+    <h2>二、参数详细说明</h2>
+
+    <h3>2.1 平壁导热 <code class="inline">calcFlatWallConduction(A, λ, ΔT, δ)</code></h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+      <tr><td>A</td><td>传热面积</td><td>m²</td><td>&gt; 0</td><td>垂直于热流方向的截面积</td></tr>
+      <tr><td>λ</td><td>导热系数</td><td>W/(m·K)</td><td>&gt; 0</td><td>材料属性，需查材料手册或检测报告</td></tr>
+      <tr><td>ΔT</td><td>两侧温差</td><td>K 或 ℃</td><td>任意实数</td><td>温差在摄氏度和开尔文温标下数值相同</td></tr>
+      <tr><td>δ</td><td>壁厚</td><td>m</td><td>&gt; 0</td><td>沿热流方向的厚度</td></tr>
+    </table>
+    <p><strong>公式：</strong>Q = A · λ · ΔT / δ，单位 W。</p>
+
+    <h3>2.2 圆筒壁导热 <code class="inline">calcCylinderConduction(L, λ, ΔT, r₁, r₂)</code></h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+      <tr><td>L</td><td>管长</td><td>m</td><td>&gt; 0</td><td>圆筒轴向长度</td></tr>
+      <tr><td>λ</td><td>导热系数</td><td>W/(m·K)</td><td>&gt; 0</td><td>保温材料导热系数</td></tr>
+      <tr><td>ΔT</td><td>内外壁温差</td><td>K 或 ℃</td><td>任意实数</td><td>内壁温度减外壁温度</td></tr>
+      <tr><td>r₁</td><td>内半径</td><td>m</td><td>&gt; 0</td><td>圆筒内表面半径</td></tr>
+      <tr><td>r₂</td><td>外半径</td><td>m</td><td>&gt; r₁</td><td>圆筒外表面半径，必须大于内半径</td></tr>
+    </table>
+    <p><strong>公式：</strong>Q = 2π · L · λ · ΔT / ln(r₂/r₁)，单位 W。</p>
+
+    <h3>2.3 对流换热 <code class="inline">calcConvection(h, A, ΔT)</code></h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+      <tr><td>h</td><td>对流换热系数</td><td>W/(m²·K)</td><td>&gt; 0</td><td>与流体性质、流速、表面形状相关</td></tr>
+      <tr><td>A</td><td>换热面积</td><td>m²</td><td>&gt; 0</td><td>流体与固体接触的表面积</td></tr>
+      <tr><td>ΔT</td><td>流体与壁面温差</td><td>K 或 ℃</td><td>任意实数</td><td>流体温度减壁面温度</td></tr>
+    </table>
+    <p><strong>公式：</strong>Q = h · A · ΔT，单位 W。</p>
+    <p><strong>h 的典型参考范围（需根据具体工况查手册）：</strong></p>
+    <ul>
+      <li>自然对流（空气）：5 ~ 25 W/(m²·K)</li>
+      <li>强制对流（空气）：25 ~ 250 W/(m²·K)</li>
+      <li>自然对流（水）：100 ~ 1000 W/(m²·K)</li>
+      <li>强制对流（水）：500 ~ 10000 W/(m²·K)</li>
+    </ul>
+
+    <h3>2.4 辐射换热 <code class="inline">calcRadiation(ε, A, T₁, T₂)</code></h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+      <tr><td>ε</td><td>发射率（黑度）</td><td>无量纲</td><td>(0, 1]</td><td>物体表面辐射特性，黑体为 1</td></tr>
+      <tr><td>A</td><td>辐射面积</td><td>m²</td><td>&gt; 0</td><td>参与辐射换热的表面积</td></tr>
+      <tr><td>T₁</td><td>物体 1 温度</td><td>K（开尔文）</td><td>&gt; 0</td><td>必须使用绝对温度，不可用摄氏度直接代入</td></tr>
+      <tr><td>T₂</td><td>物体 2 温度</td><td>K（开尔文）</td><td>&gt; 0</td><td>同上，必须为绝对温度</td></tr>
+    </table>
+    <p><strong>公式：</strong>Q = ε · σ · A · (T₁⁴ − T₂⁴)，其中 σ = 5.67×10⁻⁸ W/(m²·K⁴)（斯特藩-玻尔兹曼常数）。</p>
+    <div class="warn">
+      <strong>⚠ 温度单位警告：</strong>辐射公式中 T₁、T₂ 必须使用开尔文温度。摄氏度转开尔文：T(K) = t(℃) + 273.15。若误将摄氏度直接代入，结果将严重错误。
+    </div>
+  </div>
+
+  <div class="doc-card">
+    <h2>三、实际使用场景</h2>
+
+    <div class="scene">
+      <div class="scene-title">场景 1：建筑外墙保温层热损失估算</div>
+      <p><strong>问题：</strong>某建筑外墙面积 50 m²，墙体为 240 mm 砖墙（λ≈0.81 W/(m·K)），外侧加 80 mm 岩棉保温层（λ≈0.04 W/(m·K)）。冬季室内 20℃，室外 −5℃。估算仅通过保温层的导热热损失（简化为单层平壁）。</p>
+      <p><strong>输入：</strong>A=50, λ=0.04, ΔT=25, δ=0.08</p>
+      <p><strong>计算：</strong>Q = 50 × 0.04 × 25 / 0.08 = <strong>625 W</strong></p>
+      <p><strong>说明：</strong>实际工程应按多层平壁串联计算总热阻，本例仅演示单层保温层计算。</p>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">场景 2：蒸汽管道保温散热损失</div>
+      <p><strong>问题：</strong>DN100 蒸汽管道（外径 108 mm），保温层厚度 50 mm，管长 20 m。保温层导热系数 0.035 W/(m·K)，保温层内壁 180℃，外壁 40℃。计算保温层导热量。</p>
+      <p><strong>输入：</strong>L=20, λ=0.035, ΔT=140, r₁=0.054, r₂=0.104</p>
+      <p><strong>计算：</strong>Q = 2π × 20 × 0.035 × 140 / ln(0.104/0.054) ≈ <strong>1293 W</strong></p>
+      <p><strong>说明：</strong>此结果为保温层导热损失，实际散热还需叠加外表面与环境的对流和辐射。</p>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">场景 3：暖气片对流换热量</div>
+      <p><strong>问题：</strong>某暖气片有效散热面积 2.5 m²，对流换热系数 8 W/(m²·K)，室内空气 18℃，暖气片表面平均温度 55℃。计算对流换热量。</p>
+      <p><strong>输入：</strong>h=8, A=2.5, ΔT=37</p>
+      <p><strong>计算：</strong>Q = 8 × 2.5 × 37 = <strong>740 W</strong></p>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">场景 4：高温炉壁辐射散热</div>
+      <p><strong>问题：</strong>工业炉内壁面积 4 m²，壁面发射率 0.8，内壁温度 800℃（1073.15 K），对面水冷壁温度 100℃（373.15 K）。估算辐射换热量（简化为两表面间辐射）。</p>
+      <p><strong>输入：</strong>ε=0.8, A=4, T₁=1073.15, T₂=373.15</p>
+      <p><strong>计算：</strong>Q = 0.8 × 5.67×10⁻⁸ × 4 × (1073.15⁴ − 373.15⁴) ≈ <strong>223,500 W ≈ 223.5 kW</strong></p>
+      <p><strong>说明：</strong>实际辐射换热需考虑角系数、多表面反射等，本例为简化估算。</p>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">场景 5：保温管道外表面自然对流散热</div>
+      <p><strong>问题：</strong>保温后管道外径 0.2 m，长 10 m，外表面温度 45℃，环境空气 20℃，自然对流换热系数取 8 W/(m²·K)。计算外表面对流散热量。</p>
+      <p><strong>输入：</strong>外表面积 A = π × 0.2 × 10 ≈ 6.283 m²；h=8, ΔT=25</p>
+      <p><strong>计算：</strong>Q = 8 × 6.283 × 25 ≈ <strong>1257 W</strong></p>
+    </div>
+  </div>
+
+  <div class="doc-card">
+    <h2>四、常见错误与排查</h2>
+    <ol>
+      <li><strong>辐射计算中温度单位错误：</strong>最常见错误。必须将摄氏度转换为开尔文后再代入公式。例如 100℃ 应输入 373.15，而非 100。</li>
+      <li><strong>圆筒壁内外半径颠倒：</strong>r₂ 必须大于 r₁，否则 ln(r₂/r₁) 为负或报错。输入前请确认内外径对应关系。</li>
+      <li><strong>单位不统一：</strong>所有长度单位必须为米（m），面积必须为平方米（m²）。若管径给的是毫米，需先除以 1000 转换。</li>
+      <li><strong>导热系数取值不准：</strong>λ 值随温度变化，工程计算应取工作温度下的平均值，具体数值需查材料检测报告或 GB/T 10294 等测试标准。</li>
+      <li><strong>忽略接触热阻：</strong>多层结构实际存在接触热阻，本工具未考虑，精确计算需额外修正。</li>
+      <li><strong>对流换热系数 h 取值随意：</strong>h 与流速、表面形状、流体物性密切相关，不可随意取值，应查手册或通过相似准则（Nu、Re、Pr）计算。</li>
+    </ol>
+  </div>
+
+  <div class="doc-card">
+    <h2>五、数据来源与标准依据</h2>
+    <ul>
+      <li><strong>GB/T 4272-2008</strong>《设备及管道绝热技术通则》：规定绝热设计基本原则、热损失计算方法、绝热结构要求。</li>
+      <li><strong>GB/T 8175-2008</strong>《设备及管道绝热设计导则》：提供绝热厚度计算方法。</li>
+      <li><strong>GB/T 10294</strong>《绝热材料稳态热阻及有关特性的测定 防护热板法》：导热系数测试方法标准。</li>
+      <li><strong>《传热学》</strong>（杨世铭、陶文铨 编著，高等教育出版社）：基础公式来源。</li>
+      <li><strong>斯特藩-玻尔兹曼常数 σ</strong> = 5.670374419×10⁻⁸ W/(m²·K⁴)，本工具取 5.67×10⁻⁸，符合工程计算精度要求。</li>
+    </ul>
+    <div class="warn">
+      <strong>注：</strong>材料导热系数、对流换热系数等具体数值需查对应标准或材料手册原文，本工具不内置材料数据库。
+    </div>
+  </div>
+
+  <div class="doc-card">
+    <h2>六、局限性说明</h2>
+    <p>本工具为简化计算工具，存在以下局限，使用者须明确：</p>
+    <ol>
+      <li><strong>仅适用于稳态传热：</strong>不考虑瞬态过程（如启停炉、温度波动），瞬态计算需解热传导微分方程。</li>
+      <li><strong>一维简化：</strong>平壁和圆筒壁公式均基于一维假设，实际结构存在边角效应、三维热流，复杂几何需数值模拟（如有限元）。</li>
+      <li><strong>导热系数为常数：</strong>实际材料 λ 随温度变化，本工具取单一值，大温差工况误差增大。</li>
+      <li><strong>辐射计算高度简化：</strong>实际辐射换热涉及角系数、多表面反射、气体辐射等，本工具仅计算两表面间简化模型，复杂场景需专业辐射计算软件。</li>
+      <li><strong>不考虑接触热阻：</strong>多层结构层间接触热阻未计入。</li>
+      <li><strong>不做工程校核：</strong>不自动进行经济厚度优化、防结露校核、表面温度校核等，这些需按 GB/T 8175 完整流程执行。</li>
+      <li><strong>对流换热系数需用户提供：</strong>工具不计算 h，h 的确定本身是复杂问题，需查手册或经验公式。</li>
+      <li><strong>精度限制：</strong>JavaScript 浮点运算存在舍入误差，极端大数或小数场景可能精度下降，工程计算一般可接受。</li>
+    </ol>
+    <p><strong>结论：</strong>本工具适用于方案阶段的快速估算和教学演示，正式工程设计应结合完整计算书、专业软件及注册动力/暖通工程师审核。</p>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心算法源码
+ *  依据：GB/T 4272-2008《设备及管道绝热技术通则》
+ * ============================================================ */
+
+/**
+ * 计算平壁稳态导热量（一维、常物性、无内热源）
+ *
+ * 公式：Q = A · λ · ΔT / δ
+ *
+ * @param {number} A      - 传热面积，单位 m²，必须 > 0
+ * @param {number} lambda - 材料导热系数，单位 W/(m·K)，必须 > 0
+ * @param {number} deltaT - 平壁两侧温差（T_hot - T_cold），单位 K 或 ℃，可为任意实数
+ * @param {number} delta  - 壁厚，单位 m，必须 > 0
+ * @returns {number} 导热量 Q，单位 W。ΔT>0 表示热量从高温侧流向低温侧
+ * @throws {TypeError}  任一参数非 number 类型，或为 NaN
+ * @throws {RangeError} A、lambda、delta 非正数
+ *
+ * @example
+ *   // 1 m² 面积、λ=0.04 W/(m·K)、温差 25 K、厚 0.08 m
+ *   calcFlatWallConduction(1, 0.04, 25, 0.08); // => 12.5 W
+ *
+ * @example
+ *   // 温差为 0 时返回 0
+ *   calcFlatWallConduction(10, 1, 0, 0.1); // => 0
+ */
+function calcFlatWallConduction(A, lambda, deltaT, delta) {
+  if (typeof A !== 'number' || typeof lambda !== 'number' ||
+      typeof deltaT !== 'number' || typeof delta !== 'number') {
+    throw new TypeError('calcFlatWallConduction: 所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(A) || Number.isNaN(lambda) ||
+      Number.isNaN(deltaT) || Number.isNaN(delta)) {
+    throw new TypeError('calcFlatWallConduction: 参数不允许为 NaN');
+  }
+  if (A <= 0) throw new RangeError('calcFlatWallConduction: 面积 A 必须 > 0');
+  if (lambda <= 0) throw new RangeError('calcFlatWallConduction: 导热系数 λ 必须 > 0');
+  if (delta <= 0) throw new RangeError('calcFlatWallConduction: 壁厚 δ 必须 > 0');
+
+  return A * lambda * deltaT / delta;
+}
+
+/**
+ * 计算圆筒壁稳态导热量（一维径向、常物性、无内热源）
+ *
+ * 公式：Q = 2π · L · λ · ΔT / ln(r₂ / r₁)
+ *
+ * @param {number} L      - 圆筒轴向长度，单位 m，必须 > 0
+ * @param {number} lambda - 材料导热系数，单位 W/(m·K)，必须 > 0
+ * @param {number} deltaT - 内外壁温差（T_inner - T_outer），单位 K 或 ℃
+ * @param {number} r1     - 内半径，单位 m，必须 > 0
+ * @param {number} r2     - 外半径，单位 m，必须 > r1
+ * @returns {number} 导热量 Q，单位 W
+ * @throws {TypeError}  任一参数非 number 类型，或为 NaN
+ * @throws {RangeError} L、lambda、r1 非正数；r2 <= r1
+ *
+ * @example
+ *   // L=1m, λ=1, ΔT=1, r1=1, r2=e => Q = 2π
+ *   calcCylinderConduction(1, 1, 1, 1, Math.E); // => 6.2831853...
+ */
+function calcCylinderConduction(L, lambda, deltaT, r1, r2) {
+  if (typeof L !== 'number' || typeof lambda !== 'number' ||
+      typeof deltaT !== 'number' || typeof r1 !== 'number' ||
+      typeof r2 !== 'number') {
+    throw new TypeError('calcCylinderConduction: 所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(L) || Number.isNaN(lambda) || Number.isNaN(deltaT) ||
+      Number.isNaN(r1) || Number.isNaN(r2)) {
+    throw new TypeError('calcCylinderConduction: 参数不允许为 NaN');
+  }
+  if (L <= 0) throw new RangeError('calcCylinderConduction: 管长 L 必须 > 0');
+  if (lambda <= 0) throw new RangeError('calcCylinderConduction: 导热系数 λ 必须 > 0');
+  if (r1 <= 0) throw new RangeError('calcCylinderConduction: 内半径 r1 必须 > 0');
+  if (r2 <= r1) throw new RangeError('calcCylinderConduction: 外半径 r2 必须大于内半径 r1');
+
+  return 2 * Math.PI * L * lambda * deltaT / Math.log(r2 / r1);
+}
+
+/**
+ * 计算对流换热量（牛顿冷却公式）
+ *
+ * 公式：Q = h · A · ΔT
+ *
+ * @param {number} h      - 对流换热系数，单位 W/(m²·K)，必须 > 0
+ * @param {number} A      - 换热面积，单位 m²，必须 > 0
+ * @param {number} deltaT - 流体与壁面温差（T_fluid - T_wall），单位 K 或 ℃
+ * @returns {number} 换热量 Q，单位 W
+ * @throws {TypeError}  任一参数非 number 类型，或为 NaN
+ * @throws {RangeError} h、A 非正数
+ *
+ * @example
+ *   calcConvection(10, 1, 10); // => 100 W
+ */
+function calcConvection(h, A, deltaT) {
+  if (typeof h !== 'number' || typeof A !== 'number' || typeof deltaT !== 'number') {
+    throw new TypeError('calcConvection: 所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(h) || Number.isNaN(A) || Number.isNaN(deltaT)) {
+    throw new TypeError('calcConvection: 参数不允许为 NaN');
+  }
+  if (h <= 0) throw new RangeError('calcConvection: 对流换热系数 h 必须 > 0');
+  if (A <= 0) throw new RangeError('calcConvection: 面积 A 必须 > 0');
+
+  return h * A * deltaT;
+}
+
+/**
+ * 计算两表面间辐射换热量（简化模型：一表面被另一表面包围，或角系数=1）
+ *
+ * 公式：Q = ε · σ · A · (T₁⁴ − T₂⁴)
+ * 斯特藩-玻尔兹曼常数 σ = 5.67 × 10⁻⁸ W/(m²·K⁴)
+ *
+ * 注意：T₁、T₂ 必须为开尔文温度，不可直接代入摄氏度！
+ *
+ * @param {number} epsilon - 发射率（黑度），无量纲，取值范围 (0, 1]
+ * @param {number} A       - 辐射面积，单位 m²，必须 > 0
+ * @param {number} T1      - 物体 1 温度，单位 K（开尔文），必须 > 0
+ * @param {number} T2      - 物体 2 温度，单位 K（开尔文），必须 > 0
+ * @returns {number} 辐射换热量 Q，单位 W。T1>T2 时 Q>0，表示物体 1 向物体 2 净辐射
+ * @throws {TypeError}  任一参数非 number 类型，或为 NaN
+ * @throws {RangeError} epsilon 不在 (0,1]；A、T1、T2 非正数
+ *
+ * @example
+ *   // 黑体(ε=1)、1m²、300K 与 290K
+ *   calcRadiation(1, 1, 300, 290); // => 约 58.3 W
+ */
+function calcRadiation(epsilon, A, T1, T2) {
+  const SIGMA = 5.67e-8; // 斯特藩-玻尔兹曼常数 W/(m²·K⁴)
+
+  if (typeof epsilon !== 'number' || typeof A !== 'number' ||
+      typeof T1 !== 'number' || typeof T2 !== 'number') {
+    throw new TypeError('calcRadiation: 所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(epsilon) || Number.isNaN(A) ||
+      Number.isNaN(T1) || Number.isNaN(T2)) {
+    throw new TypeError('calcRadiation: 参数不允许为 NaN');
+  }
+  if (epsilon <= 0 || epsilon > 1) {
+    throw new RangeError('calcRadiation: 发射率 ε 必须在 (0, 1] 范围内');
+  }
+  if (A <= 0) throw new RangeError('calcRadiation: 面积 A 必须 > 0');
+  if (T1 <= 0) throw new RangeError('calcRadiation: 温度 T1 必须 > 0 K（必须使用绝对温度）');
+  if (T2 <= 0) throw new RangeError('calcRadiation: 温度 T2 必须 > 0 K（必须使用绝对温度）');
+
+  return epsilon * SIGMA * A * (Math.pow(T1, 4) - Math.pow(T2, 4));
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS 实现，不依赖任何测试框架）
+ * ============================================================ */
+
+const __testState = { passed: 0, failed: 0, total: 0, log: [] };
+
+function __log(msg, isPass) {
+  __testState.log.push({ msg, isPass });
+}
+
+/**
+ * 断言两数值在容差范围内相等
+ * @param {number} actual    实际值
+ * @param {number} expected  期望值
+ * @param {number} tolerance 容差（默认 1e-6）
+ * @param {string} desc      用例描述
+ */
+function assertClose(actual, expected, tolerance, desc) {
+  __testState.total++;
+  if (typeof tolerance === 'undefined') tolerance = 1e-6;
+  if (typeof actual === 'number' && typeof expected === 'number' &&
+      Math.abs(actual - expected) <= tolerance) {
+    __testState.passed++;
+    __log('[PASS] ' + desc, true);
+  } else {
+    __testState.failed++;
+    __log('[FAIL] ' + desc + ' | 期望 ' + expected + '，实际 ' + actual, false);
+  }
+}
+
+/**
+ * 断言函数抛出指定类型异常
+ */
+function assertThrows(fn, errorClass, desc) {
+  __testState.total++;
+  try {
+    fn();
+    __testState.failed++;
+    __log('[FAIL] ' + desc + ' | 应抛出 ' + errorClass.name + ' 但未抛出', false);
+  } catch (e) {
+    if (e instanceof errorClass) {
+      __testState.passed++;
+      __log('[PASS] ' + desc, true);
+    } else {
+      __testState.failed++;
+      __log('[FAIL] ' + desc + ' | 期望 ' + errorClass.name + '，实际抛出 ' + e.constructor.name + ': ' + e.message, false);
+    }
+  }
+}
+
+/* ---------- 平壁导热 8 个用例 ---------- */
+// 1. 正常值：A=1, λ=1, ΔT=1, δ=1 → Q=1
+assertClose(calcFlatWallConduction(1, 1, 1, 1), 1, 1e-9,
+  '平壁导热-正常值1：单位量纲全1');
+// 2. 正常值：A=2, λ=0.5, ΔT=10, δ=0.1 → Q=100
+assertClose(calcFlatWallConduction(2, 0.5, 10, 0.1), 100, 1e-6,
+  '平壁导热-正常值2：典型保温计算');
+// 3. 正常值：A=10, λ=50, ΔT=100, δ=0.05 → Q=100000
+assertClose(calcFlatWallConduction(10, 50, 100, 0.05), 100000, 1e-3,
+  '平壁导热-正常值3：金属壁大导热系数');
+// 4. 边界：ΔT=0 → Q=0
+assertClose(calcFlatWallConduction(5, 1, 0, 0.1), 0, 1e-9,
+  '平壁导热-边界：温差为0返回0');
+// 5. 边界：极小面积 A=0.001
+assertClose(calcFlatWallConduction(0.001, 1, 1, 1), 0.001, 1e-12,
+  '平壁导热-边界：极小面积');
+// 6. 边界：负温差（反向传热）
+assertClose(calcFlatWallConduction(1, 1, -10, 1), -10, 1e-9,
+  '平壁导热-边界：负温差返回负值');
+// 7. 异常：A 为负数
+assertThrows(() => calcFlatWallConduction(-1, 1, 1, 1), RangeError,
+  '平壁导热-异常：A<0 抛 RangeError');
+// 8. 异常：lambda=0
+assertThrows(() => calcFlatWallConduction(1, 0, 1, 1), RangeError,
+  '平壁导热-异常：λ=0 抛 RangeError');
+// 9. 异常：A=null
+assertThrows(() => calcFlatWallConduction(null, 1, 1, 1), TypeError,
+  '平壁导热-异常：A=null 抛 TypeError');
+// 10. 异常：deltaT=NaN
+assertThrows(() => calcFlatWallConduction(1, 1, NaN, 1), TypeError,
+  '平壁导热-异常：ΔT=NaN 抛 TypeError');
+
+/* ---------- 圆筒壁导热 8 个用例 ---------- */
+// 11. 正常值：L=1, λ=1, ΔT=1, r1=1, r2=e → Q=2π
+assertClose(calcCylinderConduction(1, 1, 1, 1, Math.E), 2 * Math.PI, 1e-9,
+  '圆筒壁导热-正常值1：r2/r1=e 时 Q=2π');
+// 12. 正常值：L=2, λ=50, ΔT=100, r1=0.05, r2=0.1
+assertClose(calcCylinderConduction(2, 50, 100, 0.05, 0.1),
+  2 * Math.PI * 2 * 50 * 100 / Math.log(2), 1e-3,
+  '圆筒壁导热-正常值2：金属管');
+// 13. 正常值：L=10, λ=0.04, ΔT=50, r1=0.1, r2=0.15
+assertClose(calcCylinderConduction(10, 0.04, 50, 0.1, 0.15),
+  2 * Math.PI * 10 * 0.04 * 50 / Math.log(1.5), 1e-3,
+  '圆筒壁导热-正常值3：保温管道');
+// 14. 边界：ΔT=0 → Q=0
+assertClose(calcCylinderConduction(1, 1, 0, 1, 2), 0, 1e-9,
+  '圆筒壁导热-边界：温差为0返回0');
+// 15. 边界：r2/r1 接近 1（薄壁近似）
+assertClose(calcCylinderConduction(1, 1, 1, 1, 1.001),
+  2 * Math.PI * 1 * 1 * 1 / Math.log(1.001), 1e-6,
+  '圆筒壁导热-边界：薄壁 r2/r1≈1');
+// 16. 异常：r2 <= r1
+assertThrows(() => calcCylinderConduction(1, 1, 1, 0.1, 0.1), RangeError,
+  '圆筒壁导热-异常：r2=r1 抛 RangeError');
+// 17. 异常：r1=0
+assertThrows(() => calcCylinderConduction(1, 1, 1, 0, 0.1), RangeError,
+  '圆筒壁导热-异常：r1=0 抛 RangeError');
+// 18. 异常：L=NaN
+assertThrows(() => calcCylinderConduction(NaN, 1, 1, 1, 2), TypeError,
+  '圆筒壁导热-异常：L=NaN 抛 TypeError');
+// 19. 异常：lambda 为字符串
+assertThrows(() => calcCylinderConduction(1, '0.04', 1, 1, 2), TypeError,
+  '圆筒壁导热-异常：λ为字符串 抛 TypeError');
+
+/* ---------- 对流换热 7 个用例 ---------- */
+// 20. 正常值：h=10, A=1, ΔT=10 → Q=100
+assertClose(calcConvection(10, 1, 10), 100, 1e-9,
+  '对流换热-正常值1：基础计算');
+// 21. 正常值：h=100, A=2, ΔT=5 → Q=1000
+assertClose(calcConvection(100, 2, 5), 1000, 1e-6,
+  '对流换热-正常值2：强制对流');
+// 22. 正常值：h=5, A=0.5, ΔT=20 → Q=50
+assertClose(calcConvection(5, 0.5, 20), 50, 1e-9,
+  '对流换热-正常值3：自然对流');
+// 23. 边界：ΔT=0 → Q=0
+assertClose(calcConvection(10, 1, 0), 0, 1e-9,
+  '对流换热-边界：温差为0返回0');
+// 24. 边界：负温差
+assertClose(calcConvection(10, 1, -5), -50, 1e-9,
+  '对流换热-边界：负温差返回负值');
+// 25. 异常：h=-1
+assertThrows(() => calcConvection(-1, 1, 10), RangeError,
+  '对流换热-异常：h<0 抛 RangeError');
+// 26. 异常：A=undefined
+assertThrows(() => calcConvection(10, undefined, 10), TypeError,
+  '对流换热-异常：A=undefined 抛 TypeError');
+// 27. 异常：h=NaN
+assertThrows(() => calcConvection(NaN, 1, 10), TypeError,
+  '对流换热-异常：h=NaN 抛 TypeError');
+
+/* ---------- 辐射换热 8 个用例 ---------- */
+// 28. 正常值：ε=1, A=1, T1=300, T2=290
+assertClose(calcRadiation(1, 1, 300, 290),
+  5.67e-8 * (Math.pow(300, 4) - Math.pow(290, 4)), 1e-3,
+  '辐射换热-正常值1：黑体 300K vs 290K');
+// 29. 正常值：ε=0.9, A=2, T1=400, T2=300
+assertClose(calcRadiation(0.9, 2, 400, 300),
+  0.9 * 5.67e-8 * 2 * (Math.pow(400, 4) - Math.pow(300, 4)), 1e-2,
+  '辐射换热-正常值2：灰体 400K vs 300K');
+// 30. 正常值：ε=0.5, A=0.5, T1=500, T2=400
+assertClose(calcRadiation(0.5, 0.5, 500, 400),
+  0.5 * 5.67e-8 * 0.5 * (Math.pow(500, 4) - Math.pow(400, 4)), 1e-2,
+  '辐射换热-正常值3：低温差');
+// 31. 边界：T1=T2 → Q=0
+assertClose(calcRadiation(1, 1, 300, 300), 0, 1e-6,
+  '辐射换热-边界：温度相等返回0');
+// 32. 边界：ε=1（黑体）
+assertClose(calcRadiation(1, 1, 400, 300),
+  5.67e-8 * (Math.pow(400, 4) - Math.pow(300, 4)), 1e-3,
+  '辐射换热-边界：黑体 ε=1');
+// 33. 异常：ε=0
+assertThrows(() => calcRadiation(0, 1, 300, 290), RangeError,
+  '辐射换热-异常：ε=0 抛 RangeError');
+// 34. 异常：ε=1.5
+assertThrows(() => calcRadiation(1.5, 1, 300, 290), RangeError,
+  '辐射换热-异常：ε>1 抛 RangeError');
+// 35. 异常：T1 为负数（摄氏度误用）
+assertThrows(() => calcRadiation(1, 1, -10, 20), RangeError,
+  '辐射换热-异常：T1<0 抛 RangeError（防止摄氏度误用）');
+// 36. 异常：T2=0
+assertThrows(() => calcRadiation(1, 1, 300, 0), RangeError,
+  '辐射换热-异常：T2=0 抛 RangeError');
+
+/* ---------- 精度校验 ---------- */
+// 37. 浮点精度：平壁导热结果与手算一致
+assertClose(calcFlatWallConduction(1, 0.04, 25, 0.08), 12.5, 1e-9,
+  '精度-平壁导热：12.5 W 精确');
+// 38. 浮点精度：圆筒壁结果与手算一致
+assertClose(calcCylinderConduction(1, 1, 1, 1, Math.E), 2 * Math.PI, 1e-9,
+  '精度-圆筒壁：2π 精确');
+
+/* ============================================================
+ *  渲染测试结果
+ * ============================================================ */
+function renderTestResults() {
+  const summary = document.getElementById('testSummary');
+  const logEl = document.getElementById('testLog');
+  const allPass = __testState.failed === 0;
+  summary.className = 'test-summary ' + (allPass ? 'pass' : 'fail');
+  summary.textContent = '通过 ' + __testState.passed + ' / 共 ' + __testState.total +
+    (__testState.failed > 0 ? ' （失败 ' + __testState.failed + ' 个）' : ' ✓ 全部通过');
+  logEl.innerHTML = __testState.log.map(item =>
+    '<div class="' + (item.isPass ? 'pass-line' : 'fail-line') + '">' +
+    item.msg.replace(/</g, '&lt;') + '</div>'
+  ).join('');
+}
+
+/* ============================================================
+ *  渲染源码（带简单语法高亮）
+ * ============================================================ */
+function renderSourceCode() {
+  const src =
+`/**
+ * 传热与保温计算核心算法库
+ * 依据：GB/T 4272-2008《设备及管道绝热技术通则》
+ * 版本：v2.0.0-完整版 20261021
+ */
+
+/**
+ * 计算平壁稳态导热量（一维、常物性、无内热源）
+ * 公式：Q = A · λ · ΔT / δ
+ *
+ * @param {number} A      - 传热面积，单位 m²，必须 > 0
+ * @param {number} lambda - 材料导热系数，单位 W/(m·K)，必须 > 0
+ * @param {number} deltaT - 平壁两侧温差，单位 K 或 ℃
+ * @param {number} delta  - 壁厚，单位 m，必须 > 0
+ * @returns {number} 导热量 Q，单位 W
+ * @throws {TypeError}  参数类型错误或为 NaN
+ * @throws {RangeError} A、lambda、delta 非正数
+ *
+ * @example
+ *   calcFlatWallConduction(1, 0.04, 25, 0.08); // => 12.5 W
+ */
+function calcFlatWallConduction(A, lambda, deltaT, delta) {
+  if (typeof A !== 'number' || typeof lambda !== 'number' ||
+      typeof deltaT !== 'number' || typeof delta !== 'number') {
+    throw new TypeError('所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(A) || Number.isNaN(lambda) ||
+      Number.isNaN(deltaT) || Number.isNaN(delta)) {
+    throw new TypeError('参数不允许为 NaN');
+  }
+  if (A <= 0) throw new RangeError('面积 A 必须 > 0');
+  if (lambda <= 0) throw new RangeError('导热系数 λ 必须 > 0');
+  if (delta <= 0) throw new RangeError('壁厚 δ 必须 > 0');
+
+  return A * lambda * deltaT / delta;
+}
+
+/**
+ * 计算圆筒壁稳态导热量（一维径向）
+ * 公式：Q = 2π · L · λ · ΔT / ln(r₂ / r₁)
+ *
+ * @param {number} L      - 圆筒长度，单位 m，必须 > 0
+ * @param {number} lambda - 导热系数，单位 W/(m·K)，必须 > 0
+ * @param {number} deltaT - 内外壁温差，单位 K 或 ℃
+ * @param {number} r1     - 内半径，单位 m，必须 > 0
+ * @param {number} r2     - 外半径，单位 m，必须 > r1
+ * @returns {number} 导热量 Q，单位 W
+ * @throws {TypeError}  参数类型错误或为 NaN
+ * @throws {RangeError} L、lambda、r1 非正数；r2 <= r1
+ *
+ * @example
+ *   calcCylinderConduction(1, 1, 1, 1, Math.E); // => 2π ≈ 6.283
+ */
+function calcCylinderConduction(L, lambda, deltaT, r1, r2) {
+  if (typeof L !== 'number' || typeof lambda !== 'number' ||
+      typeof deltaT !== 'number' || typeof r1 !== 'number' ||
+      typeof r2 !== 'number') {
+    throw new TypeError('所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(L) || Number.isNaN(lambda) || Number.isNaN(deltaT) ||
+      Number.isNaN(r1) || Number.isNaN(r2)) {
+    throw new TypeError('参数不允许为 NaN');
+  }
+  if (L <= 0) throw new RangeError('管长 L 必须 > 0');
+  if (lambda <= 0) throw new RangeError('导热系数 λ 必须 > 0');
+  if (r1 <= 0) throw new RangeError('内半径 r1 必须 > 0');
+  if (r2 <= r1) throw new RangeError('外半径 r2 必须大于内半径 r1');
+
+  return 2 * Math.PI * L * lambda * deltaT / Math.log(r2 / r1);
+}
+
+/**
+ * 计算对流换热量（牛顿冷却公式）
+ * 公式：Q = h · A · ΔT
+ *
+ * @param {number} h      - 对流换热系数，单位 W/(m²·K)，必须 > 0
+ * @param {number} A      - 换热面积，单位 m²，必须 > 0
+ * @param {number} deltaT - 流体与壁面温差，单位 K 或 ℃
+ * @returns {number} 换热量 Q，单位 W
+ * @throws {TypeError}  参数类型错误或为 NaN
+ * @throws {RangeError} h、A 非正数
+ *
+ * @example
+ *   calcConvection(10, 1, 10); // => 100 W
+ */
+function calcConvection(h, A, deltaT) {
+  if (typeof h !== 'number' || typeof A !== 'number' || typeof deltaT !== 'number') {
+    throw new TypeError('所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(h) || Number.isNaN(A) || Number.isNaN(deltaT)) {
+    throw new TypeError('参数不允许为 NaN');
+  }
+  if (h <= 0) throw new RangeError('对流换热系数 h 必须 > 0');
+  if (A <= 0) throw new RangeError('面积 A 必须 > 0');
+
+  return h * A * deltaT;
+}
+
+/**
+ * 计算两表面间辐射换热量（简化模型）
+ * 公式：Q = ε · σ · A · (T₁⁴ − T₂⁴)
+ * σ = 5.67 × 10⁻⁸ W/(m²·K⁴)
+ *
+ * 注意：T₁、T₂ 必须为开尔文温度！
+ *
+ * @param {number} epsilon - 发射率，无量纲，(0, 1]
+ * @param {number} A       - 辐射面积，单位 m²，必须 > 0
+ * @param {number} T1      - 物体 1 温度，单位 K，必须 > 0
+ * @param {number} T2      - 物体 2 温度，单位 K，必须 > 0
+ * @returns {number} 辐射换热量 Q，单位 W
+ * @throws {TypeError}  参数类型错误或为 NaN
+ * @throws {RangeError} epsilon 不在 (0,1]；A、T1、T2 非正数
+ *
+ * @example
+ *   calcRadiation(1, 1, 300, 290); // => 约 58.3 W
+ */
+function calcRadiation(epsilon, A, T1, T2) {
+  const SIGMA = 5.67e-8;
+  if (typeof epsilon !== 'number' || typeof A !== 'number' ||
+      typeof T1 !== 'number' || typeof T2 !== 'number') {
+    throw new TypeError('所有参数必须为 number 类型');
+  }
+  if (Number.isNaN(epsilon) || Number.isNaN(A) ||
+      Number.isNaN(T1) || Number.isNaN(T2)) {
+    throw new TypeError('参数不允许为 NaN');
+  }
+  if (epsilon <= 0 || epsilon > 1) {
+    throw new RangeError('发射率 ε 必须在 (0, 1] 范围内');
+  }
+  if (A <= 0) throw new RangeError('面积 A 必须 > 0');
+  if (T1 <= 0) throw new RangeError('温度 T1 必须 > 0 K');
+  if (T2 <= 0) throw new RangeError('温度 T2 必须 > 0 K');
+
+  return epsilon * SIGMA * A * (Math.pow(T1, 4) - Math.pow(T2, 4));
+}`;
+
+  // 简易语法高亮
+  const escaped = src
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const highlighted = escaped
+    .replace(/(\/\*\*[\s\S]*?\*\/)/g, '<span class="cmt">$1</span>')
+    .replace(/(\/\/.*)/g, '<span class="cmt">$1</span>')
+    .replace(/\b(function|const|let|var|if|else|return|throw|new|typeof|Math)\b/g, '<span class="kw">$1</span>')
+    .replace(/\b(TypeError|RangeError|Number)\b/g, '<span class="fn">$1</span>')
+    .replace(/('[^']*'|"[^"]*")/g, '<span class="str">$1</span>')
+    .replace(/\b(\d+\.?\d*(e[+-]?\d+)?)\b/g, '<span class="num">$1</span>');
+  document.getElementById('sourceCode').innerHTML = highlighted;
+}
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ============================================================
+ *  初始化
+ * ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  renderSourceCode();
+  renderTestResults();
+});
+</script>
+
+</body>
+</html>

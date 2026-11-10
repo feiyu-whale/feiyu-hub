@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🦋 混沌与吸引子</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #06070f; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; user-select: none; color: #dbeafe;
+    display: flex; align-items: center; justify-content: center; }
+  #wrap { position: relative; width: 100%; max-width: 640px; height: 100%; max-height: 100vh; display: flex; flex-direction: column; }
+  canvas { display: block; width: 100%; flex: 1 1 auto; touch-action: none; background: #06070f; }
+  .hud { position: absolute; top: 10px; left: 14px; right: 14px; display: flex; justify-content: space-between;
+    font-size: 13px; font-weight: 700; pointer-events: none; text-shadow: 0 2px 6px rgba(0,0,0,.9); z-index: 5; }
+  .hud .mode { color: #ffd479; } .hud .info { color: #9fd8ff; text-align: right; }
+  .hud small { display:block; font-size:10px; font-weight:400; color:#5b7a99; }
+  .controls { flex: 0 0 auto; padding: 7px 10px calc(7px + env(safe-area-inset-bottom));
+    background: linear-gradient(0deg,#0d141c,#0b0f14); border-top: 1px solid #1c2a38; }
+  .row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .row:last-child { margin-bottom: 0; }
+  .lbl { font-size: 12px; color: #7fa8c8; min-width: 52px; }
+  input[type=range] { flex: 1; accent-color: #ffb84d; height: 22px; }
+  .val { font-size: 13px; font-weight: 700; color: #ffd479; min-width: 60px; text-align: right; font-variant-numeric: tabular-nums; }
+  button { flex: 1; padding: 8px 5px; font-size: 13px; font-weight: 700; color: #cfe9ff; background: #16273a;
+    border: 1px solid #2e5f8e; border-radius: 9px; cursor: pointer; font-family: inherit; transition: .15s; white-space: nowrap; }
+  button:active { transform: scale(.96); }
+  button.primary { background: linear-gradient(160deg,#c98a2e,#7a5218); border-color:#e0a84d; color:#fff; }
+  .modes { display: flex; gap: 5px; }
+  .modes button { padding: 6px 3px; font-size: 11.5px; flex: 1; }
+  .ver { position: absolute; bottom: calc(4px + env(safe-area-inset-bottom)); right: 10px; font-size: 10px; color: #2b3f52; z-index: 6; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <div class="mode"><span id="modeName">洛伦兹吸引子</span><small>蝴蝶效应 · 混沌之形</small></div>
+    <div class="info"><span id="param">σ10 ρ28 β2.67</span><small>参数</small></div>
+  </div>
+  <div class="controls">
+    <div class="row modes">
+      <button data-m="lorenz" class="on">洛伦兹</button>
+      <button data-m="logistic">逻辑斯蒂映射</button>
+      <button data-m="reset">⟲ 重来</button>
+    </div>
+    <div class="row">
+      <span class="lbl" id="p1lbl">轨迹长度</span>
+      <input type="range" id="p1" min="1" max="100" value="40">
+      <span class="val" id="p1val">40</span>
+    </div>
+  </div>
+  <div class="ver">v1.0.0-混沌 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W=0,H=0,DPR=1;
+  var mode='lorenz';
+
+  // ---- 洛伦兹 ----
+  var lx=0.1, ly=0, lz=0;
+  var sigma=10, rho=28, beta=8/3;
+  var dt=0.005;
+  var stepsPerFrame=40;
+  var projX=null;
+
+  // ---- 逻辑斯蒂映射（分岔图）----
+  var logRows=[];
+  var logR=2.4, logStep=0.0008;
+  var logBatch=30;
+
+  function resize(){
+    var r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.floor(W*DPR); cv.height=Math.floor(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    clearCanvas();
+    if (mode==='lorenz'){ projX=null; }
+    if (mode==='logistic'){ logRows=[]; logR=2.4; }
+  }
+  window.addEventListener('resize', resize);
+  function clearCanvas(){ ctx.fillStyle='#06070f'; ctx.fillRect(0,0,W,H); }
+
+  // ---- 洛伦兹绘制 ----
+  function lorenzStep(){
+    var dx = sigma*(ly-lx);
+    var dy = lx*(rho-lz) - ly;
+    var dz = lx*ly - beta*lz;
+    lx += dx*dt; ly += dy*dt; lz += dz*dt;
+  }
+  // 3D 投影：简单等轴视角
+  function project(x,y,z){
+    // 缩放居中
+    var sx = 0.05*(x*0.9 + z*0.4);
+    var sy = 0.05*(y - z*0.15) - 0.9;
+    return [W/2 + sx*50, H/2 + sy*50];
+  }
+  function drawLorenz(){
+    for (var i=0;i<stepsPerFrame;i++){
+      var p0=project(lx,ly,lz);
+      lorenzStep();
+      var p1=project(lx,ly,lz);
+      // 颜色随 z 变化
+      var t=Math.min(1,Math.max(0,(lz+5)/45));
+      var rr=Math.floor(80+175*t), gg=Math.floor(120+80*(1-t)), bb=Math.floor(220-100*t);
+      ctx.strokeStyle='rgba('+rr+','+gg+','+bb+',0.65)';
+      ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(p0[0],p0[1]); ctx.lineTo(p1[0],p1[1]); ctx.stroke();
+    }
+    // 淡淡淡出，形成长尾效果
+    ctx.fillStyle='rgba(6,7,15,0.012)';
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // ---- 逻辑斯蒂分岔图 ----
+  function drawLogistic(){
+    for (var b=0;b<logBatch;b++){
+      // 对当前 r 值，迭代若干次取稳定点
+      var r=logR;
+      var x=0.5;
+      for (var i=0;i<200;i++) x = r*x*(1-x);
+      for (var j=0;j<80;j++){
+        x = r*x*(1-x);
+        var px = (r-2.4)/(4.0-2.4)*W;
+        var py = H - x*H*0.94 - H*0.03;
+        ctx.fillStyle='rgba(255,210,120,0.55)';
+        ctx.fillRect(px, py, 1.3, 1.3);
+      }
+      logR += logStep;
+      if (logR>4.0){ logR=2.4; clearCanvas(); }
+    }
+  }
+
+  // ---- 主循环 ----
+  function frame(){
+    if (mode==='lorenz') drawLorenz();
+    else drawLogistic();
+    requestAnimationFrame(frame);
+  }
+
+  // ---- 控件 ----
+  document.querySelectorAll('.modes button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var m=b.dataset.m;
+      if (m==='reset'){
+        clearCanvas();
+        if (mode==='lorenz'){ lx=0.1; ly=0; lz=0; }
+        else { logRows=[]; logR=2.4; }
+        return;
+      }
+      mode=m;
+      document.querySelectorAll('.modes button').forEach(function(x){ x.classList.toggle('on', x===b); });
+      document.getElementById('modeName').textContent = m==='lorenz'?'洛伦兹吸引子':'逻辑斯蒂映射（分岔图）';
+      document.getElementById('param').textContent = m==='lorenz'?'σ10 ρ28 β2.67':'x→r·x(1−x)';
+      document.getElementById('p1lbl').textContent = m==='lorenz'?'轨迹长度':'铺展速度';
+      var p1=document.getElementById('p1');
+      if (m==='lorenz'){ p1.min=1; p1.max=100; p1.value=40; stepsPerFrame=40; }
+      else { p1.min=1; p1.max=100; p1.value=30; logBatch=30; }
+      document.getElementById('p1val').textContent=p1.value;
+      clearCanvas();
+      if (m==='lorenz'){ lx=0.1; ly=0; lz=0; }
+      else { logRows=[]; logR=2.4; }
+    });
+  });
+  var p1=document.getElementById('p1');
+  p1.addEventListener('input', function(){
+    document.getElementById('p1val').textContent=p1.value;
+    if (mode==='lorenz') stepsPerFrame=+p1.value;
+    else logBatch=+p1.value;
+  });
+
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

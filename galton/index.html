@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>高尔顿板 · 正态分布演示</title>
+<style>
+:root{
+  --bg:#0b1220; --panel:#111c30; --panel2:#162338; --line:#22314b;
+  --txt:#e6edf7; --dim:#a9bdd8; --accent:#4aa8ff; --warn:#ffb347; --ok:#3fb27f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.6;padding:16px}
+header{max-width:1200px;margin:0 auto 12px}
+h1{font-size:19px;margin:0 0 5px}
+.sub{color:var(--dim);font-size:12px}
+
+.wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 300px;gap:14px}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:10px;position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:auto;border-radius:8px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.panel h2{font-size:13px;margin:0 0 10px;color:var(--accent);font-weight:600}
+.ctl{margin-bottom:12px}
+.ctl label{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-bottom:4px}
+.ctl label b{color:var(--txt);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+button{flex:1;min-width:80px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  padding:9px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;font-family:inherit;
+  transition:all .15s}
+button:hover{border-color:var(--accent);background:#1c2b45}
+button.primary{background:var(--accent);color:#06121f;border-color:var(--accent);font-weight:600}
+button.primary:hover{background:#63b5ff}
+
+.stats{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.stat{display:flex;justify-content:space-between;font-size:12px;margin-top:5px}
+.stat span:first-child{color:var(--dim)}
+.stat span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
+
+.legend{display:flex;gap:12px;font-size:11.5px;color:var(--dim);margin-top:10px;flex-wrap:wrap}
+.lg{display:flex;align-items:center;gap:5px}
+.lg i{width:12px;height:3px;border-radius:2px;display:inline-block}
+
+.ver{max-width:1200px;margin:20px auto 8px;text-align:right;color:#7b90ad;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>高尔顿板 · 正态分布演示</h1>
+  <div class="sub">每颗珠子每层左右各 50% 概率 → 落点服从<strong>二项分布 B(n, ½)</strong>，n 足够大时逼近<strong>正态分布</strong></div>
+</header>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>参数</h2>
+
+    <div class="ctl">
+      <label>钉子层数 <b id="lvVal">12</b></label>
+      <input type="range" id="lv" min="6" max="20" value="12" step="1">
+    </div>
+
+    <div class="ctl">
+      <label>下落速度 <b id="spVal">1.0×</b></label>
+      <input type="range" id="sp" min="1" max="30" value="10" step="1">
+    </div>
+
+    <div class="ctl">
+      <label>同时下落珠子 <b id="bcVal">1</b></label>
+      <input type="range" id="bc" min="1" max="20" value="1" step="1">
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="drop">投放 1 颗</button>
+      <button id="drop100">连投 100</button>
+    </div>
+    <div class="btns">
+      <button id="drop1000">连投 1000</button>
+      <button id="reset">清空</button>
+    </div>
+
+    <div class="stats">
+      <h2 style="margin-bottom:8px">统计</h2>
+      <div class="stat"><span>已落下</span><span id="sTotal">0</span></div>
+      <div class="stat"><span>均值 μ</span><span id="sMean">—</span></div>
+      <div class="stat"><span>标准差 σ</span><span id="sStd">—</span></div>
+      <div class="stat"><span>理论 μ = n/2</span><span id="sMu">—</span></div>
+      <div class="stat"><span>理论 σ = √n/2</span><span id="sSigma">—</span></div>
+      <div class="legend">
+        <div class="lg"><i style="background:#4aa8ff"></i>实测分布</div>
+        <div class="lg"><i style="background:#ffb347"></i>理论正态曲线</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ver">v1.1.0-自动演示 20261028</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+let LEVELS = 12;        // 钉子层数
+let SPEED = 1.0;        // 速度倍率
+let BATCH = 1;          // 同时下落数
+
+let W = 0, H = 0, DPR = 1;
+let pegR = 4, ballR = 3.2;
+let topPad = 105, botPad = 90;
+let pegTopY = 0, pegGapY = 0, colW = 0, leftX = 0;
+
+let bins = [];          // 每格计数
+let balls = [];         // 运动中的珠子
+let pegs = [];          // 钉子坐标
+let totalDropped = 0;
+
+// ===== 尺寸 =====
+function layout(){
+  const wrap = cv.parentElement.getBoundingClientRect();
+  W = Math.max(320, wrap.width - 20);
+  const cols = LEVELS + 1;
+  // 高度按层数与列数比例
+  const wantH = Math.max(470, Math.min(660, W * 0.8));
+  H = wantH;
+
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = W * DPR;
+  cv.height = H * DPR;
+  cv.style.width = W + 'px';
+  cv.style.height = H + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  colW = (W - 40) / cols;
+  leftX = (W - colW * cols) / 2;
+  pegTopY = topPad;
+  pegGapY = (H - topPad - botPad) / (LEVELS + 1);
+  pegR = Math.max(2.4, Math.min(5, colW * 0.14));
+  ballR = Math.max(2, Math.min(4, colW * 0.13));
+
+  // 钉子
+  pegs = [];
+  for(let row = 0; row < LEVELS; row++){
+    const y = pegTopY + (row + 1) * pegGapY;
+    const n = row + 1;              // 第 1 排 1 个，第 2 排 2 个……
+    const startX = W/2 - (n - 1) * colW / 2;
+    for(let i = 0; i < n; i++){
+      pegs.push({x: startX + i * colW, y: y, row: row});
+    }
+  }
+  bins = new Array(LEVELS + 1).fill(0);
+  balls = [];
+  totalDropped = 0;
+  updateStats();
+}
+
+// ===== 珠子 =====
+function newBall(){
+  // 从顶部中间落下，先做一段随机预偏移，模拟漏斗
+  return {
+    x: W/2 + (Math.random() - 0.5) * colW * 0.5,
+    y: pegTopY - 20,
+    vy: 0,
+    vx: (Math.random() - 0.5) * 0.3,
+    row: -1,          // 已通过的钉子层
+    done: false,
+    bin: null
+  };
+}
+
+function step(dt){
+  const gravity = 1400 * SPEED;
+  for(let i = balls.length - 1; i >= 0; i--){
+    const b = balls[i];
+    if(b.done) continue;
+
+    // 重力
+    b.vy += gravity * dt;
+    b.y += b.vy * dt;
+    b.x += b.vx * dt;
+
+    // 碰钉子判定：找当前层
+    const rowFloat = (b.y - pegTopY) / pegGapY - 1;
+    const curRow = Math.floor(rowFloat + 0.5);
+    if(curRow >= 0 && curRow < LEVELS && curRow > b.row){
+      // 本层钉子
+      const row = curRow;
+      const y = pegTopY + (row + 1) * pegGapY;
+      const n = row + 1;
+      const startX = W/2 - (n - 1) * colW / 2;
+      // 最近钉子
+      let best = null, bestD = 1e9;
+      for(let k = 0; k < n; k++){
+        const px = startX + k * colW;
+        const d = Math.abs(b.x - px);
+        if(d < bestD){ bestD = d; best = px; }
+      }
+      // 命中钉子附近 → 决定左右（各 50%）
+      if(best !== null && bestD < colW * 0.5 && b.y >= y - 2){
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        b.x = best + dir * colW * 0.18;
+        b.vx = dir * colW * 1.6;
+        b.vy *= 0.55;
+        b.row = row;
+      }
+    }
+
+    // 到底部
+    const floorY = H - botPad + 10;
+    if(b.y >= floorY){
+      // 计算落点格
+      let bin = Math.round((b.x - leftX) / colW - 0.5);
+      bin = Math.max(0, Math.min(LEVELS, bin));
+      bins[bin]++;
+      totalDropped++;
+      b.done = true;
+      balls.splice(i, 1);
+    }
+
+    // 边界
+    if(b.x < 10){ b.x = 10; b.vx = Math.abs(b.vx); }
+    if(b.x > W - 10){ b.x = W - 10; b.vx = -Math.abs(b.vx); }
+  }
+  updateStats();
+}
+
+// ===== 绘制 =====
+function draw(){
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景渐变
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0e1729');
+  g.addColorStop(1, '#0a1020');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // 漏斗：上宽下窄 + 出口竖管
+  const fTopY = 8;
+  const fBotY = pegTopY + pegGapY - 10;      // 锥底直接落到第一排钉子位置
+  const fTopW = Math.min(85, colW * 2.8), fBotW = colW * 0.5;
+  ctx.strokeStyle = 'rgba(74,168,255,.55)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(W/2 - fTopW, fTopY);
+  ctx.lineTo(W/2 - fBotW, fBotY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W/2 + fTopW, fTopY);
+  ctx.lineTo(W/2 + fBotW, fBotY);
+  ctx.stroke();
+  // 出口横向收口（锥形底部封口）
+  ctx.beginPath();
+  ctx.moveTo(W/2 - fBotW, fBotY);
+  ctx.lineTo(W/2 + fBotW, fBotY);
+  ctx.strokeStyle = 'rgba(74,168,255,.4)';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  // 顶部开口横线
+  ctx.beginPath();
+  ctx.moveTo(W/2 - fTopW, fTopY);
+  ctx.lineTo(W/2 + fTopW, fTopY);
+  ctx.strokeStyle = 'rgba(74,168,255,.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 钉子
+  for(const p of pegs){
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, pegR, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(140,170,210,.55)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,205,235,.5)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // 底部格子与柱状
+  const maxBin = Math.max(1, ...bins);
+  const baseY = H - 26;
+  const maxBarH = botPad - 34;
+
+  for(let i = 0; i <= LEVELS; i++){
+    const x = leftX + i * colW;
+    // 格子线
+    ctx.strokeStyle = 'rgba(60,85,125,.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, H - botPad + 6);
+    ctx.lineTo(x, baseY);
+    ctx.stroke();
+
+    if(bins[i] > 0){
+      const h = (bins[i] / maxBin) * maxBarH;
+      const grad = ctx.createLinearGradient(0, baseY - h, 0, baseY);
+      grad.addColorStop(0, 'rgba(74,168,255,.95)');
+      grad.addColorStop(1, 'rgba(74,168,255,.35)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x + 1.5, baseY - h, colW - 3, h);
+    }
+  }
+  // 右边最后一根线
+  ctx.beginPath();
+  ctx.moveTo(leftX + (LEVELS+1) * colW, H - botPad + 6);
+  ctx.lineTo(leftX + (LEVELS+1) * colW, baseY);
+  ctx.stroke();
+
+  // 理论正态曲线（橙色）
+  if(totalDropped >= 20){
+    ctx.beginPath();
+    ctx.strokeStyle = '#ffb347';
+    ctx.lineWidth = 2;
+    const n = LEVELS;
+    const mu = n / 2;
+    const sigma = Math.sqrt(n) / 2;
+    const scale = maxBin / (1 / (sigma * Math.sqrt(2*Math.PI)));
+    // 采样
+    for(let i = 0; i <= LEVELS; i++){
+      const expCount = totalDropped * normalPdf(i, mu, sigma);
+      const px = leftX + (i + 0.5) * colW;
+      const py = baseY - (expCount / maxBin) * maxBarH;
+      if(i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  // 珠子
+  for(const b of balls){
+    const grad = ctx.createRadialGradient(b.x - ballR*0.3, b.y - ballR*0.3, ballR*0.2, b.x, b.y, ballR);
+    grad.addColorStop(0, '#cfe7ff');
+    grad.addColorStop(1, '#4aa8ff');
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, ballR, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  // 底部基线
+  ctx.strokeStyle = 'rgba(90,120,160,.6)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(leftX, baseY);
+  ctx.lineTo(leftX + (LEVELS+1) * colW, baseY);
+  ctx.stroke();
+
+  // 计数文字
+  ctx.fillStyle = '#8fa3bf';
+  ctx.font = '10px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  for(let i = 0; i <= LEVELS; i++){
+    if(bins[i] > 0){
+      ctx.fillText(bins[i], leftX + (i + 0.5) * colW, baseY + 14);
+    }
+  }
+}
+
+function normalPdf(k, mu, sigma){
+  return Math.exp(-((k - mu) ** 2) / (2 * sigma * sigma)) / (sigma * Math.sqrt(2 * Math.PI));
+}
+
+// ===== 统计 =====
+function updateStats(){
+  document.getElementById('sTotal').textContent = totalDropped;
+  const n = LEVELS;
+  document.getElementById('sMu').textContent = (n/2).toFixed(2);
+  document.getElementById('sSigma').textContent = (Math.sqrt(n)/2).toFixed(3);
+
+  if(totalDropped > 0){
+    let sum = 0;
+    for(let i = 0; i <= LEVELS; i++) sum += i * bins[i];
+    const mean = sum / totalDropped;
+    let varSum = 0;
+    for(let i = 0; i <= LEVELS; i++) varSum += bins[i] * (i - mean) ** 2;
+    const std = Math.sqrt(varSum / totalDropped);
+    document.getElementById('sMean').textContent = mean.toFixed(3);
+    document.getElementById('sStd').textContent = std.toFixed(3);
+  } else {
+    document.getElementById('sMean').textContent = '—';
+    document.getElementById('sStd').textContent = '—';
+  }
+}
+
+// ===== 循环 =====
+let last = performance.now();
+function loop(now){
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ===== 交互 =====
+function dropOne(){
+  if(balls.length > 400) return;   // 防卡
+  balls.push(newBall());
+}
+function dropMany(n){
+  let i = 0;
+  const timer = setInterval(() => {
+    dropOne();
+    if(++i >= n) clearInterval(timer);
+  }, Math.max(4, 60 / Math.max(1, BATCH)));
+}
+
+document.getElementById('drop').onclick = () => { for(let i=0;i<BATCH;i++) dropOne(); };
+document.getElementById('drop100').onclick = () => dropMany(100);
+document.getElementById('drop1000').onclick = () => dropMany(1000);
+document.getElementById('reset').onclick = () => { layout(); };
+
+document.getElementById('lv').oninput = e => {
+  LEVELS = +e.target.value;
+  document.getElementById('lvVal').textContent = LEVELS;
+  layout();
+};
+document.getElementById('sp').oninput = e => {
+  SPEED = +e.target.value / 10;
+  document.getElementById('spVal').textContent = SPEED.toFixed(1) + '×';
+};
+document.getElementById('bc').oninput = e => {
+  BATCH = +e.target.value;
+  document.getElementById('bcVal').textContent = BATCH;
+};
+
+window.addEventListener('resize', () => { layout(); });
+
+// 启动
+layout();
+document.getElementById('spVal').textContent = '1.0×';
+requestAnimationFrame(loop);
+
+// 打开后自动投 30 颗做演示（1 秒后开始，不影响手动操作）
+setTimeout(()=>{ dropMany(30); }, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电线电缆选型工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;color:#333;font-size:14px;line-height:1.6;padding:12px 8px 60px}
+.container{max-width:640px;margin:0 auto;background:#fff;border-radius:12px;padding:20px 16px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:20px;text-align:center;margin-bottom:4px}
+.subtitle{text-align:center;color:#666;font-size:13px;margin-bottom:16px}
+.section{margin-bottom:16px;border:1px solid #e8e8e8;border-radius:8px;padding:12px;background:#fafafa}
+.section-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#1a73e8;display:flex;align-items:center;gap:6px}
+.form-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.form-group{flex:1;min-width:140px}
+.form-group label{display:block;font-size:13px;color:#555;margin-bottom:3px}
+.form-group input,.form-group select{width:100%;padding:7px 10px;border:1px solid #d0d0d0;border-radius:6px;font-size:14px;background:#fff;color:#333}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.15)}
+.form-group small{color:#999;font-size:12px}
+.btn{display:block;width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px}
+.btn:hover{background:#1557b0}
+.btn:active{transform:scale(.98)}
+#results{margin-top:16px;display:none}
+.result-card{background:#f8f9ff;border:1px solid #d4daf0;border-radius:8px;padding:12px;margin-bottom:10px}
+.result-card h3{font-size:14px;color:#1a73e8;margin-bottom:6px}
+.result-item{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;border-bottom:1px dashed #e0e0e0}
+.result-item:last-child{border-bottom:none}
+.result-item .label{color:#555}
+.result-item .value{font-weight:700;color:#333}
+.result-item .value.pass{color:#0d8a0d}
+.result-item .value.fail{color:#d32f2f}
+.recommend{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:14px;text-align:center;margin-bottom:10px}
+.recommend .big{font-size:28px;font-weight:700;color:#2e7d32}
+.recommend .desc{font-size:13px;color:#555;margin-top:4px}
+details{margin-top:12px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden}
+summary{padding:10px 12px;background:#f5f5f5;cursor:pointer;font-size:14px;font-weight:700;color:#555}
+details[open] summary{border-bottom:1px solid #e0e0e0}
+.ref-table{width:100%;border-collapse:collapse;font-size:12px}
+.ref-table th,.ref-table td{padding:4px 6px;border:1px solid #ddd;text-align:center}
+.ref-table th{background:#e8eaf6;font-weight:700}
+.ref-table td{background:#fff}
+.sources{margin-top:16px;padding:12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;font-size:13px;color:#555}
+.sources h3{font-size:14px;color:#f57f17;margin-bottom:6px}
+.sources ul{padding-left:18px}
+.sources li{margin-bottom:3px}
+.note{font-size:12px;color:#888;margin-top:6px;padding:6px 8px;background:#fff3e0;border-radius:4px}
+.warn{color:#d32f2f;font-weight:700}
+.version{position:fixed;bottom:8px;right:10px;font-size:11px;color:#aaa;z-index:99}
+@media(max-width:480px){
+.form-group{min-width:100%}
+.container{padding:14px 10px}
+h1{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🔌 电线电缆选型工具</h1>
+<p class="subtitle">按载流量、电压损失、短路热稳定三条件选线</p>
+
+<div class="section">
+<div class="section-title">⚡ 基本参数</div>
+<div class="form-row">
+<div class="form-group">
+<label>系统类型</label>
+<select id="phaseType">
+<option value="3">三相三线/四线 (380V)</option>
+<option value="1">单相两线 (220V)</option>
+</select>
+</div>
+<div class="form-group">
+<label>线电压 U (V)</label>
+<input type="number" id="voltage" value="380" min="1" step="1">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>计算电流 I (A)</label>
+<input type="number" id="current" value="100" min="0" step="0.1">
+</div>
+<div class="form-group">
+<label>线路长度 L (m)</label>
+<input type="number" id="length" value="50" min="0" step="0.1">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>功率因数 cosφ</label>
+<input type="number" id="cosphi" value="0.85" min="0" max="1" step="0.01">
+</div>
+<div class="form-group">
+<label>允许电压损失 ΔU% (%)</label>
+<input type="number" id="deltaU" value="5" min="0" max="100" step="0.1">
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">🧵 导体参数</div>
+<div class="form-row">
+<div class="form-group">
+<label>导体材料</label>
+<select id="material">
+<option value="cu">铜 (Cu)</option>
+<option value="al">铝 (Al)</option>
+</select>
+</div>
+<div class="form-group">
+<label>绝缘类型</label>
+<select id="insulation">
+<option value="pvc">PVC (70°C)</option>
+<option value="xlpe">XLPE (90°C)</option>
+</select>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>电抗 X₀ (Ω/km)</label>
+<input type="number" id="reactance" value="0.08" min="0" step="0.01">
+<small>低压电缆典型值 0.07~0.10</small>
+</div>
+<div class="form-group">
+<label>环境温度 (°C)</label>
+<input type="number" id="ambientT" value="30" min="-20" max="80" step="1">
+<small>基准 30°C</small>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">💥 短路参数</div>
+<div class="form-row">
+<div class="form-group">
+<label>短路电流 I_k (kA)</label>
+<input type="number" id="ik" value="10" min="0" step="0.1">
+</div>
+<div class="form-group">
+<label>保护动作时间 t (s)</label>
+<input type="number" id="tk" value="5" min="0" step="0.1">
+<small>含断路器全分断时间</small>
+</div>
+</div>
+</div>
+
+<button class="btn" onclick="calculate()">🔍 计算选型</button>
+
+<div id="results">
+<div class="recommend" id="recommendBox">
+<div class="desc">📐 推荐电缆截面积</div>
+<div class="big" id="recSection">--</div>
+<div class="desc" id="recDesc"></div>
+</div>
+
+<div class="result-card">
+<h3>📊 三条件计算结果</h3>
+<div class="result-item">
+<span class="label">① 电压损失条件 → S₁</span>
+<span class="value" id="s1val">--</span>
+</div>
+<div class="result-item">
+<span class="label">② 载流量条件 → S₂</span>
+<span class="value" id="s2val">--</span>
+</div>
+<div class="result-item">
+<span class="label">③ 短路热稳定条件 → S₃</span>
+<span class="value" id="s3val">--</span>
+</div>
+<div class="result-item">
+<span class="label">控制条件</span>
+<span class="value" id="ctrlCond">--</span>
+</div>
+</div>
+
+<div class="result-card">
+<h3>✅ 校验结果（选用截面下）</h3>
+<div class="result-item">
+<span class="label">实际电压损失 ΔU%</span>
+<span class="value" id="chkU">--</span>
+</div>
+<div class="result-item">
+<span class="label">载流量 I_z (A)</span>
+<span class="value" id="chkIz">--</span>
+</div>
+<div class="result-item">
+<span class="label">短路热稳定校验 S≥S₃</span>
+<span class="value" id="chkSc">--</span>
+</div>
+</div>
+
+<div class="result-card">
+<h3>📝 计算过程</h3>
+<div id="calcProcess" style="font-size:13px;color:#555;white-space:pre-wrap;"></div>
+</div>
+</div>
+
+<details>
+<summary>📋 载流量参考表（展开查看）</summary>
+<div style="padding:10px;overflow-x:auto">
+<p style="font-size:12px;color:#888;margin-bottom:8px">
+⚠️ 以下为参考值，适用条件：穿管暗敷于墙面（敷设方式B1），3根带负荷导体，环境温度30°C。<br>
+<strong>具体工程设计请务必查阅 GB/T 16895.15 原文表格获取准确数据。</strong>
+</p>
+<p style="font-size:13px;font-weight:700;margin-bottom:4px">铜导体 PVC绝缘 (70°C)</p>
+<table class="ref-table" id="tableCuPVC"></table>
+<p style="font-size:13px;font-weight:700;margin:10px 0 4px">铝导体 PVC绝缘 (70°C)</p>
+<table class="ref-table" id="tableAlPVC"></table>
+<p style="font-size:13px;font-weight:700;margin:10px 0 4px">铜导体 XLPE绝缘 (90°C)</p>
+<table class="ref-table" id="tableCuXLPE"></table>
+<p style="font-size:13px;font-weight:700;margin:10px 0 4px">铝导体 XLPE绝缘 (90°C)</p>
+<table class="ref-table" id="tableAlXLPE"></table>
+</div>
+</details>
+
+<div class="sources">
+<h3>📚 数据来源与依据</h3>
+<ul>
+<li><strong>GB 50054-2011</strong>《低压配电设计规范》—— 短路热稳定校验公式 S≥I_k√t/k 及 k 值取值</li>
+<li><strong>GB/T 16895.15</strong>（IEC 60364-5-52）《低压电气装置 第5-52部分：电气设备的选择和安装 布线系统》—— 载流量表</li>
+<li><strong>GB/T 16895.6</strong>（IEC 60364-5-54）—— 接地导体及热稳定校验</li>
+<li>电阻率：铜 ρ=0.0175 Ω·mm²/m，铝 ρ=0.0283 Ω·mm²/m（20°C基准值，工程计算常用值）</li>
+<li>电压损失公式：ΔU%=√3·I·L·(R₀cosφ+X₀sinφ)/U×100（三相），ΔU%=2·I·L·(R₀cosφ+X₀sinφ)/U×100（单相）</li>
+<li>短路热稳定系数 k：PVC铜=115，PVC铝=76，XLPE铜=143，XLPE铝=94（依据 GB 50054）</li>
+</ul>
+<p class="note">⚠️ 载流量参考表数据为典型条件下的参考值，不同敷设方式、环境温度、并列根数等需乘以相应校正系数，<strong>具体表值及校正系数请查 GB/T 16895.15 原文</strong>。本工具计算结果仅供初步选型参考，正式工程设计应由注册电气工程师复核确认。</p>
+</div>
+</div>
+
+<div class="version">v1.0.0-电线电缆选型 20261021</div>
+
+<script>
+// 标准截面序列 (mm²)
+var stdSections = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240, 300];
+
+// 载流量参考表 (A) - 敷设方式B1, 3根带负荷导体, 环境温度30°C
+// 数据来源: GB/T 16895.15 (IEC 60364-5-52) 参考值
+var ampacityTable = {
+  cu_pvc: {1.5:15.5, 2.5:21, 4:28, 6:36, 10:50, 16:66, 25:84, 35:104, 50:125, 70:160, 95:194, 120:225, 150:260, 185:296, 240:346, 300:400},
+  al_pvc: {2.5:16.5, 4:22, 6:28, 10:39, 16:52, 25:68, 35:83, 50:99, 70:126, 95:152, 120:176, 150:203, 185:231, 240:271, 300:313},
+  cu_xlpe: {1.5:19.5, 2.5:27, 4:36, 6:46, 10:63, 16:85, 25:112, 35:138, 50:168, 70:213, 95:258, 120:299, 150:344, 185:392, 240:461, 300:530},
+  al_xlpe: {2.5:21, 4:28, 6:36, 10:50, 16:67, 25:89, 35:108, 50:134, 70:165, 95:201, 120:232, 150:268, 185:303, 240:354, 300:406}
+};
+
+// 短路热稳定系数 k (GB 50054)
+var kFactor = {
+  cu_pvc: 115, al_pvc: 76, cu_xlpe: 143, al_xlpe: 94
+};
+
+// 电阻率 (Ω·mm²/m)
+var rho = {cu: 0.0175, al: 0.0283};
+
+// 绝缘最高允许温度 (°C)
+var maxTemp = {pvc: 70, xlpe: 90};
+
+// 初始化参考表
+function initTables() {
+  var tables = [
+    {id: 'tableCuPVC', data: ampacityTable.cu_pvc},
+    {id: 'tableAlPVC', data: ampacityTable.al_pvc},
+    {id: 'tableCuXLPE', data: ampacityTable.cu_xlpe},
+    {id: 'tableAlXLPE', data: ampacityTable.al_xlpe}
+  ];
+  tables.forEach(function(t) {
+    var el = document.getElementById(t.id);
+    var html = '<tr><th>截面 (mm²)</th>';
+    var keys = Object.keys(t.data).map(Number).sort(function(a,b){return a-b;});
+    keys.forEach(function(s) { html += '<th>' + s + '</th>'; });
+    html += '</tr><tr><td><strong>I_z (A)</strong></td>';
+    keys.forEach(function(s) { html += '<td>' + t.data[s] + '</td>'; });
+    html += '</tr>';
+    el.innerHTML = html;
+  });
+}
+
+// 系统类型切换时自动更新默认电压
+document.getElementById('phaseType').addEventListener('change', function() {
+  var v = document.getElementById('voltage');
+  if (this.value === '3' && parseFloat(v.value) < 300) v.value = 380;
+  if (this.value === '1' && parseFloat(v.value) >= 300) v.value = 220;
+});
+
+// 向上取到标准截面
+function ceilToStd(s) {
+  for (var i = 0; i < stdSections.length; i++) {
+    if (stdSections[i] >= s - 0.001) return stdSections[i];
+  }
+  return stdSections[stdSections.length - 1];
+}
+
+// 从载流量表查找满足电流的最小截面
+function findSectionByAmpacity(I_required, tableKey, tempCorrection) {
+  var table = ampacityTable[tableKey];
+  var keys = Object.keys(table).map(Number).sort(function(a,b){return a-b;});
+  for (var i = 0; i < keys.length; i++) {
+    var iz = table[keys[i]] * tempCorrection;
+    if (iz >= I_required) return {section: keys[i], Iz: iz};
+  }
+  return {section: null, Iz: null};
+}
+
+// 温度校正系数
+function tempCorrectionFactor(mat, ins, tAmb) {
+  var tMax = maxTemp[ins];
+  var tRef = 30;
+  if (tAmb === tRef) return 1.0;
+  // k_t = sqrt((θ_max - θ_a) / (θ_max - θ_ref))
+  var factor = Math.sqrt((tMax - tAmb) / (tMax - tRef));
+  return factor;
+}
+
+function calculate() {
+  // 读取输入
+  var phaseType = parseInt(document.getElementById('phaseType').value);
+  var U = parseFloat(document.getElementById('voltage').value);
+  var I = parseFloat(document.getElementById('current').value);
+  var L = parseFloat(document.getElementById('length').value);
+  var cosphi = parseFloat(document.getElementById('cosphi').value);
+  var deltaUAllow = parseFloat(document.getElementById('deltaU').value);
+  var mat = document.getElementById('material').value;
+  var ins = document.getElementById('insulation').value;
+  var X0_km = parseFloat(document.getElementById('reactance').value);
+  var tAmb = parseFloat(document.getElementById('ambientT').value);
+  var Ik = parseFloat(document.getElementById('ik').value) * 1000; // 转为A
+  var t = parseFloat(document.getElementById('tk').value);
+
+  // 校验输入
+  if (isNaN(I) || isNaN(L) || isNaN(U) || isNaN(cosphi) || isNaN(deltaUAllow) || isNaN(X0_km) || isNaN(Ik) || isNaN(t)) {
+    alert('请填写完整的参数！');
+    return;
+  }
+  if (I <= 0) { alert('计算电流必须大于0！'); return; }
+  if (cosphi <= 0 || cosphi > 1) { alert('功率因数应在 0~1 之间！'); return; }
+
+  var sinphi = Math.sqrt(1 - cosphi * cosphi);
+  var rhoVal = rho[mat]; // Ω·mm²/m
+  var X0 = X0_km / 1000; // 转为 Ω/m
+  var tableKey = mat + '_' + ins;
+  var kVal = kFactor[tableKey];
+
+  // 温度校正
+  var kt = tempCorrectionFactor(mat, ins, tAmb);
+
+  var processText = '';
+  processText += '【已知条件】\n';
+  processText += '系统: ' + (phaseType === 3 ? '三相' : '单相') + ', U=' + U + 'V\n';
+  processText += 'I=' + I + 'A, L=' + L + 'm, cosφ=' + cosphi + ', sinφ=' + sinphi.toFixed(4) + '\n';
+  processText += '允许ΔU%=' + deltaUAllow + '%\n';
+  processText += '导体: ' + (mat === 'cu' ? '铜' : '铝') + ', ρ=' + rhoVal + ' Ω·mm²/m\n';
+  processText += '绝缘: ' + (ins === 'pvc' ? 'PVC' : 'XLPE') + ', X₀=' + X0_km + ' Ω/km\n';
+  processText += '环境温度=' + tAmb + '°C, 温度校正系数k_t=' + kt.toFixed(4) + '\n';
+  processText += 'I_k=' + (Ik/1000).toFixed(2) + 'kA, t=' + t + 's, k=' + kVal + '\n\n';
+
+  // ===== 条件1: 电压损失 =====
+  // 三相: ΔU% = √3·I·L·(ρ/S·cosφ + X₀·sinφ) / U × 100
+  // 单相: ΔU% = 2·I·L·(ρ/S·cosφ + X₀·sinφ) / U × 100
+  var coeff = (phaseType === 3) ? Math.sqrt(3) : 2;
+  var deltaUAllowV = deltaUAllow * U / 100; // 允许电压损失(V)
+
+  // ΔUAllowV = coeff × I × L × (ρ×cosφ/S + X₀×sinφ)
+  // S = coeff × I × L × ρ × cosφ / (deltaUAllowV - coeff × I × L × X₀ × sinφ)
+  var denominator = deltaUAllowV - coeff * I * L * X0 * sinphi;
+  var S1 = 0;
+  if (denominator <= 0) {
+    S1 = Infinity;
+    processText += '【条件① 电压损失】\n';
+    processText += '⚠️ 电抗压降已超过允许值，仅靠增大截面无法满足，需缩短线路或增大允许压降。\n\n';
+  } else {
+    S1 = coeff * I * L * rhoVal * cosphi / denominator;
+    processText += '【条件① 电压损失】\n';
+    processText += '公式: ΔU%=' + (phaseType===3?'√3':'2') + '·I·L·(R₀cosφ+X₀sinφ)/U×100\n';
+    processText += '其中 R₀=ρ/S=' + rhoVal + '/S (Ω/m)\n';
+    processText += '允许ΔU=' + deltaUAllowV.toFixed(2) + 'V\n';
+    processText += '电抗压降分量=' + (coeff * I * L * X0 * sinphi).toFixed(4) + 'V\n';
+    processText += 'S₁=' + (phaseType===3?'√3':'2') + '×' + I + '×' + L + '×' + rhoVal + '×' + cosphi + '/(' + deltaUAllowV.toFixed(2) + '-' + (coeff*I*L*X0*sinphi).toFixed(4) + ')\n';
+    processText += 'S₁=' + S1.toFixed(2) + ' mm²\n\n';
+  }
+
+  // ===== 条件2: 载流量 =====
+  var result2 = findSectionByAmpacity(I, tableKey, kt);
+  var S2 = result2.section;
+  var IzActual = result2.Iz;
+  processText += '【条件② 载流量】\n';
+  processText += '查表 ' + (mat==='cu'?'铜':'铝') + ' ' + (ins==='pvc'?'PVC':'XLPE') + ' (B1敷设,3芯,30°C)\n';
+  processText += '温度校正后 I_z\'=I_z×k_t=I_z×' + kt.toFixed(4) + '\n';
+  if (S2 === null) {
+    processText += '⚠️ 超出参考表范围，需查 GB/T 16895.15 原文或采用多根并联。\n\n';
+    S2 = Infinity;
+  } else {
+    processText += '需 I_z\'≥' + I + 'A → 选 S₂=' + S2 + ' mm² (I_z\'=' + IzActual.toFixed(1) + 'A)\n\n';
+  }
+
+  // ===== 条件3: 短路热稳定 =====
+  // S₃ = I_k × √t / k
+  var S3 = Ik * Math.sqrt(t) / kVal;
+  processText += '【条件③ 短路热稳定】\n';
+  processText += '公式: S≥I_k×√t/k (GB 50054)\n';
+  processText += 'S₃=' + (Ik/1000).toFixed(2) + '×1000×√' + t + '/' + kVal + '\n';
+  processText += 'S₃=' + Ik.toFixed(0) + '×' + Math.sqrt(t).toFixed(4) + '/' + kVal + '\n';
+  processText += 'S₃=' + S3.toFixed(2) + ' mm²\n\n';
+
+  // ===== 综合选型 =====
+  var Smax = Math.max(isFinite(S1) ? S1 : 0, isFinite(S2) ? S2 : 0, S3);
+  var Sstd = ceilToStd(Smax);
+  var ctrlText = '';
+  if (Smax === S1 && isFinite(S1)) ctrlText = '①电压损失';
+  else if (Smax === S2 && isFinite(S2)) ctrlText = '②载流量';
+  else if (Smax === S3) ctrlText = '③短路热稳定';
+  else if (!isFinite(S1) && !isFinite(S2)) ctrlText = '⚠️ 无法满足';
+  else ctrlText = '—';
+
+  processText += '【综合选型】\n';
+  processText += 'S₁=' + (isFinite(S1)?S1.toFixed(2):'∞') + ', S₂=' + (isFinite(S2)?S2:'∞(超出表范围)') + ', S₃=' + S3.toFixed(2) + '\n';
+  processText += 'max=' + Smax.toFixed(2) + ' mm²\n';
+  processText += '选标准截面: ' + Sstd + ' mm²\n';
+  processText += '控制条件: ' + ctrlText + '\n';
+
+  // ===== 校验 =====
+  // 实际电压损失
+  var R0_actual = rhoVal / Sstd; // Ω/m
+  var deltaU_actual = coeff * I * L * (R0_actual * cosphi + X0 * sinphi) / U * 100;
+
+  // 实际载流量
+  var tableRef = ampacityTable[tableKey];
+  var Iz_base = tableRef[Sstd];
+  var Iz_final = (Iz_base !== undefined) ? Iz_base * kt : null;
+
+  // 短路校验
+  var scPass = Sstd >= S3;
+
+  // 显示结果
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('recSection').textContent = Sstd + ' mm²';
+  document.getElementById('recDesc').textContent = (mat==='cu'?'铜芯':'铝芯') + (ins==='pvc'?' PVC':' XLPE') + '电缆，控制条件：' + ctrlText;
+
+  document.getElementById('s1val').textContent = isFinite(S1) ? S1.toFixed(2) + ' mm²' : '不满足(∞)';
+  document.getElementById('s1val').className = 'value' + (isFinite(S1) && Sstd >= S1 ? ' pass' : ' fail');
+
+  document.getElementById('s2val').textContent = isFinite(S2) ? S2 + ' mm²' : '超出表范围';
+  document.getElementById('s2val').className = 'value' + (isFinite(S2) && Sstd >= S2 ? ' pass' : (isFinite(S2) ? ' fail' : ''));
+
+  document.getElementById('s3val').textContent = S3.toFixed(2) + ' mm²';
+  document.getElementById('s3val').className = 'value' + (scPass ? ' pass' : ' fail');
+
+  document.getElementById('ctrlCond').textContent = ctrlText;
+
+  // 校验结果
+  var chkU = document.getElementById('chkU');
+  chkU.textContent = deltaU_actual.toFixed(2) + '%' + (deltaU_actual <= deltaUAllow ? ' ✅' : ' ❌');
+  chkU.className = 'value ' + (deltaU_actual <= deltaUAllow ? 'pass' : 'fail');
+
+  var chkIz = document.getElementById('chkIz');
+  if (Iz_final !== null) {
+    chkIz.textContent = Iz_final.toFixed(1) + 'A' + (Iz_final >= I ? ' ✅' : ' ❌');
+    chkIz.className = 'value ' + (Iz_final >= I ? 'pass' : 'fail');
+  } else {
+    chkIz.textContent = '超出参考表范围，请查标准';
+    chkIz.className = 'value fail';
+  }
+
+  var chkSc = document.getElementById('chkSc');
+  chkSc.textContent = Sstd + '≥' + S3.toFixed(2) + (scPass ? ' ✅' : ' ❌');
+  chkSc.className = 'value ' + (scPass ? 'pass' : 'fail');
+
+  document.getElementById('calcProcess').textContent = processText;
+
+  // 滚动到结果
+  document.getElementById('results').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+// 初始化
+initTables();
+</script>
+</body>
+</html>

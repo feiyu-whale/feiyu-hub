@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>🍸 调酒工具 · 配方 / 原料反查 / 百科</title>
+<style>
+  :root{
+    --bg:#0d0a08; --card:#1a1410; --line:#33261d;
+    --txt:#ede4d8; --dim:#a08b78; --acc:#e8b04b;
+    --amber:#d99b3c; --ok:#7ec98f; --no:#ef6f6f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;padding:14px 12px 46px;
+    background:radial-gradient(900px 480px at 50% -8%,#2b1d12,transparent 62%),var(--bg);
+    color:var(--txt);
+    font:14px/1.68 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 3px;letter-spacing:1px}
+  .sub{font-size:12px;color:var(--dim);margin:0 0 12px}
+
+  .tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--line)}
+  .tab{
+    flex:1;text-align:center;padding:10px 4px;font-size:13.5px;cursor:pointer;
+    color:var(--dim);border-bottom:2px solid transparent;transition:.15s;user-select:none;
+  }
+  .tab:hover{color:var(--txt)}
+  .tab.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+
+  .bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{
+    padding:5px 13px;border-radius:20px;font-size:12.5px;cursor:pointer;
+    background:#1e1712;border:1px solid var(--line);color:var(--dim);transition:.15s;user-select:none;
+  }
+  .chip:hover{border-color:var(--acc);color:var(--txt)}
+  .chip.on{background:rgba(232,176,75,.16);border-color:var(--acc);color:var(--acc);font-weight:600}
+  .chip.pick{background:rgba(232,176,75,.22);border-color:var(--acc);color:#f5cf8a}
+
+  .card{
+    background:linear-gradient(180deg,rgba(30,23,17,.97),rgba(20,15,11,.97));
+    border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-bottom:11px;
+  }
+  .hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+  .nm{font-size:16.5px;font-weight:700}
+  .en{font-size:11.5px;color:var(--dim);font-family:ui-monospace,Consolas,monospace}
+  .base{font-size:10.5px;padding:2px 8px;border-radius:20px;background:rgba(232,176,75,.12);color:var(--acc)}
+  .meta{font-size:11.5px;color:var(--dim);margin:4px 0 9px}
+
+  .ing{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .ig{
+    font-size:12px;padding:3px 10px;border-radius:7px;
+    background:#241b14;border:1px solid #3a2b20;color:#d6c3ae;
+  }
+  .ig b{color:var(--acc);font-weight:600}
+
+  .steps{margin:0;padding-left:18px;font-size:12.5px;line-height:1.85;color:#c9b8a6}
+  .steps li::marker{color:var(--acc)}
+  .note{
+    margin-top:10px;padding:9px 12px;border-radius:9px;font-size:12.5px;line-height:1.72;
+    background:rgba(232,176,75,.07);border-left:3px solid var(--amber);color:#dfc79b;
+  }
+  .note b{color:var(--acc)}
+
+  .toggle{font-size:12px;color:var(--acc);cursor:pointer;margin-top:9px;display:inline-block}
+
+  .empty{text-align:center;color:var(--dim);padding:36px 0;font-size:13.5px}
+  .cnt{font-size:11.5px;color:var(--dim);margin-bottom:9px}
+
+  .hintbox{
+    margin-bottom:12px;padding:9px 12px;border-radius:9px;font-size:12px;line-height:1.7;
+    background:rgba(232,176,75,.06);border:1px solid rgba(232,176,75,.2);color:#cbb08a;
+  }
+  .legend{display:flex;gap:14px;font-size:11.5px;margin-bottom:10px;color:var(--dim)}
+  .legend i{font-style:normal;font-weight:700}
+
+  /* 百科 */
+  .sec{margin-bottom:18px}
+  .sec h2{font-size:15px;margin:0 0 9px;color:var(--acc);letter-spacing:.5px}
+  .item{
+    background:rgba(26,20,16,.9);border:1px solid var(--line);border-radius:11px;
+    padding:11px 13px;margin-bottom:8px;
+  }
+  .item .t{font-size:13.8px;font-weight:600;margin-bottom:3px}
+  .item .d{font-size:12.5px;color:#b7a695;line-height:1.72}
+  .kv{display:flex;gap:8px;font-size:12.5px;margin-bottom:4px}
+  .kv .k{flex:0 0 54px;color:var(--dim);font-size:12px}
+  .kv .v{flex:1;min-width:0;color:#c9b8a6}
+
+  .notice{
+    margin-top:18px;padding:10px 13px;border-radius:10px;font-size:12px;line-height:1.75;
+    background:rgba(160,139,120,.07);border:1px solid var(--line);color:var(--dim);
+  }
+  #ver{position:fixed;right:10px;bottom:8px;font-size:10px;color:#4a382c}
+  .back{display:inline-block;margin-bottom:10px;color:var(--dim);font-size:12.5px;text-decoration:none}
+  .back:hover{color:var(--acc)}
+
+  /* 度数计算 */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .grid2 label{display:block;font-size:11.5px;color:var(--dim);margin-bottom:4px}
+  .grid2 input{
+    width:100%;background:#140f0b;border:1px solid var(--line);color:var(--txt);
+    padding:8px 10px;border-radius:8px;font-size:14px;outline:none;
+  }
+  .grid2 input:focus{border-color:var(--acc)}
+  .btnp{
+    background:linear-gradient(180deg,#e8b04b,#c98f2e);color:#221708;border:0;
+    padding:9px 22px;border-radius:9px;font-weight:700;font-size:13.5px;cursor:pointer;
+  }
+  .btnp:active{transform:translateY(1px)}
+  .err{
+    background:rgba(239,111,111,.1);border:1px solid rgba(239,111,111,.35);
+    color:#f0a3a3;padding:9px 12px;border-radius:9px;margin-top:11px;font-size:12.5px;
+  }
+  .kvbig{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+  .kvbig .k{font-size:12px;color:var(--dim);flex:0 0 auto}
+  .kvbig .v{font-size:21px;font-weight:700;color:var(--acc);font-family:ui-monospace,Consolas,monospace}
+  .kvbig .u{font-size:11.5px;color:var(--dim)}
+  .barwrap{height:9px;border-radius:6px;background:#241b14;overflow:hidden;margin:9px 0 4px}
+  .barwrap i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#7ec98f,#e8b04b)}
+  .sub2{font-size:11.5px;color:var(--dim);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back" href="../pro-tools/">← 回专业工具</a>
+  <h1>🍸 调酒工具</h1>
+  <p class="sub">配方查询 · 原料反查 · 调酒百科</p>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="recipe">配方查询</div>
+    <div class="tab" data-tab="reverse">原料反查</div>
+    <div class="tab" data-tab="abv">度数计算</div>
+    <div class="tab" data-tab="encyclopedia">调酒百科</div>
+  </div>
+
+  <!-- A 配方查询 -->
+  <div id="pane-recipe">
+    <div class="bar" id="baseBar"></div>
+    <div class="cnt" id="recipeCnt"></div>
+    <div id="recipeList"></div>
+  </div>
+
+  <!-- B 原料反查 -->
+  <div id="pane-reverse" style="display:none">
+    <div class="hintbox">勾选你手头有的材料，下面会告诉你：<b>能直接调</b>的、<b>只差一两样</b>的，以及缺什么。</div>
+    <div class="cnt" id="ingCnt"></div>
+    <div class="bar" id="ingBar"></div>
+    <div class="legend">
+      <span><i style="color:var(--ok)">✓</i> 能直接调</span>
+      <span><i style="color:var(--amber)">!</i> 差 1~2 样</span>
+    </div>
+    <div id="reverseList"></div>
+  </div>
+
+  <!-- C 度数计算 -->
+  <div id="pane-abv" style="display:none">
+    <div class="hintbox">
+      <b>两种算法：</b><br>
+      · <b>按配方算</b>——选一款配方，直接得出成品酒精度（含摇/搅稀释）<br>
+      · <b>反推用量</b>——给定目标度数与总容量，算出该放多少烈酒
+    </div>
+
+    <div class="card">
+      <div class="hd"><span class="nm">① 按配方算度数</span></div>
+      <div class="bar" id="abvRecipeBar"></div>
+      <div id="abvRecipeOut" class="cnt">上面选一款配方</div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><span class="nm">② 反推：我想要 X 度</span></div>
+      <div class="grid2">
+        <div><label>目标酒精度 (%vol)</label><input id="abvTarget" type="number" step="any" value="15"></div>
+        <div><label>成品总量 (ml)</label><input id="abvTotal" type="number" step="any" value="150"></div>
+        <div><label>所用烈酒度数 (%vol)</label><input id="abvSpirit" type="number" step="any" value="40"></div>
+        <div><label>软饮/果汁度数 (%vol，通常 0)</label><input id="abvSoft" type="number" step="any" value="0"></div>
+      </div>
+      <div style="margin-top:12px"><button class="btnp" id="abvCalcBtn">开始计算</button></div>
+      <div class="err" id="abvErr" style="display:none"></div>
+      <div id="abvOut" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><span class="nm">③ 纯酒精换算</span></div>
+      <div class="grid2">
+        <div><label>容量 (ml)</label><input id="stdVol" type="number" step="any" value="50"></div>
+        <div><label>酒精度 (%vol)</label><input id="stdAbv" type="number" step="any" value="40"></div>
+      </div>
+      <div style="margin-top:12px"><button class="btnp" id="stdCalcBtn">换算</button></div>
+      <div id="stdOut" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- D 百科 -->
+  <div id="pane-encyclopedia" style="display:none"></div>
+
+  <div class="notice">
+    🍷 <b>适量饮酒，未成年人请勿饮酒。</b>本工具仅作配方参考，不含任何酒精饮品销售信息。
+  </div>
+</div>
+<div id="ver">v1.1.0-加度数计算 20261110</div>
+
+<script>
+(function(){
+  'use strict';
+  var DATA = [];
+  var curBase = '全部';
+  var picked = {};
+  var curTab = 'recipe';
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function norm(s){ return String(s||'').replace(/\s/g,''); }
+
+  /* ========== A 配方查询 ========== */
+  function renderRecipe(){
+    var bases = ['全部'];
+    DATA.forEach(function(d){ if (bases.indexOf(d.base)<0) bases.push(d.base); });
+
+    var bar = $('baseBar');
+    bar.innerHTML = bases.map(function(b){
+      return '<div class="chip' + (b===curBase?' on':'') + '" data-base="' + esc(b) + '">' + esc(b) + '</div>';
+    }).join('');
+    Array.prototype.forEach.call(bar.children, function(el){
+      el.onclick = function(){ curBase = el.getAttribute('data-base'); renderRecipe(); };
+    });
+
+    var list = DATA.filter(function(d){ return curBase==='全部' || d.base===curBase; });
+    $('recipeCnt').textContent = '共 ' + list.length + ' 款' + (curBase==='全部'?'':'（' + curBase + '）');
+
+    $('recipeList').innerHTML = list.map(function(d,i){
+      var ings = d.ingredients.map(function(x){
+        var amt = (typeof x[1] === 'number') ? x[1] + ' ml' : x[1];
+        return '<span class="ig">' + esc(x[0]) + ' <b>' + esc(amt) + '</b></span>';
+      }).join('');
+      var steps = d.steps.map(function(s){ return '<li>' + esc(s) + '</li>'; }).join('');
+      return '<div class="card">' +
+        '<div class="hd"><span class="nm">' + esc(d.name) + '</span>' +
+        '<span class="en">' + esc(d.nameEn) + '</span>' +
+        '<span class="base">' + esc(d.base) + '</span></div>' +
+        '<div class="meta">' + esc(d.method) + ' ｜ ' + esc(d.glass) + ' ｜ 装饰：' + esc(d.garnish) + '</div>' +
+        '<div class="ing">' + ings + '</div>' +
+        '<ol class="steps">' + steps + '</ol>' +
+        (d.note ? '<div class="note"><b>要点：</b>' + esc(d.note) + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  /* ========== B 原料反查 ========== */
+  function allIngredients(){
+    var set = {};
+    DATA.forEach(function(d){
+      d.ingredients.forEach(function(x){
+        var n = x[0].replace(/（.*?）/g,'').trim();
+        set[n] = (set[n]||0)+1;
+      });
+    });
+    return Object.keys(set).sort(function(a,b){ return set[b]-set[a]; });
+  }
+
+  function renderReverse(){
+    var ings = allIngredients();
+    var nPick = Object.keys(picked).filter(function(k){ return picked[k]; }).length;
+
+    $('ingCnt').textContent = '共 ' + ings.length + ' 种材料 · 已选 ' + nPick + ' 种';
+    $('ingBar').innerHTML = ings.map(function(x){
+      return '<div class="chip' + (picked[x]?' pick':'') + '" data-ing="' + esc(x) + '">' + esc(x) + '</div>';
+    }).join('');
+    Array.prototype.forEach.call($('ingBar').children, function(el){
+      el.onclick = function(){
+        var k = el.getAttribute('data-ing');
+        picked[k] = !picked[k];
+        renderReverse();
+      };
+    });
+
+    if (!nPick){
+      $('reverseList').innerHTML = '<div class="empty">上面勾选你有的材料</div>';
+      return;
+    }
+
+    var rows = DATA.map(function(d){
+      var need = d.ingredients.map(function(x){ return x[0].replace(/（.*?）/g,'').trim(); });
+      var miss = need.filter(function(n){ return !picked[n]; });
+      return { d: d, miss: miss };
+    }).filter(function(r){ return r.miss.length <= 2; })
+      .sort(function(a,b){ return a.miss.length - b.miss.length; });
+
+    if (!rows.length){
+      $('reverseList').innerHTML = '<div class="empty">目前没有「差 2 样以内」的配方，再多勾几样试试</div>';
+      return;
+    }
+
+    $('reverseList').innerHTML = rows.map(function(r){
+      var d = r.d;
+      var okAll = r.miss.length === 0;
+      var tag = okAll
+        ? '<span style="color:var(--ok);font-weight:700">✓ 能直接调</span>'
+        : '<span style="color:var(--amber);font-weight:700">! 还差 ' + r.miss.length + ' 样</span>';
+      var missHtml = r.miss.length
+        ? '<div class="note" style="border-left-color:var(--no);background:rgba(239,111,111,.07);color:#e8a5a5"><b style="color:var(--no)">缺：</b>' + r.miss.map(esc).join('、') + '</div>'
+        : '';
+      var ings = d.ingredients.map(function(x){
+        var amt = (typeof x[1]==='number') ? x[1]+' ml' : x[1];
+        return '<span class="ig">' + esc(x[0]) + ' <b>' + esc(amt) + '</b></span>';
+      }).join('');
+      return '<div class="card">' +
+        '<div class="hd"><span class="nm">' + esc(d.name) + '</span>' +
+        '<span class="base">' + esc(d.base) + '</span></div>' +
+        '<div class="meta">' + tag + ' ｜ ' + esc(d.method) + ' ｜ ' + esc(d.glass) + '</div>' +
+        '<div class="ing">' + ings + '</div>' +
+        missHtml +
+      '</div>';
+    }).join('');
+  }
+
+  /* ========== D 百科 ========== */
+  var BASES = [
+    { n:'金酒 Gin', d:'以杜松子为主要风味，酒体清爽带草本香。常见类型：伦敦干金（London Dry，最常用于调酒）、老汤姆（Old Tom，微甜）、普利茅斯。经典：马天尼、尼格罗尼、金菲士。' },
+    { n:'威士忌 Whisky', d:'谷物发酵蒸馏并在木桶陈年。调酒常用波本（Bourbon，玉米为主，带甜香）与黑麦（Rye，辛辣）。苏格兰威士忌多用于纯饮或古典、锈钉。' },
+    { n:'伏特加 Vodka', d:'追求中性纯净，几乎无风味。正因如此最适合承载其他风味。经典：莫斯科骡子、大都会、血腥玛丽。' },
+    { n:'朗姆 Rum', d:'甘蔗糖蜜蒸馏。白朗姆清爽适合莫吉托、得其利；深色朗姆带焦糖香，适合迈泰、Tiki 风格。' },
+    { n:'龙舌兰 Tequila', d:'蓝色龙舌兰蒸馏，墨西哥特产。100% 龙舌兰（100% Agave）品质远优于混合型。经典：玛格丽特、帕洛玛。' },
+    { n:'白兰地 Brandy', d:'葡萄酒蒸馏。干邑（Cognac）与雅文邑（Armagnac）是法国名产区。经典：边车。' }
+  ];
+
+  var METHODS = [
+    { n:'摇匀 Shake', d:'加冰在摇酒壶中用力摇 10~15 秒。用于含果汁、蛋清、糖浆的配方——能快速冷却、稀释并产生泡沫。含蛋清时先「干摇」（不加冰摇 10 秒）再「湿摇」。' },
+    { n:'搅拌 Stir', d:'在调酒杯中加冰用吧勺搅拌 20~30 秒。用于纯烈酒类配方（马天尼、曼哈顿）——目的是冷却和适度稀释，同时保持酒体清澈透亮。' },
+    { n:'直调 Build', d:'直接在成品杯中加冰、依次倒入材料。用于高球类、气泡类（莫吉托、莫斯科骡子）——保留气泡，操作最简。' },
+    { n:'分层 Layer', d:'沿吧勺背面缓缓倒入密度不同的材料，形成层次（B-52）。关键是糖度越高密度越大，从下往上依次叠加。' },
+    { n:'滚摇 Roll', d:'在摇酒壶与另一容器间来回倾倒（不加冰剧烈摇）。用于番茄汁等易起泡的材料（血腥玛丽）——混匀又不起泡。' }
+  ];
+
+  var GLASSES = [
+    { n:'马天尼杯 Martini', d:'倒三角杯型，容量小。窄口减少香气散失，浅杯适合短饮。' },
+    { n:'古典杯 Old Fashioned', d:'矮胖厚底杯，适合加一大块冰的短饮。' },
+    { n:'高球杯 Highball', d:'细长直筒，容量大，适合长饮与气泡类。' },
+    { n:'香槟杯 / 笛形杯 Flute', d:'细长，保留气泡。起泡类鸡尾酒专用。' },
+    { n:'玛格丽特杯 Margarita', d:'宽口浅碟带杯脚，杯口常做盐边。' },
+    { n:'铜杯 Copper Mug', d:'莫斯科骡子专用。铜材导热快，杯壁冰凉，是这杯酒体验的一部分。' },
+    { n:'飓风杯 Hurricane', d:'曲线杯型，容量大，Tiki 风格常用（椰林飘香、迈泰）。' },
+    { n:'子弹杯 Shot', d:'极小杯，一口饮尽。分层酒（B-52）常用。' }
+  ];
+
+  var ABV = [
+    { n:'ABV 与 Proof', d:'ABV（Alcohol by Volume）是体积酒精百分比；美制 Proof = ABV × 2。40% ABV = 80 Proof。' },
+    { n:'一杯等于多少纯酒精', d:'「标准杯」约含 10g 纯酒精 ≈ 40% 烈酒 30ml，或 12% 葡萄酒 100ml，或 5% 啤酒 250ml。鸡尾酒度数受稀释与糖浆影响很大，长饮实际摄入并不低。' },
+    { n:'为什么摇/搅会「变淡」', d:'摇或搅的过程会融化冰块，加入 15~25% 的水。这个稀释不是失误，而是调酒设计的核心——它让烈酒变得可饮。' }
+  ];
+
+  function renderEncyclopedia(){
+    function items(list){
+      return list.map(function(x){
+        return '<div class="item"><div class="t">' + esc(x.n) + '</div><div class="d">' + esc(x.d) + '</div></div>';
+      }).join('');
+    }
+    $('pane-encyclopedia').innerHTML =
+      '<div class="sec"><h2>🍾 六大基酒</h2>' + items(BASES) + '</div>' +
+      '<div class="sec"><h2>🥄 五种调制手法</h2>' + items(METHODS) + '</div>' +
+      '<div class="sec"><h2>🥃 常见杯型</h2>' + items(GLASSES) + '</div>' +
+      '<div class="sec"><h2>📏 度数与稀释</h2>' + items(ABV) + '</div>';
+  }
+
+  /* ========== C 度数计算 ========== */
+  /* 烈酒默认度数表（%vol）—— 行业通行典型值，用于按配方估算 */
+  var SPIRIT_ABV = {
+    '金酒':40,'威士忌':40,'伏特加':40,'朗姆':40,'龙舌兰':40,'白兰地':40,
+    '利口酒':25,'起泡酒':12,'混合':40,
+    '苏格兰威士忌':40,'黑麦威士忌':40,'波本威士忌':45,'黑朗姆酒':40,
+    '白朗姆酒':40,'陈年朗姆酒':40,'皮斯科酒':40,'龙舌兰酒':40,
+    '干味美思':15,'甜味美思':15,'君度橙酒':40,'杏仁利口酒':24,
+    '咖啡利口酒':20,'黄油利口酒':17,'棕榈酒':24,'苦艾酒':60,'金巴利':25,
+    '阿佩罗':11,'查特绿':55,'蓝橙力娇酒':24,'椰子利口酒':21,
+    '柠檬汁':0,'青柠汁':0,'鲜榨橙汁':0,'菠萝汁':0,'番茄汁':0,
+    '苏打水':0,'姜汁啤酒':0,'可乐':0,'汤力水':0,'矿泉水':0,
+    '糖浆':0,'砂糖':0,'方糖':0,'红糖浆':0,'蜂蜜':0,'蛋清':0,
+    '淡奶油':0,'牛奶':0,'咖啡':0,'椰奶':0,'苦精':44,'佩肖苦精':35,
+    '安格斯图拉苦精':44,'橙味苦精':44, '盐':0, '黑胡椒':0, '辣酱':0
+  };
+
+  /* 取材料度数：先精确匹配，再关键词模糊匹配，最后按 0 计 */
+  function guessAbv(name){
+    var n = String(name||'').replace(/（.*?）/g,'').replace(/\(.*?\)/g,'').trim();
+    if (SPIRIT_ABV[n] !== undefined) return SPIRIT_ABV[n];
+    var keys = Object.keys(SPIRIT_ABV);
+    for (var i=0;i<keys.length;i++){
+      if (keys[i].length>=2 && n.indexOf(keys[i])>=0) return SPIRIT_ABV[keys[i]];
+    }
+    if (/汁|水|可乐|啤酒|糖浆|蜂蜜|奶|蛋|咖啡/.test(n)) return 0;
+    if (/利口|橙酒|味美思/.test(n)) return 20;
+    if (/威士忌|金酒|伏特加|朗姆|龙舌兰|白兰地|皮斯科|苦精/.test(n)) return 40;
+    return 0;
+  }
+
+  /* 摇/搅稀释：含冰操作平均加水 15%~25%，直调按 3% 计 */
+  function dilutionRate(method){
+    if (method==='摇匀') return 0.22;
+    if (method==='搅拌') return 0.18;
+    if (method==='直调') return 0.03;
+    if (method==='滚摇') return 0.15;
+    if (method==='分层') return 0;
+    return 0.05;
+  }
+
+  /* 算一款配方的成品度数与总量
+     返回 { abv, totalMl, spiritMl, waterMl, ok }
+     note：非 ml 计量（如“适量”“1块”）不计入容量，但计入酒精估算的忽略 */
+  function calcRecipeAbv(d){
+    var spiritMl = 0;   // 纯酒精体积
+    var liquidMl = 0;   // 可计量的液体总量
+    var skipped = 0;    // 无法计量的材料数
+    d.ingredients.forEach(function(x){
+      var name = x[0], amt = x[1];
+      if (typeof amt !== 'number'){ skipped++; return; }
+      var abv = guessAbv(name);
+      liquidMl += amt;
+      spiritMl += amt * abv / 100;
+    });
+    if (liquidMl <= 0) return { ok:false };
+    var diluted = liquidMl * (1 + dilutionRate(d.method));
+    var abv = spiritMl / diluted * 100;
+    return {
+      ok:true,
+      abv: Math.round(abv*10)/10,
+      totalMl: Math.round(diluted),
+      spiritMl: Math.round(spiritMl*10)/10,
+      waterMl: Math.round(diluted - liquidMl),
+      skipped: skipped
+    };
+  }
+
+  var abvCurRecipe = null;
+
+  function renderAbv(){
+    var bar = $('abvRecipeBar');
+    if (!bar) return;
+    var names = DATA.map(function(d){ return d.name; });
+    bar.innerHTML = DATA.map(function(d,i){
+      return '<div class="chip' + (abvCurRecipe===i?' on':'') + '" data-i="' + i + '">' + esc(d.name) + '</div>';
+    }).join('');
+    Array.prototype.forEach.call(bar.children, function(el){
+      el.onclick = function(){ abvCurRecipe = parseInt(el.getAttribute('data-i'),10); renderAbv(); };
+    });
+
+    var out = $('abvRecipeOut');
+    if (abvCurRecipe === null || !DATA[abvCurRecipe]){
+      out.innerHTML = '<span style="color:var(--dim)">上面选一款配方</span>';
+      return;
+    }
+    var d = DATA[abvCurRecipe];
+    var r = calcRecipeAbv(d);
+    if (!r.ok){
+      out.innerHTML = '<span style="color:var(--no)">这款配方没有可计量的材料，无法估算</span>';
+      return;
+    }
+    var level = r.abv >= 30 ? '烈' : (r.abv >= 15 ? '中等' : '低度');
+    var color = r.abv >= 30 ? '#ef6f6f' : (r.abv >= 15 ? '#e8b04b' : '#7ec98f');
+    out.innerHTML =
+      '<div class="kvbig"><span class="k">成品酒精度</span><span class="v" style="color:' + color + '">' + r.abv + '</span><span class="u">%vol · ' + level + '</span></div>' +
+      '<div class="barwrap"><i style="width:' + Math.min(100, r.abv/50*100) + '%;background:' + color + '"></i></div>' +
+      '<div class="sub2">' +
+        '成品总量约 <b>' + r.totalMl + '</b> ml（材料 ' + Math.round(r.totalMl - r.waterMl) + ' ml + ' + d.method + '溶水约 ' + r.waterMl + ' ml）<br>' +
+        '纯酒精约 <b>' + r.spiritMl + '</b> ml' +
+        (r.skipped ? '<br><span style="color:var(--amber)">有 ' + r.skipped + ' 项非 ml 计量材料未计入容量</span>' : '') +
+      '</div>';
+  }
+
+  /* 按目标度数反推烈酒用量
+     target*V = spirit*x + soft*(V-x)  →  x = V*(target-soft)/(spirit-soft) */
+  function reverseAbv(targetPct, totalMl, spiritPct, softPct){
+    if (!(totalMl > 0)) throw new Error('成品总量必须大于 0');
+    if (!(targetPct > 0)) throw new Error('目标酒精度必须大于 0');
+    if (spiritPct <= softPct) throw new Error('烈酒度数必须高于软饮度数，否则怎么兑都到不了目标');
+    if (targetPct > spiritPct) throw new Error('目标度数高于烈酒本身（' + spiritPct + '%），无法实现');
+    if (targetPct < softPct) throw new Error('目标度数低于软饮本身（' + softPct + '%），无法实现');
+    var x = totalMl * (targetPct - softPct) / (spiritPct - softPct);
+    return {
+      spiritMl: Math.round(x*10)/10,
+      softMl: Math.round((totalMl - x)*10)/10,
+      ratio: (x/(totalMl-x)).toFixed(2)
+    };
+  }
+
+  function bindAbvCalc(){
+    var btn = $('abvCalcBtn');
+    if (!btn) return;
+    btn.onclick = function(){
+      var errB = $('abvErr'), out = $('abvOut');
+      errB.style.display = 'none'; out.innerHTML = '';
+      try {
+        var t = parseFloat($('abvTarget').value);
+        var v = parseFloat($('abvTotal').value);
+        var s = parseFloat($('abvSpirit').value);
+        var f = parseFloat($('abvSoft').value) || 0;
+        [['目标酒精度',t],['成品总量',v],['烈酒度数',s]].forEach(function(p){
+          if (!isFinite(p[1])) throw new Error(p[0] + ' 必须填数字');
+        });
+        var r = reverseAbv(t, v, s, f);
+        out.innerHTML =
+          '<div class="kvbig"><span class="k">烈酒用量</span><span class="v">' + r.spiritMl + '</span><span class="u">ml</span></div>' +
+          '<div class="kvbig"><span class="k">软饮/果汁</span><span class="v">' + r.softMl + '</span><span class="u">ml</span></div>' +
+          '<div class="sub2">烈酒 : 软饮 ≈ <b>' + r.ratio + ' : 1</b><br>核对：(' + r.spiritMl + '×' + s + '% + ' + r.softMl + '×' + f + '%) ÷ ' + v + ' ≈ <b>' + t + '%</b></div>';
+      } catch(e){
+        errB.textContent = '⚠ ' + e.message;
+        errB.style.display = 'block';
+      }
+    };
+
+    var sbtn = $('stdCalcBtn');
+    if (sbtn) sbtn.onclick = function(){
+      var out = $('stdOut');
+      try {
+        var vol = parseFloat($('stdVol').value);
+        var abv = parseFloat($('stdAbv').value);
+        if (!isFinite(vol) || vol <= 0) throw new Error('容量必须大于 0');
+        if (!isFinite(abv) || abv < 0 || abv > 96) throw new Error('酒精度应在 0~96 之间');
+        var pure = vol * abv / 100;          // 纯酒精 ml
+        var grams = pure * 0.789;            // 乙醇密度 0.789 g/ml
+        var stdDrinks = grams / 10;          // 一个标准杯 ≈ 10g 纯酒精
+        out.innerHTML =
+          '<div class="kvbig"><span class="k">纯酒精</span><span class="v">' + (Math.round(pure*10)/10) + '</span><span class="u">ml ≈ ' + (Math.round(grams*10)/10) + ' g</span></div>' +
+          '<div class="kvbig"><span class="k">标准杯</span><span class="v">' + (Math.round(stdDrinks*10)/10) + '</span><span class="u">杯（1 杯 ≈ 10 g 纯酒精）</span></div>' +
+          '<div class="sub2">换算依据：乙醇密度 0.789 g/ml；标准杯取 10 g 纯酒精的通行值</div>';
+      } catch(e){
+        out.innerHTML = '<span style="color:var(--no)">⚠ ' + esc(e.message) + '</span>';
+      }
+    };
+  }
+
+  /* ========== Tab 切换 ========== */
+  var panes = { recipe:'pane-recipe', reverse:'pane-reverse', abv:'pane-abv', encyclopedia:'pane-encyclopedia' };
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(el){
+    el.onclick = function(){
+      curTab = el.getAttribute('data-tab');
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('on', t===el); });
+      Object.keys(panes).forEach(function(k){
+        $(panes[k]).style.display = (k===curTab) ? 'block' : 'none';
+      });
+      if (curTab === 'encyclopedia') renderEncyclopedia();
+      if (curTab === 'abv') { renderAbv(); bindAbvCalc(); }
+    };
+  });
+
+  /* ========== 加载 ========== */
+  fetch('data.json').then(function(r){ return r.json(); }).then(function(d){
+    DATA = d || [];
+    renderRecipe();
+    renderReverse();
+    bindAbvCalc();
+  }).catch(function(e){
+    $('recipeList').innerHTML = '<div class="empty">数据加载失败：' + esc(e.message) + '</div>';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚖️ 诗词格律检查</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:660px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:15px; font-family:inherit; resize:vertical; min-height:110px; line-height:1.9; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .f { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .f label { width:60px; font-size:13px; color:#c8b3ff; }
+  .f select { flex:1; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:9px 10px;
+    color:#e8e0f0; font-size:14px; font-family:inherit; }
+  .line { font-size:12px; letter-spacing:6px; margin-bottom:6px; line-height:2; }
+  .line .ok { color:#a8f0c0; }
+  .line .bad { color:#ff8fa3; }
+  .line .na { color:#6a5f90; }
+  .tag { font-size:11px; color:#8a7fb0; margin-left:6px; letter-spacing:0; }
+  .r { padding:9px 12px; background:#100b1c; border-radius:9px; margin-bottom:7px; font-size:13.5px;
+    color:#b8a0ff; line-height:1.7; }
+  .hint { font-size:12px; color:#6a5f90; line-height:1.6; margin-top:6px; }
+  .err { color:#ff8fa3; font-size:13px; padding:10px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>⚖️ 诗词格律检查</h1>
+  <div class="sub">近体诗（五绝/七绝/五律/七律）平仄核对</div>
+  <div style="text-align:center;margin:-6px 0 14px">
+    <select id="formTop" style="background:#100b1c;border:1px solid #3a3050;border-radius:9px;padding:9px 10px;color:#e8e0f0;font-size:14px;font-family:inherit;min-width:220px">
+      <option value="auto">自动识别（按首句平仄判诗体）</option>
+      <option value="7jue">七言绝句</option>
+      <option value="5jue">五言绝句</option>
+      <option value="7lv">七言律诗</option>
+      <option value="5lv">五言律诗</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="lbl">输入诗句（每句一行）</div>
+    <textarea id="in" placeholder="如：&#10;朝辞白帝彩云间&#10;千里江陵一日还&#10;两岸猿声啼不住&#10;轻舟已过万重山"></textarea>
+    <div class="f" style="margin-top:10px">
+      <label>诗体</label>
+      <select id="form">
+        <option value="auto">自动识别</option>
+        <option value="7jue">七言绝句</option>
+        <option value="5jue">五言绝句</option>
+        <option value="7lv">七言律诗</option>
+        <option value="5lv">五言律诗</option>
+      </select>
+    </div>
+    <div class="hint">依平水韵判平仄；标红的字为与该句式标准平仄不符处</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">检查结果</div>
+    <div id="out"><div class="hint">输入诗句后检查</div></div>
+  </div>
+  <div class="ver">v1-格律检查 20261016</div>
+</div>
+<script>
+// 【ge-lv】诗词格律检查（近体诗平仄核对）。依赖：单字平仄表(MIT)+平水韵。输入：诗句+诗体；输出：合律判定+不符处。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：近体诗平仄格式（王力《诗词格律》通行结论）；平仄取平水韵单字平仄表。
+// 格律规则：句中一三五可不论、二四六分明；孤平、三平尾为诗病。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var WT = null;
+
+  function loadTune(){
+    if(WT) return Promise.resolve(WT);
+    return fetch("../rhyme/data/wordtune.js.json").then(function(r){return r.json();}).then(function(j){ WT=j.map; return WT; });
+  }
+  function tune(ch){
+    var t = WT ? WT[ch] : null;
+    if(!t) return "?";
+    if(t === "平仄") return "中";
+    return t;   // 平 / 仄
+  }
+
+  // 四种基本句式（以五言为例；七言=五言前加相反两字）
+  // 标记：P=平 Z=仄 (中=可不论)
+  // 五言基本句式：
+  //  仄仄平平仄 (仄起仄收)  平平仄仄平 (平起平收)  平平平仄仄 (平起仄收)  仄仄仄平平 (仄起平收)
+  var WU = [
+    ["Z","Z","P","P","Z"],   // 仄仄平平仄
+    ["P","P","Z","Z","P"],   // 平平仄仄平
+    ["P","P","P","Z","Z"],   // 平平平仄仄
+    ["Z","Z","Z","P","P"],   // 仄仄仄平平
+  ];
+
+  // 七言基本句式（平起/仄起 各两式）
+  var QI = [
+    ["P","Z","Z","P","P","Z","Z"],
+    ["Z","P","P","Z","Z","P","P"],
+    ["Z","P","P","P","P","Z","Z"],
+    ["P","Z","Z","Z","Z","P","P"],
+  ];
+  function pats(n){ return n===7 ? QI : (n===5 ? WU : []); }
+
+  function toCN(c){ return c === "Z" ? "仄" : c === "P" ? "平" : "中"; }
+
+  // 单句与标准句式逐字比对（一三五不论，二四六+句末必较）；两读/未收录字不计错
+  function lineDiff(tunes, std){
+    var bad = [];
+    for(var i=0;i<tunes.length;i++){
+      var t = tunes[i], e = toCN(std[i]);
+      if(t === "?" || t === "中") continue;
+      if(t === e) continue;
+      var pos = i;
+      var isFixed = (pos % 2 === 1) || (pos === tunes.length - 1);
+      if(!isFixed) continue;
+      bad.push(i);
+    }
+    return { bad: bad };
+  }
+  // 打分：只看“确定字”命中率（两读/未收录不入分母）
+  function scoreLine(tunes, std){
+    var hit = 0, det = 0;
+    for(var i=0;i<tunes.length;i++){
+      var t = tunes[i], e = toCN(std[i]);
+      if(t === "?" || t === "中") continue;
+      det++;
+      if(t === e) hit++;
+    }
+    return det ? (hit / det) : 0;
+  }
+
+  // 全篇拟合：一首近体诗必是四种基本句式的循环，且每联上下句必须“对”。
+  // 对每种起始句式，生成全篇标准句序（粘对规则），再拿实句打分取最优。
+  // 句式循环（平起格）：A 平起仄收 → B 仄起平收 → C 仄起仄收 → D 平起平收 → A...（粘）
+  // 简化实现：把所有 4^句数 组合枚举（绝句 256 / 律诗 65536）? 太大，改用“逐联拟合 + 粘对约束”。
+  function allPats(n){ return pats(n); }
+
+  // 生成符合粘对规则的全篇句式序列：给定首句式索引，后续按“对-粘”推出
+  // 粘对：下句与上句“对”（二四六相反）；下一联首句与上联末句“粘”（二四六相同）
+  function seqFrom(firstIdx, n, count){
+    var P = allPats(n);
+    if(!P.length) return null;
+    var isOpposite = function(a, b){        // 两式二四六位是否互为相反
+      for(var i=1;i<n;i+=2){ if(a[i] === b[i]) return false; }
+      return true;
+    };
+    var sameOdd = function(a, b){           // 二四六位相同（粘）
+      for(var i=1;i<n;i+=2){ if(a[i] !== b[i]) return false; }
+      return true;
+    };
+    var seq = [P[firstIdx]];
+    for(var k=1;k<count;k++){
+      var prev = seq[k-1];
+      var cand = null;
+      if(k % 2 === 1){                       // 偶句（下句）：与上句对
+        cand = P.filter(function(x){ return isOpposite(prev, x); })[0];
+      } else {                               // 奇句（除首句）：与上联末句粘
+        cand = P.filter(function(x){ return sameOdd(prev, x); })[0];
+      }
+      if(!cand) return null;
+      seq.push(cand);
+    }
+    return seq;
+  }
+
+  // 全篇拟合：遍历四种首句式，选总分最高且句数匹配者
+  function fitPoem(lines, n){
+    var P = allPats(n);
+    if(!P.length) return null;
+    var tuneLines = lines.map(function(line){
+      var chars = Array.from(line).filter(function(c){ return /[\u4e00-\u9fa5]/.test(c); });
+      return chars.map(tune);
+    });
+    var best = null, bestScore = -1;
+    for(var f=0; f<P.length; f++){
+      var seq = seqFrom(f, n, tuneLines.length);
+      if(!seq) continue;
+      var total = 0;
+      for(var i=0;i<tuneLines.length;i++){ total += scoreLine(tuneLines[i], seq[i]); }
+      if(total > bestScore){ bestScore = total; best = seq; }
+    }
+    return best;
+  }
+
+  // 诗病检测：孤平、三平尾
+  function detectSick(tunes, std){
+    var sick = [], n = tunes.length;
+    var to = function(i){ return i<n ? tunes[i] : "?"; };
+    var eo = function(i){ return i<n ? toCN(std[i]) : "?"; };
+    if(n===5 && eo(4)==="平" && to(1)==="平" && to(2)==="仄"){
+      var pc = 0; for(var i=0;i<n-1;i++){ if(to(i)==="平") pc++; }
+      if(pc <= 1) sick.push("孤平");
+    }
+    if(n===7 && eo(6)==="平" && to(3)==="平" && to(4)==="仄"){
+      var p7 = 0; for(var j=2;j<n-1;j++){ if(to(j)==="平") p7++; }
+      if(p7 <= 1) sick.push("孤平");
+    }
+    if(n>=3 && to(n-1)==="平" && to(n-2)==="平" && to(n-3)==="平") sick.push("三平尾");
+    return sick;
+  }
+
+  // 检查单句（孤立，供自动判诗体与失对用）：返回 {chars, tunes, std, bad}
+  function checkLine(line){
+    var chars = Array.from(line).filter(function(c){ return /[\u4e00-\u9fa5]/.test(c); });
+    if(chars.length !== 5 && chars.length !== 7) return null;
+    var tunes = chars.map(tune);
+    var P = allPats(chars.length);
+    var std = null, bs = -1;
+    P.forEach(function(c){ var s = scoreLine(tunes, c); if(s > bs){ bs = s; std = c; } });
+    if(!std) return null;
+    var d = lineDiff(tunes, std);
+    return { chars: chars, tunes: tunes, std: std, bad: d.bad };
+  }
+
+  // 自动判诗体：按句数与单句字数
+  function autoForm(lines){
+    if(!lines.length) return "7jue";
+    var c = checkLine(lines[0]);
+    if(!c) return "7jue";
+    return c.chars.length + (lines.length >= 8 ? "lv" : "jue");
+  }
+
+  // 失对：每联上下句在二四六位应平仄相反
+  function checkAntithesis(results){
+    var issues = [];
+    for(var i=0;i+1<results.length;i+=2){
+      var a = results[i], b = results[i+1];
+      if(!a || !b) continue;
+      var n = Math.min(a.tunes.length, b.tunes.length), same = 0, cmp = 0;
+      for(var k=1;k<n;k+=2){
+        var ta = a.tunes[k], tb = b.tunes[k];
+        if(ta==="?"||tb==="?"||ta==="中"||tb==="中") continue;
+        cmp++;
+        if(ta !== tb) same++;
+      }
+      if(cmp > 0 && same === 0) issues.push("第"+(i+1)+"、"+(i+2)+"句（第"+(i/2+1)+"联）二四六位平仄未相对（失对）");
+    }
+    return issues;
+  }
+
+  function render(){
+    var text = $("in").value.trim();
+    var out = $("out");
+    if(!text){ out.innerHTML = "<div class='hint'>输入诗句后检查</div>"; return; }
+    loadTune().then(function(){
+      var lines = text.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+      var formSel = $("formTop").value;
+      var form = (formSel === "auto") ? autoForm(lines) : formSel;
+      var need = form.indexOf("lv") >= 0 ? 8 : 4;
+      var formName = { "7jue":"七言绝句", "5jue":"五言绝句", "7lv":"七言律诗", "5lv":"五言律诗" }[form] || form;
+      var html = '<div class="r">诗体：'+formName+(formSel==="auto"?"（自动识别）":"")+' ｜ 识别到 '+lines.length+' 句（目标 '+need+' 句）</div>';
+      // 先按非空/五七言筛出有效句，用于全篇拟合
+      var valid = [], texts = [];
+      lines.forEach(function(line){
+        var r = checkLine(line);
+        if(r){ valid.push(r); texts.push(line); }
+      });
+      // 全篇拟合（粘对规则）——同字数才拟合
+      var seq = null;
+      if(valid.length && valid.every(function(r){ return r.chars.length === valid[0].chars.length; })){
+        seq = fitPoem(texts, valid[0].chars.length);
+      }
+      var results = [], vi = 0;
+      lines.forEach(function(line){
+        var r = checkLine(line);
+        if(!r){ html += '<div class="line"><span class="na">'+line+'</span><span class="tag">⚠ 字数非五/七，跳过</span></div>'; return; }
+        if(seq && seq[vi]){ r.std = seq[vi]; r.bad = lineDiff(r.tunes, r.std).bad; }
+        vi++;
+        var lh = "";
+        r.chars.forEach(function(ch, i){
+          var isBad = r.bad.indexOf(i) >= 0;
+          var cls = r.tunes[i] === "?" ? "na" : (isBad ? "bad" : "ok");
+          lh += '<span class="'+cls+'">'+ch+'</span>';
+        });
+        var sick = detectSick(r.tunes, r.std);
+        var tag = r.bad.length===0 ? "✓ 合律" : ("✗ "+r.bad.length+" 处不符");
+        if(sick.length) tag += " ｜ 疑病："+sick.join("、");
+        html += '<div class="line">'+lh+'<span class="tag">'+tag+'</span></div>';
+        results.push(r);
+      });
+      html += '<div class="r" style="margin-top:10px;font-size:12px;color:#8a7fb0">说明：依平水韵判平仄；全篇按粘对规则拟合基本句式；「一三五不论、二四六分明」，故奇数位（除句末）不算错。标红=与拟合句式不符。「孤平/三平尾」为近体诗病，仅提示。未收录字标灰、不计错。</div>';
+      out.innerHTML = html;
+    }).catch(function(e){
+      out.innerHTML = "<div class='err'>数据加载失败："+e.message+"</div>";
+    });
+  }
+  $("in").addEventListener("input", render);
+  $("formTop").addEventListener("change", render);
+})();
+</script>
+</body>
+</html>

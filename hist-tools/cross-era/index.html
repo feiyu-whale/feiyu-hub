@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌏 中外纪年对照</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:720px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .f { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .f label { font-size:13px; color:#c8b3ff; flex-shrink:0; }
+  .f input { flex:1; min-width:0; background:#100b1c; border:1px solid #3a3050; border-radius:9px;
+    padding:10px 11px; color:#e8e0f0; font-size:14px; font-family:inherit; }
+  .f input:focus { outline:none; border-color:#7a5fc0; }
+  .hd { display:flex; gap:8px; margin-bottom:8px; }
+  .hd span { flex:1; text-align:center; font-size:13px; font-weight:700; padding:5px; border-radius:7px; }
+  .hd .cn { background:#3a1f22; color:#f0b0a6; }
+  .hd .west { background:#1b2f42; color:#a6d0f0; }
+  .pair { display:flex; gap:8px; margin-bottom:6px; }
+  .pair .cell { flex:1; min-width:0; padding:8px 10px; border-radius:8px; font-size:12.5px; line-height:1.55; min-height:44px; word-break:break-word; overflow-wrap:anywhere; }
+  .pair .cn { background:#241318; border:1px solid #5a2f35; color:#f0b0a6; }
+  .pair .west { background:#0f1c28; border:1px solid #2f5a7a; color:#a6d0f0; }
+  .pair .cell .yr { display:block; font-size:11px; color:#8a7fb0; margin-bottom:2px; font-family:ui-monospace,monospace; }
+  .pair.hit .cell { box-shadow:0 0 0 2px #a8f0c0; }
+  .r { background:#100b1c; border-radius:9px; padding:11px 12px; font-size:14px; line-height:1.8; }
+  .r .k { color:#8a7fb0; font-size:12px; }
+  .r .v { color:#b8a0ff; font-weight:700; }
+  .hint { font-size:12px; color:#6a5f90; line-height:1.6; margin-top:6px; }
+  .err { color:#ff8fa3; font-size:13px; padding:10px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回历史专区</a>
+  <h1>🌏 中外纪年对照</h1>
+  <div class="sub">同一时间轴上：中国史 ⇄ 世界史</div>
+
+  <div class="card">
+    <div class="f"><label>查公元年</label><input id="yearIn" type="text" inputmode="numeric" value="627"></div>
+    <div id="res"><div class="hint">输入年份，看当时中国与世界各处于什么时期</div></div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="cn">🇨🇳 中国</span><span class="west">🌍 世界</span></div>
+    <div id="axis"></div>
+    <div class="hint">按时间轴并列排列；点击任一段可回填查询年份。数据源：yansheng836/parallel-histories（MIT）。</div>
+  </div>
+  <div class="ver">v1.1.0-修数据起止+公元0年 20261029</div>
+</div>
+<script>
+// 【cross-era】中外纪年对照。依赖：data/cross.json（源自 yansheng836/parallel-histories，MIT）。输入：年份；输出：同期中国/世界分期。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：yansheng836/parallel-histories (MIT) —— 平行历史 · 中外历史对照时间轴。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var DATA = null;
+  function yl(y){ return y < 0 ? ("前" + (-y)) : ("" + y); }
+  function span(a){ return yl(a.begin) + (a.end == null ? "～今" : "~" + yl(a.end)); }
+
+  function load(){
+    if(DATA) return Promise.resolve(DATA);
+    return fetch("../data/cross.json").then(function(r){ return r.json(); }).then(function(j){ DATA = j; return j; });
+  }
+  function find(list, y){
+    return list.filter(function(a){
+      var e = (a.end == null) ? Infinity : a.end;
+      return y >= a.begin && y <= e;
+    });
+  }
+
+  function render(){
+    var raw = $("yearIn").value.trim();
+    var box = $("res");
+    if(!/^-?\d+$/.test(raw)){ box.innerHTML = "<div class='hint'>输入年份</div>"; return; }
+    var y = parseInt(raw, 10);
+    // 公元 0 年不存在
+    if(y === 0){ box.innerHTML = "<div class='err'>历史上没有公元 0 年——公元前 1 年之后直接是公元 1 年</div>"; return; }
+    load().then(function(){
+      var c = find(DATA.cn, y), w = find(DATA.west, y);
+      // 边界年（同时落在前后两段的端点）要把两段都显示出来
+      function fmt(g){
+        if(!g || !g.length) return '（超出范围）';
+        return g.map(function(x){ return x.label; }).join(' ／ ');
+      }
+      box.innerHTML = '<div class="r">公元 <span class="v">'+yl(y)+'</span> 年<br>' +
+        '<span class="k">中国：</span><span class="v">'+fmt(c)+'</span><br>' +
+        '<span class="k">世界：</span><span class="v">'+fmt(w)+'</span></div>';
+      // 高亮时间轴命中行
+      document.querySelectorAll("#axis .pair").forEach(function(el){
+        var b = parseFloat(el.getAttribute("data-b")), e2 = el.getAttribute("data-e");
+        e2 = (e2 === "" || e2 == null) ? Infinity : parseFloat(e2);
+        el.classList.toggle("hit", y >= b && y <= e2);
+      });
+    });
+  }
+
+  function build(){
+    load().then(function(){
+      // 合并两边的边界点，逐段对齐
+      var pts = {};
+      DATA.cn.concat(DATA.west).forEach(function(a){
+        pts[a.begin] = 1;
+        if(a.end != null) pts[a.end] = 1;
+      });
+      var ps = Object.keys(pts).map(Number).sort(function(a,b){ return a-b; });
+      var rows = "";
+      for(var i=0;i<ps.length-1;i++){
+        var b = ps[i], e = ps[i+1];
+        var c = find(DATA.cn, (b+e)/2)[0];
+        var w = find(DATA.west, (b+e)/2)[0];
+        if(!c && !w) continue;
+        rows += '<div class="pair" data-b="'+b+'" data-e="'+e+'">' +
+          '<div class="cell cn">' + (c ? '<span class="yr">'+span(c)+'</span>'+c.label : '<span class="yr">'+yl(b)+'~'+yl(e)+'</span><span style="color:#6a5f90">—</span>') + '</div>' +
+          '<div class="cell west">' + (w ? '<span class="yr">'+span(w)+'</span>'+w.label : '<span class="yr">'+yl(b)+'~'+yl(e)+'</span><span style="color:#6a5f90">—</span>') + '</div>' +
+          '</div>';
+      }
+      $("axis").innerHTML = rows;
+      $("axis").querySelectorAll(".pair").forEach(function(el){
+        el.onclick = function(){ $("yearIn").value = el.getAttribute("data-b"); render(); };
+      });
+    });
+  }
+
+  function debounce(fn){ var t; return function(){ clearTimeout(t); t = setTimeout(fn, 180); }; }
+  $("yearIn").addEventListener("input", debounce(render));
+  build(); render();
+})();
+</script>
+</body>
+</html>

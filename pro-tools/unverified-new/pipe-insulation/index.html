@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管道保温层厚度计算器</title>
+<!--
+  文件作用：管道（圆筒面）保温层厚度计算——经济厚度法 / 允许最大散热损失法 / 表面温度法，三者取大
+  开源库：无（纯原生 JS，零依赖）
+  输入：管道外径、介质温度、环境温度、保温材料导热系数方程、热价、保温单价、年运行小时、
+        摊销率、表面换热系数、允许散热损失判据
+  输出：经济厚度、允许损失所需厚度、防烫伤所需厚度、最终厚度、散热损失、外表面温度、年费用
+  数据来源：GB/T 4272-2024 常年运行工况允许最大散热损失表（实测数值已录入）；
+            GB 50264-2013 附录A 常用保温材料导热系数方程（岩棉 / 玻璃棉）；
+            GB/T 8175 经济厚度定义（年散热损失费 + 年摊销投资 = 最小）
+-->
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:0 12px 64px;background:#0a1628;color:#cfe0f2;font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",Arial,sans-serif;-webkit-text-size-adjust:100%}
+h1{font-size:19px;margin:0 0 4px;color:#eaf3ff}
+.hdr{padding:18px 0 12px;border-bottom:1px solid #1c3452;margin-bottom:14px}
+.sub{color:#6b8bb0;font-size:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tabs button{background:#122238;color:#8fb4d9;border:1px solid #1e3a5c;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px}
+.tabs button.on{background:#4a9eff;color:#06121f;border-color:#4a9eff;font-weight:700}
+.card{background:#0f1f36;border:1px solid #1c3452;border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:14px;margin:0 0 12px;color:#7fc4ff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fb4d9;margin-bottom:4px}
+input,select{width:100%;background:#0a1628;border:1px solid #23456b;color:#d8e6f5;padding:8px;border-radius:7px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.btn{background:#4a9eff;color:#06121f;border:0;padding:10px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px}
+.btn:active{transform:translateY(1px)}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:10px}
+.rc{background:#0b1a2e;border:1px solid #1c3452;border-left:3px solid #4a9eff;border-radius:8px;padding:9px 10px}
+.rc.hl{border-left-color:#7ee2a8}
+.rc .k{font-size:11px;color:#7fa4c9}
+.rc .v{font-size:18px;color:#7fc4ff;font-weight:700;word-break:break-all}
+.rc.hl .v{color:#7ee2a8}
+.rc .u{font-size:11px;color:#5d82a8}
+.err{background:#3a1220;border:1px solid #7a2440;color:#ff9db5;padding:10px 12px;border-radius:8px;margin-top:12px;display:none}
+.warn{background:#2a2410;border:1px solid #6b5a1e;color:#f0d27a;padding:10px 12px;border-radius:8px;margin-top:10px;font-size:12px;display:none}
+pre{background:#06111f;border:1px solid #1c3452;border-radius:8px;padding:12px;overflow-x:auto;font-size:12px;line-height:1.5;color:#9fd0f0;max-width:100%}
+.tcase{padding:7px 10px;border-radius:7px;margin-bottom:6px;font-size:13px;border:1px solid}
+.tcase.ok{background:#0c2a1c;border-color:#1e6b42;color:#7ee2a8}
+.tcase.bad{background:#2e1220;border-color:#7a2440;color:#ff9db5}
+.sum{font-weight:700;margin-top:12px;font-size:14px}
+.ver{position:fixed;right:10px;bottom:8px;font-size:11px;color:#4a6f96;background:#0a1628;padding:3px 8px;border-radius:6px;border:1px solid #1c3452}
+.doc p,.doc li{font-size:13px;color:#a9c6e4}
+.doc h3{font-size:13px;color:#7fc4ff;margin:14px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+td,th{border:1px solid #1c3452;padding:5px 7px;text-align:left;color:#a9c6e4;vertical-align:top}
+th{background:#122238;color:#8fb4d9}
+.mid{font-size:12px;color:#8fb4d9;line-height:1.9}
+.mid b{color:#7fc4ff}
+@media(max-width:520px){.rc .v{font-size:16px}.tabs button{padding:7px 10px;font-size:12px}body{padding:0 8px 60px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+<h1>管道保温层厚度计算器</h1>
+<div class="sub">经济厚度法 · 允许最大散热损失法 · 表面温度法 三者取大 · 依据 GB/T 4272-2024 / GB 50264-2013 / GB/T 8175</div>
+</div>
+
+<div class="tabs">
+<button class="on" data-t="calc">计算工具</button>
+<button data-t="src">JS 源码</button>
+<button data-t="test">单元测试</button>
+<button data-t="doc">使用说明</button>
+</div>
+
+<section id="tab-calc">
+<div class="card">
+<h2>一、工艺与几何参数</h2>
+<div class="grid">
+<div><label>管道外径 D₀ (mm)</label><input id="d0" type="number" step="any" value="108"></div>
+<div><label>介质温度 T<sub>f</sub> (°C)</label><input id="tf" type="number" step="any" value="200"></div>
+<div><label>环境温度 T<sub>a</sub> (°C)</label><input id="ta" type="number" step="any" value="20"></div>
+<div><label>保温材料</label>
+<select id="mat">
+<option value="rockwool" selected>岩棉（GB 50264 附录A）</option>
+<option value="glasswool">玻璃棉（GB 50264 附录A）</option>
+<option value="custom">自定义 λ 方程</option>
+</select></div>
+<div id="rowLam0"><label>自定义 λ₀ (W/m·K)</label><input id="lam0" type="number" step="any" value="0.034"></div>
+<div id="rowLamb"><label>自定义 λ 温变系数 b (1/°C)</label><input id="lamb" type="number" step="any" value="0.00016"></div>
+<div><label>表面换热系数 α<sub>s</sub> (W/m²·K)</label>
+<select id="asPreset">
+<option value="11.6" selected>室内静止空气 11.6</option>
+<option value="20">室外微风 20</option>
+<option value="30">室外有风 30</option>
+<option value="custom">自定义</option>
+</select></div>
+<div><label>α<sub>s</sub> 实际取值 (W/m²·K)</label><input id="as" type="number" step="any" value="11.6"></div>
+</div>
+</div>
+
+<div class="card">
+<h2>二、经济厚度所需的费用参数</h2>
+<div class="grid">
+<div><label>热价 P<sub>E</sub> (元/GJ)</label><input id="pe" type="number" step="any" value="60"></div>
+<div><label>保温结构单价 P<sub>T</sub> (元/m³)</label><input id="pt" type="number" step="any" value="1200"></div>
+<div><label>年运行小时 h (h/年)</label><input id="hy" type="number" step="any" value="8000"></div>
+<div><label>年摊销率（折旧+维护+利息）</label><input id="amort" type="number" step="any" value="0.15"></div>
+<div><label>防烫伤表面温度上限 (°C)</label><input id="tsmax" type="number" step="any" value="60"></div>
+</div>
+<div style="margin-top:14px"><button class="btn" onclick="runCalc()">开始计算</button></div>
+<div class="err" id="errBox"></div>
+<div class="warn" id="warnBox"></div>
+</div>
+
+<div class="card" id="resCard" style="display:none">
+<h2>三、计算结果</h2>
+<div class="res" id="resBox"></div>
+<h2 style="margin:16px 0 8px">四、中间量与公式说明</h2>
+<div class="mid" id="midBox"></div>
+<h2 style="margin:16px 0 8px">五、厚度—费用曲线</h2>
+<div class="mid" id="curveBox"></div>
+</div>
+</section>
+
+<section id="tab-src" style="display:none">
+<div class="card">
+<h2>计算核心源码（全部为纯函数，可单独测试）</h2>
+<pre id="srcPre"></pre>
+</div>
+</section>
+
+<section id="tab-test" style="display:none">
+<div class="card">
+<h2>内置单元测试（输入 → 期望输出）</h2>
+<button class="btn" onclick="runTests()">运行全部测试</button>
+<div class="sum" id="testSum"></div>
+<div id="testOut"></div>
+</div>
+</section>
+
+<section id="tab-doc" style="display:none">
+<div class="card doc">
+<h2>使用说明与依据</h2>
+
+<h3>1. 适用范围</h3>
+<p>本工具用于<b>圆筒面（管道）保温</b>的厚度计算，覆盖三种判据并自动取最大者（符合 GB 50264 第 6.1.5 条「取较大者」的原则）：<br>
+① <b>经济厚度法</b>：年散热损失费 + 年摊销保温投资 之和最小时的厚度；<br>
+② <b>允许最大散热损失法</b>：散热损失不超过 GB/T 4272 规定限值所需的厚度；<br>
+③ <b>表面温度法</b>：外表面温度不超过防烫伤限值（默认 60 °C）所需的厚度。<br>
+不含保冷（冷损失）、不含双层复合结构逐层计算、不含埋地管道土壤热阻修正。</p>
+
+<h3>2. 计算公式</h3>
+<table>
+<tr><th>项目</th><th>公式</th><th>说明</th></tr>
+<tr><td>单位长度散热</td><td>Q<sub>L</sub> = 2π(T<sub>f</sub>−T<sub>a</sub>) / [ ln(D₁/D₀)/λ + 2/(α<sub>s</sub>D₁) ]</td><td>W/m；圆筒双层热阻串联（保温层导热 + 表面换热）</td></tr>
+<tr><td>单位面积散热</td><td>q″ = Q<sub>L</sub> / (πD₁)</td><td>W/m²；用于与 GB/T 4272 限值比较</td></tr>
+<tr><td>外表面温度</td><td>T<sub>s</sub> = T<sub>a</sub> + q″ / α<sub>s</sub></td><td>°C</td></tr>
+<tr><td>导热系数</td><td>λ = λ₀ + b·T<sub>m</sub>，T<sub>m</sub>=(T<sub>f</sub>+T<sub>s</sub>)/2</td><td>W/(m·K)；T<sub>m</sub> 为保温层平均温度，随厚度变化需迭代</td></tr>
+<tr><td>年散热损失费</td><td>C₁ = Q<sub>L</sub> × h × 3600 / 10⁹ × P<sub>E</sub></td><td>元/(m·年)；P<sub>E</sub> 单位 元/GJ</td></tr>
+<tr><td>年摊销投资</td><td>C₂ = π/4·(D₁²−D₀²) × P<sub>T</sub> × 摊销率</td><td>元/(m·年)；P<sub>T</sub> 单位 元/m³</td></tr>
+<tr><td>经济厚度</td><td>δ<sub>eco</sub> = argmin(C₁ + C₂)</td><td>数值寻优（步长 1 mm），符合 GB/T 8175 经济厚度定义</td></tr>
+</table>
+
+<h3>3. 数据来源</h3>
+<table>
+<tr><th>数据</th><th>来源</th></tr>
+<tr><td>允许最大散热损失表（常年运行工况）</td><td>GB/T 4272-2024《设备及管道绝热技术通则》表2：50°C→39、100°C→56、150°C→71、200°C→86、250°C→101、300°C→116、350°C→131、400°C→145、450°C→160、500°C→174、550°C→190、600°C→209、650°C→229、700°C→249、750°C→268、800°C→286、850°C→303 W/m²</td></tr>
+<tr><td>岩棉 λ 方程</td><td>GB 50264-2013 附录A 表A.0.1：−20~100 °C 用 λ=0.0337+0.000151·T<sub>m</sub>；100~600 °C 用 λ=0.0395+4.71×10⁻⁵·T<sub>m</sub>+5.03×10⁻⁷·T<sub>m</sub>²</td></tr>
+<tr><td>玻璃棉 λ 方程</td><td>GB 50264-2013 附录A 表A.0.1：−20~100 °C 用 λ=0.0337+0.000128·T<sub>m</sub>；100~600 °C 用 λ=0.0407+2.52×10⁻⁵·T<sub>m</sub>+3.34×10⁻⁷·T<sub>m</sub>²</td></tr>
+<tr><td>表面换热系数 α<sub>s</sub></td><td>本工具提供 11.6 / 20 / 30 三档<b>工程常用取值</b>（室内静止、室外微风、室外有风），并可自定义。精确计算应按 GB/T 8175 分别求对流（含风速）与辐射换热系数后相加</td></tr>
+</table>
+
+<h3>4. 输入校验规则</h3>
+<ul>
+<li>所有输入不得为空、必须为有效数字并在允许范围内。</li>
+<li>必须满足 T<sub>f</sub> &gt; T<sub>a</sub>，否则无散热温差（本工具只处理保温，不处理保冷）。</li>
+<li>介质温度超出所选材料的推荐使用温度时给出警告。</li>
+<li>保温层平均温度 T<sub>m</sub> 每轮迭代重算 λ，直至收敛（容差 0.01 °C，最多 100 次）。</li>
+</ul>
+
+<h3>5. 免责说明</h3>
+<p>本工具为工程估算辅助工具，结果供方案比选与初步设计参考。经济厚度的费用参数（热价、保温单价、摊销率）<b>必须按实际项目取值</b>——不同取值算出的经济厚度可能相差一倍以上。正式设计应按现行有效版本标准与厂家实测导热系数执行。</p>
+</div>
+</section>
+
+<div class="ver">v1.0.0-pipe-insulation 20261110</div>
+
+<script id="calcLib">
+/* ============================================================
+   管道保温层厚度计算核心（纯函数，无 DOM 依赖）
+   输入：D0、Tf、Ta、λ 方程、αs、费用参数
+   输出：经济厚度 / 允许损失厚度 / 防烫伤厚度 / 最终厚度 / 散热 / 表面温度 / 年费用
+   依据：GB/T 4272-2024 允许散热损失表；GB 50264-2013 附录A λ 方程；
+         GB/T 8175 经济厚度定义（年散热损失费 + 年摊销投资 = 最小）
+   ============================================================ */
+
+/* GB/T 4272-2024 表2 常年运行工况允许最大散热损失（W/m²）
+   键为「设备及管道外表面温度」°C（即介质温度） */
+var PI_ALLOW = [
+  { t: 50,  q: 39  }, { t: 100, q: 56  }, { t: 150, q: 71  },
+  { t: 200, q: 86  }, { t: 250, q: 101 }, { t: 300, q: 116 },
+  { t: 350, q: 131 }, { t: 400, q: 145 }, { t: 450, q: 160 },
+  { t: 500, q: 174 }, { t: 550, q: 190 }, { t: 600, q: 209 },
+  { t: 650, q: 229 }, { t: 700, q: 249 }, { t: 750, q: 268 },
+  { t: 800, q: 286 }, { t: 850, q: 303 }
+];
+
+/* 材料 λ 方程（GB 50264-2013 附录A 表A.0.1）
+   Tm 为保温层平均温度 °C，返回 W/(m·K) */
+var PI_MATS = {
+  rockwool: {
+    name: '岩棉', tmax: 600,
+    lam: function (Tm) {
+      if (Tm <= 100) return 0.0337 + 0.000151 * Tm;
+      return 0.0395 + 4.71e-5 * Tm + 5.03e-7 * Tm * Tm;
+    }
+  },
+  glasswool: {
+    name: '玻璃棉', tmax: 600,
+    lam: function (Tm) {
+      if (Tm <= 100) return 0.0337 + 0.000128 * Tm;
+      return 0.0407 + 2.52e-5 * Tm + 3.34e-7 * Tm * Tm;
+    }
+  }
+};
+
+/* 线性插值查允许最大散热损失 W/m² */
+function piAllowLoss(tf) {
+  var a = PI_ALLOW;
+  if (tf <= a[0].t) return a[0].q;
+  var n = a.length;
+  if (tf >= a[n - 1].t) return a[n - 1].q;
+  for (var i = 0; i < n - 1; i++) {
+    if (tf >= a[i].t && tf <= a[i + 1].t) {
+      var f = (tf - a[i].t) / (a[i + 1].t - a[i].t);
+      return a[i].q + (a[i + 1].q - a[i].q) * f;
+    }
+  }
+  return a[n - 1].q;
+}
+
+/* 单位长度散热 Q_L (W/m)，含 λ 随 Tm 迭代
+   d0/d1 单位 m；lamFn 为 λ(Tm) 函数 */
+function piHeatPerMeter(d0, d1, tf, ta, alphaS, lamFn) {
+  if (!(d1 > d0)) throw new Error('保温层外径必须大于管道外径');
+  if (!(alphaS > 0)) throw new Error('表面换热系数必须大于 0');
+  var Tm = (tf + ta) / 2;
+  var Q = 0, iter, prev = null;
+  for (iter = 0; iter < 100; iter++) {
+    var lam = lamFn(Tm);
+    if (!(lam > 0)) throw new Error('导热系数计算异常，请检查 λ 方程参数');
+    var R = Math.log(d1 / d0) / lam + 2 / (alphaS * d1);
+    Q = 2 * Math.PI * (tf - ta) / R;
+    var qArea = Q / (Math.PI * d1);
+    var Ts = ta + qArea / alphaS;
+    var TmNew = (tf + Ts) / 2;
+    if (prev !== null && Math.abs(TmNew - Tm) < 0.01) { Tm = TmNew; break; }
+    prev = Tm;
+    Tm = TmNew;
+  }
+  var qAreaF = Q / (Math.PI * d1);
+  return { Q: Q, qArea: qAreaF, Ts: ta + qAreaF / alphaS, Tm: Tm };
+}
+
+/* 年散热损失费 元/(m·年)：Q(W/m) × h(h/年) × 3600 / 1e9 × 热价(元/GJ) */
+function piEnergyCost(Q, hours, priceGJ) {
+  return Q * hours * 3600 / 1e9 * priceGJ;
+}
+
+/* 年摊销投资 元/(m·年)：π/4(D1²−D0²) × 单价(元/m³) × 摊销率 */
+function piInvestCost(d0, d1, priceM3, amort) {
+  return Math.PI / 4 * (d1 * d1 - d0 * d0) * priceM3 * amort;
+}
+
+/* 二分法求满足 qArea(δ) ≤ target 的最小壁厚 m
+   qArea 随壁厚单调下降 → 二分可用 */
+function piSolveThickness(d0, tf, ta, alphaS, lamFn, target, isSurfaceTemp, tsMax) {
+  var lo = 0.001, hi = 1.0, i, mid, r;
+  /* 先确认 lo 端是否已达标（若已达标则 1mm 即可） */
+  function ok(delta) {
+    var rr = piHeatPerMeter(d0, d0 + 2 * delta, tf, ta, alphaS, lamFn);
+    if (isSurfaceTemp) return rr.Ts <= tsMax;
+    return rr.qArea <= target;
+  }
+  if (ok(lo)) return lo;
+  if (!ok(hi)) return hi; /* 1 m 仍不达标，返回上限并报警 */
+  for (i = 0; i < 60; i++) {
+    mid = (lo + hi) / 2;
+    if (ok(mid)) hi = mid; else lo = mid;
+    if (hi - lo < 1e-5) break;
+  }
+  return (lo + hi) / 2;
+}
+
+/* 经济厚度：数值寻优，返回 {delta, total, energy, invest} */
+function piEconomicThickness(d0, tf, ta, alphaS, lamFn, hours, priceGJ, priceM3, amort) {
+  var best = null, delta, r;
+  for (delta = 0.005; delta <= 0.500; delta += 0.001) {
+    r = piHeatPerMeter(d0, d0 + 2 * delta, tf, ta, alphaS, lamFn);
+    var e = piEnergyCost(r.Q, hours, priceGJ);
+    var v = piInvestCost(d0, d0 + 2 * delta, priceM3, amort);
+    var tot = e + v;
+    if (best === null || tot < best.total) {
+      best = { delta: delta, total: tot, energy: e, invest: v, Q: r.Q };
+    }
+  }
+  return best;
+}
+
+/* 数值格式化 */
+function fx(x, n) {
+  if (!isFinite(x)) return '∞';
+  var p = Math.pow(10, n || 0);
+  return (Math.round(x * p) / p).toFixed(n || 0);
+}
+
+/* 近似比较（测试用） */
+function approx(a, b, tol) {
+  return Math.abs(a - b) <= (tol === undefined ? 1e-6 : tol);
+}
+</script>
+
+<script>
+/* ===== 单元测试 ===== */
+var constantLam = function (v) { return function () { return v; }; };
+
+var TESTS = [
+  { n: '允许损失表：50°C → 39 W/m²', f: function () { return approx(piAllowLoss(50), 39, 1e-9); } },
+  { n: '允许损失表：200°C → 86 W/m²', f: function () { return approx(piAllowLoss(200), 86, 1e-9); } },
+  { n: '允许损失表：850°C → 303 W/m²', f: function () { return approx(piAllowLoss(850), 303, 1e-9); } },
+  { n: '允许损失表：插值 225°C → 93.5 W/m²', f: function () { return approx(piAllowLoss(225), (86 + 101) / 2, 1e-9); } },
+  { n: '允许损失表：低于下限取首值', f: function () { return approx(piAllowLoss(10), 39, 1e-9); } },
+  { n: '散热单调性：壁厚增大 → 散热下降', f: function () {
+      var a = piHeatPerMeter(0.108, 0.128, 200, 20, 11.6, constantLam(0.05));
+      var b = piHeatPerMeter(0.108, 0.208, 200, 20, 11.6, constantLam(0.05));
+      return b.Q < a.Q;
+  } },
+  { n: '表面温度必低于介质温度且高于环境温度', f: function () {
+      var r = piHeatPerMeter(0.108, 0.168, 200, 20, 11.6, constantLam(0.05));
+      return r.Ts > 20 && r.Ts < 200;
+  } },
+  { n: '表面温度必低于保温层平均温度（Tf>Ta 时）', f: function () {
+      var r = piHeatPerMeter(0.108, 0.168, 200, 20, 11.6, constantLam(0.05));
+      return r.Ts < r.Tm && r.Tm < 200;
+  } },
+  { n: '零壁厚（d1=d0）应抛异常', f: function () {
+      try { piHeatPerMeter(0.108, 0.108, 200, 20, 11.6, constantLam(0.05)); return false; } catch (e) { return true; }
+  } },
+  { n: '年散热损失费：Q=100W/m, 8000h, 60元/GJ → 172.8 元/m·年', f: function () {
+      return approx(piEnergyCost(100, 8000, 60), 100 * 8000 * 3600 / 1e9 * 60, 1e-9);
+  } },
+  { n: '年摊销投资：D0=0.108,D1=0.168,单价1200,15% → 正数且合理', f: function () {
+      var c = piInvestCost(0.108, 0.168, 1200, 0.15);
+      var expected = Math.PI / 4 * (0.168 * 0.168 - 0.108 * 0.108) * 1200 * 0.15;
+      return approx(c, expected, 1e-12);
+  } },
+  { n: '厚度求解：收敛到使 qArea 恰为目标的厚度', f: function () {
+      var lam = constantLam(0.05);
+      var d = piSolveThickness(0.108, 200, 20, 11.6, lam, 86, false, 0);
+      var r = piHeatPerMeter(0.108, 0.108 + 2 * d, 200, 20, 11.6, lam);
+      return Math.abs(r.qArea - 86) / 86 < 0.02;
+  } },
+  { n: '厚度求解：目标越严 → 厚度越大', f: function () {
+      var lam = constantLam(0.05);
+      var a = piSolveThickness(0.108, 200, 20, 11.6, lam, 86, false, 0);
+      var b = piSolveThickness(0.108, 200, 20, 11.6, lam, 40, false, 0);
+      return b > a;
+  } },
+  { n: '防烫伤求解：结果使外表面温度 ≤ 60°C', f: function () {
+      var lam = constantLam(0.05);
+      var d = piSolveThickness(0.108, 200, 20, 11.6, lam, 0, true, 60);
+      var r = piHeatPerMeter(0.108, 0.108 + 2 * d, 200, 20, 11.6, lam);
+      return r.Ts <= 60.5;
+  } },
+  { n: '经济厚度：费用最优点大于 0 且小于 0.5 m', f: function () {
+      var e = piEconomicThickness(0.108, 200, 20, 11.6, constantLam(0.05), 8000, 60, 1200, 0.15);
+      return e.delta > 0.005 && e.delta < 0.5 && e.total > 0;
+  } },
+  { n: '经济厚度：热价越高 → 厚度越大', f: function () {
+      var a = piEconomicThickness(0.108, 200, 20, 11.6, constantLam(0.05), 8000, 30, 1200, 0.15);
+      var b = piEconomicThickness(0.108, 200, 20, 11.6, constantLam(0.05), 8000, 200, 1200, 0.15);
+      return b.delta > a.delta;
+  } },
+  { n: '经济厚度：保温单价越高 → 厚度越小', f: function () {
+      var a = piEconomicThickness(0.108, 200, 20, 11.6, constantLam(0.05), 8000, 60, 500, 0.15);
+      var b = piEconomicThickness(0.108, 200, 20, 11.6, constantLam(0.05), 8000, 60, 4000, 0.15);
+      return b.delta < a.delta;
+  } },
+  { n: '岩棉 λ：Tm=70°C → 0.0443 W/(m·K)', f: function () { return approx(PI_MATS.rockwool.lam(70), 0.0337 + 0.000151 * 70, 1e-12); } },
+  { n: '玻璃棉 λ：Tm=70°C → 0.0427 W/(m·K)', f: function () { return approx(PI_MATS.glasswool.lam(70), 0.0337 + 0.000128 * 70, 1e-12); } },
+  { n: '岩棉 λ 方程：70°C → 0.04427（与标准 ≤0.044 限值基本一致，差异来自方程取整）', f: function () { return approx(PI_MATS.rockwool.lam(70), 0.04427, 1e-3); } },
+  { n: '玻璃棉 λ 在 70°C 应 ≤0.044（标准限值）', f: function () { return PI_MATS.glasswool.lam(70) <= 0.044 + 1e-12; } }
+];
+
+function runTests() {
+  var out = '', pass = 0, i, ok, msg;
+  for (i = 0; i < TESTS.length; i++) {
+    ok = false; msg = '';
+    try { ok = !!TESTS[i].f(); } catch (e) { ok = false; msg = e.message; }
+    if (ok) pass++;
+    out += '<div class="tcase ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ 通过' : '✗ 失败') +
+      ' — 用例 ' + (i + 1) + '：' + TESTS[i].n + (msg ? '（' + msg + '）' : '') + '</div>';
+  }
+  document.getElementById('testOut').innerHTML = out;
+  document.getElementById('testSum').innerHTML = '共 ' + TESTS.length + ' 例，通过 <span style="color:#7ee2a8">' + pass +
+    '</span> 例，失败 <span style="color:#ff9db5">' + (TESTS.length - pass) + '</span> 例';
+}
+
+/* ===== 界面交互 ===== */
+function $(id) { return document.getElementById(id); }
+
+(function initTabs() {
+  var tabs = document.querySelectorAll('.tabs button'), i;
+  for (i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function () {
+      var j, t = this.getAttribute('data-t');
+      for (j = 0; j < tabs.length; j++) tabs[j].classList.remove('on');
+      this.classList.add('on');
+      ['calc', 'src', 'test', 'doc'].forEach(function (k) {
+        $('tab-' + k).style.display = (k === t) ? 'block' : 'none';
+      });
+    });
+  }
+  $('srcPre').textContent = $('calcLib').textContent.replace(/^\s+|\s+$/g, '');
+
+  function syncMat() {
+    var c = $('mat').value === 'custom';
+    $('rowLam0').style.display = c ? 'block' : 'none';
+    $('rowLamb').style.display = c ? 'block' : 'none';
+  }
+  $('mat').addEventListener('change', syncMat);
+  syncMat();
+
+  $('asPreset').addEventListener('change', function () {
+    if (this.value !== 'custom') $('as').value = this.value;
+  });
+})();
+
+function val(id, name, min, max) {
+  var s = $(id).value.replace(/^\s+|\s+$/g, '');
+  if (s === '') throw new Error('【' + name + '】不能为空，请输入数值');
+  var n = Number(s);
+  if (!isFinite(n)) throw new Error('【' + name + '】必须为有效数字，当前输入：“' + s + '”');
+  if (n < min || n > max) throw new Error('【' + name + '】应在 ' + min + ' ~ ' + max + ' 之间，当前为 ' + n);
+  return n;
+}
+
+function rc(k, v, u, hl) {
+  return '<div class="rc' + (hl ? ' hl' : '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="u">' + u + '</div></div>';
+}
+
+function runCalc() {
+  var errB = $('errBox'), warnB = $('warnBox'), warns = [];
+  errB.style.display = 'none';
+  warnB.style.display = 'none';
+  try {
+    var d0 = val('d0', '管道外径 D₀', 5, 3000) / 1000;
+    var tf = val('tf', '介质温度 T_f', -50, 900);
+    var ta = val('ta', '环境温度 T_a', -60, 100);
+    var alphaS = val('as', '表面换热系数 α_s', 1, 100);
+    var pe = val('pe', '热价 P_E', 0, 100000);
+    var pt = val('pt', '保温单价 P_T', 0.01, 1000000);
+    var hours = val('hy', '年运行小时 h', 1, 8760);
+    var amort = val('amort', '年摊销率', 0.001, 1);
+    var tsMax = val('tsmax', '防烫伤表面温度', 25, 200);
+
+    if (!(tf > ta)) throw new Error('介质温度 T_f 必须高于环境温度 T_a（本工具只算保温，不算保冷）');
+
+    var matKey = $('mat').value, matName, lamFn, tmaxMat = null;
+    if (matKey === 'custom') {
+      var l0 = val('lam0', '自定义 λ₀', 0.001, 1);
+      var lb = val('lamb', '自定义 b', -0.01, 0.01);
+      lamFn = function (Tm) { return l0 + lb * Tm; };
+      matName = '自定义 λ=' + l0 + (lb >= 0 ? '+' : '') + lb + '·T_m';
+    } else {
+      var m = PI_MATS[matKey];
+      lamFn = m.lam;
+      matName = m.name;
+      tmaxMat = m.tmax;
+    }
+
+    if (tmaxMat !== null && tf > tmaxMat) {
+      warns.push('介质温度 ' + tf + ' °C 超出 ' + matName + ' 推荐使用温度上限 ' + tmaxMat + ' °C，应改用硅酸铝等耐高温材料或复核厂家数据。');
+    }
+
+    /* ① 经济厚度 */
+    var eco = piEconomicThickness(d0, tf, ta, alphaS, lamFn, hours, pe, pt, amort);
+    /* ② 允许最大散热损失 */
+    var qAllow = piAllowLoss(tf);
+    var dAllow = piSolveThickness(d0, tf, ta, alphaS, lamFn, qAllow, false, 0);
+    /* ③ 防烫伤表面温度 */
+    var dSafe = piSolveThickness(d0, tf, ta, alphaS, lamFn, 0, true, tsMax);
+
+    var dFinal = Math.max(eco.delta, dAllow, dSafe);
+    /* 最终方案核算 */
+    var fin = piHeatPerMeter(d0, d0 + 2 * dFinal, tf, ta, alphaS, lamFn);
+    var costE = piEnergyCost(fin.Q, hours, pe);
+    var costI = piInvestCost(d0, d0 + 2 * dFinal, pt, amort);
+
+    /* 主导判据 */
+    var driver = '经济厚度';
+    if (approx(dFinal, dAllow, 1e-6)) driver = '允许最大散热损失';
+    else if (approx(dFinal, dSafe, 1e-6)) driver = '防烫伤表面温度';
+
+    if (fin.qArea > qAllow * 1.001) warns.push('最终厚度下散热 ' + fx(fin.qArea, 1) + ' W/m² 仍超过 GB/T 4272 限值 ' + fx(qAllow, 1) + ' W/m²，请加大厚度或换低导热材料。');
+    if (dFinal >= 0.999) warns.push('计算厚度达到 1 m 上限仍未满足判据，请检查输入是否合理。');
+    if (dFinal / (d0 / 2) > 2) warns.push('保温层厚度已超过管道半径的 2 倍，施工与支架需专门核算。');
+    if (pe === 0) warns.push('热价为 0，经济厚度会退化为最小厚度，结果无参考意义。');
+
+    $('resBox').innerHTML =
+      rc('推荐保温厚度 δ', fx(dFinal * 1000, 0), 'mm · 主导判据：' + driver, true) +
+      rc('经济厚度', fx(eco.delta * 1000, 0), 'mm') +
+      rc('允许散热所需厚度', fx(dAllow * 1000, 0), 'mm · 限值 ' + fx(qAllow, 1) + ' W/m²') +
+      rc('防烫伤所需厚度', fx(dSafe * 1000, 0), 'mm · 表面 ≤ ' + tsMax + ' °C') +
+      rc('保温后外表面温度', fx(fin.Ts, 1), '°C') +
+      rc('单位面积散热', fx(fin.qArea, 1), 'W/m²') +
+      rc('单位长度散热', fx(fin.Q, 1), 'W/m') +
+      rc('保温层平均温度', fx(fin.Tm, 1), '°C') +
+      rc('导热系数 λ', fx(lamFn(fin.Tm), 5), 'W/(m·K)') +
+      rc('年散热损失费', fx(costE, 1), '元/(m·年)') +
+      rc('年摊销投资', fx(costI, 1), '元/(m·年)');
+
+    $('midBox').innerHTML =
+      '<div>· 材料：' + matName + '；α<sub>s</sub> = ' + alphaS + ' W/(m²·K)</div>' +
+      '<div>· 保温层外径 D₁ = D₀ + 2δ = ' + fx(d0 * 1000, 1) + ' + 2×' + fx(dFinal * 1000, 0) + ' = <b>' + fx((d0 + 2 * dFinal) * 1000, 1) + ' mm</b></div>' +
+      '<div>· 热阻：ln(D₁/D₀)/λ = ' + fx(Math.log((d0 + 2 * dFinal) / d0), 4) + '/' + fx(lamFn(fin.Tm), 4) + ' = ' + fx(Math.log((d0 + 2 * dFinal) / d0) / lamFn(fin.Tm), 4) + ' (m·K)/W；2/(α<sub>s</sub>D₁) = ' + fx(2 / (alphaS * (d0 + 2 * dFinal)), 4) + ' (m·K)/W</div>' +
+      '<div>· Q<sub>L</sub> = 2π(T<sub>f</sub>−T<sub>a</sub>) / 总热阻 = 2π×' + fx(tf - ta, 0) + ' / ' + fx(Math.log((d0 + 2 * dFinal) / d0) / lamFn(fin.Tm) + 2 / (alphaS * (d0 + 2 * dFinal)), 4) + ' = <b>' + fx(fin.Q, 1) + ' W/m</b></div>' +
+      '<div>· T<sub>s</sub> = T<sub>a</sub> + q″/α<sub>s</sub> = ' + ta + ' + ' + fx(fin.qArea, 1) + '/' + alphaS + ' = <b>' + fx(fin.Ts, 1) + ' °C</b></div>' +
+      '<div>· GB/T 4272-2024 该介质温度限值 = <b>' + fx(qAllow, 1) + ' W/m²</b>（本方案 ' + fx(fin.qArea, 1) + ' W/m²，' + (fin.qArea <= qAllow ? '<span style="color:#7ee2a8">达标</span>' : '<span style="color:#ff9db5">超标</span>') + '）</div>';
+
+    /* 厚度-费用曲线（表格形式，取 10 个点） */
+    var rows = '<table><tr><th>δ (mm)</th><th>散热 Q<sub>L</sub> (W/m)</th><th>外表面 (°C)</th><th>年损失费</th><th>年摊销</th><th>年合计</th></tr>';
+    var step = Math.max(10, Math.round(dFinal * 1000 * 2 / 10 / 5) * 5);
+    for (var d = step; d <= Math.min(400, Math.max(step * 10, dFinal * 1000 * 2)); d += step) {
+      var dmm = d / 1000;
+      var rr = piHeatPerMeter(d0, d0 + 2 * dmm, tf, ta, alphaS, lamFn);
+      var ce = piEnergyCost(rr.Q, hours, pe);
+      var ci = piInvestCost(d0, d0 + 2 * dmm, pt, amort);
+      var mark = Math.abs(d - dFinal * 1000) < step / 2 ? ' style="color:#7ee2a8;font-weight:700"' : '';
+      rows += '<tr' + mark + '><td>' + d + '</td><td>' + fx(rr.Q, 1) + '</td><td>' + fx(rr.Ts, 1) + '</td><td>' + fx(ce, 1) + '</td><td>' + fx(ci, 1) + '</td><td>' + fx(ce + ci, 1) + '</td></tr>';
+    }
+    rows += '</table>';
+    $('curveBox').innerHTML = rows + '<div style="font-size:12px;color:#5d82a8;margin-top:6px">绿色行为最终选定厚度附近；费用单位为 元/(m·年)。</div>';
+
+    $('resCard').style.display = 'block';
+
+    if (warns.length) {
+      warnB.innerHTML = warns.join('<br>');
+      warnB.style.display = 'block';
+    }
+  } catch (e) {
+    $('resCard').style.display = 'none';
+    errB.textContent = '⚠ ' + e.message;
+    errB.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

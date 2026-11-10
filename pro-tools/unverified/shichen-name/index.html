@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古代时辰对照工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f5f0e8;color:#3a2e1f;font-size:14px;line-height:1.6;padding:12px}
+.wrap{max-width:640px;margin:0 auto}
+h1{text-align:center;font-size:22px;margin:10px 0 4px;color:#6b3a0a}
+.subtitle{text-align:center;font-size:13px;color:#8a7560;margin-bottom:14px}
+.now-box{background:linear-gradient(135deg,#8b5e3c,#6b3a0a);color:#fff;border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:center}
+.now-box .time{font-size:28px;font-weight:bold;letter-spacing:2px}
+.now-box .info{font-size:14px;margin-top:6px;opacity:.92}
+.now-box .info span{display:inline-block;background:rgba(255,255,255,.18);border-radius:4px;padding:1px 8px;margin:2px 3px}
+.section{background:#fff;border-radius:10px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.section h2{font-size:16px;color:#6b3a0a;border-bottom:2px solid #e8d5b8;padding-bottom:6px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f0e6d4;color:#6b3a0a;padding:7px 4px;text-align:center;font-weight:600;position:sticky;top:0}
+td{padding:6px 4px;text-align:center;border-bottom:1px solid #ede4d6}
+tr:hover td{background:#faf6ee}
+tr.highlight td{background:#fff3d6;font-weight:bold}
+.tag{display:inline-block;font-size:11px;background:#f0e6d4;color:#6b3a0a;border-radius:3px;padding:0 5px;margin:1px}
+.geng-table td:first-child{font-weight:bold;color:#8b5e3c}
+.note{font-size:12px;color:#8a7560;margin-top:8px;padding:8px;background:#faf6ee;border-radius:6px;border-left:3px solid #d4b896}
+.source{background:#faf6ee;border-radius:10px;padding:14px;margin-bottom:40px;font-size:12px;color:#6b5a48}
+.source h2{font-size:15px;color:#6b3a0a;margin-bottom:8px}
+.source ul{padding-left:18px}
+.source li{margin-bottom:4px}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#b0a090}
+.search-box{display:flex;gap:8px;margin-bottom:12px}
+.search-box input{flex:1;padding:8px 12px;border:1px solid #d4b896;border-radius:6px;font-size:14px;outline:none}
+.search-box input:focus{border-color:#8b5e3c}
+.search-box button{padding:8px 16px;background:#8b5e3c;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer}
+.search-box button:active{background:#6b3a0a}
+.result{margin-top:10px;padding:10px;background:#faf6ee;border-radius:6px;display:none}
+.result.show{display:block}
+@media(max-width:400px){
+table{font-size:12px}
+th,td{padding:5px 2px}
+.now-box .time{font-size:24px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🕰️ 古代时辰对照</h1>
+<p class="subtitle">十二时辰 · 别称 · 生肖 · 五行 · 经络 · 更点</p>
+
+<div class="now-box" id="nowBox">
+<div class="time" id="nowTime">--:--:--</div>
+<div class="info" id="nowInfo">加载中…</div>
+</div>
+
+<div class="section">
+<h2>🔍 输入时间查询</h2>
+<div class="search-box">
+<input type="time" id="inputTime" step="60">
+<button onclick="queryTime()">查询</button>
+</div>
+<div class="result" id="queryResult"></div>
+</div>
+
+<div class="section">
+<h2>📋 十二时辰总表</h2>
+<div style="overflow-x:auto">
+<table id="mainTable">
+<thead>
+<tr><th>地支</th><th>别称</th><th>时段</th><th>生肖</th><th>五行</th><th>经络当令</th></tr>
+</thead>
+<tbody id="mainBody"></tbody>
+</table>
+</div>
+</div>
+
+<div class="section">
+<h2>🌙 更点制对照</h2>
+<p style="font-size:13px;color:#6b5a48;margin-bottom:8px">夜间以"更"计时，每更约两小时，每更分五点，每点约24分钟。</p>
+<div style="overflow-x:auto">
+<table class="geng-table">
+<thead>
+<tr><th>更</th><th>对应时辰</th><th>现代时段</th><th>别称</th></tr>
+</thead>
+<tbody>
+<tr><td>一更</td><td>戌时</td><td>19:00–21:00</td><td>黄昏</td></tr>
+<tr><td>二更</td><td>亥时</td><td>21:00–23:00</td><td>人定</td></tr>
+<tr><td>三更</td><td>子时</td><td>23:00–01:00</td><td>夜半</td></tr>
+<tr><td>四更</td><td>丑时</td><td>01:00–03:00</td><td>鸡鸣</td></tr>
+<tr><td>五更</td><td>寅时</td><td>03:00–05:00</td><td>平旦</td></tr>
+</tbody>
+</table>
+</div>
+<div class="note">
+💡 更点细分：每更分五点。例如"三更三点"约为子时正中（0:00前后），"三更五点"约为0:24。每点约合现代24分钟。
+</div>
+</div>
+
+<div class="section">
+<h2>📖 补充说明</h2>
+<div class="note">
+<strong>关于"时辰初/正"：</strong>每个时辰分"初"和"正"两段，各一小时。如子初=23:00–00:00，子正=00:00–01:00。此制始于汉代，历代沿用。<br><br>
+<strong>关于生肖配时辰：</strong>依据动物活动习性配属地支，如鼠咬夜半（子）、牛耕黎明（丑）等，属传统民俗说法。<br><br>
+<strong>关于经络当令：</strong>源自中医子午流注理论，认为气血在不同时辰流注不同经脉。具体对应关系详见《黄帝内经》相关篇章。
+</div>
+</div>
+
+<div class="source">
+<h2>📚 数据依据</h2>
+<ul>
+<li>十二时辰名称与时段划分：依据《中国天文学史》（中国科学技术史·天文学卷，科学出版社）及历代历志记载，属传统天文历法通行说法。</li>
+<li>时辰别称（夜半、鸡鸣、平旦等）：见于《颜氏家训·书证》《左传》《诗经》等先秦两汉文献，为历代通行称谓。</li>
+<li>生肖配地支：见于东汉王充《论衡·物势》等，属民间通行说法，无强制标准。</li>
+<li>五行配地支：寅卯属木、巳午属火、申酉属金、亥子属水、辰戌丑未属土，为传统五行学说通行配法，见于《淮南子·天文训》等。</li>
+<li>经络当令（子午流注）：源自《黄帝内经》运气七篇及后世针灸文献，属中医传统理论，非国家强制标准。</li>
+<li>更点制：见于《新唐书·百官志》《宋史·天文志》等，为古代夜间计时通行制度。</li>
+</ul>
+<p style="margin-top:8px;font-size:11px;color:#8a7560">⚠️ 以上均为传统文献记载与民间通行说法，非现行国家标准（GB）。具体细节因朝代、地域可能略有差异。</p>
+</div>
+</div>
+
+<div class="ver">v1.0.0-古代时辰对照 20261021</div>
+
+<script>
+var DATA=[
+{dz:"子",bc:"夜半",sh:"23:00–01:00",sx:"🐭 鼠",wx:"水",jl:"胆经",h0:23,h1:1},
+{dz:"丑",bc:"鸡鸣",sh:"01:00–03:00",sx:"🐂 牛",wx:"土",jl:"肝经",h0:1,h1:3},
+{dz:"寅",bc:"平旦",sh:"03:00–05:00",sx:"🐯 虎",wx:"木",jl:"肺经",h0:3,h1:5},
+{dz:"卯",bc:"日出",sh:"05:00–07:00",sx:"🐰 兔",wx:"木",jl:"大肠经",h0:5,h1:7},
+{dz:"辰",bc:"食时",sh:"07:00–09:00",sx:"🐲 龙",wx:"土",jl:"胃经",h0:7,h1:9},
+{dz:"巳",bc:"隅中",sh:"09:00–11:00",sx:"🐍 蛇",wx:"火",jl:"脾经",h0:9,h1:11},
+{dz:"午",bc:"日中",sh:"11:00–13:00",sx:"🐴 马",wx:"火",jl:"心经",h0:11,h1:13},
+{dz:"未",bc:"日昳",sh:"13:00–15:00",sx:"🐑 羊",wx:"土",jl:"小肠经",h0:13,h1:15},
+{dz:"申",bc:"晡时",sh:"15:00–17:00",sx:"🐵 猴",wx:"金",jl:"膀胱经",h0:15,h1:17},
+{dz:"酉",bc:"日入",sh:"17:00–19:00",sx:"🐔 鸡",wx:"金",jl:"肾经",h0:17,h1:19},
+{dz:"戌",bc:"黄昏",sh:"19:00–21:00",sx:"🐶 狗",wx:"土",jl:"心包经",h0:19,h1:21},
+{dz:"亥",bc:"人定",sh:"21:00–23:00",sx:"🐷 猪",wx:"水",jl:"三焦经",h0:21,h1:23}
+];
+
+var GENG=[
+{g:"一更",dz:"戌",sh:"19:00–21:00",bc:"黄昏"},
+{g:"二更",dz:"亥",sh:"21:00–23:00",bc:"人定"},
+{g:"三更",dz:"子",sh:"23:00–01:00",bc:"夜半"},
+{g:"四更",dz:"丑",sh:"01:00–03:00",bc:"鸡鸣"},
+{g:"五更",dz:"寅",sh:"03:00–05:00",bc:"平旦"}
+];
+
+function getShichen(h){
+for(var i=0;i<DATA.length;i++){
+var d=DATA[i];
+if(d.dz==="子"){
+if(h>=23||h<1) return i;
+}else{
+if(h>=d.h0&&h<d.h1) return i;
+}
+}
+return 0;
+}
+
+function getGeng(h){
+if(h>=19&&h<21) return 0;
+if(h>=21&&h<23) return 1;
+if(h>=23||h<1) return 2;
+if(h>=1&&h<3) return 3;
+if(h>=3&&h<5) return 4;
+return -1;
+}
+
+function pad(n){return n<10?"0"+n:""+n}
+
+function renderTable(highlightIdx){
+var tb=document.getElementById("mainBody");
+tb.innerHTML="";
+for(var i=0;i<DATA.length;i++){
+var d=DATA[i];
+var tr=document.createElement("tr");
+if(i===highlightIdx) tr.className="highlight";
+tr.innerHTML="<td><strong>"+d.dz+"时</strong></td><td>"+d.bc+"</td><td>"+d.sh+"</td><td>"+d.sx+"</td><td><span class='tag'>"+d.wx+"</span></td><td>"+d.jl+"</td>";
+tb.appendChild(tr);
+}
+}
+
+function updateNow(){
+var now=new Date();
+var h=now.getHours(),m=now.getMinutes(),s=now.getSeconds();
+document.getElementById("nowTime").textContent=pad(h)+":"+pad(m)+":"+pad(s);
+var idx=getShichen(h);
+var d=DATA[idx];
+var gi=getGeng(h);
+var info="<span>"+d.dz+"时</span><span>"+d.bc+"</span><span>"+d.sx+"</span><span>"+d.wx+"</span><span>"+d.jl+"</span>";
+if(gi>=0) info+="<span>"+GENG[gi].g+"</span>";
+document.getElementById("nowInfo").innerHTML=info;
+renderTable(idx);
+}
+
+function queryTime(){
+var v=document.getElementById("inputTime").value;
+if(!v){alert("请输入时间");return}
+var parts=v.split(":");
+var h=parseInt(parts[0],10);
+var idx=getShichen(h);
+var d=DATA[idx];
+var gi=getGeng(h);
+var html="<strong>📍 "+d.dz+"时 · "+d.bc+"</strong><br>";
+html+="时段："+d.sh+"<br>";
+html+="生肖："+d.sx+" 五行："+d.wx+"<br>";
+html+="经络当令："+d.jl+"<br>";
+if(gi>=0){
+html+="更点："+GENG[gi].g+"（"+GENG[gi].bc+"）";
+var m=parseInt(parts[1],10);
+var gengStart=[19,21,23,1,3];
+var baseH=gengStart[gi];
+var diffMin=0;
+if(h>=baseH) diffMin=(h-baseH)*60+m;
+else diffMin=(24-baseH+h)*60+m;
+var pointNum=Math.floor(diffMin/24)+1;
+if(pointNum>5) pointNum=5;
+html+="，约第"+pointNum+"点";
+}
+var res=document.getElementById("queryResult");
+res.innerHTML=html;
+res.className="result show";
+renderTable(idx);
+var target=document.getElementById("mainTable");
+target.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+updateNow();
+setInterval(updateNow,1000);
+</script>
+</body>
+</html>

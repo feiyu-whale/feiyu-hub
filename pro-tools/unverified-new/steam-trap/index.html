@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>蒸汽疏水阀选型计算器</title>
+<!--
+  文件作用：按凝结水量、压差、安全系数进行蒸汽疏水阀选型（口径估算）
+  开源库：无（纯原生 JS，零依赖）
+  输入：蒸汽压力（表压）、用汽设备热负荷或蒸汽耗量、环境/启动条件、疏水阀类型、背压
+  输出：饱和温度、汽化潜热、预热凝结水量、运行凝结水量、管道散热凝结水量、所需排量、估算最小口径
+  数据来源：IAPWS-IF97 饱和蒸汽表标准值；TLV《蒸汽疏水阀选型：安全系数》推荐最小安全系数；
+            孔口出流公式（Cd=0.6 为锐边孔口工程常用值）
+-->
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:0 12px 64px;background:#0a1628;color:#cfe0f2;font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",Arial,sans-serif;-webkit-text-size-adjust:100%}
+h1{font-size:19px;margin:0 0 4px;color:#eaf3ff}
+.hdr{padding:18px 0 12px;border-bottom:1px solid #1c3452;margin-bottom:14px}
+.sub{color:#6b8bb0;font-size:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tabs button{background:#122238;color:#8fb4d9;border:1px solid #1e3a5c;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px}
+.tabs button.on{background:#4a9eff;color:#06121f;border-color:#4a9eff;font-weight:700}
+.card{background:#0f1f36;border:1px solid #1c3452;border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:14px;margin:0 0 12px;color:#7fc4ff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fb4d9;margin-bottom:4px}
+input,select{width:100%;background:#0a1628;border:1px solid #23456b;color:#d8e6f5;padding:8px;border-radius:7px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.btn{background:#4a9eff;color:#06121f;border:0;padding:10px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px}
+.btn:active{transform:translateY(1px)}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:10px}
+.rc{background:#0b1a2e;border:1px solid #1c3452;border-left:3px solid #4a9eff;border-radius:8px;padding:9px 10px}
+.rc.hl{border-left-color:#7ee2a8}
+.rc .k{font-size:11px;color:#7fa4c9}
+.rc .v{font-size:18px;color:#7fc4ff;font-weight:700;word-break:break-all}
+.rc.hl .v{color:#7ee2a8}
+.rc .u{font-size:11px;color:#5d82a8}
+.err{background:#3a1220;border:1px solid #7a2440;color:#ff9db5;padding:10px 12px;border-radius:8px;margin-top:12px;display:none}
+.warn{background:#2a2410;border:1px solid #6b5a1e;color:#f0d27a;padding:10px 12px;border-radius:8px;margin-top:10px;font-size:12px;display:none}
+pre{background:#06111f;border:1px solid #1c3452;border-radius:8px;padding:12px;overflow-x:auto;font-size:12px;line-height:1.5;color:#9fd0f0;max-width:100%}
+.tcase{padding:7px 10px;border-radius:7px;margin-bottom:6px;font-size:13px;border:1px solid}
+.tcase.ok{background:#0c2a1c;border-color:#1e6b42;color:#7ee2a8}
+.tcase.bad{background:#2e1220;border-color:#7a2440;color:#ff9db5}
+.sum{font-weight:700;margin-top:12px;font-size:14px}
+.ver{position:fixed;right:10px;bottom:8px;font-size:11px;color:#4a6f96;background:#0a1628;padding:3px 8px;border-radius:6px;border:1px solid #1c3452}
+.doc p,.doc li{font-size:13px;color:#a9c6e4}
+.doc h3{font-size:13px;color:#7fc4ff;margin:14px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+td,th{border:1px solid #1c3452;padding:5px 7px;text-align:left;color:#a9c6e4;vertical-align:top}
+th{background:#122238;color:#8fb4d9}
+.mid{font-size:12px;color:#8fb4d9;line-height:1.9}
+.mid b{color:#7fc4ff}
+@media(max-width:520px){.rc .v{font-size:16px}.tabs button{padding:7px 10px;font-size:12px}body{padding:0 8px 60px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+<h1>蒸汽疏水阀选型计算器</h1>
+<div class="sub">饱和蒸汽表 · 预热 / 运行 / 管道散热凝结水量 · 安全系数 · 孔口口径估算 · 热动力/浮球/倒吊桶/热静力</div>
+</div>
+
+<div class="tabs">
+<button class="on" data-t="calc">计算工具</button>
+<button data-t="src">JS 源码</button>
+<button data-t="test">单元测试</button>
+<button data-t="doc">使用说明</button>
+</div>
+
+<section id="tab-calc">
+<div class="card">
+<h2>一、蒸汽与负荷参数</h2>
+<div class="grid">
+<div><label>蒸汽压力 P₁（表压，MPa）</label><input id="p1" type="number" step="any" value="0.6"></div>
+<div><label>疏水阀后压力 P₂（表压，MPa，回水背压）</label><input id="p2" type="number" step="any" value="0"></div>
+<div><label>用汽设备热负荷 Q (kW)</label><input id="qload" type="number" step="any" value="300"></div>
+<div><label>疏水阀类型</label>
+<select id="trapType">
+<option value="float">浮球式（连续排水，SF=1.5）</option>
+<option value="bucket" selected>倒吊桶式（SF=2）</option>
+<option value="disc">热动力圆盘式（SF=2）</option>
+<option value="thermo">热静力波纹管/X 元件（SF=2）</option>
+<option value="bimetal">双金属片热静力（SF=3~5）</option>
+</select></div>
+<div><label>安全系数（可覆盖）</label><input id="sf" type="number" step="any" value="2"></div>
+<div><label>设备及管道金属质量 m (kg，用于启动加热)</label><input id="mass" type="number" step="any" value="500"></div>
+<div><label>金属比热 c_p (kJ/kg·K)</label><input id="cp" type="number" step="any" value="0.46"></div>
+<div><label>启动前设备温度 (°C)</label><input id="t0" type="number" step="any" value="20"></div>
+<div><label>启动加热时间 (min)</label><input id="heatup" type="number" step="any" value="30"></div>
+<div><label>蒸汽管长度 L (m，散热疏水，0=不计)</label><input id="pipelen" type="number" step="any" value="0"></div>
+<div><label>管道单位长度散热 q' (W/m)</label><input id="pipeq" type="number" step="any" value="200"></div>
+<div><label>凝结水密度 ρ (kg/m³)</label><input id="rhow" type="number" step="any" value="900"></div>
+</div>
+<div style="margin-top:14px"><button class="btn" onclick="runCalc()">开始计算</button></div>
+<div class="err" id="errBox"></div>
+<div class="warn" id="warnBox"></div>
+</div>
+
+<div class="card" id="resCard" style="display:none">
+<h2>二、计算结果</h2>
+<div class="res" id="resBox"></div>
+<h2 style="margin:16px 0 8px">三、中间量与公式说明</h2>
+<div class="mid" id="midBox"></div>
+</div>
+</section>
+
+<section id="tab-src" style="display:none">
+<div class="card">
+<h2>计算核心源码（全部为纯函数，可单独测试）</h2>
+<pre id="srcPre"></pre>
+</div>
+</section>
+
+<section id="tab-test" style="display:none">
+<div class="card">
+<h2>内置单元测试（输入 → 期望输出）</h2>
+<button class="btn" onclick="runTests()">运行全部测试</button>
+<div class="sum" id="testSum"></div>
+<div id="testOut"></div>
+</div>
+</section>
+
+<section id="tab-doc" style="display:none">
+<div class="card doc">
+<h2>使用说明与依据</h2>
+
+<h3>1. 适用范围</h3>
+<p>本工具用于<b>饱和蒸汽系统</b>的疏水阀初步选型：由蒸汽压力查饱和温度与汽化潜热，计算运行凝结水量、启动预热凝结水量、蒸汽管道散热凝结水量，乘以安全系数得到所需排量，再按孔口出流公式估算最小流通直径。不含过热蒸汽、不含闪蒸蒸汽回收系统设计、不含排量—压差曲线逐台选型。</p>
+
+<h3>2. 计算公式</h3>
+<table>
+<tr><th>项目</th><th>公式</th><th>说明</th></tr>
+<tr><td>运行凝结水量</td><td>W = Q × 3600 / r</td><td>kg/h；Q 为热负荷 kW，r 为汽化潜热 kJ/kg</td></tr>
+<tr><td>启动预热凝结水量</td><td>W<sub>s</sub> = m·c<sub>p</sub>(T<sub>s</sub>−T<sub>0</sub>) / (r·t<sub>h</sub>)</td><td>kg/h；m 为金属质量，t<sub>h</sub> 为加热时间（换算成小时）</td></tr>
+<tr><td>管道散热凝结水量</td><td>W<sub>p</sub> = q′·L·3.6 / r</td><td>kg/h；q′ 单位 W/m</td></tr>
+<tr><td>所需排量</td><td>W<sub>req</sub> = W<sub>max</sub> × SF</td><td>W<sub>max</sub> 取运行与启动两者较大值，再加管道散热</td></tr>
+<tr><td>孔口出流</td><td>W = 3600·C<sub>d</sub>·A·√(2Δp·ρ)</td><td>kg/h；A 为流通面积 m²，Δp 为阀前后压差 Pa，C<sub>d</sub>=0.6</td></tr>
+<tr><td>最小流通直径</td><td>d = √(4W / (3600·C<sub>d</sub>·π·√(2Δp·ρ)))</td><td>m；再由标准口径圆整</td></tr>
+</table>
+
+<h3>3. 参数取值与出处</h3>
+<table>
+<tr><th>参数</th><th>取值 / 来源</th><th>说明</th></tr>
+<tr><td>饱和蒸汽性质</td><td>IAPWS-IF97 标准值</td><td>内置表按绝对压力 0.1~4.0 MPa 共 14 个点，线性插值；温度与潜热为国际水和水蒸气性质协会标准值</td></tr>
+<tr><td>安全系数 SF</td><td>浮球 1.5 / 倒吊桶 2 / 圆盘 2 / 热静力 X 元件 2 / 双金属 3~5</td><td>来源：TLV《疏水阀选型：安全系数和产品运行周期成本》推荐最小安全系数表。连续排水型（浮球）取值最小；间歇排水型因运行间歇需更大缓冲</td></tr>
+<tr><td>孔口流量系数 C<sub>d</sub></td><td>0.6</td><td>锐边孔口水力出流工程常用值（0.6~0.62 区间），本工具取下限偏安全</td></tr>
+<tr><td>凝结水密度 ρ</td><td>默认 900 kg/m³</td><td>按饱和温度下水的密度取工程值，可覆盖</td></tr>
+<tr><td>碳钢比热 c<sub>p</sub></td><td>0.46 kJ/(kg·K)</td><td>碳钢常温至 200°C 区间工程平均值</td></tr>
+</table>
+
+<h3>4. 输入校验规则</h3>
+<ul>
+<li>所有输入不得为空、必须为有效数字并在允许范围内。</li>
+<li>必须满足 P₁ &gt; P₂（阀前后压差为正），否则疏水阀无推动力。</li>
+<li>蒸汽压力须在 0.05~4.0 MPa(表压) 范围内，超出时给出警告（物性外推不可靠）。</li>
+<li>背压比 P₂/P₁ 过高（&gt;50%）时给出警告：机械型疏水阀在高压比下排量急剧下降。</li>
+</ul>
+
+<h3>5. 免责说明</h3>
+<p>本工具为工程估算辅助工具。实际选型必须以疏水阀厂家的<b>排量—压差曲线</b>（不同口径、不同过冷度）为准，并考虑凝结水回收背压、水锤、污物堵塞、冻堵风险。计算结果仅供方案比选。</p>
+</div>
+</section>
+
+<div class="ver">v1.0.0-steam-trap 20261110</div>
+
+<script id="calcLib">
+/* ============================================================
+   疏水阀选型核心（纯函数，无 DOM 依赖）
+   输入：表压 MPa、热负荷 kW、金属质量、启动条件、安全系数、背压
+   输出：饱和温度、潜热、各类凝结水量（kg/h）、所需排量、最小流通直径
+   依据：IAPWS-IF97 饱和蒸汽表标准值；TLV 安全系数推荐值；孔口出流公式
+   ============================================================ */
+
+/* 饱和蒸汽表（绝对压力 MPa → 饱和温度 °C / 汽化潜热 kJ/kg / 蒸汽比容 m³/kg）
+   数据来源：IAPWS-IF97 标准值（取整） */
+var ST_TABLE = [
+  { p: 0.10, t: 99.6,  r: 2257, vg: 1.694  },
+  { p: 0.20, t: 120.2, r: 2202, vg: 0.8854 },
+  { p: 0.30, t: 133.5, r: 2163, vg: 0.6056 },
+  { p: 0.40, t: 143.6, r: 2133, vg: 0.4622 },
+  { p: 0.50, t: 151.8, r: 2108, vg: 0.3747 },
+  { p: 0.60, t: 158.8, r: 2086, vg: 0.3156 },
+  { p: 0.80, t: 170.4, r: 2048, vg: 0.2404 },
+  { p: 1.00, t: 179.9, r: 2015, vg: 0.1944 },
+  { p: 1.20, t: 188.0, r: 1984, vg: 0.1633 },
+  { p: 1.60, t: 201.4, r: 1935, vg: 0.1238 },
+  { p: 2.00, t: 212.4, r: 1890, vg: 0.0996 },
+  { p: 2.50, t: 224.0, r: 1841, vg: 0.0799 },
+  { p: 3.00, t: 233.9, r: 1794, vg: 0.0667 },
+  { p: 4.00, t: 250.4, r: 1714, vg: 0.0498 }
+];
+
+/* 疏水阀类型 → 推荐最小安全系数（TLV 推荐值） */
+var ST_SF = {
+  float:   { name: '浮球式（连续排水）', sf: 1.5 },
+  bucket:  { name: '倒吊桶式',           sf: 2.0 },
+  disc:    { name: '热动力圆盘式',       sf: 2.0 },
+  thermo:  { name: '热静力波纹管/X 元件', sf: 2.0 },
+  bimetal: { name: '双金属片热静力',     sf: 4.0 }
+};
+
+/* 孔口流量系数（锐边孔口工程常用值，取下限偏安全） */
+var ST_CD = 0.6;
+
+/* 线性插值查饱和蒸汽性质：入参为绝对压力 MPa */
+function stProps(pabs) {
+  var a = ST_TABLE;
+  if (pabs <= a[0].p) return { t: a[0].t, r: a[0].r, vg: a[0].vg };
+  var n = a.length;
+  if (pabs >= a[n - 1].p) return { t: a[n - 1].t, r: a[n - 1].r, vg: a[n - 1].vg };
+  for (var i = 0; i < n - 1; i++) {
+    if (pabs >= a[i].p && pabs <= a[i + 1].p) {
+      var f = (pabs - a[i].p) / (a[i + 1].p - a[i].p);
+      return {
+        t: a[i].t + (a[i + 1].t - a[i].t) * f,
+        r: a[i].r + (a[i + 1].r - a[i].r) * f,
+        vg: a[i].vg + (a[i + 1].vg - a[i].vg) * f
+      };
+    }
+  }
+  return { t: a[n - 1].t, r: a[n - 1].r, vg: a[n - 1].vg };
+}
+
+/* 运行凝结水量 kg/h：W = Q(kW)*3600 / r(kJ/kg) */
+function stRunningCond(Q, r) {
+  if (!(Q >= 0)) throw new Error('热负荷不能为负');
+  if (!(r > 0)) throw new Error('汽化潜热必须大于 0');
+  return Q * 3600 / r;
+}
+
+/* 启动预热凝结水量 kg/h：W = m*cp*(Ts-T0) / (r * th_h)
+   th_min 为分钟，内部换算为小时 */
+function stWarmupCond(mass, cp, Ts, T0, r, thMin) {
+  if (!(mass >= 0)) throw new Error('金属质量不能为负');
+  if (!(thMin > 0)) throw new Error('启动加热时间必须大于 0 分钟');
+  var th = thMin / 60;
+  var dT = Ts - T0;
+  if (dT <= 0) return 0;
+  return mass * cp * dT / (r * th);
+}
+
+/* 管道散热凝结水量 kg/h：W = q'(W/m)*L*3.6 / r(kJ/kg) */
+function stPipeCond(qPerM, L, r) {
+  if (!(qPerM >= 0) || !(L >= 0)) throw new Error('散热参数不能为负');
+  return qPerM * L * 3.6 / r;
+}
+
+/* 所需排量 kg/h = 最大凝结水量 × 安全系数 */
+function stRequiredFlow(wMax, sf) {
+  if (!(sf >= 1)) throw new Error('安全系数不应小于 1');
+  return wMax * sf;
+}
+
+/* 孔口出流：由排量反算最小流通直径 m
+   W(kg/h) = 3600*Cd*A*sqrt(2*dp*rho)，A = π d²/4
+   → d = sqrt( 4W / (3600*Cd*π*sqrt(2*dp*rho)) ) */
+function stOrificeDia(W, dpPa, rho) {
+  if (!(W > 0)) throw new Error('所需排量必须大于 0');
+  if (!(dpPa > 0)) throw new Error('压差必须大于 0，否则疏水阀无推动力');
+  if (!(rho > 0)) throw new Error('凝结水密度必须大于 0');
+  var den = 3600 * ST_CD * Math.PI * Math.sqrt(2 * dpPa * rho);
+  return Math.sqrt(4 * W / den);
+}
+
+/* 数值格式化 */
+function fx(x, n) {
+  if (!isFinite(x)) return '∞';
+  var p = Math.pow(10, n || 0);
+  return (Math.round(x * p) / p).toFixed(n || 0);
+}
+
+/* 近似比较（测试用） */
+function approx(a, b, tol) {
+  return Math.abs(a - b) <= (tol === undefined ? 1e-6 : tol);
+}
+</script>
+
+<script>
+/* ===== 单元测试 ===== */
+var TESTS = [
+  { n: '饱和表：0.6 MPa(abs) → 158.8 °C', f: function () { return approx(stProps(0.6).t, 158.8, 1e-9); } },
+  { n: '饱和表：1.0 MPa(abs) → 潜热 2015 kJ/kg', f: function () { return approx(stProps(1.0).r, 2015, 1e-9); } },
+  { n: '饱和表：插值 0.7 MPa → 温度在 158.8~170.4 之间', f: function () { var t = stProps(0.7).t; return t > 158.8 && t < 170.4; } },
+  { n: '饱和表：低于首点取首点值', f: function () { return approx(stProps(0.05).t, 99.6, 1e-9); } },
+  { n: '饱和表：高于末点取末点值', f: function () { return approx(stProps(6).t, 250.4, 1e-9); } },
+  { n: '运行凝结水：Q=300kW, r=2086 → ≈517.7 kg/h', f: function () { return approx(stRunningCond(300, 2086), 300 * 3600 / 2086, 1e-6); } },
+  { n: '运行凝结水：Q=0 → 0', f: function () { return approx(stRunningCond(0, 2086), 0); } },
+  { n: '预热凝结水：500kg, cp=0.46, 158.8→20°C, 30min', f: function () {
+      var w = stWarmupCond(500, 0.46, 158.8, 20, 2086, 30);
+      return approx(w, 500 * 0.46 * 138.8 / (2086 * 0.5), 1e-6);
+  } },
+  { n: '预热凝结水：起始温度高于饱和温度 → 0', f: function () { return approx(stWarmupCond(500, 0.46, 100, 120, 2086, 30), 0); } },
+  { n: '预热加热时间 0 → 抛异常', f: function () { try { stWarmupCond(500, 0.46, 158.8, 20, 2086, 0); return false; } catch (e) { return true; } } },
+  { n: '管道散热凝结水：q=200W/m, L=50m, r=2086 → ≈17.26 kg/h', f: function () { return approx(stPipeCond(200, 50, 2086), 200 * 50 * 3.6 / 2086, 1e-6); } },
+  { n: '所需排量：W=500, SF=2 → 1000 kg/h', f: function () { return approx(stRequiredFlow(500, 2), 1000); } },
+  { n: '安全系数 <1 → 抛异常', f: function () { try { stRequiredFlow(500, 0.5); return false; } catch (e) { return true; } } },
+  { n: '孔口直径：W=1000kg/h, Δp=0.6MPa, ρ=900 → 约 4.1 mm', f: function () {
+      var d = stOrificeDia(1000, 0.6e6, 900);
+      return d > 0.0035 && d < 0.0048;
+  } },
+  { n: '孔口直径随排量增大而增大', f: function () { return stOrificeDia(2000, 0.6e6, 900) > stOrificeDia(1000, 0.6e6, 900); } },
+  { n: '孔口直径随压差增大而减小', f: function () { return stOrificeDia(1000, 1.0e6, 900) < stOrificeDia(1000, 0.6e6, 900); } },
+  { n: '压差为 0 → 抛异常', f: function () { try { stOrificeDia(1000, 0, 900); return false; } catch (e) { return true; } } }
+];
+
+function runTests() {
+  var out = '', pass = 0, i, ok, msg;
+  for (i = 0; i < TESTS.length; i++) {
+    ok = false; msg = '';
+    try { ok = !!TESTS[i].f(); } catch (e) { ok = false; msg = e.message; }
+    if (ok) pass++;
+    out += '<div class="tcase ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ 通过' : '✗ 失败') +
+      ' — 用例 ' + (i + 1) + '：' + TESTS[i].n + (msg ? '（' + msg + '）' : '') + '</div>';
+  }
+  document.getElementById('testOut').innerHTML = out;
+  document.getElementById('testSum').innerHTML = '共 ' + TESTS.length + ' 例，通过 <span style="color:#7ee2a8">' + pass +
+    '</span> 例，失败 <span style="color:#ff9db5">' + (TESTS.length - pass) + '</span> 例';
+}
+
+/* ===== 界面交互 ===== */
+function $(id) { return document.getElementById(id); }
+
+(function initTabs() {
+  var tabs = document.querySelectorAll('.tabs button'), i;
+  for (i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function () {
+      var j, t = this.getAttribute('data-t');
+      for (j = 0; j < tabs.length; j++) tabs[j].classList.remove('on');
+      this.classList.add('on');
+      ['calc', 'src', 'test', 'doc'].forEach(function (k) {
+        $('tab-' + k).style.display = (k === t) ? 'block' : 'none';
+      });
+    });
+  }
+  $('srcPre').textContent = $('calcLib').textContent.replace(/^\s+|\s+$/g, '');
+  /* 换阀型自动带入推荐安全系数 */
+  $('trapType').addEventListener('change', function () {
+    var o = ST_SF[this.value];
+    if (o) $('sf').value = o.sf;
+  });
+})();
+
+function val(id, name, min, max) {
+  var s = $(id).value.replace(/^\s+|\s+$/g, '');
+  if (s === '') throw new Error('【' + name + '】不能为空，请输入数值');
+  var n = Number(s);
+  if (!isFinite(n)) throw new Error('【' + name + '】必须为有效数字，当前输入：“' + s + '”');
+  if (n < min || n > max) throw new Error('【' + name + '】应在 ' + min + ' ~ ' + max + ' 之间，当前为 ' + n);
+  return n;
+}
+
+function rc(k, v, u, hl) {
+  return '<div class="rc' + (hl ? ' hl' : '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="u">' + u + '</div></div>';
+}
+
+/* 常用公称口径（mm）供圆整建议 */
+var ST_DN = [3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 32, 40, 50, 65, 80, 100];
+
+function runCalc() {
+  var errB = $('errBox'), warnB = $('warnBox'), warns = [];
+  errB.style.display = 'none';
+  warnB.style.display = 'none';
+  try {
+    var p1g = val('p1', '蒸汽表压 P₁', 0.05, 4.0);
+    var p2g = val('p2', '背压 P₂', 0, 4.0);
+    var Q = val('qload', '热负荷 Q', 0.01, 100000);
+    var sf = val('sf', '安全系数', 1, 10);
+    var mass = val('mass', '金属质量 m', 0, 1000000);
+    var cp = val('cp', '金属比热 c_p', 0.05, 2);
+    var t0 = val('t0', '启动前温度', -50, 400);
+    var thMin = val('heatup', '启动加热时间', 1, 600);
+    var L = val('pipelen', '管道长度 L', 0, 10000);
+    var pipeQ = val('pipeq', '管道单位散热 q′', 0, 100000);
+    var rho = val('rhow', '凝结水密度 ρ', 500, 1200);
+    var typeKey = $('trapType').value;
+    var typeInfo = ST_SF[typeKey];
+
+    if (!(p1g > p2g)) throw new Error('蒸汽压力 P₁ 必须大于背压 P₂，否则阀前后无压差、疏水阀不动作');
+
+    /* 表压 → 绝对压力（大气压取 0.1013 MPa） */
+    var p1abs = p1g + 0.1013;
+    var p2abs = p2g + 0.1013;
+    if (p1g > 3.9) warns.push('蒸汽表压 ' + p1g + ' MPa 已接近本工具物性表上限（4.0 MPa），超出部分为外推值，请以蒸汽表原文核对。');
+
+    var sp = stProps(p1abs);
+    var Ts = sp.t, r = sp.r;
+
+    if (t0 >= Ts) warns.push('启动前设备温度 ' + t0 + ' °C 不低于饱和温度 ' + fx(Ts, 1) + ' °C，启动预热凝结水量按 0 计。');
+
+    var wRun = stRunningCond(Q, r);
+    var wWarm = stWarmupCond(mass, cp, Ts, t0, r, thMin);
+    var wPipe = stPipeCond(pipeQ, L, r);
+
+    var wBase = Math.max(wRun, wWarm);
+    var wMax = wBase + wPipe;
+    var wReq = stRequiredFlow(wMax, sf);
+
+    var dp = (p1abs - p2abs) * 1e6; /* Pa */
+    var dMin = stOrificeDia(wReq, dp, rho);
+
+    /* 圆整到不小于计算值的最近公称口径 */
+    var dnRec = null, dmm = dMin * 1000;
+    for (var i = 0; i < ST_DN.length; i++) { if (ST_DN[i] >= dmm) { dnRec = ST_DN[i]; break; } }
+
+    var backRatio = p2g / p1g;
+    if (backRatio > 0.5) warns.push('背压比 P₂/P₁ = ' + fx(backRatio * 100, 0) + '% 偏高：机械型（浮球/倒吊桶）在高压比下排量急剧下降，须按厂家背压修正曲线折减。');
+    if (typeKey === 'disc' && backRatio > 0.3) warns.push('热动力圆盘式阀背压比超过 30% 时排量明显下降且易失效，建议改用浮球或倒吊桶式。');
+    if (wWarm > wRun * 2 && wWarm > 0) warns.push('启动预热凝结水量（' + fx(wWarm, 0) + ' kg/h）远大于运行量（' + fx(wRun, 0) + ' kg/h）：应确保疏水阀按启动工况选型，或采用旁通/启动疏水阀方案。');
+    if (typeKey === 'bimetal') warns.push('双金属片热静力阀有明显的过冷度（排放温度低于饱和温度 15~30 °C），若换热设备要求快速排凝，应复核过冷度是否可接受。');
+    if (dnRec === null) warns.push('计算所需流通直径超过本工具常用口径表（DN100），请向厂家索取大口径或采用多阀并联方案。');
+    warns.push('【口径必须复核】上表 DN 是按<b>理想孔口出流</b>反算的理论最小流通直径，仅为量级参考。疏水阀实际排量取决于阀型排量—压差曲线（含过冷度、阀嘴结构、磨损余量），同工况实选口径通常比该理论值<b>大 2~4 档</b>。请务必以厂家排量曲线选型。');
+
+    $('resBox').innerHTML =
+      rc('所需排量 W<sub>req</sub>', fx(wReq, 1), 'kg/h · 含安全系数 ' + sf, true) +
+      rc('建议公称口径', dnRec === null ? '> DN100' : 'DN ' + dnRec, 'mm（按孔口估算圆整）') +
+      rc('最小流通直径 d', fx(dmm, 2), 'mm（C_d=0.6）') +
+      rc('饱和温度 T<sub>s</sub>', fx(Ts, 1), '°C') +
+      rc('汽化潜热 r', fx(r, 0), 'kJ/kg') +
+      rc('运行凝结水量', fx(wRun, 1), 'kg/h') +
+      rc('预热凝结水量', fx(wWarm, 1), 'kg/h') +
+      rc('管道散热凝结水', fx(wPipe, 2), 'kg/h') +
+      rc('阀前后压差 Δp', fx(dp / 1e6, 3), 'MPa');
+
+    $('midBox').innerHTML =
+      '<div>· 疏水阀类型：' + typeInfo.name + '，推荐最小安全系数 ' + typeInfo.sf + '；本次取 <b>' + sf + '</b></div>' +
+      '<div>· 压力换算：P₁ = ' + p1g + ' MPa(G) = <b>' + fx(p1abs, 4) + '</b> MPa(A)；P₂ = ' + p2g + ' MPa(G) = <b>' + fx(p2abs, 4) + '</b> MPa(A)</div>' +
+      '<div>· 运行凝结水量 W = Q×3600/r = ' + Q + '×3600/' + fx(r, 0) + ' = <b>' + fx(wRun, 1) + '</b> kg/h</div>' +
+      '<div>· 预热凝结水量 W<sub>s</sub> = m·c<sub>p</sub>(T<sub>s</sub>−T<sub>0</sub>)/(r·t) = ' + mass + '×' + cp + '×(' + fx(Ts, 1) + '−' + t0 + ')/(' + fx(r, 0) + '×' + fx(thMin / 60, 3) + ') = <b>' + fx(wWarm, 1) + '</b> kg/h</div>' +
+      '<div>· 管道散热凝结水 = q′×L×3.6/r = ' + pipeQ + '×' + L + '×3.6/' + fx(r, 0) + ' = <b>' + fx(wPipe, 2) + '</b> kg/h</div>' +
+      '<div>· 基准取运行/启动较大值 <b>' + fx(wBase, 1) + '</b>，加管道散热得 <b>' + fx(wMax, 1) + '</b>，乘 SF 得所需排量 <b>' + fx(wReq, 1) + '</b> kg/h</div>' +
+      '<div>· 孔口出流反算：d = √(4W / (3600·C<sub>d</sub>·π·√(2Δp·ρ)))，Δp=' + fx(dp, 0) + ' Pa，ρ=' + rho + ' kg/m³ → <b>' + fx(dmm, 2) + ' mm</b></div>';
+
+    $('resCard').style.display = 'block';
+
+    if (warns.length) {
+      warnB.innerHTML = warns.join('<br>');
+      warnB.style.display = 'block';
+    }
+  } catch (e) {
+    $('resCard').style.display = 'none';
+    errB.textContent = '⚠ ' + e.message;
+    errB.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

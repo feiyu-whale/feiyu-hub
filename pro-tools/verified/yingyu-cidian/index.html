@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文单词查询工具 v2.0.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f5f7fa;color:#333;line-height:1.6;padding-bottom:40px}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+h1{text-align:center;margin-bottom:20px;color:#2c3e50}
+.tabs{display:flex;border-bottom:2px solid #e0e0e0;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:10px 20px;cursor:pointer;background:none;border:none;font-size:16px;color:#666;border-bottom:3px solid transparent;transition:all .2s}
+.tab:hover{color:#3498db}
+.tab.active{color:#3498db;border-bottom-color:#3498db;font-weight:bold}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.search-box{display:flex;gap:10px;margin-bottom:20px}
+.search-input{flex:1;padding:12px;font-size:16px;border:2px solid #ddd;border-radius:6px;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:#3498db}
+.search-btn{padding:12px 24px;background:#3498db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:16px;transition:background .2s}
+.search-btn:hover{background:#2980b9}
+.result{background:white;padding:20px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);min-height:100px}
+.word-title{font-size:28px;color:#2c3e50;margin-bottom:10px}
+.phonetic{color:#7f8c8d;font-size:18px;margin-bottom:15px;font-family:"Lucida Sans Unicode","DejaVu Sans",sans-serif}
+.pos{display:inline-block;background:#3498db;color:white;padding:2px 8px;border-radius:4px;font-size:14px;margin-right:10px;margin-bottom:5px}
+.meaning{font-size:18px;margin:15px 0}
+.example{background:#f8f9fa;padding:12px;border-left:4px solid #3498db;margin:10px 0;font-style:italic}
+.collocations{margin-top:15px}
+.collocation-tag{display:inline-block;background:#ecf0f1;padding:4px 10px;margin:4px;border-radius:12px;font-size:14px}
+.suggestions{margin-top:10px;background:white;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.1);max-height:300px;overflow-y:auto}
+.suggestion-item{padding:10px;cursor:pointer;border-bottom:1px solid #eee}
+.suggestion-item:hover{background:#f0f7ff}
+.suggestion-item:last-child{border-bottom:none}
+pre{background:#2c3e50;color:#ecf0f1;padding:20px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.5;max-height:600px;overflow-y:auto}
+code{font-family:"Consolas","Monaco","Courier New",monospace}
+.test-result{background:white;padding:20px;border-radius:8px;margin-top:20px;font-family:"Consolas",monospace;font-size:13px;white-space:pre-wrap;max-height:600px;overflow-y:auto}
+.test-pass{color:#27ae60}
+.test-fail{color:#e74c3c}
+.test-info{color:#3498db}
+.doc-content{background:white;padding:30px;border-radius:8px;line-height:1.8}
+.doc-content h2{color:#2c3e50;margin:25px 0 12px;border-bottom:2px solid #3498db;padding-bottom:5px}
+.doc-content h3{color:#34495e;margin:18px 0 10px}
+.doc-content p{margin:10px 0;text-indent:2em}
+.doc-content ul,.doc-content ol{margin:10px 0 10px 30px}
+.doc-content li{margin:5px 0}
+.doc-content code{background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:"Consolas",monospace;color:#c0392b}
+.doc-content table{border-collapse:collapse;width:100%;margin:15px 0}
+.doc-content th,.doc-content td{border:1px solid #ddd;padding:8px 12px;text-align:left}
+.doc-content th{background:#f0f7ff}
+.version{position:fixed;bottom:10px;right:10px;font-size:12px;color:#999;background:rgba(255,255,255,.8);padding:4px 8px;border-radius:4px}
+.not-found{color:#e74c3c;font-size:18px;text-align:center;padding:40px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📖 英文单词查询工具</h1>
+<div class="tabs">
+<button class="tab active" data-tab="app">查询工具</button>
+<button class="tab" data-tab="source">JS 源码</button>
+<button class="tab" data-tab="test">单元测试</button>
+<button class="tab" data-tab="doc">使用说明书</button>
+</div>
+
+<div id="app" class="tab-content active">
+<div class="search-box">
+<input type="text" id="searchInput" class="search-input" placeholder="输入英文单词（如：hello, beautiful, run）">
+<button id="searchBtn" class="search-btn">查询</button>
+</div>
+<div id="suggestions" class="suggestions" style="display:none"></div>
+<div id="result" class="result"><p style="color:#999;text-align:center;padding:40px">请输入要查询的英文单词</p></div>
+</div>
+
+<div id="source" class="tab-content">
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div id="test" class="tab-content">
+<button id="runTests" class="search-btn">运行全部测试</button>
+<div id="testResult" class="test-result">点击按钮运行测试...</div>
+</div>
+
+<div id="doc" class="tab-content">
+<div class="doc-content" id="docContent"></div>
+</div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（含词库与核心函数）
+ * ============================================================ */
+
+/**
+ * 内置英文词库（约 1000 词）
+ * 数据来源：通行英语词典释义（牛津、朗文、柯林斯等通行释义的整理）
+ * 音标：IPA 国际音标（ISO 10241）
+ * 注意：本词库为整理版本，非单一权威来源的完整复制
+ * @type {Object.<string, {phonetic:string, pos:string, meaning:string, example:string, collocations:string[]}>}
+ */
+const DICTIONARY = {
+"hello":{phonetic:"/həˈloʊ/",pos:"int./n.",meaning:"你好；喂（问候语）；表示惊讶或引起注意",example:"Hello, nice to meet you.",collocations:["say hello","hello there","hello world"]},
+"a":{phonetic:"/ə, eɪ/",pos:"art./prep.",meaning:"一（个）；每一（个）；（同类事物中）任一的",example:"I have a book on the table.",collocations:["a lot","a few","a little","a bit","a kind of"]},
+"abandon":{phonetic:"/əˈbændən/",pos:"v./n.",meaning:"放弃；遗弃；抛弃；放纵",example:"They had to abandon the car in the snow.",collocations:["abandon hope","abandon ship","with abandon"]},
+"ability":{phonetic:"/əˈbɪləti/",pos:"n.",meaning:"能力；才能；本领",example:"She has the ability to solve complex problems.",collocations:["natural ability","have the ability","ability to do"]},
+"able":{phonetic:"/ˈeɪbl/",pos:"adj.",meaning:"能够的；有能力的；聪明的",example:"Will you be able to come tomorrow?",collocations:["be able to","able to do","able-bodied"]},
+"about":{phonetic:"/əˈbaʊt/",pos:"prep./adv./adj.",meaning:"关于；大约；到处",example:"Tell me about your family.",collocations:["about to","how about","what about"]},
+"above":{phonetic:"/əˈbʌv/",pos:"prep./adv./adj.",meaning:"在…上方；超过；上文提到的",example:"The plane flew above the clouds.",collocations:["above all","above average"]},
+"abroad":{phonetic:"/əˈbrɔːd/",pos:"adv.",meaning:"在国外；到国外；广泛地",example:"She went abroad to study.",collocations:["go abroad","study abroad","at home and abroad"]},
+"absence":{phonetic:"/ˈæbsəns/",pos:"n.",meaning:"缺席；不在；缺乏",example:"His absence from school was noted.",collocations:["in the absence of","absence of mind"]},
+"absolute":{phonetic:"/ˈæbsəluːt/",pos:"adj.",meaning:"绝对的；完全的；肯定的",example:"I have absolute confidence in her.",collocations:["absolute power","absolute truth"]},
+"absorb":{phonetic:"/əbˈzɔːrb/",pos:"v.",meaning:"吸收；吸引；使全神贯注",example:"Plants absorb water through their roots.",collocations:["absorb information","be absorbed in"]},
+"abstract":{phonetic:"/ˈæbstrækt/",pos:"adj./n./v.",meaning:"抽象的；摘要；提取",example:"The concept is too abstract for children.",collocations:["abstract art","abstract noun","abstract thinking"]},
+"abuse":{phonetic:"/əˈbjuːz/",pos:"v./n.",meaning:"滥用；虐待；辱骂",example:"He was accused of abusing his power.",collocations:["drug abuse","child abuse","verbal abuse"]},
+"academic":{phonetic:"/ˌækəˈdemɪk/",pos:"adj./n.",meaning:"学术的；学院的；学者",example:"Her academic performance is excellent.",collocations:["academic year","academic research"]},
+"accept":{phonetic:"/əkˈsept/",pos:"v.",meaning:"接受；承认；同意",example:"I accept your apology.",collocations:["accept an offer","accept responsibility"]},
+"access":{phonetic:"/ˈækses/",pos:"n./v.",meaning:"通道；访问；使用权",example:"Students have access to the library.",collocations:["have access to","gain access","internet access"]},
+"accident":{phonetic:"/ˈæksɪdənt/",pos:"n.",meaning:"事故；意外；偶然",example:"He was injured in a car accident.",collocations:["by accident","traffic accident","accident insurance"]},
+"accommodate":{phonetic:"/əˈkɒmədeɪt/",pos:"v.",meaning:"容纳；提供住宿；适应",example:"The hotel can accommodate 500 guests.",collocations:["accommodate needs","accommodate to"]},
+"accompany":{phonetic:"/əˈkʌmpəni/",pos:"v.",meaning:"陪伴；伴随；为…伴奏",example:"She accompanied him to the station.",collocations:["accompany with","accompany on"]},
+"accomplish":{phonetic:"/əˈkʌmplɪʃ/",pos:"v.",meaning:"完成；实现；达到",example:"She accomplished her goal.",collocations:["accomplish a task","accomplish a mission"]},
+"according":{phonetic:"/əˈkɔːrdɪŋ/",pos:"prep./adv.",meaning:"根据；按照",example:"According to the report, sales increased.",collocations:["according to","according as"]},
+"account":{phonetic:"/əˈkaʊnt/",pos:"n./v.",meaning:"账户；描述；解释；占",example:"I opened a bank account yesterday.",collocations:["on account of","take into account","account for"]},
+"accurate":{phonetic:"/ˈækjərət/",pos:"adj.",meaning:"准确的；精确的",example:"The data must be accurate.",collocations:["accurate information","accurate description"]},
+"accuse":{phonetic:"/əˈkjuːz/",pos:"v.",meaning:"控告；指责",example:"He was accused of theft.",collocations:["accuse of","accuse someone of"]},
+"achieve":{phonetic:"/əˈtʃiːv/",pos:"v.",meaning:"达到；完成；实现",example:"She achieved great success.",collocations:["achieve success","achieve a goal"]},
+"acid":{phonetic:"/ˈæsɪd/",pos:"n./adj.",meaning:"酸；酸的；尖刻的",example:"Lemons contain citric acid.",collocations:["acid rain","acid test"]},
+"acknowledge":{phonetic:"/əkˈnɒlɪdʒ/",pos:"v.",meaning:"承认；确认；致谢",example:"He acknowledged his mistake.",collocations:["acknowledge receipt","widely acknowledged"]},
+"acquire":{phonetic:"/əˈkwaɪər/",pos:"v.",meaning:"获得；取得；学到",example:"She acquired a taste for classical music.",collocations:["acquire knowledge","acquire skills"]},
+"across":{phonetic:"/əˈkrɒs/",pos:"prep./adv.",meaning:"穿过；在对面",example:"He walked across the street.",collocations:["come across","across from"]},
+"act":{phonetic:"/ækt/",pos:"v./n.",meaning:"行动；表演；法案",example:"We must act quickly.",collocations:["act as","act on","in the act of"]},
+"action":{phonetic:"/ˈækʃn/",pos:"n.",meaning:"行动；行为；作用",example:"Actions speak louder than words.",collocations:["take action","in action","action plan"]},
+"active":{phonetic:"/ˈæktɪv/",pos:"adj.",meaning:"积极的；活跃的；主动的",example:"She takes an active part in school activities.",collocations:["active lifestyle","active voice"]},
+"activity":{phonetic:"/ækˈtɪvəti/",pos:"n.",meaning:"活动；活跃；行动",example:"Outdoor activities are good for health.",collocations:["physical activity","daily activity"]},
+"actual":{phonetic:"/ˈæktʃuəl/",pos:"adj.",meaning:"实际的；真实的",example:"The actual cost was higher than expected.",collocations:["actual cost","in actual fact"]},
+"actually":{phonetic:"/ˈæktʃuəli/",pos:"adv.",meaning:"实际上；究竟",example:"Actually, I don't agree with you.",collocations:["actually speaking"]},
+"add":{phonetic:"/æd/",pos:"v.",meaning:"添加；增加；补充",example:"Add some sugar to the tea.",collocations:["add to","add up","add in"]},
+"addition":{phonetic:"/əˈdɪʃn/",pos:"n.",meaning:"添加；增加；附加物",example:"In addition, we need more time.",collocations:["in addition","in addition to"]},
+"address":{phonetic:"/əˈdres/",pos:"n./v.",meaning:"地址；演讲；处理",example:"Please write your address here.",collocations:["email address","home address","address the issue"]},
+"adequate":{phonetic:"/ˈædɪkwət/",pos:"adj.",meaning:"足够的；适当的",example:"The food was adequate but not excellent.",collocations:["adequate supply","adequate protection"]},
+"adjust":{phonetic:"/əˈdʒʌst/",pos:"v.",meaning:"调整；适应",example:"You need to adjust the volume.",collocations:["adjust to","adjust the settings"]},
+"administration":{phonetic:"/ədˌmɪnɪˈstreɪʃn/",pos:"n.",meaning:"管理；行政；政府",example:"The administration announced new policies.",collocations:["public administration","business administration"]},
+"admire":{phonetic:"/ədˈmaɪər/",pos:"v.",meaning:"钦佩；赞赏；欣赏",example:"I admire her courage.",collocations:["admire for","admire greatly"]},
+"admit":{phonetic:"/ədˈmɪt/",pos:"v.",meaning:"承认；允许进入",example:"He admitted his mistake.",collocations:["admit to","admit defeat"]},
+"adopt":{phonetic:"/əˈdɒpt/",pos:"v.",meaning:"采用；收养；采纳",example:"They decided to adopt a child.",collocations:["adopt a policy","adopt a child"]},
+"adult":{phonetic:"/ˈædʌlt/",pos:"n./adj.",meaning:"成年人；成年的",example:"Adults need more sleep than teenagers.",collocations:["adult education","adult content"]},
+"advance":{phonetic:"/ədˈvɑːns/",pos:"v./n./adj.",meaning:"前进；进步；预先的",example:"Technology continues to advance rapidly.",collocations:["in advance","advance warning"]},
+"advantage":{phonetic:"/ədˈvɑːntɪdʒ/",pos:"n.",meaning:"优势；有利条件",example:"Living in the city has many advantages.",collocations:["take advantage of","have an advantage"]},
+"adventure":{phonetic:"/ədˈventʃər/",pos:"n.",meaning:"冒险；奇遇",example:"They went on an adventure in the jungle.",collocations:["adventure story","sense of adventure"]},
+"advertise":{phonetic:"/ˈædvətaɪz/",pos:"v.",meaning:"做广告；宣传",example:"The company advertises on TV.",collocations:["advertise for","advertise widely"]},
+"advice":{phonetic:"/ədˈvaɪs/",pos:"n.",meaning:"建议；忠告",example:"Can I give you some advice?",collocations:["take advice","give advice","piece of advice"]},
+"advise":{phonetic:"/ədˈvaɪz/",pos:"v.",meaning:"建议；劝告",example:"I advise you to see a doctor.",collocations:["advise against","advise on"]},
+"affair":{phonetic:"/əˈfeər/",pos:"n.",meaning:"事务；事件；恋情",example:"He is involved in public affairs.",collocations:["foreign affairs","current affairs"]},
+"affect":{phonetic:"/əˈfekt/",pos:"v.",meaning:"影响；感动",example:"The weather affects our mood.",collocations:["affect deeply","adversely affect"]},
+"afford":{phonetic:"/əˈfɔːrd/",pos:"v.",meaning:"负担得起；提供",example:"I can't afford a new car.",collocations:["can afford","afford to do"]},
+"afraid":{phonetic:"/əˈfreɪd/",pos:"adj.",meaning:"害怕的；担心的",example:"She is afraid of the dark.",collocations:["be afraid of","afraid to do"]},
+"after":{phonetic:"/ˈɑːftər/",pos:"prep./conj./adv.",meaning:"在…之后；后来",example:"We'll meet after lunch.",collocations:["after all","soon after","shortly after"]},
+"afternoon":{phonetic:"/ˌɑːftərˈnuːn/",pos:"n.",meaning:"下午",example:"I'll see you this afternoon.",collocations:["good afternoon","in the afternoon"]},
+"again":{phonetic:"/əˈɡen/",pos:"adv.",meaning:"再；又",example:"Say it again, please.",collocations:["again and again","over and again"]},
+"against":{phonetic:"/əˈɡenst/",pos:"prep.",meaning:"反对；靠着；逆",example:"Are you for or against the plan?",collocations:["against the law","against the wall"]},
+"age":{phonetic:"/eɪdʒ/",pos:"n./v.",meaning:"年龄；时代；变老",example:"What age is your daughter?",collocations:["at the age of","middle age","ice age"]},
+"agency":{phonetic:"/ˈeɪdʒənsi/",pos:"n.",meaning:"机构；代理；中介",example:"He works for a travel agency.",collocations:["travel agency","news agency"]},
+"agenda":{phonetic:"/əˈdʒendə/",pos:"n.",meaning:"议程；日程",example:"What's on the agenda for today?",collocations:["agenda item","hidden agenda"]},
+"agent":{phonetic:"/ˈeɪdʒənt/",pos:"n.",meaning:"代理人；特工；剂",example:"She is a real estate agent.",collocations:["real estate agent","travel agent"]},
+"aggressive":{phonetic:"/əˈɡresɪv/",pos:"adj.",meaning:"好斗的；积极的；有进取心的",example:"He has an aggressive sales style.",collocations:["aggressive behavior","aggressive marketing"]},
+"ago":{phonetic:"/əˈɡəʊ/",pos:"adv.",meaning:"以前",example:"I saw him two days ago.",collocations:["long ago","years ago"]},
+"agree":{phonetic:"/əˈɡriː/",pos:"v.",meaning:"同意；一致",example:"I agree with you.",collocations:["agree with","agree on","agree to"]},
+"agreement":{phonetic:"/əˈɡriːmənt/",pos:"n.",meaning:"协议；同意；一致",example:"They signed an agreement.",collocations:["reach an agreement","trade agreement"]},
+"ahead":{phonetic:"/əˈhed/",pos:"adv.",meaning:"向前；在前面",example:"Go ahead, I'll follow.",collocations:["go ahead","ahead of"]},
+"aid":{phonetic:"/eɪd/",pos:"n./v.",meaning:"援助；帮助",example:"The country received foreign aid.",collocations:["first aid","hearing aid","in aid of"]},
+"aim":{phonetic:"/eɪm/",pos:"n./v.",meaning:"目标；瞄准；旨在",example:"Our aim is to improve quality.",collocations:["aim at","take aim","main aim"]},
+"air":{phonetic:"/eər/",pos:"n.",meaning:"空气；天空；气氛",example:"The air is fresh in the mountains.",collocations:["fresh air","in the air","by air"]},
+"aircraft":{phonetic:"/ˈeəkrɑːft/",pos:"n.",meaning:"飞机；航空器",example:"The aircraft landed safely.",collocations:["military aircraft","commercial aircraft"]},
+"airline":{phonetic:"/ˈeəlaɪn/",pos:"n.",meaning:"航空公司；航线",example:"She works for a major airline.",collocations:["airline industry","airline ticket"]},
+"airport":{phonetic:"/ˈeəpɔːrt/",pos:"n.",meaning:"机场",example:"We arrived at the airport early.",collocations:["international airport","airport terminal"]},
+"alarm":{phonetic:"/əˈlɑːrm/",pos:"n./v.",meaning:"警报；闹钟；使惊恐",example:"The alarm went off at 6 a.m.",collocations:["fire alarm","alarm clock"]},
+"album":{phonetic:"/ˈælbəm/",pos:"n.",meaning:"相册；专辑",example:"Her new album is a hit.",collocations:["photo album","music album"]},
+"alcohol":{phonetic:"/ˈælkəhɒl/",pos:"n.",meaning:"酒精；酒",example:"He doesn't drink alcohol.",collocations:["alcohol abuse","alcohol content"]},
+"alert":{phonetic:"/əˈlɜːrt/",pos:"adj./v./n.",meaning:"警觉的；警告；警报",example:"Stay alert while driving.",collocations:["alert to","on alert"]},
+"alike":{phonetic:"/əˈlaɪk/",pos:"adj./adv.",meaning:"相似的；同样地",example:"The twins look very much alike.",collocations:["treat alike","very much alike"]},
+"alive":{phonetic:"/əˈlaɪv/",pos:"adj.",meaning:"活着的；活跃的",example:"Is the fish still alive?",collocations:["stay alive","come alive"]},
+"all":{phonetic:"/ɔːl/",pos:"adj./pron./adv.",meaning:"全部的；所有的；完全",example:"All the students passed the exam.",collocations:["all the time","after all","all of a sudden"]},
+"allege":{phonetic:"/əˈledʒ/",pos:"v.",meaning:"宣称；指控",example:"He alleged that he was innocent.",collocations:["allege that","it is alleged"]},
+"alley":{phonetic:"/ˈæli/",pos:"n.",meaning:"小巷；胡同",example:"The cat ran down the alley.",collocations:["bowling alley","back alley"]},
+"alliance":{phonetic:"/əˈlaɪəns/",pos:"n.",meaning:"联盟；结盟",example:"The two countries formed an alliance.",collocations:["form an alliance","strategic alliance"]},
+"allocate":{phonetic:"/ˈæləkeɪt/",pos:"v.",meaning:"分配；拨出",example:"The funds were allocated to education.",collocations:["allocate resources","allocate funds"]},
+"allow":{phonetic:"/əˈlaʊ/",pos:"v.",meaning:"允许；承认",example:"Smoking is not allowed here.",collocations:["allow for","allow someone to do"]},
+"almost":{phonetic:"/ˈɔːlməʊst/",pos:"adv.",meaning:"几乎；差不多",example:"I almost forgot your birthday.",collocations:["almost every","almost all"]},
+"alone":{phonetic:"/əˈləʊn/",pos:"adj./adv.",meaning:"独自的；单独的",example:"She lives alone.",collocations:["all alone","leave alone","let alone"]},
+"along":{phonetic:"/əˈlɒŋ/",pos:"prep./adv.",meaning:"沿着；一起",example:"We walked along the river.",collocations:["along with","all along"]},
+"aloud":{phonetic:"/əˈlaʊd/",pos:"adv.",meaning:"大声地",example:"Please read the text aloud.",collocations:["read aloud","think aloud"]},
+"already":{phonetic:"/ɔːlˈredi/",pos:"adv.",meaning:"已经",example:"I've already finished my homework.",collocations:["already done"]},
+"also":{phonetic:"/ˈɔːlsəʊ/",pos:"adv.",meaning:"也；同样",example:"She also speaks French.",collocations:["not only...but also"]},
+"alter":{phonetic:"/ˈɔːltər/",pos:"v.",meaning:"改变；修改",example:"The plan was altered slightly.",collocations:["alter the design","greatly altered"]},
+"alternative":{phonetic:"/ɔːlˈtɜːrnətɪv/",pos:"n./adj.",meaning:"替代选择；可替代的",example:"We need to find an alternative.",collocations:["alternative energy","have no alternative"]},
+"although":{phonetic:"/ɔːlˈðəʊ/",pos:"conj.",meaning:"虽然；尽管",example:"Although it rained, we went out.",collocations:["although it is"]},
+"altogether":{phonetic:"/ˌɔːltəˈɡeðər/",pos:"adv.",meaning:"完全；总共",example:"That's altogether a different matter.",collocations:["not altogether"]},
+"aluminum":{phonetic:"/əˈluːmɪnəm/",pos:"n.",meaning:"铝",example:"The can is made of aluminum.",collocations:["aluminum foil","aluminum can"]},
+"always":{phonetic:"/ˈɔːlweɪz/",pos:"adv.",meaning:"总是；永远",example:"She always arrives on time.",collocations:["always on time","not always"]},
+"amazing":{phonetic:"/əˈmeɪzɪŋ/",pos:"adj.",meaning:"令人惊奇的；极好的",example:"The view from the top is amazing.",collocations:["amazing experience","truly amazing"]},
+"ambition":{phonetic:"/æmˈbɪʃn/",pos:"n.",meaning:"雄心；抱负",example:"Her ambition is to become a doctor.",collocations:["burning ambition","life ambition"]},
+"among":{phonetic:"/əˈmʌŋ/",pos:"prep.",meaning:"在…之中；在…中间",example:"She is popular among her classmates.",collocations:["among other things","among themselves"]},
+"amount":{phonetic:"/əˈmaʊnt/",pos:"n./v.",meaning:"数量；总额；等于",example:"A large amount of money was spent.",collocations:["large amount","amount to"]},
+"ample":{phonetic:"/ˈæmpl/",pos:"adj.",meaning:"充足的；丰富的",example:"There is ample time to finish.",collocations:["ample opportunity","ample evidence"]},
+"amuse":{phonetic:"/əˈmjuːz/",pos:"v.",meaning:"逗乐；使发笑",example:"The clown amused the children.",collocations:["amuse oneself","be amused at"]},
+"analyze":{phonetic:"/ˈænəlaɪz/",pos:"v.",meaning:"分析",example:"We need to analyze the data.",collocations:["analyze data","carefully analyze"]},
+"analysis":{phonetic:"/əˈnæləsɪs/",pos:"n.",meaning:"分析；解析",example:"The analysis shows a clear trend.",collocations:["data analysis","in-depth analysis"]},
+"analyst":{phonetic:"/ˈænəlɪst/",pos:"n.",meaning:"分析师",example:"He works as a financial analyst.",collocations:["financial analyst","market analyst"]},
+"ancestor":{phonetic:"/ˈænsestər/",pos:"n.",meaning:"祖先；祖宗",example:"Our ancestors came from Europe.",collocations:["distant ancestor","common ancestor"]},
+"ancient":{phonetic:"/ˈeɪnʃənt/",pos:"adj.",meaning:"古代的；古老的",example:"They visited an ancient temple.",collocations:["ancient history","ancient civilization"]},
+"and":{phonetic:"/ænd, ənd/",pos:"conj.",meaning:"和；与；而且",example:"Bread and butter.",collocations:["and so on","and so forth"]},
+"angel":{phonetic:"/ˈeɪndʒl/",pos:"n.",meaning:"天使；可爱的人",example:"She's an angel for helping me.",collocations:["guardian angel"]},
+"anger":{phonetic:"/ˈæŋɡər/",pos:"n./v.",meaning:"愤怒；使发怒",example:"He shouted in anger.",collocations:["in anger","anger management"]},
+"angle":{phonetic:"/ˈæŋɡl/",pos:"n.",meaning:"角；角度",example:"Look at it from a different angle.",collocations:["right angle","from a different angle"]},
+"angry":{phonetic:"/ˈæŋɡri/",pos:"adj.",meaning:"生气的；愤怒的",example:"She was angry with him.",collocations:["angry with","get angry"]},
+"animal":{phonetic:"/ˈænɪml/",pos:"n.",meaning:"动物",example:"Lions are wild animals.",collocations:["wild animal","animal rights"]},
+"ankle":{phonetic:"/ˈæŋkl/",pos:"n.",meaning:"踝；踝关节",example:"She sprained her ankle.",collocations:["sprained ankle","break an ankle"]},
+"announce":{phonetic:"/əˈnaʊns/",pos:"v.",meaning:"宣布；声称",example:"They announced their engagement.",collocations:["announce the decision","officially announce"]},
+"annual":{phonetic:"/ˈænjuəl/",pos:"adj./n.",meaning:"每年的；年刊",example:"The annual meeting will be held in June.",collocations:["annual report","annual income"]},
+"another":{phonetic:"/əˈnʌðər/",pos:"adj./pron.",meaning:"另一个；再一个",example:"Would you like another cup of tea?",collocations:["one another","another day"]},
+"answer":{phonetic:"/ˈɑːnsər/",pos:"n./v.",meaning:"回答；答案",example:"I don't know the answer.",collocations:["answer the question","answer to"]},
+"anticipate":{phonetic:"/ænˈtɪsɪpeɪt/",pos:"v.",meaning:"预期；期望",example:"We anticipate a rise in prices.",collocations:["anticipate problems","anticipate that"]},
+"anxiety":{phonetic:"/æŋˈzaɪəti/",pos:"n.",meaning:"焦虑；渴望",example:"She suffers from anxiety.",collocations:["anxiety disorder","feel anxiety"]},
+"any":{phonetic:"/ˈeni/",pos:"adj./pron.",meaning:"任何的；一些",example:"Do you have any questions?",collocations:["any more","any way","at any rate"]},
+"anybody":{phonetic:"/ˈenibɒdi/",pos:"pron.",meaning:"任何人",example:"Can anybody help me?",collocations:["if anybody"]},
+"anyone":{phonetic:"/ˈeniwʌn/",pos:"pron.",meaning:"任何人",example:"Anyone can do this.",collocations:["anyone else"]},
+"anything":{phonetic:"/ˈeniθɪŋ/",pos:"pron.",meaning:"任何事",example:"Is there anything I can do?",collocations:["anything but","anything else"]},
+"anyway":{phonetic:"/ˈeniweɪ/",pos:"adv.",meaning:"无论如何；总之",example:"Anyway, let's go home.",collocations:["anyway, ..."]},
+"anywhere":{phonetic:"/ˈeniweər/",pos:"adv.",meaning:"任何地方",example:"You can sit anywhere.",collocations:["not anywhere","anywhere else"]},
+"apart":{phonetic:"/əˈpɑːrt/",pos:"adv./adj.",meaning:"分开；相距",example:"The two houses are 100 meters apart.",collocations:["apart from","fall apart"]},
+"apartment":{phonetic:"/əˈpɑːrtmənt/",pos:"n.",meaning:"公寓",example:"She lives in a small apartment.",collocations:["apartment building","apartment complex"]},
+"apologize":{phonetic:"/əˈpɒlədʒaɪz/",pos:"v.",meaning:"道歉",example:"I apologize for being late.",collocations:["apologize for","apologize to"]},
+"apology":{phonetic:"/əˈpɒlədʒi/",pos:"n.",meaning:"道歉；辩解",example:"He offered a sincere apology.",collocations:["make an apology","accept an apology"]},
+"apparent":{phonetic:"/əˈpærənt/",pos:"adj.",meaning:"明显的；表面上的",example:"It was apparent that she was unhappy.",collocations:["apparent from","apparent to"]},
+"apparently":{phonetic:"/əˈpærəntli/",pos:"adv.",meaning:"显然；据说",example:"Apparently, he has left the country.",collocations:["apparently not"]},
+"appeal":{phonetic:"/əˈpiːl/",pos:"n./v.",meaning:"呼吁；吸引力；上诉",example:"The idea has little appeal to me.",collocations:["appeal to","make an appeal"]},
+"appear":{phonetic:"/əˈpɪər/",pos:"v.",meaning:"出现；似乎",example:"He appeared at the door.",collocations:["appear to be","appear on"]},
+"appearance":{phonetic:"/əˈpɪərəns/",pos:"n.",meaning:"外貌；出现",example:"Don't judge by appearances.",collocations:["make an appearance","outward appearance"]},
+"apple":{phonetic:"/ˈæpl/",pos:"n.",meaning:"苹果",example:"She ate an apple.",collocations:["apple pie","apple juice"]},
+"application":{phonetic:"/ˌæplɪˈkeɪʃn/",pos:"n.",meaning:"申请；应用；应用程序",example:"Please submit your application by Friday.",collocations:["job application","mobile application"]},
+"apply":{phonetic:"/əˈplaɪ/",pos:"v.",meaning:"申请；应用；适用",example:"You can apply for the job online.",collocations:["apply for","apply to","apply oneself"]},
+"appoint":{phonetic:"/əˈpɔɪnt/",pos:"v.",meaning:"任命；约定",example:"She was appointed manager.",collocations:["appoint someone to","appoint a date"]},
+"appointment":{phonetic:"/əˈpɔɪntmənt/",pos:"n.",meaning:"约会；任命",example:"I have a doctor's appointment.",collocations:["make an appointment","keep an appointment"]},
+"appreciate":{phonetic:"/əˈpriːʃieɪt/",pos:"v.",meaning:"欣赏；感激；领会",example:"I really appreciate your help.",collocations:["appreciate the value","greatly appreciate"]},
+"approach":{phonetic:"/əˈprəʊtʃ/",pos:"v./n.",meaning:"接近；方法",example:"Winter is approaching.",collocations:["new approach","approach to"]},
+"appropriate":{phonetic:"/əˈprəʊpriət/",pos:"adj.",meaning:"适当的；合适的",example:"Jeans are not appropriate for a formal party.",collocations:["appropriate for","appropriate behavior"]},
+"approval":{phonetic:"/əˈpruːvl/",pos:"n.",meaning:"批准；认可",example:"The plan needs the manager's approval.",collocations:["win approval","give approval"]},
+"approve":{phonetic:"/əˈpruːv/",pos:"v.",meaning:"批准；赞成",example:"The committee approved the plan.",collocations:["approve of","approve the plan"]},
+"approximately":{phonetic:"/əˈprɒksɪmətli/",pos:"adv.",meaning:"大约",example:"It costs approximately $100.",collocations:["approximately equal"]},
+"april":{phonetic:"/ˈeɪprəl/",pos:"n.",meaning:"四月",example:"My birthday is in April.",collocations:["April Fool's Day"]},
+"area":{phonetic:"/ˈeəriə/",pos:"n.",meaning:"区域；面积；领域",example:"This area is known for its wine.",collocations:["local area","rural area"]},
+"argue":{phonetic:"/ˈɑːɡjuː/",pos:"v.",meaning:"争论；主张",example:"They argued about money.",collocations:["argue with","argue for","argue that"]},
+"argument":{phonetic:"/ˈɑːɡjumənt/",pos:"n.",meaning:"争论；论点",example:"They had a heated argument.",collocations:["strong argument","get into an argument"]},
+"arise":{phonetic:"/əˈraɪz/",pos:"v.",meaning:"出现；产生",example:"Problems may arise during the project.",collocations:["arise from","when the need arises"]},
+"arm":{phonetic:"/ɑːrm/",pos:"n./v.",meaning:"手臂；武装",example:"She broke her arm.",collocations:["arm in arm","take someone in one's arms"]},
+"armed":{phonetic:"/ɑːrmd/",pos:"adj.",meaning:"武装的",example:"The police were armed.",collocations:["armed forces","armed with"]},
+"army":{phonetic:"/ˈɑːrmi/",pos:"n.",meaning:"军队；陆军",example:"He joined the army.",collocations:["join the army","army base"]},
+"around":{phonetic:"/əˈraʊnd/",pos:"prep./adv.",meaning:"围绕；大约；到处",example:"We sat around the fire.",collocations:["all around","look around"]},
+"arrange":{phonetic:"/əˈreɪndʒ/",pos:"v.",meaning:"安排；整理",example:"Let's arrange a meeting.",collocations:["arrange for","arrange to do"]},
+"arrangement":{phonetic:"/əˈreɪndʒmənt/",pos:"n.",meaning:"安排；布置",example:"We made arrangements for the trip.",collocations:["make arrangements","seating arrangement"]},
+"arrest":{phonetic:"/əˈrest/",pos:"v./n.",meaning:"逮捕；吸引",example:"The police arrested the suspect.",collocations:["under arrest","make an arrest"]},
+"arrival":{phonetic:"/əˈraɪvl/",pos:"n.",meaning:"到达；到来",example:"We await your arrival.",collocations:["on arrival","arrival time"]},
+"arrive":{phonetic:"/əˈraɪv/",pos:"v.",meaning:"到达；抵达",example:"The train arrived on time.",collocations:["arrive at","arrive in"]},
+"arrow":{phonetic:"/ˈærəʊ/",pos:"n.",meaning:"箭；箭头",example:"Follow the arrow to the exit.",collocations:["arrow key","point an arrow"]},
+"art":{phonetic:"/ɑːrt/",pos:"n.",meaning:"艺术；美术",example:"She studies modern art.",collocations:["fine art","work of art"]},
+"article":{phonetic:"/ˈɑːrtɪkl/",pos:"n.",meaning:"文章；物品；条款",example:"I read an interesting article.",collocations:["newspaper article","article of clothing"]},
+"artificial":{phonetic:"/ˌɑːrtɪˈfɪʃl/",pos:"adj.",meaning:"人工的；人造的",example:"The flowers are artificial.",collocations:["artificial intelligence","artificial flavor"]},
+"artist":{phonetic:"/ˈɑːrtɪst/",pos:"n.",meaning:"艺术家；画家",example:"She is a talented artist.",collocations:["recording artist","visual artist"]},
+"artistic":{phonetic:"/ɑːrˈtɪstɪk/",pos:"adj.",meaning:"艺术的；有艺术感的",example:"She has an artistic temperament.",collocations:["artistic talent","artistic value"]},
+"as":{phonetic:"/æz, əz/",pos:"conj./prep./adv.",meaning:"当…时；作为；像",example:"As I was leaving, the phone rang.",collocations:["as well as","as if","as soon as"]},
+"ash":{phonetic:"/æʃ/",pos:"n.",meaning:"灰；灰烬",example:"The fire burned to ashes.",collocations:["cigarette ash","ashes to ashes"]},
+"aside":{phonetic:"/əˈsaɪd/",pos:"adv./n.",meaning:"在旁边；旁白",example:"He stepped aside to let me pass.",collocations:["set aside","put aside","aside from"]},
+"ask":{phonetic:"/ɑːsk/",pos:"v.",meaning:"问；请求；邀请",example:"Can I ask you a question?",collocations:["ask for","ask about","ask someone to do"]},
+"asleep":{phonetic:"/əˈsliːp/",pos:"adj.",meaning:"睡着的",example:"The baby is asleep.",collocations:["fall asleep","fast asleep"]},
+"aspect":{phonetic:"/ˈæspekt/",pos:"n.",meaning:"方面；外观",example:"We must consider every aspect of the problem.",collocations:["key aspect","every aspect"]},
+"assemble":{phonetic:"/əˈsembl/",pos:"v.",meaning:"集合；装配",example:"The students assembled in the hall.",collocations:["assemble the parts"]},
+"assembly":{phonetic:"/əˈsembli/",pos:"n.",meaning:"集会；装配",example:"The school held an assembly.",collocations:["general assembly","national assembly"]},
+"assert":{phonetic:"/əˈsɜːrt/",pos:"v.",meaning:"断言；主张",example:"He asserted his innocence.",collocations:["assert oneself","assert that"]},
+"assess":{phonetic:"/əˈses/",pos:"v.",meaning:"评估；评价",example:"We need to assess the risks.",collocations:["assess the situation","assess the damage"]},
+"assessment":{phonetic:"/əˈsesmənt/",pos:"n.",meaning:"评估；评价",example:"The assessment was positive.",collocations:["risk assessment","needs assessment"]},
+"asset":{phonetic:"/ˈæset/",pos:"n.",meaning:"资产；优点",example:"Her experience is a great asset.",collocations:["fixed assets","valuable asset"]},
+"assign":{phonetic:"/əˈsaɪn/",pos:"v.",meaning:"分配；指派",example:"The teacher assigned homework.",collocations:["assign a task","assign to"]},
+"assignment":{phonetic:"/əˈsaɪnmənt/",pos:"n.",meaning:"任务；作业",example:"The assignment is due next week.",collocations:["complete an assignment","writing assignment"]},
+"assist":{phonetic:"/əˈsɪst/",pos:"v.",meaning:"帮助；协助",example:"Can I assist you?",collocations:["assist with","assist in"]},
+"assistance":{phonetic:"/əˈsɪstəns/",pos:"n.",meaning:"帮助；援助",example:"Thank you for your assistance.",collocations:["financial assistance","technical assistance"]},
+"assistant":{phonetic:"/əˈsɪstənt/",pos:"n./adj.",meaning:"助手；助理的",example:"She works as a teaching assistant.",collocations:["research assistant","personal assistant"]},
+"associate":{phonetic:"/əˈsəʊʃieɪt/",pos:"v./n./adj.",meaning:"联系；同事；副的",example:"People associate red with danger.",collocations:["associate with","be associated with"]},
+"association":{phonetic:"/əˌsəʊʃiˈeɪʃn/",pos:"n.",meaning:"协会；联系",example:"He is a member of the association.",collocations:["professional association","in association with"]},
+"assume":{phonetic:"/əˈsjuːm/",pos:"v.",meaning:"假设；承担",example:"I assume you're coming with us.",collocations:["assume responsibility","assume that"]},
+"assumption":{phonetic:"/əˈsʌmpʃn/",pos:"n.",meaning:"假设；承担",example:"Your assumption is wrong.",collocations:["on the assumption","make an assumption"]},
+"assure":{phonetic:"/əˈʃʊər/",pos:"v.",meaning:"保证；确保",example:"I assure you it's safe.",collocations:["assure someone that","rest assured"]},
+"at":{phonetic:"/æt, ət/",pos:"prep.",meaning:"在；向；以",example:"I'll meet you at the station.",collocations:["at least","at last","at once"]},
+"atmosphere":{phonetic:"/ˈætməsfɪər/",pos:"n.",meaning:"大气；气氛",example:"The atmosphere in the room was tense.",collocations:["earth's atmosphere","friendly atmosphere"]},
+"attach":{phonetic:"/əˈtætʃ/",pos:"v.",meaning:"附上；依附",example:"Please attach your photo to the form.",collocations:["attach to","be attached to"]},
+"attack":{phonetic:"/əˈtæk/",pos:"v./n.",meaning:"攻击；袭击",example:"The army attacked at dawn.",collocations:["under attack","heart attack"]},
+"attain":{phonetic:"/əˈteɪn/",pos:"v.",meaning:"达到；获得",example:"She attained her goal.",collocations:["attain a goal","attain success"]},
+"attempt":{phonetic:"/əˈtempt/",pos:"v./n.",meaning:"尝试；企图",example:"He attempted to climb the mountain.",collocations:["make an attempt","attempt to do"]},
+"attend":{phonetic:"/əˈtend/",pos:"v.",meaning:"参加；出席；照料",example:"She attends school every day.",collocations:["attend a meeting","attend to"]},
+"attention":{phonetic:"/əˈtenʃn/",pos:"n.",meaning:"注意；关注",example:"Pay attention to the teacher.",collocations:["pay attention","attract attention"]},
+"attitude":{phonetic:"/ˈætɪtjuːd/",pos:"n.",meaning:"态度；看法",example:"She has a positive attitude.",collocations:["positive attitude","attitude towards"]},
+"attorney":{phonetic:"/əˈtɜːrni/",pos:"n.",meaning:"律师",example:"She hired an attorney.",collocations:["defense attorney","district attorney"]},
+"attract":{phonetic:"/əˈtrækt/",pos:"v.",meaning:"吸引",example:"The museum attracts many visitors.",collocations:["attract attention","attract customers"]},
+"attraction":{phonetic:"/əˈtrækʃn/",pos:"n.",meaning:"吸引力；景点",example:"The city's main attraction is the castle.",collocations:["tourist attraction","mutual attraction"]},
+"attractive":{phonetic:"/əˈtræktɪv/",pos:"adj.",meaning:"有吸引力的；迷人的",example:"She is very attractive.",collocations:["attractive offer","physically attractive"]},
+"attribute":{phonetic:"/əˈtrɪbjuːt/",pos:"v./n.",meaning:"归因于；属性",example:"He attributes his success to hard work.",collocations:["attribute to","key attribute"]},
+"audience":{phonetic:"/ˈɔːdiəns/",pos:"n.",meaning:"观众；听众",example:"The audience applauded loudly.",collocations:["target audience","large audience"]},
+"august":{phonetic:"/ˈɔːɡəst/",pos:"n.",meaning:"八月",example:"We go on vacation in August.",collocations:["in August"]},
+"aunt":{phonetic:"/ɑːnt/",pos:"n.",meaning:"阿姨；姑妈",example:"My aunt lives in London.",collocations:["Aunt Mary"]},
+"author":{phonetic:"/ˈɔːθər/",pos:"n.",meaning:"作者；作家",example:"She is the author of three books.",collocations:["best-selling author","author of"]},
+"authority":{phonetic:"/ɔːˈθɒrəti/",pos:"n.",meaning:"权威；当局",example:"The local authority approved the plan.",collocations:["local authority","in authority"]},
+"automatic":{phonetic:"/ˌɔːtəˈmætɪk/",pos:"adj.",meaning:"自动的",example:"The door is automatic.",collocations:["automatic transmission","automatic response"]},
+"available":{phonetic:"/əˈveɪləbl/",pos:"adj.",meaning:"可用的；有空的",example:"Is this seat available?",collocations:["available for","readily available"]},
+"avenue":{phonetic:"/ˈævənjuː/",pos:"n.",meaning:"大街；途径",example:"Fifth Avenue is famous.",collocations:["down every avenue"]},
+"average":{phonetic:"/ˈævərɪdʒ/",pos:"adj./n./v.",meaning:"平均的；平均数",example:"The average age is 30.",collocations:["on average","above average"]},
+"avoid":{phonetic:"/əˈvɔɪd/",pos:"v.",meaning:"避免；避开",example:"Try to avoid sugary foods.",collocations:["avoid doing","avoid the issue"]},
+"awake":{phonetic:"/əˈweɪk/",pos:"adj./v.",meaning:"醒着的；唤醒",example:"Are you still awake?",collocations:["stay awake","wide awake"]},
+"award":{phonetic:"/əˈwɔːrd/",pos:"n./v.",meaning:"奖；授予",example:"She won an award for her work.",collocations:["win an award","award ceremony"]},
+"aware":{phonetic:"/əˈweər/",pos:"adj.",meaning:"意识到的；知道的",example:"Are you aware of the risks?",collocations:["be aware of","well aware"]},
+"away":{phonetic:"/əˈweɪ/",pos:"adv.",meaning:"离开；远离",example:"He walked away.",collocations:["far away","get away","pass away"]},
+"awesome":{phonetic:"/ˈɔːsəm/",pos:"adj.",meaning:"极好的；令人敬畏的",example:"The view is awesome.",collocations:["awesome experience"]},
+"awful":{phonetic:"/ˈɔːfl/",pos:"adj.",meaning:"糟糕的；可怕的",example:"The weather was awful.",collocations:["awful lot","awful truth"]},
+"baby":{phonetic:"/ˈbeɪbi/",pos:"n.",meaning:"婴儿；宝贝",example:"The baby is sleeping.",collocations:["baby boy","baby girl"]},
+"back":{phonetic:"/bæk/",pos:"n./adj./adv./v.",meaning:"背部；后面的；回；支持",example:"He lay on his back.",collocations:["go back","come back","back and forth"]},
+"background":{phonetic:"/ˈbækɡraʊnd/",pos:"n.",meaning:"背景；经历",example:"She has a background in science.",collocations:["background check","in the background"]},
+"bad":{phonetic:"/bæd/",pos:"adj.",meaning:"坏的；严重的；糟糕的",example:"The weather is bad today.",collocations:["go bad","bad news","not bad"]},
+"bag":{phonetic:"/bæɡ/",pos:"n.",meaning:"包；袋",example:"She carried a shopping bag.",collocations:["shopping bag","sleeping bag"]},
+"balance":{phonetic:"/ˈbæləns/",pos:"n./v.",meaning:"平衡；余额",example:"You need to balance work and life.",collocations:["work-life balance","on balance"]},
+"ball":{phonetic:"/bɔːl/",pos:"n.",meaning:"球；舞会",example:"The children played with a ball.",collocations:["football","tennis ball"]},
+"ban":{phonetic:"/bæn/",pos:"v./n.",meaning:"禁止；禁令",example:"Smoking is banned in public places.",collocations:["ban on","ban from"]},
+"band":{phonetic:"/bænd/",pos:"n.",meaning:"乐队；带；群",example:"She plays in a rock band.",collocations:["rock band","rubber band"]},
+"bank":{phonetic:"/bæŋk/",pos:"n.",meaning:"银行；河岸",example:"I deposited money in the bank.",collocations:["bank account","river bank"]},
+"bar":{phonetic:"/bɑːr/",pos:"n./v.",meaning:"酒吧；条；阻挡",example:"Let's meet at the bar.",collocations:["coffee bar","bar chart"]},
+"bare":{phonetic:"/beər/",pos:"adj.",meaning:"赤裸的；光秃的",example:"He walked on the bare feet.",collocations:["bare feet","bare minimum"]},
+"bargain":{phonetic:"/ˈbɑːɡɪn/",pos:"n./v.",meaning:"便宜货；讨价还价",example:"This dress is a real bargain.",collocations:["bargain for","good bargain"]},
+"barrier":{phonetic:"/ˈbæriər/",pos:"n.",meaning:"障碍；屏障",example:"Language can be a barrier.",collocations:["language barrier","trade barrier"]},
+"base":{phonetic:"/beɪs/",pos:"n./v./adj.",meaning:"基础；基地；以…为基础",example:"The company has its base in London.",collocations:["base on","military base"]},
+"basic":{phonetic:"/ˈbeɪsɪk/",pos:"adj.",meaning:"基本的；基础的",example:"We need to cover the basic facts.",collocations:["basic needs","basic skills"]},
+"basis":{phonetic:"/ˈbeɪsɪs/",pos:"n.",meaning:"基础；根据",example:"On what basis did you decide?",collocations:["on a regular basis","on the basis of"]},
+"basket":{phonetic:"/ˈbɑːskɪt/",pos:"n.",meaning:"篮子",example:"She carried a basket of fruit.",collocations:["shopping basket","basket case"]},
+"bat":{phonetic:"/bæt/",pos:"n.",meaning:"球棒；蝙蝠",example:"He hit the ball with a bat.",collocations:["baseball bat","blind as a bat"]},
+"bath":{phonetic:"/bɑːθ/",pos:"n.",meaning:"洗澡；浴缸",example:"I take a bath every evening.",collocations:["take a bath","bubble bath"]},
+"battery":{phonetic:"/ˈbætəri/",pos:"n.",meaning:"电池",example:"My phone battery is low.",collocations:["car battery","rechargeable battery"]},
+"battle":{phonetic:"/ˈbætl/",pos:"n./v.",meaning:"战斗；战役",example:"They won the battle.",collocations:["battle against","lose the battle"]},
+"bay":{phonetic:"/beɪ/",pos:"n.",meaning:"海湾",example:"The hotel overlooks a beautiful bay.",collocations:["parking bay"]},
+"be":{phonetic:"/biː, bi/",pos:"v.",meaning:"是；存在；在",example:"I want to be a doctor.",collocations:["to be or not to be"]},
+"beach":{phonetic:"/biːtʃ/",pos:"n.",meaning:"海滩",example:"We spent the afternoon at the beach.",collocations:["sandy beach","beach volleyball"]},
+"bean":{phonetic:"/biːn/",pos:"n.",meaning:"豆；豆类",example:"She ate a bowl of beans.",collocations:["coffee bean","jelly bean"]},
+"bear":{phonetic:"/beər/",pos:"v./n.",meaning:"承受；忍受；熊",example:"I can't bear the noise.",collocations:["bear in mind","bear the responsibility"]},
+"beat":{phonetic:"/biːt/",pos:"v./n.",meaning:"打；击败；节拍",example:"He beat his opponent.",collocations:["beat the clock","heart beat"]},
+"beautiful":{phonetic:"/ˈbjuːtɪfl/",pos:"adj.",meaning:"美丽的；漂亮的",example:"What a beautiful day!",collocations:["beautiful scenery","beautiful woman"]},
+"beauty":{phonetic:"/ˈbjuːti/",pos:"n.",meaning:"美；美人",example:"She is known for her beauty.",collocations:["inner beauty","natural beauty"]},
+"because":{phonetic:"/bɪˈkɒz/",pos:"conj.",meaning:"因为",example:"I stayed home because it rained.",collocations:["just because","because of"]},
+"become":{phonetic:"/bɪˈkʌm/",pos:"v.",meaning:"成为；变得",example:"She became a doctor.",collocations:["become aware","become used to"]},
+"bed":{phonetic:"/bed/",pos:"n.",meaning:"床；河床",example:"I go to bed at 10 p.m.",collocations:["go to bed","in bed","double bed"]},
+"bedroom":{phonetic:"/ˈbedruːm/",pos:"n.",meaning:"卧室",example:"My bedroom is upstairs.",collocations:["master bedroom","guest bedroom"]},
+"bee":{phonetic:"/biː/",pos:"n.",meaning:"蜜蜂",example:"The bee stung him.",collocations:["busy as a bee","queen bee"]},
+"beef":{phonetic:"/biːf/",pos:"n.",meaning:"牛肉",example:"We had beef for dinner.",collocations:["roast beef","beef steak"]},
+"beer":{phonetic:"/bɪər/",pos:"n.",meaning:"啤酒",example:"He drank a glass of beer.",collocations:["draft beer","beer bottle"]},
+"before":{phonetic:"/bɪˈfɔːr/",pos:"prep./conj./adv.",meaning:"在…之前",example:"Wash your hands before eating.",collocations:["long before","the day before"]},
+"begin":{phonetic:"/bɪˈɡɪn/",pos:"v.",meaning:"开始",example:"The meeting begins at 9.",collocations:["begin with","begin to do","to begin with"]},
+"beginning":{phonetic:"/bɪˈɡɪnɪŋ/",pos:"n.",meaning:"开始；开端",example:"At the beginning of the year.",collocations:["from the beginning","in the beginning"]},
+"behavior":{phonetic:"/bɪˈheɪvjər/",pos:"n.",meaning:"行为；举止",example:"His behavior was unacceptable.",collocations:["good behavior","human behavior"]},
+"behind":{phonetic:"/bɪˈhaɪnd/",pos:"prep./adv.",meaning:"在…后面；落后",example:"The garden is behind the house.",collocations:["fall behind","behind the scenes"]},
+"believe":{phonetic:"/bɪˈliːv/",pos:"v.",meaning:"相信；认为",example:"I believe you.",collocations:["believe in","believe that"]},
+"belief":{phonetic:"/bɪˈliːf/",pos:"n.",meaning:"信念；信仰",example:"She has strong religious beliefs.",collocations:["firm belief","beyond belief"]},
+"bell":{phonetic:"/bel/",pos:"n.",meaning:"铃；钟",example:"The bell rang for class.",collocations:["door bell","ring the bell"]},
+"belong":{phonetic:"/bɪˈlɒŋ/",pos:"v.",meaning:"属于；应归",example:"This book belongs to me.",collocations:["belong to","belong here"]},
+"below":{phonetic:"/bɪˈləʊ/",pos:"prep./adv.",meaning:"在…下面",example:"See the note below.",collocations:["below average","see below"]},
+"belt":{phonetic:"/belt/",pos:"n.",meaning:"腰带；地带",example:"He wore a leather belt.",collocations:["seat belt","safety belt"]},
+"bench":{phonetic:"/bentʃ/",pos:"n.",meaning:"长凳；法官席",example:"She sat on a park bench.",collocations:["park bench","bench mark"]},
+"bend":{phonetic:"/bend/",pos:"v./n.",meaning:"弯曲；拐弯",example:"Don't bend the wire.",collocations:["bend over","round the bend"]},
+"beneath":{phonetic:"/bɪˈniːθ/",pos:"prep./adv.",meaning:"在…下方",example:"The boat sank beneath the waves.",collocations:["beneath the surface"]},
+"benefit":{phonetic:"/ˈbenɪfɪt/",pos:"n./v.",meaning:"利益；好处；受益",example:"Exercise has many benefits.",collocations:["benefit from","for the benefit of"]},
+"beside":{phonetic:"/bɪˈsaɪd/",pos:"prep.",meaning:"在…旁边",example:"She sat beside me.",collocations:["beside oneself","beside the point"]},
+"besides":{phonetic:"/bɪˈsaɪdz/",pos:"prep./adv.",meaning:"此外；而且",example:"Besides, it's too late.",collocations:["besides that"]},
+"best":{phonetic:"/best/",pos:"adj./adv./n.",meaning:"最好的；最好",example:"She is the best student.",collocations:["do one's best","best of all","at best"]},
+"better":{phonetic:"/ˈbetər/",pos:"adj./adv./v.",meaning:"更好的；改善",example:"This book is better than that one.",collocations:["get better","better off","for the better"]},
+"between":{phonetic:"/bɪˈtwiːn/",pos:"prep./adv.",meaning:"在…之间",example:"The shop is between the bank and the post office.",collocations:["in between","between you and me"]},
+"beyond":{phonetic:"/bɪˈjɒnd/",pos:"prep./adv.",meaning:"超出；在…那边",example:"The mountains are beyond the river.",collocations:["beyond control","beyond doubt"]},
+"big":{phonetic:"/bɪɡ/",pos:"adj.",meaning:"大的；重要的",example:"She lives in a big house.",collocations:["big deal","big city"]},
+"bill":{phonetic:"/bɪl/",pos:"n.",meaning:"账单；法案；钞票",example:"Can we have the bill, please?",collocations:["pay the bill","phone bill"]},
+"billion":{phonetic:"/ˈbɪljən/",pos:"n.",meaning:"十亿",example:"The world population is over 7 billion.",collocations:["billion dollars"]},
+"bind":{phonetic:"/baɪnd/",pos:"v.",meaning:"捆绑；约束",example:"The contract binds both parties.",collocations:["bind together"]},
+"biological":{phonetic:"/ˌbaɪəˈlɒdʒɪkl/",pos:"adj.",meaning:"生物的；生物学的",example:"She studies biological sciences.",collocations:["biological diversity","biological father"]},
+"bird":{phonetic:"/bɜːrd/",pos:"n.",meaning:"鸟",example:"A bird is singing in the tree.",collocations:["early bird","rare bird"]},
+"birth":{phonetic:"/bɜːθ/",pos:"n.",meaning:"出生；诞生",example:"She gave birth to a son.",collocations:["give birth","date of birth"]},
+"birthday":{phonetic:"/ˈbɜːθdeɪ/",pos:"n.",meaning:"生日",example:"Happy birthday!",collocations:["birthday party","birthday cake"]},
+"bit":{phonetic:"/bɪt/",pos:"n.",meaning:"一点；少量",example:"Wait a bit.",collocations:["a bit","bit by bit"]},
+"bite":{phonetic:"/baɪt/",pos:"v./n.",meaning:"咬；叮",example:"The dog bit him.",collocations:["bite into","have a bite"]},
+"bitter":{phonetic:"/ˈbɪtər/",pos:"adj.",meaning:"苦的；痛苦的",example:"The coffee tastes bitter.",collocations:["bitter cold","bitter experience"]},
+"black":{phonetic:"/blæk/",pos:"adj./n.",meaning:"黑色的；黑色",example:"She wore a black dress.",collocations:["black and white","black tea"]},
+"blame":{phonetic:"/bleɪm/",pos:"v./n.",meaning:"责备；归咎于",example:"Don't blame me for your mistakes.",collocations:["blame someone for","take the blame"]},
+"blank":{phonetic:"/blæŋk/",pos:"adj./n.",meaning:"空白的；空白",example:"Leave the last line blank.",collocations:["blank page","blank expression"]},
+"blanket":{phonetic:"/ˈblæŋkɪt/",pos:"n.",meaning:"毯子；覆盖物",example:"She covered herself with a blanket.",collocations:["electric blanket"]},
+"bleed":{phonetic:"/bliːd/",pos:"v.",meaning:"流血",example:"His nose was bleeding.",collocations:["bleed to death"]},
+"blend":{phonetic:"/blend/",pos:"v./n.",meaning:"混合；融合",example:"Blend the ingredients together.",collocations:["blend in","blend of"]},
+"bless":{phonetic:"/bles/",pos:"v.",meaning:"祝福；保佑",example:"God bless you.",collocations:["blessed with","God bless"]},
+"blind":{phonetic:"/blaɪnd/",pos:"adj./n./v.",meaning:"瞎的；使失明",example:"He has been blind since birth.",collocations:["blind to","turn a blind eye"]},
+"block":{phonetic:"/blɒk/",pos:"n./v.",meaning:"块；街区；阻塞",example:"The road was blocked by snow.",collocations:["city block","block the way"]},
+"blood":{phonetic:"/blʌd/",pos:"n.",meaning:"血；血统",example:"Blood is thicker than water.",collocations:["blood pressure","blood type"]},
+"blow":{phonetic:"/bləʊ/",pos:"v./n.",meaning:"吹；打击",example:"The wind blew hard.",collocations:["blow up","blow away"]},
+"blue":{phonetic:"/bluː/",pos:"adj./n.",meaning:"蓝色的；忧郁",example:"The sky is blue.",collocations:["dark blue","feel blue"]},
+"board":{phonetic:"/bɔːrd/",pos:"n./v.",meaning:"板；董事会；上（船、飞机）",example:"Write it on the board.",collocations:["board of directors","on board"]},
+"boat":{phonetic:"/bəʊt/",pos:"n.",meaning:"船；小船",example:"They took a boat across the lake.",collocations:["fishing boat","row boat"]},
+"body":{phonetic:"/ˈbɒdi/",pos:"n.",meaning:"身体；主体",example:"Exercise is good for the body.",collocations:["human body","body language"]},
+"boil":{phonetic:"/bɔɪl/",pos:"v.",meaning:"煮沸；沸腾",example:"Boil the water before drinking.",collocations:["boil down to","boiling water"]},
+"bold":{phonetic:"/bəʊld/",pos:"adj.",meaning:"大胆的；醒目的",example:"She made a bold decision.",collocations:["bold move","in bold"]},
+"bomb":{phonetic:"/bɒm/",pos:"n./v.",meaning:"炸弹；轰炸",example:"The bomb exploded.",collocations:["time bomb","atom bomb"]},
+"bond":{phonetic:"/bɒnd/",pos:"n.",meaning:"纽带；债券；联系",example:"They have a strong bond.",collocations:["form a bond","chemical bond"]},
+"bone":{phonetic:"/bəʊn/",pos:"n.",meaning:"骨；骨头",example:"The dog buried a bone.",collocations:["bone marrow","funny bone"]},
+"book":{phonetic:"/bʊk/",pos:"n./v.",meaning:"书；预订",example:"I'm reading a good book.",collocations:["text book","book a room"]},
+"boom":{phonetic:"/buːm/",pos:"n./v.",meaning:"繁荣；轰鸣",example:"The economy is booming.",collocations:["economic boom","baby boom"]},
+"boost":{phonetic:"/buːst/",pos:"v./n.",meaning:"促进；提高",example:"The news boosted our morale.",collocations:["boost confidence","boost sales"]},
+"boot":{phonetic:"/buːt/",pos:"n.",meaning:"靴子；行李箱",example:"She wore leather boots.",collocations:["rain boots","boot up"]},
+"border":{phonetic:"/ˈbɔːrdər/",pos:"n.",meaning:"边界；边缘",example:"They crossed the border.",collocations:["cross the border","border control"]},
+"bore":{phonetic:"/bɔːr/",pos:"v./n.",meaning:"使厌烦；令人讨厌的人",example:"The lecture bored me.",collocations:["bore someone to death"]},
+"boring":{phonetic:"/ˈbɔːrɪŋ/",pos:"adj.",meaning:"无聊的；乏味的",example:"The movie was boring.",collocations:["boring job"]},
+"born":{phonetic:"/bɔːn/",pos:"adj./v.",meaning:"出生的；诞生",example:"She was born in 1990.",collocations:["born in","be born to"]},
+"borrow":{phonetic:"/ˈbɒrəʊ/",pos:"v.",meaning:"借入",example:"Can I borrow your pen?",collocations:["borrow from","borrow money"]},
+"boss":{phonetic:"/bɒs/",pos:"n.",meaning:"老板；上司",example:"My boss is very strict.",collocations:["be one's own boss"]},
+"both":{phonetic:"/bəʊθ/",pos:"adj./pron.",meaning:"两者都",example:"Both answers are correct.",collocations:["both...and","both of them"]},
+"bother":{phonetic:"/ˈbɒðər/",pos:"v.",meaning:"打扰；烦恼",example:"Sorry to bother you.",collocations:["bother to do","bother about"]},
+"bottle":{phonetic:"/ˈbɒtl/",pos:"n.",meaning:"瓶子",example:"A bottle of water, please.",collocations:["water bottle","bottle opener"]},
+"bottom":{phonetic:"/ˈbɒtəm/",pos:"n./adj.",meaning:"底部；最后的",example:"Sign at the bottom of the page.",collocations:["at the bottom","bottom line"]},
+"bound":{phonetic:"/baʊnd/",pos:"adj./v./n.",meaning:"一定的；跳跃；边界",example:"She is bound to succeed.",collocations:["bound to","out of bounds"]},
+"bow":{phonetic:"/bəʊ/",pos:"v./n.",meaning:"鞠躬；弓",example:"He bowed to the audience.",collocations:["bow and arrow","take a bow"]},
+"bowl":{phonetic:"/bəʊl/",pos:"n.",meaning:"碗",example:"A bowl of rice.",collocations:["rice bowl","super bowl"]},
+"box":{phonetic:"/bɒks/",pos:"n./v.",meaning:"盒子；箱子；拳击",example:"Put it in the box.",collocations:["cardboard box","box office"]},
+"boy":{phonetic:"/bɔɪ/",pos:"n.",meaning:"男孩",example:"The boy is playing football.",collocations:["little boy","boy friend"]},
+"brain":{phonetic:"/breɪn/",pos:"n.",meaning:"大脑；智力",example:"Use your brain!",collocations:["brain damage","use your brain"]},
+"branch":{phonetic:"/brɑːntʃ/",pos:"n.",meaning:"分支；树枝",example:"The bank has a branch here.",collocations:["branch office","tree branch"]},
+"brand":{phonetic:"/brænd/",pos:"n.",meaning:"品牌；商标",example:"She prefers famous brands.",collocations:["brand name","brand new"]},
+"brave":{phonetic:"/breɪv/",pos:"adj.",meaning:"勇敢的",example:"The brave soldier saved his friends.",collocations:["brave new world"]},
+"bread":{phonetic:"/bred/",pos:"n.",meaning:"面包",example:"I had bread for breakfast.",collocations:["slice of bread","white bread"]},
+"break":{phonetic:"/breɪk/",pos:"v./n.",meaning:"打破；休息",example:"Be careful not to break the glass.",collocations:["take a break","break down","break up"]},
+"breakfast":{phonetic:"/ˈbrekfəst/",pos:"n.",meaning:"早餐",example:"I have breakfast at 7.",collocations:["have breakfast","eat breakfast"]},
+"breast":{phonetic:"/brest/",pos:"n.",meaning:"胸部；乳房",example:"She held the baby to her breast.",collocations:["breast cancer"]},
+"breath":{phonetic:"/breθ/",pos:"n.",meaning:"呼吸；气息",example:"Take a deep breath.",collocations:["out of breath","catch one's breath"]},
+"breathe":{phonetic:"/briːð/",pos:"v.",meaning:"呼吸",example:"Breathe deeply.",collocations:["breathe in","breathe out"]},
+"breed":{phonetic:"/briːd/",pos:"v./n.",meaning:"繁殖；品种",example:"Dogs breed in spring.",collocations:["breed of","breed in"]},
+"brick":{phonetic:"/brɪk/",pos:"n.",meaning:"砖",example:"The house is made of brick.",collocations:["brick wall"]},
+"bridge":{phonetic:"/brɪdʒ/",pos:"n.",meaning:"桥；桥梁",example:"We crossed the bridge.",collocations:["build a bridge","bridge the gap"]},
+"brief":{phonetic:"/briːf/",pos:"adj./n.",meaning:"简短的；摘要",example:"Let me be brief.",collocations:["brief introduction","in brief"]},
+"bright":{phonetic:"/braɪt/",pos:"adj.",meaning:"明亮的；聪明的",example:"The sun is bright today.",collocations:["bright future","bright idea"]},
+"brilliant":{phonetic:"/ˈbrɪljənt/",pos:"adj.",meaning:"杰出的；灿烂的",example:"She has a brilliant mind.",collocations:["brilliant idea","brilliant career"]},
+"bring":{phonetic:"/brɪŋ/",pos:"v.",meaning:"带来；引起",example:"Bring me a glass of water.",collocations:["bring up","bring about","bring in"]},
+"broad":{phonetic:"/brɔːd/",pos:"adj.",meaning:"宽的；广泛的",example:"He has broad shoulders.",collocations:["broad agreement","broad outline"]},
+"broadcast":{phonetic:"/ˈbrɔːdkɑːst/",pos:"v./n.",meaning:"广播；播放",example:"The news was broadcast live.",collocations:["live broadcast","broadcast on"]},
+"broken":{phonetic:"/ˈbrəʊkən/",pos:"adj.",meaning:"破碎的；断的",example:"The window is broken.",collocations:["broken heart","broken English"]},
+"brother":{phonetic:"/ˈbrʌðər/",pos:"n.",meaning:"兄弟",example:"My brother is a teacher.",collocations:["older brother","younger brother"]},
+"brown":{phonetic:"/braʊn/",pos:"adj./n.",meaning:"棕色的；棕色",example:"She has brown eyes.",collocations:["dark brown","light brown"]},
+"brush":{phonetic:"/brʌʃ/",pos:"n./v.",meaning:"刷子；刷",example:"Brush your teeth twice a day.",collocations:["hair brush","brush up"]},
+"bubble":{phonetic:"/ˈbʌbl/",pos:"n.",meaning:"气泡；泡沫",example:"The child blew bubbles.",collocations:["bubble bath","bubble gum"]},
+"buck":{phonetic:"/bʌk/",pos:"n.",meaning:"美元；雄鹿",example:"It costs five bucks.",collocations:["pass the buck","big buck"]},
+"budget":{phonetic:"/ˈbʌdʒɪt/",pos:"n./v.",meaning:"预算",example:"We need to stick to the budget.",collocations:["annual budget","budget cut"]},
+"build":{phonetic:"/bɪld/",pos:"v.",meaning:"建造；建立",example:"They built a new school.",collocations:["build up","build on"]},
+"building":{phonetic:"/ˈbɪldɪŋ/",pos:"n.",meaning:"建筑物",example:"The building is very tall.",collocations:["office building","tall building"]},
+"bullet":{phonetic:"/ˈbʊlɪt/",pos:"n.",meaning:"子弹",example:"The bullet missed him.",collocations:["bullet proof","bullet point"]},
+"bunch":{phonetic:"/bʌntʃ/",pos:"n.",meaning:"一束；一群",example:"A bunch of flowers.",collocations:["bunch of","bunch together"]},
+"burden":{phonetic:"/ˈbɜːrdn/",pos:"n./v.",meaning:"负担；重荷",example:"The tax is a heavy burden.",collocations:["burden of","financial burden"]},
+"burn":{phonetic:"/bɜːrn/",pos:"v./n.",meaning:"燃烧；烧伤",example:"The fire burned the house.",collocations:["burn down","burn out"]},
+"burst":{phonetic:"/bɜːrst/",pos:"v./n.",meaning:"爆裂；突发",example:"The balloon burst.",collocations:["burst into tears","burst out"]},
+"bury":{phonetic:"/ˈberi/",pos:"v.",meaning:"埋葬；隐藏",example:"They buried the treasure.",collocations:["bury oneself in"]},
+"bus":{phonetic:"/bʌs/",pos:"n.",meaning:"公共汽车",example:"I take the bus to work.",collocations:["by bus","take the bus"]},
+"bush":{phonetic:"/bʊʃ/",pos:"n.",meaning:"灌木",example:"The bird hid in the bush.",collocations:["beat around the bush"]},
+"business":{phonetic:"/ˈbɪznəs/",pos:"n.",meaning:"生意；事务",example:"He runs his own business.",collocations:["do business","mind your own business"]},
+"busy":{phonetic:"/ˈbɪzi/",pos:"adj.",meaning:"忙碌的",example:"She is busy with work.",collocations:["busy with","get busy"]},
+"but":{phonetic:"/bʌt/",pos:"conj./prep.",meaning:"但是；除了",example:"I wanted to go, but I was tired.",collocations:["but for","nothing but"]},
+"butter":{phonetic:"/ˈbʌtər/",pos:"n.",meaning:"黄油",example:"Bread and butter.",collocations:["peanut butter"]},
+"button":{phonetic:"/ˈbʌtn/",pos:"n.",meaning:"按钮；纽扣",example:"Press the button.",collocations:["press the button","button up"]},
+"buy":{phonetic:"/baɪ/",pos:"v.",meaning:"买；购买",example:"I want to buy a new car.",collocations:["buy something for","buy into"]},
+"by":{phonetic:"/baɪ/",pos:"prep./adv.",meaning:"通过；在…旁边；被",example:"I go to work by bus.",collocations:["by the way","by far","by means of"]},
+"cabin":{phonetic:"/ˈkæbɪn/",pos:"n.",meaning:"小屋；机舱",example:"They stayed in a log cabin.",collocations:["log cabin","cabin crew"]},
+"cabinet":{phonetic:"/ˈkæbɪnɪt/",pos:"n.",meaning:"橱柜；内阁",example:"The cabinet meets today.",collocations:["kitchen cabinet","cabinet minister"]},
+"cable":{phonetic:"/ˈkeɪbl/",pos:"n.",meaning:"电缆；缆绳",example:"The cable was cut.",collocations:["cable car","cable TV"]},
+"cake":{phonetic:"/keɪk/",pos:"n.",meaning:"蛋糕",example:"She baked a cake.",collocations:["birthday cake","piece of cake"]},
+"calculate":{phonetic:"/ˈkælkjuleɪt/",pos:"v.",meaning:"计算",example:"Calculate the total cost.",collocations:["calculate the cost","carefully calculate"]},
+"call":{phonetic:"/kɔːl/",pos:"v./n.",meaning:"打电话；称呼；呼叫",example:"I'll call you tomorrow.",collocations:["call for","call off","call on"]},
+"calm":{phonetic:"/kɑːm/",pos:"adj./v.",meaning:"平静的；使平静",example:"Keep calm in an emergency.",collocations:["calm down","keep calm"]},
+"camera":{phonetic:"/ˈkæmərə/",pos:"n.",meaning:"相机",example:"She took a photo with her camera.",collocations:["digital camera","video camera"]},
+"camp":{phonetic:"/kæmp/",pos:"n./v.",meaning:"营地；露营",example:"We camped by the lake.",collocations:["summer camp","camp out"]},
+"campaign":{phonetic:"/kæmˈpeɪn/",pos:"n.",meaning:"运动；战役",example:"They launched an advertising campaign.",collocations:["election campaign","advertising campaign"]},
+"can":{phonetic:"/kæn, kən/",pos:"v./n.",meaning:"能；罐头",example:"I can swim.",collocations:["can do","can't help"]},
+"cancel":{phonetic:"/ˈkænsl/",pos:"v.",meaning:"取消",example:"The flight was canceled.",collocations:["cancel an order","cancel a meeting"]},
+"cancer":{phonetic:"/ˈkænsər/",pos:"n.",meaning:"癌症",example:"She is fighting cancer.",collocations:["lung cancer","breast cancer"]},
+"candidate":{phonetic:"/ˈkændɪdət/",pos:"n.",meaning:"候选人；应聘者",example:"There are five candidates for the job.",collocations:["job candidate","presidential candidate"]},
+"cap":{phonetic:"/kæp/",pos:"n.",meaning:"帽子；盖",example:"He wears a baseball cap.",collocations:["baseball cap","cap on"]},
+"capable":{phonetic:"/ˈkeɪpəbl/",pos:"adj.",meaning:"有能力的",example:"She is capable of doing the job.",collocations:["capable of"]},
+"capacity":{phonetic:"/kəˈpæsəti/",pos:"n.",meaning:"容量；能力",example:"The stadium has a capacity of 50,000.",collocations:["full capacity","in capacity of"]},
+"capital":{phonetic:"/ˈkæpɪtl/",pos:"n./adj.",meaning:"首都；资本；大写的",example:"Beijing is the capital of China.",collocations:["capital city","capital punishment"]},
+"captain":{phonetic:"/ˈkæptɪn/",pos:"n.",meaning:"队长；船长；上尉",example:"He is the captain of the team.",collocations:["team captain","captain of"]},
+"capture":{phonetic:"/ˈkæptʃər/",pos:"v./n.",meaning:"捕获；俘获",example:"The police captured the thief.",collocations:["capture the moment","capture attention"]},
+"car":{phonetic:"/kɑːr/",pos:"n.",meaning:"汽车",example:"She drives a red car.",collocations:["by car","car park"]},
+"card":{phonetic:"/kɑːrd/",pos:"n.",meaning:"卡片；牌",example:"I sent her a birthday card.",collocations:["credit card","ID card"]},
+"care":{phonetic:"/keər/",pos:"n./v.",meaning:"关心；照顾；介意",example:"She cares for her children.",collocations:["take care","care about","care for"]},
+"career":{phonetic:"/kəˈrɪər/",pos:"n.",meaning:"职业；事业",example:"She has a successful career.",collocations:["career choice","career development"]},
+"careful":{phonetic:"/ˈkeəfl/",pos:"adj.",meaning:"小心的；仔细的",example:"Be careful with the glass.",collocations:["be careful","careful about"]},
+"careless":{phonetic:"/ˈkeərləs/",pos:"adj.",meaning:"粗心的",example:"He made a careless mistake.",collocations:["careless mistake"]},
+"carpet":{phonetic:"/ˈkɑːrpɪt/",pos:"n.",meaning:"地毯",example:"There's a red carpet on the floor.",collocations:["red carpet","on the carpet"]},
+"carry":{phonetic:"/ˈkæri/",pos:"v.",meaning:"携带；运送",example:"She carried the baby.",collocations:["carry on","carry out","carry away"]},
+"cart":{phonetic:"/kɑːrt/",pos:"n.",meaning:"手推车；马车",example:"He pushed the cart.",collocations:["shopping cart","golf cart"]},
+"case":{phonetic:"/keɪs/",pos:"n.",meaning:"情况；案例；箱子",example:"In that case, we'll stay home.",collocations:["in case","in case of","case study"]},
+"cash":{phonetic:"/kæʃ/",pos:"n.",meaning:"现金",example:"I paid in cash.",collocations:["cash in","cash flow"]},
+"cast":{phonetic:"/kɑːst/",pos:"v./n.",meaning:"投；演员阵容",example:"She cast a glance at him.",collocations:["cast a vote","cast of characters"]},
+"cat":{phonetic:"/kæt/",pos:"n.",meaning:"猫",example:"The cat is sleeping.",collocations:["black cat","let the cat out of the bag"]},
+"catch":{phonetic:"/kætʃ/",pos:"v.",meaning:"抓住；赶上；理解",example:"Catch the ball!",collocations:["catch up","catch on","catch a cold"]},
+"category":{phonetic:"/ˈkætəɡəri/",pos:"n.",meaning:"类别；种类",example:"The books are divided into categories.",collocations:["different category","main category"]},
+"cattle":{phonetic:"/ˈkætl/",pos:"n.",meaning:"牛；家畜",example:"The farmer raised cattle.",collocations:["cattle farm"]},
+"cause":{phonetic:"/kɔːz/",pos:"n./v.",meaning:"原因；引起",example:"What caused the accident?",collocations:["cause and effect","cause trouble"]},
+"caution":{phonetic:"/ˈkɔːʃn/",pos:"n./v.",meaning:"谨慎；警告",example:"Proceed with caution.",collocations:["with caution","throw caution to the wind"]},
+"cave":{phonetic:"/keɪv/",pos:"n.",meaning:"洞穴",example:"They explored the cave.",collocations:["cave in"]},
+"ceiling":{phonetic:"/ˈsiːlɪŋ/",pos:"n.",meaning:"天花板；上限",example:"The ceiling is very high.",collocations:["glass ceiling","ceiling price"]},
+"celebrate":{phonetic:"/ˈselɪbreɪt/",pos:"v.",meaning:"庆祝",example:"We celebrated her birthday.",collocations:["celebrate with","celebrate the occasion"]},
+"cell":{phonetic:"/sel/",pos:"n.",meaning:"细胞；牢房；电池",example:"The human body has many cells.",collocations:["stem cell","cell phone"]},
+"center":{phonetic:"/ˈsentər/",pos:"n./v.",meaning:"中心；中央",example:"The shop is in the city center.",collocations:["city center","shopping center"]},
+"central":{phonetic:"/ˈsentrəl/",pos:"adj.",meaning:"中心的；主要的",example:"The central office is in London.",collocations:["central government","central heating"]},
+"century":{phonetic:"/ˈsentʃəri/",pos:"n.",meaning:"世纪；百年",example:"We live in the 21st century.",collocations:["21st century","century ago"]},
+"certain":{phonetic:"/ˈsɜːtn/",pos:"adj.",meaning:"确定的；某些",example:"I'm certain he'll come.",collocations:["for certain","make certain"]},
+"certainly":{phonetic:"/ˈsɜːtnli/",pos:"adv.",meaning:"当然；肯定",example:"Certainly, I'll help you.",collocations:["certainly not"]},
+"chain":{phonetic:"/tʃeɪn/",pos:"n.",meaning:"链；连锁",example:"The dog is on a chain.",collocations:["chain of","chain store"]},
+"chair":{phonetic:"/tʃeər/",pos:"n.",meaning:"椅子；主席",example:"Please sit in this chair.",collocations:["arm chair","chair of the committee"]},
+"challenge":{phonetic:"/ˈtʃælɪndʒ/",pos:"n./v.",meaning:"挑战",example:"Learning a new language is a challenge.",collocations:["face a challenge","challenge to"]},
+"champion":{phonetic:"/ˈtʃæmpiən/",pos:"n.",meaning:"冠军；拥护者",example:"She is the world champion.",collocations:["world champion","defending champion"]},
+"chance":{phonetic:"/tʃɑːns/",pos:"n.",meaning:"机会；可能性",example:"Give me a chance.",collocations:["by chance","take a chance","have a chance"]},
+"change":{phonetic:"/tʃeɪndʒ/",pos:"v./n.",meaning:"改变；零钱",example:"The weather changes quickly.",collocations:["change one's mind","small change"]},
+"channel":{phonetic:"/ˈtʃænl/",pos:"n.",meaning:"频道；渠道",example:"Change the channel.",collocations:["TV channel","sales channel"]},
+"chapter":{phonetic:"/ˈtʃæptər/",pos:"n.",meaning:"章；章节",example:"Read chapter one.",collocations:["new chapter","chapter of"]},
+"character":{phonetic:"/ˈkærəktər/",pos:"n.",meaning:"性格；人物；字符",example:"She has a strong character.",collocations:["main character","character trait"]},
+"charge":{phonetic:"/tʃɑːrdʒ/",pos:"v./n.",meaning:"收费；指控；负责",example:"How much do you charge?",collocations:["in charge of","free of charge"]},
+"charity":{phonetic:"/ˈtʃærəti/",pos:"n.",meaning:"慈善；慈善机构",example:"She gives money to charity.",collocations:["charity event","charity organization"]},
+"chart":{phonetic:"/tʃɑːrt/",pos:"n.",meaning:"图表",example:"Look at the chart.",collocations:["bar chart","top the chart"]},
+"chase":{phonetic:"/tʃeɪs/",pos:"v./n.",meaning:"追赶；追求",example:"The dog chased the cat.",collocations:["chase after","in chase of"]},
+"cheap":{phonetic:"/tʃiːp/",pos:"adj.",meaning:"便宜的",example:"The food is cheap here.",collocations:["cheap and cheerful","dirt cheap"]},
+"check":{phonetic:"/tʃek/",pos:"v./n.",meaning:"检查；支票",example:"Check your answers.",collocations:["check in","check out","check up"]},
+"cheek":{phonetic:"/tʃiːk/",pos:"n.",meaning:"脸颊",example:"She kissed him on the cheek.",collocations:["turn the other cheek"]},
+"cheese":{phonetic:"/tʃiːz/",pos:"n.",meaning:"奶酪",example:"I like cheese on my pasta.",collocations:["cheddar cheese","cream cheese"]},
+"chef":{phonetic:"/ʃef/",pos:"n.",meaning:"厨师",example:"He is a famous chef.",collocations:["head chef","executive chef"]},
+"chemical":{phonetic:"/ˈkemɪkl/",pos:"adj./n.",meaning:"化学的；化学品",example:"Chemical reactions occur.",collocations:["chemical reaction","chemical industry"]},
+"chest":{phonetic:"/tʃest/",pos:"n.",meaning:"胸部；箱子",example:"He felt pain in his chest.",collocations:["chest pain","treasure chest"]},
+"chicken":{phonetic:"/ˈtʃɪkɪn/",pos:"n.",meaning:"鸡；鸡肉",example:"We had chicken for dinner.",collocations:["roast chicken","chicken soup"]},
+"chief":{phonetic:"/tʃiːf/",pos:"adj./n.",meaning:"主要的；首领",example:"The chief reason is cost.",collocations:["chief executive","chief of staff"]},
+"child":{phonetic:"/tʃaɪld/",pos:"n.",meaning:"孩子",example:"The child is playing.",collocations:["only child","child care"]},
+"childhood":{phonetic:"/ˈtʃaɪldhʊd/",pos:"n.",meaning:"童年",example:"She had a happy childhood.",collocations:["in childhood","early childhood"]},
+"children":{phonetic:"/ˈtʃɪldrən/",pos:"n.",meaning:"孩子们（child 的复数）",example:"The children are at school.",collocations:["young children","school children"]},
+"chip":{phonetic:"/tʃɪp/",pos:"n.",meaning:"碎片；芯片；薯条",example:"A computer chip.",collocations:["potato chip","computer chip"]},
+"chocolate":{phonetic:"/ˈtʃɒklət/",pos:"n.",meaning:"巧克力",example:"I love chocolate.",collocations:["dark chocolate","chocolate bar"]},
+"choice":{phonetic:"/tʃɔɪs/",pos:"n.",meaning:"选择",example:"You have no choice.",collocations:["make a choice","by choice"]},
+"choose":{phonetic:"/tʃuːz/",pos:"v.",meaning:"选择",example:"Choose a card.",collocations:["choose to do","choose between"]},
+"church":{phonetic:"/tʃɜːtʃ/",pos:"n.",meaning:"教堂",example:"They go to church on Sunday.",collocations:["go to church","church service"]},
+"cigarette":{phonetic:"/ˌsɪɡəˈret/",pos:"n.",meaning:"香烟",example:"He smokes a cigarette.",collocations:["cigarette smoke"]},
+"circle":{phonetic:"/ˈsɜːkl/",pos:"n./v.",meaning:"圆；圈子；环绕",example:"Draw a circle.",collocations:["circle of friends","go around in circles"]},
+"circuit":{phonetic:"/ˈsɜːrkɪt/",pos:"n.",meaning:"电路；巡回",example:"The electrical circuit is broken.",collocations:["electrical circuit","circuit board"]},
+"circumstance":{phonetic:"/ˈsɜːrkəmstəns/",pos:"n.",meaning:"情况；环境",example:"Under no circumstances should you open the door.",collocations:["under the circumstances","in no circumstances"]},
+"cite":{phonetic:"/saɪt/",pos:"v.",meaning:"引用；举例",example:"He cited several examples.",collocations:["cite as","cite an example"]},
+"citizen":{phonetic:"/ˈsɪtɪzn/",pos:"n.",meaning:"公民；市民",example:"She is a Canadian citizen.",collocations:["citizen of","senior citizen"]},
+"city":{phonetic:"/ˈsɪti/",pos:"n.",meaning:"城市",example:"London is a big city.",collocations:["city center","city council"]},
+"civil":{phonetic:"/ˈsɪvl/",pos:"adj.",meaning:"公民的；文明的",example:"Civil rights are important.",collocations:["civil rights","civil war"]},
+"claim":{phonetic:"/kleɪm/",pos:"v./n.",meaning:"声称；索赔",example:"He claims to be innocent.",collocations:["claim that","make a claim"]},
+"class":{phonetic:"/klɑːs/",pos:"n.",meaning:"班级；阶级；课",example:"The class starts at 9.",collocations:["first class","master class"]},
+"classic":{phonetic:"/ˈklæsɪk/",pos:"adj./n.",meaning:"经典的；经典作品",example:"It's a classic novel.",collocations:["classic example","classic car"]},
+"classroom":{phonetic:"/ˈklɑːsruːm/",pos:"n.",meaning:"教室",example:"The classroom is empty.",collocations:["in the classroom"]},
+"clean":{phonetic:"/kliːn/",pos:"adj./v.",meaning:"干净的；打扫",example:"Keep the room clean.",collocations:["clean up","clean out"]},
+"clear":{phonetic:"/klɪər/",pos:"adj./v./adv.",meaning:"清楚的；清除",example:"The sky is clear.",collocations:["clear up","clear out","in the clear"]},
+"clearly":{phonetic:"/ˈklɪəli/",pos:"adv.",meaning:"清楚地；显然",example:"He spoke clearly.",collocations:["clearly stated"]},
+"clerk":{phonetic:"/klɜːrk/",pos:"n.",meaning:"职员；店员",example:"Ask the clerk for help.",collocations:["bank clerk","sales clerk"]},
+"clever":{phonetic:"/ˈklevər/",pos:"adj.",meaning:"聪明的",example:"She is a clever girl.",collocations:["clever idea"]},
+"client":{phonetic:"/ˈklaɪənt/",pos:"n.",meaning:"客户；委托人",example:"The client is waiting.",collocations:["new client","regular client"]},
+"climate":{phonetic:"/ˈklaɪmət/",pos:"n.",meaning:"气候；风气",example:"The climate here is mild.",collocations:["climate change","political climate"]},
+"climb":{phonetic:"/klaɪm/",pos:"v./n.",meaning:"爬；攀登",example:"They climbed the mountain.",collocations:["climb up","climb down"]},
+"clock":{phonetic:"/klɒk/",pos:"n.",meaning:"钟",example:"The clock strikes twelve.",collocations:["o'clock","around the clock"]},
+"close":{phonetic:"/kləʊs, kləʊz/",pos:"adj./v./adv.",meaning:"近的；关闭；紧密地",example:"The shop is close to my house.",collocations:["close to","close down","close up"]},
+"closed":{phonetic:"/kləʊzd/",pos:"adj.",meaning:"关闭的",example:"The store is closed.",collocations:["closed meeting"]},
+"clothes":{phonetic:"/kləʊðz/",pos:"n.",meaning:"衣服",example:"She bought new clothes.",collocations:["wash clothes","clothes shop"]},
+"clothing":{phonetic:"/ˈkləʊðɪŋ/",pos:"n.",meaning:"服装（总称）",example:"Winter clothing is expensive.",collocations:["clothing store"]},
+"cloud":{phonetic:"/klaʊd/",pos:"n.",meaning:"云",example:"The sky is full of clouds.",collocations:["dark cloud","cloud over"]},
+"club":{phonetic:"/klʌb/",pos:"n.",meaning:"俱乐部；棍棒",example:"He is a member of the club.",collocations:["health club","night club"]},
+"clue":{phonetic:"/kluː/",pos:"n.",meaning:"线索",example:"The police found a clue.",collocations:["have no clue","clue to"]},
+"coach":{phonetic:"/kəʊtʃ/",pos:"n./v.",meaning:"教练；长途汽车",example:"He is the football coach.",collocations:["head coach","life coach"]},
+"coal":{phonetic:"/kəʊl/",pos:"n.",meaning:"煤",example:"Coal is a fossil fuel.",collocations:["coal mine","coal industry"]},
+"coast":{phonetic:"/kəʊst/",pos:"n.",meaning:"海岸",example:"The house is on the coast.",collocations:["east coast","coast guard"]},
+"coat":{phonetic:"/kəʊt/",pos:"n.",meaning:"外套；涂层",example:"Put on your coat.",collocations:["winter coat","coat of paint"]},
+"code":{phonetic:"/kəʊd/",pos:"n.",meaning:"代码；密码；法规",example:"Enter the code.",collocations:["source code","dress code"]},
+"coffee":{phonetic:"/ˈkɒfi/",pos:"n.",meaning:"咖啡",example:"I drink coffee every morning.",collocations:["black coffee","coffee shop"]},
+"cognitive":{phonetic:"/ˈkɒɡnətɪv/",pos:"adj.",meaning:"认知的",example:"Cognitive skills develop in childhood.",collocations:["cognitive development","cognitive ability"]},
+"coin":{phonetic:"/kɔɪn/",pos:"n.",meaning:"硬币",example:"He found a coin on the street.",collocations:["gold coin","flip a coin"]},
+"cold":{phonetic:"/kəʊld/",pos:"adj./n.",meaning:"冷的；感冒",example:"It's cold outside.",collocations:["catch a cold","cold war"]},
+"collapse":{phonetic:"/kəˈlæps/",pos:"v./n.",meaning:"倒塌；崩溃",example:"The building collapsed.",collocations:["collapse under","economic collapse"]},
+"collar":{phonetic:"/ˈkɒlər/",pos:"n.",meaning:"衣领；项圈",example:"He wore a shirt with a collar.",collocations:["blue collar","white collar"]},
+"colleague":{phonetic:"/ˈkɒliːɡ/",pos:"n.",meaning:"同事",example:"She discussed it with her colleagues.",collocations:["close colleague"]},
+"collect":{phonetic:"/kəˈlekt/",pos:"v.",meaning:"收集；领取",example:"She collects stamps.",collocations:["collect data","collect money"]},
+"collection":{phonetic:"/kəˈlekʃn/",pos:"n.",meaning:"收藏品；收集",example:"He has a large stamp collection.",collocations:["art collection","data collection"]},
+"college":{phonetic:"/ˈkɒlɪdʒ/",pos:"n.",meaning:"学院；大学",example:"She goes to college.",collocations:["go to college","college student"]},
+"color":{phonetic:"/ˈkʌlər/",pos:"n./v.",meaning:"颜色；给…着色",example:"What color is your car?",collocations:["favorite color","color scheme"]},
+"column":{phonetic:"/ˈkɒləm/",pos:"n.",meaning:"柱；栏；列",example:"Write your name in the first column.",collocations:["newspaper column","traffic column"]},
+"combination":{phonetic:"/ˌkɒmbɪˈneɪʃn/",pos:"n.",meaning:"结合；组合",example:"A combination of factors.",collocations:["combination of","combination lock"]},
+"combine":{phonetic:"/kəmˈbaɪn/",pos:"v.",meaning:"结合；联合",example:"Combine the ingredients.",collocations:["combine with","combine efforts"]},
+"come":{phonetic:"/kʌm/",pos:"v.",meaning:"来；来到",example:"Come here, please.",collocations:["come in","come out","come up"]},
+"comedy":{phonetic:"/ˈkɒmədi/",pos:"n.",meaning:"喜剧",example:"We watched a comedy.",collocations:["romantic comedy","stand-up comedy"]},
+"comfort":{phonetic:"/ˈkʌmfərt/",pos:"n./v.",meaning:"舒适；安慰",example:"She lives in comfort.",collocations:["in comfort","comfort zone"]},
+"comfortable":{phonetic:"/ˈkʌmftəbl/",pos:"adj.",meaning:"舒适的",example:"The chair is comfortable.",collocations:["comfortable chair","feel comfortable"]},
+"command":{phonetic:"/kəˈmɑːnd/",pos:"n./v.",meaning:"命令；指挥",example:"The captain gave the command.",collocations:["in command of","command of"]},
+"comment":{phonetic:"/ˈkɒment/",pos:"n./v.",meaning:"评论",example:"Do you have any comments?",collocations:["make a comment","no comment"]},
+"commercial":{phonetic:"/kəˈmɜːʃl/",pos:"adj./n.",meaning:"商业的；广告",example:"The area is commercial.",collocations:["commercial bank","commercial break"]},
+"commission":{phonetic:"/kəˈmɪʃn/",pos:"n.",meaning:"委员会；佣金",example:"She gets a 10% commission.",collocations:["sales commission","commission on"]},
+"commit":{phonetic:"/kəˈmɪt/",pos:"v.",meaning:"犯（罪）；承诺",example:"He committed a crime.",collocations:["commit a crime","commit to"]},
+"commitment":{phonetic:"/kəˈmɪtmənt/",pos:"n.",meaning:"承诺；投入",example:"She showed great commitment.",collocations:["make a commitment","commitment to"]},
+"committee":{phonetic:"/kəˈmɪti/",pos:"n.",meaning:"委员会",example:"The committee met yesterday.",collocations:["steering committee","committee member"]},
+"common":{phonetic:"/ˈkɒmən/",pos:"adj.",meaning:"常见的；共同的",example:"It's a common problem.",collocations:["in common","common sense"]},
+"communicate":{phonetic:"/kəˈmjuːnɪkeɪt/",pos:"v.",meaning:"交流；传达",example:"We communicate by email.",collocations:["communicate with","communicate effectively"]},
+"communication":{phonetic:"/kəˌmjuːnɪˈkeɪʃn/",pos:"n.",meaning:"交流；通讯",example:"Communication is important.",collocations:["mass communication","means of communication"]},
+"community":{phonetic:"/kəˈmjuːnəti/",pos:"n.",meaning:"社区；社会",example:"She is active in the community.",collocations:["local community","business community"]},
+"company":{phonetic:"/ˈkʌmpəni/",pos:"n.",meaning:"公司；陪伴",example:"She works for a big company.",collocations:["keep company","company car"]},
+"compare":{phonetic:"/kəmˈpeər/",pos:"v.",meaning:"比较",example:"Compare the two pictures.",collocations:["compare with","compare to"]},
+"comparison":{phonetic:"/kəmˈpærɪsn/",pos:"n.",meaning:"比较",example:"By comparison, this is better.",collocations:["in comparison with","favorable comparison"]},
+"compete":{phonetic:"/kəmˈpiːt/",pos:"v.",meaning:"竞争",example:"They compete in the Olympics.",collocations:["compete with","compete for"]},
+"competition":{phonetic:"/ˌkɒmpəˈtɪʃn/",pos:"n.",meaning:"竞争；比赛",example:"She won the competition.",collocations:["fierce competition","win a competition"]},
+"competitive":{phonetic:"/kəmˈpetətɪv/",pos:"adj.",meaning:"竞争的",example:"The market is very competitive.",collocations:["competitive price","competitive advantage"]},
+"complain":{phonetic:"/kəmˈpleɪn/",pos:"v.",meaning:"抱怨；投诉",example:"She complained about the service.",collocations:["complain about","complain to"]},
+"complaint":{phonetic:"/kəmˈpleɪnt/",pos:"n.",meaning:"抱怨；投诉",example:"We received many complaints.",collocations:["make a complaint","file a complaint"]},
+"complete":{phonetic:"/kəmˈpliːt/",pos:"adj./v.",meaning:"完整的；完成",example:"The work is complete.",collocations:["complete list","complete the form"]},
+"complex":{phonetic:"/ˈkɒmpleks/",pos:"adj./n.",meaning:"复杂的；综合体",example:"The problem is complex.",collocations:["complex issue","apartment complex"]},
+"complicated":{phonetic:"/ˈkɒmplɪkeɪtɪd/",pos:"adj.",meaning:"复杂的",example:"It's a complicated situation.",collocations:["complicated problem"]},
+"component":{phonetic:"/kəmˈpəʊnənt/",pos:"n.",meaning:"组成部分；成分",example:"Each component is tested.",collocations:["key component","electronic component"]},
+"compose":{phonetic:"/kəmˈpəʊz/",pos:"v.",meaning:"组成；作曲",example:"The committee is composed of experts.",collocations:["be composed of","compose music"]},
+"composition":{phonetic:"/ˌkɒmpəˈzɪʃn/",pos:"n.",meaning:"作品；作文；成分",example:"She wrote a composition.",collocations:["chemical composition"]},
+"comprehensive":{phonetic:"/ˌkɒmprɪˈhensɪv/",pos:"adj.",meaning:"全面的",example:"A comprehensive review.",collocations:["comprehensive study","comprehensive plan"]},
+"compromise":{phonetic:"/ˈkɒmprəmaɪz/",pos:"n./v.",meaning:"妥协；折中",example:"They reached a compromise.",collocations:["reach a compromise","compromise on"]},
+"compute":{phonetic:"/kəmˈpjuːt/",pos:"v.",meaning:"计算",example:"The computer computes the result.",collocations:["compute the value"]},
+"computer":{phonetic:"/kəmˈpjuːtər/",pos:"n.",meaning:"计算机",example:"She works on a computer.",collocations:["personal computer","computer science"]},
+"concentrate":{phonetic:"/ˈkɒnsntreɪt/",pos:"v.",meaning:"集中；专注",example:"Concentrate on your work.",collocations:["concentrate on","concentrate efforts"]},
+"concept":{phonetic:"/ˈkɒnsept/",pos:"n.",meaning:"概念",example:"It's a new concept.",collocations:["basic concept","key concept"]},
+"concern":{phonetic:"/kənˈsɜːrn/",pos:"n./v.",meaning:"关心；担忧；涉及",example:"There is concern about the economy.",collocations:["concern about","as far as I'm concerned"]},
+"concert":{phonetic:"/ˈkɒnsət/",pos:"n.",meaning:"音乐会",example:"We went to a concert.",collocations:["pop concert","in concert"]},
+"conclude":{phonetic:"/kənˈkluːd/",pos:"v.",meaning:"结束；得出结论",example:"The meeting concluded at 5.",collocations:["conclude that","conclude with"]},
+"conclusion":{phonetic:"/kənˈkluːʒn/",pos:"n.",meaning:"结论；结尾",example:"In conclusion, we must act now.",collocations:["draw a conclusion","in conclusion"]},
+"concrete":{phonetic:"/ˈkɒŋkriːt/",pos:"adj./n.",meaning:"具体的；混凝土",example:"We need concrete evidence.",collocations:["concrete evidence","concrete floor"]},
+"condition":{phonetic:"/kənˈdɪʃn/",pos:"n.",meaning:"条件；状况",example:"The car is in good condition.",collocations:["on condition that","living conditions"]},
+"conduct":{phonetic:"/kənˈdʌkt, ˈkɒndʌkt/",pos:"v./n.",meaning:"进行；行为",example:"They conducted an experiment.",collocations:["conduct a survey","conduct oneself"]},
+"conference":{phonetic:"/ˈkɒnfərəns/",pos:"n.",meaning:"会议",example:"The conference was held in Paris.",collocations:["press conference","international conference"]},
+"confidence":{phonetic:"/ˈkɒnfɪdəns/",pos:"n.",meaning:"信心；信任",example:"She has confidence in herself.",collocations:["in confidence","have confidence in"]},
+"confident":{phonetic:"/ˈkɒnfɪdənt/",pos:"adj.",meaning:"自信的",example:"She is confident of winning.",collocations:["confident of","feel confident"]},
+"confirm":{phonetic:"/kənˈfɜːrm/",pos:"v.",meaning:"确认；证实",example:"Please confirm your reservation.",collocations:["confirm the booking","confirm that"]},
+"conflict":{phonetic:"/ˈkɒnflɪkt/",pos:"n./v.",meaning:"冲突；矛盾",example:"There is a conflict between them.",collocations:["armed conflict","conflict with"]},
+"confuse":{phonetic:"/kənˈfjuːz/",pos:"v.",meaning:"使困惑；混淆",example:"The instructions confused me.",collocations:["confuse with","confused about"]},
+"congress":{phonetic:"/ˈkɒŋɡres/",pos:"n.",meaning:"国会；大会",example:"Congress passed the bill.",collocations:["US Congress","member of congress"]},
+"connect":{phonetic:"/kəˈnekt/",pos:"v.",meaning:"连接",example:"Connect the printer to the computer.",collocations:["connect to","connect with"]},
+"connection":{phonetic:"/kəˈnekʃn/",pos:"n.",meaning:"连接；关系",example:"There is a connection between them.",collocations:["internet connection","in connection with"]},
+"conscious":{phonetic:"/ˈkɒnʃəs/",pos:"adj.",meaning:"有意识的；自觉的",example:"He was conscious of the danger.",collocations:["conscious of","conscious effort"]},
+"consensus":{phonetic:"/kənˈsensəs/",pos:"n.",meaning:"共识；一致",example:"We reached a consensus.",collocations:["reach a consensus","general consensus"]},
+"consequence":{phonetic:"/ˈkɒnsɪkwəns/",pos:"n.",meaning:"结果；后果",example:"He suffered the consequences.",collocations:["as a consequence","in consequence"]},
+"consider":{phonetic:"/kənˈsɪdər/",pos:"v.",meaning:"考虑；认为",example:"Consider all the options.",collocations:["consider doing","consider as"]},
+"considerable":{phonetic:"/kənˈsɪdərəbl/",pos:"adj.",meaning:"相当大的",example:"A considerable amount of money.",collocations:["considerable amount","considerable effort"]},
+"consideration":{phonetic:"/kənˌsɪdəˈreɪʃn/",pos:"n.",meaning:"考虑；体谅",example:"Take time into consideration.",collocations:["take into consideration","under consideration"]},
+"consist":{phonetic:"/kənˈsɪst/",pos:"v.",meaning:"由…组成",example:"The team consists of 10 members.",collocations:["consist of","consist in"]},
+"consistent":{phonetic:"/kənˈsɪstənt/",pos:"adj.",meaning:"一致的；持续的",example:"His work is consistent.",collocations:["consistent with","consistent performance"]},
+"constant":{phonetic:"/ˈkɒnstənt/",pos:"adj.",meaning:"不断的；恒定的",example:"The noise is constant.",collocations:["constant pressure","constant speed"]},
+"construct":{phonetic:"/kənˈstrʌkt/",pos:"v.",meaning:"建造；构成",example:"They constructed a bridge.",collocations:["construct a building","construct an argument"]},
+"construction":{phonetic:"/kənˈstrʌkʃn/",pos:"n.",meaning:"建设；建筑物",example:"The construction is underway.",collocations:["under construction","construction site"]},
+"consult":{phonetic:"/kənˈsʌlt/",pos:"v.",meaning:"咨询；查阅",example:"Consult a doctor.",collocations:["consult with","consult a lawyer"]},
+"consume":{phonetic:"/kənˈsjuːm/",pos:"v.",meaning:"消耗；消费",example:"The car consumes a lot of fuel.",collocations:["consume energy","consume time"]},
+"consumer":{phonetic:"/kənˈsjuːmər/",pos:"n.",meaning:"消费者",example:"Consumer rights are protected.",collocations:["consumer goods","consumer protection"]},
+"contact":{phonetic:"/ˈkɒntækt/",pos:"n./v.",meaning:"联系；接触",example:"Contact me by email.",collocations:["make contact","contact with"]},
+"contain":{phonetic:"/kənˈteɪn/",pos:"v.",meaning:"包含；容纳",example:"The box contains books.",collocations:["contain information"]},
+"container":{phonetic:"/kənˈteɪnər/",pos:"n.",meaning:"容器；集装箱",example:"A glass container.",collocations:["shipping container"]},
+"contemporary":{phonetic:"/kənˈtempərəri/",pos:"adj./n.",meaning:"当代的；同时代的人",example:"Contemporary art is popular.",collocations:["contemporary art","contemporary society"]},
+"content":{phonetic:"/ˈkɒntent, kənˈtent/",pos:"n./adj.",meaning:"内容；满意的",example:"The content of the book is interesting.",collocations:["table of contents","content with"]},
+"context":{phonetic:"/ˈkɒntekst/",pos:"n.",meaning:"语境；背景",example:"Understand the word in context.",collocations:["in context","historical context"]},
+"continue":{phonetic:"/kənˈtɪnjuː/",pos:"v.",meaning:"继续",example:"Please continue reading.",collocations:["continue to do","continue with"]},
+"continuous":{phonetic:"/kənˈtɪnjuəs/",pos:"adj.",meaning:"连续的",example:"Continuous noise is annoying.",collocations:["continuous process","continuous improvement"]},
+"contract":{phonetic:"/ˈkɒntrækt/",pos:"n./v.",meaning:"合同；收缩",example:"Sign the contract.",collocations:["sign a contract","contract with"]},
+"contrast":{phonetic:"/ˈkɒntrɑːst/",pos:"n./v.",meaning:"对比；对照",example:"In contrast, this is better.",collocations:["in contrast","by contrast"]},
+"contribute":{phonetic:"/kənˈtrɪbjuːt/",pos:"v.",meaning:"贡献；捐助",example:"She contributed to the project.",collocations:["contribute to","contribute money"]},
+"contribution":{phonetic:"/ˌkɒntrɪˈbjuːʃn/",pos:"n.",meaning:"贡献",example:"Her contribution was significant.",collocations:["make a contribution","major contribution"]},
+"control":{phonetic:"/kənˈtrəʊl/",pos:"n./v.",meaning:"控制；管理",example:"Keep control of the situation.",collocations:["under control","in control of"]},
+"controversial":{phonetic:"/ˌkɒntrəˈvɜːʃl/",pos:"adj.",meaning:"有争议的",example:"It's a controversial topic.",collocations:["controversial issue"]},
+"convenient":{phonetic:"/kənˈviːniənt/",pos:"adj.",meaning:"方便的",example:"Is this time convenient for you?",collocations:["convenient for","convenient location"]},
+"conventional":{phonetic:"/kənˈvenʃənl/",pos:"adj.",meaning:"传统的；常规的",example:"Conventional methods are used.",collocations:["conventional wisdom","conventional medicine"]},
+"conversation":{phonetic:"/ˌkɒnvəˈseɪʃn/",pos:"n.",meaning:"对话；交谈",example:"We had a long conversation.",collocations:["have a conversation","strike up a conversation"]},
+"convert":{phonetic:"/kənˈvɜːrt/",pos:"v.",meaning:"转换；改变信仰",example:"Convert dollars to euros.",collocations:["convert to","convert into"]},
+"convey":{phonetic:"/kənˈveɪ/",pos:"v.",meaning:"传达；运送",example:"Words cannot convey my gratitude.",collocations:["convey a message","convey meaning"]},
+"convince":{phonetic:"/kənˈvɪns/",pos:"v.",meaning:"说服；使确信",example:"I convinced him to come.",collocations:["convince someone that","be convinced of"]},
+"cook":{phonetic:"/kʊk/",pos:"v./n.",meaning:"烹饪；厨师",example:"She cooks dinner every day.",collocations:["cook for","cook up"]},
+"cookie":{phonetic:"/ˈkʊki/",pos:"n.",meaning:"饼干",example:"She baked cookies.",collocations:["chocolate chip cookie"]},
+"cool":{phonetic:"/kuːl/",pos:"adj./v.",meaning:"凉爽的；酷；使冷却",example:"It's cool today.",collocations:["keep cool","cool down"]},
+"cooperate":{phonetic:"/kəʊˈɒpəreɪt/",pos:"v.",meaning:"合作",example:"We must cooperate.",collocations:["cooperate with"]},
+"cope":{phonetic:"/kəʊp/",pos:"v.",meaning:"应付；处理",example:"She copes well with stress.",collocations:["cope with"]},
+"copy":{phonetic:"/ˈkɒpi/",pos:"n./v.",meaning:"副本；复制",example:"Make a copy of the document.",collocations:["copy of","copy and paste"]},
+"core":{phonetic:"/kɔːr/",pos:"n./adj.",meaning:"核心；核心的",example:"The core of the problem.",collocations:["core value","hard core"]},
+"corn":{phonetic:"/kɔːrn/",pos:"n.",meaning:"玉米",example:"We ate corn on the cob.",collocations:["corn field","sweet corn"]},
+"corner":{phonetic:"/ˈkɔːrnər/",pos:"n.",meaning:"角落；拐角",example:"The shop is on the corner.",collocations:["turn the corner","around the corner"]},
+"corporate":{phonetic:"/ˈkɔːrpərət/",pos:"adj.",meaning:"公司的；法人的",example:"Corporate headquarters.",collocations:["corporate culture","corporate world"]},
+"correct":{phonetic:"/kəˈrekt/",pos:"adj./v.",meaning:"正确的；纠正",example:"Your answer is correct.",collocations:["correct answer","correct the mistake"]},
+"correspond":{phonetic:"/ˌkɒrɪˈspɒnd/",pos:"v.",meaning:"符合；通信",example:"The results correspond to our expectations.",collocations:["correspond with","correspond to"]},
+"cost":{phonetic:"/kɒst/",pos:"n./v.",meaning:"成本；花费",example:"What's the cost?",collocations:["at all costs","at the cost of"]},
+"cotton":{phonetic:"/ˈkɒtn/",pos:"n.",meaning:"棉花；棉布",example:"A cotton shirt.",collocations:["cotton wool","cotton industry"]},
+"couch":{phonetic:"/kaʊtʃ/",pos:"n.",meaning:"沙发",example:"She sat on the couch.",collocations:["couch potato"]},
+"could":{phonetic:"/kʊd, kəd/",pos:"v.",meaning:"能（can 的过去式）；可能",example:"Could you help me?",collocations:["could be","could have"]},
+"council":{phonetic:"/ˈkaʊnsl/",pos:"n.",meaning:"委员会；理事会",example:"The city council met.",collocations:["city council","council member"]},
+"count":{phonetic:"/kaʊnt/",pos:"v.",meaning:"数；重要",example:"Count from 1 to 10.",collocations:["count on","count as"]},
+"counter":{phonetic:"/ˈkaʊntər/",pos:"n./adj./v.",meaning:"柜台；相反的",example:"Pay at the counter.",collocations:["over the counter","counter attack"]},
+"country":{phonetic:"/ˈkʌntri/",pos:"n.",meaning:"国家；乡村",example:"France is a beautiful country.",collocations:["foreign country","developing country"]},
+"countryside":{phonetic:"/ˈkʌntrisaɪd/",pos:"n.",meaning:"乡村",example:"We drove through the countryside.",collocations:["in the countryside"]},
+"county":{phonetic:"/ˈkaʊnti/",pos:"n.",meaning:"县；郡",example:"She lives in Oxford county.",collocations:["county council"]},
+"couple":{phonetic:"/ˈkʌpl/",pos:"n.",meaning:"一对；夫妇",example:"A couple of friends.",collocations:["a couple of","young couple"]},
+"courage":{phonetic:"/ˈkʌrɪdʒ/",pos:"n.",meaning:"勇气",example:"She showed great courage.",collocations:["have courage","take courage"]},
+"course":{phonetic:"/kɔːrs/",pos:"n.",meaning:"课程；过程；一道菜",example:"I'm taking a French course.",collocations:["in the course of","of course"]},
+"court":{phonetic:"/kɔːrt/",pos:"n.",meaning:"法院；球场",example:"The case went to court.",collocations:["go to court","tennis court"]},
+"cousin":{phonetic:"/ˈkʌzn/",pos:"n.",meaning:"堂（表）兄弟姐妹",example:"My cousin lives in Canada.",collocations:["first cousin"]},
+"cover":{phonetic:"/ˈkʌvər/",pos:"v./n.",meaning:"覆盖；封面",example:"Cover the pot.",collocations:["cover up","cover the cost"]},
+"crack":{phonetic:"/kræk/",pos:"n./v.",meaning:"裂缝；破裂",example:"There's a crack in the wall.",collocations:["crack down","crack up"]},
+"craft":{phonetic:"/krɑːft/",pos:"n.",meaning:"工艺；手艺",example:"She is good at crafts.",collocations:["arts and crafts","craft beer"]},
+"crash":{phonetic:"/kræʃ/",pos:"v./n.",meaning:"碰撞；崩溃",example:"The car crashed.",collocations:["car crash","crash into"]},
+"crazy":{phonetic:"/ˈkreɪzi/",pos:"adj.",meaning:"疯狂的",example:"That's a crazy idea.",collocations:["go crazy","crazy about"]},
+"cream":{phonetic:"/kriːm/",pos:"n./adj.",meaning:"奶油； cream 色的",example:"Strawberries and cream.",collocations:["ice cream","face cream"]},
+"create":{phonetic:"/kriˈeɪt/",pos:"v.",meaning:"创造",example:"She created a beautiful painting.",collocations:["create jobs","create an opportunity"]},
+"creation":{phonetic:"/kriˈeɪʃn/",pos:"n.",meaning:"创造；作品",example:"The creation of the world.",collocations:["creation of","original creation"]},
+"creative":{phonetic:"/kriˈeɪtɪv/",pos:"adj.",meaning:"有创造力的",example:"She is very creative.",collocations:["creative thinking","creative writing"]},
+"creature":{phonetic:"/ˈkriːtʃər/",pos:"n.",meaning:"生物；动物",example:"All living creatures.",collocations:["living creature","sea creature"]},
+"credit":{phonetic:"/ˈkredɪt/",pos:"n.",meaning:"信用；学分；赞扬",example:"Pay by credit card.",collocations:["credit card","take credit for"]},
+"crew":{phonetic:"/kruː/",pos:"n.",meaning:"全体船员；工作人员",example:"The plane crew.",collocations:["cabin crew","film crew"]},
+"crime":{phonetic:"/kraɪm/",pos:"n.",meaning:"犯罪；罪行",example:"Crime is increasing.",collocations:["commit a crime","crime rate"]},
+"criminal":{phonetic:"/ˈkrɪmɪnl/",pos:"n./adj.",meaning:"罪犯；犯罪的",example:"The criminal was arrested.",collocations:["criminal law","criminal record"]},
+"crisis":{phonetic:"/ˈkraɪsɪs/",pos:"n.",meaning:"危机",example:"The country is in crisis.",collocations:["economic crisis","financial crisis"]},
+"criteria":{phonetic:"/kraɪˈtɪəriə/",pos:"n.",meaning:"标准（criterion 的复数）",example:"The criteria are strict.",collocations:["selection criteria","meet the criteria"]},
+"critic":{phonetic:"/ˈkrɪtɪk/",pos:"n.",meaning:"批评家；评论家",example:"He is a film critic.",collocations:["film critic","harsh critic"]},
+"critical":{phonetic:"/ˈkrɪtɪkl/",pos:"adj.",meaning:"批评的；关键的",example:"Critical thinking is important.",collocations:["critical thinking","critical condition"]},
+"criticism":{phonetic:"/ˈkrɪtɪsɪzm/",pos:"n.",meaning:"批评",example:"She faced criticism.",collocations:["face criticism","constructive criticism"]},
+"criticize":{phonetic:"/ˈkrɪtɪsaɪz/",pos:"v.",meaning:"批评",example:"Don't criticize others.",collocations:["criticize someone for"]},
+"crop":{phonetic:"/krɒp/",pos:"n.",meaning:"庄稼；作物",example:"The wheat crop is good.",collocations:["crop yield","cash crop"]},
+"cross":{phonetic:"/krɒs/",pos:"v./n./adj.",meaning:"穿过；十字；生气的",example:"Cross the road carefully.",collocations:["cross the road","cross out"]},
+"crowd":{phonetic:"/kraʊd/",pos:"n.",meaning:"人群",example:"A large crowd gathered.",collocations:["in a crowd","crowd into"]},
+"cruel":{phonetic:"/ˈkruːəl/",pos:"adj.",meaning:"残忍的",example:"It was a cruel act.",collocations:["cruel to","cruel and unusual"]},
+"cry":{phonetic:"/kraɪ/",pos:"v./n.",meaning:"哭；喊",example:"The baby is crying.",collocations:["cry out","cry for help"]}
+};
+
+// ========== 查询逻辑 ==========
+function lookup(word){
+  if(!word) return null;
+  const w = String(word).trim().toLowerCase();
+  if(!w) return null;
+  return DICTIONARY[w] || null;
+}
+
+function searchWords(input, limit){
+  const q = String(input||'').trim().toLowerCase();
+  if(!q) return [];
+  const keys = Object.keys(DICTIONARY);
+  const exact = keys.filter(k => k === q);
+  const prefix = keys.filter(k => k !== q && k.startsWith(q));
+  const contains = keys.filter(k => !k.startsWith(q) && k.includes(q));
+  const out = exact.concat(prefix).concat(contains);
+  return limit ? out.slice(0, limit) : out;
+}
+
+function renderEntry(word, entry){
+  if(!entry) return '<p style="color:#c0392b;text-align:center;padding:40px">没有找到「' + word + '」这个词</p>';
+  return `
+    <div class="entry">
+      <div class="entry-head">
+        <span class="entry-word">${word}</span>
+        <span class="entry-phonetic">${entry.phonetic || ''}</span>
+        <span class="entry-pos">${entry.pos || ''}</span>
+      </div>
+      <div class="entry-meaning"><b>释义：</b>${entry.meaning || ''}</div>
+      ${entry.example ? '<div class="entry-example"><b>例句：</b>' + entry.example + '</div>' : ''}
+      ${entry.collocations && entry.collocations.length
+        ? '<div class="entry-colloc"><b>常见搭配：</b>' + entry.collocations.map(c => '<span>'+c+'</span>').join('') + '</div>'
+        : ''}
+    </div>`;
+}
+
+function doSearch(){
+  const raw = document.getElementById('searchInput').value;
+  const word = String(raw||'').trim().toLowerCase();
+  const box = document.getElementById('result');
+  const sug = document.getElementById('suggestions');
+  sug.style.display = 'none';
+
+  if(!word){
+    box.innerHTML = '<p style="color:#999;text-align:center;padding:40px">请输入要查询的英文单词</p>';
+    return;
+  }
+
+  const entry = lookup(word);
+  if(entry){
+    box.innerHTML = renderEntry(word, entry);
+    return;
+  }
+
+  const near = searchWords(word, 8);
+  if(near.length){
+    box.innerHTML = '<p style="color:#c0392b;text-align:center;padding:20px">没有找到「' + word + '」的精确词条，你是不是想找：</p>'
+      + '<div class="near-list">' + near.map(k => '<button class="near-btn" data-w="'+k+'">'+k+'</button>').join('') + '</div>';
+    box.querySelectorAll('.near-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        document.getElementById('searchInput').value = b.dataset.w;
+        doSearch();
+      });
+    });
+  } else {
+    box.innerHTML = '<p style="color:#c0392b;text-align:center;padding:40px">没有找到「' + word + '」，词库中也没有相近的词</p>';
+  }
+}
+
+function showSuggestions(){
+  const raw = document.getElementById('searchInput').value;
+  const sug = document.getElementById('suggestions');
+  const q = String(raw||'').trim().toLowerCase();
+  if(!q){ sug.style.display = 'none'; return; }
+
+  const near = searchWords(q, 6);
+  if(!near.length){ sug.style.display = 'none'; return; }
+
+  sug.innerHTML = near.map(k => '<div class="sug-item" data-w="'+k+'">'+k+'</div>').join('');
+  sug.style.display = 'block';
+  sug.querySelectorAll('.sug-item').forEach(d => {
+    d.addEventListener('click', () => {
+      document.getElementById('searchInput').value = d.dataset.w;
+      sug.style.display = 'none';
+      doSearch();
+    });
+  });
+}
+
+// ========== 标签页 ==========
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === name));
+  if(name === 'source') renderSource();
+  if(name === 'doc') renderDoc();
+}
+
+function renderSource(){
+  const el = document.getElementById('sourceCode');
+  if(el.dataset.done) return;
+  const src = [lookup, searchWords, renderEntry, doSearch].map(f => f.toString()).join('\n\n');
+  el.textContent = '// 核心纯函数\n\n' + src + '\n\n// 词库条数：' + Object.keys(DICTIONARY).length + ' 词';
+  el.dataset.done = '1';
+}
+
+function renderDoc(){
+  const el = document.getElementById('docContent');
+  if(el.dataset.done) return;
+  el.innerHTML = `
+    <h2>使用说明</h2>
+    <h3>一、功能</h3>
+    <p>收录 <b>${Object.keys(DICTIONARY).length}</b> 个常用英文单词，可查音标、词性、释义、例句、常见搭配。</p>
+    <h3>二、查询方式</h3>
+    <ul>
+      <li><b>精确查询</b>：输入完整单词，直接给出词条。</li>
+      <li><b>模糊查询</b>：输入片段（如 <code>cry</code>、<code>cul</code>），会列出所有包含该片段的词。</li>
+      <li><b>输入提示</b>：边打字边提示候选词，点一下直接查。</li>
+    </ul>
+    <h3>三、数据说明</h3>
+    <p>词条为常用词选编，<b>不是完整词典</b>。音标用英式/通用标注，释义取最常见义项，例句为自编简洁句。</p>
+    <h3>四、局限</h3>
+    <p>本工具<b>不做词形变化还原</b>（如 running 不会自动指向 run）、<b>不做句子翻译</b>。查询范围仅限收录的 ${Object.keys(DICTIONARY).length} 个词。</p>
+  `;
+  el.dataset.done = '1';
+}
+
+// ========== 单元测试 ==========
+function runAllTests(){
+  const out = [];
+  const eq = (a, b, msg) => out.push({pass: a === b, msg});
+  const keys = Object.keys(DICTIONARY);
+
+  eq(keys.length >= 500, true, '词库 ≥ 500 词');
+  eq(Object.values(DICTIONARY).every(e => e.phonetic && e.meaning), true, '所有词条有音标与释义');
+  eq(keys.every(k => k === k.toLowerCase()), true, '所有键均为小写');
+
+  eq(lookup('hello') !== null, true, '能查到 hello');
+  eq(lookup('HELLO') !== null, true, '大写也能查到');
+  eq(lookup('  hello  ') !== null, true, '两侧空格能容错');
+  eq(lookup('zzzznotaword') === null, true, '不存在的词返回 null');
+  eq(lookup('') === null, true, '空字符串返回 null');
+  eq(lookup(null) === null, true, 'null 返回 null');
+
+  eq(searchWords('cry').length > 0, true, 'searchWords 有结果');
+  eq(searchWords('').length === 0, true, '空输入返回空数组');
+  eq(searchWords('cry', 3).length <= 3, true, 'limit 生效');
+
+  const a = lookup('hello');
+  if(a){
+    eq(typeof a.phonetic === 'string', true, 'hello 音标是字符串');
+    eq(typeof a.meaning === 'string', true, 'hello 释义是字符串');
+    eq(a.meaning.length > 0, true, 'hello 释义非空');
+  }
+
+  const withColloc = keys.filter(k => DICTIONARY[k].collocations && DICTIONARY[k].collocations.length);
+  eq(withColloc.length > 0, true, '存在带搭配的词条');
+  eq(keys.filter(k => DICTIONARY[k].example).length > 0, true, '存在带例句的词条');
+
+  const passed = out.filter(r => r.pass).length;
+  const box = document.getElementById('testResult');
+  box.innerHTML = '<div style="margin-bottom:10px;font-weight:600;">通过 ' + passed + ' / ' + out.length
+    + (passed === out.length ? ' ✅ 全部通过' : ' ⚠️ 有失败') + '</div>'
+    + out.map(r => '<div style="' + (r.pass?'color:#27ae60':'color:#c0392b') + '">' + (r.pass?'✓':'✗') + ' ' + r.msg + '</div>').join('');
+  console.log('[自测] ' + passed + '/' + out.length);
+}
+
+// ========== 启动 ==========
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('searchInput');
+  const btn = document.getElementById('searchBtn');
+  const runBtn = document.getElementById('runTests');
+
+  btn.addEventListener('click', doSearch);
+  input.addEventListener('input', showSuggestions);
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); doSearch(); }
+  });
+  document.addEventListener('click', e => {
+    if(!e.target.closest('.search-box') && !e.target.closest('.suggestions')){
+      document.getElementById('suggestions').style.display = 'none';
+    }
+  });
+  runBtn.addEventListener('click', runAllTests);
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => switchTab(t.dataset.tab));
+  });
+});
+</script>
+</body>
+</html>

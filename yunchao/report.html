@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>举报 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .rule-item { display:flex; justify-content:space-between; align-items:center;
+               background:var(--card); border:1px solid var(--line);
+               border-radius:9px; padding:10px; margin-bottom:7px; cursor:pointer; }
+  .rule-item.on { border-color:var(--red); background:#2a1414; }
+  .rule-item .n { font-size:12.5px; }
+  .rule-item .r { font-size:11px; color:var(--gold); white-space:nowrap; }
+  .rule-item .p { font-size:10.5px; color:var(--dim); margin-top:2px; }
+</style>
+</head>
+<body data-tab="report">
+
+<div class="topbar">
+  <a href="orders.html" style="font-size:16px">←</a>
+  <div class="logo">举报</div>
+  <div style="flex:1"></div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+
+<div class="section">
+  <div class="section-title">选择订单</div>
+  <div class="field"><select id="orderSel"></select></div>
+
+  <div class="section-title">举报事由（共 ${YC.RULES ? '12' : '12'} 条）</div>
+  <div id="rules"></div>
+
+  <div class="field" style="margin-top:12px">
+    <label>补充说明（可选）</label>
+    <textarea id="note" rows="3" placeholder="描述发生了什么…"></textarea>
+  </div>
+
+  <div class="field">
+    <label>举证</label>
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#dbe7f5">
+      <input type="checkbox" id="proof" style="width:auto"> 我已上传录屏证据（演示：勾选即视为已上传）
+    </label>
+  </div>
+
+  <button class="btn btn-danger" id="submit" style="width:100%;margin-top:10px">提交举报</button>
+
+  <div style="margin-top:20px">
+    <div class="section-title">我的举报记录</div>
+    <div id="myReports"></div>
+  </div>
+</div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+let pickedRule = null;
+const params = new URLSearchParams(location.search);
+const presetOrder = params.get('order');
+
+const reportable = S.orders.filter(o =>
+  [YCStatus.RUNNING, YCStatus.DELIVERED, YCStatus.DONE].includes(o.status));
+
+const sel = document.getElementById('orderSel');
+if (!reportable.length) {
+  sel.innerHTML = '<option value="">暂无可举报的订单</option>';
+  sel.disabled = true;
+} else {
+  sel.innerHTML = reportable.map(o =>
+    `<option value="${o.id}" ${o.id === presetOrder ? 'selected' : ''}>
+      ${o.id} · ${o.service} · ${o.workerName}
+    </option>`).join('');
+}
+
+document.getElementById('rules').innerHTML = YC.RULES.map(r => `
+  <div class="rule-item" data-r="${r.id}">
+    <div>
+      <div class="n">${r.name}</div>
+      <div class="p">${YCSec.esc(r.note)}</div>
+    </div>
+    <div class="r">赔 ${r.penalty}</div>
+  </div>`).join('');
+
+document.querySelectorAll('.rule-item').forEach(el => {
+  el.onclick = () => {
+    document.querySelectorAll('.rule-item').forEach(x => x.classList.remove('on'));
+    el.classList.add('on');
+    pickedRule = el.dataset.r;
+  };
+});
+
+function renderReports() {
+  const mine = S.reports.filter(r => r.reporter === 'boss');
+  const box = document.getElementById('myReports');
+  if (!mine.length) {
+    box.innerHTML = '<div class="empty" style="padding:22px"><span class="icon">📭</span>暂无举报记录</div>';
+    return;
+  }
+  const stMap = { pending: ['待审核', '#fbbf24'], accepted: ['已受理', '#4ade80'], rejected: ['已驳回', '#f87171'] };
+  box.innerHTML = mine.slice().reverse().map(r => {
+    const st = stMap[r.state] || ['未知', '#64748b'];
+    return `
+      <div class="order">
+        <div class="order-head">
+          <span class="order-no">${r.id} · ${r.orderId}</span>
+          <span class="status" style="background:${st[1]}22;color:${st[1]}">${st[0]}</span>
+        </div>
+        <div class="order-body">
+          <div class="order-row"><span>事由</span><span>${r.ruleName}</span></div>
+          <div class="order-row"><span>被举报</span><span>${r.workerName}</span></div>
+          ${r.state === 'accepted' ? `<div class="order-row"><span>已补偿</span><span style="color:#4ade80">+${Math.round(r.penalty/4)} 白饭</span></div>` : ''}
+          <div class="order-row"><span>时间</span><span>${YCUtil.time(r.createdAt)}</span></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+renderReports();
+
+document.getElementById('submit').onclick = () => {
+  if (S.role !== 'boss') { YCApp.toast('只有老板身份可以举报', true); return; }
+  const orderId = sel.value;
+  if (!orderId) { YCApp.toast('没有可举报的订单', true); return; }
+  if (!pickedRule) { YCApp.toast('请选择举报事由', true); return; }
+  if (!document.getElementById('proof').checked) { YCApp.toast('请先勾选已上传录屏证据', true); return; }
+
+  const rule = YC.RULES.find(r => r.id === pickedRule);
+  const o = S.orders.find(x => x.id === orderId);
+
+  S.reports.push({
+    id: 'RP' + Date.now().toString().slice(-6),
+    orderId,
+    workerId: o.workerId,
+    workerName: o.workerName,
+    ruleId: rule.id,
+    ruleName: rule.name,
+    penalty: rule.penalty,
+    reward: rule.reward,
+    note: YCSec.clean(document.getElementById('note').value, 200),
+    proof: true,
+    state: 'pending',
+    reporter: 'boss',
+    createdAt: Date.now()
+  });
+  YCApp.save();
+  YCApp.toast('举报已提交，等待管理员审核');
+  document.getElementById('note').value = '';
+  document.getElementById('proof').checked = false;
+  document.querySelectorAll('.rule-item').forEach(x => x.classList.remove('on'));
+  pickedRule = null;
+  renderReports();
+};
+
+YCApp.renderTabbar('report');
+</script>
+</body>
+</html>

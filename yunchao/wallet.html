@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>我的钱包 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .wallet-hero {
+    margin:12px; border-radius:14px; padding:18px 16px;
+    background:linear-gradient(135deg,#1e3a5f,#312e81 65%,#4c1d95);
+    position:relative; overflow:hidden;
+  }
+  .wallet-hero::after {
+    content:'🐋'; position:absolute; right:8px; bottom:-8px;
+    font-size:78px; opacity:.14;
+  }
+  .wallet-hero .lb { font-size:11.5px; color:#a5b4fc; }
+  .wallet-hero .num { font-size:32px; font-weight:700; color:#fff; margin:6px 0 3px;
+                      letter-spacing:.5px; }
+  .wallet-hero .num small { font-size:13px; font-weight:400; color:#c7d2fe; margin-left:4px; }
+  .wallet-hero .hint { font-size:10.5px; color:#8b9dc3; }
+
+  .btn-row { display:flex; gap:9px; margin:0 12px 14px; }
+  .btn-row button { flex:1; padding:11px; border-radius:9px; font-size:13px; font-weight:600; }
+  .btn-recharge { background:linear-gradient(90deg,#3b82f6,#22d3ee); color:#04121f; }
+  .btn-recharge.dis { background:#334155; color:#64748b; }
+  .btn-ghost2 { background:var(--card); border:1px solid var(--line); color:var(--dim); }
+
+  .flow { margin:0 12px; }
+  .flow-t { font-size:13px; font-weight:600; margin:14px 0 9px; display:flex;
+            align-items:center; gap:6px; }
+  .flow-t::before { content:''; width:3px; height:12px; border-radius:2px;
+                    background:linear-gradient(180deg,var(--cyan),var(--blue)); }
+
+  .fi { display:flex; justify-content:space-between; align-items:center;
+        background:var(--card); border:1px solid var(--line); border-radius:9px;
+        padding:11px; margin-bottom:7px; }
+  .fi .l .n { font-size:12.5px; }
+  .fi .l .t { font-size:10.5px; color:var(--dim); margin-top:2px; }
+  .fi .amt { font-size:14px; font-weight:700; }
+  .fi .amt.out { color:#f87171; }
+  .fi .amt.in { color:#4ade80; }
+
+  .empty-flow { text-align:center; padding:34px; color:var(--dim); font-size:12px; }
+</style>
+</head>
+<body data-tab="me">
+
+<div class="topbar">
+  <a href="me.html" style="font-size:16px">←</a>
+  <div class="logo">我的钱包</div>
+  <div style="flex:1"></div>
+</div>
+
+<div class="wallet-hero">
+  <div class="lb">白饭余额（虚拟积分）</div>
+  <div class="num" id="bal">—<small>白饭</small></div>
+  <div class="hint" id="hint">不可充值 · 不可提现 · 不可转让</div>
+</div>
+
+<div class="btn-row">
+  <button class="btn-recharge dis" id="recharge">充 值</button>
+  <button class="btn-ghost2" id="rules">白饭说明</button>
+</div>
+
+<div class="flow">
+  <div class="flow-t">收支明细</div>
+  <div id="flowList"></div>
+</div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+document.getElementById('bal').innerHTML =
+  Number(S.baofan).toLocaleString('zh-CN') + '<small>白饭</small>';
+
+/* 充值按钮：灰显 + 说明 */
+document.getElementById('recharge').onclick = () => {
+  YCApp.modal('充值功能未开放', `
+    <p style="font-size:12.5px;color:#94a3b8;line-height:1.8">
+      本系统为技术演示版本，<b style="color:#fca5a5">不提供任何充值通道</b>。<br><br>
+      「白饭」是虚拟积分，仅用于演示下单与结算流程，
+      不具备任何货币价值，不可充值、不可提现、不可转让。<br><br>
+      如需恢复初始额度，可在「我的 → 重置演示数据」中操作。
+    </p>`, [{ t: '我知道了', cls: 'btn-ghost' }]);
+};
+
+document.getElementById('rules').onclick = () => {
+  YCApp.modal('白饭是什么', `
+    <div style="font-size:12.5px;color:#94a3b8;line-height:1.85">
+      <b>1. 虚拟积分</b><br>
+      白饭是本演示系统内部的记账单位，用于模拟陪玩平台的下单、
+      扣款、退款、补偿等流程。<br><br>
+      <b>2. 来源</b><br>
+      新用户初始赠送 ${YC.INIT_BAOFAN} 白饭，由系统凭空发放，不经过任何支付渠道。<br><br>
+      <b>3. 不可兑换</b><br>
+      白饭不能兑换人民币或任何实物，也不接受任何形式的充值。<br><br>
+      <b>4. 消耗与返还</b><br>
+      下单时扣除，取消订单时全额退回；举报受理后按规则补偿。
+    </div>`, [{ t: '关闭', cls: 'btn-ghost' }]);
+};
+
+/* 收支明细：从订单与举报推导 */
+function buildFlow() {
+  const items = [];
+
+  items.push({
+    n: '新用户注册赠送', t: '系统发放',
+    amt: YC.INIT_BAOFAN, dir: 'in', at: 0
+  });
+
+  S.orders.forEach(o => {
+    if (o.status === YCStatus.CANCELLED) {
+      items.push({ n: '订单取消退款 · ' + o.id, t: o.service, amt: o.price, dir: 'in', at: o.createdAt + 1 });
+    } else {
+      items.push({ n: '下单支付 · ' + o.id, t: o.service, amt: -o.price, dir: 'out', at: o.createdAt });
+    }
+  });
+
+  S.reports.forEach(r => {
+    if (r.state === 'accepted') {
+      items.push({
+        n: '举报补偿 · ' + r.id,
+        t: r.ruleName,
+        amt: Math.round(r.penalty / 4),
+        dir: 'in', at: r.decidedAt || r.createdAt
+      });
+    }
+  });
+
+  items.sort((a, b) => b.at - a.at);
+  return items;
+}
+
+const flow = buildFlow();
+const box = document.getElementById('flowList');
+
+if (flow.length <= 1) {
+  box.innerHTML = `<div class="empty-flow">还没有收支记录<br><br>
+    <a href="index.html" class="btn" style="display:inline-block">去下一单</a></div>`;
+} else {
+  box.innerHTML = flow.filter(f => f.at > 0 || f.dir === 'in').map(f => `
+    <div class="fi">
+      <div class="l">
+        <div class="n">${f.n}</div>
+        <div class="t">${f.t}${f.at ? ' · ' + YCUtil.time(f.at) : ''}</div>
+      </div>
+      <div class="amt ${f.dir}">${f.dir === 'in' ? '+' : ''}${f.amt}</div>
+    </div>`).join('');
+}
+
+YCApp.renderTabbar('me');
+</script>
+</body>
+</html>

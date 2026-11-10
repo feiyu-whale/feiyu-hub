@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>🐳 肥鱼模拟炒股 · 进门</title>
+<style>
+  :root{
+    --bg:#0b1420; --card:#122033; --line:#1e3550;
+    --txt:#d7e6f5; --dim:#7fa3c4; --acc:#4fc3f7; --ok:#66d9a0; --err:#ff8a9b;
+    --pro:#c792ea; --proline:#4a3560;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;background:
+      radial-gradient(900px 500px at 50% -10%, #17324d 0%, transparent 60%),
+      var(--bg);
+    color:var(--txt);
+    font:15px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    padding:18px;min-height:100vh;
+  }
+  .wrap{width:100%;max-width:470px}
+  .head{text-align:center;margin-bottom:18px}
+  .head h1{margin:0 0 5px;font-size:22px;letter-spacing:1px}
+  .head p{margin:0;color:var(--dim);font-size:13px}
+
+  /* ---------- 分区选择 ---------- */
+  .sec-title{
+    font-size:12px;letter-spacing:3px;color:var(--dim);
+    margin:18px 0 9px;padding-left:2px;
+  }
+  .sec-title.pro{color:var(--pro)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .zone{
+    background:linear-gradient(180deg,rgba(22,40,62,.95),rgba(15,27,43,.95));
+    border:1px solid var(--line);border-radius:13px;
+    padding:13px 6px 11px;text-align:center;cursor:pointer;
+    transition:transform .12s,border-color .2s,box-shadow .2s;
+  }
+  .zone:active{transform:scale(.96)}
+  .zone:hover{border-color:var(--acc);box-shadow:0 0 0 1px rgba(79,195,247,.25)}
+  .zone .ico{font-size:23px;line-height:1.2;display:block;margin-bottom:3px}
+  .zone .nm{font-size:13px;font-weight:600}
+  .zone .sub{font-size:10px;color:var(--dim);margin-top:2px;line-height:1.4}
+  .zone.p{
+    background:linear-gradient(180deg,rgba(38,28,58,.95),rgba(24,18,38,.95));
+    border-color:var(--proline);
+  }
+  .zone.p:hover{border-color:var(--pro);box-shadow:0 0 0 1px rgba(199,146,234,.3)}
+  .zone.p .sub{color:#9b82b8}
+  .warn{
+    margin-top:10px;padding:8px 12px;border-radius:9px;font-size:11.5px;
+    background:rgba(199,146,234,.09);border:1px solid rgba(199,146,234,.22);
+    color:#b79cd6;text-align:center;letter-spacing:.5px;
+  }
+  .reward{
+    margin-top:14px;padding:10px 12px;border-radius:11px;font-size:12px;
+    background:rgba(102,217,160,.07);border:1px solid rgba(102,217,160,.2);
+    color:#8fd8b4;line-height:1.75;
+  }
+  .reward b{color:#b6f0d1}
+
+  /* ---------- 题目 ---------- */
+  .card{
+    background:linear-gradient(180deg,rgba(22,40,62,.95),rgba(15,27,43,.95));
+    border:1px solid var(--line);border-radius:16px;padding:20px 18px;
+    box-shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  .card.pro{border-color:var(--proline);background:linear-gradient(180deg,rgba(38,28,58,.95),rgba(24,18,38,.95))}
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .qtype{font-size:11px;letter-spacing:2px;color:var(--acc);opacity:.85}
+  .card.pro .qtype{color:var(--pro)}
+  .back-b{background:none;border:0;color:var(--dim);font-size:12px;cursor:pointer;padding:2px 6px}
+  .back-b:hover{color:var(--txt)}
+  .lvl{font-size:11px;padding:2px 9px;border-radius:20px;background:rgba(79,195,247,.12);color:var(--acc)}
+  .card.pro .lvl{background:rgba(199,146,234,.14);color:var(--pro)}
+  .question{font-size:18px;line-height:1.65;margin:0 0 5px;font-weight:600;word-break:break-word;white-space:pre-wrap}
+  .hint{font-size:12.5px;color:var(--dim);margin:0 0 16px;line-height:1.6}
+  .answer-row{display:flex;gap:9px}
+  input[type=text]{
+    flex:1;min-width:0;padding:12px 14px;border-radius:11px;
+    border:1px solid var(--line);background:#0d1a2a;color:var(--txt);
+    font-size:16px;outline:none;transition:border-color .2s;
+  }
+  input[type=text]:focus{border-color:var(--acc)}
+  .card.pro input[type=text]:focus{border-color:var(--pro)}
+  button.go{
+    padding:12px 20px;border-radius:11px;border:0;cursor:pointer;
+    background:linear-gradient(135deg,#4fc3f7,#2e8fd6);color:#06131f;
+    font-size:15px;font-weight:700;letter-spacing:1px;
+    transition:transform .12s;
+  }
+  .card.pro button.go{background:linear-gradient(135deg,#c792ea,#8a5cc4);color:#160b22}
+  button.go:active{transform:scale(.97)}
+  button.go:disabled{opacity:.5;cursor:not-allowed}
+  .msg{margin-top:13px;font-size:13.5px;min-height:20px}
+  .msg.ok{color:var(--ok)}
+  .msg.err{color:var(--err)}
+  .dots{display:flex;gap:5px;margin-top:14px}
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--line)}
+  .dot.on{background:var(--acc)}
+  .card.pro .dot.on{background:var(--pro)}
+  .foot{margin-top:16px;text-align:center;font-size:11.5px;color:var(--dim);opacity:.65}
+  #view-quiz{display:none}
+  #ver{position:fixed;right:10px;bottom:8px;font-size:10px;color:#3d5a78}
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    20%,60%{transform:translateX(-7px)}
+    40%,80%{transform:translateX(7px)}
+  }
+  .shake{animation:shake .4s}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ============ 分区选择 ============ -->
+  <div id="view-zones">
+    <div class="head">
+      <h1>🐳 肥鱼模拟炒股</h1>
+      <p>选一个你擅长的区，答对就能进门</p>
+    </div>
+
+    <div class="sec-title">普 通 区</div>
+    <div class="grid">
+      <div class="zone" data-zone="math">
+        <span class="ico">🧮</span>
+        <div class="nm">数学</div>
+        <div class="sub">算术·数列</div>
+      </div>
+      <div class="zone" data-zone="lit">
+        <span class="ico">📖</span>
+        <div class="nm">文史</div>
+        <div class="sub">节气·名著</div>
+      </div>
+      <div class="zone" data-zone="riddle">
+        <span class="ico">🧠</span>
+        <div class="nm">脑筋</div>
+        <div class="sub">急转弯·陷阱</div>
+      </div>
+    </div>
+
+    <div class="sec-title pro">专 业 区</div>
+    <div class="grid">
+      <div class="zone p" data-zone="code">
+        <span class="ico">💻</span>
+        <div class="nm">编程</div>
+        <div class="sub">正则表达式</div>
+      </div>
+      <div class="zone p" data-zone="num">
+        <span class="ico">🔢</span>
+        <div class="nm">数论</div>
+        <div class="sub">大数·模运算</div>
+      </div>
+      <div class="zone p" data-zone="crypto">
+        <span class="ico">🔐</span>
+        <div class="nm">密码学</div>
+        <div class="sub">编码·古典密码</div>
+      </div>
+      <div class="zone p" data-zone="trans">
+        <span class="ico">🌍</span>
+        <div class="nm">冷门翻译</div>
+        <div class="sub">世界语·罕见语</div>
+      </div>
+    </div>
+    <div class="warn">⚠️ 专业区难度拉满，建议有基础再挑战</div>
+
+    <div class="reward">
+      💰 普通区通关：初始资金 <b>10,000</b><br>
+      💰 <b>专业区通关：初始资金 100,000</b>
+    </div>
+
+    <div class="foot">答错了可以换区 · 每次题目都不一样</div>
+  </div>
+
+  <!-- ============ 答题 ============ -->
+  <div id="view-quiz">
+    <div class="card" id="card">
+      <div class="toprow">
+        <button class="back-b" id="back">← 换区</button>
+        <span class="lvl" id="lvlBadge">难度 —</span>
+      </div>
+      <div class="qtype" id="qtype">LOADING</div>
+      <p class="question" id="question">正在出题…</p>
+      <p class="hint" id="hint"></p>
+      <div class="answer-row">
+        <input type="text" id="answer" placeholder="在这里作答" autocomplete="off"
+               autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button class="go" id="submit">进 门</button>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="foot">答错 3 次换一道新题</div>
+  </div>
+
+</div>
+
+<div id="ver">v2.0.0-分区解谜门 20261102</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ============ 反无头检测（取自五子棋 vd6x59t6ff） ============ */
+  function isHeadlessBrowser(){
+    try{
+      if(!navigator || !window) return false;
+      var ua = navigator.userAgent || '';
+      if(/HeadlessChrome|headless|phantomjs|electron|puppeteer|playwright|jsdom|selenium/i.test(ua)) return true;
+      if(navigator.webdriver === true) return true;
+      if(typeof screen !== 'undefined' && (screen.width === 0 || screen.height === 0)) return true;
+    }catch(e){ return false; }
+    return false;
+  }
+  var HEADLESS = isHeadlessBrowser();
+
+  /* ============ 工具 ============ */
+  function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} return a; }
+
+  /* ============ 普通区：数学 ============ */
+  function genMath(){
+    var k = rnd(1,3);
+    if(k===1){
+      var a=rnd(11,49), b=rnd(11,49), op=pick(['+','-']), ans= op==='+' ? a+b : a-b;
+      return {type:'算术', q:a+' '+op+' '+b+' = ?', hint:'直接算', ans:''+ans, lvl:1};
+    }
+    if(k===2){
+      var x=rnd(12,29), y=rnd(3,9), z=rnd(10,40);
+      return {type:'算术', q:x+' × '+y+' − '+z+' = ?', hint:'先乘后减', ans:''+(x*y-z), lvl:2};
+    }
+    var p=rnd(13,27), q=rnd(4,9), r=rnd(2,6), s=rnd(10,60);
+    return {type:'算术', q:p+' × '+q+' + '+r+'² − '+s+' = ?', hint:'注意平方', ans:''+(p*q+r*r-s), lvl:3};
+  }
+
+  /* ============ 普通区：文史 ============ */
+  var LIT = [
+    {q:'一年有多少个节气？', hint:'中国传统历法', ans:'24', lvl:1},
+    {q:'二十四节气中，立春之后是哪个节气？', hint:'和水有关', ans:'雨水', lvl:2},
+    {q:'《红楼梦》作者是谁？', hint:'清代', ans:'曹雪芹', lvl:2},
+    {q:'十二生肖中排第一位的是什么？', hint:'啮齿类', ans:'鼠', alias:['老鼠','子鼠'], lvl:1},
+    {q:'世界上最长的河流是哪条？', hint:'非洲', ans:'尼罗河', lvl:2},
+    {q:'我国第一部纪传体通史叫什么？', hint:'司马迁写的', ans:'史记', lvl:2},
+    {q:'“床前明月光”下一句是？', hint:'李白', ans:'疑是地上霜', lvl:1},
+    {q:'中国古代四大发明不包括下面哪个：造纸术、火药、地动仪、指南针？', hint:'有一个是别的', ans:'地动仪', lvl:3},
+    {q:'“但愿人长久”下一句是？', hint:'苏轼', ans:'千里共婵娟', lvl:2},
+    {q:'我国最长的古代城墙叫什么？', hint:'北方', ans:'长城', lvl:1},
+    {q:'“落霞与孤鹜齐飞”出自哪篇文章？', hint:'王勃', ans:'滕王阁序', lvl:3},
+    {q:'二十四节气中，一年最后一个节气是什么？', hint:'冬天最大那个', ans:'大寒', lvl:3},
+  ];
+  function genLit(){
+    var pool = LIT.filter(function(x){ return x.lvl;
+    });
+    var it = pick(LIT);
+    return {type:'文史', q:it.q, hint:it.hint, ans:it.ans, alias:it.alias, lvl:it.lvl};
+  }
+
+  /* ============ 普通区：脑筋 ============ */
+  var RIDDLE = [
+    {q:'什么东西越洗越脏？', hint:'生活用品', ans:'水', lvl:1},
+    {q:'什么布剪不断？', hint:'自然景物', ans:'瀑布', lvl:1},
+    {q:'什么门永远关不上？', hint:'球场', ans:'球门', lvl:1},
+    {q:'什么东西有头无脚？', hint:'小金属', ans:'钉子', alias:['图钉','钉'], lvl:2},
+    {q:'什么东西明明是你的，别人却用得比你多？', hint:'称呼', ans:'名字', lvl:2},
+    {q:'一年中有几个月有 28 天？', hint:'别被骗', ans:'12', alias:['十二','12个月','全部'], lvl:3},
+    {q:'一个人从十米高的梯子上摔下来，为什么没事？', hint:'他站得不高', ans:'梯子只有一级', alias:['只站了一级','站在第一级','第一级'], lvl:3},
+    {q:'什么东西打破了大家都很高兴？', hint:'记录', ans:'纪录', alias:['记录','世界纪录'], lvl:2},
+    {q:'小明的妈妈有三个孩子，大毛、二毛，第三个叫什么？', hint:'读题', ans:'小明', lvl:3},
+    {q:'什么动物最容易摔倒？', hint:'谐音梗', ans:'狐狸', alias:['狐'], lvl:2},
+  ];
+  function genRiddle(){
+    var it = pick(RIDDLE);
+    return {type:'脑筋急转弯', q:it.q, hint:it.hint, ans:it.ans, alias:it.alias, lvl:it.lvl};
+  }
+
+  /* ============ 专业区：编程（正则实战） ============ */
+  var REGEX_TASKS = [
+    {desc:'匹配 6 位纯数字', tests:[['123456',true],['abcdef',false],['12345',false],['1234567',false]], hint:'用 \\d 和 {6}'},
+    {desc:'匹配日期格式 2026-11-02', tests:[['2026-11-02',true],['2026/11/02',false],['26-11-02',false]], hint:'四位数-两位-两位'},
+    {desc:'匹配常见邮箱', tests:[['a@b.com',true],['ab.com',false],['a@b',false]], hint:'要有 @ 和小数点'},
+    {desc:'匹配 11 位手机号（1 开头）', tests:[['13812345678',true],['12812345678',false],['1381234567',false]], hint:'1 开头 + 10 位数字'},
+    {desc:'匹配只含字母的字符串', tests:[['abcXYZ',true],['abc123',false],['',false]], hint:'注意开头结尾'},
+    {desc:'匹配十六进制颜色 #fff 或 #ffffff', tests:[['#fff',true],['#ffffff',true],['#ggg',false],['fff',false]], hint:'# 开头，3 或 6 位'},
+    {desc:'匹配以“肥鱼”结尾的字符串', tests:[['我是肥鱼',true],['肥鱼是我',false],['肥鱼',true]], hint:'结尾用 $'},
+    {desc:'匹配 IPv4 前两段（如 192.168）', tests:[['192.168',true],['192',false],['192.168.1',false]], hint:'数字.数字'},
+    {desc:'匹配 3 的倍数（纯数字）', tests:[['9',true],['12',true],['10',false],['',false]], hint:'较难，可只判常见值'},
+    {desc:'匹配至少 8 位、含数字和字母的密码', tests:[['abc12345',true],['abcdefgh',false],['12345678',false]], hint:'两个前瞻断言'},
+  ];
+  function genRegex(){
+    var t = pick(REGEX_TASKS);
+    return {
+      type:'正则实战', regex:true, task:t,
+      q:'写一个正则，要求：'+t.desc+'\n（直接填正则本体，不用加 / /）',
+      hint:'💡 '+t.hint, ans:null, lvl:3
+    };
+  }
+
+  /* ============ 专业区：数论 ============ */
+  function genNum(){
+    var k = rnd(1,4);
+    if(k===1){
+      var n = rnd(30,60), ans=0, p=5;
+      while(p<=n){ ans += Math.floor(n/p); p*=5; }
+      return {type:'数论', q:n+'! 末尾有几个连续的 0？', hint:'数因子 5 的个数', ans:''+ans, lvl:3};
+    }
+    if(k===2){
+      var b=rnd(3,9), e=rnd(60,200), cycle=[], cur=1;
+      for(var i=0;i<4;i++){ cur=(cur*b)%10; cycle.push(cur); }
+      return {type:'数论', q:b+' 的 '+e+' 次方，个位数字是几？', hint:'找末位循环节', ans:''+cycle[(e-1)%4], lvl:3};
+    }
+    if(k===3){
+      var m=rnd(11,40), sq=m*m, cnt=0;
+      for(var j=1;j*j<=sq;j++){ if(sq%j===0) cnt += (j*j===sq)?1:2; }
+      return {type:'数论', q:m+'² 一共有多少个正因数？', hint:'质因数分解后指数+1连乘', ans:''+cnt, lvl:3};
+    }
+    var x=rnd(2,5), t2=rnd(8,15), v=1;
+    for(var z=0;z<t2;z++) v=(v*x)%1000;
+    return {type:'数论', q:x+' 的 '+t2+' 次方，末三位是多少？', hint:'取后三位循环', ans:String(v).padStart(3,'0'), lvl:3};
+  }
+
+  /* ============ 专业区：密码学 ============ */
+  var CRYPTO = [
+    function(){
+      var s = pick(['feiyu','whale','stock','ocean']);
+      var b64 = btoa(s);
+      return {type:'密码学', q:'Base64 解码：'+b64+'\n答案是什么单词？', hint:'纯字母，小写', ans:s, lvl:3};
+    },
+    function(){
+      var shift = rnd(1,25);
+      var word = pick(['feiyu','whale','stock','price']);
+      var enc = word.split('').map(function(c){
+        var n = c.charCodeAt(0)-97;
+        return String.fromCharCode(((n+shift)%26)+97);
+      }).join('');
+      return {type:'密码学', q:'凯撒密码，位移 '+shift+'：'+enc+'\n原文是什么？', hint:'往前推 ' + shift + ' 位', ans:word, lvl:3};
+    },
+    function(){
+      var word = pick(['feiyu','whale','stock']);
+      var hex = word.split('').map(function(c){ return c.charCodeAt(0).toString(16); }).join(' ');
+      return {type:'密码学', q:'十六进制转 ASCII：'+hex+'\n答案是什么单词？', hint:'两两一组是一个字母', ans:word, lvl:3};
+    },
+    function(){
+      var bin = pick(['feiyu','ocean']);
+      var s = bin.split('').map(function(c){ return c.charCodeAt(0).toString(2); }).join(' ');
+      return {type:'密码学', q:'二进制转 ASCII：'+s+'\n答案是什么单词？', hint:'8 位一组', ans:bin, lvl:3};
+    },
+    function(){
+      // 简单替换：反转字符串
+      var w = pick(['feiyu','whale','stock']);
+      var rev = w.split('').reverse().join('');
+      return {type:'密码学', q:'把下面这串倒过来读：'+rev, hint:'倒着念', ans:w, lvl:3};
+    },
+    // ---- 冷门密码 1：Atbash（字母倒序 A↔Z） ----
+    function(){
+      var w = pick(['whale','ocean','stock','price']);
+      var enc = w.split('').map(function(c){
+        var n = c.charCodeAt(0) - 97;
+        return String.fromCharCode(122 - n);
+      }).join('');
+      return {type:'密码学',
+              q:'Atbash 密码（A↔Z、B↔Y 字母倒序）：'+enc+'\n原文是什么单词？',
+              hint:'26 个字母从两头对称替换', ans:w, lvl:3};
+    },
+    // ---- 冷门密码 2：栅栏密码（2 栏） ----
+    function(){
+      var w = pick(['feiyu','whale','ocean','stock']);
+      var odd = '', even = '';
+      for (var i = 0; i < w.length; i++) {
+        (i % 2 === 0 ? odd += w[i] : even += w[i]);
+      }
+      var enc = odd + even;
+      return {type:'密码学',
+              q:'栅栏密码（2 栏，先读奇数位再读偶数位）：'+enc+'\n原文是什么单词？',
+              hint:'把两段交错还原', ans:w, lvl:3};
+    },
+    // ---- 冷门密码 3：T9 电话键盘 ----
+    function(){
+      var KEYS = {2:'abc',3:'def',4:'ghi',5:'jkl',6:'mno',7:'pqrs',8:'tuv',9:'wxyz'};
+      var w = pick(['whale','ocean','stock','fish']);
+      var enc = w.split('').map(function(c){
+        for (var k in KEYS) {
+          var idx = KEYS[k].indexOf(c);
+          if (idx >= 0) return String(k).repeat(idx + 1);
+        }
+        return '';
+      }).join(' ');
+      return {type:'密码学',
+              q:'老式手机九宫格输入（T9）：'+enc+'\n每个数字按了几次就是第几个字母，答案是什么单词？',
+              hint:'2=abc 3=def 4=ghi 5=jkl 6=mno 7=pqrs 8=tuv 9=wxyz', ans:w, lvl:3};
+    },
+    // ---- 冷门密码 4：维吉尼亚（固定密钥短语） ----
+    function(){
+      var w = pick(['whale','ocean','stock']);
+      var key = pick(['key','sea','ice']);
+      var enc = w.split('').map(function(c, i){
+        var n = c.charCodeAt(0) - 97;
+        var k = key.charCodeAt(i % key.length) - 97;
+        return String.fromCharCode(((n + k) % 26) + 97);
+      }).join('');
+      return {type:'密码学',
+              q:'维吉尼亚密码，密钥 "'+key+'"：'+enc+'\n原文是什么单词？',
+              hint:'每位字母按密钥对应位往后推', ans:w, lvl:3};
+    },
+    // ---- 冷门密码 5：摩斯电码 ----
+    function(){
+      var MORSE = {a:'.-',b:'-...',c:'-.-.',d:'-..',e:'.',f:'..-.',g:'--.',h:'....',
+                   i:'..',j:'.---',k:'-.-',l:'.-..',m:'--',n:'-.',o:'---',p:'.--.',
+                   q:'--.-',r:'.-.',s:'...',t:'-',u:'..-',v:'...-',w:'.--',x:'-..-',
+                   y:'-.--',z:'--..'};
+      var w = pick(['sea','ice','fish','key']);
+      var enc = w.split('').map(function(c){ return MORSE[c]; }).join(' / ');
+      return {type:'密码学',
+              q:'摩斯电码（/ 分隔字母）：'+enc+'\n原文是什么单词？',
+              hint:'经典点划编码', ans:w, lvl:3};
+    },
+  ];
+  function genCrypto(){
+    return pick(CRYPTO)();
+  }
+
+  /* ============ 专业区：冷门翻译 ============ */
+  // A 类：世界语真翻译（规则最规整的人造语，答案可控）
+  var ESP = [
+    {eo:'akvo', zh:'水'}, {eo:'fajro', zh:'火'}, {eo:'tero', zh:'土'},
+    {eo:'vento', zh:'风'}, {eo:'suno', zh:'太阳'}, {eo:'luno', zh:'月亮'},
+    {eo:'stelo', zh:'星星'}, {eo:'maro', zh:'海'}, {eo:'fiŝo', zh:'鱼'},
+    {eo:'hundo', zh:'狗'}, {eo:'kato', zh:'猫'}, {eo:'birdo', zh:'鸟'},
+    {eo:'arbo', zh:'树'}, {eo:'floro', zh:'花'}, {eo:'domo', zh:'房子'},
+    {eo:'libro', zh:'书'}, {eo:'amiko', zh:'朋友'}, {eo:'patro', zh:'父亲'},
+    {eo:'patrino', zh:'母亲'}, {eo:'infano', zh:'孩子'},
+  ];
+
+  // B 类：语言识别（问候语 → 属于哪种语言）
+  var LANGQ = [
+    {w:'Sveiki', lang:'拉脱维亚语', hint:'波罗的海国家'},
+    {w:'Kia ora', lang:'毛利语', hint:'新西兰原住民'},
+    {w:'Hakuna Matata', lang:'斯瓦希里语', hint:'东非，狮子王里出现过'},
+    {w:'Namaste', lang:'印地语', hint:'南亚，合十礼'},
+    {w:'Shalom', lang:'希伯来语', hint:'中东，以色列'},
+    {w:'Salaam', lang:'阿拉伯语', hint:'中东，和平之意'},
+    {w:'Aloha', lang:'夏威夷语', hint:'太平洋岛屿'},
+    {w:'Ciao', lang:'意大利语', hint:'南欧，既是你好也是再见'},
+    {w:'Hej', lang:'瑞典语', hint:'北欧'},
+    {w:'Merhaba', lang:'土耳其语', hint:'横跨欧亚'},
+    {w:'Xin chào', lang:'越南语', hint:'东南亚，声调语言'},
+    {w:'Sawubona', lang:'祖鲁语', hint:'南非'},
+    {w:'Bonjour', lang:'法语', hint:'西欧'},
+    {w:'Olá', lang:'葡萄牙语', hint:'西南欧，注意不是西语'},
+    {w:'Dobry den', lang:'捷克语', hint:'中欧'},
+    {w:'Tere', lang:'爱沙尼亚语', hint:'波罗的海'},
+    {w:'Saluton', lang:'世界语', hint:'人造语言，这个词就是你好'},
+    {w:'Bok', lang:'克罗地亚语', hint:'巴尔干半岛'},
+    {w:'Hallo', lang:'德语', hint:'中欧'},
+    {w:'Jambo', lang:'斯瓦希里语', hint:'东非'},
+  ];
+
+  function genTrans(){
+    var k = rnd(1,2);
+    if (k === 1) {
+      var it = pick(ESP);
+      return {type:'冷门翻译', q:'世界语（Esperanto）单词 "' + it.eo + '" 是什么意思？\n（中文作答）',
+              hint:'人造语言，词根多来自欧洲语言', ans:it.zh, lvl:3};
+    }
+    var qz = pick(LANGQ);
+    return {type:'冷门翻译', q:'"' + qz.w + '" 是哪种语言的问候语？',
+            hint:qz.hint, ans:qz.lang, lvl:3};
+  }
+
+  /* ============ 分区配置 ============ */
+  var ZONES = {
+    math:   {name:'数学', pro:false, gens:[genMath, genMath]},
+    lit:    {name:'文史', pro:false, gens:[genLit]},
+    riddle: {name:'脑筋', pro:false, gens:[genRiddle]},
+    code:   {name:'编程', pro:true,  gens:[genRegex]},
+    num:    {name:'数论', pro:true,  gens:[genNum]},
+    crypto: {name:'密码学', pro:true, gens:[genCrypto]},
+    trans:  {name:'冷门翻译', pro:true, gens:[genTrans]},
+  };
+
+  /* ============ 状态 ============ */
+  var current = null;
+  var curZone = null;
+  var curIsPro = false;
+  var tries = 0;
+  var TRIES_PER_Q = 3;
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function lvlName(l){ return ['','简单','中等','困难'][l] || '—'; }
+
+  function renderDots(){
+    var d = $('dots'); d.innerHTML = '';
+    for(var i=0;i<TRIES_PER_Q;i++){
+      var s = document.createElement('span');
+      s.className = 'dot' + (i<tries ? ' on' : '');
+      d.appendChild(s);
+    }
+  }
+
+  function showZones(){
+    $('view-zones').style.display = 'block';
+    $('view-quiz').style.display = 'none';
+    curZone = null;
+  }
+
+  function newQuestion(zoneKey){
+    var z = ZONES[zoneKey];
+    if(!z) return;
+    curZone = zoneKey;
+    curIsPro = z.pro;
+
+    var card = $('card');
+    if(curIsPro) card.classList.add('pro'); else card.classList.remove('pro');
+
+    $('view-zones').style.display = 'none';
+    $('view-quiz').style.display = 'block';
+
+    var q;
+    try {
+      if (HEADLESS) {
+        // 无头：强制专业区最难那类
+        q = pick([genRegex, genNum])();
+      } else {
+        q = pick(z.gens)();
+      }
+    } catch(e) {
+      q = genMath();
+    }
+    if (HEADLESS) curIsPro = true;
+
+    current = q;
+    tries = 0;
+
+    $('qtype').textContent = q.type + (curIsPro ? ' · 专业区' : '');
+    $('question').textContent = q.q;
+    $('hint').textContent = '';
+    if (q.hint) {
+      $('hint').textContent = (q.regex ? '🎉 恭喜！抽中稀有正则题 —— ' : '💡 ') + q.hint;
+    }
+    $('lvlBadge').textContent = '难度 ' + lvlName(q.lvl);
+    $('answer').value = '';
+    $('answer').placeholder = q.regex ? '在这里写正则本体' : '在这里作答';
+    $('msg').textContent = '';
+    $('msg').className = 'msg';
+    $('answer').focus();
+    renderDots();
+  }
+
+  /* ============ 校验 ============ */
+  function normalize(s){
+    return String(s==null?'':s).trim().toLowerCase()
+      .replace(/\s+/g,'').replace(/[，,。.！!？?、；;：:]/g,'');
+  }
+
+  function check(input){
+    if(!current) return false;
+    var raw = String(input==null?'':input).trim();
+    if(!raw) return false;
+
+    // 正则题：现场跑测试串
+    if(current.regex){
+      var re;
+      try { re = new RegExp(raw); } catch(e){ return false; }
+      return current.task.tests.every(function(t){
+        // 空串测试特殊处理：如果期望 false，正则不能匹配空
+        try { return re.test(t[0]) === t[1]; } catch(e){ return false; }
+      });
+    }
+
+    var v = normalize(raw);
+    if(!v) return false;
+    var targets = [current.ans].concat(current.alias||[]);
+    return targets.some(function(t){ return normalize(t)===v; });
+  }
+
+  function pass(){
+    $('msg').className = 'msg ok';
+    $('msg').textContent = '✅ 答对了，正在进门…' + (curIsPro ? '（专业区奖励：初始资金 100,000）' : '（初始资金 10,000）');
+    $('submit').disabled = true;
+    $('answer').disabled = true;
+    try { sessionStorage.setItem('feiyu_stock_pass', String(Date.now())); } catch(e){}
+    try {
+      document.cookie = 'feiyu_pass=fy-stock-7a3c9e; path=/; max-age=43200; SameSite=Lax';
+      document.cookie = 'feiyu_tier=' + (curIsPro ? 'pro' : 'normal') + '; path=/; max-age=43200; SameSite=Lax';
+    } catch(e){}
+    setTimeout(function(){ location.replace('game.html'); }, 600);
+  }
+
+  function fail(){
+    tries++;
+    renderDots();
+    var card = $('card');
+    card.classList.add('shake');
+    setTimeout(function(){ card.classList.remove('shake'); }, 420);
+
+    if(tries >= TRIES_PER_Q){
+      $('msg').className = 'msg err';
+      $('msg').textContent = '❌ 三次没答对，换一道新题。';
+      setTimeout(function(){ newQuestion(curZone); }, 900);
+      return;
+    }
+    $('msg').className = 'msg err';
+    $('msg').textContent = '❌ 不对哦，还剩 ' + (TRIES_PER_Q - tries) + ' 次机会。';
+    $('answer').select();
+  }
+
+  /* ============ 事件 ============ */
+  document.querySelectorAll('.zone').forEach(function(el){
+    el.addEventListener('click', function(){
+      newQuestion(el.getAttribute('data-zone'));
+    });
+  });
+
+  $('back').addEventListener('click', showZones);
+
+  $('submit').addEventListener('click', function(){
+    if(check($('answer').value)) pass(); else fail();
+  });
+
+  $('answer').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      if(check($('answer').value)) pass(); else fail();
+    }
+  });
+
+  window.addEventListener('pageshow', function(e){
+    if(e.persisted){ showZones(); }
+  });
+  try { sessionStorage.removeItem('feiyu_stock_pass'); } catch(e){}
+
+  showZones();
+})();
+</script>
+</body>
+</html>

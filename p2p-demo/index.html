@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>零服务器 P2P 通信演示</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:#0a1628;color:#dbe7f5;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;padding:12px 12px 64px;overflow-x:hidden}
+.wrap{max-width:640px;margin:0 auto}
+header h1{font-size:18px;margin:2px 0 3px;color:#fff;letter-spacing:.3px}
+header .sub{margin:0 0 12px;font-size:12px;color:#7d95b3}
+.panel{background:#0f2038;border:1px solid #1c3350;border-radius:12px;padding:10px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:#08111f;border:1px solid #16283f;border-radius:8px;padding:7px 9px;min-width:0}
+.stat .k{display:block;font-size:11px;color:#7d95b3;margin-bottom:1px}
+.stat .val{display:block;font-size:13px;font-weight:600;color:#dbe7f5;word-break:break-word}
+.val.ok{color:#4ade80}.val.warn{color:#ffd54a}.val.bad{color:#ff6b6b}.val.idle{color:#7d95b3}
+.notice{margin-top:10px;border-radius:8px;padding:9px 10px;font-size:12.5px;line-height:1.5;border:1px solid;word-break:break-word}
+.notice.info{background:rgba(74,158,255,.10);border-color:rgba(74,158,255,.45);color:#bcd9ff}
+.notice.warn{background:rgba(255,213,74,.10);border-color:rgba(255,213,74,.45);color:#ffe9a3}
+.notice.err{background:rgba(255,107,107,.10);border-color:rgba(255,107,107,.50);color:#ffc1c1}
+.hidden{display:none!important}
+.card{background:#0f2038;border:1px solid #1c3350;border-radius:12px;padding:12px;margin-bottom:12px;transition:border-color .2s,box-shadow .2s}
+.card.active{border-color:#4a9eff;box-shadow:0 0 0 1px #4a9eff,0 0 18px rgba(74,158,255,.18)}
+.card.done{border-color:rgba(74,222,128,.55)}
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.num{width:24px;height:24px;flex:0 0 auto;border-radius:50%;border:1px solid #1c3350;display:flex;align-items:center;justify-content:center;font-size:12px;color:#7d95b3}
+.card.active .num{border-color:#4a9eff;color:#4a9eff}
+.card.done .num{background:#2e7d4f;border-color:#2e7d4f;color:#fff}
+.card h2{font-size:15px;margin:0;flex:1;font-weight:600;min-width:0}
+.tick{color:#4ade80;font-weight:700;font-size:15px;opacity:0;transition:opacity .2s}
+.card.done .tick{opacity:1}
+.hint{margin:0 0 8px;font-size:12.5px;color:#7d95b3;line-height:1.5}
+textarea{display:block;width:100%;max-width:100%;min-height:84px;background:#08111f;color:#a9c4e0;border:1px solid #16283f;border-radius:8px;padding:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;resize:vertical;word-break:break-all;overflow-wrap:anywhere}
+textarea:focus{outline:none;border-color:#4a9eff}
+textarea::placeholder{color:#42596f}
+.btn{display:block;width:100%;min-height:44px;margin-top:8px;border-radius:9px;border:1px solid #1c3350;background:#132a45;color:#dbe7f5;font:600 14px/1 inherit;font-family:inherit;cursor:pointer;transition:filter .15s}
+.btn:active{filter:brightness(1.25)}
+.btn.primary{background:#4a9eff;border-color:#4a9eff;color:#04121f;font-weight:700}
+.btn.copy{background:transparent;border-color:#ffd54a;color:#ffd54a}
+.btn:disabled{opacity:.45;cursor:default}
+.out{margin-top:8px}
+#msgs{height:180px;overflow-y:auto;overflow-x:hidden;background:#08111f;border:1px solid #16283f;border-radius:8px;padding:8px;font-size:13px}
+.msg{margin-bottom:8px;word-break:break-word}
+.msg:last-child{margin-bottom:0}
+.msg .who{font-size:11px;color:#7d95b3;margin-bottom:2px}
+.msg .body{display:inline-block;max-width:100%;background:#132a45;padding:6px 10px;border-radius:9px;overflow-wrap:anywhere}
+.msg.me{text-align:right}
+.msg.me .who{color:#4a9eff}
+.msg.me .body{background:#1b3f66;color:#eaf4ff}
+.msg.peer .who{color:#ffd54a}
+.msg.sys{text-align:center;font-size:11.5px;color:#5f7893}
+.chat-row{display:flex;gap:8px;margin-top:8px}
+.chat-row input{flex:1 1 auto;min-width:0;min-height:44px;background:#08111f;border:1px solid #16283f;border-radius:9px;color:#dbe7f5;padding:0 11px;font:14px/1 inherit;font-family:inherit}
+.chat-row input:focus{outline:none;border-color:#4a9eff}
+.chat-row .btn{width:auto;flex:0 0 auto;margin:0;padding:0 18px}
+.ver{position:fixed;right:8px;bottom:6px;font:11px/1 ui-monospace,Menlo,Consolas,monospace;color:#3f5871;background:rgba(10,22,40,.85);padding:3px 6px;border-radius:5px;pointer-events:none}
+@media (max-width:360px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>零服务器 P2P 通信演示</h1>
+    <p class="sub">手动信令 · 无后端 · 无外部依赖 · 仅使用公共 STUN 探测 NAT</p>
+  </header>
+
+  <section class="panel">
+    <div class="grid">
+      <div class="stat"><span class="k">连接状态</span><span class="val idle" id="connState">未连接</span></div>
+      <div class="stat"><span class="k">连接类型</span><span class="val idle" id="iceType">—</span></div>
+      <div class="stat"><span class="k">实时延迟</span><span class="val idle" id="latency">—</span></div>
+      <div class="stat"><span class="k">收发字节</span><span class="val" id="bytes">↑0 B / ↓0 B</span></div>
+    </div>
+    <div id="notice" class="notice hidden"></div>
+  </section>
+
+  <section class="card active" id="card1">
+    <div class="card-head"><span class="num">①</span><h2>我是发起方（生成 Offer）</h2><span class="tick">✓</span></div>
+    <p class="hint">点击后创建 RTCPeerConnection 与 DataChannel，生成 Offer，等 ICE 收集完成后把下面的文本发给对方。</p>
+    <button class="btn primary" id="btnOffer">① 我是发起方</button>
+    <div class="out hidden" id="offerOut">
+      <textarea id="offerText" readonly spellcheck="false"></textarea>
+      <button class="btn copy" data-copy="offerText">一键复制</button>
+    </div>
+  </section>
+
+  <section class="card" id="card2">
+    <div class="card-head"><span class="num">②</span><h2>接受并生成应答</h2><span class="tick">✓</span></div>
+    <p class="hint">把收到的对方文本整段粘贴进来，生成应答后再发回给对方。</p>
+    <textarea id="offerIn" placeholder="在此粘贴对方的 Offer JSON…" spellcheck="false"></textarea>
+    <button class="btn primary" id="btnAnswer">② 接受并生成应答</button>
+    <div class="out hidden" id="answerOut">
+      <textarea id="answerText" readonly spellcheck="false"></textarea>
+      <button class="btn copy" data-copy="answerText">一键复制</button>
+    </div>
+  </section>
+
+  <section class="card" id="card3">
+    <div class="card-head"><span class="num">③</span><h2>完成连接</h2><span class="tick">✓</span></div>
+    <p class="hint">把对方回传的应答文本粘贴进来，点击完成连接。</p>
+    <textarea id="answerIn" placeholder="在此粘贴对方的 Answer JSON…" spellcheck="false"></textarea>
+    <button class="btn primary" id="btnFinish">③ 完成连接</button>
+  </section>
+
+  <section class="card" id="card4">
+    <div class="card-head"><span class="num">💬</span><h2>聊天（DataChannel）</h2><span class="tick">✓</span></div>
+    <div id="msgs"></div>
+    <div class="chat-row">
+      <input id="chatInput" type="text" placeholder="通道打开后可发送消息…" autocomplete="off">
+      <button class="btn primary" id="btnSend">发送</button>
+    </div>
+  </section>
+
+</div>
+<div class="ver">v1.0.0-p2p-demo 20261109</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var CFG={iceServers:[
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'}
+]};
+var enc=new TextEncoder();
+var pc=null, dc=null;
+var iceTypes=[], latencyVal=null, lastPong=0, pingTimer=null;
+var bytesOut=0, bytesIn=0;
+
+/* ---------- 工具 ---------- */
+function byteLen(s){ try{ return enc.encode(s).length; }catch(e){ return s.length; } }
+function fmtBytes(n){
+  if(n<1024) return n+' B';
+  if(n<1048576) return (n/1024).toFixed(1)+' KB';
+  return (n/1048576).toFixed(2)+' MB';
+}
+function setStatus(t,c){ var e=$('connState'); e.textContent=t; e.className='val '+(c||'idle'); }
+function notice(m,t){ var n=$('notice'); n.textContent=m; n.className='notice '+(t||'info'); }
+function clearNotice(){ var n=$('notice'); n.textContent=''; n.className='notice hidden'; }
+function renderBytes(){ $('bytes').textContent='↑'+fmtBytes(bytesOut)+' / ↓'+fmtBytes(bytesIn); }
+function renderIce(){
+  var order=['host','srflx','relay','prflx'], list=[], i;
+  for(i=0;i<order.length;i++){ if(iceTypes.indexOf(order[i])>=0) list.push(order[i]); }
+  var el=$('iceType');
+  el.textContent = list.length ? list.join(' / ') : '—';
+  el.className = 'val ' + (list.length ? 'ok' : 'idle');
+}
+function renderLatency(){
+  var el=$('latency');
+  if(latencyVal===null || !lastPong || (Date.now()-lastPong)>3500){
+    el.textContent='—'; el.className='val idle'; return;
+  }
+  el.textContent=latencyVal+' ms';
+  el.className='val '+(latencyVal<100?'ok':latencyVal<300?'warn':'bad');
+}
+function setCard(n,state){
+  var c=$('card'+n); if(!c) return;
+  c.classList.remove('active','done');
+  if(state) c.classList.add(state);
+}
+function sysMsg(text){
+  var box=$('msgs'), d=document.createElement('div');
+  d.className='msg sys'; d.textContent=text;
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
+function addMsg(who,text){
+  var box=$('msgs'), d=document.createElement('div');
+  d.className='msg '+who;
+  var t=new Date();
+  var p=function(x){ return ('0'+x).slice(-2); };
+  var w=document.createElement('div'); w.className='who';
+  w.textContent=(who==='me'?'我':'对方')+' · '+p(t.getHours())+':'+p(t.getMinutes())+':'+p(t.getSeconds());
+  var b=document.createElement('div'); b.className='body'; b.textContent=text;
+  d.appendChild(w); d.appendChild(b);
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+}
+
+/* ---------- SDP 解析（容错） ---------- */
+function parseSDP(text, wantType){
+  text=(text||'').trim();
+  if(!text) throw new Error('输入框是空的，请先粘贴对方发来的文本。');
+  var obj;
+  if(text.charAt(0)==='{'){
+    try{ obj=JSON.parse(text); }
+    catch(err){ throw new Error('JSON 解析失败：文本可能被截断、被聊天软件加了换行，或混入了其他字符。请重新完整复制一次。'); }
+  }else if(text.indexOf('v=')===0){
+    obj={ type:wantType, sdp:text };
+  }else{
+    throw new Error('无法识别的格式。请粘贴完整的 SDP JSON（通常以 {"type":"'+wantType+'" 开头）。');
+  }
+  if(!obj || typeof obj.sdp!=='string' || obj.sdp.indexOf('v=')!==0){
+    throw new Error('缺少有效的 sdp 字段，请确认复制的是完整信令文本。');
+  }
+  if(obj.type!==wantType){
+    throw new Error('类型不匹配：这里需要 '+wantType+'，但你粘贴的是 '+(obj.type||'未知')+'。请确认没有把 Offer 和 Answer 贴反。');
+  }
+  return obj;
+}
+
+/* ---------- 连接失败 ---------- */
+var failShown=false;
+function onFail(){
+  if(failShown) return;
+  failShown=true;
+  setStatus('已断开','bad');
+  stopPing();
+  notice('你的网络环境可能无法直连（双方都在对称 NAT 后面，需要中继服务器）。这个演示是刻意不搭中继的，所以到此为止。','err');
+  sysMsg('连接失败：无法建立 P2P 直连。');
+}
+
+/* ---------- 创建 RTCPeerConnection ---------- */
+function newPC(){
+  var p=new RTCPeerConnection(CFG);
+
+  p.onicecandidate=function(e){
+    if(e.candidate && e.candidate.candidate){
+      var m=/ typ (host|srflx|prflx|relay)/.exec(e.candidate.candidate);
+      if(m && iceTypes.indexOf(m[1])<0){ iceTypes.push(m[1]); renderIce(); }
+    }
+  };
+
+  p.oniceconnectionstatechange=function(){
+    var s=p.iceConnectionState;
+    if(s==='checking'||s==='new') setStatus('连接中','warn');
+    else if(s==='connected'||s==='completed'){ failShown=false; setStatus('已连接','ok'); }
+    else if(s==='failed') onFail();
+    else if(s==='disconnected') setStatus('已断开','bad');
+    else if(s==='closed') setStatus('已断开','bad');
+  };
+
+  p.onconnectionstatechange=function(){
+    if(p.connectionState==='failed') onFail();
+  };
+
+  p.ondatachannel=function(e){ bindDC(e.channel); };
+
+  return p;
+}
+
+/* ---------- ICE 收集等待 ---------- */
+function waitIce(p, onWarn){
+  return new Promise(function(resolve){
+    if(p.iceGatheringState==='complete'){ resolve(); return; }
+    // 最多等 5 秒：拿到多少候选就用多少。等太久用户会以为卡死。
+    var t1=setTimeout(function(){ onWarn('正在收集本机网络地址…如果一直等不到，可以直接复制下面的内容（可能连不上，但不会卡住）。'); },2500);
+    var t2=setTimeout(function(){ finish(); },5000);
+    var done=false;
+    function onChange(){ if(p.iceGatheringState==='complete') finish(); }
+    function finish(){
+      if(done) return;
+      done=true;
+      clearTimeout(t1); clearTimeout(t2);
+      try{ p.removeEventListener('icegatheringstatechange',onChange); }catch(e){}
+      resolve();
+    }
+    p.addEventListener('icegatheringstatechange',onChange);
+  });
+}
+
+/* ---------- DataChannel ---------- */
+function bindDC(ch){
+  dc=ch;
+  ch.onopen=function(){
+    failShown=false;
+    setStatus('已连接','ok');
+    setCard(3,'done'); setCard(4,'done');
+    startPing();
+    sysMsg('数据通道已打开，可以开始聊天了。');
+  };
+  ch.onclose=function(){
+    setStatus('已断开','bad');
+    stopPing();
+    sysMsg('数据通道已关闭。');
+  };
+  ch.onerror=function(){ notice('数据通道发生错误，连接可能不稳定。','err'); };
+  ch.onmessage=function(e){
+    if(typeof e.data!=='string') return;
+    bytesIn+=byteLen(e.data); renderBytes();
+    if(e.data.indexOf('__p:')===0){ dcSend('__q:'+e.data.slice(4)); return; }
+    if(e.data.indexOf('__q:')===0){
+      var ts=parseInt(e.data.slice(4),10);
+      if(!isNaN(ts)){ latencyVal=Math.max(0,Date.now()-ts); lastPong=Date.now(); renderLatency(); }
+      return;
+    }
+    addMsg('peer', e.data);
+  };
+}
+function dcSend(s){
+  if(!dc || dc.readyState!=='open') return false;
+  try{ dc.send(s); bytesOut+=byteLen(s); renderBytes(); return true; }
+  catch(err){ return false; }
+}
+function startPing(){
+  stopPing();
+  pingTimer=setInterval(function(){
+    dcSend('__p:'+Date.now());
+    renderLatency();
+  },1000);
+}
+function stopPing(){
+  if(pingTimer){ clearInterval(pingTimer); pingTimer=null; }
+  latencyVal=null; lastPong=0; renderLatency();
+}
+
+/* ---------- 清理旧连接 ---------- */
+function teardown(){
+  try{
+    if(dc){ dc.onopen=dc.onclose=dc.onerror=dc.onmessage=null; }
+    if(pc){
+      pc.onicecandidate=pc.oniceconnectionstatechange=pc.onconnectionstatechange=pc.ondatachannel=null;
+      pc.close();
+    }
+  }catch(e){}
+  dc=null; pc=null;
+  stopPing();
+  failShown=false;
+  $('msgs').innerHTML='';
+}
+
+/* ---------- 步骤 ① ---------- */
+function doOffer(){
+  var btn=$('btnOffer');
+  clearNotice();
+  teardown();
+  iceTypes=[]; renderIce(); renderBytes();
+  bytesOut=0; bytesIn=0; renderBytes();
+  setCard(1,'active');
+  btn.disabled=true; btn.textContent='正在生成 Offer…';
+
+  pc=newPC();
+  dc=pc.createDataChannel('chat',{ordered:true});
+  bindDC(dc);
+
+  pc.createOffer().then(function(offer){
+    return pc.setLocalDescription(offer);
+  }).then(function(){
+    setStatus('连接中','warn');
+    return waitIce(pc, function(m){ notice(m,'warn'); });
+  }).then(function(){
+    var ld=pc.localDescription;
+    $('offerText').value=JSON.stringify({type:ld.type,sdp:ld.sdp});
+    $('offerOut').classList.remove('hidden');
+    setCard(1,'done'); setCard(3,'active');
+    notice('Offer 已生成。请点「一键复制」把文本发给对方，然后把对方回传的 Answer 粘贴到第 ③ 步。','info');
+    sysMsg('本端为发起方，等待对方应答。');
+  }).catch(function(err){
+    notice('生成 Offer 失败：'+(err&&err.message?err.message:err)+'。请刷新页面重试。','err');
+  }).then(function(){
+    btn.disabled=false; btn.textContent='重新生成 Offer';
+  });
+}
+
+/* ---------- 步骤 ② ---------- */
+function doAnswer(){
+  var btn=$('btnAnswer');
+  clearNotice();
+  var obj;
+  try{ obj=parseSDP($('offerIn').value,'offer'); }
+  catch(err){ notice(err.message,'err'); return; }
+
+  teardown();
+  iceTypes=[]; renderIce();
+  bytesOut=0; bytesIn=0; renderBytes();
+  setCard(2,'active');
+  btn.disabled=true; btn.textContent='正在生成应答…';
+
+  pc=newPC();
+
+  pc.setRemoteDescription({type:'offer',sdp:obj.sdp}).then(function(){
+    return pc.createAnswer();
+  }).then(function(ans){
+    return pc.setLocalDescription(ans);
+  }).then(function(){
+    setStatus('连接中','warn');
+    return waitIce(pc, function(m){ notice(m,'warn'); });
+  }).then(function(){
+    var ld=pc.localDescription;
+    $('answerText').value=JSON.stringify({type:ld.type,sdp:ld.sdp});
+    $('answerOut').classList.remove('hidden');
+    setCard(2,'done'); setCard(3,'done');
+    notice('应答已生成。请点「一键复制」把文本发回给对方，然后等待连接建立。','info');
+    sysMsg('本端为应答方，已生成 Answer，等待对方应用。');
+  }).catch(function(err){
+    notice('处理 Offer 失败：'+(err&&err.message?err.message:err)+'。对方的 Offer 可能已过期，请让对方重新生成。','err');
+  }).then(function(){
+    btn.disabled=false; btn.textContent='② 接受并生成应答';
+  });
+}
+
+/* ---------- 步骤 ③ ---------- */
+function doFinish(){
+  var btn=$('btnFinish');
+  clearNotice();
+  if(!pc || !pc.localDescription){
+    notice('请先完成第 ① 步（我是发起方），再粘贴对方的 Answer。','err');
+    return;
+  }
+  if(pc.localDescription.type!=='offer'){
+    notice('当前连接不是发起方状态，不需要执行第 ③ 步。','warn');
+    return;
+  }
+  var obj;
+  try{ obj=parseSDP($('answerIn').value,'answer'); }
+  catch(err){ notice(err.message,'err'); return; }
+
+  btn.disabled=true; btn.textContent='正在连接…';
+
+  pc.setRemoteDescription({type:'answer',sdp:obj.sdp}).then(function(){
+    setCard(3,'done');
+    setStatus('连接中','warn');
+    notice('Answer 已应用，正在建立 P2P 连接……如果 20 秒内仍未连上，说明双方网络无法直连。','info');
+    btn.disabled=false; btn.textContent='③ 完成连接';
+  }).catch(function(err){
+    notice('应用 Answer 失败：'+(err&&err.message?err.message:err)+'。请确认使用的是对方最新的应答。','err');
+    btn.disabled=false; btn.textContent='③ 完成连接';
+  });
+}
+
+/* ---------- 聊天 ---------- */
+function sendChat(){
+  var inp=$('chatInput');
+  var t=inp.value.trim();
+  if(!t) return;
+  if(!dc || dc.readyState!=='open'){
+    notice('数据通道尚未打开，现在还不能发送消息。','warn');
+    return;
+  }
+  if(dcSend(t)){ addMsg('me',t); inp.value=''; }
+  else notice('发送失败，连接可能已断开。','err');
+}
+
+/* ---------- 复制 ---------- */
+function copyFrom(id,btn){
+  var ta=$(id);
+  var txt=ta.value;
+  if(!txt){ notice('还没有内容可以复制。','warn'); return; }
+  var ok=function(){
+    var old=btn.textContent;
+    btn.textContent='已复制 ✓';
+    setTimeout(function(){ btn.textContent=old; },1500);
+  };
+  var fallback=function(){
+    var ro=ta.hasAttribute('readonly');
+    if(ro) ta.removeAttribute('readonly');
+    ta.focus(); ta.select();
+    try{ ta.setSelectionRange(0,txt.length); }catch(e){}
+    var okc=false;
+    try{ okc=document.execCommand('copy'); }catch(e){ okc=false; }
+    if(ro) ta.setAttribute('readonly','readonly');
+    if(okc) ok(); else notice('自动复制失败，请手动长按/选中文本后复制。','warn');
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(ok,fallback);
+  }else{
+    fallback();
+  }
+}
+
+/* ---------- 事件绑定 ---------- */
+$('btnOffer').addEventListener('click',doOffer);
+$('btnAnswer').addEventListener('click',doAnswer);
+$('btnFinish').addEventListener('click',doFinish);
+$('btnSend').addEventListener('click',sendChat);
+$('chatInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter'){ e.preventDefault(); sendChat(); }
+});
+Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'),function(btn){
+  btn.addEventListener('click',function(){ copyFrom(btn.getAttribute('data-copy'),btn); });
+});
+
+/* ---------- 初始化 ---------- */
+renderIce(); renderLatency(); renderBytes();
+setStatus('未连接','idle');
+sysMsg('等待建立连接……');
+
+if(typeof RTCPeerConnection==='undefined'){
+  notice('当前浏览器不支持 WebRTC（RTCPeerConnection）。请使用较新版本的 Chrome / Edge / Firefox / Safari。','err');
+}
+})();
+</script>
+</body>
+</html>

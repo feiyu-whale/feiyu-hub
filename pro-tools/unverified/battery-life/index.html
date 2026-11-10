@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电池续航计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding: 24px;
+    padding-bottom: 60px;
+  }
+  h1 {
+    font-size: 26px;
+    margin-bottom: 8px;
+    color: #1a3a5c;
+  }
+  .subtitle {
+    color: #7f8c8d;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid #e1e8ed;
+    margin-bottom: 0;
+  }
+  .tab-btn {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #7f8c8d;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: #2c3e50; }
+  .tab-btn.active {
+    color: #2980b9;
+    border-bottom-color: #2980b9;
+    font-weight: 600;
+  }
+  .tab-content {
+    display: none;
+    background: #fff;
+    padding: 28px;
+    border: 1px solid #e1e8ed;
+    border-top: none;
+    min-height: 500px;
+  }
+  .tab-content.active { display: block; }
+  pre {
+    background: #1e2733;
+    color: #e6edf3;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .run-btn {
+    background: #2980b9;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .run-btn:hover { background: #2471a3; }
+  #test-output {
+    background: #1e2733;
+    color: #e6edf3;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .pass { color: #2ecc71; }
+  .fail { color: #e74c3c; }
+  .summary { font-weight: bold; margin-top: 12px; font-size: 15px; }
+  .doc h2 {
+    font-size: 20px;
+    color: #1a3a5c;
+    margin: 28px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e1e8ed;
+  }
+  .doc h3 {
+    font-size: 16px;
+    color: #2c3e50;
+    margin: 20px 0 10px;
+  }
+  .doc p { margin-bottom: 12px; text-align: justify; }
+  .doc ul, .doc ol { margin: 10px 0 14px 24px; }
+  .doc li { margin-bottom: 6px; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #d0d7de;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc th { background: #f0f4f8; font-weight: 600; }
+  .doc code {
+    background: #f0f4f8;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .doc .warn {
+    background: #fff4e5;
+    border-left: 4px solid #f39c12;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .doc .info {
+    background: #e8f4fd;
+    border-left: 4px solid #2980b9;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #95a5a6;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+
+
+<h1>电池续航计算工具</h1>
+<div class="subtitle">基于容量、负载电流、放电深度估算理论续航时间</div>
+
+<div class="calc-card" style="background:#fff;border-radius:10px;padding:16px;margin:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+  <div style="font-size:15px;font-weight:600;color:#2c3e50;margin-bottom:12px;border-left:3px solid #27ae60;padding-left:8px;">🔢 即时计算</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">电池容量</label>
+      <input type="number" id="cap" value="3000" min="0.1" step="0.1" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+      <select id="capUnit" style="width:100%;margin-top:4px;padding:6px 8px;border:1px solid #d5dbe1;border-radius:6px;font-size:13px;"><option value="mAh">mAh</option><option value="Ah">Ah</option></select>
+    </div>
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">负载电流</label>
+      <input type="number" id="cur" value="500" min="0.001" step="1" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+      <select id="curUnit" style="width:100%;margin-top:4px;padding:6px 8px;border:1px solid #d5dbe1;border-radius:6px;font-size:13px;"><option value="mA">mA</option><option value="A">A</option></select>
+    </div>
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">放电深度 DoD（%）</label>
+      <input type="number" id="dod" value="80" min="0" max="100" step="1" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+  </div>
+  <div style="margin-top:10px;padding:10px 12px;background:#fff4e5;border-left:4px solid #f39c12;border-radius:4px;font-size:13px;color:#7d5a00;">⚠️ 醒目提示：本工具参数为经验值，未经标准核对；未纳入温度、老化、自放电、转换效率等修正，结果仅供方案阶段估算参考。</div>
+  <div id="blResult" style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e3e9ef;border-radius:8px;font-size:14px;"></div>
+  <div style="font-size:11px;color:#95a5a6;margin-top:8px;">公式：续航时间(h) = 容量 × DoD(%) ÷ 电流（1 Ah = 1000 mAh，1 A = 1000 mA，换算精确）。本工具参数为经验值，未经标准核对</div>
+</div>
+
+<script>
+(function(){
+  function f(n){
+    if(n>=1000) return n.toFixed(0);
+    if(n>=10) return n.toFixed(1);
+    return n.toFixed(2);
+  }
+  function calcBL(){
+    var box=document.getElementById('blResult');
+    var capRaw=parseFloat(document.getElementById('cap').value);
+    var curRaw=parseFloat(document.getElementById('cur').value);
+    var cap=(typeof convertCapacity==='function')?convertCapacity(capRaw,document.getElementById('capUnit').value):capRaw;
+    var cur=(typeof convertCurrent==='function')?convertCurrent(curRaw,document.getElementById('curUnit').value):curRaw;
+    var dod=parseFloat(document.getElementById('dod').value);
+    if(!isFinite(cap)||!isFinite(cur)||!isFinite(dod)){
+      box.innerHTML='<span style="color:#e74c3c">请填写完整的三个参数</span>'; return;
+    }
+    if(cap<=0){ box.innerHTML='<span style="color:#e74c3c">电池容量必须大于 0</span>'; return; }
+    if(cur<=0){ box.innerHTML='<span style="color:#e74c3c">负载电流必须大于 0</span>'; return; }
+    if(dod<0||dod>100){ box.innerHTML='<span style="color:#e74c3c">放电深度需在 0–100% 之间（0 表示无可用输出）</span>'; return; }
+    var hours = cap*dod/cur/100;
+    var runtimeStr=(typeof formatRuntime==='function')?formatRuntime(hours):f(hours)+' 小时';
+    var line='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">理论续航</span><b style="color:#27ae60;font-size:16px">'+runtimeStr+'</b></div>';
+    line+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">折合天数</span><b>'+(hours/24).toFixed(2)+' 天</b></div>';
+    line+='<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:#666">可用容量</span><b>'+(cap*dod/100).toFixed(0)+' mAh</b></div>';
+    box.innerHTML=line;
+  }
+  ['cap','cur','dod'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input',calcBL);
+  });
+  calcBL();
+})();
+</script>
+
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="source">JS 源码</button>
+  <button class="tab-btn" data-tab="test">单元测试</button>
+  <button class="tab-btn" data-tab="doc">使用说明书</button>
+</div>
+
+<div id="source" class="tab-content active">
+  <pre><code id="source-code"></code></pre>
+</div>
+
+<div id="test" class="tab-content">
+  <button class="run-btn" id="run-test">运行全部测试</button>
+  <div id="test-output">点击按钮运行测试...</div>
+</div>
+
+<div id="doc" class="tab-content doc">
+  <h2>一、工具用途</h2>
+  <p>本工具用于根据「电池容量」「负载电流」「放电深度」三个参数，估算电池在恒定负载下的理论续航时间。核心公式为：</p>
+  <p style="text-align:center;font-size:16px;color:#2980b9;margin:16px 0;"><code>续航时间(h) = 电池容量(mAh) × 放电深度(%) ÷ 负载电流(mA) ÷ 100</code></p>
+  <p>适用场景包括但不限于：消费电子产品的电池选型评估、物联网设备的功耗预算、电动工具与无人机的续航预估、移动电源的可用时长估算、嵌入式系统开发阶段的电源方案设计等。本工具面向工程师、产品经理、硬件爱好者等需要在设计阶段快速估算续航的人群。</p>
+  <p>需要特别说明的是，本工具输出的是「理论估算值」，用于方案阶段的快速评估与横向对比，不用于替代实验室实测数据，也不作为产品规格承诺的依据。</p>
+
+  <h2>二、参数详解</h2>
+  <h3>2.1 电池容量（Capacity）</h3>
+  <p>电池容量表示电池能够存储的电荷量，常用单位为毫安时（mAh）或安时（Ah），1 Ah = 1000 mAh。容量数值通常由电池制造商在标准条件下（一般为 25°C、0.2C 放电倍率）标定，并标注于电池外壳或规格书中。需要注意的是，同一块电池在不同放电倍率、不同温度下，实际可放出的容量会有差异——放电倍率越高、温度越低，实际可用容量通常越小（文献中常称 Peukert 效应；此提法属经验印象，本工具未核对具体文献出处，请以厂商实测数据为准）。</p>
+  <p>常见容量参考：智能手表 200–400 mAh、TWS 耳机单耳 30–60 mAh、智能手机 3000–5500 mAh、笔记本电脑 50–100 Wh（需结合电压换算）、电动汽车动力电池 50–200 kWh（需查标准原文确认具体车型规格）。</p>
+
+  <h3>2.2 负载电流（Current）</h3>
+  <p>负载电流指设备在工作时从电池汲取的平均电流，单位为毫安（mA）或安（A），1 A = 1000 mA。对于功耗波动的设备（如手机、无人机），应取「典型工作场景下的平均电流」而非峰值电流，否则估算结果会偏保守。平均电流可通过功耗分析仪实测，或根据各模块功耗加和估算（如 MCU 工作电流 + 射频发射电流 + 屏幕背光电流 + 传感器电流等）。</p>
+  <p>对于脉冲型负载（如电机启动、射频发射），建议按占空比折算为等效平均电流：<code>I_avg = I_peak × duty_cycle</code>。</p>
+
+  <h3>2.3 放电深度（Depth of Discharge, DoD）</h3>
+  <p>放电深度指电池从满电状态放出的电量占总容量的百分比，范围 0%–100%。例如 DoD=80% 表示只使用电池 80% 的标称容量，保留 20% 作为缓冲。DoD 的设定直接影响两个维度：一是单次可用续航（DoD 越大，单次续航越长），二是电池循环寿命（DoD 越大，循环寿命通常越短）。</p>
+  <p>工程实践中，不同电池体系的推荐 DoD 不同：铅酸电池通常建议 DoD ≤ 50% 以延长寿命；锂离子电池（如手机、笔记本）一般可支持 DoD 80%–100%，但为兼顾寿命，BMS 通常会保留 5%–10% 的上下限缓冲；磷酸铁锂储能系统常见 DoD 80%–90% 的设计。具体数值需参考电池厂商规格书或相关标准（如 IEC 62133、GB/T 31484 等，具体条款需查标准原文）。</p>
+
+  <h2>三、使用场景</h2>
+  <h3>场景 1：智能手表电池选型</h3>
+  <p>某智能手表典型工作电流 8 mA，目标续航 7 天（168 小时），设计 DoD 取 80%。所需容量 = 8 mA × 168 h ÷ 0.8 = 1680 mAh。据此可筛选 1500–2000 mAh 区间的锂聚合物电池，再结合尺寸、重量、成本做最终选型。</p>
+
+  <h3>场景 2：物联网传感器节点功耗评估</h3>
+  <p>某 LoRa 传感器节点，休眠电流 10 μA（0.01 mA），每 1 小时唤醒发射一次，发射电流 120 mA、持续 50 ms。等效平均电流 = 0.01 mA + 120 mA × (50/3600000) ≈ 0.0117 mA。使用 2400 mAh 锂亚硫酰氯电池，DoD 取 90%，理论续航 = 2400 × 0.9 ÷ 0.0117 ≈ 184,615 小时 ≈ 21 年。此估算用于方案可行性判断，实际需考虑自放电、温度等因素。</p>
+
+  <h3>场景 3：消费级无人机飞行时间估算</h3>
+  <p>某四旋翼无人机使用 4S 5000 mAh 锂电池，悬停平均电流 40 A，设计 DoD 取 80%（保留 20% 用于安全降落）。理论续航 = 5000 mAh × 0.8 ÷ 40000 mA = 0.1 小时 = 6 分钟。此结果与厂商标称接近，可用于不同电池方案的横向对比。</p>
+
+  <h3>场景 4：移动电源可用时长估算</h3>
+  <p>某 20000 mAh 移动电源给手机充电，手机平均充电电流 1500 mA，考虑转换效率（本工具不直接处理，需用户折算到容量侧），假设等效可用容量为 18000 mAh，DoD 取 95%。理论可充时间 = 18000 × 0.95 ÷ 1500 = 11.4 小时。此结果用于用户预期管理。</p>
+
+  <h3>场景 5：医疗设备备用电源设计</h3>
+  <p>某便携式监护仪功耗 5 W，供电电压 12 V，工作电流 = 5/12 ≈ 0.417 A = 417 mA。要求备用续航 4 小时，DoD 取 90%。所需容量 = 417 × 4 ÷ 0.9 ≈ 1854 mAh，可选 2000 mAh 以上电池方案。</p>
+
+  <h2>四、常见错误</h2>
+  <ul>
+    <li><b>单位混淆</b>：将 mAh 与 Ah、mA 与 A 混用，导致结果偏差 1000 倍。使用前务必统一单位。</li>
+    <li><b>忽略放电深度</b>：直接按 100% DoD 计算，未考虑 BMS 保留电量与寿命折衷，导致估算偏乐观。</li>
+    <li><b>用峰值电流代替平均电流</b>：电机启动、射频发射等脉冲负载的峰值电流远大于平均值，直接代入会严重低估续航。</li>
+    <li><b>忽略温度影响</b>：低温下电池可用容量显著下降（0°C 时衰减 20%–30% 为经验印象值，无出处核对，-20°C 更甚），本工具未纳入温度修正。</li>
+    <li><b>忽略电池老化</b>：新电池与循环数百次后的电池容量差异可达 20% 以上，设计时应按寿命末期容量（EOL，常取 80% 标称容量——此比例为经验值，未经标准核对）校核。</li>
+    <li><b>忽略自放电</b>：长续航场景（如物联网节点）中，自放电可能成为主要损耗来源，本工具未纳入。</li>
+    <li><b>混淆 Wh 与 mAh</b>：笔记本、电动汽车常用 Wh 标称，需结合标称电压换算：<code>mAh = Wh × 1000 ÷ V</code>。</li>
+  </ul>
+
+  <h2>五、数据依据</h2>
+  <p>本工具核心公式基于电荷守恒的基本物理关系：<code>Q = I × t</code>，即电荷量等于电流乘以时间。该关系为电化学与电路理论的基础公式，不依赖于特定电池体系。</p>
+  <p>涉及电池性能、循环寿命、安全要求的部分，可参考以下标准（具体条款、测试方法、限值需查标准原文）：</p>
+  <ul>
+    <li>GB/T 18287《移动电话用锂离子蓄电池及蓄电池组总规范》</li>
+    <li>GB/T 31484《电动汽车用动力蓄电池循环寿命要求及试验方法》</li>
+    <li>IEC 62133《含碱性或其它非酸性电解质的蓄电池和蓄电池组 便携式密封单体蓄电池和蓄电池组的安全要求》</li>
+    <li>IEC 61960 系列（锂离子蓄电池与蓄电池组相关标准）</li>
+  </ul>
+  <div class="warn"><b>声明：</b>上述标准号真实存在，但本工具未直接引用其中具体条款数值。本工具中的偏差范围、容量衰减比例、EOL 比例、转换效率等参数均为经验值，未经标准核对，仅供快速估算参考。如需用于合规性设计、产品认证、安全评估，请务必查阅对应标准的最新版本原文，或咨询具备资质的检测机构。</div>
+
+  <h2>六、精度与误差说明（有限精准原则）</h2>
+  <p>现实中的电池放电过程涉及电化学、热力学、材料老化等多物理场耦合，变量是无限的。本工具遵循「有限精准原则」：<b>方法准、输入项准、结果给误差范围，不承诺绝对精确</b>。</p>
+
+  <h3>6.1 算准了什么</h3>
+  <ul>
+    <li>在「恒定电流、恒定温度、新电池、忽略自放电与转换损耗」的理想假设下，公式计算结果在数学上是精确的（仅受浮点运算精度限制，相对误差通常小于 1e-10）。</li>
+    <li>单位换算（mAh↔Ah、mA↔A）是精确的整数比换算，无误差。</li>
+    <li>输入校验逻辑（类型、范围）是确定性的，无歧义。</li>
+  </ul>
+
+  <h3>6.2 哪些因素没算进去</h3>
+  <ul>
+    <li><b>Peukert 效应</b>：大倍率放电时实际可用容量下降，铅酸体系尤为明显。</li>
+    <li><b>温度影响</b>：低温容量衰减、高温加速老化。</li>
+    <li><b>电池老化</b>：循环次数、日历寿命导致的容量衰减。</li>
+    <li><b>自放电</b>：长时存放中的电量自然损失。</li>
+    <li><b>转换效率</b>：DC-DC 升降压、充电管理 IC 的损耗（常见经验范围 85%–95%，无出处核对）。</li>
+    <li><b>电压变化</b>：电池放电过程中电压下降，对恒功率负载而言电流会上升，本工具按恒流假设处理。</li>
+    <li><b>负载波动</b>：实际设备电流是时变的，本工具要求用户输入等效平均值。</li>
+    <li><b>电池一致性</b>：多串多并电池组中单体差异导致的可用容量损失。</li>
+  </ul>
+
+  <h3>6.3 误差大概多大</h3>
+  <p>在典型消费电子场景（锂离子、中等倍率、常温、新电池）下，本工具估算值与实测值的偏差通常在 <b>±15% 至 ±30%</b> 范围内（该偏差范围为经验估计，无实测数据来源支持）。极端场景（低温、大倍率、老化电池、铅酸体系）偏差可能超过 ±50%。因此：</p>
+  <ul>
+    <li>本工具结果<b>仅用于方案阶段的快速估算与横向对比</b>；</li>
+    <li>关键设计决策（如医疗、航空、汽车）必须结合实测数据与专业仿真；</li>
+    <li>建议在估算结果基础上预留 20%–30% 的工程裕量。</li>
+  </ul>
+  <div class="info"><b>禁止表述：</b>本工具不使用「精确计算」「绝对准确」「100% 无误」等表述。所有输出均为「理论估算值」，实际续航以实测为准。</div>
+
+  <h2>七、局限性</h2>
+  <ul>
+    <li><b>适用电池体系</b>：公式对锂离子、锂聚合物、镍氢、铅酸等二次电池均适用，但误差范围因体系而异。一次电池（如碱性、锂原电池）因放电曲线差异较大，估算误差可能更大。</li>
+    <li><b>不适用场景</b>：本工具不适用于超级电容（放电曲线非线性极强）、燃料电池（涉及反应物供给）、核电池等特殊电源。</li>
+    <li><b>不支持多电池组建模</b>：串并联配置、BMS 均衡损耗、热管理功耗等未纳入。</li>
+    <li><b>不支持动态负载建模</b>：仅支持恒定平均电流输入，无法处理时变负载曲线。</li>
+    <li><b>不提供寿命预测</b>：循环寿命、日历寿命需参考电池厂商数据或相关标准。</li>
+    <li><b>浮点精度限制</b>：JavaScript 使用 IEEE 754 双精度浮点，极大或极小数值可能出现精度损失，但对常规电池参数（mAh 级、mA 级）影响可忽略。</li>
+  </ul>
+
+  <h2>八、结语</h2>
+  <p>本工具是工程师手边的「估算小助手」，而非「设计定案工具」。它的价值在于：让你在方案阶段用 30 秒得到一个数量级正确的答案，快速筛掉明显不可行的方案，把有限的实测资源留给最有希望的候选。请始终记住：估算只是起点，实测才是终点。</p>
+</div>
+
+<div class="version">v2.1.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，完整 JSDoc 注释）
+ * ============================================================ */
+const SOURCE_CODE = `/**
+ * 电池续航计算工具 - 核心算法模块
+ *
+ * 本模块提供基于「电池容量 / 负载电流 / 放电深度」三参数的
+ * 理论续航时间估算功能。所有函数均为纯函数，无副作用，
+ * 不依赖任何外部库，可直接在浏览器或 Node.js 环境运行。
+ *
+ * 核心公式：续航时间(h) = 容量(mAh) × DoD(%) ÷ 电流(mA) ÷ 100
+ *
+ * 注意：本工具输出为理论估算值，不承诺绝对精确。
+ */
+
+/**
+ * 验证输入是否为有效数字（非 NaN、类型为 number）
+ *
+ * @param {*} value - 待验证的值
+ * @param {string} name - 参数名称，用于错误提示
+ * @returns {number} 验证通过时返回原数字
+ * @throws {TypeError} 当 value 不是 number 类型或为 NaN 时抛出
+ *
+ * @example
+ * validateNumber(100, '容量'); // 返回 100
+ * validateNumber('abc', '容量'); // 抛出 TypeError
+ * validateNumber(NaN, '容量'); // 抛出 TypeError
+ */
+function validateNumber(value, name) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new TypeError(name + ' 必须是有效数字，收到: ' + String(value));
+  }
+  return value;
+}
+
+/**
+ * 验证电池容量值（必须 >= 0）
+ *
+ * @param {number} capacity - 电池容量（已换算为 mAh）
+ * @returns {number} 验证通过的容量值
+ * @throws {RangeError} 当容量为负数时抛出
+ *
+ * @example
+ * validateCapacity(1000); // 返回 1000
+ * validateCapacity(0);    // 返回 0
+ * validateCapacity(-10);  // 抛出 RangeError
+ */
+function validateCapacity(capacity) {
+  if (capacity < 0) {
+    throw new RangeError('电池容量不能为负数，收到: ' + capacity);
+  }
+  return capacity;
+}
+
+/**
+ * 验证负载电流值（必须 > 0）
+ *
+ * @param {number} current - 负载电流（已换算为 mA）
+ * @returns {number} 验证通过的电流值
+ * @throws {RangeError} 当电流 <= 0 时抛出
+ *
+ * @example
+ * validateCurrent(100); // 返回 100
+ * validateCurrent(0);   // 抛出 RangeError
+ * validateCurrent(-5);  // 抛出 RangeError
+ */
+function validateCurrent(current) {
+  if (current <= 0) {
+    throw new RangeError('负载电流必须大于零，收到: ' + current);
+  }
+  return current;
+}
+
+/**
+ * 验证放电深度（必须在 0-100 闭区间内）
+ *
+ * @param {number} dod - 放电深度，单位 %
+ * @returns {number} 验证通过的放电深度
+ * @throws {RangeError} 当 dod 超出 [0, 100] 范围时抛出
+ *
+ * @example
+ * validateDoD(80);   // 返回 80
+ * validateDoD(0);    // 返回 0
+ * validateDoD(100);  // 返回 100
+ * validateDoD(101);  // 抛出 RangeError
+ * validateDoD(-1);   // 抛出 RangeError
+ */
+function validateDoD(dod) {
+  if (dod < 0 || dod > 100) {
+    throw new RangeError('放电深度必须在 0-100 之间，收到: ' + dod);
+  }
+  return dod;
+}
+
+/**
+ * 容量单位换算：将指定单位的容量换算为 mAh
+ *
+ * @param {number} value - 容量数值
+ * @param {string} unit - 单位，仅支持 'mAh' 或 'Ah'
+ * @returns {number} 换算后的容量（mAh）
+ * @throws {Error} 当单位不合法时抛出
+ *
+ * @example
+ * convertCapacity(1, 'Ah');   // 返回 1000
+ * convertCapacity(500, 'mAh'); // 返回 500
+ */
+function convertCapacity(value, unit) {
+  if (unit === 'Ah') return value * 1000;
+  if (unit === 'mAh') return value;
+  throw new Error('不支持的容量单位: ' + unit + '，仅支持 mAh 或 Ah');
+}
+
+/**
+ * 电流单位换算：将指定单位的电流换算为 mA
+ *
+ * @param {number} value - 电流数值
+ * @param {string} unit - 单位，仅支持 'mA' 或 'A'
+ * @returns {number} 换算后的电流（mA）
+ * @throws {Error} 当单位不合法时抛出
+ *
+ * @example
+ * convertCurrent(1, 'A');   // 返回 1000
+ * convertCurrent(500, 'mA'); // 返回 500
+ */
+function convertCurrent(value, unit) {
+  if (unit === 'A') return value * 1000;
+  if (unit === 'mA') return value;
+  throw new Error('不支持的电流单位: ' + unit + '，仅支持 mA 或 A');
+}
+
+/**
+ * 计算电池理论续航时间（核心函数）
+ *
+ * 基于公式：t(h) = C(mAh) × DoD(%) ÷ I(mA) ÷ 100
+ *
+ * @param {number} capacity - 电池容量，单位 mAh，必须 >= 0
+ * @param {number} current - 负载电流，单位 mA，必须 > 0
+ * @param {number} dod - 放电深度，单位 %，必须在 [0, 100] 内
+ * @returns {number} 理论续航时间，单位小时（h）
+ * @throws {TypeError} 参数类型错误时抛出
+ * @throws {RangeError} 参数范围错误时抛出
+ *
+ * @example
+ * calculateRuntime(1000, 100, 100); // 返回 10（小时）
+ * calculateRuntime(2000, 200, 50);  // 返回 5（小时）
+ * calculateRuntime(1000, 100, 0);   // 返回 0（小时）
+ */
+function calculateRuntime(capacity, current, dod) {
+  validateNumber(capacity, '容量');
+  validateNumber(current, '电流');
+  validateNumber(dod, '放电深度');
+  validateCapacity(capacity);
+  validateCurrent(current);
+  validateDoD(dod);
+
+  var usableCapacity = capacity * (dod / 100);
+  return usableCapacity / current;
+}
+
+/**
+ * 带单位换算的续航计算（便捷封装）
+ *
+ * 内部先做单位换算，再调用 calculateRuntime。
+ *
+ * @param {number} capacity - 容量数值
+ * @param {string} capacityUnit - 容量单位，'mAh' 或 'Ah'
+ * @param {number} current - 电流数值
+ * @param {string} currentUnit - 电流单位，'mA' 或 'A'
+ * @param {number} dod - 放电深度，单位 %
+ * @returns {number} 理论续航时间，单位小时
+ *
+ * @example
+ * calculateRuntimeWithUnits(1, 'Ah', 0.5, 'A', 80); // 返回 1.6
+ * calculateRuntimeWithUnits(500, 'mAh', 100, 'mA', 50); // 返回 2.5
+ */
+function calculateRuntimeWithUnits(capacity, capacityUnit, current, currentUnit, dod) {
+  var capMah = convertCapacity(capacity, capacityUnit);
+  var curMa = convertCurrent(current, currentUnit);
+  return calculateRuntime(capMah, curMa, dod);
+}
+
+/**
+ * 将续航小时数格式化为可读字符串
+ *
+ * 根据数值大小自动选择秒、分钟、小时+分钟等单位。
+ *
+ * @param {number} hours - 续航时间，单位小时
+ * @returns {string} 格式化后的字符串，如 "10 小时"、"30 分钟"、"1 小时 30 分钟"
+ *
+ * @example
+ * formatRuntime(10);    // "10 小时"
+ * formatRuntime(0.5);   // "30.0 分钟"
+ * formatRuntime(1.5);   // "1 小时 30 分钟"
+ * formatRuntime(0.001); // "3.6 秒"
+ * formatRuntime(Infinity); // "∞"
+ */
+function formatRuntime(hours) {
+  if (typeof hours !== 'number' || Number.isNaN(hours)) return '无效输入';
+  if (!Number.isFinite(hours)) return '∞';
+  if (hours < 0) return '无效输入';
+  if (hours < 1 / 60) {
+    var seconds = hours * 3600;
+    return seconds.toFixed(1) + ' 秒';
+  }
+  if (hours < 1) {
+    var minutes = hours * 60;
+    return minutes.toFixed(1) + ' 分钟';
+  }
+  var h = Math.floor(hours);
+  var m = Math.round((hours - h) * 60);
+  if (m === 60) return (h + 1) + ' 小时';
+  if (m === 0) return h + ' 小时';
+  return h + ' 小时 ' + m + ' 分钟';
+}
+
+/**
+ * 根据目标续航反推所需电池容量
+ *
+ * 基于公式：C(mAh) = I(mA) × t(h) ÷ DoD(%) × 100
+ *
+ * @param {number} current - 负载电流，单位 mA，必须 > 0
+ * @param {number} hours - 目标续航时间，单位小时，必须 >= 0
+ * @param {number} dod - 放电深度，单位 %，必须在 (0, 100] 内
+ * @returns {number} 所需电池容量，单位 mAh
+ * @throws {TypeError|RangeError} 参数校验失败时抛出
+ *
+ * @example
+ * requiredCapacity(100, 10, 100); // 返回 1000（mAh）
+ * requiredCapacity(100, 10, 80);  // 返回 1250（mAh）
+ */
+function requiredCapacity(current, hours, dod) {
+  validateNumber(current, '电流');
+  validateNumber(hours, '续航时间');
+  validateNumber(dod, '放电深度');
+  validateCurrent(current);
+  if (hours < 0) throw new RangeError('续航时间不能为负数');
+  if (dod <= 0 || dod > 100) throw new RangeError('放电深度必须在 (0, 100] 内');
+  return current * hours / (dod / 100);
+}`;
+
+document.getElementById('source-code').textContent = SOURCE_CODE;
+
+/* ============================================================
+ * 将源码中的函数注入全局（用于测试）
+ * ============================================================ */
+eval(SOURCE_CODE);
+
+/* ============================================================
+ * 第二部分：单元测试（≥30 个）
+ * ============================================================ */
+let passed = 0;
+let failed = 0;
+const logs = [];
+
+function log(msg, cls) {
+  logs.push({ msg, cls });
+}
+
+function assertEqual(actual, expected, message, tolerance) {
+  tolerance = tolerance === undefined ? 1e-6 : tolerance;
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    if (Math.abs(actual - expected) <= tolerance) {
+      passed++;
+      log('[PASS] ' + message, 'pass');
+    } else {
+      failed++;
+      log('[FAIL] ' + message + ' | 期望 ' + expected + '，实际 ' + actual, 'fail');
+    }
+  } else if (actual === expected) {
+    passed++;
+    log('[PASS] ' + message, 'pass');
+  } else {
+    failed++;
+    log('[FAIL] ' + message + ' | 期望 ' + String(expected) + '，实际 ' + String(actual), 'fail');
+  }
+}
+
+function assertThrows(fn, errorType, message) {
+  try {
+    fn();
+    failed++;
+    log('[FAIL] ' + message + ' | 应抛出异常但未抛出', 'fail');
+  } catch (e) {
+    if (e instanceof errorType) {
+      passed++;
+      log('[PASS] ' + message, 'pass');
+    } else {
+      failed++;
+      log('[FAIL] ' + message + ' | 期望 ' + errorType.name + '，实际 ' + e.constructor.name, 'fail');
+    }
+  }
+}
+
+function runTests() {
+  passed = 0;
+  failed = 0;
+  logs.length = 0;
+
+  // ===== 正常值测试 =====
+  assertEqual(calculateRuntime(1000, 100, 100), 10, '正常：1000mAh/100mA/100% → 10h');
+  assertEqual(calculateRuntime(2000, 200, 50), 5, '正常：2000mAh/200mA/50% → 5h');
+  assertEqual(calculateRuntime(500, 50, 80), 8, '正常：500mAh/50mA/80% → 8h');
+  assertEqual(calculateRuntime(10000, 1000, 100), 10, '正常：10000mAh/1000mA/100% → 10h');
+  assertEqual(calculateRuntime(3000, 300, 20), 2, '正常：3000mAh/300mA/20% → 2h');
+  assertEqual(calculateRuntime(100, 10, 100), 10, '正常：100mAh/10mA/100% → 10h');
+  assertEqual(calculateRuntime(1, 1, 100), 1, '正常：1mAh/1mA/100% → 1h');
+  assertEqual(calculateRuntime(1000, 1, 100), 1000, '正常：1000mAh/1mA/100% → 1000h');
+
+  // ===== 边界值测试 =====
+  assertEqual(calculateRuntime(1000, 100, 0), 0, '边界：DoD=0 → 0h');
+  assertEqual(calculateRuntime(1000, 100, 100), 10, '边界：DoD=100 → 正常');
+  assertEqual(calculateRuntime(0, 100, 100), 0, '边界：容量=0 → 0h');
+  assertEqual(calculateRuntime(1000, 100, 0.001), 0.01, '边界：DoD 极小值');
+  assertEqual(calculateRuntime(0.001, 0.001, 100), 1, '边界：极小容量与电流');
+
+  // ===== 异常输入测试 =====
+  assertThrows(function(){ calculateRuntime(-100, 100, 100); }, RangeError, '异常：负数容量');
+  assertThrows(function(){ calculateRuntime(1000, 0, 100); }, RangeError, '异常：零电流');
+  assertThrows(function(){ calculateRuntime(1000, -10, 100); }, RangeError, '异常：负数电流');
+  assertThrows(function(){ calculateRuntime(1000, 100, -1); }, RangeError, '异常：DoD 负数');
+  assertThrows(function(){ calculateRuntime(1000, 100, 101); }, RangeError, '异常：DoD > 100');
+  assertThrows(function(){ calculateRuntime(NaN, 100, 100); }, TypeError, '异常：NaN 容量');
+  assertThrows(function(){ calculateRuntime(1000, NaN, 100); }, TypeError, '异常：NaN 电流');
+  assertThrows(function(){ calculateRuntime(1000, 100, NaN); }, TypeError, '异常：NaN DoD');
+  assertThrows(function(){ calculateRuntime(null, 100, 100); }, TypeError, '异常：null 容量');
+  assertThrows(function(){ calculateRuntime(undefined, 100, 100); }, TypeError, '异常：undefined 容量');
+  assertThrows(function(){ calculateRuntime('1000', 100, 100); }, TypeError, '异常：字符串容量');
+  assertThrows(function(){ calculateRuntime({}, 100, 100); }, TypeError, '异常：对象容量');
+  assertThrows(function(){ calculateRuntime([], 100, 100); }, TypeError, '异常：数组容量');
+
+  // ===== 精度测试 =====
+  assertEqual(calculateRuntime(1234.5, 100, 100), 12.345, '精度：小数容量');
+  assertEqual(calculateRuntime(1000, 12.34, 100), 1000/12.34, '精度：小数电流', 1e-4);
+  assertEqual(calculateRuntime(1000, 100, 85.5), 8.55, '精度：小数 DoD');
+  assertEqual(calculateRuntime(0.001, 0.001, 100), 1, '精度：极小值');
+  assertEqual(calculateRuntime(1000000, 1, 100), 1000000, '精度：极大容量');
+
+  // ===== 单位换算测试 =====
+  assertEqual(convertCapacity(1, 'Ah'), 1000, '换算：1Ah = 1000mAh');
+  assertEqual(convertCapacity(500, 'mAh'), 500, '换算：500mAh 不变');
+  assertEqual(convertCurrent(1, 'A'), 1000, '换算：1A = 1000mA');
+  assertEqual(convertCurrent(250, 'mA'), 250, '换算：250mA 不变');
+  assertThrows(function(){ convertCapacity(1, 'Wh'); }, Error, '换算：非法容量单位');
+  assertThrows(function(){ convertCurrent(1, 'V'); }, Error, '换算：非法电流单位');
+
+  // ===== 带单位计算测试 =====
+  assertEqual(calculateRuntimeWithUnits(1, 'Ah', 0.5, 'A', 80), 1.6, '带单位：1Ah/0.5A/80% → 1.6h');
+  assertEqual(calculateRuntimeWithUnits(500, 'mAh', 100, 'mA', 50), 2.5, '带单位：500mAh/100mA/50% → 2.5h');
+  assertEqual(calculateRuntimeWithUnits(2, 'Ah', 1, 'A', 100), 2, '带单位：2Ah/1A/100% → 2h');
+
+  // ===== 反推容量测试 =====
+  assertEqual(requiredCapacity(100, 10, 100), 1000, '反推：100mA/10h/100% → 1000mAh');
+  assertEqual(requiredCapacity(100, 10, 80), 1250, '反推：100mA/10h/80% → 1250mAh');
+  assertThrows(function(){ requiredCapacity(100, 10, 0); }, RangeError, '反推：DoD=0 异常');
+
+  // ===== 格式化测试 =====
+  assertEqual(formatRuntime(10), '10 小时', '格式化：10h');
+  assertEqual(formatRuntime(0.5), '30.0 分钟', '格式化：0.5h');
+  assertEqual(formatRuntime(1.5), '1 小时 30 分钟', '格式化：1.5h');
+  assertEqual(formatRuntime(0.001), '3.6 秒', '格式化：0.001h');
+  assertEqual(formatRuntime(Infinity), '∞', '格式化：Infinity');
+  assertEqual(formatRuntime(2), '2 小时', '格式化：2h');
+  assertEqual(formatRuntime(0), '0.0 秒', '格式化：0h');
+
+  // ===== 输出结果 =====
+  const output = document.getElementById('test-output');
+  output.innerHTML = '';
+  logs.forEach(function(item) {
+    const div = document.createElement('div');
+    div.className = item.cls;
+    div.textContent = item.msg;
+    output.appendChild(div);
+  });
+  const total = passed + failed;
+  const summary = document.createElement('div');
+  summary.className = 'summary ' + (failed === 0 ? 'pass' : 'fail');
+  summary.textContent = '\n通过 ' + passed + ' / 共 ' + total + (failed > 0 ? ' （失败 ' + failed + ' 个）' : ' ✓ 全部通过');
+  output.appendChild(summary);
+}
+
+document.getElementById('run-test').addEventListener('click', runTests);
+
+/* ============================================================
+ * 标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const tab = btn.getAttribute('data-tab');
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(tab).classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>

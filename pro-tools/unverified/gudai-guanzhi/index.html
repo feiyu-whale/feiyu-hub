@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古代官职对照工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f5f0e8;color:#2c2c2c;font-size:14px;line-height:1.6;padding-bottom:40px}
+.container{max-width:640px;margin:0 auto;padding:12px}
+header{text-align:center;padding:20px 12px 16px;background:linear-gradient(135deg,#8b0000,#c41e3a);color:#fff;border-radius:10px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+header h1{font-size:22px;margin-bottom:4px}
+header p{font-size:13px;opacity:.9}
+.filter-section{margin-bottom:14px}
+.filter-section label{font-size:13px;font-weight:bold;display:block;margin-bottom:6px;color:#555}
+.dynasty-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.dynasty-tab{padding:6px 12px;border:1.5px solid #8b0000;border-radius:20px;background:#fff;color:#8b0000;font-size:13px;cursor:pointer;transition:all .2s;user-select:none}
+.dynasty-tab:hover{background:#f8e8e8}
+.dynasty-tab.active{background:#8b0000;color:#fff}
+.search-box{width:100%;padding:10px 12px;border:1.5px solid #ccc;border-radius:8px;font-size:14px;margin-bottom:14px;outline:none;transition:border-color .2s}
+.search-box:focus{border-color:#8b0000}
+.stats{font-size:13px;color:#888;margin-bottom:10px;text-align:center}
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1);border-left:4px solid #8b0000}
+.card-dynasty{display:inline-block;background:#8b0000;color:#fff;font-size:12px;padding:2px 8px;border-radius:10px;margin-bottom:6px}
+.card-name{font-size:18px;font-weight:bold;color:#333;margin-bottom:8px}
+.card-row{display:flex;margin-bottom:4px;font-size:13px}
+.card-label{color:#888;min-width:52px;flex-shrink:0}
+.card-value{color:#333;flex:1}
+.card-modern{margin-top:8px;padding:8px 10px;background:#fef9e7;border-radius:6px;font-size:13px;border:1px solid #f0e6c0}
+.card-modern .card-label{color:#b8860b}
+.empty-state{text-align:center;padding:40px 20px;color:#999;font-size:14px}
+.source-section{margin-top:24px;padding:16px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.source-section h3{font-size:15px;margin-bottom:10px;color:#8b0000}
+.source-section ul{padding-left:20px;font-size:13px;color:#555}
+.source-section li{margin-bottom:6px}
+.source-section .note{margin-top:10px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:10px}
+.version{position:fixed;right:8px;bottom:8px;font-size:11px;color:#aaa;background:rgba(255,255,255,.8);padding:2px 6px;border-radius:4px}
+.legend{margin-top:10px;padding:10px;background:#fff;border-radius:8px;font-size:12px;color:#777;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.legend strong{color:#555}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>🏛️ 古代官职对照工具</h1>
+<p>秦汉至明清 · 官职名称 / 品级 / 职能 / 现代对应</p>
+</header>
+
+<div class="filter-section">
+<label>📜 选择朝代：</label>
+<div class="dynasty-tabs" id="dynastyTabs"></div>
+</div>
+
+<input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索官职名称、职能或现代对应...">
+
+<div class="stats" id="stats"></div>
+
+<div id="cardList"></div>
+
+<div class="legend">
+<strong>⚠️ 说明：</strong>现代对应仅为帮助理解的近似类比，古代为君主专制体制，现代为共和体制，二者政治制度本质不同，不可简单等同。品级中"秩石"为秦汉等级制，"品"为魏晋至明清九品制。
+</div>
+
+<div class="source-section">
+<h3>📚 数据来源</h3>
+<ul>
+<li>《历代职官表》——清·纪昀等撰，系统梳理历代官制沿革</li>
+<li>《中国历代官制大辞典》——张政烺主编，吉林教育出版社</li>
+<li>《中国政治制度通史》——白钢主编，人民出版社</li>
+<li>《秦汉官制史稿》——安作璋、熊铁基著，齐鲁书社</li>
+<li>《唐代官制》——赖瑞和著，清华大学出版社</li>
+<li>品级数据依据各朝正史《职官志》/《百官志》</li>
+</ul>
+<div class="note">
+注：各朝官制在不同时期有变动，本工具取各朝较为典型、稳定的制度形态。具体官职的品级、员额等细节在不同年份可能有调整，需查阅标准原文确认。现代对应仅供参考，不构成严格学术对应关系。
+</div>
+</div>
+</div>
+
+<div class="version">v1.0.0-古代官职对照 20261021</div>
+
+<script>
+var DATA = [
+// ===== 秦朝 =====
+{dynasty:"秦朝",name:"丞相",rank:"万石",func:"辅佐皇帝处理全国政务，为百官之长",modern:"总理/国务院总理"},
+{dynasty:"秦朝",name:"太尉",rank:"万石",func:"掌管全国军事事务（秦时不常设）",modern:"国防部长/总参谋长"},
+{dynasty:"秦朝",name:"御史大夫",rank:"中二千石",func:"监察百官，副丞相，掌图籍秘书",modern:"最高监察长/纪委书记"},
+{dynasty:"秦朝",name:"廷尉",rank:"二千石",func:"掌管司法刑狱，为最高司法官",modern:"最高法院院长/司法部长"},
+{dynasty:"秦朝",name:"治粟内史",rank:"二千石",func:"掌管国家财政、税收、粮食",modern:"财政部长"},
+{dynasty:"秦朝",name:"奉常",rank:"二千石",func:"掌管宗庙礼仪、祭祀",modern:"文化和旅游部长"},
+{dynasty:"秦朝",name:"郎中令",rank:"二千石",func:"掌管宫殿门户警卫，统领郎官",modern:"中央警卫局长"},
+{dynasty:"秦朝",name:"卫尉",rank:"二千石",func:"掌管宫门屯卫兵",modern:"卫戍区司令"},
+{dynasty:"秦朝",name:"太仆",rank:"二千石",func:"掌管皇帝车马及国家马政",modern:"交通部长/后勤部长"},
+{dynasty:"秦朝",name:"典客",rank:"二千石",func:"掌管诸侯及少数民族事务",modern:"外交部长/民族事务主任"},
+{dynasty:"秦朝",name:"宗正",rank:"二千石",func:"掌管皇族宗室事务",modern:"全国人大常委会秘书长（宗室管理）"},
+{dynasty:"秦朝",name:"少府",rank:"二千石",func:"掌管山海池泽之税，供皇帝及宫廷用度",modern:"中央办公厅主任/内务部长"},
+{dynasty:"秦朝",name:"郡守",rank:"二千石",func:"一郡最高行政长官",modern:"省长/地级市市长"},
+{dynasty:"秦朝",name:"县令/县长",rank:"六百石至千石",func:"一县行政长官（万户以上称令，以下称长）",modern:"县长"},
+
+// ===== 西汉 =====
+{dynasty:"西汉",name:"丞相",rank:"万石",func:"辅佐皇帝，总领百官（东汉改大司徒）",modern:"总理"},
+{dynasty:"西汉",name:"太尉",rank:"万石",func:"全国最高军事长官",modern:"国防部长"},
+{dynasty:"西汉",name:"御史大夫",rank:"中二千石",func:"副丞相，监察百官",modern:"最高监察长"},
+{dynasty:"西汉",name:"大司马",rank:"万石",func:"汉武帝后渐掌朝政，位在三公上",modern:"最高军事统帅"},
+{dynasty:"西汉",name:"尚书令",rank:"千石",func:"掌管文书奏章，西汉品级不高但渐近权力中心",modern:"中央办公厅主任"},
+{dynasty:"西汉",name:"刺史",rank:"六百石",func:"监察各州地方官吏（以小制大）",modern:"中央巡视组组长"},
+{dynasty:"西汉",name:"大司农",rank:"中二千石",func:"掌管国家财政（由治粟内史改名）",modern:"财政部长"},
+{dynasty:"西汉",name:"光禄勋",rank:"中二千石",func:"掌管宫殿宿卫（由郎中令改名）",modern:"中央警卫局长"},
+{dynasty:"西汉",name:"大鸿胪",rank:"中二千石",func:"掌管诸侯及少数民族朝觐事务（由典客改名）",modern:"外交部长"},
+{dynasty:"西汉",name:"执金吾",rank:"中二千石",func:"掌管京师治安巡警",modern:"公安部长/首都市长"},
+{dynasty:"西汉",name:"将作少府",rank:"二千石",func:"掌管宫室宗庙营造",modern:"住建部长"},
+{dynasty:"西汉",name:"郡太守",rank:"二千石",func:"一郡最高长官",modern:"省长/市长"},
+
+// ===== 东汉 =====
+{dynasty:"东汉",name:"司徒",rank:"万石",func:"掌民政，由丞相改来",modern:"总理/民政部长"},
+{dynasty:"东汉",name:"太尉",rank:"万石",func:"掌军事",modern:"国防部长"},
+{dynasty:"东汉",name:"司空",rank:"万石",func:"掌水土工程，由御史大夫改来",modern:"住建部长/水利部长"},
+{dynasty:"东汉",name:"尚书令",rank:"千石",func:"实际权力大增，总揽朝政",modern:"总理/秘书长"},
+{dynasty:"东汉",name:"尚书仆射",rank:"六百石",func:"尚书令之副",modern:"副总理/副秘书长"},
+{dynasty:"东汉",name:"司隶校尉",rank:"比二千石",func:"监察京师及周边各郡，权力极大",modern:"中央巡视组长/纪委书记"},
+
+// ===== 唐朝 =====
+{dynasty:"唐朝",name:"尚书令",rank:"正二品",func:"尚书省长官，后因李世民曾任此职，此后多不授",modern:"总理"},
+{dynasty:"唐朝",name:"中书令",rank:"正三品",func:"中书省长官，掌决策，起草诏令",modern:"总理/副总理"},
+{dynasty:"唐朝",name:"侍中",rank:"正三品",func:"门下省长官，掌审议封驳",modern:"副总理/政协副主席"},
+{dynasty:"唐朝",name:"尚书左仆射",rank:"从二品",func:"尚书省副长官，实际常为宰相",modern:"副总理"},
+{dynasty:"唐朝",name:"尚书右仆射",rank:"从二品",func:"尚书省副长官",modern:"副总理"},
+{dynasty:"唐朝",name:"同中书门下平章事",rank:"依本官品级",func:"非三省长官而入政事堂议事者，即为宰相",modern:"总理/副总理（宰相衔）"},
+{dynasty:"唐朝",name:"吏部尚书",rank:"正三品",func:"掌管文官选拔、考核、任免",modern:"组织部长/人事部长"},
+{dynasty:"唐朝",name:"户部尚书",rank:"正三品",func:"掌管户籍、财政、税收",modern:"财政部长"},
+{dynasty:"唐朝",name:"礼部尚书",rank:"正三品",func:"掌管礼仪、祭祀、科举",modern:"教育部长/文化部长"},
+{dynasty:"唐朝",name:"兵部尚书",rank:"正三品",func:"掌管武官选用及军事行政",modern:"国防部长"},
+{dynasty:"唐朝",name:"刑部尚书",rank:"正三品",func:"掌管司法、刑狱政令",modern:"司法部长"},
+{dynasty:"唐朝",name:"工部尚书",rank:"正三品",func:"掌管工程、屯田、水利",modern:"住建部长/水利部长"},
+{dynasty:"唐朝",name:"御史大夫",rank:"从三品",func:"御史台长官，监察百官",modern:"最高检察长/纪委书记"},
+{dynasty:"唐朝",name:"御史中丞",rank:"正五品上",func:"御史台副长官，实际常主持台务",modern:"最高副检察长"},
+{dynasty:"唐朝",name:"大理寺卿",rank:"从三品",func:"最高审判机关长官",modern:"最高法院院长"},
+{dynasty:"唐朝",name:"太常寺卿",rank:"从三品",func:"掌管礼乐、郊庙、社稷",modern:"文化和旅游部长"},
+{dynasty:"唐朝",name:"刺史",rank:"正四品上（上州）",func:"一州行政长官",modern:"地级市市长"},
+{dynasty:"唐朝",name:"县令",rank:"正五品上至从七品下",func:"一县行政长官（按县等级品级不同）",modern:"县长"},
+{dynasty:"唐朝",name:"节度使",rank:"无定品",func:"唐中后期地方军政长官，总揽一方军政财",modern:"大军区司令/省委书记"},
+
+// ===== 宋朝 =====
+{dynasty:"宋朝",name:"同平章事",rank:"正二品",func:"宰相正式官称",modern:"总理"},
+{dynasty:"宋朝",name:"参知政事",rank:"正三品",func:"副宰相，分割宰相行政权",modern:"副总理"},
+{dynasty:"宋朝",name:"枢密使",rank:"正二品",func:"枢密院长官，掌全国军政",modern:"国防部长/总参谋长"},
+{dynasty:"宋朝",name:"三司使",rank:"正三品",func:"掌管全国财政，号称“计相”",modern:"财政部长"},
+{dynasty:"宋朝",name:"知枢密院事",rank:"正二品",func:"南宋改枢密使为此称",modern:"国防部长"},
+{dynasty:"宋朝",name:"御史中丞",rank:"从三品",func:"御史台实际长官",modern:"最高检察长/纪委书记"},
+{dynasty:"宋朝",name:"开封府尹",rank:"正三品",func:"首都最高行政长官",modern:"首都市长/市委书记"},
+{dynasty:"宋朝",name:"知州",rank:"正五品",func:"一州行政长官（以差遣名义派出）",modern:"地级市市长"},
+{dynasty:"宋朝",name:"知县",rank:"正七品",func:"一县行政长官",modern:"县长"},
+{dynasty:"宋朝",name:"提点刑狱公事",rank:"正七品",func:"路级司法监察官（即“提刑官”）",modern:"省高院院长/省检察院检察长"},
+{dynasty:"宋朝",name:"转运使",rank:"正六品",func:"路级财政长官，后渐兼民政",modern:"省财政厅长/副省长"},
+
+// ===== 明朝 =====
+{dynasty:"明朝",name:"内阁首辅",rank:"正五品（原品）",func:"主持内阁，实际权力等同宰相（品级依所兼官）",modern:"总理"},
+{dynasty:"明朝",name:"内阁大学士",rank:"正五品（原品）",func:"入阁参预机务，常加尚书衔升至一品",modern:"副总理/国务委员"},
+{dynasty:"明朝",name:"吏部尚书",rank:"正二品",func:"六部之首，掌管文官任免考核",modern:"组织部长"},
+{dynasty:"明朝",name:"户部尚书",rank:"正二品",func:"掌管全国财政、户籍、税收",modern:"财政部长"},
+{dynasty:"明朝",name:"礼部尚书",rank:"正二品",func:"掌管礼仪、祭祀、科举、外交",modern:"教育部长/外交部长"},
+{dynasty:"明朝",name:"兵部尚书",rank:"正二品",func:"掌管武官选授及军事行政",modern:"国防部长"},
+{dynasty:"明朝",name:"刑部尚书",rank:"正二品",func:"掌管司法刑狱",modern:"司法部长/最高法院院长"},
+{dynasty:"明朝",name:"工部尚书",rank:"正二品",func:"掌管全国工程、水利、屯田",modern:"住建部长/水利部长"},
+{dynasty:"明朝",name:"都御史",rank:"正二品",func:"都察院长官，纠劾百官",modern:"最高检察长/纪委书记"},
+{dynasty:"明朝",name:"大理寺卿",rank:"正三品",func:"掌管审谳平反",modern:"最高法院院长"},
+{dynasty:"明朝",name:"布政使",rank:"正二品",func:"一省行政长官",modern:"省长"},
+{dynasty:"明朝",name:"按察使",rank:"正三品",func:"一省司法监察长官",modern:"省高院院长/省纪委书记"},
+{dynasty:"明朝",name:"知府",rank:"正四品",func:"一府行政长官",modern:"地级市市长"},
+{dynasty:"明朝",name:"知县",rank:"正七品",func:"一县行政长官",modern:"县长"},
+{dynasty:"明朝",name:"巡抚",rank:"无定品（常兼副都御史）",func:"巡视地方，后渐成省级长官",modern:"省委书记/省长"},
+{dynasty:"明朝",name:"总督",rank:"无定品（常兼尚书衔）",func:"统辖数省军政",modern:"大区书记/战区司令"},
+{dynasty:"明朝",name:"锦衣卫指挥使",rank:"正三品",func:"皇帝亲军，掌侍卫、缉捕、刑狱",modern:"国家安全部长/特务头子"},
+
+// ===== 清朝 =====
+{dynasty:"清朝",name:"军机大臣",rank:"无定品",func:"由亲王、大学士、尚书等兼任，参与机要，实际宰相",modern:"政治局常委/总理"},
+{dynasty:"清朝",name:"大学士",rank:"正一品",func:"内阁长官，名义上为宰相",modern:"国务委员/正国级"},
+{dynasty:"清朝",name:"协办大学士",rank:"从一品",func:"内阁副长官",modern:"副国级"},
+{dynasty:"清朝",name:"吏部尚书",rank:"从一品",func:"掌管文官任免考核",modern:"组织部长"},
+{dynasty:"清朝",name:"户部尚书",rank:"从一品",func:"掌管全国财政户籍",modern:"财政部长"},
+{dynasty:"清朝",name:"礼部尚书",rank:"从一品",func:"掌管礼仪科举外交",modern:"教育部长/外交部长"},
+{dynasty:"清朝",name:"兵部尚书",rank:"从一品",func:"掌管武官选授及军事行政",modern:"国防部长"},
+{dynasty:"清朝",name:"刑部尚书",rank:"从一品",func:"掌管司法刑狱",modern:"司法部长"},
+{dynasty:"清朝",name:"工部尚书",rank:"从一品",func:"掌管工程水利",modern:"住建部长"},
+{dynasty:"清朝",name:"左都御史",rank:"从一品",func:"都察院长官，监察百官",modern:"最高检察长/纪委书记"},
+{dynasty:"清朝",name:"大理寺卿",rank:"从三品",func:"掌管审谳",modern:"最高法院院长"},
+{dynasty:"清朝",name:"总督",rank:"正二品（加尚书衔从一品）",func:"管辖一至三省军政",modern:"大区书记/战区司令"},
+{dynasty:"清朝",name:"巡抚",rank:"从二品",func:"一省行政长官",modern:"省委书记/省长"},
+{dynasty:"清朝",name:"布政使",rank:"从二品",func:"省民政、财政长官",modern:"副省长"},
+{dynasty:"清朝",name:"按察使",rank:"正三品",func:"省司法监察长官",modern:"省纪委书记/省高院院长"},
+{dynasty:"清朝",name:"知府",rank:"正四品",func:"一府行政长官",modern:"地级市市长"},
+{dynasty:"清朝",name:"知县",rank:"正七品",func:"一县行政长官",modern:"县长"},
+{dynasty:"清朝",name:"提督",rank:"从一品",func:"一省绿营最高武官",modern:"省军区司令"},
+{dynasty:"清朝",name:"总兵",rank:"正二品",func:"绿营地方军事长官",modern:"军长"},
+{dynasty:"清朝",name:"学政",rank:"无定品（依原官）",func:"掌管一省科举考试、学校",modern:"省教育厅长"}
+];
+
+var DYNASTIES = ["全部","秦朝","西汉","东汉","唐朝","宋朝","明朝","清朝"];
+var currentDynasty = "全部";
+var currentSearch = "";
+
+function init(){
+var tabsHtml = "";
+for(var i=0;i<DYNASTIES.length;i++){
+var cls = DYNASTIES[i]==="全部" ? "dynasty-tab active" : "dynasty-tab";
+tabsHtml += '<div class="'+cls+'" data-dynasty="'+DYNASTIES[i]+'" onclick="selectDynasty(this)">'+DYNASTIES[i]+'</div>';
+}
+document.getElementById("dynastyTabs").innerHTML = tabsHtml;
+render();
+document.getElementById("searchBox").addEventListener("input",function(e){
+currentSearch = e.target.value.trim().toLowerCase();
+render();
+});
+}
+
+function selectDynasty(el){
+var tabs = document.querySelectorAll(".dynasty-tab");
+for(var i=0;i<tabs.length;i++) tabs[i].className = "dynasty-tab";
+el.className = "dynasty-tab active";
+currentDynasty = el.getAttribute("data-dynasty");
+render();
+}
+
+function render(){
+var filtered = [];
+for(var i=0;i<DATA.length;i++){
+var item = DATA[i];
+if(currentDynasty !== "全部" && item.dynasty !== currentDynasty) continue;
+if(currentSearch){
+var s = currentSearch;
+var match = item.name.toLowerCase().indexOf(s)>=0 ||
+item.func.toLowerCase().indexOf(s)>=0 ||
+item.modern.toLowerCase().indexOf(s)>=0 ||
+item.rank.toLowerCase().indexOf(s)>=0 ||
+item.dynasty.toLowerCase().indexOf(s)>=0;
+if(!match) continue;
+}
+filtered.push(item);
+}
+document.getElementById("stats").textContent = "共找到 "+filtered.length+" 条记录";
+var html = "";
+if(filtered.length === 0){
+html = '<div class="empty-state">😔 未找到匹配的官职记录</div>';
+} else {
+for(var i=0;i<filtered.length;i++){
+var d = filtered[i];
+html += '<div class="card">';
+html += '<span class="card-dynasty">'+d.dynasty+'</span>';
+html += '<div class="card-name">📋 '+d.name+'</div>';
+html += '<div class="card-row"><span class="card-label">品级：</span><span class="card-value">'+d.rank+'</span></div>';
+html += '<div class="card-row"><span class="card-label">职能：</span><span class="card-value">'+d.func+'</span></div>';
+html += '<div class="card-modern"><span class="card-label">🔄 现代对应：</span><span class="card-value">'+d.modern+'</span></div>';
+html += '</div>';
+}
+}
+document.getElementById("cardList").innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>

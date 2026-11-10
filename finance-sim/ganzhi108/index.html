@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌀 天罡地煞 · 108 格</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#0f0a1a 0%,#1a1228 55%,#08060f 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:10px 8px 16px; user-select:none; display:flex; flex-direction:column; align-items:center; }
+  .back { align-self:flex-start; text-decoration:none; color:#8a7fb0; font-size:10px; margin-bottom:6px;
+    padding:5px 11px; border:1px solid #3a3050; border-radius:20px; }
+  .wrap { width:100%; max-width:760px; }
+  h1 { font-size:14px; color:#c8b3ff; text-align:center; font-weight:700; letter-spacing:1px; }
+  .sub { text-align:center; color:#6a6090; font-size:10px; margin:4px 0 12px; }
+
+  .board-wrap { position:relative; width:100%; aspect-ratio:1/1; max-width:640px; margin:0 auto;
+    background:#120e1e; border:1px solid #3a3050; border-radius:14px; overflow:hidden; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  canvas:active { cursor:grabbing; }
+
+  .hud { display:flex; gap:6px; margin:10px auto 0; max-width:640px; }
+  .hud > div { flex:1; background:#181228; border:1px solid #3a3050; border-radius:9px; padding:7px 8px; text-align:center; }
+  .hud .k { font-size:9px; color:#6a6090; }
+  .hud .v { font-size:14px; color:#d0c0ff; font-weight:700; margin-top:2px; }
+
+  .ctrl { display:flex; gap:8px; margin:10px auto 0; max-width:640px; }
+  button { flex:1; padding:13px; font-size:13px; font-weight:700; color:#fff; font-family:inherit;
+    background:linear-gradient(160deg,#5a4a9a,#3a2a6a); border:1px solid #7a6aba; border-radius:11px;
+    cursor:pointer; letter-spacing:1px; }
+  button:active { transform:scale(.98); }
+  button:disabled { opacity:.45; cursor:default; }
+  button.alt { background:linear-gradient(160deg,#2a2040,#1c1530); border-color:#4a3d70; flex:0 0 90px; }
+
+  .log { max-width:640px; margin:10px auto 0; font-size:11px; color:#9a8fc0; line-height:1.8;
+    background:#140f22; border:1px solid #3a3050; border-radius:10px; padding:9px 11px; min-height:64px; }
+  .log b { color:#c8b3ff; }
+  .log .g { color:#7fd4a8; }
+  .log .r { color:#ff9aa8; }
+
+  .legend { max-width:640px; margin:8px auto 0; font-size:10px; color:#5a5080; line-height:1.8; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:10px; }
+</style>
+</head>
+<body>
+<a class="back" href="../">← 回金融区</a>
+<div class="wrap">
+  <h1>🌀 天罡地煞 · 108 格</h1>
+  <div class="sub">天罡三十六 · 地煞七十二 · 环形棋盘</div>
+
+  <div class="board-wrap"><canvas id="board"></canvas></div>
+
+  <div class="hud">
+    <div><div class="k">你的资金</div><div class="v" id="money">1500</div></div>
+    <div><div class="k">当前位置</div><div class="v" id="pos">0</div></div>
+    <div><div class="k">已走</div><div class="v" id="steps">0</div></div>
+  </div>
+
+  <div class="ctrl">
+    <button id="roll">🎲 掷骰子</button>
+    <button class="alt" id="reset">重来</button>
+  </div>
+
+  <div class="log" id="log">点「掷骰子」开始 · 拖动棋盘可旋转查看</div>
+
+  <div class="legend">
+    🟢 天罡（内圈 36 格）· 🔴 地煞（外圈 72 格）· 有特殊效果的格子会高亮
+  </div>
+
+  <div class="ver">v1.0.0-骨架 20261017</div>
+</div>
+
+<script src="stars.js"></script>
+<script>
+(function(){
+  var cv = document.getElementById('board');
+  var ctx = cv.getContext('2d');
+  var moneyEl = document.getElementById('money');
+  var posEl = document.getElementById('pos');
+  var stepsEl = document.getElementById('steps');
+  var logEl = document.getElementById('log');
+  var rollBtn = document.getElementById('roll');
+  var resetBtn = document.getElementById('reset');
+
+  var N = STARS.length;           // 108
+  var state = { money: 1500, pos: 0, steps: 0, moving: false };
+
+  // 画布尺寸
+  var dpr = window.devicePixelRatio || 1;
+  var size = 0;
+
+  function resize(){
+    var rect = cv.getBoundingClientRect();
+    size = Math.max(rect.width, 200);
+    cv.width = size * dpr;
+    cv.height = size * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  /* 环形布局：外圈 72 格（地煞），内圈 36 格（天罡）
+   * 两个圈都用均匀角度分配，保证格子不重叠 */
+  function layout(){
+    var cx = size / 2, cy = size / 2;
+    var outerR = size * 0.44;
+    var innerR = size * 0.26;
+    var pos = [];
+    var i, a;
+    // 地煞 72 格 → 索引 0..71
+    for(i = 0; i < 72; i++){
+      a = (i / 72) * Math.PI * 2 - Math.PI / 2;
+      pos.push({ x: cx + Math.cos(a) * outerR, y: cy + Math.sin(a) * outerR, a: a });
+    }
+    // 天罡 36 格 → 索引 72..107
+    for(i = 0; i < 36; i++){
+      a = (i / 36) * Math.PI * 2 - Math.PI / 2;
+      pos.push({ x: cx + Math.cos(a) * innerR, y: cy + Math.sin(a) * innerR, a: a });
+    }
+    return { pos: pos, cx: cx, cy: cy, outerR: outerR, innerR: innerR };
+  }
+
+  function draw(){
+    if(!size) return;
+    ctx.clearRect(0, 0, size, size);
+    var L = layout();
+    var p = L.pos;
+
+    // 背景圆环
+    ctx.strokeStyle = '#241a33';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(L.cx, L.cy, L.outerR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 格子
+    var i, s, r, isDi, hasFx;
+    for(i = 0; i < N; i++){
+      s = STARS[i];
+      isDi = s.kind === 'di';
+      hasFx = !!s.effect;
+      r = isDi ? 5.2 : 6.4;
+
+      ctx.beginPath();
+      ctx.arc(p[i].x, p[i].y, r, 0, Math.PI * 2);
+
+      if(i === state.pos){
+        ctx.fillStyle = '#ffd86a';
+      } else if(hasFx){
+        ctx.fillStyle = isDi ? '#8a3a4a' : '#3a7a5a';
+      } else {
+        ctx.fillStyle = isDi ? '#3a2a3a' : '#2a2444';
+      }
+      ctx.fill();
+
+      if(i === state.pos){
+        ctx.strokeStyle = '#fff8c0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // 中心文字
+    ctx.fillStyle = '#6a6090';
+    ctx.font = '900 ' + Math.round(size * 0.052) + 'px -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('108', L.cx, L.cy - 8);
+    ctx.font = '500 ' + Math.round(size * 0.022) + 'px -apple-system,sans-serif';
+    ctx.fillStyle = '#4a4068';
+    ctx.fillText('天罡地煞', L.cx, L.cy + size * 0.042);
+  }
+
+  function log(html){
+    logEl.innerHTML = html;
+  }
+
+  function money(n){ return (n >= 0 ? '' : '-') + '$' + Math.abs(n); }
+
+  function updateHud(){
+    moneyEl.textContent = money(state.money);
+    posEl.textContent = state.pos + ' / ' + N;
+    stepsEl.textContent = state.steps;
+  }
+
+  function applyEffect(star){
+    if(!star.effect) return '';
+    var e = star.effect;
+    var msg = '';
+    if(e.type === 'gain'){
+      state.money += e.amount;
+      msg = '<span class="g">' + e.text + '</span>';
+    } else if(e.type === 'lose'){
+      state.money -= e.amount;
+      msg = '<span class="r">' + e.text + '</span>';
+    } else if(e.type === 'all'){
+      state.money += e.amount;
+      msg = '<span class="r">' + e.text + '</span>';
+    } else if(e.type === 'move'){
+      if(e.to !== undefined){
+        state.pos = e.to;
+      } else {
+        state.pos = (state.pos + e.step + N) % N;
+      }
+      msg = '<b>' + e.text + '</b>';
+    }
+    return msg;
+  }
+
+  function roll(){
+    if(state.moving) return;
+    state.moving = true;
+    rollBtn.disabled = true;
+
+    var dice = 1 + Math.floor(Math.random() * 6);
+    var start = state.pos;
+    var left = dice;
+
+    function step(){
+      if(left <= 0){
+        var star = STARS[state.pos];
+        var fx = applyEffect(star);
+        var html = '🎲 掷出 <b>' + dice + '</b> 点 → 落在 <b>' + star.name + '</b>';
+        if(fx) html += '<br>' + fx;
+        log(html);
+        updateHud();
+        draw();
+        state.moving = false;
+        rollBtn.disabled = false;
+        return;
+      }
+      state.pos = (state.pos + 1) % N;
+      state.steps++;
+      left--;
+      updateHud();
+      draw();
+      setTimeout(step, 90);
+    }
+    step();
+  }
+
+  function reset(){
+    state.money = 1500;
+    state.pos = 0;
+    state.steps = 0;
+    state.moving = false;
+    rollBtn.disabled = false;
+    log('已重来 · 点「掷骰子」开始');
+    updateHud();
+    draw();
+  }
+
+  rollBtn.addEventListener('click', roll);
+  resetBtn.addEventListener('click', reset);
+  window.addEventListener('resize', resize);
+
+  resize();
+  updateHud();
+})();
+</script>
+</body>
+</html>

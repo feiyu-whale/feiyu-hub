@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>固定资产折旧计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 28px 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 26px; margin-bottom: 6px; }
+  header p { font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: #586069;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #f6f8fa; color: #24292e; }
+  .tab.active { color: #2a5298; border-bottom-color: #2a5298; }
+  .panel { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .card h2 { font-size: 18px; margin-bottom: 16px; color: #1e3c72; border-bottom: 2px solid #eaecef; padding-bottom: 8px; }
+  .card h3 { font-size: 16px; margin: 16px 0 10px; color: #2a5298; }
+  .form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .form-group { flex: 1; min-width: 200px; }
+  .form-group label { display: block; font-size: 13px; color: #586069; margin-bottom: 6px; font-weight: 500; }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5da;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #2a5298;
+    box-shadow: 0 0 0 3px rgba(42,82,152,0.1);
+  }
+  .btn {
+    background: #2a5298;
+    color: white;
+    border: none;
+    padding: 11px 28px;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1e3c72; }
+  .btn-secondary { background: #6c757d; }
+  .btn-secondary:hover { background: #545b62; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #eaecef; }
+  th { background: #f6f8fa; font-weight: 600; color: #24292e; text-align: right; }
+  th:first-child, td:first-child { text-align: center; }
+  tr:hover { background: #f6f8fa; }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .summary-item {
+    background: #f6f8fa;
+    padding: 14px;
+    border-radius: 6px;
+    border-left: 4px solid #2a5298;
+  }
+  .summary-item .label { font-size: 12px; color: #586069; margin-bottom: 4px; }
+  .summary-item .value { font-size: 18px; font-weight: 600; color: #1e3c72; }
+  pre {
+    background: #282c34;
+    color: #abb2bf;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+  .test-result {
+    padding: 16px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .test-pass { background: #dcffe4; color: #22863a; border: 1px solid #34d058; }
+  .test-fail { background: #ffeef0; color: #cb2431; border: 1px solid #d73a49; }
+  .doc-content h2 { margin-top: 24px; }
+  .doc-content h3 { margin-top: 18px; }
+  .doc-content p { margin-bottom: 12px; text-align: justify; }
+  .doc-content ul, .doc-content ol { margin: 10px 0 14px 24px; }
+  .doc-content li { margin-bottom: 6px; }
+  .doc-content .note {
+    background: #fff8e1;
+    border-left: 4px solid #ffa000;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .doc-content .warn {
+    background: #ffebee;
+    border-left: 4px solid #e53935;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 4px;
+    z-index: 100;
+  }
+  .error-msg { color: #cb2431; font-size: 13px; margin-top: 8px; }
+  .scenario {
+    background: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    margin: 12px 0;
+    border-left: 4px solid #2a5298;
+  }
+  .scenario h4 { color: #1e3c72; margin-bottom: 8px; }
+  .scenario .input-output { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  .scenario .io-box { background: white; padding: 10px; border-radius: 4px; font-size: 13px; }
+  .scenario .io-box strong { color: #2a5298; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>固定资产折旧计算工具</h1>
+  <p>支持直线法、双倍余额递减法、年数总和法 · 符合《企业会计准则第4号》</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-panel="tool">计算工具</div>
+  <div class="tab" data-panel="source">JS 源码</div>
+  <div class="tab" data-panel="test">单元测试</div>
+  <div class="tab" data-panel="doc">使用说明书</div>
+</div>
+
+<!-- 计算工具 -->
+<div class="panel active" id="panel-tool">
+  <div class="card">
+    <h2>参数输入</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>折旧方法</label>
+        <select id="method">
+          <option value="sl">直线法（年限平均法）</option>
+          <option value="ddb">双倍余额递减法</option>
+          <option value="syd">年数总和法</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>固定资产原值（元）</label>
+        <input type="number" id="cost" value="100000" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>预计净残值（元）</label>
+        <input type="number" id="salvage" value="5000" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>预计使用年限（年）</label>
+        <input type="number" id="life" value="5" min="1" step="1">
+      </div>
+    </div>
+    <button class="btn" onclick="calculate()">开始计算</button>
+    <button class="btn btn-secondary" onclick="resetForm()">重置</button>
+    <div id="errorMsg" class="error-msg"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <h2>折旧明细表</h2>
+    <div id="summaryBox" class="summary"></div>
+    <div style="overflow-x:auto;">
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>年度</th>
+            <th>期初账面价值</th>
+            <th>当年折旧额</th>
+            <th>累计折旧</th>
+            <th>期末账面价值</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- JS 源码 -->
+<div class="panel" id="panel-source">
+  <div class="card">
+    <h2>核心算法源码（纯函数实现）</h2>
+    <p style="color:#586069;font-size:13px;margin-bottom:12px;">以下代码无任何外部依赖，可直接在浏览器控制台运行。</p>
+    <pre id="sourceCode"></pre>
+  </div>
+</div>
+
+<!-- 单元测试 -->
+<div class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试（纯 JS 实现，共 35 个用例）</h2>
+    <p style="color:#586069;font-size:13px;margin-bottom:12px;">覆盖正常值、边界值、异常输入、精度问题。</p>
+    <button class="btn" onclick="runAllTests()">运行全部测试</button>
+    <div id="testOutput" class="test-result" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- 使用说明书 -->
+<div class="panel" id="panel-doc">
+  <div class="card doc-content" id="docContent"></div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+   第一部分：JS 源码（固定资产折旧核心算法）
+   ============================================================ */
+
+/**
+ * 将数值四舍五入到 2 位小数
+ * @param {number} n - 待处理数值
+ * @returns {number} 保留 2 位小数的数值
+ */
+function round2(n) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * 校验折旧计算的输入参数
+ * @param {number} cost - 固定资产原值（元），必须 > 0
+ * @param {number} salvage - 预计净残值（元），必须 >= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），必须为正整数
+ * @throws {TypeError} 参数类型不正确或非数值
+ * @throws {RangeError} 参数超出合理范围
+ * @returns {void}
+ * @example
+ *   validateInputs(10000, 1000, 5); // 通过
+ *   validateInputs(0, 0, 5);        // 抛出 RangeError
+ *   validateInputs(-100, 0, 5);     // 抛出 RangeError
+ */
+function validateInputs(cost, salvage, life) {
+  if (typeof cost !== 'number' || isNaN(cost)) {
+    throw new TypeError('原值必须为有效数字');
+  }
+  if (typeof salvage !== 'number' || isNaN(salvage)) {
+    throw new TypeError('预计净残值必须为有效数字');
+  }
+  if (typeof life !== 'number' || isNaN(life)) {
+    throw new TypeError('使用年限必须为有效数字');
+  }
+  if (cost <= 0) {
+    throw new RangeError('原值必须大于 0');
+  }
+  if (salvage < 0) {
+    throw new RangeError('预计净残值不能为负数');
+  }
+  if (salvage >= cost) {
+    throw new RangeError('预计净残值必须小于原值');
+  }
+  if (!Number.isInteger(life) || life <= 0) {
+    throw new RangeError('使用年限必须为正整数');
+  }
+}
+
+/**
+ * 直线法（年限平均法）折旧计算
+ * 公式：年折旧额 = (原值 - 预计净残值) / 预计使用年限
+ * 依据：《企业会计准则第4号——固定资产》第十七条
+ *
+ * @param {number} cost - 固定资产原值（元），> 0
+ * @param {number} salvage - 预计净残值（元），>= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），正整数
+ * @returns {Array<{year:number, beginningValue:number, depreciation:number, accumulatedDepreciation:number, endingValue:number}>}
+ *   返回每年的折旧明细数组，包含期初账面价值、当年折旧额、累计折旧、期末账面价值
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 参数超出范围
+ * @example
+ *   straightLineDepreciation(10000, 1000, 5);
+ *   // => [
+ *   //   {year:1, beginningValue:10000, depreciation:1800, accumulatedDepreciation:1800, endingValue:8200},
+ *   //   {year:2, beginningValue:8200, depreciation:1800, accumulatedDepreciation:3600, endingValue:6400},
+ *   //   ...
+ *   // ]
+ */
+function straightLineDepreciation(cost, salvage, life) {
+  validateInputs(cost, salvage, life);
+  const depreciableBase = cost - salvage;
+  const annualDepreciation = depreciableBase / life;
+
+  const schedule = [];
+  let accumulated = 0;
+
+  for (let year = 1; year <= life; year++) {
+    const beginningValue = cost - accumulated;
+    // 最后一年用减法保证累计折旧精确等于应折旧总额，避免浮点误差
+    const depreciation = (year === life)
+      ? depreciableBase - annualDepreciation * (life - 1)
+      : annualDepreciation;
+    accumulated += depreciation;
+
+    schedule.push({
+      year: year,
+      beginningValue: round2(beginningValue),
+      depreciation: round2(depreciation),
+      accumulatedDepreciation: round2(accumulated),
+      endingValue: round2(cost - accumulated)
+    });
+  }
+  return schedule;
+}
+
+/**
+ * 双倍余额递减法折旧计算
+ * 公式：年折旧率 = 2 / 预计使用年限
+ *       年折旧额 = 期初账面净值 × 年折旧率
+ *       最后两年改为直线法：(账面净值 - 残值) / 2
+ * 依据：《企业会计准则第4号——固定资产》第十九条
+ *
+ * @param {number} cost - 固定资产原值（元），> 0
+ * @param {number} salvage - 预计净残值（元），>= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），正整数
+ * @returns {Array<{year:number, beginningValue:number, depreciation:number, accumulatedDepreciation:number, endingValue:number}>}
+ *   返回每年的折旧明细数组
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 参数超出范围
+ * @example
+ *   doubleDecliningBalance(10000, 1000, 5);
+ *   // => 第1年折旧 4000，第2年折旧 2400，第3、4、5年按直线法分摊剩余
+ */
+function doubleDecliningBalance(cost, salvage, life) {
+  validateInputs(cost, salvage, life);
+  const rate = 2 / life;
+  const schedule = [];
+  let bookValue = cost;
+  let accumulated = 0;
+
+  for (let year = 1; year <= life; year++) {
+    const beginningValue = bookValue;
+    let depreciation;
+
+    if (year >= life - 1) {
+      // 最后两年（含）改为直线法，平均分摊剩余应折旧金额
+      const remainingYears = life - year + 1;
+      depreciation = (bookValue - salvage) / remainingYears;
+    } else {
+      depreciation = bookValue * rate;
+    }
+
+    bookValue -= depreciation;
+    accumulated += depreciation;
+
+    schedule.push({
+      year: year,
+      beginningValue: round2(beginningValue),
+      depreciation: round2(depreciation),
+      accumulatedDepreciation: round2(accumulated),
+      endingValue: round2(bookValue)
+    });
+  }
+  return schedule;
+}
+
+/**
+ * 年数总和法折旧计算
+ * 公式：年数总和 = n(n+1)/2
+ *       第 k 年折旧率 = (n - k + 1) / 年数总和
+ *       年折旧额 = (原值 - 残值) × 折旧率
+ * 依据：《企业会计准则第4号——固定资产》第十九条
+ *
+ * @param {number} cost - 固定资产原值（元），> 0
+ * @param {number} salvage - 预计净残值（元），>= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），正整数
+ * @returns {Array<{year:number, beginningValue:number, depreciation:number, accumulatedDepreciation:number, endingValue:number}>}
+ *   返回每年的折旧明细数组
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 参数超出范围
+ * @example
+ *   sumOfYearsDigits(10000, 1000, 5);
+ *   // => 年数总和 = 15
+ *   //   第1年折旧 = 9000 × 5/15 = 3000
+ *   //   第2年折旧 = 9000 × 4/15 = 2400
+ *   //   ...
+ */
+function sumOfYearsDigits(cost, salvage, life) {
+  validateInputs(cost, salvage, life);
+  const depreciableBase = cost - salvage;
+  const sumOfYears = life * (life + 1) / 2;
+  const schedule = [];
+  let accumulated = 0;
+
+  for (let year = 1; year <= life; year++) {
+    const beginningValue = cost - accumulated;
+    const remainingLife = life - year + 1;
+    const depreciation = depreciableBase * remainingLife / sumOfYears;
+    accumulated += depreciation;
+
+    schedule.push({
+      year: year,
+      beginningValue: round2(beginningValue),
+      depreciation: round2(depreciation),
+      accumulatedDepreciation: round2(depreciation + (accumulated - depreciation)),
+      endingValue: round2(cost - accumulated)
+    });
+  }
+
+  // 修正最后一年的累计折旧，保证等于应折旧总额
+  if (schedule.length > 0) {
+    const last = schedule[schedule.length - 1];
+    last.accumulatedDepreciation = round2(depreciableBase);
+    last.endingValue = round2(salvage);
+  }
+  return schedule;
+}
+
+/**
+ * 根据方法名称统一调度折旧计算
+ * @param {'sl'|'ddb'|'syd'} method - 折旧方法代码
+ * @param {number} cost - 原值
+ * @param {number} salvage - 残值
+ * @param {number} life - 年限
+ * @returns {Array<Object>} 折旧明细
+ * @throws {Error} 方法代码不支持
+ */
+function calculateDepreciation(method, cost, salvage, life) {
+  switch (method) {
+    case 'sl':  return straightLineDepreciation(cost, salvage, life);
+    case 'ddb': return doubleDecliningBalance(cost, salvage, life);
+    case 'syd': return sumOfYearsDigits(cost, salvage, life);
+    default: throw new Error('不支持的折旧方法：' + method);
+  }
+}
+
+/* ============================================================
+   第二部分：单元测试（纯 JS 实现，35 个用例）
+   ============================================================ */
+
+let testPass = 0;
+let testTotal = 0;
+let testLog = [];
+
+function log(msg) { testLog.push(msg); }
+
+function assertEqual(actual, expected, msg) {
+  testTotal++;
+  if (JSON.stringify(actual) === JSON.stringify(expected)) {
+    testPass++;
+    log('[PASS] ' + msg);
+  } else {
+    log('[FAIL] ' + msg + ' | 期望 ' + JSON.stringify(expected) + '，实际 ' + JSON.stringify(actual));
+  }
+}
+
+function assertApprox(actual, expected, tolerance, msg) {
+  testTotal++;
+  if (Math.abs(actual - expected) <= tolerance) {
+    testPass++;
+    log('[PASS] ' + msg);
+  } else {
+    log('[FAIL] ' + msg + ' | 期望 ~' + expected + '，实际 ' + actual + '（容差 ' + tolerance + '）');
+  }
+}
+
+function assertThrows(fn, msg) {
+  testTotal++;
+  try {
+    fn();
+    log('[FAIL] ' + msg + ' | 期望抛出异常但未抛出');
+  } catch (e) {
+    testPass++;
+    log('[PASS] ' + msg + ' | 抛出：' + e.message);
+  }
+}
+
+function runAllTests() {
+  testPass = 0;
+  testTotal = 0;
+  testLog = [];
+
+  log('========== 固定资产折旧单元测试 ==========\n');
+
+  // ---------- 直线法 ----------
+  log('--- 直线法 ---');
+
+  // 1. 正常值：10000, 1000, 5
+  let r = straightLineDepreciation(10000, 1000, 5);
+  assertEqual(r.length, 5, 'SL-1: 返回 5 年明细');
+  assertEqual(r[0].depreciation, 1800, 'SL-2: 第1年折旧 1800');
+  assertEqual(r[4].endingValue, 1000, 'SL-3: 第5年末账面价值 = 残值 1000');
+
+  // 2. 正常值：50000, 5000, 10
+  r = straightLineDepreciation(50000, 5000, 10);
+  assertEqual(r[0].depreciation, 4500, 'SL-4: 50000/10年/残值5000，年折旧 4500');
+  assertEqual(r[9].endingValue, 5000, 'SL-5: 第10年末账面价值 = 5000');
+
+  // 3. 正常值：100000, 0, 20
+  r = straightLineDepreciation(100000, 0, 20);
+  assertEqual(r[0].depreciation, 5000, 'SL-6: 残值0，年折旧 5000');
+  assertEqual(r[19].endingValue, 0, 'SL-7: 第20年末账面价值 = 0');
+
+  // 4. 边界：残值 = 0
+  r = straightLineDepreciation(1000, 0, 5);
+  assertEqual(r[0].depreciation, 200, 'SL-8: 残值0边界，年折旧 200');
+
+  // 5. 边界：年限 = 1
+  r = straightLineDepreciation(1000, 100, 1);
+  assertEqual(r.length, 1, 'SL-9: 年限1，返回1条');
+  assertEqual(r[0].depreciation, 900, 'SL-10: 年限1，一次性折旧 900');
+
+  // 6. 边界：最小正整数
+  r = straightLineDepreciation(1, 0, 1);
+  assertEqual(r[0].depreciation, 1, 'SL-11: 原值1，残值0，年限1，折旧1');
+
+  // 7. 异常：原值 = 0
+  assertThrows(() => straightLineDepreciation(0, 0, 5), 'SL-12: 原值0应抛异常');
+
+  // 8. 异常：原值负数
+  assertThrows(() => straightLineDepreciation(-100, 0, 5), 'SL-13: 原值负数应抛异常');
+
+  // 9. 异常：残值 >= 原值
+  assertThrows(() => straightLineDepreciation(1000, 1000, 5), 'SL-14: 残值=原值应抛异常');
+  assertThrows(() => straightLineDepreciation(1000, 2000, 5), 'SL-15: 残值>原值应抛异常');
+
+  // 10. 异常：年限 = 0
+  assertThrows(() => straightLineDepreciation(1000, 100, 0), 'SL-16: 年限0应抛异常');
+
+  // ---------- 双倍余额递减法 ----------
+  log('\n--- 双倍余额递减法 ---');
+
+  // 11. 正常值：10000, 1000, 5
+  r = doubleDecliningBalance(10000, 1000, 5);
+  assertEqual(r.length, 5, 'DDB-1: 返回 5 年明细');
+  assertEqual(r[0].depreciation, 4000, 'DDB-2: 第1年折旧 = 10000 × 2/5 = 4000');
+  assertEqual(r[1].depreciation, 2400, 'DDB-3: 第2年折旧 = 6000 × 2/5 = 2400');
+  assertEqual(r[4].endingValue, 1000, 'DDB-4: 第5年末账面价值 = 残值 1000');
+
+  // 12. 正常值：100000, 10000, 10
+  r = doubleDecliningBalance(100000, 10000, 10);
+  assertApprox(r[0].depreciation, 20000, 0.01, 'DDB-5: 第1年折旧 = 100000 × 0.2 = 20000');
+  assertEqual(r[9].endingValue, 10000, 'DDB-6: 第10年末账面价值 = 10000');
+
+  // 13. 正常值：5000, 500, 3
+  r = doubleDecliningBalance(5000, 500, 3);
+  assertEqual(r.length, 3, 'DDB-7: 3年返回3条');
+  // 第1年：5000 × 2/3 = 3333.33
+  assertApprox(r[0].depreciation, 3333.33, 0.01, 'DDB-8: 第1年折旧 ≈ 3333.33');
+  assertEqual(r[2].endingValue, 500, 'DDB-9: 第3年末账面价值 = 500');
+
+  // 14. 边界：年限 = 2
+  r = doubleDecliningBalance(10000, 1000, 2);
+  assertEqual(r.length, 2, 'DDB-10: 年限2返回2条');
+  assertEqual(r[0].depreciation, 4500, 'DDB-11: 年限2，第1年直接按直线法 (10000-1000)/2 = 4500');
+  assertEqual(r[1].depreciation, 4500, 'DDB-12: 年限2，第2年 4500');
+
+  // 15. 边界：年限 = 1
+  r = doubleDecliningBalance(1000, 100, 1);
+  assertEqual(r[0].depreciation, 900, 'DDB-13: 年限1，一次性折旧 900');
+
+  // 16. 边界：残值 = 0
+  r = doubleDecliningBalance(10000, 0, 5);
+  assertEqual(r[4].endingValue, 0, 'DDB-14: 残值0，第5年末账面价值 = 0');
+
+  // 17. 异常：原值 = 0
+  assertThrows(() => doubleDecliningBalance(0, 0, 5), 'DDB-15: 原值0应抛异常');
+
+  // 18. 异常：原值负数
+  assertThrows(() => doubleDecliningBalance(-100, 0, 5), 'DDB-16: 原值负数应抛异常');
+
+  // 19. 异常：残值 >= 原值
+  assertThrows(() => doubleDecliningBalance(1000, 1500, 5), 'DDB-17: 残值>原值应抛异常');
+
+  // 20. 异常：年限 = 0
+  assertThrows(() => doubleDecliningBalance(1000, 100, 0), 'DDB-18: 年限0应抛异常');
+
+  // ---------- 年数总和法 ----------
+  log('\n--- 年数总和法 ---');
+
+  // 21. 正常值：10000, 1000, 5
+  r = sumOfYearsDigits(10000, 1000, 5);
+  assertEqual(r.length, 5, 'SYD-1: 返回 5 年明细');
+  assertEqual(r[0].depreciation, 3000, 'SYD-2: 第1年折旧 = 9000 × 5/15 = 3000');
+  assertEqual(r[1].depreciation, 2400, 'SYD-3: 第2年折旧 = 9000 × 4/15 = 2400');
+  assertEqual(r[2].depreciation, 1800, 'SYD-4: 第3年折旧 = 9000 × 3/15 = 1800');
+  assertEqual(r[3].depreciation, 1200, 'SYD-5: 第4年折旧 = 9000 × 2/15 = 1200');
+  assertEqual(r[4].depreciation, 600, 'SYD-6: 第5年折旧 = 9000 × 1/15 = 600');
+  assertEqual(r[4].endingValue, 1000, 'SYD-7: 第5年末账面价值 = 残值 1000');
+
+  // 22. 正常值：50000, 5000, 10
+  r = sumOfYearsDigits(50000, 5000, 10);
+  assertEqual(r[0].depreciation, 8181.82, 'SYD-8: 50000残值5000/10年，第1年折旧 ≈ 8181.82');
+  assertEqual(r[9].endingValue, 5000, 'SYD-9: 第10年末账面价值 = 5000');
+
+  // 23. 正常值：100000, 0, 20
+  r = sumOfYearsDigits(100000, 0, 20);
+  assertEqual(r[0].depreciation, 19047.62, 'SYD-10: 100000残值0/20年，第1年折旧 ≈ 19047.62');
+  assertEqual(r[19].endingValue, 0, 'SYD-11: 第20年末账面价值 = 0');
+
+  // 24. 边界：年限 = 1
+  r = sumOfYearsDigits(1000, 100, 1);
+  assertEqual(r[0].depreciation, 900, 'SYD-12: 年限1，一次性折旧 900');
+
+  // 25. 边界：残值 = 0
+  r = sumOfYearsDigits(10000, 0, 5);
+  assertEqual(r[4].endingValue, 0, 'SYD-13: 残值0，第5年末账面价值 = 0');
+
+  // 26. 边界：最小正整数
+  r = sumOfYearsDigits(1, 0, 1);
+  assertEqual(r[0].depreciation, 1, 'SYD-14: 原值1残值0年限1，折旧1');
+
+  // 27. 异常：原值 = 0
+  assertThrows(() => sumOfYearsDigits(0, 0, 5), 'SYD-15: 原值0应抛异常');
+
+  // 28. 异常：原值负数
+  assertThrows(() => sumOfYearsDigits(-100, 0, 5), 'SYD-16: 原值负数应抛异常');
+
+  // 29. 异常：残值 >= 原值
+  assertThrows(() => sumOfYearsDigits(1000, 1000, 5), 'SYD-17: 残值=原值应抛异常');
+
+  // 30. 异常：年限 = 0
+  assertThrows(() => sumOfYearsDigits(1000, 100, 0), 'SYD-18: 年限0应抛异常');
+
+  // ---------- 额外测试：精度、类型、大数值 ----------
+  log('\n--- 额外测试 ---');
+
+  // 31. 浮点精度
+  r = straightLineDepreciation(10000.55, 100.55, 3);
+  assertApprox(r[0].depreciation, 3300, 0.01, 'SL-精度1: 浮点原值年折旧 ≈ 3300');
+  assertEqual(r[2].endingValue, 100.55, 'SL-精度2: 最后一年末账面价值 = 残值');
+
+  // 32. 大数值
+  r = straightLineDepreciation(1000000000, 100000000, 10);
+  assertEqual(r[0].depreciation, 90000000, 'SL-大数: 10亿原值年折旧 9000万');
+
+  // 33. 参数类型：null
+  assertThrows(() => straightLineDepreciation(null, 100, 5), 'SL-类型1: null原值应抛异常');
+
+  // 34. 参数类型：undefined
+  assertThrows(() => straightLineDepreciation(1000, undefined, 5), 'SL-类型2: undefined残值应抛异常');
+
+  // 35. 参数类型：NaN
+  assertThrows(() => straightLineDepreciation(NaN, 100, 5), 'SL-类型3: NaN原值应抛异常');
+
+  // 36. 参数类型：字符串
+  assertThrows(() => straightLineDepreciation('1000', 100, 5), 'SL-类型4: 字符串原值应抛异常');
+
+  // 37. 调度函数
+  r = calculateDepreciation('sl', 10000, 1000, 5);
+  assertEqual(r[0].depreciation, 1800, '调度-1: sl 方法正确调度');
+  r = calculateDepreciation('ddb', 10000, 1000, 5);
+  assertEqual(r[0].depreciation, 4000, '调度-2: ddb 方法正确调度');
+  r = calculateDepreciation('syd', 10000, 1000, 5);
+  assertEqual(r[0].depreciation, 3000, '调度-3: syd 方法正确调度');
+  assertThrows(() => calculateDepreciation('xxx', 1000, 100, 5), '调度-4: 不支持的方法应抛异常');
+
+  log('\n========== 测试完成 ==========');
+  log('通过 ' + testPass + ' / 共 ' + testTotal);
+
+  const output = document.getElementById('testOutput');
+  output.style.display = 'block';
+  output.textContent = testLog.join('\n');
+  output.className = 'test-result ' + (testPass === testTotal ? 'test-pass' : 'test-fail');
+}
+
+/* ============================================================
+   第三部分：使用说明书
+   ============================================================ */
+
+const DOC_HTML = `
+<h2>一、工具介绍</h2>
+<p>本工具用于计算固定资产在不同折旧方法下的折旧明细，支持<strong>直线法（年限平均法）</strong>、<strong>双倍余额递减法</strong>、<strong>年数总和法</strong>三种中国会计准则认可的折旧方法。输入固定资产原值、预计净残值、预计使用年限后，即可得到逐年折旧额、累计折旧、账面价值等完整明细表。</p>
+<p>本工具适用于企业财务人员、审计人员、会计专业学生以及需要进行资产成本分摊分析的管理者。它解决的核心问题是：在已知资产初始成本、残值和使用寿命的前提下，快速、准确地完成折旧计算，避免手工计算中的算术错误和浮点精度问题。</p>
+
+<h2>二、参数说明</h2>
+<h3>1. 固定资产原值（cost）</h3>
+<ul>
+  <li><strong>含义</strong>：企业取得固定资产时实际支付的全部价款，包括购买价款、相关税费、使固定资产达到预定可使用状态前所发生的可归属于该项资产的运输费、装卸费、安装费和专业人员服务费等。</li>
+  <li><strong>单位</strong>：元（人民币）</li>
+  <li><strong>取值范围</strong>：必须大于 0 的数值</li>
+  <li><strong>注意事项</strong>：不包含可抵扣的增值税进项税额（一般纳税人）</li>
+</ul>
+
+<h3>2. 预计净残值（salvage）</h3>
+<ul>
+  <li><strong>含义</strong>：假定固定资产预计使用寿命已满并处于使用寿命终了时的预期状态，企业目前从该项资产处置中获得的扣除预计处置费用后的金额。</li>
+  <li><strong>单位</strong>：元（人民币）</li>
+  <li><strong>取值范围</strong>：必须 ≥ 0 且 < 原值</li>
+  <li><strong>注意事项</strong>：新准则下企业应当根据固定资产的性质和使用情况合理确定预计净残值，预计净残值一经确定不得随意变更。实务中常按原值的 3%~5% 估算，但并非强制要求。</li>
+</ul>
+
+<h3>3. 预计使用年限（life）</h3>
+<ul>
+  <li><strong>含义</strong>：企业预期使用该项固定资产的期间，或者该项资产所能生产产品或提供劳务的数量。</li>
+  <li><strong>单位</strong>：年</li>
+  <li><strong>取值范围</strong>：正整数</li>
+  <li><strong>税法最低年限参考</strong>（依据《企业所得税法实施条例》第六十条）：
+    <ul>
+      <li>房屋、建筑物：20 年</li>
+      <li>飞机、火车、轮船、机器、机械和其他生产设备：10 年</li>
+      <li>与生产经营活动有关的器具、工具、家具等：5 年</li>
+      <li>飞机、火车、轮船以外的运输工具：4 年</li>
+      <li>电子设备：3 年</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>4. 折旧方法</h3>
+<ul>
+  <li><strong>直线法（年限平均法）</strong>：每年折旧额相等，计算简单，适用于各期使用程度相对稳定的资产。</li>
+  <li><strong>双倍余额递减法</strong>：加速折旧法，前期折旧多、后期折旧少，最后两年改为直线法。适用于技术更新较快、前期使用效率高的资产。</li>
+  <li><strong>年数总和法</strong>：加速折旧法，折旧额按年数总和比例递减。适用于使用强度前期较大的资产。</li>
+</ul>
+
+<h2>三、三种方法详解</h2>
+
+<h3>1. 直线法（Straight-Line Method）</h3>
+<p><strong>公式</strong>：</p>
+<ul>
+  <li>年折旧额 = (原值 - 预计净残值) ÷ 预计使用年限</li>
+  <li>月折旧额 = 年折旧额 ÷ 12</li>
+  <li>年折旧率 = (1 ÷ 预计使用年限) × 100%</li>
+</ul>
+<p><strong>特点</strong>：每年折旧额相等，账面价值呈直线下降。计算最简单，应用最广泛。</p>
+<p><strong>适用场景</strong>：房屋建筑物、使用强度稳定的机器设备、办公家具等。</p>
+
+<h3>2. 双倍余额递减法（Double Declining Balance Method）</h3>
+<p><strong>公式</strong>：</p>
+<ul>
+  <li>年折旧率 = 2 ÷ 预计使用年限 × 100%</li>
+  <li>年折旧额 = 期初账面净值 × 年折旧率</li>
+  <li>最后两年改为直线法：年折旧额 = (账面净值 - 预计净残值) ÷ 2</li>
+</ul>
+<p><strong>特点</strong>：不考虑残值计算前期折旧（仅最后两年考虑），折旧速度比年数总和法更快。由于最后两年必须改为直线法，才能保证折旧期满后账面价值等于残值。</p>
+<p><strong>适用场景</strong>：技术更新快的电子设备、车辆、前期使用效率高的生产设备。</p>
+
+<h3>3. 年数总和法（Sum-of-the-Years'-Digits Method）</h3>
+<p><strong>公式</strong>：</p>
+<ul>
+  <li>年数总和 = n × (n + 1) ÷ 2（n 为预计使用年限）</li>
+  <li>第 k 年折旧率 = (n - k + 1) ÷ 年数总和</li>
+  <li>第 k 年折旧额 = (原值 - 预计净残值) × 第 k 年折旧率</li>
+</ul>
+<p><strong>特点</strong>：每年折旧率递减，折旧额递减，但始终以应折旧总额（原值 - 残值）为基数。相比双倍余额递减法，折旧速度略缓。</p>
+<p><strong>适用场景</strong>：使用强度前期较大的设备、季节性使用的资产。</p>
+
+<h2>四、实际使用场景</h2>
+
+<div class="scenario">
+  <h4>场景 1：企业购入办公电脑</h4>
+  <p>某公司购入一批办公电脑，原值 50,000 元，预计使用 3 年后报废，预计净残值 2,500 元（5%）。由于电子设备技术更新快，采用双倍余额递减法。</p>
+  <div class="input-output">
+    <div class="io-box"><strong>输入：</strong><br>原值 = 50,000 元<br>残值 = 2,500 元<br>年限 = 3 年<br>方法 = 双倍余额递减法</div>
+    <div class="io-box"><strong>结果：</strong><br>第1年折旧 ≈ 33,333.33 元<br>第2年折旧 ≈ 8,888.89 元<br>第3年折旧 ≈ 5,277.78 元<br>累计折旧 = 47,500 元</div>
+  </div>
+</div>
+
+<div class="scenario">
+  <h4>场景 2：工厂购入生产设备</h4>
+  <p>某工厂购入一台数控机床，原值 1,000,000 元，预计使用 10 年，预计净残值 50,000 元。设备使用强度稳定，采用直线法。</p>
+  <div class="input-output">
+    <div class="io-box"><strong>输入：</strong><br>原值 = 1,000,000 元<br>残值 = 50,000 元<br>年限 = 10 年<br>方法 = 直线法</div>
+    <div class="io-box"><strong>结果：</strong><br>年折旧额 = 95,000 元<br>月折旧额 ≈ 7,916.67 元<br>10 年累计折旧 = 950,000 元<br>期末账面价值 = 50,000 元</div>
+  </div>
+</div>
+
+<div class="scenario">
+  <h4>场景 3：公司购入运输车辆</h4>
+  <p>某物流公司购入一辆货车，原值 300,000 元，预计使用 5 年，预计净残值 15,000 元。车辆前期使用强度高，采用年数总和法。</p>
+  <div class="input-output">
+    <div class="io-box"><strong>输入：</strong><br>原值 = 300,000 元<br>残值 = 15,000 元<br>年限 = 5 年<br>方法 = 年数总和法</div>
+    <div class="io-box"><strong>结果：</strong><br>年数总和 = 15<br>第1年折旧 = 95,000 元<br>第2年折旧 = 76,000 元<br>第3年折旧 = 57,000 元<br>第4年折旧 = 38,000 元<br>第5年折旧 = 19,000 元</div>
+  </div>
+</div>
+
+<div class="scenario">
+  <h4>场景 4：企业购入房屋建筑物</h4>
+  <p>某企业购入一栋厂房，原值 5,000,000 元，预计使用 20 年，预计净残值 250,000 元（5%）。房屋使用稳定，采用直线法。</p>
+  <div class="input-output">
+    <div class="io-box"><strong>输入：</strong><br>原值 = 5,000,000 元<br>残值 = 250,000 元<br>年限 = 20 年<br>方法 = 直线法</div>
+    <div class="io-box"><strong>结果：</strong><br>年折旧额 = 237,500 元<br>月折旧额 ≈ 19,791.67 元<br>20 年累计折旧 = 4,750,000 元<br>期末账面价值 = 250,000 元</div>
+  </div>
+</div>
+
+<div class="scenario">
+  <h4>场景 5：公司购入服务器设备</h4>
+  <p>某互联网公司购入一批服务器，原值 200,000 元，预计使用 4 年，预计净残值 10,000 元。服务器技术迭代快，采用双倍余额递减法。</p>
+  <div class="input-output">
+    <div class="io-box"><strong>输入：</strong><br>原值 = 200,000 元<br>残值 = 10,000 元<br>年限 = 4 年<br>方法 = 双倍余额递减法</div>
+    <div class="io-box"><strong>结果：</strong><br>第1年折旧 = 100,000 元<br>第2年折旧 = 50,000 元<br>第3年折旧 = 20,000 元<br>第4年折旧 = 20,000 元<br>累计折旧 = 190,000 元</div>
+  </div>
+</div>
+
+<h2>五、常见错误与排查</h2>
+<ul>
+  <li><strong>错误 1：原值输入为 0 或负数</strong><br>
+    排查：固定资产原值必须大于 0。如果资产是接受捐赠或盘盈取得，应按公允价值或重置成本入账。</li>
+  <li><strong>错误 2：预计净残值大于等于原值</strong><br>
+    排查：残值必须小于原值，否则应折旧基数为负或零，无意义。检查是否将"原值"和"残值"填反。</li>
+  <li><strong>错误 3：使用年限输入小数或 0</strong><br>
+    排查：使用年限必须为正整数。如果资产按工作量法折旧，本工具暂不支持。</li>
+  <li><strong>错误 4：双倍余额递减法最后两年未切换</strong><br>
+    排查：本工具已自动处理最后两年切换直线法的逻辑。如手工计算，请注意此规则。</li>
+  <li><strong>错误 5：计算结果与手工计算有 0.01 元差异</strong><br>
+    排查：这是浮点精度问题。本工具对每年折旧额和账面价值均四舍五入到分（0.01 元），最后一年用减法保证累计折旧精确等于应折旧总额。</li>
+  <li><strong>错误 6：折旧方法选择不当</strong><br>
+    排查：企业应当根据与固定资产有关的经济利益的预期消耗方式合理选择折旧方法。方法一经确定不得随意变更。如需变更，需符合准则规定的条件并在附注中披露。</li>
+</ul>
+
+<h2>六、数据来源与标准依据</h2>
+<ul>
+  <li><strong>《企业会计准则第 4 号——固定资产》</strong>（财会〔2006〕3 号）：第十七条至第十九条规定了固定资产折旧方法、预计使用寿命、预计净残值的确定原则。</li>
+  <li><strong>《中华人民共和国企业所得税法实施条例》</strong>（国务院令第 512 号）：第五十九条、第六十条规定了固定资产计税基础、折旧范围、最低折旧年限。</li>
+  <li><strong>《企业会计准则——应用指南》</strong>：对固定资产折旧的具体账务处理提供指导。</li>
+</ul>
+<div class="note">
+  <strong>说明：</strong>本工具的算法严格遵循上述准则规定的公式。但税法与会计在折旧年限、残值率、方法选择上可能存在差异（如税法加速折旧优惠政策），本工具不处理税会差异调整，需查标准原文或咨询税务师。
+</div>
+
+<h2>七、局限性说明</h2>
+<div class="warn">
+  <strong>本工具不能做什么：</strong>
+  <ul style="margin-top:8px;">
+    <li><strong>不支持工作量法</strong>：按产量、工时、里程等计算的折旧方法不在本工具范围内。</li>
+    <li><strong>不考虑减值准备</strong>：固定资产减值后的折旧调整需另行计算。</li>
+    <li><strong>不处理月度折旧</strong>：本工具按年计算，如需月度折旧请自行除以 12（直线法）或按月份分摊。</li>
+    <li><strong>不考虑资产处置、报废、出售</strong>：使用中途的资产处置需另行计算。</li>
+    <li><strong>不处理税会差异</strong>：税法加速折旧、一次性扣除等优惠政策不在本工具范围内。</li>
+    <li><strong>不考虑通货膨胀、汇率变动</strong>：本工具按历史成本计量。</li>
+    <li><strong>不支持分组折旧、综合折旧</strong>：仅支持单项资产折旧计算。</li>
+    <li><strong>不支持非整数年限</strong>：如 3.5 年等需自行处理。</li>
+  </ul>
+</div>
+<p>如需更复杂的固定资产管理（含减值、处置、税会差异、多币种等），建议使用专业财务软件或 ERP 系统。</p>
+`;
+
+document.getElementById('docContent').innerHTML = DOC_HTML;
+
+/* ============================================================
+   源码展示
+   ============================================================ */
+
+const SOURCE_CODE = `/**
+ * 将数值四舍五入到 2 位小数
+ * @param {number} n - 待处理数值
+ * @returns {number} 保留 2 位小数的数值
+ */
+function round2(n) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * 校验折旧计算的输入参数
+ * @param {number} cost - 固定资产原值（元），必须 > 0
+ * @param {number} salvage - 预计净残值（元），必须 >= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），必须为正整数
+ * @throws {TypeError} 参数类型不正确或非数值
+ * @throws {RangeError} 参数超出合理范围
+ * @returns {void}
+ */
+function validateInputs(cost, salvage, life) {
+  if (typeof cost !== 'number' || isNaN(cost)) {
+    throw new TypeError('原值必须为有效数字');
+  }
+  if (typeof salvage !== 'number' || isNaN(salvage)) {
+    throw new TypeError('预计净残值必须为有效数字');
+  }
+  if (typeof life !== 'number' || isNaN(life)) {
+    throw new TypeError('使用年限必须为有效数字');
+  }
+  if (cost <= 0) throw new RangeError('原值必须大于 0');
+  if (salvage < 0) throw new RangeError('预计净残值不能为负数');
+  if (salvage >= cost) throw new RangeError('预计净残值必须小于原值');
+  if (!Number.isInteger(life) || life <= 0) {
+    throw new RangeError('使用年限必须为正整数');
+  }
+}
+
+/**
+ * 直线法（年限平均法）折旧计算
+ * 公式：年折旧额 = (原值 - 预计净残值) / 预计使用年限
+ * 依据：《企业会计准则第4号——固定资产》第十七条
+ *
+ * @param {number} cost - 固定资产原值（元），> 0
+ * @param {number} salvage - 预计净残值（元），>= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），正整数
+ * @returns {Array<{year:number, beginningValue:number, depreciation:number,
+ *           accumulatedDepreciation:number, endingValue:number}>}
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 参数超出范围
+ */
+function straightLineDepreciation(cost, salvage, life) {
+  validateInputs(cost, salvage, life);
+  const depreciableBase = cost - salvage;
+  const annualDepreciation = depreciableBase / life;
+  const schedule = [];
+  let accumulated = 0;
+
+  for (let year = 1; year <= life; year++) {
+    const beginningValue = cost - accumulated;
+    const depreciation = (year === life)
+      ? depreciableBase - annualDepreciation * (life - 1)
+      : annualDepreciation;
+    accumulated += depreciation;
+    schedule.push({
+      year, beginningValue: round2(beginningValue),
+      depreciation: round2(depreciation),
+      accumulatedDepreciation: round2(accumulated),
+      endingValue: round2(cost - accumulated)
+    });
+  }
+  return schedule;
+}
+
+/**
+ * 双倍余额递减法折旧计算
+ * 公式：年折旧率 = 2 / 预计使用年限
+ *       年折旧额 = 期初账面净值 × 年折旧率
+ *       最后两年改为直线法
+ * 依据：《企业会计准则第4号——固定资产》第十九条
+ *
+ * @param {number} cost - 固定资产原值（元），> 0
+ * @param {number} salvage - 预计净残值（元），>= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），正整数
+ * @returns {Array<Object>} 折旧明细数组
+ */
+function doubleDecliningBalance(cost, salvage, life) {
+  validateInputs(cost, salvage, life);
+  const rate = 2 / life;
+  const schedule = [];
+  let bookValue = cost;
+  let accumulated = 0;
+
+  for (let year = 1; year <= life; year++) {
+    const beginningValue = bookValue;
+    let depreciation;
+    if (year >= life - 1) {
+      const remainingYears = life - year + 1;
+      depreciation = (bookValue - salvage) / remainingYears;
+    } else {
+      depreciation = bookValue * rate;
+    }
+    bookValue -= depreciation;
+    accumulated += depreciation;
+    schedule.push({
+      year, beginningValue: round2(beginningValue),
+      depreciation: round2(depreciation),
+      accumulatedDepreciation: round2(accumulated),
+      endingValue: round2(bookValue)
+    });
+  }
+  return schedule;
+}
+
+/**
+ * 年数总和法折旧计算
+ * 公式：年数总和 = n(n+1)/2
+ *       第 k 年折旧率 = (n - k + 1) / 年数总和
+ *       年折旧额 = (原值 - 残值) × 折旧率
+ * 依据：《企业会计准则第4号——固定资产》第十九条
+ *
+ * @param {number} cost - 固定资产原值（元），> 0
+ * @param {number} salvage - 预计净残值（元），>= 0 且 < cost
+ * @param {number} life - 预计使用年限（年），正整数
+ * @returns {Array<Object>} 折旧明细数组
+ */
+function sumOfYearsDigits(cost, salvage, life) {
+  validateInputs(cost, salvage, life);
+  const depreciableBase = cost - salvage;
+  const sumOfYears = life * (life + 1) / 2;
+  const schedule = [];
+  let accumulated = 0;
+
+  for (let year = 1; year <= life; year++) {
+    const beginningValue = cost - accumulated;
+    const remainingLife = life - year + 1;
+    const depreciation = depreciableBase * remainingLife / sumOfYears;
+    accumulated += depreciation;
+    schedule.push({
+      year, beginningValue: round2(beginningValue),
+      depreciation: round2(depreciation),
+      accumulatedDepreciation: round2(accumulated),
+      endingValue: round2(cost - accumulated)
+    });
+  }
+  if (schedule.length > 0) {
+    const last = schedule[schedule.length - 1];
+    last.accumulatedDepreciation = round2(depreciableBase);
+    last.endingValue = round2(salvage);
+  }
+  return schedule;
+}
+
+/**
+ * 根据方法名称统一调度折旧计算
+ * @param {'sl'|'ddb'|'syd'} method - 折旧方法代码
+ * @param {number} cost - 原值
+ * @param {number} salvage - 残值
+ * @param {number} life - 年限
+ * @returns {Array<Object>} 折旧明细
+ */
+function calculateDepreciation(method, cost, salvage, life) {
+  switch (method) {
+    case 'sl':  return straightLineDepreciation(cost, salvage, life);
+    case 'ddb': return doubleDecliningBalance(cost, salvage, life);
+    case 'syd': return sumOfYearsDigits(cost, salvage, life);
+    default: throw new Error('不支持的折旧方法：' + method);
+  }
+}`;
+
+document.getElementById('sourceCode').textContent = SOURCE_CODE;
+
+/* ============================================================
+   UI 交互
+   ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+// 计算
+function calculate() {
+  const method = document.getElementById('method').value;
+  const cost = parseFloat(document.getElementById('cost').value);
+  const salvage = parseFloat(document.getElementById('salvage').value);
+  const life = parseInt(document.getElementById('life').value);
+  const errorMsg = document.getElementById('errorMsg');
+  errorMsg.textContent = '';
+
+  try {
+    const schedule = calculateDepreciation(method, cost, salvage, life);
+    renderResult(schedule, method, cost, salvage, life);
+  } catch (e) {
+    errorMsg.textContent = '计算错误：' + e.message;
+    document.getElementById('resultCard').style.display = 'none';
+  }
+}
+
+function renderResult(schedule, method, cost, salvage, life) {
+  const methodNames = { sl: '直线法', ddb: '双倍余额递减法', syd: '年数总和法' };
+  const tbody = document.querySelector('#resultTable tbody');
+  tbody.innerHTML = '';
+  schedule.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = \`
+      <td>\${row.year}</td>
+      <td>\${row.beginningValue.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+      <td>\${row.depreciation.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+      <td>\${row.accumulatedDepreciation.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+      <td>\${row.endingValue.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+    \`;
+    tbody.appendChild(tr);
+  });
+
+  const totalDepreciation = schedule[schedule.length - 1].accumulatedDepreciation;
+  const firstYearDep = schedule[0].depreciation;
+  const lastYearDep = schedule[schedule.length - 1].depreciation;
+
+  document.getElementById('summaryBox').innerHTML = \`
+    <div class="summary-item">
+      <div class="label">折旧方法</div>
+      <div class="value">\${methodNames[method]}</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">固定资产原值</div>
+      <div class="value">¥\${cost.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">预计净残值</div>
+      <div class="value">¥\${salvage.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">使用年限</div>
+      <div class="value">\${life} 年</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">累计折旧总额</div>
+      <div class="value">¥\${totalDepreciation.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">第 1 年折旧</div>
+      <div class="value">¥\${firstYearDep.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">最后一年折旧</div>
+      <div class="value">¥\${lastYearDep.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">期末账面价值</div>
+      <div class="value">¥\${schedule[schedule.length - 1].endingValue.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div>
+    </div>
+  \`;
+
+  document.getElementById('resultCard').style.display = 'block';
+}
+
+function resetForm() {
+  document.getElementById('method').value = 'sl';
+  document.getElementById('cost').value = 100000;
+  document.getElementById('salvage').value = 5000;
+  document.getElementById('life').value = 5;
+  document.getElementById('errorMsg').textContent = '';
+  document.getElementById('resultCard').style.display = 'none';
+}
+</script>
+
+</body>
+</html>

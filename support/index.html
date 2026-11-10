@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐟 喂鱼计划</title>
+<!--
+  文件名：site/support/index.html
+  干什么：一个「纯属娱乐」的赞助模拟页——用最诚实的方式测试一个商业假设：
+         如果有人明说「给钱没任何好处」，还会不会有人愿意点「我要赞助」。
+  用了哪些库：零依赖。纯原生 HTML/CSS/JS。随机数用 crypto.getRandomValues。
+  输入输出：
+    输入 = 用户点「我要赞助」+ 填个网名
+    输出 = 烟花特效、专属称号、底部署名墙（仅本机内存，不落任何存储）
+  重要声明：本页不收款、不生成二维码、不联网、不存储任何数据。
+           所有「付费」流程都是模拟，刷新即清零。
+  许可：MIT
+-->
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #14283a 0%, #0a1622 60%, #060a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:8px 8px 18px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#6b8fb3; font-size:13px; margin-bottom:10px;
+    padding:6px 12px; border:1px solid #22384c; border-radius:20px; }
+  h1 { font-size:15px; color:#9fe0ff; text-align:center; margin-bottom:5px; }
+  .sub { text-align:center; color:#5b7a99; font-size:11.5px; margin-bottom:14px; line-height:1.65; }
+
+  .honest { background:#1a1208; border:1px solid #7a5a20; border-radius:12px; padding:13px; margin-bottom:14px; }
+  .honest .t { color:#ff6a6a; font-size:14px; font-weight:800; line-height:1.55; letter-spacing:0.5px; }
+  .honest .d { color:#c8a870; font-size:11.5px; line-height:1.75; margin-top:7px; }
+
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:13px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:8px; letter-spacing:1px; }
+  input[type=text] { width:100%; padding:10px 12px; font-size:14px; font-family:inherit; color:#9fe0ff;
+    background:#060a10; border:1px solid #24384c; border-radius:9px; outline:none; }
+  input[type=text]:focus { border-color:#4d8fc9; }
+  button { width:100%; padding:13px; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;
+    color:#fff; background:linear-gradient(160deg,#8a5a1a,#5a3a10); border:1px solid #c8934a;
+    border-radius:11px; margin-top:10px; }
+  button:active { transform:scale(0.985); }
+  button.ghost { background:transparent; color:#6b8fb3; border-color:#24384c; font-size:13px; font-weight:600; padding:10px; }
+
+  .wall { min-height:40px; }
+  .wname { display:inline-block; background:#12202e; border:1px solid #2a4258; border-radius:14px;
+    padding:5px 11px; margin:4px 5px 0 0; font-size:12px; color:#9fe0ff; }
+  .wname .tag { color:#e0b060; font-size:10.5px; margin-left:4px; }
+  .empty { text-align:center; color:#3d4f60; font-size:12px; padding:16px 4px; line-height:1.7; }
+
+  /* 弹窗 */
+  #mask { position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center;
+    justify-content:center; z-index:999; padding:18px; }
+  #mask.on { display:flex; }
+  .modal { background:#0e1a26; border:1px solid #3a5a7c; border-radius:16px; padding:20px 18px;
+    max-width:340px; width:100%; text-align:center; animation:pop .3s ease-out; }
+  @keyframes pop { from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
+  .modal h2 { font-size:16px; color:#ffc860; margin-bottom:6px; }
+  .modal p { font-size:12px; color:#8fb3cf; line-height:1.75; margin-bottom:14px; }
+  .modal .warn { color:#ff7070; font-size:11.5px; font-weight:700; }
+
+  /* 烟花画布 */
+  #fw { position:fixed; inset:0; pointer-events:none; z-index:1000; display:none; }
+  #fw.on { display:block; }
+
+  /* 称号弹窗 */
+  .titlebox { background:linear-gradient(160deg,#2a1a3a,#1a1028); border:2px solid #9a6ad0;
+    border-radius:18px; padding:26px 22px; max-width:340px; width:100%; text-align:center;
+    box-shadow:0 0 40px rgba(150,100,220,.4); animation:pop .35s ease-out; }
+  .titlebox .tt { font-size:12px; color:#b090d0; letter-spacing:2px; margin-bottom:10px; }
+  .titlebox .tn { font-size:22px; font-weight:800; color:#ffd860; margin-bottom:12px;
+    text-shadow:0 0 18px rgba(255,216,96,.6); line-height:1.4; }
+  .titlebox .td { font-size:12px; color:#a890c0; line-height:1.8; }
+
+  .foot { text-align:center; color:#3d4f60; font-size:10px; margin-top:14px; line-height:1.75; }
+  .ver { text-align:center; color:#25384a; font-size:10px; margin-top:5px; }
+  @media (max-width:400px){ h1{font-size:14px} .honest .t{font-size:13px} button{font-size:14px} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回游戏厅</a>
+  <h1>🐟 喂鱼计划</h1>
+  <div class="sub">一个坦白的实验：<br>如果明说给钱没好处，还有人愿意给吗？</div>
+
+  <div class="honest">
+    <div class="t">⚠️ 郑重提示：本「付费版」与免费版在功能、代码、甚至 Bug 上，没有任何区别。</div>
+    <div class="d">
+      付费纯属自愿赞助，<b>买不到任何特权</b>。<br>
+      <b style="color:#ff8080">而且——本页根本收不到钱。</b>二维码是画的，支付按钮是演的，
+      所有流程都是模拟。你的钱还在你兜里，一分没少。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">如果真有这么个按钮，你会点吗</div>
+    <input type="text" id="nick" placeholder="留个网名（想上墙的话）" maxlength="16">
+    <button id="btnPay">💰 我要赞助（模拟）</button>
+  </div>
+
+  <div class="card">
+    <div class="lbl">赛博功德碑 · 已上墙 <span id="cnt" style="color:#9fe0ff">0</span> 位</div>
+    <div class="wall" id="wall">
+      <div class="empty">还没有人上墙<br>（点上面的按钮试试，反正是假的）</div>
+    </div>
+  </div>
+
+  <div class="foot">🐳 大肥鱼出品 · 一分钱都不收，纯属行为实验<br>
+    <span style="color:#5a4252">🔒 本页不联网、不存储、不生成二维码，刷新即清零</span></div>
+  <div class="ver">v1.0.0-喂鱼计划 20261017</div>
+</div>
+
+<div id="mask">
+  <div id="modalSlot"></div>
+</div>
+<canvas id="fw"></canvas>
+
+<script>
+(function(){
+'use strict';
+
+  /* ---------- 真随机 ---------- */
+  function rnd(n){
+    var a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return a[0] % n;
+  }
+
+  var TITLES = [
+    '赛博活菩萨', '老父亲的野生干爹', '老父亲的野生干妈',
+    '白米饭基金荣誉理事', '虚空赞助商', '电子木鱼敲击手',
+    '赛博功德无量佛', '虚拟韭菜之王', '数字慈善家'
+  ];
+
+  var wall = [];   // 仅内存，不落存储
+  var $ = function(id){ return document.getElementById(id); };
+
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  /* ---------- 渲染功德碑 ---------- */
+  function renderWall(){
+    var w = $('wall');
+    if (wall.length === 0) {
+      w.innerHTML = '<div class="empty">还没有人上墙<br>（点上面的按钮试试，反正是假的）</div>';
+    } else {
+      var h = '';
+      for (var i = 0; i < wall.length; i++) {
+        h += '<span class="wname">' + esc(wall[i].name) +
+             '<span class="tag">· ' + esc(wall[i].title) + '</span></span>';
+      }
+      w.innerHTML = h;
+    }
+    $('cnt').textContent = wall.length;
+  }
+
+  /* ---------- 弹窗 1：假装支付 ---------- */
+  function showPayModal(){
+    var nick = $('nick').value.trim() || ('匿名鱼' + (rnd(900) + 100));
+    $('modalSlot').innerHTML =
+      '<div class="modal">' +
+        '<h2>💰 假装付款</h2>' +
+        '<p>这里是模拟出来的收钱界面。<br>你要是真扫了——什么都不会发生，因为它是画上去的。</p>' +
+        '<div style="background:#060a10;border:1px solid #24384c;border-radius:10px;padding:18px;margin-bottom:12px">' +
+          '<div style="font-size:44px;line-height:1">▦▦▦▦▦</div>' +
+          '<div style="font-size:11px;color:#3d4f60;margin-top:6px">这不是真二维码</div>' +
+        '</div>' +
+        '<p class="warn">点了也不会扣钱，纯属演戏</p>' +
+        '<button id="payDone">✅ 我已支付（假的）</button>' +
+        '<button class="ghost" id="payCancel">算了，不演了</button>' +
+      '</div>';
+    $('mask').classList.add('on');
+
+    $('payCancel').onclick = closeModal;
+    $('payDone').onclick = function(){
+      closeModal();
+      grantTitle(nick);
+    };
+  }
+
+  function closeModal(){
+    $('mask').classList.remove('on');
+    $('mask').innerHTML = '<div id="modalSlot"></div>';
+  }
+
+  /* ---------- 弹窗 2：颁称号 + 放烟花 ---------- */
+  function grantTitle(nick){
+    var title = TITLES[rnd(TITLES.length)];
+    wall.unshift({ name: nick, title: title });
+    if (wall.length > 30) wall.pop();
+    renderWall();
+
+    $('modalSlot').innerHTML =
+      '<div class="titlebox">' +
+        '<div class="tt">恭 喜 获 得 称 号</div>' +
+        '<div class="tn">' + esc(title) + '</div>' +
+        '<div class="td">' + esc(nick) + ' 已载入赛博功德碑<br><br>' +
+          '<span style="color:#ff8080">但你的钱一分没少</span><br>因为本来就没收</div>' +
+        '<button id="okBtn" style="margin-top:16px;background:linear-gradient(160deg,#5a3a8a,#3a2050);border-color:#9a6ad0">好，我认</button>' +
+      '</div>';
+    $('mask').classList.add('on');
+    $('okBtn').onclick = closeModal;
+
+    firework();
+  }
+
+  /* ---------- 烟花 ---------- */
+  var cvs = $('fw'), ctx = cvs.getContext('2d');
+  var parts = [], fwRaf = null, fwEnd = 0;
+
+  function resizeCanvas(){
+    cvs.width = window.innerWidth * (window.devicePixelRatio || 1);
+    cvs.height = window.innerHeight * (window.devicePixelRatio || 1);
+    cvs.style.width = window.innerWidth + 'px';
+    cvs.style.height = window.innerHeight + 'px';
+    ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+  }
+
+  function burst(x, y){
+    var hue = rnd(360);
+    var n = 40 + rnd(30);
+    for (var i = 0; i < n; i++) {
+      var ang = (Math.PI * 2 * i) / n + Math.random() * 0.3;
+      var spd = 1.5 + Math.random() * 4.5;
+      parts.push({
+        x: x, y: y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        life: 1,
+        decay: 0.008 + Math.random() * 0.012,
+        hue: hue + (Math.random() * 50 - 25),
+        size: 1.5 + Math.random() * 2
+      });
+    }
+  }
+
+  function loop(){
+    if (Date.now() > fwEnd && parts.length === 0) {
+      cvs.classList.remove('on');
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+      fwRaf = null;
+      return;
+    }
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.045;
+      p.vx *= 0.988;
+      p.vy *= 0.988;
+      p.life -= p.decay;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      ctx.beginPath();
+      ctx.fillStyle = 'hsla(' + p.hue + ',95%,' + (55 + p.life * 25) + '%,' + p.life + ')';
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    fwRaf = requestAnimationFrame(loop);
+  }
+
+  function firework(){
+    resizeCanvas();
+    cvs.classList.add('on');
+    parts = [];
+    fwEnd = Date.now() + 2600;
+
+    var w = window.innerWidth, h = window.innerHeight;
+    var spots = [[w*0.3, h*0.3], [w*0.7, h*0.28], [w*0.5, h*0.42], [w*0.22, h*0.5], [w*0.78, h*0.5]];
+    for (var i = 0; i < spots.length; i++) {
+      (function(s, d){
+        setTimeout(function(){ burst(s[0], s[1]); }, d);
+      })(spots[i], i * 220);
+    }
+    if (!fwRaf) loop();
+  }
+
+  /* ---------- 绑定 ---------- */
+  $('btnPay').addEventListener('click', showPayModal);
+  $('mask').addEventListener('click', function(e){
+    if (e.target === $('mask')) closeModal();
+  });
+  window.addEventListener('resize', function(){
+    if (cvs.classList.contains('on')) resizeCanvas();
+  });
+
+  renderWall();
+
+})();
+</script>
+</body>
+</html>

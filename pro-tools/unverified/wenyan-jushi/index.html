@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文言特殊句式识别与讲解</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f1e8;color:#2b2b2b;font-size:15px;line-height:1.7;padding:12px}
+.wrap{max-width:640px;margin:0 auto;padding-bottom:60px}
+header{background:linear-gradient(135deg,#8b0000,#5a0000);color:#fff;padding:18px 16px;border-radius:10px;margin-bottom:14px;text-align:center}
+header h1{font-size:20px;letter-spacing:2px}
+header p{font-size:13px;opacity:.85;margin-top:4px}
+.card{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.card h2{font-size:17px;color:#8b0000;border-bottom:2px solid #e8d9b8;padding-bottom:6px;margin-bottom:10px}
+.card h3{font-size:15px;color:#5a3a1a;margin:10px 0 6px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tab{flex:1;min-width:calc(50% - 6px);padding:8px 6px;background:#e8d9b8;border:none;border-radius:6px;font-size:14px;color:#5a3a1a;cursor:pointer;text-align:center}
+.tab.active{background:#8b0000;color:#fff}
+.panel{display:none}
+.panel.active{display:block}
+.formula{background:#fdf6e3;border-left:4px solid #c9a227;padding:8px 12px;margin:8px 0;font-size:14px;border-radius:0 6px 6px 0}
+.ex{background:#fafafa;border:1px dashed #c9a227;border-radius:6px;padding:10px;margin:8px 0}
+.ex .src{font-size:13px;color:#888;margin-bottom:4px}
+.ex .txt{font-size:16px;color:#2b2b2b;margin-bottom:6px;font-weight:500}
+.ex .txt em{color:#8b0000;font-style:normal;font-weight:700;background:#fff3cd;padding:0 2px;border-radius:3px}
+.ex .ana{font-size:14px;color:#444}
+.ex .ana b{color:#5a3a1a}
+mark{background:#fff3cd;color:#8b0000;padding:0 2px;border-radius:3px;font-weight:600}
+textarea{width:100%;min-height:100px;padding:10px;border:1px solid #d4c29a;border-radius:6px;font-size:15px;font-family:inherit;resize:vertical;background:#fffdf5}
+button.primary{background:#8b0000;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:15px;cursor:pointer;margin-top:8px;width:100%}
+button.primary:active{background:#5a0000}
+.result{margin-top:12px;padding:10px;background:#fafafa;border-radius:6px;font-size:14px;min-height:40px}
+.result .hit{padding:8px;margin:6px 0;background:#fff;border-left:3px solid #8b0000;border-radius:0 4px 4px 0}
+.result .hit .tag{display:inline-block;background:#8b0000;color:#fff;font-size:12px;padding:1px 6px;border-radius:3px;margin-right:6px}
+.result .none{color:#888;font-style:italic}
+.ref{font-size:13px;color:#555;line-height:1.8}
+.ref ol{padding-left:20px}
+.ref li{margin-bottom:4px}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#999;background:rgba(255,255,255,.8);padding:2px 6px;border-radius:4px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}
+table th,table td{border:1px solid #d4c29a;padding:6px 8px;text-align:left}
+table th{background:#e8d9b8;color:#5a3a1a}
+@media(max-width:480px){
+body{font-size:14px;padding:8px}
+header h1{font-size:18px}
+.tab{font-size:13px;padding:7px 4px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>📜 文言特殊句式识别</h1>
+<p>判断句 · 被动句 · 宾语前置 · 状语后置 · 定语后置</p>
+</header>
+
+<div class="card">
+<h2>🔍 句式速查</h2>
+<div class="tabs">
+<button class="tab active" data-p="p1">判断句</button>
+<button class="tab" data-p="p2">被动句</button>
+<button class="tab" data-p="p3">宾语前置</button>
+<button class="tab" data-p="p4">状语后置</button>
+<button class="tab" data-p="p5">定语后置</button>
+</div>
+
+<div class="panel active" id="p1">
+<h3>📘 判断句</h3>
+<div class="formula">
+<b>常见格式：</b><br>
+① …者，…也。<br>
+② …，…也。<br>
+③ …者，…。<br>
+④ 用副词"乃、即、则、皆、必、素、诚"等表判断。<br>
+⑤ 用动词"为、是"表判断（"是"作判断词较晚起）。
+</div>
+<div class="ex">
+<div class="src">《史记·陈涉世家》</div>
+<div class="txt">陈胜<em>者</em>，阳城人<em>也</em>。</div>
+<div class="ana"><b>解析：</b>"…者，…也"式判断句。"者"表提顿，"也"表判断语气。译为：陈胜是阳城人。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·项羽本纪》</div>
+<div class="txt">此亡秦之续<em>也</em>。</div>
+<div class="ana"><b>解析：</b>"…，…也"式。句末"也"表判断。译为：这是已亡的秦朝的延续。</div>
+</div>
+<div class="ex">
+<div class="src">《三国志·诸葛亮传》</div>
+<div class="txt">诸葛孔明<em>者</em>，卧龙<em>也</em>。</div>
+<div class="ana"><b>解析：</b>"…者，…也"式判断句。译为：诸葛孔明是卧龙。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·项羽本纪》</div>
+<div class="txt">吾令人望其气，<em>乃</em>龙虎，成五彩。</div>
+<div class="ana"><b>解析：</b>用副词"乃"表判断，相当于"是、就是"。</div>
+</div>
+</div>
+
+<div class="panel" id="p2">
+<h3>📘 被动句</h3>
+<div class="formula">
+<b>常见格式：</b><br>
+① 为 + 施事 + 所 + 动词（为…所…）<br>
+② 见 + 动词 + 于 + 施事（见…于…）<br>
+③ 为 + 施事 + 动词<br>
+④ 于 + 施事（动词 + 于…）<br>
+⑤ 被 + 动词（后起）<br>
+⑥ 无标志的语义被动（意念被动）
+</div>
+<div class="ex">
+<div class="src">《史记·项羽本纪》</div>
+<div class="txt">不者，若属皆且<em>为</em>所虏。</div>
+<div class="ana"><b>解析：</b>"为所…"式，"为"后省略施事"之"。译为：你们都将被（他）俘虏。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·廉颇蔺相如列传》</div>
+<div class="txt">臣诚恐见欺于王而负赵。</div>
+<div class="ana"><b>解析：</b>"见…于…"式。"见"表被动，"于"引出施事"王"。译为：我实在怕被大王欺骗而辜负赵国。</div>
+</div>
+<div class="ex">
+<div class="src">《韩非子·五蠹》</div>
+<div class="txt">兔不可复得，而身<em>为</em>宋国笑。</div>
+<div class="ana"><b>解析：</b>"为 + 施事 + 动词"式。译为：而自身被宋国人嘲笑。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·屈原贾生列传》</div>
+<div class="txt">内惑<em>于</em>郑袖，外欺<em>于</em>张仪。</div>
+<div class="ana"><b>解析：</b>"动词 + 于 + 施事"式。"于"引出动作的发出者。译为：在内被郑袖迷惑，在外被张仪欺骗。</div>
+</div>
+</div>
+
+<div class="panel" id="p3">
+<h3>📘 宾语前置</h3>
+<div class="formula">
+<b>三种主要情况：</b><br>
+① <b>疑问句</b>中，疑问代词（谁、孰、何、胡、曷、安、恶）作宾语，前置。<br>
+② <b>否定句</b>中，代词（余、吾、尔、之、是）作宾语，前置。<br>
+③ 用"之""是"作提宾标志：<br>
+  · 何…之有 / 句读之不知<br>
+  · 唯…是… / 唯利是图
+</div>
+<div class="ex">
+<div class="src">《左传·庄公十年》（曹刿论战）</div>
+<div class="txt">何以战？</div>
+<div class="ana"><b>解析：</b>疑问代词"何"作介词"以"的宾语前置。正常语序："以何战？"译为：凭借什么作战？</div>
+</div>
+<div class="ex">
+<div class="src">《论语·子罕》</div>
+<div class="txt">吾谁欺？欺天乎？</div>
+<div class="ana"><b>解析：</b>疑问代词"谁"作动词"欺"的宾语前置。正常语序："吾欺谁？"</div>
+</div>
+<div class="ex">
+<div class="src">《左传·僖公二十四年》</div>
+<div class="txt">古之人不余欺也。</div>
+<div class="ana"><b>解析：</b>否定句（"不"）中代词"余"作宾语前置。正常语序："古之人不欺余也。"</div>
+</div>
+<div class="ex">
+<div class="src">《墨子·公输》</div>
+<div class="txt">宋何罪<em>之</em>有？</div>
+<div class="ana"><b>解析：</b>"何…之有"式，"之"为提宾标志。正常语序："宋有何罪？"</div>
+</div>
+<div class="ex">
+<div class="src">成语</div>
+<div class="txt">唯利<em>是</em>图 / 唯命<em>是</em>听</div>
+<div class="ana"><b>解析：</b>"唯…是…"式，"是"为提宾标志。正常语序："唯图利 / 唯听命"。</div>
+</div>
+</div>
+
+<div class="panel" id="p4">
+<h3>📘 状语后置（介词结构后置）</h3>
+<div class="formula">
+<b>格式：</b>动词 + 于/以/乎 + 名词（介词结构放在动词后作补语）<br>
+<b>说明：</b>现代汉语中此类介词结构一般置于动词前作状语，故称"后置"。
+</div>
+<div class="ex">
+<div class="src">《荀子·劝学》</div>
+<div class="txt">青，取之<em>于</em>蓝，而青<em>于</em>蓝。</div>
+<div class="ana"><b>解析：</b>"于蓝"置于动词"取"后；第二个"于蓝"置于形容词"青"后表比较。译为：靛青从蓝草中提取，却比蓝草更青。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·廉颇蔺相如列传》</div>
+<div class="txt">以勇气闻<em>于</em>诸侯。</div>
+<div class="ana"><b>解析：</b>"于诸侯"置于动词"闻"后。译为：凭借勇气在诸侯中闻名。</div>
+</div>
+<div class="ex">
+<div class="src">《论语·先进》（子路、曾皙、冉有、公西华侍坐）</div>
+<div class="txt">浴<em>乎</em>沂，风<em>乎</em>舞雩，咏而归。</div>
+<div class="ana"><b>解析：</b>"乎"相当于"于"，介词结构后置。译为：在沂水里洗澡，在舞雩台上吹风。</div>
+</div>
+<div class="ex">
+<div class="src">《荀子·劝学》</div>
+<div class="txt">具告<em>以</em>事。</div>
+<div class="ana"><b>解析：</b>"以事"置于动词"告"后。正常语序："以事具告"。译为：把事情全部告诉（他）。</div>
+</div>
+</div>
+
+<div class="panel" id="p5">
+<h3>📘 定语后置</h3>
+<div class="formula">
+<b>常见格式：</b><br>
+① 中心词 + 之 + 定语 + 者（马之千里者）<br>
+② 中心词 + 而 + 定语 + 者<br>
+③ 中心词 + 定语 + 者（约数/数量后置亦归此类讨论）<br>
+④ 中心词 + 之 + 定语（蚓无爪牙之利，筋骨之强）
+</div>
+<div class="ex">
+<div class="src">韩愈《马说》</div>
+<div class="txt">马<em>之</em>千里<em>者</em>，一食或尽粟一石。</div>
+<div class="ana"><b>解析：</b>"马之千里者"＝"千里之马"。"之"为定语后置标志，"者"为后置定语的煞尾。译为：能跑千里的马。</div>
+</div>
+<div class="ex">
+<div class="src">《荀子·劝学》</div>
+<div class="txt">蚓无爪牙<em>之</em>利，筋骨<em>之</em>强。</div>
+<div class="ana"><b>解析：</b>"爪牙之利"＝"利之爪牙"（锋利的爪牙）。"之"为定语后置标志。译为：蚯蚓没有锋利的爪牙、强健的筋骨。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·项羽本纪》</div>
+<div class="txt">我持白璧一双，欲献项王；玉斗一双，欲与亚父。</div>
+<div class="ana"><b>解析：</b>数量词"一双"置于中心词"白璧""玉斗"之后，属定语后置的一种（数量定语后置）。译为：我拿一双白璧、一双玉斗。</div>
+</div>
+<div class="ex">
+<div class="src">《史记·廉颇蔺相如列传》</div>
+<div class="txt">求人可使报秦<em>者</em>，未得。</div>
+<div class="ana"><b>解析：</b>"人可使报秦者"＝"可使报秦之人"。"者"字结构作后置定语。译为：寻找可以出使回复秦国的人。</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h2>📊 句式对照表</h2>
+<table>
+<tr><th>句式</th><th>标志词</th><th>典型例句</th></tr>
+<tr><td>判断句</td><td>者…也 / 乃 / 即 / 则 / 皆</td><td>陈胜者，阳城人也</td></tr>
+<tr><td>被动句</td><td>为…所 / 见…于 / 于 / 被</td><td>臣诚恐见欺于王</td></tr>
+<tr><td>宾语前置</td><td>何…之有 / 唯…是 / 疑问代词 / 否定+代词</td><td>宋何罪之有</td></tr>
+<tr><td>状语后置</td><td>于 / 以 / 乎（介词结构在动词后）</td><td>青，取之于蓝</td></tr>
+<tr><td>定语后置</td><td>之…者 / 之 / 者</td><td>马之千里者</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>✍️ 输入文本分析</h2>
+<p style="font-size:13px;color:#666;margin-bottom:8px">粘贴文言句子，工具将尝试识别其中可能包含的特殊句式（规则匹配，仅供参考）。</p>
+<textarea id="input" placeholder="例如：马之千里者，一食或尽粟一石。"></textarea>
+<button class="primary" onclick="analyze()">🔎 开始分析</button>
+<div class="result" id="result"><span class="none">分析结果将显示在这里…</span></div>
+</div>
+
+<div class="card">
+<h2>📚 数据来源</h2>
+<div class="ref">
+<ol>
+<li>王力 主编.《古代汉语》（校订重排本）. 中华书局, 1999 年. —— 本书语法体系（判断句、被动句、宾语前置、状语后置、定语后置的分类与例句）主要依据该书"古汉语通论"部分。</li>
+<li>王力.《汉语史稿》. 中华书局, 1980 年. —— 判断词"是"的历时发展、被动式演变等参考该书。</li>
+<li>郭锡良.《古代汉语》. 商务印书馆. —— 宾语前置三种条件、定语后置格式等作交叉印证。</li>
+<li>中学语文教材（人教版）所选篇目例句：《劝学》《马说》《廉颇蔺相如列传》《鸿门宴》《曹刿论战》《邹忌讽齐王纳谏》《子路、曾皙、冉有、公西华侍坐》等。</li>
+</ol>
+<p style="margin-top:8px">⚠️ 说明：本工具为规则匹配式辅助识别，不能替代对原文的完整语法分析；具体表值与细部分类请以标准原文为准。</p>
+</div>
+</div>
+
+<div class="ver">v1.0.0-文言句式识别 20261021</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.p).classList.add('active');
+  });
+});
+
+// Rule-based analyzer
+// Each rule: {name, patterns:[{re, explain}], type}
+const rules = [
+  {
+    type:'判断句',
+    patterns:[
+      {re:/([^，。！？；\s]{1,10}?)者[，,]?([^，。！？；\s]{1,15}?)也/, explain:'"…者，…也"式判断句，"者"提顿、"也"表判断。'},
+      {re:/[^，。！？；\s]{1,10}?也[。！？]?$/, explain:'句末"也"表判断语气，属判断句。'},
+      {re:/(?:乃|即|则|皆|必|素|诚|固)[^，。！？；\s]{0,10}(?:为|是)/, explain:'用副词"乃/即/则/皆/必/素/诚/固"等表判断。'},
+      {re:/(?:此|是|此乃)[^，。！？；\s]{1,15}也/, explain:'"此/是…也"式判断句。'}
+    ]
+  },
+  {
+    type:'被动句',
+    patterns:[
+      {re:/为[^，。！？；\s]{0,6}所[^，。！？；\s]{1,6}/, explain:'"为…所…"式被动句，"为"引出施事（可省），"所"后为动词。'},
+      {re:/为所[^，。！？；\s]{1,6}/, explain:'"为所…"式，"为"后省略施事。'},
+      {re:/见[^，。！？；\s]{1,6}于/, explain:'"见…于…"式被动句，"见"表被动，"于"引出施事。'},
+      {re:/[^，。！？；\s]{1,6}为[^，。！？；\s]{1,8}(?:笑|辱|败|杀|擒|戮|困|欺|逐)/, explain:'"为 + 施事 + 动词"式被动句。'},
+      {re:/[^，。！？；\s]{1,6}于[^，。！？；\s]{1,8}(?:笑|辱|败|杀|擒|戮|困|欺|逐|惑)/, explain:'"动词 + 于 + 施事"式被动句。'},
+      {re:/被[^，。！？；\s]{1,6}/, explain:'"被 + 动词"式被动句（后起用法）。'}
+    ]
+  },
+  {
+    type:'宾语前置',
+    patterns:[
+      {re:/何[^，。！？；\s]{0,6}之有/, explain:'"何…之有"式，"之"为提宾标志，正常语序为"有何…"。'},
+      {re:/唯[^，。！？；\s]{1,6}是[^，。！？；\s]{1,4}/, explain:'"唯…是…"式，"是"为提宾标志。'},
+      {re:/何以/, explain:'疑问代词"何"作介词"以"的宾语前置，正常语序"以何"。'},
+      {re:/(?:吾|我|余|尔|汝)(?:谁|何|孰|胡|曷|安|恶)[^，。！？；\s]{0,4}/, explain:'疑问句中疑问代词作宾语前置。'},
+      {re:/不[余吾尔之是己]/, explain:'否定句中代词宾语前置（如"不余欺"＝"不欺余"）。'},
+      {re:/未之[^，。！？；\s]{1,4}/, explain:'否定句（"未"）中代词"之"宾语前置。'},
+      {re:/[^，。！？；\s]{1,6}之[^，。！？；\s]{1,4}(?:知|见|闻|观)/, explain:'用"之"作提宾标志，如"句读之不知"＝"不知句读"。'}
+    ]
+  },
+  {
+    type:'状语后置',
+    patterns:[
+      {re:/[^，。！？；\s]{1,6}于[^，。！？；\s]{1,8}[。！？]?$/, explain:'"于 + 名词"置于句末，介词结构后置（状语后置）。'},
+      {re:/[^，。！？；\s]{1,6}乎[^，。！？；\s]{1,8}[。！？]?$/, explain:'"乎"相当于"于"，介词结构后置。'},
+      {re:/[^，。！？；\s]{1,6}以[^，。！？；\s]{1,8}[。！？]?$/, explain:'"以 + 名词"置于句末，介词结构后置。'},
+      {re:/取之于/, explain:'"于 + 施事/处所"置于动词后，介词结构后置。'},
+      {re:/青于/, explain:'"于"引出比较对象置于形容词后，介词结构后置（比较句）。'}
+    ]
+  },
+  {
+    type:'定语后置',
+    patterns:[
+      {re:/[^，。！？；\s]{1,6}之[^，。！？；\s]{1,8}者/, explain:'"中心词 + 之 + 定语 + 者"式定语后置，如"马之千里者"。'},
+      {re:/[^，。！？；\s]{1,6}之(?:利|强|美|大|小|高|下|贤|不肖)/, explain:'"中心词 + 之 + 形容词"式定语后置，如"爪牙之利"。'},
+      {re:/[^，。！？；\s]{1,6}而[^，。！？；\s]{1,8}者/, explain:'"中心词 + 而 + 定语 + 者"式定语后置。'},
+      {re:/[^，。！？；\s]{1,6}(?:一双|一对|一枚|一支|一匹|一石|一箪|一瓢|数|百|千|万)[。！？，,]?$/, explain:'数量词置于中心词之后，属定语后置（数量定语后置）。'}
+    ]
+  }
+];
+
+function analyze(){
+  var txt=document.getElementById('input').value.trim();
+  var out=document.getElementById('result');
+  if(!txt){out.innerHTML='<span class="none">请先输入文言句子。</span>';return;}
+  // split into clauses
+  var clauses=txt.split(/[。！？；\n]+/).map(function(s){return s.trim();}).filter(Boolean);
+  var hits=[];
+  clauses.forEach(function(c){
+    rules.forEach(function(rule){
+      rule.patterns.forEach(function(p){
+        if(p.re.test(c)){
+          hits.push({type:rule.type,clause:c,explain:p.explain});
+        }
+      });
+    });
+  });
+  if(hits.length===0){
+    out.innerHTML='<span class="none">未识别到明显的特殊句式标志。可能为一般陈述句，或需结合上下文判断。</span>';
+    return;
+  }
+  // dedupe
+  var seen={},uniq=[];
+  hits.forEach(function(h){
+    var k=h.type+'|'+h.clause;
+    if(!seen[k]){seen[k]=1;uniq.push(h);}
+  });
+  var html='<div style="font-size:13px;color:#666;margin-bottom:6px">共识别到 '+uniq.length+' 处可能句式：</div>';
+  uniq.forEach(function(h){
+    html+='<div class="hit"><span class="tag">'+h.type+'</span><b>「'+escapeHtml(h.clause)+'」</b><br><span style="color:#555">'+h.explain+'</span></div>';
+  });
+  html+='<div style="font-size:12px;color:#999;margin-top:8px">※ 规则匹配仅供参考，准确分析请结合上下文。</div>';
+  out.innerHTML=html;
+}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>

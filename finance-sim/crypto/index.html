@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌀 币圈合约 · 真实 BTC 历史</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    margin:0; min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 0%, #1a1626 0%, #0d0a14 55%, #050308 100%);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#d8d0e8; padding:16px 12px 40px; user-select:none;
+  }
+  .back { display:inline-block; text-decoration:none; color:#8a7aa0; font-size:13px; margin-bottom:10px;
+    padding:5px 11px; border:1px solid #3a3050; border-radius:20px; }
+  .back:active { background:#201830; }
+  h1 { font-size:22px; text-align:center; color:#f0a840; font-weight:700; letter-spacing:1px; margin:2px 0 4px; }
+  .sub { text-align:center; color:#8070a0; font-size:12px; margin-bottom:12px; line-height:1.6; }
+  .warn { text-align:center; color:#c0a060; font-size:11px; margin-bottom:14px; line-height:1.6;
+    background:#1a1610; border:1px solid #4a3a1c; border-radius:8px; padding:8px 10px; }
+  .warn b { color:#f07060; }
+  .panel { max-width:720px; margin:0 auto; background:linear-gradient(160deg,#1c1828,#100c18);
+    border:1px solid #3a3050; border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+  .toprow { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; }
+  .date { font-size:19px; font-weight:700; color:#f0a840; }
+  .px { font-size:22px; font-weight:700; color:#f0d060; }
+  .info { font-size:12px; color:#9080b0; line-height:1.8; text-align:right; }
+  .info b { color:#d8c8f0; }
+  .ctrl { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  button { background:#2a2440; border:1px solid #4a3a70; color:#d8c8f0; font-size:14px;
+    padding:9px 14px; border-radius:9px; cursor:pointer; font-family:inherit; }
+  button:active { background:#3a3050; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  select { background:#2a2440; border:1px solid #4a3a70; color:#d8c8f0; font-size:14px;
+    padding:9px 10px; border-radius:9px; font-family:inherit; }
+  h3 { font-size:14px; color:#9080b0; margin:14px 0 8px; letter-spacing:1px; }
+  .msg { font-size:13px; color:#f0c060; min-height:20px; margin-top:8px; }
+  .hold { padding:10px 12px; background:#181428; border:1px solid #3a3050; border-radius:10px; margin-bottom:8px; font-size:13px; line-height:1.9; }
+  .rkt { font-size:13px; color:#b0a0d0; margin-top:8px; }
+  .log { max-height:200px; overflow-y:auto; font-size:12px; color:#9080b0; line-height:1.8; }
+  .foot { text-align:center; color:#403858; font-size:10px; margin-top:32px; line-height:1.9; }
+  .ver { text-align:center; color:#302848; font-size:10px; margin-top:10px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; margin-right:6px; }
+  .badge.on { background:#3a2a10; color:#f0c060; border:1px solid #7a5a20; }
+  .kline { width:100%; max-width:680px; background:#0a0810; border:1px solid #3a3050; border-radius:10px; }
+</style>
+</head>
+<body>
+  <a class="back" href="../">← 回模拟金融</a>
+  <h1>🌀 币圈合约</h1>
+  <div class="sub">真实 BTC 历史行情 · 2017-08-17 起 · 币安公开数据<br>永续合约模拟 · 虚拟资金</div>
+  <div class="warn">⚠️ 本游戏模拟的是：<b>币圈的九种死法</b>。资金费率、天地针、拔网线、黑天鹅、提币冻结——<br><b>这些不是游戏设定，是真实发生过的事。</b></div>
+
+  <div class="panel">
+    <div class="toprow">
+      <div>
+        <div class="date" id="curDate">—</div>
+        <div style="font-size:13px;color:#b090d0;font-weight:700" id="coinName">—</div>
+        <div class="px" id="curPx">—</div>
+        <div style="font-size:12px;color:#8070a0;margin-top:2px" id="curChg">—</div>
+      </div>
+      <div class="info">
+        <div>合约余额 <b id="balance">$10,000</b></div>
+        <div>未实现盈亏 <b id="upnl">$0</b></div>
+        <div>权益 <b id="equity">$10,000</b></div>
+      </div>
+    </div>
+    <div class="ctrl">
+      <button id="stepBtn">▶ 下 1 天</button>
+      <button id="step8Btn">⏩ 下 8 小时</button>
+      <select id="stepMode">
+        <option value="day">每次 +1 天</option>
+        <option value="week">每次 +1 周</option>
+        <option value="month">每次 +1 月</option>
+      </select>
+      <button id="resetBtn">↻ 重开</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="rkt" id="fundRate">资金费率：—</div>
+  </div>
+
+  <div class="panel">
+    <h3>⚡ 开仓</h3>
+    <div class="ctrl">
+      <select id="coinSel">
+        <option value="BTC">BTC 比特币</option>
+        <option value="ETH">ETH 以太坊</option>
+        <option value="BNB">BNB 币安币</option>
+        <option value="SOL">SOL Solana</option>
+        <option value="XRP">XRP 瑞波</option>
+        <option value="DOGE">DOGE 狗狗币</option>
+      </select>
+      <select id="levSel">
+        <option value="1">1 倍</option>
+        <option value="3">3 倍</option>
+        <option value="5">5 倍</option>
+        <option value="10">10 倍</option>
+        <option value="20">20 倍</option>
+        <option value="50">50 倍</option>
+        <option value="100">100 倍（币圈常见爆仓档）</option>
+      </select>
+      <button id="openLong" style="background:#1a3a20;border-color:#3a7a40;color:#90e0a0">做多 Long</button>
+      <button id="openShort" style="background:#3a1a20;border-color:#7a3a40;color:#e090a0">做空 Short</button>
+      <button id="closePos" style="background:#3a2a10;border-color:#7a5a20;color:#f0c060">平 仓</button>
+    </div>
+    <div class="rkt" id="posInfo">暂无仓位</div>
+  </div>
+
+  <div class="panel">
+    <h3>📜 记录</h3>
+    <div class="log" id="log"><div style="color:#5a5070">尚无交易</div></div>
+  </div>
+
+  <div class="panel">
+    <h3>📉 <span id="kTitle">BTC</span> 走势</h3>
+    <canvas id="kchart" class="kline" width="680" height="200"></canvas>
+  </div>
+
+  <!-- 2026-10-20 v5 币种档案：只报名号 -->
+  <div class="panel" id="profilePanel">
+    <h3>📋 <span id="pTitle">—</span></h3>
+    <div id="pBody" style="font-size:13px;line-height:2;color:#c8bce0">—</div>
+  </div>
+
+  <div class="foot">🐳 大肥鱼出品 · 数据源 data.binance.vision（公开）· 纯本地回放<br><b style="color:#b08050">币圈没有涨跌停，也没有第二次机会。</b></div>
+  <div class="ver">v1.0.1-数据口径 20261020</div>
+</body>
+
+<script>
+(function(){
+  'use strict';
+  var ALLCOINS=null;        // {BTC:[[...]],ETH:[[...]],...}
+  var DATA=null;            // 当前币种 [[日期,开,收,高,低,量],...]
+  var CURCOIN='BTC';
+  // 2026-10-20 v2 各币种波动画像（用于分档：插针概率、天地针幅度）
+  var COINPROF={
+    BTC: {vol:1.00, label:'比特币', wick:0.006, dropMin:0.08, dropMax:0.25},
+    ETH: {vol:1.15, label:'以太坊', wick:0.008, dropMin:0.09, dropMax:0.28},
+    BNB: {vol:1.05, label:'币安币', wick:0.007, dropMin:0.08, dropMax:0.26},
+    SOL: {vol:1.60, label:'Solana', wick:0.014, dropMin:0.12, dropMax:0.35},
+    XRP: {vol:1.30, label:'瑞波',   wick:0.010, dropMin:0.10, dropMax:0.30},
+    DOGE:{vol:1.80, label:'狗狗币', wick:0.018, dropMin:0.14, dropMax:0.40}
+  };
+  // 2026-10-20 v5 币种档案：只报名号与出身
+  var COINDOSSIER={
+    BTC:{
+      json:'BTC', name:'比特币 Bitcoin', year:'2009 年诞生 · 第一个加密货币'
+    },
+    ETH:{
+      json:'ETH', name:'以太坊 Ethereum', year:'2015 年上线 · 智能合约平台'
+    },
+    BNB:{
+      json:'BNB', name:'币安币 Binance Coin', year:'2017 年发行 · 交易所代币'
+    },
+    SOL:{
+      json:'SOL', name:'Solana', year:'2020 年上线 · 高性能公链'
+    },
+    XRP:{
+      json:'XRP', name:'瑞波币 Ripple', year:'2012 年发行 · 跨境支付代币'
+    },
+    DOGE:{
+      json:'DOGE', name:'狗狗币 Dogecoin', year:'2013 年诞生 · 起初是个玩笑'
+    }
+  };
+  function renderDossier(){
+    var d=COINDOSSIER[CURCOIN]; if(!d) return;
+    document.getElementById('pTitle').textContent=CURCOIN;
+    document.getElementById('coinName').textContent=d.name;
+    // 2026-10-20 v6 真实性声明：本币数据实际起止日期（从数据里取，不写死）
+    var d0=DATA&&DATA[0]?DATA[0][0]:'—';
+    var d1=DATA&&DATA.length?DATA[DATA.length-1][0]:'—';
+    var n=DATA?DATA.length:0;
+    document.getElementById('pBody').innerHTML=
+      '<div style="font-size:16px;font-weight:700;color:#f0c060;margin-bottom:4px">'+d.name+'</div>'+
+      '<div style="font-size:12px;color:#9080b0;margin-bottom:10px">'+d.year+'</div>'+
+      '<div style="padding:8px 12px;background:#12201a;border-left:3px solid #2a7a50;border-radius:6px;font-size:12px;color:#90d0a8;line-height:1.9">'+
+        '✅ <b>币安官方公开数据 · 原样未改</b><br>'+
+        '计价：<b>USDT</b> · 日线按 <b>UTC</b> 切分<br>'+
+        '数据区间：<b>'+d0+'</b> → <b>'+d1+'</b> · 共 <b>'+n+'</b> 个交易日<br>'+
+        '<span style="color:#70a088">来源：data.binance.vision（官方公开归档）</span>'+
+      '</div>';
+  }
+  function switchCoin(code){
+    CURCOIN=code;
+    DATA=ALLCOINS[code];
+    if(!DATA||!DATA.length){ setMsg('该币种暂无数据'); return; }
+    var cf=prof();
+    document.getElementById('coinName').textContent=cf.label+' / USDT';
+    document.getElementById('kTitle').textContent=code;
+    renderDossier();   // 2026-10-20 v3 币种档案
+    reset();
+    setMsg('已切换到 '+code+'（'+cf.label+'）· 波动系数 '+cf.vol.toFixed(2)+' · '+DATA[0][0]+' 起');
+  }
+  document.getElementById('coinSel').onchange=function(e){ switchCoin(e.target.value); };
+})();
+</script>
+</body>
+</html>

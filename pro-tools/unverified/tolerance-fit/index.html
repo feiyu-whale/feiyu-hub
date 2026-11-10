@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公差配合查询工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;line-height:1.6;color:#333;background:#f5f7fa;padding-bottom:50px}
+header{background:#2c3e50;color:#fff;padding:18px 20px;text-align:center}
+header h1{font-size:1.5em;margin-bottom:4px}
+header p{font-size:.85em;opacity:.8}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+.card{background:#fff;padding:16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:14px}
+.card h2{font-size:1.05em;color:#2c3e50;margin-bottom:12px;border-left:3px solid #3498db;padding-left:8px}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.fg{flex:1;min-width:130px}
+.fg label{display:block;margin-bottom:5px;font-weight:600;font-size:.85em;color:#555}
+.fg input,.fg select{width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:5px;font-size:.95em;font-family:inherit}
+.fg input:focus,.fg select:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15)}
+.btn{background:#3498db;color:#fff;border:none;padding:10px 26px;border-radius:5px;cursor:pointer;font-size:.95em}
+.btn:hover{background:#2980b9}
+.res{margin-top:14px}
+.line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e3e9ef;font-size:.92em}
+.line:last-child{border-bottom:none}
+.line .k{color:#666}
+.line .v{font-weight:600;color:#2c3e50}
+.badge{display:inline-block;padding:3px 12px;border-radius:4px;font-weight:600;font-size:.85em}
+.b-clear{background:#e8f5e9;color:#2e7d32}
+.b-trans{background:#fff8e1;color:#f57c00}
+.b-inter{background:#e3f2fd;color:#1565c0}
+.err{color:#e74c3c;font-size:.9em;padding:6px 0}
+.hint{font-size:.78em;color:#95a5a6;margin-top:10px;line-height:1.6}
+.ver{text-align:center;font-size:11px;color:#b0b8c1;margin-top:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>公差配合查询工具</h1>
+  <p>孔轴配合类型判定 · 间隙/过盈/过渡</p>
+</header>
+<div class="wrap">
+
+  <div class="card">
+    <h2>输入</h2>
+    <div class="err">⚠ 本工具参数为经验示例值，未经任何标准核对，结果不可作为标准依据，请自行核实后使用。</div>
+    <div class="row">
+      <div class="fg">
+        <label>基本尺寸（mm，适用范围 0.1~5000）</label>
+        <input type="number" id="size" value="30" min="0.1" max="5000" step="0.1">
+      </div>
+      <div class="fg">
+        <label>孔的下偏差（mm）</label>
+        <input type="number" id="holeLo" value="0" step="0.001">
+      </div>
+      <div class="fg">
+        <label>孔的上偏差（mm）</label>
+        <input type="number" id="holeHi" value="0.021" step="0.001">
+      </div>
+    </div>
+    <div class="row">
+      <div class="fg">
+        <label>轴的下偏差（mm）</label>
+        <!-- 默认值 -0.020/-0.007 为示例经验值，未经标准核对 -->
+        <input type="number" id="shaftLo" value="-0.020" step="0.001">
+      </div>
+      <div class="fg">
+        <label>轴的上偏差（mm）</label>
+        <input type="number" id="shaftHi" value="-0.007" step="0.001">
+      </div>
+    </div>
+    <button class="btn" id="go">计算配合</button>
+  </div>
+
+  <div class="card">
+    <h2>结果</h2>
+    <div class="res" id="res">
+      <div class="err" id="errMsg" style="display:none"></div>
+      <div id="body"></div>
+    </div>
+    <div class="hint">
+      判定规则（Xmax=Dmax−dmin、Xmin=Dmin−dmax，与 GB/T 1800.1 定义一致但源码未附标准原文，请自行查证）：最小间隙 &gt; 0 为间隙配合；最大间隙 &lt; 0（即最大过盈为正）为过盈配合；跨零为过渡配合。<br>
+      偏差按 ISO 286 / GB/T 1800 习惯输入：上偏差减下偏差即公差带宽度，负号表示在基本尺寸以下。<br>
+      <strong style="color:#e74c3c">注意：本工具各默认参数（如孔/轴默认偏差、尺寸适用范围 0.1~5000 mm）均为经验示例值，未经任何标准核对，请自行核实后再使用。</strong>
+    </div>
+  </div>
+
+  <div class="ver">v1.0.2-公差配合查询 20261022-修审查问题 20261108</div>
+</div>
+
+<script>
+function num(id){ return parseFloat(document.getElementById(id).value); }
+
+function calc(){
+  var errEl=document.getElementById('errMsg'), body=document.getElementById('body');
+  var d=num('size'), hl=num('holeLo'), hh=num('holeHi'), sl=num('shaftLo'), sh=num('shaftHi');
+
+  var vals=[d,hl,hh,sl,sh];
+  for(var i=0;i<vals.length;i++){
+    if(!isFinite(vals[i])){
+      errEl.style.display='block'; errEl.textContent='请填写完整的数值';
+      body.innerHTML=''; return;
+    }
+  }
+  if(d<=0){ errEl.style.display='block'; errEl.textContent='基本尺寸必须大于 0'; body.innerHTML=''; return; }
+  if(d<0.1||d>5000){ errEl.style.display='block'; errEl.textContent='基本尺寸超出适用范围（0.1 ~ 5000 mm）'; body.innerHTML=''; return; }
+  if(hh<hl){ errEl.style.display='block'; errEl.textContent='孔的上偏差不能小于下偏差'; body.innerHTML=''; return; }
+  if(sh<sl){ errEl.style.display='block'; errEl.textContent='轴的上偏差不能小于下偏差'; body.innerHTML=''; return; }
+
+  errEl.style.display='none';
+
+  // 孔 Dmax/Dmin，轴 dmax/dmin
+  var Dmax=d+hh, Dmin=d+hl, dmax=d+sh, dmin=d+sl;
+  // 间隙：孔减轴
+  var Xmax=Dmax-dmin;   // 最大间隙
+  var Xmin=Dmin-dmax;   // 最小间隙（负值为过盈）
+  var holeTol=hh-hl, shaftTol=sh-sl;
+
+  var type, cls;
+  if(Xmin>=0){ type='间隙配合'; cls='b-clear'; }
+  else if(Xmax<=0){ type='过盈配合'; cls='b-inter'; }
+  else { type='过渡配合'; cls='b-trans'; }
+
+  function f(n){ return n.toFixed(4)+' mm'; }
+
+  var h='';
+  h+=line('配合类型','<span class="badge '+cls+'">'+type+'</span>');
+  h+=line('最大间隙 Xmax',f(Xmax));
+  h+=line('最小间隙 Xmin',f(Xmin));
+  if(Xmin<0) h+=line('最大过盈 Ymax',f(-Xmin));
+  if(Xmax<0) h+=line('最小过盈 Ymin',f(-Xmax));
+  h+=line('孔公差',f(holeTol));
+  h+=line('轴公差',f(shaftTol));
+  h+=line('配合公差',f(holeTol+shaftTol));
+  h+=line('孔极限尺寸',f(Dmin)+' ~ '+f(Dmax));
+  h+=line('轴极限尺寸',f(dmin)+' ~ '+f(dmax));
+  body.innerHTML=h;
+
+}
+
+function line(k,v){
+  return '<div class="line"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>';
+}
+
+document.getElementById('go').addEventListener('click',calc);
+['size','holeLo','holeHi','shaftLo','shaftHi'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',calc);
+});
+calc();
+</script>
+</body>
+</html>

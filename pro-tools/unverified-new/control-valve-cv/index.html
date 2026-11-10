@@ -1,0 +1,158 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>调节阀流量系数 Cv 计算器</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#0a1628;color:#c8d8ec;font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif;padding:12px 12px 34px}
+h1{font-size:16px;color:#4a9eff;margin:0 0 10px;line-height:1.3}
+.tabbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tabbar button{background:#12233d;color:#9fb8d6;border:1px solid #1d3557;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+.tabbar button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+.panel{display:none}.panel.on{display:block}
+.card{background:#0f1f36;border:1px solid #1d3557;border-radius:8px;padding:12px;margin-bottom:10px}
+.card h2{font-size:13px;color:#4a9eff;margin:0 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.f{flex:1 1 140px;min-width:0;display:flex;flex-direction:column;gap:3px}
+.f.b{justify-content:flex-end}
+label{font-size:12px;color:#8fa8c4}
+input,select{background:#0a1628;border:1px solid #24405f;color:#e2ecf7;padding:6px;border-radius:5px;font-size:13px;width:100%;min-width:0}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.go{background:#4a9eff;color:#04101f;border:0;padding:9px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px;width:100%}
+.err{color:#ff6b6b;font-size:12px;min-height:15px;margin-top:6px}
+.res{display:flex;flex-wrap:wrap;gap:8px}
+.k{flex:1 1 130px;min-width:0;background:#0a1628;border:1px solid #1d3557;border-radius:6px;padding:8px}
+.k b{display:block;font-size:11px;color:#8fa8c4;font-weight:400}
+.k span{font-size:15px;color:#7fc4ff;font-weight:700;word-break:break-all}
+.ok{color:#39d98a!important}.bad{color:#ff8f5e!important}
+pre{background:#0a1628;border:1px solid #1d3557;border-radius:6px;padding:10px;overflow:auto;font-size:11px;line-height:1.5;max-height:62vh;margin:0}
+.tst{font-size:12px;padding:4px 0;border-bottom:1px dashed #1d3557;color:#39d98a}
+.tst.b{color:#ff6b6b}
+.doc{font-size:13px;line-height:1.8}.doc code{color:#7fc4ff}
+.ver{position:fixed;right:6px;bottom:4px;font-size:11px;color:#4a6b8f;background:#0a1628cc;padding:2px 6px;border-radius:4px}
+.hid{display:none}
+@media(max-width:520px){.f{flex:1 1 100%}}
+</style></head><body>
+<h1>调节阀流量系数 Cv / Kv 计算器（IEC 60534）</h1>
+<div class="tabbar">
+<button class="on" data-t="calc">计算工具</button>
+<button data-t="src">JS 源码</button>
+<button data-t="test">单元测试</button>
+<button data-t="doc">使用说明</button>
+</div>
+
+<div id="calc" class="panel on">
+<div class="card"><h2>工况输入</h2>
+<div class="row"><div class="f"><label>介质类型</label><select id="mt" onchange="sw()"><option value="l">液体</option><option value="g">气体 / 蒸汽</option></select></div></div>
+<div class="row liq" style="margin-top:8px">
+<div class="f"><label>流量 Q (m³/h)</label><input id="Q" value="30"></div>
+<div class="f"><label>相对密度 SG (水=1)</label><input id="SG" value="1"></div>
+<div class="f"><label>P1 阀前绝压 (bar a)</label><input id="P1" value="5"></div>
+<div class="f"><label>P2 阀后绝压 (bar a)</label><input id="P2" value="3.5"></div>
+<div class="f"><label>Pv 饱和蒸汽压 (bar a)</label><input id="Pv" value="0.03"></div>
+<div class="f"><label>Pc 临界压力 (bar a)</label><input id="Pc" value="221.2"></div>
+<div class="f"><label>FL 压力恢复系数</label><input id="FL" value="0.9"></div>
+</div>
+<div class="row gas hid" style="margin-top:8px">
+<div class="f"><label>标准流量 Qn (Nm³/h,0℃)</label><input id="Qn" value="500"></div>
+<div class="f"><label>相对密度 SG (空气=1)</label><input id="SGG" value="0.6"></div>
+<div class="f"><label>温度 T (℃)</label><input id="TT" value="20"></div>
+<div class="f"><label>P1 阀前绝压 (bar a)</label><input id="G1" value="8"></div>
+<div class="f"><label>P2 阀后绝压 (bar a)</label><input id="G2" value="5"></div>
+<div class="f"><label>比热比 γ</label><input id="GAM" value="1.3"></div>
+<div class="f"><label>xT 压差比系数</label><input id="XT" value="0.7"></div>
+</div>
+<div class="row" style="margin-top:8px">
+<div class="f"><label>阀门额定 Cv</label><input id="CVR" value="60"></div>
+<div class="f"><label>流量特性</label><select id="CH"><option value="lin">线性</option><option value="eq">等百分比 (R=50)</option></select></div>
+<div class="f b"><button class="go" onclick="run()">计 算</button></div>
+</div>
+</div>
+<div class="card"><h2>计算结果</h2><div id="out" class="res"></div>
+<div id="frm" style="margin-top:8px;font-size:11px;color:#6f8aab;line-height:1.6"></div>
+<div id="msg" class="err"></div></div>
+</div>
+
+<div id="src" class="panel"><div class="card"><h2>JavaScript 源码（纯函数，可单独测试）</h2><pre id="srcbox"></pre></div></div>
+
+<div id="test" class="panel"><div class="card"><h2>单元测试</h2>
+<button class="go" onclick="runT()">运行全部测试</button><div id="tres" style="margin-top:10px"></div></div></div>
+
+<div id="doc" class="panel"><div class="card"><h2>使用说明</h2><div class="doc">
+<b>1. 依据标准</b><br>
+IEC 60534-2-1《工业过程控制阀 第2-1部分：流通能力 安装条件下流体流量的计算公式》，等同采标为 <code>GB/T 17213.2</code>。可压缩流体常数 N6=63.3（W: lb/h，P: psia，ρ: lb/ft³）及液体公式常数取自 Fisher/Emerson《Control Valve Handbook》第 5 版相关章节。<br>
+<b>2. 液体</b><br>
+<code>Kv = Q·√(SG/ΔPeff)</code>，<code>Cv = 1.156·Kv</code>（Q: m³/h，ΔP: bar）。<br>
+阻塞流判据 <code>ΔP_allow = FL²·(P1 − Ff·Pv)</code>，<code>Ff = 0.96 − 0.28√(Pv/Pc)</code>；当 ΔP ≥ ΔP_allow 时按 ΔP_allow 计算。<br>
+<b>3. 闪蒸与空化</b><br>
+P2 &lt; Pv → 闪蒸；未闪蒸但已达阻塞差压 → 空化（缩流断面压力降至 Pv）。两者均需更换材质或调整工艺。<br>
+<b>4. 气体 / 蒸汽</b><br>
+<code>Cv = W / (N6·Y·√(x·P1·ρ1))</code>，<code>Y = 1 − x/(3·Fγ·xT) ≥ 0.667</code>，<code>Fγ = γ/1.4</code>，阻塞判据 <code>x ≥ Fγ·xT</code>。xT 取阀门样本值（直通单座阀典型 0.7）。<br>
+<b>5. 开度校核</b><br>
+线性特性 <code>Cv(h)=Cvr·h</code>；等百分比 <code>Cv(h)=Cvr·50^(h−1)</code>。<b>本式为行业经验简化估算，未经标准核对</b>，精确选型请用制造商流量特性表。建议工作开度 20%~80%。<br>
+<b>6. 物性数据</b><br>
+Pv、Pc 请查《化学工程手册》或 NIST 数据库；本工具不内置介质库，避免使用未经核对的近似物性。
+</div></div></div>
+
+<div class="ver">v1.0.0-control-valve-cv 20261108</div>
+<script>
+function N(id,n,mi,ma){var e=document.getElementById(id),s=e.value.trim();if(s==='')throw n+' 不能为空';var v=Number(s);if(!isFinite(v))throw n+' 必须是数字';if(v<mi)throw n+' 不能小于 '+mi;if(v>ma)throw n+' 不能大于 '+ma;return v;}
+function FF(Pv,Pc){var r=Pv/Pc;if(!(r>0))return 0.96;if(r>1)r=1;return 0.96-0.28*Math.sqrt(r);}
+function cvLiquid(Q,SG,P1,P2,Pv,Pc,FL){var dP=P1-P2,Ff=FF(Pv,Pc),dPa=FL*FL*(P1-Ff*Pv);if(!(dPa>1e-6))dPa=1e-6;var ch=dP>=dPa,dPe=ch?dPa:dP,Kv=Q*Math.sqrt(SG/dPe);return{Cv:1.156*Kv,Kv:Kv,dP:dP,dPa:dPa,choked:ch,flash:P2<Pv,cav:(!(P2<Pv))&&ch,Ff:Ff};}
+function cvGas(W,SG,T,P1,P2,g,xt){var P1p=P1*14.5038,rho1=SG*1.293*(P1/1.01325)*(273.15/(273.15+T)),rf=rho1*0.062428,x=(P1-P2)/P1,xc=(g/1.4)*xt;if(!(xc>0))xc=1e-6;var ch=x>=xc,xe=ch?xc:x,Y=1-xe/(3*xc);if(Y<0.667)Y=0.667;var Cv=(W*2.20462)/(63.3*Y*Math.sqrt(xe*P1p*rf));return{Cv:Cv,Kv:Cv/1.156,x:x,xc:xc,choked:ch,Y:Y,rho1:rho1};}
+function openPct(Cvq,Cvr,ch){if(!(Cvq>0)||!(Cvr>0))return 0;return ch==='eq'?(1+Math.log(Cvq/Cvr)/Math.log(50)):(Cvq/Cvr);}
+function fm(x){if(!isFinite(x))return '—';var a=Math.abs(x);return a>=100?x.toFixed(1):a>=1?x.toFixed(2):x.toPrecision(3);}
+function k(l,v,u,c){return '<div class="k"><b>'+l+'</b><span'+(c?' class="'+c+'"':'')+'>'+v+(u?' '+u:'')+'</span></div>';}
+function sw(){var l=document.getElementById('mt').value==='l';document.querySelectorAll('.liq').forEach(function(e){e.classList.toggle('hid',!l);});document.querySelectorAll('.gas').forEach(function(e){e.classList.toggle('hid',l);});}
+function run(){
+var msg=document.getElementById('msg'),out=document.getElementById('out'),frm=document.getElementById('frm');msg.textContent='';
+try{
+var mt=document.getElementById('mt').value,Cvr=N('CVR','阀门额定 Cv',0.001,100000),ch=document.getElementById('CH').value,r,s='';
+if(mt==='l'){
+var Q=N('Q','流量 Q',0.0001,1e6),SG=N('SG','相对密度 SG',0.001,20),P1=N('P1','阀前绝压 P1',0.001,1000),P2=N('P2','阀后绝压 P2',0,1000),Pv=N('Pv','饱和蒸汽压 Pv',0,1000),Pc=N('Pc','临界压力 Pc',0.01,1000),FL=N('FL','压力恢复系数 FL',0.1,1);
+if(P2>=P1)throw 'P2 必须小于 P1';
+if(Pv>Pc)throw 'Pv 不能大于 Pc';
+r=cvLiquid(Q,SG,P1,P2,Pv,Pc,FL);
+s+=k('实际差压 ΔP',fm(r.dP),'bar')+k('允许差压 ΔP_allow',fm(r.dPa),'bar');
+s+=k('阻塞流判定',r.choked?'是（按允许差压计算）':'否','',r.choked?'bad':'ok');
+s+=k('闪蒸 / 空化',r.flash?'闪蒸':(r.cav?'空化':'无'),'',(r.flash||r.cav)?'bad':'ok');
+s+=k('Ff 液体临界压力比',fm(r.Ff),'');
+frm.textContent='公式：Kv=Q·√(SG/ΔPeff)，Cv=1.156·Kv；ΔP_allow=FL²(P1−Ff·Pv)，Ff=0.96−0.28√(Pv/Pc)。依据 IEC 60534-2-1 / GB/T 17213.2；Cv-Kv 换算系数 1.156 见 Control Valve Handbook。';
+}else{
+var Qn=N('Qn','标准流量 Qn',0.0001,1e7),SGG=N('SGG','相对密度 SG',0.001,20),T=N('TT','温度 T',-100,1000),G1=N('G1','阀前绝压 P1',0.001,1000),G2=N('G2','阀后绝压 P2',0,1000),GAM=N('GAM','比热比 γ',1,1.8),XT=N('XT','压差比系数 xT',0.1,1);
+if(G2>=G1)throw 'P2 必须小于 P1';
+r=cvGas(Qn*SGG*1.293,SGG,T,G1,G2,GAM,XT);
+s+=k('压差比 x',fm(r.x),'')+k('阻塞临界 xc=Fγ·xT',fm(r.xc),'');
+s+=k('膨胀系数 Y',fm(r.Y),'')+k('上游密度 ρ1',fm(r.rho1),'kg/m³');
+s+=k('阻塞流判定',r.choked?'是（已按临界压差计算）':'否','',r.choked?'bad':'ok');
+frm.textContent='公式：Cv=W/(N6·Y·√(x·P1·ρ1))，N6=63.3（W: lb/h，P: psia，ρ: lb/ft³）；Y=1−x/(3FγxT)≥0.667，Fγ=γ/1.4。依据 IEC 60534-2-1 / GB/T 17213.2（可压缩流体）。';
+}
+var op=openPct(r.Cv,Cvr,ch),st,cls;
+if(op>1){st='阀门能力不足（开度>100%）';cls='bad';}
+else if(op>0.8){st='开度偏大，建议放大阀门';cls='bad';}
+else if(op<0.2){st='开度偏小，阀门选型偏大';cls='bad';}
+else{st='开度正常（20%~80%）';cls='ok';}
+s=k('所需流量系数 Cv',fm(r.Cv),'')+k('所需流量系数 Kv',fm(r.Kv),'')+s;
+s+=k('阀门开度',fm(op*100),'%')+k('开度校核',st,'',cls);
+out.innerHTML=s;
+frm.textContent+=' 开度估算：线性 Cv(h)=Cvr·h；等百分比 Cv(h)=Cvr·R^(h−1)，R=50（行业经验简化式，未经标准核对）。';
+}catch(e){out.innerHTML='';frm.textContent='';msg.textContent='⚠ '+(e&&e.message?e.message:e);}
+}
+var T=[
+['液体非阻塞流 Cv≈28.32',function(){return Math.abs(cvLiquid(30,1,5,3.5,0.03,221.2,0.9).Cv-28.32)<0.05;}],
+['Kv=Q·√(SG/ΔP)',function(){return Math.abs(cvLiquid(30,1,5,3.5,0.03,221.2,0.9).Kv-24.495)<0.005;}],
+['ΔP≥ΔP_allow 判为阻塞流',function(){return cvLiquid(30,1,10,1,0.03,221.2,0.9).choked;}],
+['阻塞且P2>Pv 判为空化',function(){return cvLiquid(30,1,10,1,0.03,221.2,0.9).cav;}],
+['P2<Pv 判为闪蒸',function(){return cvLiquid(30,1,5,0.02,0.03,221.2,0.9).flash;}],
+['ΔP_allow=FL²(P1−Ff·Pv)',function(){var r=cvLiquid(30,1,5,3.5,0.03,221.2,0.9);return Math.abs(r.dPa-0.81*(5-FF(0.03,221.2)*0.03))<1e-9;}],
+['Ff=0.96−0.28√(Pv/Pc)≈0.9567',function(){return Math.abs(FF(0.03,221.2)-0.9567)<0.0005;}],
+['气体 x≥Fγ·xT 判为阻塞',function(){return cvGas(1000,1,20,10,2,1.4,0.7).choked;}],
+['气体膨胀系数 Y 下限 2/3',function(){return Math.abs(cvGas(1000,1,20,10,2,1.4,0.7).Y-2/3)<1e-6;}],
+['线性特性开度 Cv 30/60=50%',function(){return Math.abs(openPct(30,60,'lin')-0.5)<1e-9;}],
+['等百分比满开度 Cv=Cvr',function(){return Math.abs(openPct(60,60,'eq')-1)<1e-9;}]
+];
+function runT(){var h='',p=0;T.forEach(function(t,i){var ok;try{ok=t[1]()===true;}catch(e){ok=false;}if(ok)p++;h+='<div class="tst'+(ok?'':' b')+'">'+(ok?'✓ 通过':'✗ 失败')+' #'+(i+1)+' '+t[0]+'</div>';});
+document.getElementById('tres').innerHTML='<b>'+p+' / '+T.length+' 通过</b>'+h;}
+document.querySelectorAll('.tabbar button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('.tabbar button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');
+document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById(b.dataset.t).classList.add('on');};});
+document.getElementById('srcbox').textContent=document.querySelector('script').textContent;
+</script>
+</body></html>

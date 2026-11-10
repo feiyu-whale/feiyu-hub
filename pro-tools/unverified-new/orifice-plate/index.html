@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>孔板流量计计算器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe2f3;font:14px/1.5 system-ui,Arial,sans-serif}
+header{padding:12px 14px;background:#0f2138;border-bottom:2px solid #4a9eff}
+h1{margin:0;font-size:17px;color:#4a9eff}
+nav{display:flex;gap:6px;padding:8px 14px;background:#0d1b2e;flex-wrap:wrap}
+nav button{background:#132a45;color:#9fc3e8;border:1px solid #24476f;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+nav button.on{background:#4a9eff;color:#04101f;font-weight:700}
+main{padding:12px;max-width:920px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.f{background:#0f2138;border:1px solid #1e3a5c;border-radius:8px;padding:8px}
+label{display:block;font-size:12px;color:#7fb0e0;margin-bottom:3px}
+input,select{width:100%;background:#0a1628;border:1px solid #24476f;color:#dbeafe;padding:6px;border-radius:5px;font-size:13px}
+input:focus,select:focus{outline:1px solid #4a9eff}
+.btn{background:#4a9eff;color:#04101f;border:0;padding:9px 18px;border-radius:6px;font-weight:700;cursor:pointer;margin:10px 6px 0 0;font-size:13px}
+.res{background:#0f2138;border:1px solid #1e3a5c;border-radius:8px;padding:10px;margin-top:10px;overflow-x:auto}
+.err{color:#ff8a8a}.ok{color:#5ee08a}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:4px 6px;border-bottom:1px solid #1a3350;word-break:break-word}
+td:last-child{text-align:right;color:#9fe0ff;white-space:nowrap}
+.note{font-size:12px;color:#7f9dbb;margin-top:8px;line-height:1.6}
+footer{position:fixed;right:8px;bottom:8px;font-size:11px;color:#5b7fa5;background:#0a1628;padding:3px 6px;border-radius:4px}
+@media(max-width:480px){.grid{grid-template-columns:1fr 1fr}td{font-size:12px}td:last-child{white-space:normal}}
+</style></head><body>
+<header><h1>孔板流量计计算器 · GB/T 2624 / ISO 5167</h1></header>
+<nav><button class="on" data-v="calc">计算工具</button><button data-v="test">单元测试与说明</button></nav>
+<main>
+<div id="calc">
+<div class="grid">
+<div class="f"><label>管道内径 D (mm, 20℃)</label><input id="D" value="100"></div>
+<div class="f"><label>孔板开孔 d (mm, 20℃)</label><input id="d" value="60"></div>
+<div class="f"><label>差压 Δp (kPa)</label><input id="dp" value="25"></div>
+<div class="f"><label>上游绝压 p1 (kPa)</label><input id="p1" value="500"></div>
+<div class="f"><label>工况温度 t (℃)</label><input id="t" value="20"></div>
+<div class="f"><label>流体密度 ρ (kg/m³)</label><input id="rho" value="1000"></div>
+<div class="f"><label>动力粘度 μ (mPa·s)</label><input id="mu" value="1"></div>
+<div class="f"><label>等熵指数 κ</label><input id="kap" value="1.4"></div>
+<div class="f"><label>取压方式</label><select id="tap"><option value="corner">角接取压</option><option value="flange">法兰取压</option></select></div>
+<div class="f"><label>孔板/管道材料</label><select id="mat"><option value="17e-6">不锈钢</option><option value="11.5e-6">碳钢</option><option value="23e-6">铝</option><option value="17.5e-6">铜</option></select></div>
+<div class="f"><label>流体相态</label><select id="ph"><option value="l">液体(ε=1)</option><option value="g">气体(算ε)</option></select></div>
+</div>
+<button class="btn" id="go">开始计算</button><button class="btn" id="rst">重置</button>
+<div class="res" id="out">请输入参数后点击「开始计算」。</div>
+<div class="note">依据：<b>GB/T 2624.1-2006</b>、<b>GB/T 2624.2-2006</b>《用安装在圆形截面管道中的差压装置测量满管流体流量》（等同采用 ISO 5167-2:2003）。流出系数采用 Reader-Harris/Gallagher(1998) 公式（ISO 5167-2 附录 A）；可膨胀性系数按 ISO 5167-2 式(4)。适用条件：D=50~1000 mm，β=0.10~0.75，Re_D≥5000。材料线膨胀系数为常用工程值（不锈钢 17×10⁻⁶/K、碳钢 11.5×10⁻⁶/K、铝 23×10⁻⁶/K、铜 17.5×10⁻⁶/K），属行业经验值，未经标准逐条核对。</div>
+</div>
+<div id="test" style="display:none">
+<button class="btn" id="run">运行全部测试</button>
+<div class="res" id="tout">尚未运行。</div>
+<div class="note">测试覆盖：流出系数公式数值区间、可膨胀性系数数值、直径比超范围异常校验。所有计算函数（Cc、Ec、calc）均为纯函数，可独立调用。</div>
+</div>
+</main>
+<footer>v1.0.0-orifice-plate 20261108</footer>
+<script>
+function Cc(b,Re,L){var b2=b*b,b4=b2*b2,b8=b4*b4,A=Math.pow(19000*b/Re,.8),M=2*L/(1-b);
+return .5961+.0261*b2-.216*b8+.000521*Math.pow(1e6*b/Re,.7)+(.0188+.0063*A)*Math.pow(b,3.5)*Math.pow(1e6/Re,.3)+(.043+.08*Math.exp(-10*L)-.123*Math.exp(-7*L))*(1-.11*A)*b4/(1-b4)-.031*(M-.8*Math.pow(M,1.1))*Math.pow(b,1.3);}
+function Ec(b,k,dp,p1){var b2=b*b,b4=b2*b2,b8=b4*b4;return 1-(.351+.256*b4+.93*b8)*Math.sqrt(1-Math.pow(1-dp/p1,1/k));}
+function calc(x){
+var D=x.D/1000,d=x.d/1000;
+if(!isFinite(D)||D<.05||D>1)throw new Error('管道内径 D 应在 50~1000 mm 范围内');
+if(!isFinite(d)||d<=0||d>=D)throw new Error('孔板开孔 d 必须大于 0 且小于管道内径 D');
+if(!isFinite(x.t)||x.t<-40||x.t>600)throw new Error('温度 t 应在 -40~600 ℃ 范围内');
+if(!(x.dp>0))throw new Error('差压 Δp 必须为正值');
+if(!(x.p1>0))throw new Error('上游绝压 p1 必须为正值');
+if(x.dp>=x.p1)throw new Error('差压 Δp 必须小于上游绝压 p1');
+if(!(x.rho>0))throw new Error('密度 ρ 必须为正值');
+if(!(x.mu>0))throw new Error('动力粘度 μ 必须为正值');
+if(!(x.kap>0))throw new Error('等熵指数 κ 必须为正值');
+var kd=1+x.lam*(x.t-20),Dt=D*kd,dt=d*kd,b=dt/Dt;
+if(b<.1||b>.75)throw new Error('直径比 β='+b.toFixed(4)+' 超出 GB/T 2624 适用区间 0.10~0.75');
+var dp=x.dp*1000,p1=x.p1*1000,ep=(x.ph==='l')?1:Ec(b,x.kap,dp,p1),L=(x.tap==='flange')?.0254/Dt:0;
+var b4=b*b*b*b,Re=1e6,C=.6,qm=0,i,R2;
+for(i=0;i<100;i++){C=Cc(b,Re,L);qm=C*ep*(Math.PI/4)*dt*dt*Math.sqrt(2*dp*x.rho)/Math.sqrt(1-b4);R2=4*qm/(Math.PI*Dt*x.mu/1000);if(Math.abs(R2-Re)<1e-6*Re){Re=R2;break;}Re=R2;}
+if(Re<5000)throw new Error('雷诺数 Re='+Re.toFixed(0)+' 低于 GB/T 2624 规定的下限 5000，结果不适用');
+return{qm:qm,qh:qm*3600,qv:qm/x.rho*3600,v:qm/(x.rho*Math.PI/4*Dt*Dt),C:C,ep:ep,b:b,Re:Re,Dt:Dt*1000,dt:dt*1000};}
+var TST=[
+{n:'流出系数 C（β=0.5，Re=1e5，角接取压）应在 0.600~0.612',fn:function(){var c=Cc(.5,1e5,0);return c>.6&&c<.612}},
+{n:'可膨胀性系数 ε（β=0.5，κ=1.4，Δp/p1=0.05）应≈0.9297',fn:function(){var e=Ec(.5,1.4,25000,500000);return Math.abs(e-.9297)<.001}},
+{n:'直径比 β=0.90 超范围应抛出含「直径比」的中文异常',fn:function(){try{calc({D:100,d:90,dp:25,p1:500,t:20,rho:1000,mu:1,kap:1.4,tap:'corner',lam:17e-6,ph:'l'});return false}catch(e){return e.message.indexOf('直径比')>=0}}}
+];
+function num(id,nm,neg){var s=(document.getElementById(id).value||'').trim();if(s==='')throw new Error('「'+nm+'」不能为空');var n=Number(s);if(!isFinite(n))throw new Error('「'+nm+'」必须为有效数字');if(!neg&&n<=0)throw new Error('「'+nm+'」必须为正值');return n;}
+function R(a,b){return '<tr><td>'+a+'</td><td>'+b+'</td></tr>';}
+function go(){var o=document.getElementById('out');
+try{
+var x={D:num('D','管道内径 D'),d:num('d','孔板开孔 d'),dp:num('dp','差压 Δp'),p1:num('p1','上游绝压 p1'),t:num('t','温度 t',1),rho:num('rho','密度 ρ'),mu:num('mu','动力粘度 μ'),kap:num('kap','等熵指数 κ'),lam:Number(document.getElementById('mat').value),tap:document.getElementById('tap').value,ph:document.getElementById('ph').value};
+var r=calc(x),h='<table>';
+h+=R('质量流量 qm',r.qm.toFixed(4)+' kg/s');
+h+=R('质量流量 qm',r.qh.toFixed(2)+' kg/h');
+h+=R('体积流量 qv',r.qv.toFixed(3)+' m³/h');
+h+=R('管道内平均流速 v',r.v.toFixed(3)+' m/s');
+h+=R('流出系数 C',r.C.toFixed(5));
+h+=R('可膨胀性系数 ε',r.ep.toFixed(5));
+h+=R('直径比 β',r.b.toFixed(5));
+h+=R('雷诺数 Re_D',r.Re.toFixed(0));
+h+=R('工作温度下 D_t',r.Dt.toFixed(3)+' mm');
+h+=R('工作温度下 d_t',r.dt.toFixed(3)+' mm');
+h+='</table><div class="note">qm = C·ε·(π/4)d_t²·√(2Δp·ρ₁)/√(1−β⁴)，其中 C 用 Reader-Harris/Gallagher 式对 Re_D 迭代至自洽。</div>';
+o.innerHTML=h;
+}catch(e){o.innerHTML='<span class="err">✘ '+e.message+'</span>';}}
+document.getElementById('go').onclick=go;
+document.getElementById('rst').onclick=function(){location.reload()};
+document.getElementById('run').onclick=function(){
+var h='',p=0,i,t,ok,msg;
+for(i=0;i<TST.length;i++){t=TST[i];ok=false;msg='';
+try{ok=t.fn()}catch(e){msg=e.message}
+if(ok)p++;
+h+='<div class="'+(ok?'ok':'err')+'">'+(ok?'✔ 通过 ':'✘ 失败 ')+(i+1)+'. '+t.n+(msg?'（'+msg+'）':'')+'</div>';}
+h+='<div class="note">共 '+TST.length+' 项，通过 '+p+' 项，失败 '+(TST.length-p)+' 项。</div>';
+document.getElementById('tout').innerHTML=h;};
+var btns=document.querySelectorAll('nav button'),k;
+for(k=0;k<btns.length;k++){btns[k].onclick=function(){
+var j;for(j=0;j<btns.length;j++)btns[j].className='';
+this.className='on';
+document.getElementById('calc').style.display=this.getAttribute('data-v')==='calc'?'':'none';
+document.getElementById('test').style.display=this.getAttribute('data-v')==='test'?'':'none';};}
+</script>
+</body></html>

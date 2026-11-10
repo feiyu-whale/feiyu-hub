@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌌 星空图</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#08060f; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:660px; }
+  h1 { font-size:12px; color:#c9b7ff; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#6b6a99; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:#120e1e; border:1px solid #2d2550; border-radius:12px; padding:12px 14px; margin-bottom:11px; }
+  input, select {
+    width:100%; background:#0a0714; border:1px solid #2d2550; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#e0d8ff; font-family:inherit; outline:none;
+  }
+  input:focus, select:focus { border-color:#7c6cd8; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .lbl { font-size:11px; color:#6b6a99; margin-bottom:4px; display:block; }
+  button.go {
+    width:100%; padding:13px; font-size:11px; font-weight:700; color:#fff;
+    background:linear-gradient(160deg,#6a55c8,#3d2c88); border:1px solid #8577e0;
+    border-radius:11px; cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px;
+  }
+  button.go:active { transform:scale(.98); }
+  .toggle { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .toggle label { flex:1 1 30%; display:flex; align-items:center; gap:6px; font-size:12px; color:#9b93d0;
+    background:#0a0714; border:1px solid #2d2550; border-radius:9px; padding:8px 10px; cursor:pointer; }
+  .toggle input { width:auto; }
+  /* 星空画布 */
+  #sky { width:100%; height:auto; display:block; border-radius:12px; background:#0a0714;
+    border:1px solid #2d2550; touch-action:none; cursor:grab; }
+  #sky:active { cursor:grabbing; }
+  .hint { text-align:center; color:#3f3a5c; font-size:11px; margin-top:12px; line-height:1.7; }
+  .ver { text-align:center; color:#2a2542; font-size:10px; margin-top:8px; }
+  .err { color:#ff8fa3; text-align:center; font-size:14px; padding:10px; }
+  .loading { text-align:center; color:#8f88c8; font-size:14px; padding:14px; }
+  .info { text-align:center; color:#8f88c8; font-size:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🌌 星空图</h1>
+  <div class="sub">真实星空 · 星座连线 · 亮星 · 行星<br>拖动旋转 · 双指/滚轮缩放 · 纯本地计算</div>
+
+  <div class="card">
+    <div class="line">
+      <div><span class="lbl">日期</span><input type="date" id="sdate"></div>
+      <div><span class="lbl">时间（当地）</span><input type="time" id="stime" value="22:00"></div>
+    </div>
+    <div class="line">
+      <div><span class="lbl">纬度（北正南负）</span><input type="number" id="slat" value="39.90" step="0.01"></div>
+      <div><span class="lbl">经度（东正西负）</span><input type="number" id="slng" value="116.41" step="0.01"></div>
+      <div><span class="lbl">时区</span><input type="number" id="stz" value="8" step="0.5"></div>
+    </div>
+    <div class="toggle">
+      <label><input type="checkbox" id="cLines" checked> 星座连线</label>
+      <label><input type="checkbox" id="cNames" checked> 星座名</label>
+      <label><input type="checkbox" id="cStarNames" checked> 星名</label>
+      <label><input type="checkbox" id="cPlanets" checked> 行星</label>
+    </div>
+    <button class="go" id="apply">更新星空</button>
+  </div>
+
+  <canvas id="sky"></canvas>
+  <div class="info" id="info">拖动以旋转星空</div>
+
+  <div class="hint">🐳 引擎 celestine（MIT，算行星）· 星表 d3-celestial 数据（BSD-3）<br>亮星按星等分大小 · 正交投影<br><br>星表来源：d3-celestial（© Olaf Frohn，BSD-3-Clause）<br>经 celestial-chart 整理分发（© Fekete László）<br>许可全文见 lib/stardata.LICENSE，声明见 lib/stardata.NOTICE.md</div>
+  <div class="ver">v2-补署名 20261017</div>
+</div>
+
+<script type="module">
+import * as Celestine from './lib/celestine.js';
+
+const D2R = Math.PI/180, R2D = 180/Math.PI;
+
+// ==== 星空状态：视线方向（经度 lon、纬度 lat）、缩放、画布 ====
+let lon = 180, lat = 20, zoom = 1;   // 初看方向：赤经180、赤纬20（可拖）
+let stars = [], conLines = [], conNames = [], conCenters = [];
+let starNames = {};   // id -> 中文名
+let planets = [];
+
+const cv = document.getElementById('sky');
+const ctx = cv.getContext('2d');
+let W = 600, H = 600, R = 300;       // 画布尺寸与星图半径
+
+function resizeCanvas(){
+  const cssW = document.getElementById('wrap').clientWidth;
+  W = Math.max(280, Math.min(cssW, 640));
+  H = W;
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  cv.width = W*dpr; cv.height = H*dpr;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  R = W/2 - 12;
+}
+
+// ==== 球面坐标 → 旋转后的 3D（视线方向为 +z 前方） ====
+// 输入赤经 ra(度)、赤纬 dec(度)，返回屏幕 x,y（相对中心）与是否可见
+function project(ra, dec){
+  const l = ra*D2R, b = dec*D2R;
+  // 赤道坐标 → 单位向量
+  const X = Math.cos(b)*Math.cos(l), Y = Math.cos(b)*Math.sin(l), Z = Math.sin(b);
+  // 1) 绕 z 轴旋转 -lon：把视线经度对到 xz 平面
+  const co = Math.cos(lon*D2R), so = Math.sin(lon*D2R);
+  let x1 =  X*co + Y*so, y1 = -X*so + Y*co, z1 = Z;
+  // 2) 绕 y 轴旋转 (lat-90)：把视线纬度转到正对 +z（屏幕前方）
+  const a = (lat-90)*D2R;
+  const ca = Math.cos(a), sa = Math.sin(a);
+  let x2 = x1*ca + z1*sa, y2 = y1, z2 = -x1*sa + z1*ca;
+  // z2 > 0 表示朝向观察者（可见）
+  return { x: R*zoom*x2, y: -R*zoom*y2, vis: z2 > 0.001, z: z2 };
+}
+
+// ==== 亮度 → 半径 ====
+function magRadius(mag){
+  // 星等越小越亮；1等约3.2px（在R=300基准）
+  const base = Math.max(0.2, 3.4 - mag*0.42);
+  return base * (R/300);
+}
+function starColor(bv){
+  // BV 色指数 → 粗略颜色
+  if(bv==null) return '#ffffff';
+  const v = parseFloat(bv);
+  if(isNaN(v)) return '#ffffff';
+  if(v < 0.0) return '#bcd2ff';   // 蓝白
+  if(v < 0.5) return '#dbe6ff';
+  if(v < 1.0) return '#ffffff';
+  if(v < 1.5) return '#fff0d0';   // 黄白
+  return '#ffd9b0';               // 偏橙
+}
+
+// ==== 绘制 ====
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const cx = W/2, cy = H/2;
+
+  // 背景圆
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.fillStyle = '#06060f'; ctx.fill();
+  ctx.strokeStyle = '#2a2248'; ctx.lineWidth = 1; ctx.stroke();
+
+  // 星座连线
+  if(document.getElementById('cLines').checked){
+    ctx.strokeStyle = 'rgba(140,150,200,0.35)';
+    ctx.lineWidth = 0.8;
+    for(const seg of conLines){
+      // seg = [ [ra,dec], [ra,dec], ... ]
+      let started = false;
+      ctx.beginPath();
+      for(let i=0;i<seg.length;i++){
+        const p = project(seg[i][0], seg[i][1]);
+        if(p.vis){
+          if(!started){ ctx.moveTo(cx+p.x, cy+p.y); started = true; }
+          else ctx.lineTo(cx+p.x, cy+p.y);
+        } else {
+          started = false;
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
+  // 亮星
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.clip();
+  for(const s of stars){
+    const p = project(s.ra, s.dec);
+    if(!p.vis) continue;
+    const r = magRadius(s.mag);
+    if(r < 0.25) continue;
+    ctx.beginPath();
+    ctx.arc(cx+p.x, cy+p.y, r, 0, Math.PI*2);
+    ctx.fillStyle = starColor(s.bv);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 星名（只标最亮的，防糊）
+  if(document.getElementById('cStarNames').checked){
+    const LIMIT = 2.6;  // 只标星等小于此值的
+    const placed = [];
+    const fs = Math.max(9, 10*(R/300));
+    ctx.font = fs+'px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    // 亮的先画（占位优先）
+    const named = stars.filter(s=>s.name && s.mag<LIMIT).sort((a,b)=>a.mag-b.mag);
+    for(const s of named){
+      const p = project(s.ra, s.dec);
+      if(!p.vis) continue;
+      const px = cx+p.x+fs*0.9, py = cy+p.y;
+      // 防重叠
+      let clash = false;
+      for(const q of placed){
+        if(Math.abs(q.x-px)<fs*3.2 && Math.abs(q.y-py)<fs*1.1){ clash=true; break; }
+      }
+      if(clash) continue;
+      placed.push({x:px,y:py});
+      ctx.fillStyle = 'rgba(220,215,255,0.85)';
+      ctx.fillText(s.name, px, py);
+    }
+  }
+
+  // 行星
+  if(document.getElementById('cPlanets').checked){
+    for(const pl of planets){
+      const p = project(pl.ra, pl.dec);
+      if(!p.vis) continue;
+      const r = Math.max(2.6, 4.5 - pl.mag*0.5) * (R/300);
+      ctx.beginPath(); ctx.arc(cx+p.x, cy+p.y, r+2, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,220,120,0.25)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx+p.x, cy+p.y, r, 0, Math.PI*2);
+      ctx.fillStyle = '#ffe680'; ctx.fill();
+      // 标签
+      ctx.fillStyle = '#ffd479'; ctx.font = (10*(R/300))+'px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText(pl.cn, cx+p.x, cy+p.y-r-1);
+    }
+  }
+
+  // 星座名
+  if(document.getElementById('cNames').checked){
+    ctx.fillStyle = 'rgba(160,150,220,0.75)';
+    ctx.font = (10*(R/300))+'px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(const c of conCenters){
+      const p = project(c.ra, c.dec);
+      if(!p.vis) continue;
+      ctx.fillText(c.cn, cx+p.x, cy+p.y);
+    }
+  }
+
+  // 中心十字（视线中心）
+  ctx.strokeStyle='rgba(120,110,180,0.3)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx-6,cy); ctx.lineTo(cx+6,cy);
+  ctx.moveTo(cx,cy-6); ctx.lineTo(cx,cy+6); ctx.stroke();
+}
+
+// ==== 加载星表数据 ====
+async function loadData(){
+  const [s, l, c, nm] = await Promise.all([
+    fetch('data/stars.6.json').then(r=>r.json()),
+    fetch('data/constellations.lines.json').then(r=>r.json()),
+    fetch('data/constellations.json').then(r=>r.json()),
+    fetch('data/starnames.json').then(r=>r.json()).catch(()=>null)
+  ]);
+  // 星名表（中文优先）
+  starNames = {};
+  if(nm){
+    for(const k in nm){
+      const v = nm[k];
+      const zh = v.zh || v.name;
+      if(zh) starNames[k] = zh;
+    }
+  }
+  // 亮星（带上名字）
+  stars = s.features.map(f => ({
+    ra: f.geometry.coordinates[0],
+    dec: f.geometry.coordinates[1],
+    mag: f.properties.mag,
+    bv: f.properties.bv,
+    name: starNames[String(f.id)] || null
+  }));
+  // 星座连线
+  conLines = [];
+  for(const f of l.features){
+    const g = f.geometry;
+    if(g.type === 'MultiLineString') g.coordinates.forEach(seg => conLines.push(seg));
+    else if(g.type === 'LineString') conLines.push(g.coordinates);
+  }
+  // 星座名（用星座中心点简化）
+  conCenters = [];
+  for(const f of c.features){
+    const id = f.id; // 3字母缩写
+    const cn = CN_CONST[id] || id;
+    // 从连线里估算中心
+    const g = f.geometry;
+    let ras=[], decs=[];
+    const collect = (coords)=>{ for(const p of coords){ ras.push(p[0]); decs.push(p[1]); } };
+    if(g && g.coordinates){ if(g.type==='MultiPolygon'){ /*skip*/ } else collect(g.coordinates); }
+    if(!ras.length){ continue; }
+    // 经度环绕处理
+    const raAvg = ras.reduce((a,b)=>a+b,0)/ras.length;
+    const decAvg = decs.reduce((a,b)=>a+b,0)/decs.length;
+    conCenters.push({ ra: raAvg, dec: decAvg, cn });
+  }
+}
+
+// 星座中文名（常用88个）
+const CN_CONST = {
+  And:'仙女座',Ant:'唧筒座',Aps:'天燕座',Aqr:'宝瓶座',Aql:'天鹰座',Ara:'天坛座',Ari:'白羊座',
+  Aur:'御夫座',Boo:'牧夫座',Cae:'雕具座',Cam:'鹿豹座',Cnc:'巨蟹座',CVn:'猎犬座',CMa:'大犬座',
+  CMi:'小犬座',Cap:'摩羯座',Car:'船底座',Cas:'仙后座',Cen:'半人马座',Cep:'仙王座',Cet:'鲸鱼座',
+  Cha:'蝘蜓座',Cir:'圆规座',Col:'天鸽座',Com:'后发座',CrA:'南冕座',CrB:'北冕座',Crv:'乌鸦座',
+  Crt:'巨爵座',Cru:'南十字座',Cyg:'天鹅座',Del:'海豚座',Dor:'剑鱼座',Dra:'天龙座',Equ:'小马座',
+  Eri:'波江座',For:'天炉座',Gem:'双子座',Gru:'天鹤座',Her:'武仙座',Hor:'时钟座',Hya:'长蛇座',
+  Hyi:'水蛇座',Ind:'印第安座',Lac:'蝎虎座',Leo:'狮子座',LMi:'小狮座',Lep:'天兔座',Lib:'天秤座',
+  Lup:'豺狼座',Lyn:'天猫座',Lyr:'天琴座',Men:'山案座',Mic:'显微镜座',Mon:'麒麟座',Mus:'苍蝇座',
+  Nor:'矩尺座',Oct:'南极座',Oph:'蛇夫座',Ori:'猎户座',Pav:'孔雀座',Peg:'飞马座',Per:'英仙座',
+  Phe:'凤凰座',Pic:'绘架座',Psc:'双鱼座',PsA:'南鱼座',Pup:'船尾座',Pyx:'罗盘座',Ret:'网罟座',
+  Sge:'天箭座',Sgr:'人马座',Sco:'天蝎座',Scl:'玉夫座',Sct:'盾牌座',Ser:'巨蛇座',Sex:'六分仪座',
+  Tau:'金牛座',Tel:'望远镜座',Tri:'三角座',TrA:'南三角座',Tuc:'杜鹃座',UMa:'大熊座',UMi:'小熊座',
+  Vel:'船帆座',Vir:'室女座',Vol:'飞鱼座',Vul:'狐狸座'
+};
+
+// ==== 行星（celestine 算黄经 → 转赤道坐标） ====
+function updatePlanets(){
+  planets = [];
+  if(!document.getElementById('cPlanets').checked) return;
+  const d = document.getElementById('sdate').value;
+  const t = document.getElementById('stime').value;
+  const tz = parseFloat(document.getElementById('stz').value)||0;
+  const latv = parseFloat(document.getElementById('slat').value)||0;
+  const lngv = parseFloat(document.getElementById('slng').value)||0;
+  if(!d || !t) return;
+  const dp=d.split('-').map(Number), tp=t.split(':').map(Number);
+  let chart;
+  try{
+    chart = Celestine.calculateChart({ year:dp[0],month:dp[1],day:dp[2],hour:tp[0],minute:tp[1],second:0,
+      timezone:tz, latitude:latv, longitude:lngv });
+  }catch(e){ return; }
+  const NAMES = { Sun:'太阳',Moon:'月亮',Mercury:'水星',Venus:'金星',Mars:'火星',Jupiter:'木星',Saturn:'土星' };
+  for(const p of chart.planets){
+    if(!NAMES[p.b]) continue;
+    // celestine 给黄经，需转赤道坐标：用黄赤交角
+    const radec = eclLonToRaDec(p.longitude, p.latitude||0);
+    planets.push({ ra: radec.ra, dec: radec.dec, cn: NAMES[p.b], mag: p.b==='Sun'?-26:(p.b==='Moon'?-12:0) });
+  }
+}
+// 黄道坐标(黄经λ、黄纬β) → 赤道坐标(赤经α、赤纬δ)
+function eclLonToRaDec(lonDeg, latDeg){
+  const eps = 23.4392911*D2R;
+  const l = lonDeg*D2R, b = latDeg*D2R;
+  const sinDec = Math.sin(b)*Math.cos(eps) + Math.cos(b)*Math.sin(eps)*Math.sin(l);
+  const dec = Math.asin(sinDec);
+  const y = Math.sin(l)*Math.cos(eps) - Math.tan(b)*Math.sin(eps);
+  const x = Math.cos(l);
+  let ra = Math.atan2(y,x);
+  if(ra < 0) ra += 2*Math.PI;
+  return { ra: ra*R2D, dec: dec*R2D };
+}
+
+// ==== 交互：拖动旋转 + 缩放 ====
+let dragging=false, lastX=0, lastY=0;
+function pointerDown(e){ dragging=true; lastX=e.clientX; lastY=e.clientY; cv.setPointerCapture&&e.pointerId!=null&&cv.setPointerCapture(e.pointerId); }
+function pointerMove(e){
+  if(!dragging) return;
+  const dx = e.clientX-lastX, dy = e.clientY-lastY;
+  lastX=e.clientX; lastY=e.clientY;
+  lon = (lon - dx*0.4) % 360; if(lon<0) lon+=360;
+  lat = Math.max(-89, Math.min(89, lat + dy*0.4));
+  draw();
+}
+function pointerUp(){ dragging=false; }
+cv.addEventListener('pointerdown', pointerDown);
+cv.addEventListener('pointermove', pointerMove);
+cv.addEventListener('pointerup', pointerUp);
+cv.addEventListener('pointercancel', pointerUp);
+cv.addEventListener('wheel', e=>{ e.preventDefault(); zoom = Math.max(0.5, Math.min(6, zoom*(e.deltaY<0?1.1:0.9))); draw(); }, {passive:false});
+// 双指缩放
+let pinchDist=0;
+cv.addEventListener('touchmove', e=>{
+  if(e.touches.length===2){
+    e.preventDefault();
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    if(pinchDist) { zoom = Math.max(0.5, Math.min(6, zoom*(d/pinchDist))); draw(); }
+    pinchDist=d;
+  }
+}, {passive:false});
+cv.addEventListener('touchend', ()=>{ pinchDist=0; });
+
+// ==== 启动 ====
+function boot(){
+  resizeCanvas();
+  const now = new Date(), pad = n=>String(n).padStart(2,'0');
+  document.getElementById('sdate').value = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  loadData().then(()=>{
+    updatePlanets();
+    draw();
+    document.getElementById('info').textContent = '拖动旋转 · 滚轮/双指缩放';
+  }).catch(err=>{
+    document.getElementById('info').textContent = '数据加载失败：'+err.message;
+  });
+}
+document.getElementById('apply').addEventListener('click', ()=>{ updatePlanets(); draw(); });
+document.getElementById('cPlanets').addEventListener('change', ()=>{ updatePlanets(); draw(); });
+document.getElementById('cLines').addEventListener('change', draw);
+document.getElementById('cNames').addEventListener('change', draw);
+document.getElementById('cStarNames').addEventListener('change', draw);
+window.addEventListener('resize', ()=>{ resizeCanvas(); draw(); });
+boot();
+</script>
+</body>
+</html>

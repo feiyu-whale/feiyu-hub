@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文言虚词用法工具 v2.0.0</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Noto Serif SC", "Source Han Serif CN", "SimSun", serif; background: #f5f0e8; color: #333; line-height: 1.8; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; font-size: 28px; margin: 20px 0; color: #5b3a1a; letter-spacing: 4px; }
+h2 { font-size: 20px; color: #5b3a1a; border-bottom: 2px solid #c9a96e; padding-bottom: 8px; margin: 20px 0 12px; }
+h3 { font-size: 16px; color: #7a5c2e; margin: 14px 0 8px; }
+.tabs { display: flex; border-bottom: 2px solid #c9a96e; margin-bottom: 20px; }
+.tab-btn { padding: 10px 24px; cursor: pointer; background: #e8dcc8; border: 1px solid #c9a96e; border-bottom: none; margin-right: 4px; font-size: 15px; color: #5b3a1a; border-radius: 6px 6px 0 0; transition: background 0.2s; }
+.tab-btn:hover { background: #d4c4a0; }
+.tab-btn.active { background: #f5f0e8; font-weight: bold; border-bottom: 2px solid #f5f0e8; margin-bottom: -2px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+pre { background: #2d2d2d; color: #f8f8f2; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+code { font-family: "Fira Code", "Source Code Pro", Consolas, monospace; }
+.word-card { background: #fff; border: 1px solid #d4c4a0; border-radius: 8px; padding: 16px; margin: 12px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+.word-card h3 { color: #8b4513; font-size: 22px; margin-bottom: 8px; }
+.usage-item { margin: 8px 0; padding: 8px 12px; background: #faf6ee; border-left: 3px solid #c9a96e; border-radius: 0 4px 4px 0; }
+.usage-label { font-weight: bold; color: #5b3a1a; }
+.example { color: #666; font-style: italic; margin-top: 4px; }
+.example-source { color: #999; font-size: 12px; }
+.search-box { margin: 16px 0; }
+.search-box input { padding: 8px 14px; width: 300px; border: 1px solid #c9a96e; border-radius: 4px; font-size: 15px; }
+.search-box button { padding: 8px 18px; background: #8b4513; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 15px; margin-left: 8px; }
+.search-box button:hover { background: #a0522d; }
+#test-results { background: #fff; border: 1px solid #d4c4a0; border-radius: 8px; padding: 16px; margin-top: 12px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 13px; }
+.test-pass { color: #2e7d32; }
+.test-fail { color: #c62828; }
+.test-summary { font-size: 16px; font-weight: bold; margin-top: 12px; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+.manual-section { margin: 16px 0; }
+.manual-section p { margin: 8px 0; text-indent: 2em; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th, td { border: 1px solid #d4c4a0; padding: 8px 12px; text-align: left; }
+th { background: #e8dcc8; color: #5b3a1a; }
+.version-tag { position: fixed; bottom: 8px; right: 12px; font-size: 11px; color: #999; }
+.scenario { background: #faf6ee; border: 1px solid #d4c4a0; border-radius: 6px; padding: 14px; margin: 12px 0; }
+.scenario h4 { color: #8b4513; margin-bottom: 6px; }
+.scenario pre { background: #f5f0e8; color: #333; border: 1px solid #d4c4a0; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>文言虚词用法查询工具</h1>
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('source')">JS 源码</button>
+<button class="tab-btn" onclick="switchTab('test')">单元测试</button>
+<button class="tab-btn" onclick="switchTab('manual')">使用说明书</button>
+<button class="tab-btn" onclick="switchTab('demo')">交互演示</button>
+</div>
+
+<div id="tab-source" class="tab-content active">
+<h2>第一部分：JS 源码</h2>
+<pre><code id="source-code"></code></pre>
+</div>
+
+<div id="tab-test" class="tab-content">
+<h2>第二部分：单元测试</h2>
+<button onclick="runAllTests()" style="padding:10px 24px;background:#8b4513;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:15px;margin-bottom:12px;">运行全部测试</button>
+<div id="test-results">点击按钮运行测试...</div>
+</div>
+
+<div id="tab-manual" class="tab-content">
+<h2>第三部分：使用说明书</h2>
+<div id="manual-content"></div>
+</div>
+
+<div id="tab-demo" class="tab-content">
+<h2>交互演示</h2>
+<div class="search-box">
+<input type="text" id="search-word" placeholder="输入虚词，如：之、其、而..." />
+<button onclick="demoSearch()">查询用法</button>
+<button onclick="demoShowAll()">显示全部虚词</button>
+</div>
+<div class="search-box">
+<input type="text" id="search-category" placeholder="按用法类别搜索，如：代词、连词、语气词..." />
+<button onclick="demoSearchCategory()">按类别搜索</button>
+</div>
+<div class="search-box">
+<input type="text" id="search-sentence" placeholder="输入含虚词的句子进行用法判定..." />
+<input type="text" id="search-target" placeholder="目标虚词" style="width:80px;" />
+<button onclick="demoClassify()">判定用法</button>
+</div>
+<div id="demo-results"></div>
+</div>
+</div>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+// ============================================================
+// 第一部分：核心源码
+// ============================================================
+
+/**
+ * 文言虚词数据库
+ * 依据王力《古代汉语》虚词体系整理
+ * 收录20个常见文言虚词的用法分类与例句
+ * @type {Object}
+ */
+const WORD_DATABASE = {
+  "之": {
+    pinyin: "zhī",
+    usages: [
+      {
+        id: "之-1",
+        category: "代词",
+        subcategory: "第三人称代词",
+        meaning: "他、它、他们（作宾语）",
+        examples: [
+          { sentence: "学而时习之", source: "《论语·学而》", note: "之指代所学内容" },
+          { sentence: "操蛇之神闻之", source: "《列子·汤问》", note: "前一个之为助词，后一个之指代愚公移山之事" },
+          { sentence: "公将鼓之", source: "《左传·庄公十年》", note: "之指代齐军" }
+        ]
+      },
+      {
+        id: "之-2",
+        category: "助词",
+        subcategory: "结构助词",
+        meaning: "的（表领属或修饰关系）",
+        examples: [
+          { sentence: "小大之狱", source: "《左传·庄公十年》", note: "大大小小的案件" },
+          { sentence: "千里之行", source: "《老子》", note: "千里的远行" },
+          { sentence: "古之学者必有师", source: "韩愈《师说》", note: "古代的求学的人" }
+        ]
+      },
+      {
+        id: "之-3",
+        category: "助词",
+        subcategory: "取消句子独立性",
+        meaning: "用于主谓之间，取消句子的独立性，使之成为短语",
+        examples: [
+          { sentence: "臣之壮也，犹不如人", source: "《左传·僖公三十年》", note: "我壮年的时候" },
+          { sentence: "孤之有孔明，犹鱼之有水也", source: "《三国志·诸葛亮传》", note: "主谓之间取消独立性" },
+          { sentence: "大道之行也，天下为公", source: "《礼记·礼运》", note: "大道实行的时候" }
+        ]
+      },
+      {
+        id: "之-4",
+        category: "动词",
+        subcategory: "动词",
+        meaning: "到……去、往",
+        examples: [
+          { sentence: "吾欲之南海", source: "彭端淑《为学》", note: "我想要到南海去" },
+          { sentence: "辍耕之垄上", source: "《史记·陈涉世家》", note: "停止耕作走到田垄上" },
+          { sentence: "又间令吴广之次所旁丛祠中", source: "《史记·陈涉世家》", note: "到驻地旁边" }
+        ]
+      },
+      {
+        id: "之-5",
+        category: "助词",
+        subcategory: "音节助词",
+        meaning: "无实义，起调节音节作用",
+        examples: [
+          { sentence: "久之，目似瞑", source: "蒲松龄《狼》", note: "过了很久" },
+          { sentence: "顷之，烟炎张天", source: "《资治通鉴》", note: "不一会儿" }
+        ]
+      }
+    ]
+  },
+  "其": {
+    pinyin: "qí",
+    usages: [
+      {
+        id: "其-1",
+        category: "代词",
+        subcategory: "第三人称代词",
+        meaning: "他的、它的、他们的（作定语）",
+        examples: [
+          { sentence: "其妻献疑曰", source: "《列子·汤问》", note: "他的妻子提出疑问" },
+          { sentence: "断其喉，尽其肉", source: "柳宗元《三戒》", note: "咬断它的喉咙，吃光它的肉" },
+          { sentence: "臣从其计", source: "《史记·廉颇蔺相如列传》", note: "我听从了他的计策" }
+        ]
+      },
+      {
+        id: "其-2",
+        category: "代词",
+        subcategory: "指示代词",
+        meaning: "那、那个、那些",
+        examples: [
+          { sentence: "其人视端容寂", source: "魏学洢《核舟记》", note: "那个人" },
+          { sentence: "其巫，老女子也", source: "褚少孙《西门豹治邺》", note: "那个巫婆" },
+          { sentence: "其真无马邪", source: "韩愈《马说》", note: "难道真的没有马吗（此处其表反问语气）" }
+        ]
+      },
+      {
+        id: "其-3",
+        category: "副词",
+        subcategory: "语气副词",
+        meaning: "表推测：大概、或许",
+        examples: [
+          { sentence: "其皆出于此乎", source: "韩愈《师说》", note: "大概都出于这个原因吧" },
+          { sentence: "其信然邪", source: "韩愈《祭十二郎文》", note: "难道是真的吗" }
+        ]
+      },
+      {
+        id: "其-4",
+        category: "副词",
+        subcategory: "语气副词",
+        meaning: "表反问：难道、怎么",
+        examples: [
+          { sentence: "其真无马邪", source: "韩愈《马说》", note: "难道真的没有马吗" },
+          { sentence: "其孰能讥之乎", source: "王安石《游褒禅山记》", note: "难道谁能讥笑他吗" }
+        ]
+      },
+      {
+        id: "其-5",
+        category: "连词",
+        subcategory: "选择连词",
+        meaning: "表选择：还是、抑或",
+        examples: [
+          { sentence: "其真无马邪？其真不知马也", source: "韩愈《马说》", note: "是真的没有马呢？还是真的不识马呢" }
+        ]
+      }
+    ]
+  },
+  "而": {
+    pinyin: "ér",
+    usages: [
+      {
+        id: "而-1",
+        category: "连词",
+        subcategory: "表并列",
+        meaning: "又、而且（并列关系，前后地位平等）",
+        examples: [
+          { sentence: "敏而好学", source: "《论语·公冶长》", note: "聪敏又好学" },
+          { sentence: "温故而知新", source: "《论语·为政》", note: "温习旧知识从而获得新理解" },
+          { sentence: "蟹六跪而二螯", source: "《荀子·劝学》", note: "螃蟹六条腿和两只钳子" }
+        ]
+      },
+      {
+        id: "而-2",
+        category: "连词",
+        subcategory: "表转折",
+        meaning: "却、但是（转折关系）",
+        examples: [
+          { sentence: "学而不思则罔", source: "《论语·为政》", note: "学习却不思考就会迷惘" },
+          { sentence: "青，取之于蓝，而青于蓝", source: "《荀子·劝学》", note: "靛青从蓝草中提取，却比蓝草更青" },
+          { sentence: "人不知而不愠", source: "《论语·学而》", note: "别人不了解却不生气" }
+        ]
+      },
+      {
+        id: "而-3",
+        category: "连词",
+        subcategory: "表承接",
+        meaning: "就、然后（承接关系，前后有先后顺序）",
+        examples: [
+          { sentence: "余闻而愈悲", source: "柳宗元《捕蛇者说》", note: "我听了以后更加悲伤" },
+          { sentence: "广起，夺而杀尉", source: "《史记·陈涉世家》", note: "吴广跳起来，夺过（剑）杀了押送的军官" },
+          { sentence: "尉果笞广，尉剑挺，广起，夺而杀尉", source: "《史记·陈涉世家》", note: "表承接" }
+        ]
+      },
+      {
+        id: "而-4",
+        category: "连词",
+        subcategory: "表修饰",
+        meaning: "地（连接状语和中心词）",
+        examples: [
+          { sentence: "河曲智叟笑而止之", source: "《列子·汤问》", note: "笑着阻止他" },
+          { sentence: "吾尝跂而望矣", source: "《荀子·劝学》", note: "我曾经踮起脚来远望" },
+          { sentence: "暮而果大亡其财", source: "《韩非子·说难》", note: "晚上果然丢失了大量财物" }
+        ]
+      },
+      {
+        id: "而-5",
+        category: "连词",
+        subcategory: "表假设",
+        meaning: "如果、假如",
+        examples: [
+          { sentence: "人而无信，不知其可也", source: "《论语·为政》", note: "一个人如果不讲信用" },
+          { sentence: "诸君而有意，瞻予马首可也", source: "徐珂《冯婉贞》", note: "各位如果有意" }
+        ]
+      },
+      {
+        id: "而-6",
+        category: "代词",
+        subcategory: "第二人称代词",
+        meaning: "你、你的",
+        examples: [
+          { sentence: "而翁归，自与汝复算耳", source: "蒲松龄《促织》", note: "你爹回来，自然会跟你再算账" }
+        ]
+      }
+    ]
+  },
+  "以": {
+    pinyin: "yǐ",
+    usages: [
+      {
+        id: "以-1",
+        category: "介词",
+        subcategory: "表工具",
+        meaning: "用、拿、凭",
+        examples: [
+          { sentence: "以刀劈狼首", source: "蒲松龄《狼》", note: "用刀劈狼的头" },
+          { sentence: "以子之矛，陷子之盾", source: "《韩非子·难一》", note: "用你的矛刺你的盾" },
+          { sentence: "以勇气闻于诸侯", source: "《史记·廉颇蔺相如列传》", note: "凭借勇气在诸侯中闻名" }
+        ]
+      },
+      {
+        id: "以-2",
+        category: "介词",
+        subcategory: "表原因",
+        meaning: "因为、由于",
+        examples: [
+          { sentence: "不以物喜，不以己悲", source: "范仲淹《岳阳楼记》", note: "不因外物而喜，不因自己而悲" },
+          { sentence: "以其境过清", source: "柳宗元《小石潭记》", note: "因为它的环境过于凄清" },
+          { sentence: "以中有足乐者", source: "宋濂《送东阳马生序》", note: "因为心中有足以快乐的事" }
+        ]
+      },
+      {
+        id: "以-3",
+        category: "连词",
+        subcategory: "表目的",
+        meaning: "来、用来（表目的）",
+        examples: [
+          { sentence: "属予作文以记之", source: "范仲淹《岳阳楼记》", note: "嘱咐我写文章来记录这件事" },
+          { sentence: "杀之以应陈涉", source: "《史记·陈涉世家》", note: "杀掉他来响应陈涉" },
+          { sentence: "敛赀财以送其行", source: "张溥《五人墓碑记》", note: "募集钱财来送他上路" }
+        ]
+      },
+      {
+        id: "以-4",
+        category: "介词",
+        subcategory: "表时间",
+        meaning: "在、从（表时间）",
+        examples: [
+          { sentence: "余以乾隆三十九年十二月", source: "姚鼐《登泰山记》", note: "我在乾隆三十九年十二月" },
+          { sentence: "武以始元六年春至京师", source: "《汉书·苏武传》", note: "苏武在始元六年春天到达京师" }
+        ]
+      },
+      {
+        id: "以-5",
+        category: "动词",
+        subcategory: "动词",
+        meaning: "认为",
+        examples: [
+          { sentence: "臣以王之攻宋也", source: "《墨子·公输》", note: "我认为大王攻打宋国" },
+          { sentence: "皆以美于徐公", source: "《战国策·邹忌讽齐王纳谏》", note: "都认为（我）比徐公美" }
+        ]
+      }
+    ]
+  },
+  "于": {
+    pinyin: "yú",
+    usages: [
+      {
+        id: "于-1",
+        category: "介词",
+        subcategory: "表处所",
+        meaning: "在、到、从（表处所）",
+        examples: [
+          { sentence: "战于长勺", source: "《左传·庄公十年》", note: "在长勺作战" },
+          { sentence: "苟全性命于乱世", source: "诸葛亮《出师表》", note: "在乱世中苟且保全性命" },
+          { sentence: "迁客骚人，多会于此", source: "范仲淹《岳阳楼记》", note: "被贬的官员和诗人，大多在这里聚会" }
+        ]
+      },
+      {
+        id: "于-2",
+        category: "介词",
+        subcategory: "表对象",
+        meaning: "对、对于、向",
+        examples: [
+          { sentence: "未尝不叹息痛恨于桓灵也", source: "诸葛亮《出师表》", note: "对桓帝灵帝没有不叹息痛心的" },
+          { sentence: "告之于帝", source: "《列子·汤问》", note: "向天帝报告了这件事" },
+          { sentence: "不拘于时", source: "韩愈《师说》", note: "不受时俗的限制" }
+        ]
+      },
+      {
+        id: "于-3",
+        category: "介词",
+        subcategory: "表比较",
+        meaning: "比（表比较）",
+        examples: [
+          { sentence: "苛政猛于虎也", source: "柳宗元《捕蛇者说》", note: "苛酷的政令比老虎还凶猛" },
+          { sentence: "青，取之于蓝，而青于蓝", source: "《荀子·劝学》", note: "比蓝草更青" },
+          { sentence: "皆以美于徐公", source: "《战国策》", note: "认为比徐公美" }
+        ]
+      },
+      {
+        id: "于-4",
+        category: "介词",
+        subcategory: "表被动",
+        meaning: "被（表被动）",
+        examples: [
+          { sentence: "受制于人", source: "《资治通鉴》", note: "被别人控制" },
+          { sentence: "不拘于时，学于余", source: "韩愈《师说》", note: "不被时俗限制，向我学习" },
+          { sentence: "劳心者治人，劳力者治于人", source: "《孟子·滕文公上》", note: "被人治理" }
+        ]
+      }
+    ]
+  },
+  "乃": {
+    pinyin: "nǎi",
+    usages: [
+      {
+        id: "乃-1",
+        category: "副词",
+        subcategory: "表承接",
+        meaning: "才、这才",
+        examples: [
+          { sentence: "断其喉，尽其肉，乃去", source: "柳宗元《三戒》", note: "才离开" },
+          { sentence: "必以长安君为质，兵乃出", source: "《战国策》", note: "兵才出动" },
+          { sentence: "臣乃得有以报太子", source: "《战国策·荆轲刺秦王》", note: "我才能够有办法报答太子" }
+        ]
+      },
+      {
+        id: "乃-2",
+        category: "副词",
+        subcategory: "表转折",
+        meaning: "竟然、却",
+        examples: [
+          { sentence: "问今是何世，乃不知有汉", source: "陶渊明《桃花源记》", note: "竟然不知道有汉朝" },
+          { sentence: "乃悟前狼假寐", source: "蒲松龄《狼》", note: "才明白前面的狼是假装睡觉" },
+          { sentence: "蒙乃始就学", source: "《资治通鉴》", note: "吕蒙这才开始学习" }
+        ]
+      },
+      {
+        id: "乃-3",
+        category: "代词",
+        subcategory: "第二人称代词",
+        meaning: "你、你的",
+        examples: [
+          { sentence: "王师北定中原日，家祭无忘告乃翁", source: "陆游《示儿》", note: "你的父亲" },
+          { sentence: "尔其无忘乃父之志", source: "欧阳修《伶官传序》", note: "你一定不要忘记你父亲的遗志" }
+        ]
+      },
+      {
+        id: "乃-4",
+        category: "副词",
+        subcategory: "表判断",
+        meaning: "是、就是",
+        examples: [
+          { sentence: "当立者乃公子扶苏", source: "《史记·陈涉世家》", note: "应当立为皇帝的是公子扶苏" },
+          { sentence: "此乃英雄也", source: "《三国演义》", note: "这是英雄啊" }
+        ]
+      }
+    ]
+  },
+  "则": {
+    pinyin: "zé",
+    usages: [
+      {
+        id: "则-1",
+        category: "连词",
+        subcategory: "表承接",
+        meaning: "就、便（表承接）",
+        examples: [
+          { sentence: "学而不思则罔", source: "《论语·为政》", note: "学习不思考就会迷惘" },
+          { sentence: "居庙堂之高则忧其民", source: "范仲淹《岳阳楼记》", note: "在朝廷做官就为百姓忧虑" },
+          { sentence: "故木受绳则直", source: "《荀子·劝学》", note: "所以木材经过墨线量过就能取直" }
+        ]
+      },
+      {
+        id: "则-2",
+        category: "连词",
+        subcategory: "表转折",
+        meaning: "却、可是",
+        examples: [
+          { sentence: "欲速则不达", source: "《论语·子路》", note: "想要快却达不到目的" },
+          { sentence: "至则无可用", source: "柳宗元《三戒》", note: "到了却没有什么用处" }
+        ]
+      },
+      {
+        id: "则-3",
+        category: "连词",
+        subcategory: "表假设",
+        meaning: "如果、假如",
+        examples: [
+          { sentence: "入则无法家拂士", source: "《孟子·告子下》", note: "国内如果没有守法度的大臣" },
+          { sentence: "今则来，沛公恐不得有此", source: "《史记》", note: "现在如果来了" }
+        ]
+      },
+      {
+        id: "则-4",
+        category: "名词",
+        subcategory: "名词",
+        meaning: "准则、法则",
+        examples: [
+          { sentence: "此则岳阳楼之大观也", source: "范仲淹《岳阳楼记》", note: "这就是岳阳楼的壮丽景象" }
+        ]
+      }
+    ]
+  },
+  "者": {
+    pinyin: "zhě",
+    usages: [
+      {
+        id: "者-1",
+        category: "代词",
+        subcategory: "特殊代词",
+        meaning: "……的人/事/物（附在动词、形容词后构成名词性短语）",
+        examples: [
+          { sentence: "智者千虑，必有一失", source: "《史记·淮阴侯列传》", note: "聪明的人" },
+          { sentence: "往来而不绝者", source: "欧阳修《醉翁亭记》", note: "来来往往络绎不绝的（人）" },
+          { sentence: "可爱者甚蕃", source: "周敦颐《爱莲说》", note: "可爱的（花）很多" }
+        ]
+      },
+      {
+        id: "者-2",
+        category: "助词",
+        subcategory: "判断句标志",
+        meaning: "用于判断句主语后，表停顿",
+        examples: [
+          { sentence: "陈胜者，阳城人也", source: "《史记·陈涉世家》", note: "陈胜是阳城人" },
+          { sentence: "北山愚公者，年且九十", source: "《列子·汤问》", note: "北山愚公，年纪将近九十" },
+          { sentence: "廉颇者，赵之良将也", source: "《史记·廉颇蔺相如列传》", note: "廉颇是赵国的优秀将领" }
+        ]
+      },
+      {
+        id: "者-3",
+        category: "助词",
+        subcategory: "时间词后",
+        meaning: "用在时间词后，表示停顿",
+        examples: [
+          { sentence: "今者有小人之言", source: "《史记·项羽本纪》", note: "现在有小人的谗言" },
+          { sentence: "昔者吾舅死于虎", source: "《礼记·檀弓》", note: "从前我公公死在虎口" }
+        ]
+      },
+      {
+        id: "者-4",
+        category: "助词",
+        subcategory: "定语后置标志",
+        meaning: "用于定语后置句",
+        examples: [
+          { sentence: "马之千里者", source: "韩愈《马说》", note: "能跑千里的马" },
+          { sentence: "石之铿然有声者", source: "苏轼《石钟山记》", note: "敲击后发出铿锵声音的石头" }
+        ]
+      }
+    ]
+  },
+  "也": {
+    pinyin: "yě",
+    usages: [
+      {
+        id: "也-1",
+        category: "语气词",
+        subcategory: "表判断",
+        meaning: "用于句末，表判断语气",
+        examples: [
+          { sentence: "陈胜者，阳城人也", source: "《史记·陈涉世家》", note: "陈胜是阳城人" },
+          { sentence: "夫战，勇气也", source: "《左传·庄公十年》", note: "作战靠的是勇气" },
+          { sentence: "南阳刘子骥，高尚士也", source: "陶渊明《桃花源记》", note: "南阳的刘子骥是高尚的隐士" }
+        ]
+      },
+      {
+        id: "也-2",
+        category: "语气词",
+        subcategory: "表肯定",
+        meaning: "用于句末，表肯定或确认语气",
+        examples: [
+          { sentence: "此诚危急存亡之秋也", source: "诸葛亮《出师表》", note: "这确实是危急存亡的时刻啊" },
+          { sentence: "吾妻之美我者，私我也", source: "《战国策》", note: "是偏爱我" }
+        ]
+      },
+      {
+        id: "也-3",
+        category: "语气词",
+        subcategory: "表疑问",
+        meaning: "用于句末，表疑问语气（常与“何”“安”等配合）",
+        examples: [
+          { sentence: "若为佣耕，何富贵也", source: "《史记·陈涉世家》", note: "你是个雇工，哪来的富贵呢" },
+          { sentence: "何以战也", source: "《左传》", note: "凭借什么作战呢" }
+        ]
+      },
+      {
+        id: "也-4",
+        category: "语气词",
+        subcategory: "表感叹",
+        meaning: "用于句末，表感叹语气",
+        examples: [
+          { sentence: "苛政猛于虎也", source: "柳宗元《捕蛇者说》", note: "苛政比老虎还凶猛啊" },
+          { sentence: "此则岳阳楼之大观也", source: "范仲淹《岳阳楼记》", note: "这就是岳阳楼的壮丽景象啊" }
+        ]
+      }
+    ]
+  },
+  "乎": {
+    pinyin: "hū",
+    usages: [
+      {
+        id: "乎-1",
+        category: "语气词",
+        subcategory: "表疑问",
+        meaning: "吗、呢（表疑问语气）",
+        examples: [
+          { sentence: "王侯将相宁有种乎", source: "《史记·陈涉世家》", note: "王侯将相难道是天生的贵种吗" },
+          { sentence: "学而时习之，不亦说乎", source: "《论语·学而》", note: "不也是很快乐的吗" },
+          { sentence: "壮士，能复饮乎", source: "《史记·项羽本纪》", note: "壮士，能再喝吗" }
+        ]
+      },
+      {
+        id: "乎-2",
+        category: "语气词",
+        subcategory: "表反问",
+        meaning: "吗、呢（表反问语气）",
+        examples: [
+          { sentence: "其孰能讥之乎", source: "王安石《游褒禅山记》", note: "难道谁能讥笑他吗" },
+          { sentence: "况草野之无闻者乎", source: "张溥《五人墓碑记》", note: "何况在民间没有名声的人呢" }
+        ]
+      },
+      {
+        id: "乎-3",
+        category: "语气词",
+        subcategory: "表感叹",
+        meaning: "啊、呀（表感叹语气）",
+        examples: [
+          { sentence: "善乎，技盖至此乎", source: "《庄子·养生主》", note: "好啊，技术怎么到了这种地步啊" },
+          { sentence: "嗟乎！燕雀安知鸿鹄之志哉", source: "《史记·陈涉世家》", note: "唉！燕雀怎么知道鸿鹄的志向呢" }
+        ]
+      },
+      {
+        id: "乎-4",
+        category: "介词",
+        subcategory: "相当于“于”",
+        meaning: "在、比（用法同“于”）",
+        examples: [
+          { sentence: "生乎吾前，其闻道也固先乎吾", source: "韩愈《师说》", note: "出生在我前面的" },
+          { sentence: "叫嚣乎东西，隳突乎南北", source: "柳宗元《捕蛇者说》", note: "在东西方向叫嚣" }
+        ]
+      }
+    ]
+  },
+  "焉": {
+    pinyin: "yān",
+    usages: [
+      {
+        id: "焉-1",
+        category: "兼词",
+        subcategory: "兼词",
+        meaning: "于此、于之（相当于“于+是”）",
+        examples: [
+          { sentence: "三人行，必有我师焉", source: "《论语·述而》", note: "在其中" },
+          { sentence: "积土成山，风雨兴焉", source: "《荀子·劝学》", note: "从这里兴起" },
+          { sentence: "永之人争奔走焉", source: "柳宗元《捕蛇者说》", note: "争着去做这件事" }
+        ]
+      },
+      {
+        id: "焉-2",
+        category: "代词",
+        subcategory: "疑问代词",
+        meaning: "哪里、怎么",
+        examples: [
+          { sentence: "且焉置土石", source: "《列子·汤问》", note: "况且把土石放到哪里去呢" },
+          { sentence: "焉知来者之不如今也", source: "《论语·子罕》", note: "怎么知道后来的人不如现在的人呢" }
+        ]
+      },
+      {
+        id: "焉-3",
+        category: "语气词",
+        subcategory: "句末语气词",
+        meaning: "了、呢、啊（句末语气词）",
+        examples: [
+          { sentence: "万钟于我何加焉", source: "孟子《鱼我所欲也》", note: "万钟的俸禄对我有什么呢" },
+          { sentence: "时而献焉", source: "柳宗元《捕蛇者说》", note: "到时候把它献上去" }
+        ]
+      },
+      {
+        id: "焉-4",
+        category: "助词",
+        subcategory: "词尾",
+        meaning: "……的样子（作形容词词尾）",
+        examples: [
+          { sentence: "盘盘焉，囷囷焉", source: "杜牧《阿房宫赋》", note: "盘旋曲折的样子" },
+          { sentence: "于乱石间择其一二扣之，硿硿焉", source: "苏轼《石钟山记》", note: "硿硿地（响）" }
+        ]
+      }
+    ]
+  },
+  "哉": {
+    pinyin: "zāi",
+    usages: [
+      {
+        id: "哉-1",
+        category: "语气词",
+        subcategory: "表感叹",
+        meaning: "啊、呀（表感叹语气）",
+        examples: [
+          { sentence: "善哉！吾请无攻宋矣", source: "《墨子·公输》", note: "好啊！我不攻打宋国了" },
+          { sentence: "痛哉斯言", source: "黄宗羲《原君》", note: "这话多么令人痛心啊" },
+          { sentence: "魏武侯谋事而当，群臣莫能逮，退朝而有喜色，起视堂上，叹曰：嗟乎，国之其有圣人乎哉", source: "《吕氏春秋》", note: "表感叹" }
+        ]
+      },
+      {
+        id: "哉-2",
+        category: "语气词",
+        subcategory: "表反问",
+        meaning: "吗、呢（表反问语气）",
+        examples: [
+          { sentence: "燕雀安知鸿鹄之志哉", source: "《史记·陈涉世家》", note: "燕雀怎么知道鸿鹄的志向呢" },
+          { sentence: "此何遽不为福乎哉", source: "《淮南子》", note: "这怎么就不是福呢" },
+          { sentence: "相如虽驽，独畏廉将军哉", source: "《史记·廉颇蔺相如列传》", note: "我蔺相如虽然愚钝，难道怕廉将军吗" }
+        ]
+      },
+      {
+        id: "哉-3",
+        category: "语气词",
+        subcategory: "表疑问",
+        meaning: "吗、呢（表疑问语气）",
+        examples: [
+          { sentence: "吾何执？执射乎？执御乎？——然则师愈与？——非然哉", source: "《论语》", note: "表疑问" }
+        ]
+      }
+    ]
+  },
+  "矣": {
+    pinyin: "yǐ",
+    usages: [
+      {
+        id: "矣-1",
+        category: "语气词",
+        subcategory: "表已然",
+        meaning: "了（表事情已经发生或完成）",
+        examples: [
+          { sentence: "温故而知新，可以为师矣", source: "《论语·为政》", note: "可以当老师了" },
+          { sentence: "舟已行矣", source: "《吕氏春秋·察今》", note: "船已经走了" },
+          { sentence: "吾知所以距子矣", source: "《墨子·公输》", note: "我知道用什么方法对付你了" }
+        ]
+      },
+      {
+        id: "矣-2",
+        category: "语气词",
+        subcategory: "表将然",
+        meaning: "了（表事情将要发生）",
+        examples: [
+          { sentence: "旦日飨士卒，为击破沛公军矣", source: "《史记·项羽本纪》", note: "明天犒劳士兵，将去打败沛公的军队" },
+          { sentence: "吾且死矣", source: "《左传》", note: "我将要死了" }
+        ]
+      },
+      {
+        id: "矣-3",
+        category: "语气词",
+        subcategory: "表感叹",
+        meaning: "了、啊（表感叹语气）",
+        examples: [
+          { sentence: "甚矣，汝之不惠", source: "《列子·汤问》", note: "你太不聪明了" },
+          { sentence: "吾已无事矣", source: "《左传》", note: "我已经没有什么事了" }
+        ]
+      }
+    ]
+  },
+  "耳": {
+    pinyin: "ěr",
+    usages: [
+      {
+        id: "耳-1",
+        category: "语气词",
+        subcategory: "表限止",
+        meaning: "罢了、而已（表限止语气）",
+        examples: [
+          { sentence: "技止此耳", source: "柳宗元《三戒》", note: "本领不过这样罢了" },
+          { sentence: "从此道至吾军，不过二十里耳", source: "《史记·项羽本纪》", note: "不过二十里罢了" },
+          { sentence: "无他，但手熟耳", source: "欧阳修《卖油翁》", note: "没有别的，只是手熟罢了" }
+        ]
+      },
+      {
+        id: "耳-2",
+        category: "语气词",
+        subcategory: "表肯定",
+        meaning: "了、啊（表确定语气）",
+        examples: [
+          { sentence: "此亡秦之续耳", source: "《史记·项羽本纪》", note: "这是灭亡的秦国的后续罢了" },
+          { sentence: "且吾所为者极难耳", source: "《史记》", note: "而且我做的事极其困难啊" }
+        ]
+      }
+    ]
+  },
+  "夫": {
+    pinyin: "fú",
+    usages: [
+      {
+        id: "夫-1",
+        category: "助词",
+        subcategory: "发语词",
+        meaning: "用于句首，引发议论，无实义",
+        examples: [
+          { sentence: "夫战，勇气也", source: "《左传·庄公十年》", note: "作战，靠的是勇气" },
+          { sentence: "夫大国，难测也", source: "《左传·庄公十年》", note: "大国是难以推测的" },
+          { sentence: "夫环而攻之", source: "《孟子·公孙丑下》", note: "包围起来攻打它" }
+        ]
+      },
+      {
+        id: "夫-2",
+        category: "代词",
+        subcategory: "指示代词",
+        meaning: "那、这个（指示代词）",
+        examples: [
+          { sentence: "予观夫巴陵胜状", source: "范仲淹《岳阳楼记》", note: "我看那巴陵的美景" },
+          { sentence: "夫二人者，鲁国社稷之臣也", source: "《左传》", note: "这两个人是鲁国的重臣" },
+          { sentence: "非夫人之为恸而谁为", source: "《论语·先进》", note: "不为那个人悲痛还为谁悲痛" }
+        ]
+      },
+      {
+        id: "夫-3",
+        category: "名词",
+        subcategory: "名词",
+        meaning: "成年男子、丈夫（读 fū）",
+        examples: [
+          { sentence: "遂率子孙荷担者三夫", source: "《列子·汤问》", note: "三个成年男子" },
+          { sentence: "夫唱妇随", source: "成语", note: "丈夫倡导，妻子跟随" }
+        ]
+      }
+    ]
+  },
+  "若": {
+    pinyin: "ruò",
+    usages: [
+      {
+        id: "若-1",
+        category: "连词",
+        subcategory: "表假设",
+        meaning: "如果、假如",
+        examples: [
+          { sentence: "若有作奸犯科及为忠善者", source: "诸葛亮《出师表》", note: "如果有做奸邪事情触犯科法的" },
+          { sentence: "若止印三二本，未为简易", source: "沈括《梦溪笔谈》", note: "如果只印三两本" },
+          { sentence: "若舍郑以为东道主", source: "《左传·僖公三十年》", note: "如果放弃攻打郑国" }
+        ]
+      },
+      {
+        id: "若-2",
+        category: "动词",
+        subcategory: "动词",
+        meaning: "像、如、比得上",
+        examples: [
+          { sentence: "门庭若市", source: "《战国策》", note: "门口庭院像集市一样" },
+          { sentence: "曾不若孀妻弱子", source: "《列子·汤问》", note: "还比不上寡妇和小孩" },
+          { sentence: "彼与彼年相若也", source: "韩愈《师说》", note: "他和他的年龄差不多" }
+        ]
+      },
+      {
+        id: "若-3",
+        category: "代词",
+        subcategory: "第二人称代词",
+        meaning: "你、你的",
+        examples: [
+          { sentence: "若为佣耕，何富贵也", source: "《史记·陈涉世家》", note: "你是个雇工，哪来的富贵" },
+          { sentence: "吾翁即若翁", source: "《史记·项羽本纪》", note: "我的父亲就是你的父亲" }
+        ]
+      }
+    ]
+  },
+  "为": {
+    pinyin: "wéi/wèi",
+    usages: [
+      {
+        id: "为-1",
+        category: "动词",
+        subcategory: "动词",
+        meaning: "做、作为、成为（读 wéi）",
+        examples: [
+          { sentence: "温故而知新，可以为师矣", source: "《论语·为政》", note: "可以成为老师" },
+          { sentence: "为学必有初", source: "彭端淑《为学》", note: "做学问" },
+          { sentence: "冰，水为之", source: "《荀子·劝学》", note: "冰是水变成的" }
+        ]
+      },
+      {
+        id: "为-2",
+        category: "介词",
+        subcategory: "表被动",
+        meaning: "被（读 wéi）",
+        examples: [
+          { sentence: "身死人手，为天下笑者", source: "贾谊《过秦论》", note: "被天下人耻笑" },
+          { sentence: "不为酒困", source: "《论语》", note: "不被酒所困扰" },
+          { sentence: "兔不可复得，而身为宋国笑", source: "《韩非子·五蠹》", note: "自己却被宋国人嘲笑" }
+        ]
+      },
+      {
+        id: "为-3",
+        category: "介词",
+        subcategory: "表对象",
+        meaning: "替、给、对（读 wèi）",
+        examples: [
+          { sentence: "公为我献之", source: "《史记·项羽本纪》", note: "你替我献上它" },
+          { sentence: "此人一一为具言所闻", source: "陶渊明《桃花源记》", note: "这个人一一给他们详细说了所听到的事" },
+          { sentence: "不足为外人道也", source: "陶渊明《桃花源记》", note: "不值得对外面的人说" }
+        ]
+      },
+      {
+        id: "为-4",
+        category: "介词",
+        subcategory: "表原因",
+        meaning: "因为、为了（读 wèi）",
+        examples: [
+          { sentence: "为其老，强忍", source: "《史记·留侯世家》", note: "因为他年老，勉强忍耐" },
+          { sentence: "天行有常，不为尧存", source: "《荀子·天论》", note: "不因为尧而存在" }
+        ]
+      }
+    ]
+  },
+  "因": {
+    pinyin: "yīn",
+    usages: [
+      {
+        id: "因-1",
+        category: "介词",
+        subcategory: "表凭借",
+        meaning: "凭借、依靠",
+        examples: [
+          { sentence: "因河为池", source: "贾谊《过秦论》", note: "凭借黄河作为护城河" },
+          { sentence: "因宾客至蔺相如门谢罪", source: "《史记·廉颇蔺相如列传》", note: "通过门客到蔺相如门前谢罪" }
+        ]
+      },
+      {
+        id: "因-2",
+        category: "连词",
+        subcategory: "表承接",
+        meaning: "于是、就",
+        examples: [
+          { sentence: "因屏人曰", source: "《三国志》", note: "于是支退旁人说" },
+          { sentence: "因拔刀斫前奏案", source: "《资治通鉴》", note: "于是拔刀砍面前的奏案" },
+          { sentence: "因造玉清宫", source: "沈括《梦溪笔谈》", note: "于是建造玉清宫" }
+        ]
+      },
+      {
+        id: "因-3",
+        category: "介词",
+        subcategory: "表原因",
+        meaning: "因为、由于",
+        examples: [
+          { sentence: "因前使绝国功，封骞博望侯", source: "《史记》", note: "因为先前出使远国的功劳" }
+        ]
+      },
+      {
+        id: "因-4",
+        category: "动词",
+        subcategory: "动词",
+        meaning: "沿袭、顺着",
+        examples: [
+          { sentence: "因遗策", source: "贾谊《过秦论》", note: "沿袭前代的策略" },
+          { sentence: "因势利导", source: "成语", note: "顺着事物的发展趋势加以引导" }
+        ]
+      }
+    ]
+  },
+  "且": {
+    pinyin: "qiě",
+    usages: [
+      {
+        id: "且-1",
+        category: "连词",
+        subcategory: "表递进",
+        meaning: "而且、并且",
+        examples: [
+          { sentence: "且壮士不死即已，死即举大名耳", source: "《史记·陈涉世家》", note: "而且壮士不死便罢" },
+          { sentence: "且燕赵处秦革灭殆尽之际", source: "苏洵《六国论》", note: "而且燕赵两国处在秦国几乎消灭殆尽的时候" }
+        ]
+      },
+      {
+        id: "且-2",
+        category: "连词",
+        subcategory: "表并列",
+        meaning: "又……又……、一边……一边……",
+        examples: [
+          { sentence: "且战且退", source: "成语", note: "一边打一边退" },
+          { sentence: "河水清且涟猗", source: "《诗经·魏风》", note: "河水又清又有涟漪" }
+        ]
+      },
+      {
+        id: "且-3",
+        category: "副词",
+        subcategory: "表将来",
+        meaning: "将要、将近",
+        examples: [
+          { sentence: "北山愚公者，年且九十", source: "《列子·汤问》", note: "年纪将近九十" },
+          { sentence: "不者，若属皆且为所虏", source: "《史记·项羽本纪》", note: "你们都将被俘虏" },
+          { sentence: "且为之奈何", source: "《史记·项羽本纪》", note: "将要怎么办呢" }
+        ]
+      },
+      {
+        id: "且-4",
+        category: "副词",
+        subcategory: "表暂且",
+        meaning: "姑且、暂且",
+        examples: [
+          { sentence: "存者且偷生", source: "杜甫《石壕吏》", note: "活着的人姑且活一天算一天" },
+          { sentence: "且放白鹿青崖间", source: "李白《梦游天姥吟留别》", note: "暂且把白鹿放在青崖间" }
+        ]
+      }
+    ]
+  },
+  "然": {
+    pinyin: "rán",
+    usages: [
+      {
+        id: "然-1",
+        category: "代词",
+        subcategory: "指示代词",
+        meaning: "这样、如此",
+        examples: [
+          { sentence: "然，诚有百姓者", source: "《孟子·梁惠王上》", note: "是的，确实有这样的百姓" },
+          { sentence: "所以然者何", source: "《晏子春秋》", note: "这样的原因是什么呢" },
+          { sentence: "虽有槁暴，不复挺者，輮使之然也", source: "《荀子·劝学》", note: "是火烤使它这样的" }
+        ]
+      },
+      {
+        id: "然-2",
+        category: "连词",
+        subcategory: "表转折",
+        meaning: "然而、但是",
+        examples: [
+          { sentence: "然侍卫之臣不懈于内", source: "诸葛亮《出师表》", note: "然而侍卫大臣们在朝廷内毫不懈怠" },
+          { sentence: "然视其左右，来而记之者已少", source: "王安石《游褒禅山记》", note: "但是看那左右" },
+          { sentence: "然力足以至焉", source: "王安石《游褒禅山记》", note: "然而力量足以到达那里" }
+        ]
+      },
+      {
+        id: "然-3",
+        category: "助词",
+        subcategory: "词尾",
+        meaning: "……的样子（作形容词或副词词尾）",
+        examples: [
+          { sentence: "杂然相许", source: "《列子·汤问》", note: "纷纷地表示赞同" },
+          { sentence: "满目萧然", source: "范仲淹《岳阳楼记》", note: "满眼萧条的样子" },
+          { sentence: "颓然乎其间者", source: "欧阳修《醉翁亭记》", note: "醉醺醺地坐在众人中间" }
+        ]
+      },
+      {
+        id: "然-4",
+        category: "动词",
+        subcategory: "动词",
+        meaning: "认为……对、同意",
+        examples: [
+          { sentence: "吴广以为然", source: "《史记·陈涉世家》", note: "吴广认为（陈胜说得）对" },
+          { sentence: "然之", source: "常见用法", note: "认为他对" }
+        ]
+      }
+    ]
+  }
+};
+
+/**
+ * 所有用法类别列表
+ * @type {string[]}
+ */
+const ALL_CATEGORIES = [
+  "代词", "助词", "动词", "副词", "连词", "介词", "语气词", "兼词", "名词"
+];
+
+/**
+ * 获取所有虚词列表
+ * @returns {string[]} 所有虚词组成的数组
+ * @example
+ * getAllWords(); // ["之", "其", "而", "以", ...]
+ */
+function getAllWords() {
+  return Object.keys(WORD_DATABASE);
+}
+
+/**
+ * 获取指定虚词的完整信息
+ * @param {string} word - 要查询的虚词（单个汉字）
+ * @returns {Object|null} 虚词信息对象，包含 pinyin 和 usages 数组；若虚词不存在则返回 null
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * getWordInfo("之");
+ * // { pinyin: "zhī", usages: [{ id: "之-1", category: "代词", ... }, ...] }
+ *
+ * getWordInfo("X");
+ * // null
+ */
+function getWordInfo(word) {
+  if (typeof word !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  return WORD_DATABASE[word] || null;
+}
+
+/**
+ * 获取指定虚词的所有用法分类
+ * @param {string} word - 要查询的虚词
+ * @returns {string[]} 用法类别数组，如 ["代词", "助词", "动词"]；若虚词不存在返回空数组
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * getCategories("之");
+ * // ["代词", "助词", "助词", "动词", "助词"]
+ *
+ * getUniqueCategories("之");
+ * // ["代词", "助词", "动词"]
+ */
+function getCategories(word) {
+  if (typeof word !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  const info = WORD_DATABASE[word];
+  if (!info) return [];
+  return info.usages.map(function(u) { return u.category; });
+}
+
+/**
+ * 获取指定虚词的不重复用法分类
+ * @param {string} word - 要查询的虚词
+ * @returns {string[]} 不重复的用法类别数组
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * getUniqueCategories("而");
+ * // ["连词", "代词"]
+ */
+function getUniqueCategories(word) {
+  if (typeof word !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  const cats = getCategories(word);
+  return cats.filter(function(c, i) { return cats.indexOf(c) === i; });
+}
+
+/**
+ * 获取指定虚词在特定用法类别下的例句
+ * @param {string} word - 虚词
+ * @param {string} category - 用法类别，如 "代词"、"连词"
+ * @returns {Object[]} 匹配的例句数组，每个例句包含 sentence、source、note
+ * @throws {TypeError} 参数类型不正确时抛出
+ * @example
+ * getExamplesByCategory("之", "动词");
+ * // [{ sentence: "吾欲之南海", source: "彭端淑《为学》", note: "..." }, ...]
+ */
+function getExamplesByCategory(word, category) {
+  if (typeof word !== "string") {
+    throw new TypeError("第一个参数必须是字符串类型");
+  }
+  if (typeof category !== "string") {
+    throw new TypeError("第二个参数必须是字符串类型");
+  }
+  const info = WORD_DATABASE[word];
+  if (!info) return [];
+  var results = [];
+  info.usages.forEach(function(usage) {
+    if (usage.category === category) {
+      usage.examples.forEach(function(ex) {
+        results.push({
+          sentence: ex.sentence,
+          source: ex.source,
+          note: ex.note,
+          subcategory: usage.subcategory,
+          meaning: usage.meaning
+        });
+      });
+    }
+  });
+  return results;
+}
+
+/**
+ * 按类别搜索所有虚词中属于该类别的条目
+ * @param {string} category - 用法类别名称
+ * @returns {Object[]} 匹配结果数组，每项包含 word、subcategory、meaning、examples
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * searchByCategory("语气词");
+ * // [{ word: "也", subcategory: "表判断", meaning: "...", examples: [...] }, ...]
+ */
+function searchByCategory(category) {
+  if (typeof category !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  var results = [];
+  Object.keys(WORD_DATABASE).forEach(function(word) {
+    WORD_DATABASE[word].usages.forEach(function(usage) {
+      if (usage.category === category) {
+        results.push({
+          word: word,
+          subcategory: usage.subcategory,
+          meaning: usage.meaning,
+          examples: usage.examples
+        });
+      }
+    });
+  });
+  return results;
+}
+
+/**
+ * 根据关键词搜索例句（在句子、出处、注释中搜索）
+ * @param {string} keyword - 搜索关键词
+ * @returns {Object[]} 匹配的例句数组，每项包含 word、sentence、source、note、category
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * searchExamples("岳阳楼");
+ * // [{ word: "也", sentence: "此则岳阳楼之大观也", ... }, ...]
+ */
+function searchExamples(keyword) {
+  if (typeof keyword !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  if (keyword === "") return [];
+  var results = [];
+  Object.keys(WORD_DATABASE).forEach(function(word) {
+    WORD_DATABASE[word].usages.forEach(function(usage) {
+      usage.examples.forEach(function(ex) {
+        if (ex.sentence.indexOf(keyword) !== -1 ||
+            ex.source.indexOf(keyword) !== -1 ||
+            ex.note.indexOf(keyword) !== -1) {
+          results.push({
+            word: word,
+            sentence: ex.sentence,
+            source: ex.source,
+            note: ex.note,
+            category: usage.category,
+            subcategory: usage.subcategory
+          });
+        }
+      });
+    });
+  });
+  return results;
+}
+
+/**
+ * 判定虚词在给定句子中的用法
+ * 通过匹配已知例句库来判定用法类别
+ * @param {string} sentence - 包含虚词的句子
+ * @param {string} targetWord - 要判定的虚词
+ * @returns {Object|null} 匹配到的用法信息 { category, subcategory, meaning, matchedExample }，未匹配返回 null
+ * @throws {TypeError} 参数类型不正确时抛出
+ * @throws {Error} 虚词不在数据库中时抛出
+ * @example
+ * classifyUsage("学而时习之", "之");
+ * // { category: "代词", subcategory: "第三人称代词", meaning: "他、它、他们（作宾语）", matchedExample: "学而时习之" }
+ *
+ * classifyUsage("吾欲之南海", "之");
+ * // { category: "动词", subcategory: "动词", meaning: "到……去、往", matchedExample: "吾欲之南海" }
+ */
+function classifyUsage(sentence, targetWord) {
+  if (typeof sentence !== "string") {
+    throw new TypeError("第一个参数必须是字符串类型");
+  }
+  if (typeof targetWord !== "string") {
+    throw new TypeError("第二个参数必须是字符串类型");
+  }
+  if (sentence === "") {
+    throw new Error("句子不能为空字符串");
+  }
+  if (targetWord === "") {
+    throw new Error("目标虚词不能为空字符串");
+  }
+  if (!WORD_DATABASE[targetWord]) {
+    throw new Error("虚词「" + targetWord + "」不在数据库中，支持的虚词：" + getAllWords().join("、"));
+  }
+
+  var info = WORD_DATABASE[targetWord];
+  var bestMatch = null;
+  var bestScore = 0;
+
+  info.usages.forEach(function(usage) {
+    usage.examples.forEach(function(ex) {
+      // 精确匹配
+      if (sentence === ex.sentence) {
+        bestMatch = {
+          category: usage.category,
+          subcategory: usage.subcategory,
+          meaning: usage.meaning,
+          matchedExample: ex.sentence,
+          source: ex.source,
+          note: ex.note,
+          confidence: "exact"
+        };
+        bestScore = 100;
+        return;
+      }
+      // 包含匹配
+      if (sentence.indexOf(ex.sentence) !== -1 || ex.sentence.indexOf(sentence) !== -1) {
+        var score = 50;
+        // 计算重叠度
+        var shorter = sentence.length < ex.sentence.length ? sentence : ex.sentence;
+        var longer = sentence.length >= ex.sentence.length ? sentence : ex.sentence;
+        var overlap = shorter.length / longer.length;
+        score = Math.round(50 + overlap * 40);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = {
+            category: usage.category,
+            subcategory: usage.subcategory,
+            meaning: usage.meaning,
+            matchedExample: ex.sentence,
+            source: ex.source,
+            note: ex.note,
+            confidence: score >= 80 ? "high" : "medium"
+          };
+        }
+      }
+    });
+  });
+
+  return bestMatch;
+}
+
+/**
+ * 获取虚词的所有例句（扁平化）
+ * @param {string} word - 虚词
+ * @returns {Object[]} 所有例句数组
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * getAllExamples("耳");
+ * // [{ sentence: "技止此耳", source: "...", note: "...", category: "语气词" }, ...]
+ */
+function getAllExamples(word) {
+  if (typeof word !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  var info = WORD_DATABASE[word];
+  if (!info) return [];
+  var results = [];
+  info.usages.forEach(function(usage) {
+    usage.examples.forEach(function(ex) {
+      results.push({
+        sentence: ex.sentence,
+        source: ex.source,
+        note: ex.note,
+        category: usage.category,
+        subcategory: usage.subcategory,
+        meaning: usage.meaning
+      });
+    });
+  });
+  return results;
+}
+
+/**
+ * 统计数据库中虚词的总用法数和例句数
+ * @returns {Object} 统计信息 { wordCount, usageCount, exampleCount }
+ * @example
+ * getStats();
+ * // { wordCount: 20, usageCount: 82, exampleCount: 200+ }
+ */
+function getStats() {
+  var wordCount = Object.keys(WORD_DATABASE).length;
+  var usageCount = 0;
+  var exampleCount = 0;
+  Object.keys(WORD_DATABASE).forEach(function(word) {
+    usageCount += WORD_DATABASE[word].usages.length;
+    WORD_DATABASE[word].usages.forEach(function(usage) {
+      exampleCount += usage.examples.length;
+    });
+  });
+  return {
+    wordCount: wordCount,
+    usageCount: usageCount,
+    exampleCount: exampleCount
+  };
+}
+
+/**
+ * 检查虚词是否具有某种用法类别
+ * @param {string} word - 虚词
+ * @param {string} category - 用法类别
+ * @returns {boolean} 是否具有该用法
+ * @throws {TypeError} 参数类型不正确时抛出
+ * @example
+ * hasCategory("之", "动词"); // true
+ * hasCategory("之", "连词"); // false
+ */
+function hasCategory(word, category) {
+  if (typeof word !== "string") {
+    throw new TypeError("第一个参数必须是字符串类型");
+  }
+  if (typeof category !== "string") {
+    throw new TypeError("第二个参数必须是字符串类型");
+  }
+  var cats = getCategories(word);
+  return cats.indexOf(category) !== -1;
+}
+
+/**
+ * 获取虚词用法总数（按类别去重后）
+ * @param {string} word - 虚词
+ * @returns {number} 不重复的用法数量
+ * @throws {TypeError} 参数不是字符串类型时抛出
+ * @example
+ * getUsageCount("之"); // 4 (代词、助词、动词，其中助词有多种子类但大类算一种)
+ */
+function getUsageCount(word) {
+  if (typeof word !== "string") {
+    throw new TypeError("参数必须是字符串类型");
+  }
+  return getUniqueCategories(word).length;
+}
+
+// ============================================================
+// 第二部分：单元测试框架与测试用例
+// ============================================================
+
+var _testResults = [];
+var _testPass = 0;
+var _testFail = 0;
+
+/**
+ * 断言函数 - 判断实际值是否等于期望值
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} description - 测试描述
+ */
+function assertEqual(actual, expected, description) {
+  var pass;
+  if (Array.isArray(expected)) {
+    pass = Array.isArray(actual) && actual.length === expected.length &&
+      actual.every(function(v, i) { return v === expected[i]; });
+  } else if (typeof expected === "object" && expected !== null) {
+    pass = JSON.stringify(actual) === JSON.stringify(expected);
+  } else {
+    pass = actual === expected;
+  }
+  _testResults.push({
+    pass: pass,
+    description: description,
+    actual: actual,
+    expected: expected
+  });
+  if (pass) _testPass++;
+  else _testFail++;
+}
+
+/**
+ * 断言函数 - 判断值是否为真
+ * @param {*} value - 要判断的值
+ * @param {string} description - 测试描述
+ */
+function assertTrue(value, description) {
+  var pass = value === true || value;
+  _testResults.push({
+    pass: !!pass,
+    description: description,
+    actual: value,
+    expected: true
+  });
+  if (pass) _testPass++;
+  else _testFail++;
+}
+
+/**
+ * 断言函数 - 判断值是否为假
+ * @param {*} value - 要判断的值
+ * @param {string} description - 测试描述
+ */
+function assertFalse(value, description) {
+  var pass = !value;
+  _testResults.push({
+    pass: pass,
+    description: description,
+    actual: value,
+    expected: false
+  });
+  if (pass) _testPass++;
+  else _testFail++;
+}
+
+/**
+ * 断言函数 - 判断函数是否抛出异常
+ * @param {Function} fn - 要执行的函数
+ * @param {string} description - 测试描述
+ */
+function assertThrows(fn, description) {
+  var threw = false;
+  try {
+    fn();
+  } catch (e) {
+    threw = true;
+  }
+  _testResults.push({
+    pass: threw,
+    description: description,
+    actual: threw ? "threw" : "no throw",
+    expected: "threw"
+  });
+  if (threw) _testPass++;
+  else _testFail++;
+}
+
+/**
+ * 断言函数 - 判断值是否为 null
+ * @param {*} value - 要判断的值
+ * @param {string} description - 测试描述
+ */
+function assertNull(value, description) {
+  var pass = value === null;
+  _testResults.push({
+    pass: pass,
+    description: description,
+    actual: value,
+    expected: null
+  });
+  if (pass) _testPass++;
+  else _testFail++;
+}
+
+/**
+ * 运行所有测试用例
+ */
+function runAllTests() {
+  _testResults = [];
+  _testPass = 0;
+  _testFail = 0;
+
+  // ===== getAllWords 测试 =====
+  // 测试1: 正常值 - 返回数组
+  assertEqual(Array.isArray(getAllWords()), true, "getAllWords() 返回数组");
+  // 测试2: 正常值 - 包含20个虚词
+  assertEqual(getAllWords().length, 20, "getAllWords() 返回20个虚词");
+  // 测试3: 正常值 - 包含"之"
+  assertTrue(getAllWords().indexOf("之") !== -1, "getAllWords() 包含'之'");
+
+  // ===== getWordInfo 测试 =====
+  // 测试4: 正常值 - 查询"之"
+  var infoZhi = getWordInfo("之");
+  assertEqual(infoZhi.pinyin, "zhī", "getWordInfo('之') 拼音为 zhī");
+  // 测试5: 正常值 - 查询"其"
+  var infoQi = getWordInfo("其");
+  assertEqual(infoQi.pinyin, "qí", "getWordInfo('其') 拼音为 qí");
+  // 测试6: 正常值 - 查询"而"
+  var infoEr = getWordInfo("而");
+  assertTrue(infoEr.usages.length >= 5, "getWordInfo('而') 至少有5种用法");
+  // 测试7: 边界值 - 不存在的虚词
+  assertNull(getWordInfo("X"), "getWordInfo('X') 返回 null");
+  // 测试8: 异常输入 - null
+  assertThrows(function() { getWordInfo(null); }, "getWordInfo(null) 抛出 TypeError");
+  // 测试9: 异常输入 - undefined
+  assertThrows(function() { getWordInfo(undefined); }, "getWordInfo(undefined) 抛出 TypeError");
+  // 测试10: 异常输入 - 数字
+  assertThrows(function() { getWordInfo(123); }, "getWordInfo(123) 抛出 TypeError");
+  // 测试11: 边界值 - 空字符串
+  assertNull(getWordInfo(""), "getWordInfo('') 返回 null");
+
+  // ===== getCategories 测试 =====
+  // 测试12: 正常值 - "之"的类别
+  var catsZhi = getCategories("之");
+  assertTrue(catsZhi.indexOf("代词") !== -1, "getCategories('之') 包含'代词'");
+  // 测试13: 正常值 - "而"的类别
+  var catsEr = getCategories("而");
+  assertTrue(catsEr.indexOf("连词") !== -1, "getCategories('而') 包含'连词'");
+  // 测试14: 正常值 - "以"的类别
+  var catsYi = getCategories("以");
+  assertTrue(catsYi.indexOf("介词") !== -1, "getCategories('以') 包含'介词'");
+  // 测试15: 边界值 - 不存在的虚词
+  assertEqual(getCategories("Z").length, 0, "getCategories('Z') 返回空数组");
+  // 测试16: 异常输入
+  assertThrows(function() { getCategories(null); }, "getCategories(null) 抛出 TypeError");
+
+  // ===== getUniqueCategories 测试 =====
+  // 测试17: 正常值 - "之"去重后类别
+  var uniqueZhi = getUniqueCategories("之");
+  assertTrue(uniqueZhi.indexOf("助词") !== -1, "getUniqueCategories('之') 包含'助词'");
+  assertTrue(uniqueZhi.indexOf("动词") !== -1, "getUniqueCategories('之') 包含'动词'");
+  // 测试18: 去重效果 - "之"有多个助词但只出现一次
+  var count = 0;
+  uniqueZhi.forEach(function(c) { if (c === "助词") count++; });
+  assertEqual(count, 1, "getUniqueCategories('之') '助词'只出现一次");
+
+  // ===== getExamplesByCategory 测试 =====
+  // 测试19: 正常值 - "之"的动词用法例句
+  var exZhiVerb = getExamplesByCategory("之", "动词");
+  assertTrue(exZhiVerb.length >= 1, "getExamplesByCategory('之','动词') 至少有1条例句");
+  assertTrue(exZhiVerb[0].sentence.indexOf("南海") !== -1, "getExamplesByCategory('之','动词') 包含'南海'例句");
+  // 测试20: 正常值 - "也"的语气词
+  var exYe = getExamplesByCategory("也", "语气词");
+  assertTrue(exYe.length >= 3, "getExamplesByCategory('也','语气词') 至少3条例句");
+  // 测试21: 边界值 - 不存在的类别
+  assertEqual(getExamplesByCategory("之", "叹词").length, 0, "getExamplesByCategory('之','叹词') 返回空数组");
+  // 测试22: 异常输入
+  assertThrows(function() { getExamplesByCategory(null, "代词"); }, "getExamplesByCategory(null,'代词') 抛出 TypeError");
+  assertThrows(function() { getExamplesByCategory("之", null); }, "getExamplesByCategory('之',null) 抛出 TypeError");
+
+  // ===== searchByCategory 测试 =====
+  // 测试23: 正常值 - 搜索"语气词"
+  var searchYe = searchByCategory("语气词");
+  assertTrue(searchYe.length >= 5, "searchByCategory('语气词') 至少5条结果");
+  // 测试24: 正常值 - 搜索"兼词"
+  var searchJian = searchByCategory("兼词");
+  assertTrue(searchJian.length >= 1, "searchByCategory('兼词') 至少1条结果");
+  // 测试25: 边界值 - 不存在的类别
+  assertEqual(searchByCategory("不存在的类别").length, 0, "searchByCategory('不存在的类别') 返回空数组");
+
+  // ===== searchExamples 测试 =====
+  // 测试26: 正常值 - 搜索"岳阳楼"
+  var searchYue = searchExamples("岳阳楼");
+  assertTrue(searchYue.length >= 1, "searchExamples('岳阳楼') 至少1条结果");
+  // 测试27: 正常值 - 搜索"桃花源"
+  var searchTao = searchExamples("桃花源");
+  assertTrue(searchTao.length >= 1, "searchExamples('桃花源') 至少1条结果");
+  // 测试28: 边界值 - 空字符串
+  assertEqual(searchExamples("").length, 0, "searchExamples('') 返回空数组");
+  // 测试29: 边界值 - 不存在的关键词
+  assertEqual(searchExamples("XYZABC").length, 0, "searchExamples('XYZABC') 返回空数组");
+
+  // ===== classifyUsage 测试 =====
+  // 测试30: 正常值 - 精确匹配
+  var cls1 = classifyUsage("学而时习之", "之");
+  assertEqual(cls1.category, "代词", "classifyUsage('学而时习之','之') 判定为代词");
+  // 测试31: 正常值 - 动词用法
+  var cls2 = classifyUsage("吾欲之南海", "之");
+  assertEqual(cls2.category, "动词", "classifyUsage('吾欲之南海','之') 判定为动词");
+  // 测试32: 正常值 - 转折连词
+  var cls3 = classifyUsage("学而不思则罔", "而");
+  assertEqual(cls3.category, "连词", "classifyUsage('学而不思则罔','而') 判定为连词");
+  // 测试33: 异常输入 - 空句子
+  assertThrows(function() { classifyUsage("", "之"); }, "classifyUsage('','之') 抛出 Error");
+  // 测试34: 异常输入 - 空虚词
+  assertThrows(function() { classifyUsage("学而时习之", ""); }, "classifyUsage('学而时习之','') 抛出 Error");
+  // 测试35: 异常输入 - 不存在的虚词
+  assertThrows(function() { classifyUsage("某句", "X"); }, "classifyUsage('某句','X') 抛出 Error");
+  // 测试36: 异常输入 - null
+  assertThrows(function() { classifyUsage(null, "之"); }, "classifyUsage(null,'之') 抛出 TypeError");
+
+  // ===== getAllExamples 测试 =====
+  // 测试37: 正常值
+  var allEx = getAllExamples("耳");
+  assertTrue(allEx.length >= 2, "getAllExamples('耳') 至少2条例句");
+  // 测试38: 边界值 - 不存在的虚词
+  assertEqual(getAllExamples("Z").length, 0, "getAllExamples('Z') 返回空数组");
+
+  // ===== getStats 测试 =====
+  // 测试39: 正常值
+  var stats = getStats();
+  assertEqual(stats.wordCount, 20, "getStats() wordCount 为 20");
+  assertTrue(stats.usageCount >= 60, "getStats() usageCount 至少 60");
+  assertTrue(stats.exampleCount >= 100, "getStats() exampleCount 至少 100");
+
+  // ===== hasCategory 测试 =====
+  // 测试40: 正常值 - true
+  assertTrue(hasCategory("之", "动词"), "hasCategory('之','动词') 为 true");
+  // 测试41: 正常值 - false
+  assertFalse(hasCategory("之", "连词"), "hasCategory('之','连词') 为 false");
+  // 测试42: 正常值
+  assertTrue(hasCategory("而", "连词"), "hasCategory('而','连词') 为 true");
+  // 测试43: 异常输入
+  assertThrows(function() { hasCategory(null, "代词"); }, "hasCategory(null,'代词') 抛出 TypeError");
+
+  // ===== getUsageCount 测试 =====
+  // 测试44: 正常值
+  var uc = getUsageCount("之");
+  assertTrue(uc >= 3, "getUsageCount('之') 至少3种用法");
+  // 测试45: 正常值
+  var uc2 = getUsageCount("耳");
+  assertTrue(uc2 >= 1, "getUsageCount('耳') 至少1种用法");
+
+  // ===== 额外边界测试 =====
+  // 测试46: 搜索包含出处关键词
+  var search46 = searchExamples("论语");
+  assertTrue(search46.length >= 3, "searchExamples('论语') 至少3条结果");
+  // 测试47: classifyUsage 包含匹配
+  var cls47 = classifyUsage("公将鼓之", "之");
+  assertEqual(cls47.category, "代词", "classifyUsage('公将鼓之','之') 判定为代词");
+  // 测试48: 搜索"捕蛇者说"
+  var search48 = searchExamples("捕蛇者说");
+  assertTrue(search48.length >= 2, "searchExamples('捕蛇者说') 至少2条结果");
+  // 测试49: getWordInfo 返回的 usages 结构完整
+  var info49 = getWordInfo("以");
+  assertTrue(info49.usages[0].examples.length >= 1, "getWordInfo('以') 第一个用法有例句");
+  assertTrue(typeof info49.usages[0].meaning === "string", "getWordInfo('以') 第一个用法有 meaning");
+  // 测试50: 所有虚词都有 pinyin
+  var allHavePinyin = true;
+  getAllWords().forEach(function(w) {
+    if (!WORD_DATABASE[w].pinyin) allHavePinyin = false;
+  });
+  assertTrue(allHavePinyin, "所有虚词都有 pinyin 字段");
+
+  // 输出结果
+  var total = _testPass + _testFail;
+  var html = "";
+  _testResults.forEach(function(r, i) {
+    var cls = r.pass ? "test-pass" : "test-fail";
+    var icon = r.pass ? "✓" : "✗";
+    html += '<div class="' + cls + '">' + icon + ' 测试' + (i + 1) + ': ' + r.description;
+    if (!r.pass) {
+      html += ' [期望: ' + JSON.stringify(r.expected) + ', 实际: ' + JSON.stringify(r.actual) + ']';
+    }
+    html += '</div>';
+  });
+  html += '<div class="test-summary">通过 ' + _testPass + ' / 共 ' + total + '（失败 ' + _testFail + '）</div>';
+  document.getElementById("test-results").innerHTML = html;
+}
+
+// ============================================================
+// 第三部分：使用说明书内容
+// ============================================================
+
+var manualHTML = '<div class="manual-section">' +
+'<h3>一、工具概述</h3>' +
+'<p>「文言虚词用法查询工具」是一款面向中学语文教学、古代汉语学习及文言文研究的纯前端查询工具。本工具收录了20个最常见的文言虚词（之、其、而、以、于、乃、则、者、也、乎、焉、哉、矣、耳、夫、若、为、因、且、然），依据王力先生《古代汉语》（中华书局出版）中的虚词分类体系，对每个虚词的多种用法进行了系统分类，并配以经典例句及出处说明。</p>' +
+'<p>本工具解决的核心问题是：在学习文言文时，同一个虚词往往有多种不同的语法功能和含义，学生需要快速查阅某个虚词在特定语境下的具体用法。传统纸质工具书翻阅不便，而本工具通过关键词搜索、分类筛选、用法判定等功能，帮助用户高效定位所需信息。</p>' +
+'<p>本工具为纯前端实现，无需服务器，无需安装任何依赖库，直接在浏览器中打开 HTML 文件即可使用。所有数据内置于 JavaScript 代码中，支持离线使用。</p>' +
+
+'<h3>二、核心函数与参数说明</h3>' +
+'<table>' +
+'<tr><th>函数名</th><th>参数</th><th>参数说明</th><th>返回值</th></tr>' +
+'<tr><td>getAllWords()</td><td>无</td><td>—</td><td>string[] — 20个虚词组成的数组</td></tr>' +
+'<tr><td>getWordInfo(word)</td><td>word: string</td><td>单个汉字虚词，如"之""其"</td><td>Object|null — 包含 pinyin 和 usages 的对象</td></tr>' +
+'<tr><td>getCategories(word)</td><td>word: string</td><td>虚词</td><td>string[] — 该虚词所有用法类别（含重复）</td></tr>' +
+'<tr><td>getUniqueCategories(word)</td><td>word: string</td><td>虚词</td><td>string[] — 去重后的用法类别</td></tr>' +
+'<tr><td>getExamplesByCategory(word, category)</td><td>word: string; category: string</td><td>虚词 + 用法类别名（如"代词""连词"）</td><td>Object[] — 匹配的例句数组</td></tr>' +
+'<tr><td>searchByCategory(category)</td><td>category: string</td><td>用法类别名</td><td>Object[] — 所有虚词中该类别的条目</td></tr>' +
+'<tr><td>searchExamples(keyword)</td><td>keyword: string</td><td>搜索关键词（在句子、出处、注释中匹配）</td><td>Object[] — 匹配的例句数组</td></tr>' +
+'<tr><td>classifyUsage(sentence, targetWord)</td><td>sentence: string; targetWord: string</td><td>含虚词的句子 + 要判定的虚词</td><td>Object|null — 用法判定结果</td></tr>' +
+'<tr><td>getAllExamples(word)</td><td>word: string</td><td>虚词</td><td>Object[] — 该虚词所有例句</td></tr>' +
+'<tr><td>getStats()</td><td>无</td><td>—</td><td>Object — { wordCount, usageCount, exampleCount }</td></tr>' +
+'<tr><td>hasCategory(word, category)</td><td>word: string; category: string</td><td>虚词 + 类别名</td><td>boolean — 是否具有该用法</td></tr>' +
+'<tr><td>getUsageCount(word)</td><td>word: string</td><td>虚词</td><td>number — 不重复的用法数量</td></tr>' +
+'</table>' +
+'<p><strong>参数取值范围：</strong>word 参数必须为数据库中收录的20个虚词之一（之/其/而/以/于/乃/则/者/也/乎/焉/哉/矣/耳/夫/若/为/因/且/然），传入其他值将返回 null 或空数组（不会抛出异常，但 classifyUsage 会抛出 Error）。category 参数应为以下类别之一：代词、助词、动词、副词、连词、介词、语气词、兼词、名词。</p>' +
+
+'<h3>三、实际使用场景</h3>' +
+
+'<div class="scenario">' +
+'<h4>场景一：学生复习"之"字的全部用法</h4>' +
+'<p>输入：getWordInfo("之")</p>' +
+'<p>结果：返回包含5种用法的完整对象。学生可以看到"之"字有代词（他/它）、结构助词（的）、取消句子独立性、动词（到……去）、音节助词等用法，每种用法下都有3个左右的经典例句和出处。</p>' +
+'<pre>var info = getWordInfo("之");\n' +
+'info.usages.forEach(function(u) {\n' +
+'  console.log(u.category + " - " + u.meaning);\n' +
+'  u.examples.forEach(function(e) {\n' +
+'    console.log("  " + e.sentence + " —— " + e.source);\n' +
+'  });\n' +
+'});\n' +
+'// 输出：\n' +
+'// 代词 - 他、它、他们（作宾语）\n' +
+'//   学而时习之 —— 《论语·学而》\n' +
+'//   ...\n' +
+'// 助词 - 的（表领属或修饰关系）\n' +
+'//   小大之狱 —— 《左传·庄公十年》\n' +
+'//   ...</pre>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景二：教师准备"连词"专题教学</h4>' +
+'<p>输入：searchByCategory("连词")</p>' +
+'<p>结果：返回所有虚词中属于"连词"类别的条目，包括"而"的并列/转折/承接/修饰/假设、"以"的目的连词、"则"的承接/转折/假设等。教师可以据此整理连词专题讲义。</p>' +
+'<pre>var results = searchByCategory("连词");\n' +
+'console.log("共有 " + results.length + " 条连词用法");\n' +
+'results.forEach(function(r) {\n' +
+'  console.log(r.word + " - " + r.subcategory + ": " + r.meaning);\n' +
+'});\n' +
+'// 输出：\n' +
+'// 而 - 表并列: 又、而且（并列关系，前后地位平等）\n' +
+'// 而 - 表转折: 却、但是（转折关系）\n' +
+'// 而 - 表承接: 就、然后（承接关系，前后有先后顺序）\n' +
+'// ...</pre>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景三：判定句子中虚词的具体用法</h4>' +
+'<p>输入：classifyUsage("吾欲之南海", "之")</p>' +
+'<p>结果：返回 { category: "动词", subcategory: "动词", meaning: "到……去、往", matchedExample: "吾欲之南海", confidence: "exact" }。用户立即知道此句中"之"是动词，意为"到……去"。</p>' +
+'<pre>var result = classifyUsage("学而不思则罔", "而");\n' +
+'console.log("用法类别: " + result.category);\n' +
+'console.log("具体含义: " + result.meaning);\n' +
+'console.log("匹配置信度: " + result.confidence);\n' +
+'// 输出：\n' +
+'// 用法类别: 连词\n' +
+'// 具体含义: 却、但是（转折关系）\n' +
+'// 匹配置信度: exact</pre>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景四：按出处搜索相关例句</h4>' +
+'<p>输入：searchExamples("岳阳楼记")</p>' +
+'<p>结果：返回所有出处包含"岳阳楼记"的例句，涵盖"也""以""夫""则"等多个虚词在该文中出现的用法。适合备课或编写课文注释。</p>' +
+'<pre>var results = searchExamples("岳阳楼记");\n' +
+'results.forEach(function(r) {\n' +
+'  console.log("【" + r.word + "】" + r.sentence + " —— " + r.source);\n' +
+'});\n' +
+'// 输出：\n' +
+'// 【也】此则岳阳楼之大观也 —— 范仲淹《岳阳楼记》\n' +
+'// 【以】属予作文以记之 —— 范仲淹《岳阳楼记》\n' +
+'// ...</pre>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景五：统计数据库规模</h4>' +
+'<p>输入：getStats()</p>' +
+'<p>结果：返回 { wordCount: 20, usageCount: N, exampleCount: M }，帮助使用者了解数据库的覆盖范围。</p>' +
+'<pre>var stats = getStats();\n' +
+'console.log("收录虚词: " + stats.wordCount + " 个");\n' +
+'console.log("用法分类: " + stats.usageCount + " 条");\n' +
+'console.log("例句总数: " + stats.exampleCount + " 条");</pre>' +
+'</div>' +
+
+'<div class="scenario">' +
+'<h4>场景六：检查某虚词是否有某种用法</h4>' +
+'<p>输入：hasCategory("之", "动词")</p>' +
+'<p>结果：返回 true，表示"之"有动词用法。这在编写自动批改程序时很有用。</p>' +
+'<pre>console.log(hasCategory("之", "动词")); // true\n' +
+'console.log(hasCategory("之", "连词")); // false\n' +
+'console.log(hasCategory("而", "代词")); // true（而可作第二人称代词）</pre>' +
+'</div>' +
+
+'<h3>四、常见错误与排查</h3>' +
+'<table>' +
+'<tr><th>错误信息</th><th>原因</th><th>解决方法</th></tr>' +
+'<tr><td>TypeError: 参数必须是字符串类型</td><td>传入了 null、undefined、数字等非字符串值</td><td>确保传入的参数是字符串类型，调用前可做 typeof 检查</td></tr>' +
+'<tr><td>Error: 虚词「X」不在数据库中</td><td>classifyUsage 的第二个参数不是20个收录虚词之一</td><td>检查虚词是否在支持列表中：之/其/而/以/于/乃/则/者/也/乎/焉/哉/矣/耳/夫/若/为/因/且/然</td></tr>' +
+'<tr><td>Error: 句子不能为空字符串</td><td>classifyUsage 的第一个参数为空字符串</td><td>确保传入的句子非空</td></tr>' +
+'<tr><td>返回 null</td><td>getWordInfo 传入了不在数据库中的虚词</td><td>检查虚词是否正确，注意不要传入实词</td></tr>' +
+'<tr><td>返回空数组</td><td>搜索条件没有匹配结果</td><td>检查关键词是否正确，或尝试更短的关键词</td></tr>' +
+'<tr><td>classifyUsage 返回 null</td><td>输入的句子与数据库中任何例句都不匹配</td><td>本工具的判定基于例句匹配，如果句子是改写过的可能无法精确匹配。可尝试输入原文</td></tr>' +
+'</table>' +
+
+'<h3>五、数据来源与标准依据</h3>' +
+'<p>本工具的虚词分类体系主要依据以下学术文献：</p>' +
+'<p>1. <strong>王力《古代汉语》</strong>（中华书局，1962年初版，后续多次修订）。该书是中国高校古代汉语课程的经典教材，其虚词分类体系被广泛采用。本工具中虚词的义项划分、类别归属均以该书为准。</p>' +
+'<p>2. <strong>中学语文课程标准</strong>：20个虚词的选取参考了《普通高中语文课程标准》（GB/T 32524-2016 相关教学要求）及人教版、部编版中学语文教材中要求掌握的18个常见文言虚词。</p>' +
+'<p>3. <strong>例句出处</strong>：所有例句均标注了原始出处（书名、篇名），主要来自先秦两汉经典及唐宋名篇，均为语文教材常见篇目。</p>' +
+'<p>4. 关于国标说明：文言虚词分类属于传统语文学领域，目前无专门的国家标准（GB）规范虚词分类。本工具遵循学术界通行的王力体系，如需查证具体义项划分，需查王力《古代汉语》原文。</p>' +
+
+'<h3>六、局限性说明</h3>' +
+'<p>1. <strong>收录范围有限</strong>：本工具仅收录20个最常见的文言虚词，未涵盖"所""者""诸""盍""叵""讵"等其他文言虚词。如需更全面的虚词查询，请参考王力《古代汉语》或《辞源》。</p>' +
+'<p>2. <strong>用法判定基于匹配</strong>：classifyUsage 函数通过将输入句子与已知例句进行字符串匹配来判定用法，而非基于自然语言理解的智能分析。如果输入的句子与数据库中的例句不完全一致（如改写、缩写），可能无法正确判定或返回 null。</p>' +
+'<p>3. <strong>义项划分从简</strong>：部分虚词的义项划分做了适当简化。例如"以"字在王力原著中义项更为细致，本工具合并了部分相近义项以方便教学使用。</p>' +
+'<p>4. <strong>不含音韵信息</strong>：本工具仅提供基本拼音，不包含古音（上古音、中古音）信息。部分虚词（如"夫""为"）有不同读音对应不同用法，本工具仅在 pinyin 字段标注了常见读音。</p>' +
+'<p>5. <strong>不含词义演变</strong>：本工具未展示各虚词的历史演变过程（如本义→引申义→假借义的脉络），仅列出共时平面的用法分类。</p>' +
+'<p>6. <strong>例句覆盖有限</strong>：每个义项下仅收录2-3条例句，不足以展示该用法的全部语境变化。如需更多例句，请参考相关古籍原文。</p>' +
+'<p>7. <strong>不支持连续文本分析</strong>：本工具不支持输入一段完整文言文自动标注所有虚词用法，仅支持单句查询。</p>' +
+'</div>';
+
+document.getElementById("manual-content").innerHTML = manualHTML;
+
+// ============================================================
+// 页面交互逻辑
+// ============================================================
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  document.getElementById('tab-' + tabName).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function demoSearch() {
+  var word = document.getElementById('search-word').value.trim();
+  var container = document.getElementById('demo-results');
+  if (!word) {
+    container.innerHTML = '<p style="color:red;">请输入虚词</p>';
+    return;
+  }
+  var info = getWordInfo(word);
+  if (!info) {
+    container.innerHTML = '<p style="color:red;">未找到虚词「' + word + '」，支持的虚词：' + getAllWords().join('、') + '</p>';
+    return;
+  }
+  var html = '<div class="word-card"><h3>' + word + '（' + info.pinyin + '）</h3>';
+  info.usages.forEach(function(usage, idx) {
+    html += '<div class="usage-item">';
+    html += '<span class="usage-label">用法' + (idx + 1) + '：[' + usage.category + '] ' + usage.subcategory + '</span><br>';
+    html += '<strong>含义：</strong>' + usage.meaning + '<br>';
+    html += '<strong>例句：</strong><br>';
+    usage.examples.forEach(function(ex) {
+      html += '<div class="example">· ' + ex.sentence + ' <span class="example-source">—— ' + ex.source + '</span></div>';
+      html += '<div style="color:#888;font-size:13px;margin-left:1em;">' + ex.note + '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function demoShowAll() {
+  var container = document.getElementById('demo-results');
+  var html = '';
+  getAllWords().forEach(function(word) {
+    var info = WORD_DATABASE[word];
+    var cats = getUniqueCategories(word).join('、');
+    var exCount = getAllExamples(word).length;
+    html += '<div class="word-card" style="display:inline-block;width:calc(50% - 12px);vertical-align:top;margin:6px;">';
+    html += '<h3 style="font-size:18px;">' + word + '（' + info.pinyin + '）</h3>';
+    html += '<div>用法类别：' + cats + '</div>';
+    html += '<div>例句数量：' + exCount + ' 条</div>';
+    html += '<div>用法数：' + info.usages.length + ' 种</div>';
+    html += '</div>';
+  });
+  var stats = getStats();
+  html += '<div style="margin-top:16px;padding:12px;background:#e8dcc8;border-radius:6px;">';
+  html += '<strong>数据库统计：</strong>收录虚词 ' + stats.wordCount + ' 个，用法分类 ' + stats.usageCount + ' 条，例句 ' + stats.exampleCount + ' 条';
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function demoSearchCategory() {
+  var cat = document.getElementById('search-category').value.trim();
+  var container = document.getElementById('demo-results');
+  if (!cat) {
+    container.innerHTML = '<p style="color:red;">请输入用法类别</p>';
+    return;
+  }
+  var results = searchByCategory(cat);
+  if (results.length === 0) {
+    container.innerHTML = '<p style="color:red;">未找到类别「' + cat + '」的用法。可用类别：' + ALL_CATEGORIES.join('、') + '</p>';
+    return;
+  }
+  var html = '<p>找到 <strong>' + results.length + '</strong> 条「' + cat + '」类用法：</p>';
+  results.forEach(function(r) {
+    html += '<div class="usage-item">';
+    html += '<span class="usage-label">【' + r.word + '】' + r.subcategory + '</span>：' + r.meaning + '<br>';
+    html += '<div class="example">';
+    r.examples.forEach(function(ex) {
+      html += '· ' + ex.sentence + ' <span class="example-source">—— ' + ex.source + '</span><br>';
+    });
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function demoClassify() {
+  var sentence = document.getElementById('search-sentence').value.trim();
+  var target = document.getElementById('search-target').value.trim();
+  var container = document.getElementById('demo-results');
+  if (!sentence || !target) {
+    container.innerHTML = '<p style="color:red;">请输入句子和目标虚词</p>';
+    return;
+  }
+  try {
+    var result = classifyUsage(sentence, target);
+    if (!result) {
+      container.innerHTML = '<p style="color:orange;">未能匹配到已知用法。可能原因：句子与数据库例句不一致，请尝试输入原文。</p>';
+      return;
+    }
+    var html = '<div class="word-card">';
+    html += '<h3>判定结果</h3>';
+    html += '<p><strong>句子：</strong>' + sentence + '</p>';
+    html += '<p><strong>目标虚词：</strong>' + target + '</p>';
+    html += '<p><strong>用法类别：</strong>' + result.category + ' → ' + result.subcategory + '</p>';
+    html += '<p><strong>含义：</strong>' + result.meaning + '</p>';
+    html += '<p><strong>匹配例句：</strong>' + result.matchedExample + '</p>';
+    html += '<p><strong>出处：</strong>' + result.source + '</p>';
+    html += '<p><strong>注释：</strong>' + result.note + '</p>';
+    html += '<p><strong>匹配置信度：</strong>' + result.confidence + '</p>';
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<p style="color:red;">错误：' + e.message + '</p>';
+  }
+}
+
+// 初始化源码显示
+var sourceCode = document.querySelector('script:not([src])').textContent;
+// 只取核心源码部分（到测试框架之前）
+var coreEnd = sourceCode.indexOf('// ============================================================\n// 第二部分');
+var coreSource = sourceCode.substring(0, coreEnd);
+document.getElementById('source-code').textContent = coreSource;
+</script>
+</body>
+</html>

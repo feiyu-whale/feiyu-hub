@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>木材含水率与干缩计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  background: linear-gradient(135deg, #faf6f0 0%, #f0e6d2 100%);
+  color: #3a2817;
+  min-height: 100vh;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.container { max-width: 640px; margin: 0 auto; }
+header {
+  text-align: center;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, #6b4423 0%, #8b5a2b 100%);
+  color: #fff;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(107, 68, 35, 0.25);
+}
+header h1 { font-size: 20px; margin-bottom: 6px; letter-spacing: 0.5px; }
+header p { font-size: 13px; opacity: 0.92; }
+.tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.tab {
+  flex: 1;
+  padding: 10px 4px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.25s;
+  color: #6b4423;
+  font-weight: 500;
+  user-select: none;
+}
+.tab.active {
+  background: linear-gradient(135deg, #8b5a2b 0%, #a0522d 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(139, 90, 43, 0.35);
+}
+.panel {
+  display: none;
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 14px;
+  animation: fadeIn 0.3s;
+}
+.panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.panel h2 {
+  font-size: 16px;
+  color: #6b4423;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0e6d2;
+}
+.form-group { margin-bottom: 14px; }
+label {
+  display: block;
+  font-size: 13px;
+  color: #5a3e25;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+input[type="number"], select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #e0d4c0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #faf6f0;
+  color: #3a2817;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: inherit;
+}
+input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: #a0522d;
+  background: #fff;
+}
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #8b5a2b 0%, #a0522d 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  margin-top: 6px;
+  font-family: inherit;
+}
+.btn:active { transform: scale(0.98); }
+.btn:hover { box-shadow: 0 4px 14px rgba(139, 90, 43, 0.35); }
+.result {
+  margin-top: 16px;
+  padding: 14px;
+  background: linear-gradient(135deg, #faf6f0 0%, #f5ead6 100%);
+  border-left: 4px solid #a0522d;
+  border-radius: 8px;
+  font-size: 14px;
+  display: none;
+}
+.result.show { display: block; animation: fadeIn 0.3s; }
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px dashed #d4c4a8;
+  gap: 10px;
+}
+.result-item:last-child { border-bottom: none; }
+.result-label { color: #6b4423; font-size: 13px; }
+.result-value {
+  font-weight: 600;
+  color: #a0522d;
+  font-size: 15px;
+  text-align: right;
+  word-break: break-all;
+}
+.note {
+  font-size: 12px;
+  color: #8b7355;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #faf6f0;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+.source {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 60px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  font-size: 13px;
+}
+.source h3 {
+  color: #6b4423;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+.source ul { list-style: none; padding: 0; }
+.source li {
+  padding: 7px 0 7px 24px;
+  position: relative;
+  color: #5a3e25;
+  line-height: 1.6;
+  font-size: 13px;
+}
+.source li::before {
+  content: "📚";
+  position: absolute;
+  left: 0;
+  top: 7px;
+}
+.version {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: #8b7355;
+  background: rgba(255,255,255,0.85);
+  padding: 3px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.row { display: flex; gap: 10px; }
+.row .form-group { flex: 1; }
+.warn {
+  color: #b85c1a;
+  background: #fff4e6;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 8px;
+  display: none;
+}
+.warn.show { display: block; }
+@media (max-width: 480px) {
+  body { padding: 10px; font-size: 13px; }
+  header h1 { font-size: 18px; }
+  header p { font-size: 12px; }
+  .tab { font-size: 12px; padding: 9px 3px; }
+  .panel { padding: 14px; }
+  .panel h2 { font-size: 15px; }
+  .result-value { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🪵 木材含水率与干缩计算</h1>
+    <p>平衡含水率 · 干缩变形 · 强度校正</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="emc">🌡️ 平衡含水率</div>
+    <div class="tab" data-tab="shrink">📏 干缩计算</div>
+    <div class="tab" data-tab="strength">💪 强度校正</div>
+  </div>
+
+  <div class="panel active" id="panel-emc">
+    <h2>🌡️ 平衡含水率（EMC）计算</h2>
+    <div class="form-group">
+      <label>环境温度 T (°C)</label>
+      <input type="number" id="emc-temp" value="20" min="-10" max="80" step="0.1">
+    </div>
+    <div class="form-group">
+      <label>相对湿度 RH (%)</label>
+      <input type="number" id="emc-rh" value="60" min="1" max="99" step="0.1">
+    </div>
+    <button class="btn" onclick="calcEMC()">计算平衡含水率</button>
+    <div class="warn" id="emc-warn"></div>
+    <div class="result" id="emc-result"></div>
+    <div class="note">
+      💡 采用 Hailwood-Norro 吸附模型（Simpson 1998 参数化公式），适用于针叶材。阔叶材结果略有差异，具体需查试验数据。
+    </div>
+  </div>
+
+  <div class="panel" id="panel-shrink">
+    <h2>📏 干缩变形计算</h2>
+    <div class="form-group">
+      <label>干缩方向</label>
+      <select id="shrink-dir">
+        <option value="longitudinal">纵向（顺纹）</option>
+        <option value="radial" selected>径向</option>
+        <option value="tangential">弦向</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>树种（用于预设全干缩率 β）</label>
+      <select id="shrink-species">
+        <option value="custom">自定义</option>
+        <option value="cunninghamia">杉木</option>
+        <option value="pinus">红松</option>
+        <option value="larix">落叶松</option>
+        <option value="fraxinus">水曲柳</option>
+        <option value="quercus">柞木</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>全干缩率 β (%)（从纤维饱和点30%到绝干0%）</label>
+      <input type="number" id="shrink-beta" value="4.5" min="0" max="20" step="0.1">
+    </div>
+    <div class="form-group">
+      <label>原始尺寸 L₀ (mm)</label>
+      <input type="number" id="shrink-l0" value="1000" min="0" step="0.1">
+    </div>
+    <div class="row">
+      <div class="form-group">
+        <label>初始含水率 u₁ (%)</label>
+        <input type="number" id="shrink-u1" value="20" min="0" max="100" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>目标含水率 u₂ (%)</label>
+        <input type="number" id="shrink-u2" value="12" min="0" max="100" step="0.1">
+      </div>
+    </div>
+    <button class="btn" onclick="calcShrink()">计算干缩变形</button>
+    <div class="warn" id="shrink-warn"></div>
+    <div class="result" id="shrink-result"></div>
+    <div class="note">
+      💡 公式：ΔL = L₀ × (β/30) × (u₁ − u₂)。仅适用于含水率在纤维饱和点（约30%）以下的范围。
+    </div>
+  </div>
+
+  <div class="panel" id="panel-strength">
+    <h2>💪 含水率强度校正</h2>
+    <div class="form-group">
+      <label>强度类型</label>
+      <select id="str-type">
+        <option value="bending">抗弯强度 (α = −0.05)</option>
+        <option value="compression">顺纹抗压强度 (α = −0.05)</option>
+        <option value="shear">顺纹抗剪强度 (α = −0.04)</option>
+        <option value="compression-perp">横纹抗压强度 (α = −0.035)</option>
+        <option value="moe">弹性模量 (α = −0.015)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>12% 含水率基准强度 f₁₂ (MPa)</label>
+      <input type="number" id="str-f12" value="80" min="0" step="0.1">
+    </div>
+    <div class="form-group">
+      <label>实际含水率 u (%)</label>
+      <input type="number" id="str-u" value="18" min="0" max="100" step="0.1">
+    </div>
+    <button class="btn" onclick="calcStrength()">计算校正强度</button>
+    <div class="warn" id="str-warn"></div>
+    <div class="result" id="str-result"></div>
+    <div class="note">
+      💡 公式：f_u = f₁₂ × [1 + α(u − 12)]，依据 GB 50005-2017 第4.3节。适用范围：u ≤ 30%（纤维饱和点）。
+    </div>
+  </div>
+
+  <div class="source">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li>GB 50005-2017《木结构设计标准》第4.3节 — 含水率对木材强度的校正系数 α</li>
+      <li>GB/T 6491-2011《锯材干燥质量》— 不同树种干缩系数与干燥质量要求</li>
+      <li>Simpson W.T. (1998) Dry Kiln Operator's Manual, USDA Forest Service, Agriculture Handbook No. 188 — Hailwood-Norro 吸附模型参数化公式</li>
+      <li>《木材学》（李坚 主编，中国林业出版社）— 木材干缩各向异性与树种数据</li>
+    </ul>
+  </div>
+</div>
+
+<div class="version">v1.0.0-木材含水率干缩 20261021</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // Tab 切换
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 显示警告
+  function showWarn(id, msg) {
+    var el = document.getElementById(id);
+    if (msg) {
+      el.textContent = '⚠️ ' + msg;
+      el.classList.add('show');
+    } else {
+      el.textContent = '';
+      el.classList.remove('show');
+    }
+  }
+
+  // ============ 平衡含水率 EMC（Hailwood-Norro 模型） ============
+  window.calcEMC = function() {
+    showWarn('emc-warn', '');
+    var T = parseFloat(document.getElementById('emc-temp').value);
+    var RH = parseFloat(document.getElementById('emc-rh').value);
+
+    if (isNaN(T) || isNaN(RH)) {
+      alert('请输入有效的温度和湿度');
+      return;
+    }
+    if (RH <= 0 || RH >= 100) {
+      alert('相对湿度需在 0 < RH < 100 范围内');
+      return;
+    }
+    if (T < -10 || T > 80) {
+      alert('温度范围建议 −10 ~ 80 °C');
+      return;
+    }
+
+    // Simpson (1998) 针叶材参数
+    var W  = 349 + 1.29 * T + 0.0135 * T * T;
+    var K  = 0.791 + 4.64e-4 * T - 8.44e-7 * T * T;
+    var K1 = 6.34 + 1.56e-3 * T - 9.04e-5 * T * T;
+    var K2 = 1.09 + 2.84e-2 * T - 9.04e-5 * T * T;
+
+    var h = RH / 100;
+    var Kh = K * h;
+
+    if (Kh >= 1) {
+      alert('当前温湿度组合下模型不适用（Kh ≥ 1）');
+      return;
+    }
+
+    var term1 = Kh / (1 - Kh);
+    var Kh2 = Kh * Kh;
+    var term2 = (K1 * Kh + 2 * K1 * K2 * Kh2) / (1 + K1 * Kh + K1 * K2 * Kh2);
+    var EMC = (1800 / W) * (term1 + term2);
+
+    var level = '';
+    if (EMC < 8) level = '偏低（干燥环境）';
+    else if (EMC < 14) level = '适中（室内常见）';
+    else if (EMC < 20) level = '偏高（潮湿环境）';
+    else level = '很高（易腐朽）';
+
+    var result = document.getElementById('emc-result');
+    result.innerHTML =
+      '<div class="result-item"><span class="result-label">平衡含水率 EMC</span><span class="result-value">' + EMC.toFixed(2) + ' %</span></div>' +
+      '<div class="result-item"><span class="result-label">环境评价</span><span class="result-value">' + level + '</span></div>' +
+      '<div class="result-item"><span class="result-label">说明</span><span class="result-value" style="font-size:12px;">木材长期放置后趋于该含水率</span></div>';
+    result.classList.add('show');
+  };
+
+  // ============ 干缩计算 ============
+  // 树种全干缩率数据（从纤维饱和点30%到绝干0%），单位 %
+  // 依据：《木材学》（李坚）及 GB/T 6491 相关树种数据
+  var speciesData = {
+    cunninghamia: { longitudinal: 0.1, radial: 3.0, tangential: 6.0 },
+    pinus:        { longitudinal: 0.1, radial: 3.5, tangential: 7.0 },
+    larix:        { longitudinal: 0.2, radial: 4.5, tangential: 9.0 },
+    fraxinus:     { longitudinal: 0.2, radial: 5.0, tangential: 8.5 },
+    quercus:      { longitudinal: 0.2, radial: 5.5, tangential: 9.5 }
+  };
+
+  function updateBeta() {
+    var species = document.getElementById('shrink-species').value;
+    var dir = document.getElementById('shrink-dir').value;
+    if (species !== 'custom' && speciesData[species]) {
+      document.getElementById('shrink-beta').value = speciesData[species][dir];
+    }
+  }
+  document.getElementById('shrink-species').addEventListener('change', updateBeta);
+  document.getElementById('shrink-dir').addEventListener('change', updateBeta);
+
+  window.calcShrink = function() {
+    showWarn('shrink-warn', '');
+    var dir = document.getElementById('shrink-dir').value;
+    var beta = parseFloat(document.getElementById('shrink-beta').value);
+    var L0 = parseFloat(document.getElementById('shrink-l0').value);
+    var u1 = parseFloat(document.getElementById('shrink-u1').value);
+    var u2 = parseFloat(document.getElementById('shrink-u2').value);
+
+    if (isNaN(beta) || isNaN(L0) || isNaN(u1) || isNaN(u2)) {
+      alert('请输入完整数据');
+      return;
+    }
+    if (L0 <= 0) {
+      alert('原始尺寸需大于 0');
+      return;
+    }
+
+    var warnMsg = '';
+    if (u1 > 30 || u2 > 30) {
+      warnMsg = '公式仅适用于纤维饱和点（约30%）以下，超出范围结果仅供参考。';
+    }
+    if (u1 < u2) {
+      warnMsg = (warnMsg ? warnMsg + ' ' : '') + '含水率升高将导致木材吸湿膨胀（ΔL 为负值）。';
+    }
+    showWarn('shrink-warn', warnMsg);
+
+    // 干缩系数 C = β / 30 （每1%含水率变化的干缩率，%/%）
+    var C = beta / 30;
+    var deltaU = u1 - u2;
+    var deltaL = L0 * C * deltaU / 100;
+    var L = L0 - deltaL;
+    var shrinkRate = (deltaL / L0) * 100;
+
+    var dirName = { longitudinal: '纵向', radial: '径向', tangential: '弦向' }[dir];
+
+    var result = document.getElementById('shrink-result');
+    result.innerHTML =
+      '<div class="result-item"><span class="result-label">干缩系数 C</span><span class="result-value">' + C.toFixed(4) + ' %/%</span></div>' +
+      '<div class="result-item"><span class="result-label">含水率变化 Δu</span><span class="result-value">' + deltaU.toFixed(2) + ' %</span></div>' +
+      '<div class="result-item"><span class="result-label">' + dirName + '尺寸变化 ΔL</span><span class="result-value">' + deltaL.toFixed(3) + ' mm</span></div>' +
+      '<div class="result-item"><span class="result-label">新尺寸 L</span><span class="result-value">' + L.toFixed(3) + ' mm</span></div>' +
+      '<div class="result-item"><span class="result-label">尺寸变化率</span><span class="result-value">' + shrinkRate.toFixed(3) + ' %</span></div>';
+    result.classList.add('show');
+  };
+
+  // ============ 强度校正 ============
+  // 依据 GB 50005-2017 第4.3节
+  var strengthAlpha = {
+    'bending': -0.05,
+    'compression': -0.05,
+    'shear': -0.04,
+    'compression-perp': -0.035,
+    'moe': -0.015
+  };
+  var strengthName = {
+    'bending': '抗弯强度',
+    'compression': '顺纹抗压强度',
+    'shear': '顺纹抗剪强度',
+    'compression-perp': '横纹抗压强度',
+    'moe': '弹性模量'
+  };
+
+  window.calcStrength = function() {
+    showWarn('str-warn', '');
+    var type = document.getElementById('str-type').value;
+    var f12 = parseFloat(document.getElementById('str-f12').value);
+    var u = parseFloat(document.getElementById('str-u').value);
+
+    if (isNaN(f12) || isNaN(u)) {
+      alert('请输入完整数据');
+      return;
+    }
+    if (f12 <= 0) {
+      alert('基准强度需大于 0');
+      return;
+    }
+
+    var warnMsg = '';
+    var uCalc = u;
+    if (u > 30) {
+      warnMsg = 'GB 50005 规定校正公式仅适用于 u ≤ 30%（纤维饱和点），已按 30% 计算。';
+      uCalc = 30;
+    }
+    if (u < 12) {
+      warnMsg = (warnMsg ? warnMsg + ' ' : '') + '含水率低于 12% 时强度高于基准值（校正系数 > 1）。';
+    }
+    showWarn('str-warn', warnMsg);
+
+    var alpha = strengthAlpha[type];
+    var factor = 1 + alpha * (uCalc - 12);
+    var fu = f12 * factor;
+    var changePct = (factor - 1) * 100;
+
+    var result = document.getElementById('str-result');
+    result.innerHTML =
+      '<div class="result-item"><span class="result-label">校正系数 [1+α(u−12)]</span><span class="result-value">' + factor.toFixed(4) + '</span></div>' +
+      '<div class="result-item"><span class="result-label">' + strengthName[type] + ' f_u</span><span class="result-value">' + fu.toFixed(2) + ' MPa</span></div>' +
+      '<div class="result-item"><span class="result-label">相对 12% 强度变化</span><span class="result-value">' + (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + ' %</span></div>' +
+      '<div class="result-item"><span class="result-label">说明</span><span class="result-value" style="font-size:12px;">含水率每增 1%，强度降约 ' + (Math.abs(alpha) * 100).toFixed(1) + '%</span></div>';
+    result.classList.add('show');
+  };
+
+})();
+</script>
+</body>
+</html>

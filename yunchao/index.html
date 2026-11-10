@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>云巢电竞 · 陪玩演示系统</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .games { display:flex; gap:7px; padding:0 12px 12px; overflow-x:auto; }
+  .game-chip {
+    flex-shrink:0; background:var(--card); border:1px solid var(--line);
+    border-radius:11px; padding:9px 13px; text-align:center; cursor:pointer;
+    min-width:78px;
+  }
+  .game-chip.on { border-color:var(--cyan); background:#0e2a3a; }
+  .game-chip .gi { font-size:20px; display:block; }
+  .game-chip .gn { font-size:11px; margin-top:2px; }
+  .game-chip.on .gn { color:var(--cyan); }
+
+  .promo-strip {
+    margin:0 12px 12px; display:flex; gap:7px; overflow-x:auto;
+  }
+  .promo {
+    flex-shrink:0; background:linear-gradient(90deg,#7c2d12,#9a3412);
+    border-radius:9px; padding:7px 12px; font-size:11px; color:#fed7aa;
+    white-space:nowrap;
+  }
+
+  .tier-badge {
+    position:absolute; top:5px; right:5px;
+    font-size:9.5px; padding:1px 7px; border-radius:8px; font-weight:600;
+  }
+</style>
+</head>
+<body data-tab="index">
+
+<div class="topbar">
+  <div class="logo">云巢电竞<small>演示</small></div>
+  <div class="search">
+    <span style="color:#7d93ad;font-size:12px">🔍</span>
+    <input id="q" placeholder="搜索游戏 / 打手 / 服务">
+  </div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+
+<div class="games" id="games"></div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="banner">
+  <h2>送给每个老板的保障</h2>
+  <p>陪玩服务不到位？录屏举报，查实即罚、即时补偿。</p>
+  <div class="rules" id="bannerRules"></div>
+  <div class="mascot">🐋</div>
+</div>
+
+<div class="promo-strip" id="promos"></div>
+
+<div class="section">
+  <div class="section-title" id="svcTitle">服务单</div>
+  <div class="grid" id="services"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">在线打手</div>
+  <div id="workers"></div>
+</div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+/* ---- 轮播规则 ---- */
+document.getElementById('bannerRules').innerHTML = YC.RULES.slice(0, 6)
+  .map(r => `<div>· ${r.name} <span style="color:#fbbf24">+${r.reward}</span></div>`).join('');
+
+/* ---- 活动条 ---- */
+document.getElementById('promos').innerHTML = YC.PROMOS
+  .map(p => `<div class="promo">🎁 ${p.name} · ${p.desc}</div>`).join('');
+
+/* ---- 游戏筛选 ---- */
+let activeGame = 'all';
+function renderGames() {
+  const list = [{ id: 'all', name: '全部', icon: '🎮' }].concat(YC.GAMES);
+  document.getElementById('games').innerHTML = list.map(g => `
+    <div class="game-chip ${g.id === activeGame ? 'on' : ''}" data-g="${g.id}">
+      <span class="gi">${g.icon}</span>
+      <span class="gn">${g.name}</span>
+    </div>`).join('');
+  document.querySelectorAll('.game-chip').forEach(el => {
+    el.onclick = () => { activeGame = el.dataset.g; renderGames(); renderTabs(); renderServices(); renderWorkers(); };
+  });
+}
+
+/* ---- 档位筛选 ---- */
+let activeCat = '全部';
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = YC.CATEGORIES
+    .map(c => `<span class="${c === activeCat ? 'on' : ''}" data-c="${c}">${c}</span>`).join('');
+  document.querySelectorAll('#tabs span').forEach(el => {
+    el.onclick = () => { activeCat = el.dataset.c; renderTabs(); renderServices(); };
+  });
+}
+
+/* ---- 服务单 ---- */
+function renderServices() {
+  const kw = (document.getElementById('q').value || '').trim();
+  let list = YC.SERVICES.slice();
+
+  if (activeGame !== 'all') list = list.filter(s => s.gid === activeGame);
+
+  if (activeCat === '热销') list = list.filter(s => s.hot);
+  else if (activeCat === '体验') list = list.filter(s => s.tier === 't0');
+  else if (activeCat === '标准') list = list.filter(s => s.tier === 't1');
+  else if (activeCat === '精品') list = list.filter(s => s.tier === 't2');
+  else if (activeCat === '尊享') list = list.filter(s => s.tier === 't3');
+  else if (activeCat === '陪聊') list = list.filter(s => s.gid === null);
+
+  if (kw) list = list.filter(s =>
+    s.title.includes(kw) || s.sub.includes(kw) || s.desc.includes(kw) ||
+    YCUtil.gameName(s.gid).includes(kw));
+
+  document.getElementById('svcTitle').textContent =
+    `服务单（${list.length}）` + (activeGame !== 'all' ? ' · ' + YCUtil.gameName(activeGame) : '');
+
+  const box = document.getElementById('services');
+  if (!list.length) {
+    box.innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="icon">📦</span>该条件下暂无服务</div>`;
+    return;
+  }
+
+  box.innerHTML = list.map(s => {
+    const t = YCUtil.tierOf(s.tier);
+    return `
+      <div class="card" data-sid="${s.id}">
+        <div class="card-thumb">${YCUtil.gameIcon(s.gid)}
+          ${s.hot ? '<span class="card-badge">热销</span>' : ''}
+          <span class="tier-badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">${s.title}</div>
+          <div class="card-sub">${s.sub} · ${s.dur}</div>
+          <div class="card-foot">
+            <div class="price">${s.price}<small>白饭</small></div>
+            <div class="sold">已售 ${s.sold}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  box.querySelectorAll('[data-sid]').forEach(el => {
+    el.onclick = () => showService(YC.SERVICES.find(x => x.id === el.dataset.sid));
+  });
+}
+
+/* ---- 服务详情弹层 ---- */
+function showService(s) {
+  const t = YCUtil.tierOf(s.tier);
+  YCApp.modal(s.title, `
+    <div class="modal-row"><span>游戏</span><span>${YCUtil.gameIcon(s.gid)} ${YCUtil.gameName(s.gid)}</span></div>
+    <div class="modal-row"><span>档位</span><span style="color:${t.color}">${t.name}</span></div>
+    <div class="modal-row"><span>时长</span><span>${s.dur}</span></div>
+    <div class="modal-row"><span>说明</span><span style="max-width:62%;text-align:right">${s.desc}</span></div>
+    <div class="modal-row"><span>价格</span><span style="color:#fbbf24">${YCUtil.money(s.price)}</span></div>
+    <div class="modal-row"><span>已售</span><span>${s.sold} 单</span></div>
+    <p style="font-size:11px;color:#7d93ad;margin-top:10px">演示系统，扣除虚拟白饭，无真实交易。</p>
+  `, [
+    { t: '选择打手', fn: () => { location.href = 'detail.html?sid=' + s.id; } },
+    { t: '关闭', cls: 'btn-ghost' }
+  ]);
+}
+
+/* ---- 打手 ---- */
+function renderWorkers() {
+  const kw = (document.getElementById('q').value || '').trim();
+  let list = YC.WORKERS.slice();
+  if (activeGame !== 'all') list = list.filter(w => w.games.includes(activeGame));
+  if (kw) list = list.filter(w => w.name.includes(kw) || w.tags.some(t => t.includes(kw)));
+  list.sort((a, b) => (b.online - a.online) || (b.score - a.score));
+
+  const box = document.getElementById('workers');
+  if (!list.length) {
+    box.innerHTML = `<div class="empty"><span class="icon">🔍</span>没找到匹配的打手</div>`;
+    return;
+  }
+  box.innerHTML = list.map(w => {
+    const avg = YCUtil.avgOfReviews(S, w.id);
+    return `
+      <div class="worker" data-id="${w.id}">
+        <div class="worker-avatar">${w.avatar}<i class="online-dot ${w.online ? 'on' : 'off'}"></i></div>
+        <div class="worker-info">
+          <div class="worker-name">${w.name}<span class="rank ${w.rank}">${w.rank}</span></div>
+          <div class="worker-tags">${w.tags.map(t => `<span>${t}</span>`).join('')}</div>
+          <div class="worker-meta">
+            信用 ${YCUtil.creditOf(S, w.id)} · 好评 ${w.goodRate}% · 接 ${w.orders} 单
+            ${avg ? ` · ⭐${avg}` : ''}
+          </div>
+        </div>
+        <div class="worker-right">
+          <div class="price">${w.price}<small>白饭起</small></div>
+          <button class="btn btn-sm" style="margin-top:5px" data-order="${w.id}">点单</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  box.querySelectorAll('[data-order]').forEach(b => {
+    b.onclick = e => { e.stopPropagation(); location.href = 'detail.html?id=' + b.dataset.order; };
+  });
+  box.querySelectorAll('.worker').forEach(el => {
+    el.onclick = () => location.href = 'detail.html?id=' + el.dataset.id;
+  });
+}
+
+document.getElementById('q').oninput = () => { renderServices(); renderWorkers(); };
+
+renderGames();
+renderTabs();
+renderServices();
+renderWorkers();
+YCApp.renderTabbar('index');
+</script>
+</body>
+</html>

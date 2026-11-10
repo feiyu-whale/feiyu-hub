@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>阴离子间隙与酸碱失衡判断</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe0f5;font:14px/1.65 system-ui,"Microsoft YaHei",Arial,sans-serif}
+header{padding:12px 16px;background:#0d1e36;border-bottom:2px solid #4a9eff}
+h1{margin:0;font-size:17px;color:#4a9eff}
+h1 span{font-size:11px;color:#7d9ab8;font-weight:400;margin-left:8px}
+nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;max-width:900px;margin:0 auto}
+nav button{background:#12283f;color:#9db8d6;border:1px solid #1e3a5a;padding:6px 11px;border-radius:6px;font-size:13px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+main{max-width:900px;margin:0 auto;padding:0 14px 70px}
+section{display:none}section.on{display:block}
+.card{background:#0f2140;border:1px solid #1e3a5a;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:14px;color:#4a9eff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fabc9;margin-bottom:3px}
+input,select{width:100%;background:#0a1628;color:#e6f0ff;border:1px solid #24486e;border-radius:6px;padding:7px 8px;font-size:14px;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.go{background:#4a9eff;color:#04101f;border:0;border-radius:6px;padding:9px 20px;font-weight:700;font-size:14px;cursor:pointer;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:6px 4px;border-bottom:1px solid #1a3352;vertical-align:top}
+td:first-child{color:#8fabc9;width:52%}
+td:last-child{text-align:right;color:#eaf4ff;font-weight:600;word-break:break-word}
+.dx{font-size:15px;color:#4a9eff;font-weight:700;line-height:1.5}
+.err{color:#ff8a8a;font-size:13px;background:#2a1220;border:1px solid #7a2a3a;border-radius:6px;padding:8px 10px}
+pre{overflow:auto;max-height:440px;background:#08111f;border:1px solid #1e3a5a;border-radius:8px;padding:10px;font-size:11.5px;color:#9fc4e8;margin:0}
+.t{padding:5px 0;border-bottom:1px dashed #1a3352;font-size:13px}
+.p{color:#5bd18b}.f{color:#ff8a8a}
+footer{position:fixed;right:10px;bottom:8px;font-size:11px;color:#5f7d9c;background:#0a1628cc;padding:2px 6px;border-radius:4px}
+small{color:#7d9ab8;font-size:12px}
+</style>
+</head>
+<body>
+<header><h1>阴离子间隙与酸碱失衡判断<span>AG / 校正AG / Delta-Delta / Winter</span></h1></header>
+<nav>
+<button class="on" data-t="calc">计算工具</button>
+<button data-t="src">JS 源码</button>
+<button data-t="test">单元测试</button>
+<button data-t="doc">使用说明</button>
+</nav>
+<main>
+<section id="calc" class="on">
+<div class="card"><h2>输入参数（动脉血气 + 电解质）</h2>
+<div class="grid">
+<div><label>Na⁺ (mmol/L)</label><input id="na" value="140"></div>
+<div><label>Cl⁻ (mmol/L)</label><input id="cl" value="104"></div>
+<div><label>HCO₃⁻ (mmol/L)</label><input id="hco3" value="24"></div>
+<div><label>白蛋白 (g/L)</label><input id="alb" value="40"></div>
+<div><label>PaCO₂ (mmHg，可空)</label><input id="pco2" value="40"></div>
+<div><label>白蛋白单位</label><select id="aunit"><option value="1">g/L</option><option value="10">g/dL</option></select></div>
+<div><label>AG 参考上限</label><select id="agup"><option value="16">16（校正后常用）</option><option value="12">12（经典）</option></select></div>
+</div>
+<button class="go" onclick="calc()">计算并判断</button>
+</div>
+<div class="card"><h2>结果</h2><div id="out"><small>输入参数后点击「计算并判断」</small></div></div>
+<div class="card"><h2>公式说明</h2><small>AG = Na − (Cl + HCO₃)，正常 12±4 mmol/L；校正 AG = AG + 0.25×(40 − 白蛋白 g/L)，即白蛋白每降 1 g/dL 加 2.5 mmol/L；Delta-Delta = (校正AG − 12)/(24 − HCO₃⁻)；Winter 公式：预计 PaCO₂ = 1.5×HCO₃⁻ + 8 ± 2；代谢性碱中毒预计 PaCO₂ = 0.7×HCO₃⁻ + 21 ± 2。</small></div>
+</section>
+<section id="src"><div class="card"><h2>核心纯函数源码</h2><pre id="srctext"></pre></div></section>
+<section id="test"><div class="card"><h2>单元测试</h2><button class="go" onclick="runTests()">运行全部测试</button><div id="tout" style="margin-top:10px"></div></div></section>
+<section id="doc"><div class="card"><h2>使用说明与文献依据</h2><small>
+<b>1. 输入</b>：Na⁺、Cl⁻、HCO₃⁻ 为血清电解质（mmol/L）；白蛋白可切换 g/L 或 g/dL；PaCO₂ 选填，填写后才进行呼吸代偿判断。<br>
+<b>2. 判读流程</b>：算 AG → 白蛋白校正 AG → 由 HCO₃⁻ 定代谢成分 → Delta-Delta 判混合性代酸/代碱 → Winter 或代碱公式判呼吸代偿是否适当 → 输出四类酸碱失衡结论。<br>
+<b>3. 依据</b>：<br>
+① AG = Na − (Cl + HCO₃)，正常 12±4 mmol/L：Emmett M, Narins RG. Clinical use of the anion gap. <i>Medicine (Baltimore)</i>, 1977.<br>
+② 白蛋白校正 AG（白蛋白每降 1 g/dL 加 2.5 mmol/L）：Figge J, Rossing TH, Fencl V. <i>J Lab Clin Med</i>, 1991.<br>
+③ Delta-Delta = ΔAG/ΔHCO₃⁻：Wrenn K. The delta gap. <i>Ann Emerg Med</i>, 1990.<br>
+④ Winter 公式，预计 PaCO₂ = 1.5×HCO₃⁻ + 8 ± 2：Winter SD 等, 1967.<br>
+⑤ 代谢性碱中毒预计 PaCO₂ = 0.7×HCO₃⁻ + 21 ± 2：Javaheri S 等综述文献。<br>
+<b>4. 局限</b>：AG 受实验室电解质检测方法学影响；严重低白蛋白、锂盐、溴化物、IgG 单克隆蛋白等会干扰结果；本工具仅供临床参考，不能替代医师诊断。
+</small></div></section>
+</main>
+<footer>v1.0.0-anion-gap 20261108</footer>
+<script id="core">
+function R(x,d){d=d===undefined?2:d;var p=Math.pow(10,d);return Math.round(x*p)/p}
+function ag(na,cl,hco3){return R(na-(cl+hco3),2)}
+function agCorr(a,albGL){return R(a+0.25*(40-albGL),2)}
+function deltaDelta(a,h){if(h>=24)return null;return R((a-12)/(24-h),2)}
+function winter(h){var e=R(1.5*h+8,1);return{e:e,lo:R(e-2,1),hi:R(e+2,1)}}
+function alkComp(h){var e=R(0.7*h+21,1);return{e:e,lo:R(e-2,1),hi:R(e+2,1)}}
+function interpret(o){
+var na=o.na,cl=o.cl,h=o.hco3,alb=o.alb===undefined?40:o.alb,pc=o.pco2||null,up=o.agUp||16;
+var A=ag(na,cl,h),AC=agCorr(A,alb),dx=[],dd=null,w=null;
+if(h<22)dx.push(AC>up?'高AG代谢性酸中毒':'正常AG(高氯性)代谢性酸中毒');
+if(h>26)dx.push('代谢性碱中毒');
+if(AC>up&&h>=22&&h<=26)dx.push('高AG代谢性酸中毒(碳酸氢根被掩盖，疑合并代谢性碱中毒)');
+if(AC>up&&h<24){dd=deltaDelta(AC,h);if(dd!==null){if(dd<1)dx.push('合并正常AG代谢性酸中毒');else if(dd>2)dx.push('合并代谢性碱中毒')}}
+if(h<22&&pc){w=winter(h);if(pc>w.hi)dx.push('合并呼吸性酸中毒');else if(pc<w.lo)dx.push('合并呼吸性碱中毒');else dx.push('呼吸代偿适当')}
+else if(h>26&&pc){w=alkComp(h);if(pc>w.hi)dx.push('合并呼吸性酸中毒');else if(pc<w.lo)dx.push('合并呼吸性碱中毒');else dx.push('呼吸代偿适当')}
+else if(pc){if(pc<35)dx.push('呼吸性碱中毒');else if(pc>45)dx.push('呼吸性酸中毒')}
+if(!dx.length)dx.push('未见明确酸碱失衡');
+return{ag:A,agc:AC,dd:dd,w:w,dx:dx};
+}
+var T=[
+['AG 正常值',function(){return ag(140,104,24)},12],
+['AG 高值',function(){return ag(140,100,14)},26],
+['白蛋白校正 40 g/L',function(){return agCorr(12,40)},12],
+['白蛋白校正 20 g/L',function(){return agCorr(12,20)},17],
+['Delta-Delta = 1',function(){return deltaDelta(24,12)},1],
+['Delta-Delta = 0.5',function(){return deltaDelta(16,16)},0.5],
+['Delta-Delta HCO3≥24 返回空',function(){return deltaDelta(20,26)},null],
+['Winter 预计值',function(){return winter(10).e},23],
+['Winter 上限',function(){return winter(10).hi},25],
+['代碱预计 PaCO2',function(){return alkComp(30).e},42],
+['DKA 判读',function(){return interpret({na:140,cl:100,hco3:14,alb:40,pco2:28}).dx[0]},'高AG代谢性酸中毒'],
+['正常AG代酸判读',function(){return interpret({na:140,cl:115,hco3:14,alb:40,pco2:29}).dx[0]},'正常AG(高氯性)代谢性酸中毒'],
+['代碱判读',function(){return interpret({na:140,cl:95,hco3:34,alb:40,pco2:45}).dx[0]},'代谢性碱中毒']
+];
+</script>
+<script>
+function $(i){return document.getElementById(i)}
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});
+document.querySelectorAll('main section').forEach(function(x){x.classList.remove('on')});
+b.classList.add('on');$(b.dataset.t).classList.add('on');};});
+function fld(id,lo,hi,name,req,m){
+var s=$(id).value.trim();
+if(s===''){if(req)m.push(name+'不能为空');return null}
+var v=parseFloat(s);
+if(isNaN(v)){m.push(name+'必须为数字');return null}
+if(v<lo||v>hi){m.push(name+'应在 '+lo+' ~ '+hi+' 之间');return null}
+return v;}
+function calc(){
+var m=[],out=$('out');
+var na=fld('na',100,180,'Na⁺',1,m),cl=fld('cl',60,140,'Cl⁻',1,m),h=fld('hco3',3,50,'HCO₃⁻',1,m),
+alb=fld('alb',5,60,'白蛋白',1,m),pc=fld('pco2',10,120,'PaCO₂',0,m);
+if(m.length){out.innerHTML='<div class="err">'+m.join('<br>')+'</div>';return}
+var albGL=R(alb*parseFloat($('aunit').value),2);
+if(albGL<5||albGL>70){out.innerHTML='<div class="err">白蛋白单位换算后超出 5 ~ 70 g/L 合理范围，请检查单位选择</div>';return}
+var up=parseFloat($('agup').value);
+var r=interpret({na:na,cl:cl,hco3:h,alb:albGL,agUp:up,pco2:pc});
+var rows=[['AG = Na⁺ − (Cl⁻ + HCO₃⁻)',r.ag+' mmol/L'],
+['白蛋白校正 AG（白蛋白 '+albGL+' g/L）',r.agc+' mmol/L'],
+['ΔAG = 校正AG − 12',R(r.agc-12,2)+' mmol/L'],
+['ΔHCO₃⁻ = 24 − HCO₃⁻',R(24-h,2)+' mmol/L']];
+if(r.dd!==null)rows.push(['Delta-Delta = ΔAG / ΔHCO₃⁻',r.dd+'（1~2 为单纯型）']);
+if(r.w)rows.push(['预计 PaCO₂ = '+(h<22?'1.5×HCO₃⁻ + 8 ± 2':'0.7×HCO₃⁻ + 21 ± 2'),r.w.lo+' ~ '+r.w.hi+' mmHg']);
+var t='<table>'+rows.map(function(x){return '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td></tr>'}).join('')+'</table>';
+t+='<div style="margin-top:10px"><small>酸碱失衡判断（AG 参考上限 '+up+'）</small><div class="dx">'+r.dx.join('；')+'</div></div>';
+if(pc)t+='<div style="margin-top:6px"><small>实测 PaCO₂ = '+pc+' mmHg</small></div>';
+out.innerHTML=t;}
+function runTests(){
+var box=$('tout'),h='',pass=0;
+T.forEach(function(t,i){
+var a,ok=false;
+try{a=t[1]()}catch(e){a='异常'}
+ok=String(a)===String(t[2]);if(ok)pass++;
+h+='<div class="t '+(ok?'p':'f')+'">'+(ok?'✔':'✘')+' '+(i+1)+'. '+t[0]+' → 实际 '+a+' / 期望 '+t[2]+'</div>';});
+box.innerHTML='<div class="t '+(pass===T.length?'p':'f')+'">通过 '+pass+' / '+T.length+'</div>'+h;}
+$('srctext').textContent=$('core').textContent.trim();
+</script>
+</body>
+</html>

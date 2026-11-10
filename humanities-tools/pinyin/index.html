@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔤 汉字拼音</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:15px; font-family:inherit; resize:vertical; min-height:70px; line-height:1.7; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .row button { background:#241a3a; border:1px solid #4a3d70; color:#c8b3ff; border-radius:9px; padding:7px 12px;
+    font-size:13px; cursor:pointer; font-family:inherit; }
+  .row button.on { background:linear-gradient(160deg,#5a4a9a,#3a2d70); border-color:#7a5fc0; color:#fff; }
+  .out { font-size:15px; line-height:2.2; color:#b8a0ff; word-break:break-all; background:#100b1c;
+    border-radius:9px; padding:12px; min-height:60px; }
+  .out .ch { display:inline-block; text-align:center; margin:0 3px; }
+  .out .py { display:block; font-size:11px; color:#8a7fb0; letter-spacing:0; }
+  .hint { font-size:12px; color:#6a5f90; margin-top:7px; line-height:1.6; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>🔤 汉字拼音</h1>
+  <div class="sub">汉字 → 拼音（不带声调）</div>
+
+  <div class="card">
+    <div class="lbl">输入汉字</div>
+    <textarea id="in" placeholder="如：中国龙">中国龙</textarea>
+    <div class="row" style="margin-top:10px">
+      <button data-m="inline" class="on">同行显示</button>
+      <button data-m="stack">拼音在上</button>
+      <button data-m="nospace">连写</button>
+    </div>
+    <div class="hint">数据来源：creeperyang/pinyin（MIT，源自 Android HanziToPinyin）</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div class="out" id="out"></div>
+  </div>
+  <div class="ver">v1.1.0-补全拼音库20992字 20261029</div>
+</div>
+<script>
+// 【pinyin】汉字→拼音。依赖：creeperyang/pinyin(MIT, 源自Android HanziToPinyin)。输入：汉字；输出：拼音(无声调)。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：creeperyang/pinyin (MIT)，源自 Android HanziToPinyin
+// 算法：EXCEPTIONS 例外优先 → 用 Intl.Collator 在 UNIHANS 边界表中二分查找
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var D = null, COLLATOR = new Intl.Collator(["zh-Hans-CN","zh-CN"]);
+  var mode = "inline";
+
+  function load(){
+    if(D) return Promise.resolve(D);
+    return fetch("data/pinyin.json").then(function(r){return r.json();}).then(function(j){ D=j; return j; });
+  }
+
+  // 字典直查：uniHans → pinyin 一一对应（全量 U+4E00–U+9FFF，20992 字）
+  var PINYIN_MAP = null;
+  function buildMap(){
+    if(PINYIN_MAP) return PINYIN_MAP;
+    PINYIN_MAP = {};
+    for(var i = 0; i < D.uniHans.length; i++){
+      PINYIN_MAP[D.uniHans[i]] = D.pinyin[i];
+    }
+    return PINYIN_MAP;
+  }
+
+  function pinyinOf(ch){
+    var cp = ch.charCodeAt(0);
+    if(cp < 256) return ch;           // 拉丁/数字原样
+    if(D.exceptions && D.exceptions[ch]) return D.exceptions[ch];
+    var map = buildMap();
+    var py = map[ch];
+    if(!py) return ch;                // 未收录：原样返回，不瞎猜
+    // 多音字取常用读音（第一个）
+    return py.split("/")[0];
+  }
+
+  function render(){
+    var text = $("in").value.trim();
+    if(!text){ $("out").innerHTML = "<span style='color:#6a5f90'>输入汉字后显示</span>"; return; }
+    load().then(function(){
+      var chars = Array.from(text);
+      if(mode === "nospace"){
+        $("out").innerHTML = chars.map(function(c){
+          return /[\u4e00-\u9fa5]/.test(c) ? pinyinOf(c).toLowerCase() : c;
+        }).join(" ");
+      } else if(mode === "stack"){
+        $("out").innerHTML = chars.map(function(c){
+          if(!/[\u4e00-\u9fa5]/.test(c)) return c === "\n" ? "<br>" : "<span class='ch'>"+c+"</span>";
+          return "<span class='ch'><span class='py'>"+pinyinOf(c).toLowerCase()+"</span>"+c+"</span>";
+        }).join("");
+      } else {
+        $("out").innerHTML = chars.map(function(c){
+          return /[\u4e00-\u9fa5]/.test(c) ? (c+'<span style="color:#8a7fb0;font-size:12px">'+pinyinOf(c).toLowerCase()+'</span>') : c;
+        }).join("　");
+      }
+    }).catch(function(e){
+      $("out").innerHTML = "<span style='color:#ff8fa3'>数据加载失败："+e.message+"</span>";
+    });
+  }
+
+  document.querySelectorAll("[data-m]").forEach(function(b){
+    b.onclick = function(){
+      mode = b.dataset.m;
+      document.querySelectorAll("[data-m]").forEach(function(x){ x.classList.toggle("on", x===b); });
+      render();
+    };
+  });
+  $("in").addEventListener("input", render);
+})();
+</script>
+</body>
+</html>

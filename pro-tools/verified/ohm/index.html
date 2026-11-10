@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>欧姆定律与功率计算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    padding: 14px 22px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #586069;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab:hover { color: #2a5298; }
+  .tab.active {
+    color: #2a5298;
+    border-bottom-color: #2a5298;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+  }
+  .doc h2 { font-size: 18px; margin: 20px 0 10px; color: #1e3c72; border-left: 4px solid #2a5298; padding-left: 10px; }
+  .doc h3 { font-size: 15px; margin: 16px 0 8px; color: #2a5298; }
+  .doc p { margin: 8px 0; font-size: 14px; }
+  .doc ul, .doc ol { margin: 8px 0 8px 24px; font-size: 14px; }
+  .doc li { margin: 4px 0; }
+  .doc table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+  .doc th, .doc td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
+  .doc th { background: #f6f8fa; font-weight: 600; }
+  .doc code {
+    background: #f0f2f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12.5px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    color: #c7254e;
+  }
+  .test-result {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 16px;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .pass { color: #1a7f37; }
+  .fail { color: #cf222e; }
+  .summary { font-weight: bold; font-size: 14px; margin-top: 10px; }
+  .run-btn {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .run-btn:hover { background: #1e3c72; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #8b949e;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .scene {
+    background: #f6f8fa;
+    border-left: 3px solid #2a5298;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .warn {
+    background: #fff8e1;
+    border-left: 3px solid #f5a623;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 13px;
+    border-radius: 0 4px 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>欧姆定律与功率计算工具</h1>
+  <p>输入电压 / 电流 / 电阻中任意两个，计算第三个物理量及电功率</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-panel="source">第一部分：JS 源码</div>
+  <div class="tab" data-panel="test">第二部分：单元测试</div>
+  <div class="tab" data-panel="doc">第三部分：使用说明书</div>
+  <div class="tab" data-panel="calc">🧮 开始计算</div>
+</div>
+
+<!-- 第一部分：源码 -->
+<div class="panel active" id="source">
+<pre id="sourceCode"></pre>
+</div>
+
+<!-- 第二部分：测试 -->
+<div class="panel" id="test">
+<button class="run-btn" onclick="runAllTests()">运行全部测试</button>
+<div class="test-result" id="testOutput">点击"运行全部测试"查看结果。</div>
+</div>
+
+<!-- 第三部分：说明书 -->
+<div class="panel" id="doc">
+<div class="doc" id="docContent"></div>
+</div>
+
+<!-- 第四部分：计算器 -->
+<div class="panel" id="calc">
+<style>
+.calc-box{background:#fff;border:1px solid #e1e4e8;border-radius:10px;padding:20px 22px;margin-bottom:16px}
+.calc-box h3{font-size:16px;color:#1e3c72;margin:0 0 4px}
+.calc-box .hint{font-size:12px;color:#8896a5;margin-bottom:14px}
+.calc-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.calc-fg{flex:1;min-width:150px}
+.calc-fg label{display:block;font-size:13px;color:#586069;margin-bottom:5px;font-weight:600}
+.calc-fg input{width:100%;padding:9px 12px;border:1px solid #d5dbe1;border-radius:6px;font-size:15px;font-family:inherit}
+.calc-fg input:focus{outline:none;border-color:#2a5298;box-shadow:0 0 0 2px rgba(42,82,152,.15)}
+.calc-btn{background:#2a5298;color:#fff;border:none;padding:10px 26px;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit}
+.calc-btn:hover{background:#1e3c72}
+.calc-out{margin-top:14px;padding:14px 16px;background:#f0f6ff;border-radius:8px;font-size:15px;display:none}
+.calc-out.show{display:block}
+.calc-out .k{color:#586069}
+.calc-out .v{font-weight:700;color:#1e3c72;font-size:17px}
+.calc-err{margin-top:12px;padding:10px 14px;background:#fff0f0;border-left:3px solid #e06060;border-radius:4px;font-size:13px;color:#c04040;display:none}
+.calc-err.show{display:block}
+</style>
+
+<div class="calc-box">
+  <h3>① 已知 电压 U + 电流 I → 求 电阻 R、功率 P</h3>
+  <div class="hint">公式：R = U / I，P = U × I</div>
+  <div class="calc-row">
+    <div class="calc-fg"><label>电压 U（V）</label><input type="number" id="u1" step="any" placeholder="例如 220"></div>
+    <div class="calc-fg"><label>电流 I（A）</label><input type="number" id="i1" step="any" placeholder="例如 10"></div>
+  </div>
+  <button class="calc-btn" onclick="calcUI()">计算</button>
+  <div class="calc-out" id="out1"></div>
+  <div class="calc-err" id="err1"></div>
+</div>
+
+<div class="calc-box">
+  <h3>② 已知 电压 U + 电阻 R → 求 电流 I、功率 P</h3>
+  <div class="hint">公式：I = U / R，P = U² / R</div>
+  <div class="calc-row">
+    <div class="calc-fg"><label>电压 U（V）</label><input type="number" id="u2" step="any" placeholder="例如 220"></div>
+    <div class="calc-fg"><label>电阻 R（Ω）</label><input type="number" id="r2" step="any" placeholder="例如 100"></div>
+  </div>
+  <button class="calc-btn" onclick="calcUR()">计算</button>
+  <div class="calc-out" id="out2"></div>
+  <div class="calc-err" id="err2"></div>
+</div>
+
+<div class="calc-box">
+  <h3>③ 已知 电流 I + 电阻 R → 求 电压 U、功率 P</h3>
+  <div class="hint">公式：U = I × R，P = I² × R</div>
+  <div class="calc-row">
+    <div class="calc-fg"><label>电流 I（A）</label><input type="number" id="i3" step="any" placeholder="例如 2"></div>
+    <div class="calc-fg"><label>电阻 R（Ω）</label><input type="number" id="r3" step="any" placeholder="例如 50"></div>
+  </div>
+  <button class="calc-btn" onclick="calcIR()">计算</button>
+  <div class="calc-out" id="out3"></div>
+  <div class="calc-err" id="err3"></div>
+</div>
+</div>
+
+<div class="version">v2.1.0-加计算界面 20261022</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（欧姆定律与功率计算核心算法）
+ *  纯函数实现，无外部依赖，可直接在浏览器运行
+ * ============================================================ */
+
+/**
+ * 校验输入值是否为合法的非负有限数字。
+ * 电压、电流、电阻在物理上均为非负实数；本工具不允许负数、NaN、Infinity 或非数字类型。
+ *
+ * @param {*} value - 待校验的输入值
+ * @param {string} name - 参数名称，用于错误提示
+ * @returns {number} 校验通过时返回原值（Number 类型）
+ * @throws {TypeError} 当 value 不是 number 类型，或为 NaN / Infinity / 负数时抛出
+ * @example
+ *   validate(10, 'U');     // 返回 10
+ *   validate(0, 'I');      // 返回 0
+ *   validate(-1, 'R');     // 抛出 TypeError
+ *   validate(null, 'U');   // 抛出 TypeError
+ */
+function validate(value, name) {
+  if (typeof value !== 'number') {
+    throw new TypeError('参数 ' + name + ' 必须是 number 类型，当前为 ' + typeof value);
+  }
+  if (Number.isNaN(value)) {
+    throw new TypeError('参数 ' + name + ' 不能为 NaN');
+  }
+  if (!Number.isFinite(value)) {
+    throw new TypeError('参数 ' + name + ' 不能为 Infinity');
+  }
+  if (value < 0) {
+    throw new TypeError('参数 ' + name + ' 不能为负数（物理量非负）');
+  }
+  return value;
+}
+
+/**
+ * 对计算结果进行四舍五入，避免浮点误差暴露给调用方。
+ * 采用 "先放大再取整再缩小" 的经典做法，规避 Math.round 对 0.5 的边界行为差异。
+ *
+ * @param {number} value - 待处理的数值
+ * @param {number} [precision=10] - 保留的小数位数，默认 10 位
+ * @returns {number} 四舍五入后的数值；若输入为 Infinity 则原样返回
+ * @example
+ *   round(0.1 + 0.2, 10);      // 返回 0.3
+ *   round(1 / 3, 6);           // 返回 0.333333
+ *   round(Infinity, 10);       // 返回 Infinity
+ */
+function round(value, precision) {
+  if (precision === undefined) precision = 10;
+  if (!Number.isFinite(value)) return value;
+  var factor = Math.pow(10, precision);
+  return Math.round(value * factor) / factor;
+}
+
+/**
+ * 已知电压 U（伏特 V）和电流 I（安培 A），计算电阻 R（欧姆 Ω）和功率 P（瓦特 W）。
+ * 公式：R = U / I，P = U × I。
+ *
+ * @param {number} U - 电压，单位 V，必须 ≥ 0 且为有限数
+ * @param {number} I - 电流，单位 A，必须 > 0（作为除数时）或 ≥ 0（仅计算功率时）；
+ *                     当 I = 0 且 U > 0 时 R 返回 Infinity
+ * @returns {{R: number, P: number}} R 为电阻（Ω），P 为功率（W）
+ * @throws {TypeError} 参数非法时抛出
+ * @example
+ *   calculateFromUI(10, 2);    // { R: 5, P: 20 }
+ *   calculateFromUI(220, 10);  // { R: 22, P: 2200 }
+ *   calculateFromUI(0, 1);     // { R: 0, P: 0 }
+ *   calculateFromUI(1, 0);     // { R: Infinity, P: 0 }
+ */
+function calculateFromUI(U, I) {
+  U = validate(U, 'U');
+  I = validate(I, 'I');
+  var R = (I === 0) ? (U === 0 ? 0 : Infinity) : U / I;
+  var P = U * I;
+  return { R: round(R), P: round(P) };
+}
+
+/**
+ * 已知电压 U（伏特 V）和电阻 R（欧姆 Ω），计算电流 I（安培 A）和功率 P（瓦特 W）。
+ * 公式：I = U / R，P = U² / R。
+ *
+ * @param {number} U - 电压，单位 V，必须 ≥ 0 且为有限数
+ * @param {number} R - 电阻，单位 Ω，必须 ≥ 0；当 R = 0 且 U > 0 时 I、P 返回 Infinity
+ * @returns {{I: number, P: number}} I 为电流（A），P 为功率（W）
+ * @throws {TypeError} 参数非法时抛出
+ * @example
+ *   calculateFromUR(12, 4);     // { I: 3, P: 36 }
+ *   calculateFromUR(220, 100);  // { I: 2.2, P: 484 }
+ *   calculateFromUR(0, 10);     // { I: 0, P: 0 }
+ *   calculateFromUR(10, 0);     // { I: Infinity, P: Infinity }
+ */
+function calculateFromUR(U, R) {
+  U = validate(U, 'U');
+  R = validate(R, 'R');
+  var I = (R === 0) ? (U === 0 ? 0 : Infinity) : U / R;
+  var P = (R === 0) ? (U === 0 ? 0 : Infinity) : (U * U) / R;
+  return { I: round(I), P: round(P) };
+}
+
+/**
+ * 已知电流 I（安培 A）和电阻 R（欧姆 Ω），计算电压 U（伏特 V）和功率 P（瓦特 W）。
+ * 公式：U = I × R，P = I² × R。
+ *
+ * @param {number} I - 电流，单位 A，必须 ≥ 0 且为有限数
+ * @param {number} R - 电阻，单位 Ω，必须 ≥ 0 且为有限数
+ * @returns {{U: number, P: number}} U 为电压（V），P 为功率（W）
+ * @throws {TypeError} 参数非法时抛出
+ * @example
+ *   calculateFromIR(2, 5);      // { U: 10, P: 20 }
+ *   calculateFromIR(10, 22);    // { U: 220, P: 2200 }
+ *   calculateFromIR(0.5, 10);   // { U: 5, P: 2.5 }
+ *   calculateFromIR(0, 10);     // { U: 0, P: 0 }
+ */
+function calculateFromIR(I, R) {
+  I = validate(I, 'I');
+  R = validate(R, 'R');
+  var U = I * R;
+  var P = I * I * R;
+  return { U: round(U), P: round(P) };
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS 实现，不依赖任何测试框架）
+ * ============================================================ */
+
+var testLog = [];
+var passCount = 0;
+var totalCount = 0;
+
+/**
+ * 断言函数：比较实际值与期望值。
+ * 对 Infinity / NaN 做特殊处理；对普通数字允许 1e-9 的浮点容差。
+ *
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} msg - 用例描述
+ */
+function assertEqual(actual, expected, msg) {
+  totalCount++;
+  var ok = false;
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    if (Number.isNaN(expected)) {
+      ok = Number.isNaN(actual);
+    } else if (!Number.isFinite(expected)) {
+      ok = actual === expected;
+    } else {
+      ok = Math.abs(actual - expected) < 1e-9;
+    }
+  } else {
+    ok = actual === expected;
+  }
+  if (ok) {
+    passCount++;
+    testLog.push('[PASS] ' + msg);
+  } else {
+    testLog.push('[FAIL] ' + msg + '  期望 ' + JSON.stringify(expected) + '，实际 ' + JSON.stringify(actual));
+  }
+}
+
+/**
+ * 断言函数：期望调用时抛出异常。
+ *
+ * @param {Function} fn - 待执行函数
+ * @param {string} msg - 用例描述
+ */
+function assertThrows(fn, msg) {
+  totalCount++;
+  try {
+    fn();
+    testLog.push('[FAIL] ' + msg + '  期望抛出异常但未抛出');
+  } catch (e) {
+    passCount++;
+    testLog.push('[PASS] ' + msg + '  抛出: ' + e.message);
+  }
+}
+
+/**
+ * 运行全部测试用例并输出结果。
+ */
+function runAllTests() {
+  testLog = [];
+  passCount = 0;
+  totalCount = 0;
+
+  // ---------- calculateFromUI 正常值 ----------
+  (function () {
+    var r = calculateFromUI(10, 2);
+    assertEqual(r.R, 5, 'UI 正常: U=10,I=2 → R=5');
+    assertEqual(r.P, 20, 'UI 正常: U=10,I=2 → P=20');
+  })();
+  (function () {
+    var r = calculateFromUI(220, 10);
+    assertEqual(r.R, 22, 'UI 正常: U=220,I=10 → R=22');
+    assertEqual(r.P, 2200, 'UI 正常: U=220,I=10 → P=2200');
+  })();
+  (function () {
+    var r = calculateFromUI(5, 0.5);
+    assertEqual(r.R, 10, 'UI 正常: U=5,I=0.5 → R=10');
+    assertEqual(r.P, 2.5, 'UI 正常: U=5,I=0.5 → P=2.5');
+  })();
+  (function () {
+    var r = calculateFromUI(1, 1);
+    assertEqual(r.R, 1, 'UI 正常: U=1,I=1 → R=1');
+    assertEqual(r.P, 1, 'UI 正常: U=1,I=1 → P=1');
+  })();
+
+  // ---------- calculateFromUI 边界值 ----------
+  (function () {
+    var r = calculateFromUI(0, 1);
+    assertEqual(r.R, 0, 'UI 边界: U=0,I=1 → R=0');
+    assertEqual(r.P, 0, 'UI 边界: U=0,I=1 → P=0');
+  })();
+  (function () {
+    var r = calculateFromUI(1, 0);
+    assertEqual(r.R, Infinity, 'UI 边界: U=1,I=0 → R=Infinity');
+    assertEqual(r.P, 0, 'UI 边界: U=1,I=0 → P=0');
+  })();
+  (function () {
+    var r = calculateFromUI(0, 0);
+    assertEqual(r.R, 0, 'UI 边界: U=0,I=0 → R=0');
+    assertEqual(r.P, 0, 'UI 边界: U=0,I=0 → P=0');
+  })();
+  (function () {
+    var r = calculateFromUI(1e-10, 1e-10);
+    assertEqual(r.R, 1, 'UI 极小: U=1e-10,I=1e-10 → R=1');
+  })();
+  (function () {
+    var r = calculateFromUI(Number.MAX_SAFE_INTEGER, 1);
+    assertEqual(r.R, Number.MAX_SAFE_INTEGER, 'UI 极大: U=MAX_SAFE_INTEGER,I=1 → R=MAX_SAFE_INTEGER');
+  })();
+
+  // ---------- calculateFromUI 异常输入 ----------
+  assertThrows(function () { calculateFromUI(null, 1); }, 'UI 异常: U=null');
+  assertThrows(function () { calculateFromUI(undefined, 1); }, 'UI 异常: U=undefined');
+  assertThrows(function () { calculateFromUI(NaN, 1); }, 'UI 异常: U=NaN');
+  assertThrows(function () { calculateFromUI('', 1); }, 'UI 异常: U=空字符串');
+  assertThrows(function () { calculateFromUI(-5, 2); }, 'UI 异常: U=-5 负数');
+  assertThrows(function () { calculateFromUI('10', 1); }, 'UI 异常: U=字符串"10"');
+  assertThrows(function () { calculateFromUI(Infinity, 1); }, 'UI 异常: U=Infinity');
+  assertThrows(function () { calculateFromUI({}, 1); }, 'UI 异常: U=对象');
+  assertThrows(function () { calculateFromUI([], 1); }, 'UI 异常: U=数组');
+
+  // ---------- calculateFromUI 精度 ----------
+  (function () {
+    var r = calculateFromUI(1, 3);
+    assertEqual(r.R, 1 / 3, 'UI 精度: U=1,I=3 → R=1/3');
+  })();
+  (function () {
+    var r = calculateFromUI(0.1, 0.2);
+    assertEqual(r.P, 0.02, 'UI 精度: U=0.1,I=0.2 → P=0.02（规避 0.1*0.2 浮点误差）');
+  })();
+
+  // ---------- calculateFromUR 正常值 ----------
+  (function () {
+    var r = calculateFromUR(12, 4);
+    assertEqual(r.I, 3, 'UR 正常: U=12,R=4 → I=3');
+    assertEqual(r.P, 36, 'UR 正常: U=12,R=4 → P=36');
+  })();
+  (function () {
+    var r = calculateFromUR(220, 100);
+    assertEqual(r.I, 2.2, 'UR 正常: U=220,R=100 → I=2.2');
+    assertEqual(r.P, 484, 'UR 正常: U=220,R=100 → P=484');
+  })();
+  (function () {
+    var r = calculateFromUR(3.3, 330);
+    assertEqual(r.I, 0.01, 'UR 正常: U=3.3,R=330 → I=0.01');
+    assertEqual(r.P, 0.033, 'UR 正常: U=3.3,R=330 → P=0.033');
+  })();
+
+  // ---------- calculateFromUR 边界值 ----------
+  (function () {
+    var r = calculateFromUR(0, 10);
+    assertEqual(r.I, 0, 'UR 边界: U=0,R=10 → I=0');
+    assertEqual(r.P, 0, 'UR 边界: U=0,R=10 → P=0');
+  })();
+  (function () {
+    var r = calculateFromUR(10, 0);
+    assertEqual(r.I, Infinity, 'UR 边界: U=10,R=0 → I=Infinity');
+    assertEqual(r.P, Infinity, 'UR 边界: U=10,R=0 → P=Infinity');
+  })();
+  (function () {
+    var r = calculateFromUR(0, 0);
+    assertEqual(r.I, 0, 'UR 边界: U=0,R=0 → I=0');
+    assertEqual(r.P, 0, 'UR 边界: U=0,R=0 → P=0');
+  })();
+
+  // ---------- calculateFromUR 异常输入 ----------
+  assertThrows(function () { calculateFromUR(10, null); }, 'UR 异常: R=null');
+  assertThrows(function () { calculateFromUR(10, -5); }, 'UR 异常: R=-5 负数');
+  assertThrows(function () { calculateFromUR(NaN, 10); }, 'UR 异常: U=NaN');
+  assertThrows(function () { calculateFromUR(10, 'abc'); }, 'UR 异常: R=字符串');
+
+  // ---------- calculateFromIR 正常值 ----------
+  (function () {
+    var r = calculateFromIR(2, 5);
+    assertEqual(r.U, 10, 'IR 正常: I=2,R=5 → U=10');
+    assertEqual(r.P, 20, 'IR 正常: I=2,R=5 → P=20');
+  })();
+  (function () {
+    var r = calculateFromIR(10, 22);
+    assertEqual(r.U, 220, 'IR 正常: I=10,R=22 → U=220');
+    assertEqual(r.P, 2200, 'IR 正常: I=10,R=22 → P=2200');
+  })();
+  (function () {
+    var r = calculateFromIR(0.5, 10);
+    assertEqual(r.U, 5, 'IR 正常: I=0.5,R=10 → U=5');
+    assertEqual(r.P, 2.5, 'IR 正常: I=0.5,R=10 → P=2.5');
+  })();
+
+  // ---------- calculateFromIR 边界值 ----------
+  (function () {
+    var r = calculateFromIR(0, 10);
+    assertEqual(r.U, 0, 'IR 边界: I=0,R=10 → U=0');
+    assertEqual(r.P, 0, 'IR 边界: I=0,R=10 → P=0');
+  })();
+  (function () {
+    var r = calculateFromIR(1, 0);
+    assertEqual(r.U, 0, 'IR 边界: I=1,R=0 → U=0');
+    assertEqual(r.P, 0, 'IR 边界: I=1,R=0 → P=0');
+  })();
+
+  // ---------- calculateFromIR 异常输入 ----------
+  assertThrows(function () { calculateFromIR(null, 10); }, 'IR 异常: I=null');
+  assertThrows(function () { calculateFromIR(1, -5); }, 'IR 异常: R=-5 负数');
+  assertThrows(function () { calculateFromIR(Infinity, 1); }, 'IR 异常: I=Infinity');
+
+  // ---------- calculateFromIR 精度 ----------
+  (function () {
+    var r = calculateFromIR(0.1, 0.2);
+    assertEqual(r.U, 0.02, 'IR 精度: I=0.1,R=0.2 → U=0.02');
+    assertEqual(r.P, 0.002, 'IR 精度: I=0.1,R=0.2 → P=0.002');
+  })();
+
+  // ---------- validate 单独测试 ----------
+  assertEqual(validate(10, 'x'), 10, 'validate: 10 → 10');
+  assertEqual(validate(0, 'x'), 0, 'validate: 0 → 0');
+  assertThrows(function () { validate(-1, 'x'); }, 'validate: -1 抛错');
+  assertThrows(function () { validate(NaN, 'x'); }, 'validate: NaN 抛错');
+  assertThrows(function () { validate(null, 'x'); }, 'validate: null 抛错');
+  assertThrows(function () { validate('10', 'x'); }, 'validate: 字符串"10" 抛错');
+  assertThrows(function () { validate(Infinity, 'x'); }, 'validate: Infinity 抛错');
+
+  // ---------- round 单独测试 ----------
+  assertEqual(round(0.1 + 0.2, 10), 0.3, 'round: 0.1+0.2 → 0.3');
+  assertEqual(round(1 / 3, 6), 0.333333, 'round: 1/3 保留 6 位');
+  assertEqual(round(Infinity, 10), Infinity, 'round: Infinity 原样返回');
+
+  // 输出结果
+  var out = document.getElementById('testOutput');
+  out.textContent = testLog.join('\n') + '\n\n========== 汇总 ==========\n通过 ' + passCount + ' / 共 ' + totalCount;
+  out.className = 'test-result summary ' + (passCount === totalCount ? 'pass' : 'fail');
+}
+
+/* ============================================================
+ *  第三部分：使用说明书
+ * ============================================================ */
+
+var docHTML = '' +
+'<h2>一、工具简介</h2>' +
+'<p>本工具用于在直流电路或纯电阻交流电路中，根据欧姆定律（U = I × R）和电功率公式（P = U × I）进行基本电学量计算。用户只需输入电压（U）、电流（I）、电阻（R）三个物理量中的任意两个，工具即可自动推算出第三个物理量以及电路消耗（或发出）的有功功率 P。</p>' +
+'<p>本工具解决的核心问题是：在工程调试、教学演示、现场估算等场景下，快速完成欧姆定律与功率的互算，避免人工手算或查表带来的错误。</p>' +
+
+'<h2>二、参数说明</h2>' +
+'<table>' +
+'<tr><th>参数</th><th>符号</th><th>单位</th><th>物理含义</th><th>取值范围</th></tr>' +
+'<tr><td>电压</td><td>U</td><td>伏特（V）</td><td>电路两点之间的电势差，驱动电荷定向移动的动力</td><td>≥ 0 的有限实数</td></tr>' +
+'<tr><td>电流</td><td>I</td><td>安培（A）</td><td>单位时间内通过导体横截面的电荷量</td><td>≥ 0 的有限实数</td></tr>' +
+'<tr><td>电阻</td><td>R</td><td>欧姆（Ω）</td><td>导体对电流阻碍作用的度量</td><td>≥ 0 的有限实数</td></tr>' +
+'<tr><td>功率（输出）</td><td>P</td><td>瓦特（W）</td><td>单位时间内电能转化为其他形式能量的速率</td><td>由输入计算得出</td></tr>' +
+'</table>' +
+'<p><strong>单位换算提示：</strong>本工具所有输入输出均采用国际单位制（SI）基本单位。若实际数值为毫安（mA）、千欧（kΩ）、千瓦（kW）等，请先换算为 A、Ω、W 再输入。例如：220 mA 应输入 0.22；4.7 kΩ 应输入 4700。</p>' +
+
+'<h2>三、计算公式</h2>' +
+'<p>根据输入组合不同，工具内部使用以下公式：</p>' +
+'<ul>' +
+'<li><strong>已知 U、I：</strong>R = U / I，P = U × I</li>' +
+'<li><strong>已知 U、R：</strong>I = U / R，P = U² / R</li>' +
+'<li><strong>已知 I、R：</strong>U = I × R，P = I² × R</li>' +
+'</ul>' +
+'<p>以上公式适用于线性电阻、直流电路以及交流电路中纯电阻负载的有功功率计算。</p>' +
+
+'<h2>四、实际使用场景</h2>' +
+
+'<div class="scene">' +
+'<h3>场景 1：家用白炽灯工作电流估算</h3>' +
+'<p><strong>问题：</strong>一只标称 "220 V / 100 W" 的白炽灯，在额定电压下工作时，流过灯丝的电流是多少？灯丝热态电阻约为多少？</p>' +
+'<p><strong>输入：</strong>U = 220（V），P = 100（W）。由于本工具仅支持 U/I/R 三选二输入，需先由 P = U × I 反推 I = P / U = 100 / 220 ≈ 0.4545 A，再使用本工具：</p>' +
+'<p><strong>调用：</strong><code>calculateFromUI(220, 0.4545)</code></p>' +
+'<p><strong>结果：</strong>R ≈ 484 Ω，P ≈ 100 W。即灯丝热态电阻约 484 欧姆。</p>' +
+'</div>' +
+
+'<div class="scene">' +
+'<h3>场景 2：LED 限流电阻计算</h3>' +
+'<p><strong>问题：</strong>使用 5 V 单片机 IO 口驱动一只正向压降 2 V、额定电流 20 mA 的 LED，需要串联多大电阻？该电阻消耗的功率是多少？</p>' +
+'<p><strong>分析：</strong>电阻两端压降 U = 5 - 2 = 3 V，流过电流 I = 20 mA = 0.02 A。</p>' +
+'<p><strong>调用：</strong><code>calculateFromUI(3, 0.02)</code></p>' +
+'<p><strong>结果：</strong>R = 150 Ω，P = 0.06 W = 60 mW。可选用标准阻值 150 Ω、额定功率 1/8 W（125 mW）以上的电阻。</p>' +
+'</div>' +
+
+'<div class="scene">' +
+'<h3>场景 3：电热水壶功率核算</h3>' +
+'<p><strong>问题：</strong>某电热水壶铭牌标称 220 V、电阻丝冷态电阻约 24 Ω，求其工作电流和额定功率。</p>' +
+'<p><strong>调用：</strong><code>calculateFromUR(220, 24)</code></p>' +
+'<p><strong>结果：</strong>I ≈ 9.1667 A，P ≈ 2016.67 W。注意：电阻丝冷态电阻小于热态电阻，实际工作功率会略低于此值，本工具按给定电阻值计算，不区分冷热态。</p>' +
+'</div>' +
+
+'<div class="scene">' +
+'<h3>场景 4：电机绕组压降估算</h3>' +
+'<p><strong>问题：</strong>某直流电机绕组电阻 0.5 Ω，启动瞬间电流达 40 A，求绕组两端压降及此时铜耗功率。</p>' +
+'<p><strong>调用：</strong><code>calculateFromIR(40, 0.5)</code></p>' +
+'<p><strong>结果：</strong>U = 20 V，P = 800 W。即启动瞬间绕组铜耗达 800 W，提示需关注散热设计。</p>' +
+'</div>' +
+
+'<div class="scene">' +
+'<h3>场景 5：PCB 走线载流能力校验</h3>' +
+'<p><strong>问题：</strong>某 12 V 供电支路，负载等效电阻 6 Ω，求支路电流与功率，用于判断走线线径。</p>' +
+'<p><strong>调用：</strong><code>calculateFromUR(12, 6)</code></p>' +
+'<p><strong>结果：</strong>I = 2 A，P = 24 W。结合 IPC-2221 等标准可进一步查表确定走线宽度（本工具不直接提供该功能）。</p>' +
+'</div>' +
+
+'<h2>五、常见错误与排查</h2>' +
+'<table>' +
+'<tr><th>现象</th><th>可能原因</th><th>排查方法</th></tr>' +
+'<tr><td>抛出 TypeError：参数必须是 number 类型</td><td>传入了字符串、null、undefined 或对象</td><td>检查输入来源，必要时使用 <code>Number()</code> 或 <code>parseFloat()</code> 显式转换</td></tr>' +
+'<tr><td>抛出 TypeError：不能为负数</td><td>输入了负值</td><td>电压、电流、电阻在本工具中均定义为非负量；若为交流有效值请取绝对值</td></tr>' +
+'<tr><td>结果中出现 Infinity</td><td>除数为 0（如 I=0 时求 R，或 R=0 时求 I）</td><td>物理上对应开路或短路，请检查输入是否合理</td></tr>' +
+'<tr><td>结果与手算有微小差异</td><td>IEEE 754 双精度浮点误差</td><td>工具已对结果做 10 位小数四舍五入，工程上可忽略</td></tr>' +
+'<tr><td>单位不一致导致数量级错误</td><td>未将 mA、kΩ 等换算为 A、Ω</td><td>输入前统一换算为 SI 基本单位</td></tr>' +
+'</table>' +
+
+'<h2>六、数据来源与标准依据</h2>' +
+'<p>本工具所依据的物理定律为欧姆定律（Ohm\'s Law）及直流电功率定义式，属于经典电磁学基础，不属于某项具体国家标准的独创内容。涉及的术语定义参考：</p>' +
+'<ul>' +
+'<li>GB/T 2900.1-2008《电工术语 基本术语》——电压、电流、电阻、功率等术语的中文定义</li>' +
+'<li>GB/T 156-2017《标准电压》——我国交流/直流标准电压等级</li>' +
+'<li>GB/T 762-2002《标准电流等级》——电气设备额定电流标准值</li>' +
+'</ul>' +
+'<div class="warn">说明：上述标准号基于公开资料列出，具体条款内容需查标准原文确认。本工具不直接实现上述标准中的全部要求，仅在术语与量纲上与之保持一致。</div>' +
+
+'<h2>七、局限性说明</h2>' +
+'<p>本工具为教学 / 工程估算用途，存在以下明确局限，使用者须知情：</p>' +
+'<ol>' +
+'<li><strong>仅适用于线性电阻：</strong>对二极管、晶体管、热敏电阻、压敏电阻等非线性器件，欧姆定律不直接成立，本工具计算结果仅供参考。</li>' +
+'<li><strong>仅适用于直流或纯电阻交流：</strong>对含电感、电容的交流电路，需使用阻抗（Z）与复功率（S）概念，本工具不支持。</li>' +
+'<li><strong>不考虑温度影响：</strong>实际电阻值随温度变化（如钨丝冷态电阻仅为热态的 1/10 左右），本工具按输入值静态计算。</li>' +
+'<li><strong>不支持功率因数：</strong>交流电路中视在功率 S、有功功率 P、无功功率 Q 的关系（P = S × cosφ）不在本工具范围内。</li>' +
+'<li><strong>不支持多电源、多回路：</strong>仅能处理单一电阻支路，不能替代基尔霍夫定律、节点电压法等网络分析。</li>' +
+'<li><strong>精度受限于双精度浮点：</strong>JavaScript 使用 IEEE 754 双精度，约 15~17 位有效数字，极端大/小数值可能丢失精度。</li>' +
+'<li><strong>不做安全校核：</strong>不判断电压是否超过绝缘等级、电流是否超过导线载流量、功率是否超过器件额定值，这些需结合相关标准另行校核。</li>' +
+'<li><strong>不区分有效值 / 峰值 / 峰峰值：</strong>输入值由用户自行保证物理意义一致。</li>' +
+'</ol>' +
+'<p>如需进行完整的电气设计，请结合 GB 50054《低压配电设计规范》、GB 50058《爆炸危险环境电力装置设计规范》等工程标准，并由具备资质的电气工程师审核。</p>' +
+
+'<h2>八、版本与反馈</h2>' +
+'<p>当前版本：v2.1.0-加计算界面 20261022。如发现计算异常或有改进建议，请提供具体输入值与期望输出以便复现。</p>';
+
+document.getElementById('docContent').innerHTML = docHTML;
+
+/* ============================================================
+ *  源码展示（把上面的函数源码以文本形式填入 pre 标签）
+ * ============================================================ */
+var sourceText = '' +
+'/**\n' +
+' * 校验输入值是否为合法的非负有限数字。\n' +
+' * @param {*} value - 待校验的输入值\n' +
+' * @param {string} name - 参数名称，用于错误提示\n' +
+' * @returns {number} 校验通过时返回原值\n' +
+' * @throws {TypeError} 非法输入时抛出\n' +
+' */\n' +
+'function validate(value, name) {\n' +
+'  if (typeof value !== \'number\') {\n' +
+'    throw new TypeError(\'参数 \' + name + \' 必须是 number 类型\');\n' +
+'  }\n' +
+'  if (Number.isNaN(value)) throw new TypeError(\'参数 \' + name + \' 不能为 NaN\');\n' +
+'  if (!Number.isFinite(value)) throw new TypeError(\'参数 \' + name + \' 不能为 Infinity\');\n' +
+'  if (value < 0) throw new TypeError(\'参数 \' + name + \' 不能为负数\');\n' +
+'  return value;\n' +
+'}\n\n' +
+'/**\n' +
+' * 对计算结果四舍五入，规避浮点误差。\n' +
+' * @param {number} value - 待处理数值\n' +
+' * @param {number} [precision=10] - 保留小数位数\n' +
+' * @returns {number} 处理后的数值\n' +
+' */\n' +
+'function round(value, precision) {\n' +
+'  if (precision === undefined) precision = 10;\n' +
+'  if (!Number.isFinite(value)) return value;\n' +
+'  var factor = Math.pow(10, precision);\n' +
+'  return Math.round(value * factor) / factor;\n' +
+'}\n\n' +
+'/**\n' +
+' * 已知 U、I，计算 R 和 P。\n' +
+' * @param {number} U - 电压（V）\n' +
+' * @param {number} I - 电流（A）\n' +
+' * @returns {{R:number, P:number}}\n' +
+' */\n' +
+'function calculateFromUI(U, I) {\n' +
+'  U = validate(U, \'U\'); I = validate(I, \'I\');\n' +
+'  var R = (I === 0) ? (U === 0 ? 0 : Infinity) : U / I;\n' +
+'  var P = U * I;\n' +
+'  return { R: round(R), P: round(P) };\n' +
+'}\n\n' +
+'/**\n' +
+' * 已知 U、R，计算 I 和 P。\n' +
+' * @param {number} U - 电压（V）\n' +
+' * @param {number} R - 电阻（Ω）\n' +
+' * @returns {{I:number, P:number}}\n' +
+' */\n' +
+'function calculateFromUR(U, R) {\n' +
+'  U = validate(U, \'U\'); R = validate(R, \'R\');\n' +
+'  var I = (R === 0) ? (U === 0 ? 0 : Infinity) : U / R;\n' +
+'  var P = (R === 0) ? (U === 0 ? 0 : Infinity) : (U * U) / R;\n' +
+'  return { I: round(I), P: round(P) };\n' +
+'}\n\n' +
+'/**\n' +
+' * 已知 I、R，计算 U 和 P。\n' +
+' * @param {number} I - 电流（A）\n' +
+' * @param {number} R - 电阻（Ω）\n' +
+' * @returns {{U:number, P:number}}\n' +
+' */\n' +
+'function calculateFromIR(I, R) {\n' +
+'  I = validate(I, \'I\'); R = validate(R, \'R\');\n' +
+'  var U = I * R;\n' +
+'  var P = I * I * R;\n' +
+'  return { U: round(U), P: round(P) };\n' +
+'}';
+
+document.getElementById('sourceCode').textContent = sourceText;
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+// ====== 计算器界面逻辑（v2.1.0 新增） ======
+function _num(id){ var el=document.getElementById(id); if(!el) return NaN; var v=el.value.trim(); return v===''?NaN:parseFloat(v); }
+function _show(outId, html){ var o=document.getElementById(outId); o.innerHTML=html; o.classList.add('show'); }
+function _err(errId, msg){ var e=document.getElementById(errId); if(msg){ e.textContent='⚠ '+msg; e.classList.add('show'); } else { e.classList.remove('show'); } }
+function _hideOut(outId){ document.getElementById(outId).classList.remove('show'); }
+
+function calcUI(){
+  _err('err1',''); _hideOut('out1');
+  var U=_num('u1'), I=_num('i1');
+  if(isNaN(U)||isNaN(I)){ _err('err1','请把电压和电流都填上'); return; }
+  try{
+    var r=calculateFromUI(U,I);
+    _show('out1','<span class="k">电阻 R =</span> <span class="v">'+r.R+' Ω</span><br><span class="k">功率 P =</span> <span class="v">'+r.P+' W</span>');
+  }catch(e){ _err('err1', e.message); }
+}
+function calcUR(){
+  _err('err2',''); _hideOut('out2');
+  var U=_num('u2'), R=_num('r2');
+  if(isNaN(U)||isNaN(R)){ _err('err2','请把电压和电阻都填上'); return; }
+  try{
+    var r=calculateFromUR(U,R);
+    _show('out2','<span class="k">电流 I =</span> <span class="v">'+r.I+' A</span><br><span class="k">功率 P =</span> <span class="v">'+r.P+' W</span>');
+  }catch(e){ _err('err2', e.message); }
+}
+function calcIR(){
+  _err('err3',''); _hideOut('out3');
+  var I=_num('i3'), R=_num('r3');
+  if(isNaN(I)||isNaN(R)){ _err('err3','请把电流和电阻都填上'); return; }
+  try{
+    var r=calculateFromIR(I,R);
+    _show('out3','<span class="k">电压 U =</span> <span class="v">'+r.U+' V</span><br><span class="k">功率 P =</span> <span class="v">'+r.P+' W</span>');
+  }catch(e){ _err('err3', e.message); }
+}
+
+document.querySelectorAll('.tab').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel).classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>

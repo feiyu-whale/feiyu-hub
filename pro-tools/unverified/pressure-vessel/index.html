@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>压力容器圆筒壁厚计算工具 | GB/T 150.1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 30px 20px;
+    text-align: center;
+    border-radius: 8px 8px 0 0;
+  }
+  header h1 { font-size: 26px; margin-bottom: 8px; }
+  header p { font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e1e8ed;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 500;
+    color: #7f8c8d;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab:hover { background: #f8f9fa; color: #2c3e50; }
+  .tab.active { color: #2a5298; border-bottom-color: #2a5298; background: #fff; }
+  .panel { display: none; background: #fff; padding: 30px; border-radius: 0 0 8px 8px; }
+  .panel.active { display: block; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 720px) { .calc-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; }
+  .field label {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #34495e;
+  }
+  .field label .unit { color: #95a5a6; font-weight: normal; margin-left: 4px; }
+  .field input, .field select {
+    padding: 10px 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: #2a5298;
+    box-shadow: 0 0 0 3px rgba(42,82,152,0.1);
+  }
+  .field .hint { font-size: 12px; color: #95a5a6; margin-top: 4px; }
+  .btn {
+    background: #2a5298;
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    font-size: 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1e3c72; }
+  .btn-secondary {
+    background: #fff;
+    color: #2a5298;
+    border: 1px solid #2a5298;
+  }
+  .btn-secondary:hover { background: #f0f4fa; }
+  .result-box {
+    margin-top: 24px;
+    padding: 20px;
+    background: #f0f7ff;
+    border-left: 4px solid #2a5298;
+    border-radius: 4px;
+  }
+  .result-box.error { background: #fff5f5; border-left-color: #e74c3c; }
+  .result-box h3 { font-size: 16px; margin-bottom: 12px; color: #1e3c72; }
+  .result-box.error h3 { color: #c0392b; }
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #d0d7de;
+    font-size: 14px;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-item .label { color: #555; }
+  .result-item .value { font-weight: 600; color: #1e3c72; font-family: "SF Mono", Consolas, monospace; }
+  .result-main {
+    font-size: 22px;
+    color: #1e3c72;
+    font-weight: 700;
+    margin: 12px 0;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .section-title {
+    font-size: 20px;
+    color: #1e3c72;
+    margin: 24px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e1e8ed;
+  }
+  .section-title:first-child { margin-top: 0; }
+  .doc p { margin-bottom: 12px; text-align: justify; }
+  .doc h4 { margin: 16px 0 8px; color: #2c3e50; }
+  .doc ul, .doc ol { margin: 8px 0 12px 24px; }
+  .doc li { margin-bottom: 6px; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #dcdfe6;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc th { background: #f5f7fa; font-weight: 600; }
+  .doc code {
+    background: #f5f7fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c0392b;
+  }
+  .doc .note {
+    background: #fffbe6;
+    border-left: 4px solid #f39c12;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .doc .warn {
+    background: #fff5f5;
+    border-left: 4px solid #e74c3c;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .scenario {
+    background: #fafbfc;
+    border: 1px solid #e1e8ed;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .scenario h5 { color: #2a5298; margin-bottom: 8px; }
+  .test-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .test-summary {
+    padding: 14px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .test-summary.pass { background: #d4edda; color: #155724; }
+  .test-summary.fail { background: #f8d7da; color: #721c24; }
+  .test-summary.idle { background: #e2e3e5; color: #383d41; }
+  .test-list {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #e1e8ed;
+    border-radius: 4px;
+  }
+  .test-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .test-item:last-child { border-bottom: none; }
+  .test-item.pass { background: #f6ffed; }
+  .test-item.fail { background: #fff1f0; }
+  .test-item .status { font-weight: 600; margin-right: 8px; }
+  .test-item.pass .status { color: #52c41a; }
+  .test-item.fail .status { color: #f5222d; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #95a5a6;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .formula-box {
+    background: #f8f9fa;
+    padding: 14px;
+    border-radius: 4px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 15px;
+    text-align: center;
+    margin: 12px 0;
+    color: #1e3c72;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>压力容器圆筒壁厚计算工具</h1>
+    <p>依据 GB/T 150.1《压力容器 第1部分：通用要求》</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-panel="calc">计算器</div>
+    <div class="tab" data-panel="test">单元测试</div>
+    <div class="tab" data-panel="doc">使用说明书</div>
+  </div>
+
+  <!-- 计算器 -->
+  <div class="panel active" id="panel-calc">
+    <h2 class="section-title">计算公式</h2>
+    <div class="formula-box">δ = P·D / (2·[σ]·φ − P) + C</div>
+    <p style="font-size:14px;color:#555;margin-bottom:20px;">其中 [σ] = min(σ<sub>b</sub>/n<sub>b</sub>, σ<sub>s</sub>/n<sub>s</sub>)，n<sub>b</sub> ≥ 2.7，n<sub>s</sub> ≥ 1.5</p>
+
+    <h2 class="section-title">材料参数</h2>
+    <div class="calc-grid">
+      <div class="field">
+        <label>抗拉强度 σ<sub>b</sub><span class="unit">(MPa)</span></label>
+        <input type="number" id="sigmaB" step="any" placeholder="例如 400">
+        <div class="hint">材料室温抗拉强度下限值</div>
+      </div>
+      <div class="field">
+        <label>屈服强度 σ<sub>s</sub><span class="unit">(MPa)</span></label>
+        <input type="number" id="sigmaS" step="any" placeholder="例如 240">
+        <div class="hint">材料室温屈服强度下限值（或 σ<sub>0.2</sub>）</div>
+      </div>
+      <div class="field">
+        <label>抗拉安全系数 n<sub>b</sub></label>
+        <input type="number" id="nb" step="any" value="2.7" placeholder="≥ 2.7">
+        <div class="hint">GB/T 150.1 规定 nb ≥ 2.7</div>
+      </div>
+      <div class="field">
+        <label>屈服安全系数 n<sub>s</sub></label>
+        <input type="number" id="ns" step="any" value="1.5" placeholder="≥ 1.5">
+        <div class="hint">GB/T 150.1 规定 ns ≥ 1.5</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">工况参数</h2>
+    <div class="calc-grid">
+      <div class="field">
+        <label>设计压力 P<span class="unit">(MPa)</span></label>
+        <input type="number" id="pressure" step="any" placeholder="例如 1.0">
+        <div class="hint">容器顶部最高工作压力对应的设定压力</div>
+      </div>
+      <div class="field">
+        <label>圆筒内径 D<span class="unit">(mm)</span></label>
+        <input type="number" id="diameter" step="any" placeholder="例如 1000">
+        <div class="hint">封头内径或圆筒内径</div>
+      </div>
+      <div class="field">
+        <label>焊接接头系数 φ</label>
+        <input type="number" id="phi" step="any" min="0" max="1" placeholder="0.85 ~ 1.0">
+        <div class="hint">按 GB/T 150.1 表 4 选取，0 &lt; φ ≤ 1</div>
+      </div>
+      <div class="field">
+        <label>厚度附加量 C<span class="unit">(mm)</span></label>
+        <input type="number" id="cAdd" step="any" value="2" placeholder="例如 2">
+        <div class="hint">C = C₁（钢材负偏差）+ C₂（腐蚀裕量）</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <button class="btn" onclick="runCalc()">计 算</button>
+      <button class="btn btn-secondary" onclick="resetCalc()" style="margin-left:8px;">重 置</button>
+    </div>
+
+    <div id="calcResult"></div>
+  </div>
+
+  <!-- 单元测试 -->
+  <div class="panel" id="panel-test">
+    <h2 class="section-title">单元测试</h2>
+    <p style="color:#555;margin-bottom:16px;font-size:14px;">
+      共 35 个测试用例，覆盖正常值、边界值、异常输入、精度问题。使用纯 JS 实现，无外部依赖。
+    </p>
+    <div class="test-controls">
+      <button class="btn" onclick="runAllTests()">运行全部测试</button>
+      <span id="testStatus" style="font-size:14px;color:#555;">尚未运行</span>
+    </div>
+    <div id="testSummary" class="test-summary idle">点击"运行全部测试"查看结果</div>
+    <div id="testList" class="test-list"></div>
+  </div>
+
+  <!-- 使用说明书 -->
+  <div class="panel" id="panel-doc">
+    <div class="doc">
+      <h2 class="section-title">一、工具简介</h2>
+      <p>本工具用于计算<strong>内压圆筒形压力容器</strong>的理论计算壁厚，计算依据为中华人民共和国国家标准 <strong>GB/T 150.1-2011《压力容器 第1部分：通用要求》</strong> 中关于内压圆筒壁厚计算的规定。</p>
+      <p>在压力容器设计过程中，壁厚计算是最基础也是最关键的环节之一。壁厚过薄会导致容器在运行中发生强度失效（如爆破、屈服），壁厚过厚则造成材料浪费、重量增加、制造难度上升。本工具通过输入材料力学性能、设计压力、几何尺寸、焊接接头系数和厚度附加量等参数，快速给出满足强度要求的计算壁厚，辅助设计人员进行初步方案评估和校核。</p>
+      <p>需要特别说明的是，本工具给出的是<strong>计算壁厚</strong>（即公式计算结果），并非最终的下料厚度或名义厚度。实际设计中还需根据钢板规格进行圆整，并满足最小壁厚、制造工艺等其它要求。</p>
+
+      <h2 class="section-title">二、计算公式</h2>
+      <div class="formula-box">δ = P·D / (2·[σ]<sup>t</sup>·φ − P) + C</div>
+      <p>式中：</p>
+      <ul>
+        <li><strong>δ</strong> —— 圆筒的计算厚度，mm；</li>
+        <li><strong>P</strong> —— 设计压力，MPa；</li>
+        <li><strong>D</strong> —— 圆筒内直径，mm；</li>
+        <li><strong>[σ]<sup>t</sup></strong> —— 设计温度下材料的许用应力，MPa；</li>
+        <li><strong>φ</strong> —— 焊接接头系数；</li>
+        <li><strong>C</strong> —— 厚度附加量，mm，C = C₁ + C₂。</li>
+      </ul>
+      <p>许用应力的确定：</p>
+      <div class="formula-box">[σ]<sup>t</sup> = min( σ<sub>b</sub>/n<sub>b</sub> , σ<sub>s</sub>/n<sub>s</sub> )</div>
+      <p>依据 GB/T 150.1-2011 第 4.2.2 条，对碳钢、低合金钢等材料，室温下安全系数应满足：</p>
+      <ul>
+        <li>n<sub>b</sub> ≥ 2.7（基于抗拉强度下限值 σ<sub>b</sub>）</li>
+        <li>n<sub>s</sub> ≥ 1.5（基于屈服强度下限值 σ<sub>s</sub> 或 σ<sub>0.2</sub>）</li>
+      </ul>
+      <div class="note"><strong>注：</strong>本工具按室温条件简化处理。当设计温度较高时，材料许用应力应取设计温度下的值，且高温安全系数的规定与室温不同，需查阅 GB/T 150.2 相关材料标准。</div>
+
+      <h2 class="section-title">三、参数详细说明</h2>
+      <table>
+        <thead>
+          <tr><th>参数</th><th>符号</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>抗拉强度</td><td>σ<sub>b</sub></td><td>MPa</td><td>&gt; 0</td><td>材料室温抗拉强度下限值，由材料标准给出。例如 Q235B 约为 370~500 MPa，Q345R 约为 490~620 MPa（具体需查 GB/T 150.2 或材料标准）。</td></tr>
+          <tr><td>屈服强度</td><td>σ<sub>s</sub></td><td>MPa</td><td>&gt; 0</td><td>材料室温屈服强度下限值（无明显屈服点时取 σ<sub>0.2</sub>）。</td></tr>
+          <tr><td>抗拉安全系数</td><td>n<sub>b</sub></td><td>—</td><td>≥ 2.7</td><td>GB/T 150.1 规定的下限值。低于此值工具将拒绝计算。</td></tr>
+          <tr><td>屈服安全系数</td><td>n<sub>s</sub></td><td>—</td><td>≥ 1.5</td><td>GB/T 150.1 规定的下限值。低于此值工具将拒绝计算。</td></tr>
+          <tr><td>设计压力</td><td>P</td><td>MPa</td><td>≥ 0</td><td>设定的容器顶部最高压力。内压容器取正值。P = 0 时壁厚等于厚度附加量 C。</td></tr>
+          <tr><td>圆筒内径</td><td>D</td><td>mm</td><td>≥ 0</td><td>圆筒的内直径。D = 0 时壁厚等于厚度附加量 C。</td></tr>
+          <tr><td>焊接接头系数</td><td>φ</td><td>—</td><td>0 &lt; φ ≤ 1</td><td>按 GB/T 150.1 表 4 选取。双面焊对接接头 100% 无损检测可取 1.0；双面焊局部检测可取 0.85；单面焊一般取 0.65 等（具体需查标准原文）。</td></tr>
+          <tr><td>厚度附加量</td><td>C</td><td>mm</td><td>≥ 0</td><td>C = C₁ + C₂。C₁ 为钢板厚度负偏差（按 GB/T 709 等标准），C₂ 为腐蚀裕量（由介质腐蚀性决定，一般取 1~4 mm）。</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="section-title">四、实际使用场景</h2>
+
+      <div class="scenario">
+        <h5>场景 1：常规低压储罐</h5>
+        <p><strong>工况：</strong>一台用于储存常温水的立式圆筒形储罐，设计压力 0.6 MPa，内径 1200 mm，材料 Q345R，双面焊对接接头并进行 100% 射线检测，腐蚀裕量取 1 mm，钢板负偏差取 0.3 mm。</p>
+        <p><strong>输入：</strong></p>
+        <ul>
+          <li>σ<sub>b</sub> = 510 MPa，σ<sub>s</sub> = 345 MPa（Q345R 室温下限值，需查 GB/T 150.2 确认）</li>
+          <li>n<sub>b</sub> = 2.7，n<sub>s</sub> = 1.5</li>
+          <li>P = 0.6 MPa，D = 1200 mm</li>
+          <li>φ = 1.0（双面焊 100% 检测）</li>
+          <li>C = 0.3 + 1 = 1.3 mm</li>
+        </ul>
+        <p><strong>计算过程：</strong></p>
+        <ul>
+          <li>[σ] = min(510/2.7, 345/1.5) = min(188.89, 230) = 188.89 MPa</li>
+          <li>δ = 0.6 × 1200 / (2 × 188.89 × 1.0 − 0.6) + 1.3</li>
+          <li>δ = 720 / (377.78 − 0.6) + 1.3 = 720 / 377.18 + 1.3 ≈ 1.91 + 1.3 = <strong>3.21 mm</strong></li>
+        </ul>
+        <p><strong>说明：</strong>计算壁厚 3.21 mm 较小，但实际设计中还需满足最小壁厚要求（一般不小于 3 mm，大型容器另有规定），并根据钢板规格向上圆整。</p>
+      </div>
+
+      <div class="scenario">
+        <h5>场景 2：中压反应釜</h5>
+        <p><strong>工况：</strong>一台化工反应釜，设计压力 1.6 MPa，内径 1600 mm，材料 Q345R，双面焊对接接头局部无损检测，介质有轻微腐蚀性，腐蚀裕量取 2 mm。</p>
+        <p><strong>输入：</strong></p>
+        <ul>
+          <li>σ<sub>b</sub> = 510 MPa，σ<sub>s</sub> = 345 MPa</li>
+          <li>n<sub>b</sub> = 2.7，n<sub>s</sub> = 1.5</li>
+          <li>P = 1.6 MPa，D = 1600 mm</li>
+          <li>φ = 0.85（双面焊局部检测）</li>
+          <li>C = 0.3 + 2 = 2.3 mm</li>
+        </ul>
+        <p><strong>计算过程：</strong></p>
+        <ul>
+          <li>[σ] = 188.89 MPa</li>
+          <li>δ = 1.6 × 1600 / (2 × 188.89 × 0.85 − 1.6) + 2.3</li>
+          <li>δ = 2560 / (321.11 − 1.6) + 2.3 = 2560 / 319.51 + 2.3 ≈ 8.01 + 2.3 = <strong>10.31 mm</strong></li>
+        </ul>
+        <p><strong>说明：</strong>考虑钢板规格，名义厚度可圆整为 12 mm 或 14 mm。</p>
+      </div>
+
+      <div class="scenario">
+        <h5>场景 3：高压容器（使用高强度材料）</h5>
+        <p><strong>工况：</strong>一台高压气体容器，设计压力 4.0 MPa，内径 800 mm，材料 16MnDR（低温用钢，此处仅示意），双面焊 100% 检测，腐蚀裕量 1 mm。</p>
+        <p><strong>输入：</strong></p>
+        <ul>
+          <li>σ<sub>b</sub> = 590 MPa，σ<sub>s</sub> = 390 MPa（示意值，需查材料标准）</li>
+          <li>n<sub>b</sub> = 2.7，n<sub>s</sub> = 1.5</li>
+          <li>P = 4.0 MPa，D = 800 mm</li>
+          <li>φ = 1.0</li>
+          <li>C = 0.3 + 1 = 1.3 mm</li>
+        </ul>
+        <p><strong>计算过程：</strong></p>
+        <ul>
+          <li>[σ] = min(590/2.7, 390/1.5) = min(218.52, 260) = 218.52 MPa</li>
+          <li>δ = 4.0 × 800 / (2 × 218.52 × 1.0 − 4.0) + 1.3</li>
+          <li>δ = 3200 / (437.04 − 4.0) + 1.3 = 3200 / 433.04 + 1.3 ≈ 7.39 + 1.3 = <strong>8.69 mm</strong></li>
+        </ul>
+      </div>
+
+      <div class="scenario">
+        <h5>场景 4：大直径低压容器</h5>
+        <p><strong>工况：</strong>一台大型常压偏低压的储罐，设计压力 0.1 MPa，内径 3000 mm，材料 Q235B，单面焊（无垫板），腐蚀裕量 2 mm。</p>
+        <p><strong>输入：</strong></p>
+        <ul>
+          <li>σ<sub>b</sub> = 370 MPa，σ<sub>s</sub> = 235 MPa（示意值，需查材料标准）</li>
+          <li>n<sub>b</sub> = 2.7，n<sub>s</sub> = 1.5</li>
+          <li>P = 0.1 MPa，D = 3000 mm</li>
+          <li>φ = 0.65（单面焊，需查标准原文确认）</li>
+          <li>C = 0.3 + 2 = 2.3 mm</li>
+        </ul>
+        <p><strong>计算过程：</strong></p>
+        <ul>
+          <li>[σ] = min(370/2.7, 235/1.5) = min(137.04, 156.67) = 137.04 MPa</li>
+          <li>δ = 0.1 × 3000 / (2 × 137.04 × 0.65 − 0.1) + 2.3</li>
+          <li>δ = 300 / (178.15 − 0.1) + 2.3 = 300 / 178.05 + 2.3 ≈ 1.68 + 2.3 = <strong>3.98 mm</strong></li>
+        </ul>
+      </div>
+
+      <div class="scenario">
+        <h5>场景 5：仅校核许用应力</h5>
+        <p><strong>工况：</strong>设计人员希望先确认某种材料的许用应力，再决定后续方案。材料 σ<sub>b</sub> = 450 MPa，σ<sub>s</sub> = 280 MPa，按 GB/T 150.1 最低安全系数。</p>
+        <p><strong>输入：</strong></p>
+        <ul>
+          <li>σ<sub>b</sub> = 450 MPa，σ<sub>s</sub> = 280 MPa</li>
+          <li>n<sub>b</sub> = 2.7，n<sub>s</sub> = 1.5</li>
+        </ul>
+        <p><strong>计算结果：</strong></p>
+        <ul>
+          <li>σ<sub>b</sub>/n<sub>b</sub> = 450/2.7 ≈ 166.67 MPa</li>
+          <li>σ<sub>s</sub>/n<sub>s</sub> = 280/1.5 ≈ 186.67 MPa</li>
+          <li>[σ] = min(166.67, 186.67) = <strong>166.67 MPa</strong></li>
+        </ul>
+        <p><strong>说明：</strong>此例中由抗拉强度控制许用应力。设计人员可据此继续计算壁厚。</p>
+      </div>
+
+      <h2 class="section-title">五、常见错误与排查</h2>
+      <ol>
+        <li><strong>提示"安全系数低于标准规定"</strong>：检查 n<sub>b</sub> 是否小于 2.7 或 n<sub>s</sub> 是否小于 1.5。GB/T 150.1 对室温下碳钢、低合金钢规定了下限，低于此值工具将拒绝计算以保证合规性。</li>
+        <li><strong>提示"分母非正，无法计算"</strong>：当 2·[σ]·φ − P ≤ 0 时公式无意义。通常是因为设计压力 P 过高、材料许用应力过低或焊接接头系数过小。应检查参数是否合理，或考虑更换更高强度材料、提高焊接检测比例。</li>
+        <li><strong>提示"焊接接头系数超出范围"</strong>：φ 必须满足 0 &lt; φ ≤ 1。φ = 0 表示焊缝完全不可靠，φ &gt; 1 无物理意义。</li>
+        <li><strong>计算结果异常偏大</strong>：检查单位是否一致（P 用 MPa、D 用 mm、[σ] 用 MPa），切勿混用 Pa 或 kPa。</li>
+        <li><strong>计算结果异常偏小</strong>：可能是漏加了厚度附加量 C，或 φ 取值过高。注意计算壁厚 δ 并不等于名义厚度，还需圆整并满足最小壁厚要求。</li>
+        <li><strong>输入为空或非数字</strong>：工具会对 null、undefined、NaN、空字符串等非法输入抛出异常，请确保所有参数均为有效数字。</li>
+      </ol>
+
+      <h2 class="section-title">六、数据来源与标准依据</h2>
+      <ul>
+        <li><strong>GB/T 150.1-2011</strong>《压力容器 第1部分：通用要求》—— 内压圆筒壁厚计算公式、安全系数下限、焊接接头系数选取原则。</li>
+        <li><strong>GB/T 150.2-2011</strong>《压力容器 第2部分：材料》—— 各类压力容器用钢的许用应力表。</li>
+        <li><strong>GB/T 150.3-2011</strong>《压力容器 第3部分：设计》—— 详细设计规则（本工具未涉及封头、开孔补强等）。</li>
+        <li><strong>GB/T 709</strong>《热轧钢板和钢带的尺寸、外形、重量及允许偏差》—— 钢板厚度负偏差 C₁ 的取值依据。</li>
+      </ul>
+      <div class="note"><strong>注：</strong>本工具中的材料强度示例值（如 Q345R 的 σ<sub>b</sub>=510 MPa、σ<sub>s</sub>=345 MPa）仅为演示用途，实际设计必须查阅最新版 GB/T 150.2 或相应材料标准获取准确数据。焊接接头系数 φ 的具体取值亦需按 GB/T 150.1 表 4 及接头形式、检测比例确定。</div>
+
+      <h2 class="section-title">七、局限性说明</h2>
+      <p>本工具功能聚焦、实现简洁，但存在以下局限，使用者应充分了解：</p>
+      <ol>
+        <li><strong>仅适用于内压圆筒</strong>：不适用于外压圆筒（需按 GB/T 150.1 外压稳定计算）、球形壳体、椭圆形/碟形/锥形封头、平盖等其它受压元件。</li>
+        <li><strong>仅考虑室温强度</strong>：未考虑设计温度下材料许用应力的变化、高温蠕变、低温脆断等问题。高温工况应查 GB/T 150.2 中对应温度下的许用应力表。</li>
+        <li><strong>未考虑载荷组合</strong>：实际容器除内压外，还可能承受风载荷、地震载荷、自重、热应力等，需按 GB/T 150.3 进行综合校核。</li>
+        <li><strong>未进行刚度、稳定性校核</strong>：对大直径薄壁容器，可能由刚度或稳定性控制壁厚，而非强度。</li>
+        <li><strong>未考虑开孔补强</strong>：容器上开孔后需按 GB/T 150.3 进行补强计算，本工具不涉及。</li>
+        <li><strong>未考虑疲劳分析</strong>：承受交变载荷的容器需按 JB 4732 或 GB/T 150 的疲劳分析规定进行评定。</li>
+        <li><strong>未考虑腐蚀除外的材料劣化</strong>：如氢腐蚀、应力腐蚀开裂等需专门评估。</li>
+        <li><strong>计算结果非最终设计厚度</strong>：计算壁厚需向上圆整至钢板规格，并满足最小壁厚要求，最终名义厚度应由持证设计人员确定。</li>
+        <li><strong>本工具不能替代持证设计</strong>：压力容器设计须由取得相应资质的单位和人员按《固定式压力容器安全技术监察规程》（TSG 21）等法规执行，本工具仅供学习、估算、方案比选参考。</li>
+      </ol>
+
+      <div class="warn"><strong>重要提示：</strong>本工具为辅助计算工具，计算结果不得直接作为压力容器施工或报检依据。正式设计文件须由具备相应资质的设计单位出具，并经审批、校核。</div>
+    </div>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，无外部依赖）
+ * 依据：GB/T 150.1-2011《压力容器 第1部分：通用要求》
+ * ============================================================ */
+
+/**
+ * 校验一个值是否为有限数字
+ * @param {*} v - 待校验值
+ * @returns {boolean} 是否为有限数字
+ */
+function isFiniteNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * 计算材料许用应力
+ * 依据 GB/T 150.1-2011 第 4.2.2 条：
+ *   [σ] = min( σb/nb , σs/ns )
+ * 且要求 nb ≥ 2.7，ns ≥ 1.5（室温下对碳钢、低合金钢）
+ *
+ * @param {number} sigmaB - 材料室温抗拉强度下限值，MPa，必须 > 0
+ * @param {number} sigmaS - 材料室温屈服强度下限值（或 σ0.2），MPa，必须 > 0
+ * @param {number} nb - 抗拉强度安全系数，必须 ≥ 2.7
+ * @param {number} ns - 屈服强度安全系数，必须 ≥ 1.5
+ * @returns {number} 许用应力 [σ]，MPa
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ *   calculateAllowableStress(400, 240, 2.7, 1.5);
+ *   // 返回 min(400/2.7, 240/1.5) = min(148.148..., 160) = 148.148...
+ */
+function calculateAllowableStress(sigmaB, sigmaS, nb, ns) {
+  if (!isFiniteNumber(sigmaB)) throw new Error('sigmaB 必须为有限数字');
+  if (!isFiniteNumber(sigmaS)) throw new Error('sigmaS 必须为有限数字');
+  if (!isFiniteNumber(nb)) throw new Error('nb 必须为有限数字');
+  if (!isFiniteNumber(ns)) throw new Error('ns 必须为有限数字');
+  if (sigmaB <= 0) throw new Error('sigmaB 必须大于 0');
+  if (sigmaS <= 0) throw new Error('sigmaS 必须大于 0');
+  if (nb < 2.7) throw new Error('nb 不得低于 2.7（GB/T 150.1 规定）');
+  if (ns < 1.5) throw new Error('ns 不得低于 1.5（GB/T 150.1 规定）');
+
+  const byTensile = sigmaB / nb;
+  const byYield = sigmaS / ns;
+  return Math.min(byTensile, byYield);
+}
+
+/**
+ * 计算内压圆筒的计算壁厚
+ * 公式：δ = P·D / (2·[σ]·φ − P) + C
+ * 依据 GB/T 150.1-2011
+ *
+ * @param {number} P - 设计压力，MPa，必须 ≥ 0
+ * @param {number} D - 圆筒内直径，mm，必须 ≥ 0
+ * @param {number} sigmaAllow - 许用应力 [σ]，MPa，必须 > 0
+ * @param {number} phi - 焊接接头系数，必须满足 0 < φ ≤ 1
+ * @param {number} C - 厚度附加量，mm，必须 ≥ 0
+ * @returns {number} 计算壁厚 δ，mm
+ * @throws {Error} 参数非法或分母非正时抛出异常
+ * @example
+ *   calculateWallThickness(1.0, 1000, 150, 1.0, 2);
+ *   // 返回 1.0*1000/(2*150*1.0-1.0) + 2 = 1000/299 + 2 ≈ 5.3445 mm
+ */
+function calculateWallThickness(P, D, sigmaAllow, phi, C) {
+  if (!isFiniteNumber(P)) throw new Error('P 必须为有限数字');
+  if (!isFiniteNumber(D)) throw new Error('D 必须为有限数字');
+  if (!isFiniteNumber(sigmaAllow)) throw new Error('sigmaAllow 必须为有限数字');
+  if (!isFiniteNumber(phi)) throw new Error('phi 必须为有限数字');
+  if (!isFiniteNumber(C)) throw new Error('C 必须为有限数字');
+
+  if (P < 0) throw new Error('设计压力 P 不得为负');
+  if (D < 0) throw new Error('圆筒内径 D 不得为负');
+  if (sigmaAllow <= 0) throw new Error('许用应力必须大于 0');
+  if (phi <= 0 || phi > 1) throw new Error('焊接接头系数 φ 必须满足 0 < φ ≤ 1');
+  if (C < 0) throw new Error('厚度附加量 C 不得为负');
+
+  // 当 P = 0 或 D = 0 时，按公式计算结果为 C
+  if (P === 0 || D === 0) {
+    return C;
+  }
+
+  const denominator = 2 * sigmaAllow * phi - P;
+  if (denominator <= 0) {
+    throw new Error('分母 (2·[σ]·φ − P) 非正，无法计算。请检查设计压力、许用应力或焊接接头系数。');
+  }
+
+  return (P * D) / denominator + C;
+}
+
+/**
+ * 完整计算流程：输入原始参数，输出许用应力与计算壁厚
+ *
+ * @param {Object} params - 输入参数对象
+ * @param {number} params.sigmaB - 抗拉强度，MPa
+ * @param {number} params.sigmaS - 屈服强度，MPa
+ * @param {number} params.nb - 抗拉安全系数
+ * @param {number} params.ns - 屈服安全系数
+ * @param {number} params.P - 设计压力，MPa
+ * @param {number} params.D - 圆筒内径，mm
+ * @param {number} params.phi - 焊接接头系数
+ * @param {number} params.C - 厚度附加量，mm
+ * @returns {Object} 计算结果
+ * @returns {number} returns.sigmaAllow - 许用应力，MPa
+ * @returns {number} returns.sigmaByTensile - 由抗拉强度决定的许用应力分量
+ * @returns {number} returns.sigmaByYield - 由屈服强度决定的许用应力分量
+ * @returns {string} returns.controllingMode - 控制模式：'tensile' 或 'yield'
+ * @returns {number} returns.delta - 计算壁厚，mm
+ * @returns {number} returns.deltaWithoutC - 不含附加量的计算厚度，mm
+ * @throws {Error} 参数非法时抛出异常
+ * @example
+ *   calculateFull({
+ *     sigmaB: 510, sigmaS: 345, nb: 2.7, ns: 1.5,
+ *     P: 1.0, D: 1000, phi: 1.0, C: 2
+ *   });
+ *   // 返回 { sigmaAllow: 188.888..., delta: 5.66..., ... }
+ */
+function calculateFull(params) {
+  if (params === null || params === undefined || typeof params !== 'object') {
+    throw new Error('params 必须为对象');
+  }
+  const { sigmaB, sigmaS, nb, ns, P, D, phi, C } = params;
+
+  const sigmaByTensile = sigmaB / nb;
+  const sigmaByYield = sigmaS / ns;
+  const sigmaAllow = calculateAllowableStress(sigmaB, sigmaS, nb, ns);
+  const controllingMode = (sigmaByTensile <= sigmaByYield) ? 'tensile' : 'yield';
+  const deltaWithoutC = (P === 0 || D === 0) ? 0 : (P * D) / (2 * sigmaAllow * phi - P);
+  const delta = calculateWallThickness(P, D, sigmaAllow, phi, C);
+
+  return {
+    sigmaByTensile: sigmaByTensile,
+    sigmaByYield: sigmaByYield,
+    sigmaAllow: sigmaAllow,
+    controllingMode: controllingMode,
+    deltaWithoutC: deltaWithoutC,
+    delta: delta
+  };
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS 实现，至少 30 个用例）
+ * ============================================================ */
+
+const testResults = [];
+
+/**
+ * 断言函数
+ * @param {string} name - 用例名称
+ * @param {boolean} condition - 断言条件
+ * @param {string} detail - 失败时的详情
+ */
+function assert(name, condition, detail) {
+  testResults.push({
+    name: name,
+    pass: !!condition,
+    detail: condition ? '' : (detail || '')
+  });
+}
+
+/**
+ * 断言两个数字近似相等（考虑浮点误差）
+ * @param {string} name - 用例名称
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tol - 容差
+ */
+function assertApprox(name, actual, expected, tol) {
+  tol = tol === undefined ? 1e-6 : tol;
+  const pass = Math.abs(actual - expected) <= tol;
+  testResults.push({
+    name: name,
+    pass: pass,
+    detail: pass ? '' : `期望 ${expected}，实际 ${actual}，容差 ${tol}`
+  });
+}
+
+/**
+ * 断言函数抛出异常
+ * @param {string} name - 用例名称
+ * @param {Function} fn - 待执行函数
+ * @param {string} [msgContains] - 异常信息应包含的字符串
+ */
+function assertThrows(name, fn, msgContains) {
+  let thrown = false;
+  let msg = '';
+  try {
+    fn();
+  } catch (e) {
+    thrown = true;
+    msg = e.message || '';
+  }
+  let pass = thrown;
+  let detail = '';
+  if (!thrown) {
+    detail = '期望抛出异常但未抛出';
+  } else if (msgContains && msg.indexOf(msgContains) === -1) {
+    pass = false;
+    detail = `异常信息不匹配，期望包含"${msgContains}"，实际"${msg}"`;
+  }
+  testResults.push({ name: name, pass: pass, detail: detail });
+}
+
+/**
+ * 注册全部测试用例
+ */
+function registerTests() {
+  testResults.length = 0;
+
+  // ---------- 许用应力计算：正常值 ----------
+  assertApprox(
+    '许用应力-正常1：σb=400,σs=240,nb=2.7,ns=1.5 → 148.148',
+    calculateAllowableStress(400, 240, 2.7, 1.5),
+    Math.min(400/2.7, 240/1.5),
+    1e-9
+  );
+  assertApprox(
+    '许用应力-正常2：σb=510,σs=345,nb=2.7,ns=1.5 → 188.889',
+    calculateAllowableStress(510, 345, 2.7, 1.5),
+    Math.min(510/2.7, 345/1.5),
+    1e-9
+  );
+  assertApprox(
+    '许用应力-正常3：σb=600,σs=400,nb=3.0,ns=1.8 → 200',
+    calculateAllowableStress(600, 400, 3.0, 1.8),
+    Math.min(600/3.0, 400/1.8),
+    1e-9
+  );
+  assertApprox(
+    '许用应力-正常4：由屈服控制 σb=800,σs=300,nb=3,ns=1.5 → 200',
+    calculateAllowableStress(800, 300, 3.0, 1.5),
+    200,
+    1e-9
+  );
+  assertApprox(
+    '许用应力-正常5：由抗拉控制 σb=300,σs=500,nb=2.7,ns=2 → 111.111',
+    calculateAllowableStress(300, 500, 2.7, 2.0),
+    300/2.7,
+    1e-9
+  );
+
+  // ---------- 许用应力计算：边界值 ----------
+  assertApprox(
+    '许用应力-边界1：nb=2.7（最小允许值）',
+    calculateAllowableStress(270, 300, 2.7, 1.5),
+    100,
+    1e-9
+  );
+  assertApprox(
+    '许用应力-边界2：ns=1.5（最小允许值）',
+    calculateAllowableStress(500, 150, 2.7, 1.5),
+    100,
+    1e-9
+  );
+  assertApprox(
+    '许用应力-边界3：nb、ns 均取最小值',
+    calculateAllowableStress(270, 150, 2.7, 1.5),
+    100,
+    1e-9
+  );
+  assertApprox(
+    '许用应力-边界4：大安全系数 nb=5,ns=3',
+    calculateAllowableStress(500, 300, 5, 3),
+    100,
+    1e-9
+  );
+
+  // ---------- 许用应力计算：异常输入 ----------
+  assertThrows('许用应力-异常1：nb<2.7', () => calculateAllowableStress(400, 240, 2.5, 1.5), '2.7');
+  assertThrows('许用应力-异常2：ns<1.5', () => calculateAllowableStress(400, 240, 2.7, 1.4), '1.5');
+  assertThrows('许用应力-异常3：σb=0', () => calculateAllowableStress(0, 240, 2.7, 1.5), '大于 0');
+  assertThrows('许用应力-异常4：σs=0', () => calculateAllowableStress(400, 0, 2.7, 1.5), '大于 0');
+  assertThrows('许用应力-异常5：σb 负数', () => calculateAllowableStress(-100, 240, 2.7, 1.5), '大于 0');
+  assertThrows('许用应力-异常6：σb=null', () => calculateAllowableStress(null, 240, 2.7, 1.5), '有限数字');
+  assertThrows('许用应力-异常7：σs=undefined', () => calculateAllowableStress(400, undefined, 2.7, 1.5), '有限数字');
+  assertThrows('许用应力-异常8：nb=NaN', () => calculateAllowableStress(400, 240, NaN, 1.5), '有限数字');
+  assertThrows('许用应力-异常9：ns=空字符串', () => calculateAllowableStress(400, 240, 2.7, ''), '有限数字');
+
+  // ---------- 壁厚计算：正常值 ----------
+  // P=1.0, D=1000, [σ]=150, φ=1.0, C=2 → 1000/299 + 2 ≈ 5.34448
+  assertApprox(
+    '壁厚-正常1：P=1,D=1000,[σ]=150,φ=1,C=2',
+    calculateWallThickness(1.0, 1000, 150, 1.0, 2),
+    1000/299 + 2,
+    1e-9
+  );
+  // P=2.0, D=800, [σ]=137, φ=0.85, C=3 → 1600/(232.9-2) + 3
+  assertApprox(
+    '壁厚-正常2：P=2,D=800,[σ]=137,φ=0.85,C=3',
+    calculateWallThickness(2.0, 800, 137, 0.85, 3),
+    1600/(2*137*0.85 - 2) + 3,
+    1e-9
+  );
+  // P=0.5, D=2000, [σ]=170, φ=1.0, C=1 → 1000/339.5 + 1
+  assertApprox(
+    '壁厚-正常3：P=0.5,D=2000,[σ]=170,φ=1,C=1',
+    calculateWallThickness(0.5, 2000, 170, 1.0, 1),
+    1000/339.5 + 1,
+    1e-9
+  );
+  assertApprox(
+    '壁厚-正常4：P=4,D=800,[σ]=218.52,φ=1,C=1.3',
+    calculateWallThickness(4.0, 800, 218.52, 1.0, 1.3),
+    3200/(2*218.52 - 4) + 1.3,
+    1e-6
+  );
+
+  // ---------- 壁厚计算：边界值 ----------
+  assertApprox(
+    '壁厚-边界1：P=0 → δ=C',
+    calculateWallThickness(0, 1000, 150, 1.0, 2),
+    2,
+    1e-9
+  );
+  assertApprox(
+    '壁厚-边界2：D=0 → δ=C',
+    calculateWallThickness(1.0, 0, 150, 1.0, 2),
+    2,
+    1e-9
+  );
+  assertApprox(
+    '壁厚-边界3：C=0',
+    calculateWallThickness(1.0, 1000, 150, 1.0, 0),
+    1000/299,
+    1e-9
+  );
+  assertApprox(
+    '壁厚-边界4：φ=1.0（最大值）',
+    calculateWallThickness(1.0, 1000, 150, 1.0, 2),
+    1000/299 + 2,
+    1e-9
+  );
+  assertApprox(
+    '壁厚-边界5：φ=0.01（接近 0 但合法）',
+    calculateWallThickness(0.1, 1000, 150, 0.01, 0),
+    100/(3 - 0.1),
+    1e-9
+  );
+  assertApprox(
+    '壁厚-边界6：极小压力 P=0.001',
+    calculateWallThickness(0.001, 1000, 150, 1.0, 2),
+    1/(299.999) + 2,
+    1e-6
+  );
+
+  // ---------- 壁厚计算：异常输入 ----------
+  assertThrows('壁厚-异常1：P 负数', () => calculateWallThickness(-1, 1000, 150, 1.0, 2), '不得为负');
+  assertThrows('壁厚-异常2：D 负数', () => calculateWallThickness(1, -1000, 150, 1.0, 2), '不得为负');
+  assertThrows('壁厚-异常3：[σ]=0', () => calculateWallThickness(1, 1000, 0, 1.0, 2), '大于 0');
+  assertThrows('壁厚-异常4：[σ] 负数', () => calculateWallThickness(1, 1000, -100, 1.0, 2), '大于 0');
+  assertThrows('壁厚-异常5：φ=0', () => calculateWallThickness(1, 1000, 150, 0, 2), '0 < φ ≤ 1');
+  assertThrows('壁厚-异常6：φ=1.1', () => calculateWallThickness(1, 1000, 150, 1.1, 2), '0 < φ ≤ 1');
+  assertThrows('壁厚-异常7：φ 负数', () => calculateWallThickness(1, 1000, 150, -0.5, 2), '0 < φ ≤ 1');
+  assertThrows('壁厚-异常8：C 负数', () => calculateWallThickness(1, 1000, 150, 1.0, -1), '不得为负');
+  assertThrows('壁厚-异常9：P=null', () => calculateWallThickness(null, 1000, 150, 1.0, 2), '有限数字');
+  assertThrows('壁厚-异常10：D=undefined', () => calculateWallThickness(1, undefined, 150, 1.0, 2), '有限数字');
+  assertThrows('壁厚-异常11：[σ]=NaN', () => calculateWallThickness(1, 1000, NaN, 1.0, 2), '有限数字');
+  assertThrows('壁厚-异常12：φ=空字符串', () => calculateWallThickness(1, 1000, 150, '', 2), '有限数字');
+  assertThrows(
+    '壁厚-异常13：分母非正（P 过大）',
+    () => calculateWallThickness(1000, 1000, 150, 1.0, 2),
+    '分母'
+  );
+  assertThrows(
+    '壁厚-异常14：分母恰好为 0',
+    () => calculateWallThickness(300, 1000, 150, 1.0, 2),
+    '分母'
+  );
+
+  // ---------- 精度问题 ----------
+  assertApprox(
+    '精度-1：浮点累加误差',
+    calculateWallThickness(0.1 + 0.2, 1000, 150, 1.0, 2),
+    calculateWallThickness(0.3, 1000, 150, 1.0, 2),
+    1e-12
+  );
+  assertApprox(
+    '精度-2：大数值计算',
+    calculateWallThickness(10, 10000, 200, 1.0, 5),
+    100000/(400 - 10) + 5,
+    1e-9
+  );
+  assertApprox(
+    '精度-3：小数值计算',
+    calculateWallThickness(0.001, 100, 100, 0.9, 0.1),
+    0.1/(180 - 0.001) + 0.1,
+    1e-9
+  );
+
+  // ---------- 完整流程测试 ----------
+  const full1 = calculateFull({
+    sigmaB: 510, sigmaS: 345, nb: 2.7, ns: 1.5,
+    P: 1.0, D: 1000, phi: 1.0, C: 2
+  });
+  assertApprox('完整流程-1：许用应力', full1.sigmaAllow, Math.min(510/2.7, 345/1.5), 1e-9);
+  assert('完整流程-1：控制模式为 tensile', full1.controllingMode === 'tensile',
+    `实际为 ${full1.controllingMode}`);
+  assertApprox('完整流程-1：壁厚', full1.delta,
+    1000/(2*Math.min(510/2.7, 345/1.5) - 1) + 2, 1e-6);
+
+  const full2 = calculateFull({
+    sigmaB: 800, sigmaS: 300, nb: 3.0, ns: 1.5,
+    P: 2.0, D: 800, phi: 0.85, C: 3
+  });
+  assert('完整流程-2：控制模式为 yield', full2.controllingMode === 'yield',
+    `实际为 ${full2.controllingMode}`);
+  assertApprox('完整流程-2：许用应力', full2.sigmaAllow, 200, 1e-9);
+
+  assertThrows('完整流程-异常1：params=null', () => calculateFull(null), '对象');
+  assertThrows('完整流程-异常2：params=undefined', () => calculateFull(undefined), '对象');
+}
+
+/**
+ * 运行全部测试并渲染结果
+ */
+function runAllTests() {
+  registerTests();
+  const passed = testResults.filter(r => r.pass).length;
+  const total = testResults.length;
+  const allPass = passed === total;
+
+  const summaryEl = document.getElementById('testSummary');
+  summaryEl.className = 'test-summary ' + (allPass ? 'pass' : 'fail');
+  summaryEl.textContent = `通过 ${passed} / 共 ${total}` + (allPass ? ' ✓ 全部通过' : ' ✗ 存在失败');
+
+  const listEl = document.getElementById('testList');
+  listEl.innerHTML = testResults.map(r => `
+    <div class="test-item ${r.pass ? 'pass' : 'fail'}">
+      <span class="status">${r.pass ? 'PASS' : 'FAIL'}</span>
+      <span>${r.name}</span>
+      ${!r.pass ? `<div style="color:#c0392b;margin-top:4px;font-size:12px;">${r.detail}</div>` : ''}
+    </div>
+  `).join('');
+
+  document.getElementById('testStatus').textContent =
+    `已运行 ${total} 个用例，${allPass ? '全部通过' : '存在失败'}`;
+
+  // 同时在控制台打印
+  console.log(`通过 ${passed} / 共 ${total}`);
+}
+
+/* ============================================================
+ * 第三部分：UI 交互
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+// 计算器
+function runCalc() {
+  const resultEl = document.getElementById('calcResult');
+  const getVal = id => {
+    const v = document.getElementById(id).value;
+    if (v === '' || v === null || v === undefined) return NaN;
+    return Number(v);
+  };
+
+  const params = {
+    sigmaB: getVal('sigmaB'),
+    sigmaS: getVal('sigmaS'),
+    nb: getVal('nb'),
+    ns: getVal('ns'),
+    P: getVal('pressure'),
+    D: getVal('diameter'),
+    phi: getVal('phi'),
+    C: getVal('cAdd')
+  };
+
+  try {
+    const r = calculateFull(params);
+    resultEl.className = 'result-box';
+    resultEl.innerHTML = `
+      <h3>计算结果</h3>
+      <div class="result-main">δ = ${r.delta.toFixed(4)} mm</div>
+      <div class="result-item"><span class="label">许用应力 [σ]</span><span class="value">${r.sigmaAllow.toFixed(4)} MPa</span></div>
+      <div class="result-item"><span class="label">σ<sub>b</sub>/n<sub>b</sub></span><span class="value">${r.sigmaByTensile.toFixed(4)} MPa</span></div>
+      <div class="result-item"><span class="label">σ<sub>s</sub>/n<sub>s</sub></span><span class="value">${r.sigmaByYield.toFixed(4)} MPa</span></div>
+      <div class="result-item"><span class="label">控制模式</span><span class="value">${r.controllingMode === 'tensile' ? '抗拉强度控制' : '屈服强度控制'}</span></div>
+      <div class="result-item"><span class="label">不含附加量的计算厚度</span><span class="value">${r.deltaWithoutC.toFixed(4)} mm</span></div>
+      <div class="result-item"><span class="label">厚度附加量 C</span><span class="value">${params.C.toFixed(4)} mm</span></div>
+      <div style="margin-top:12px;font-size:13px;color:#555;">
+        注：此为计算壁厚，实际名义厚度需按钢板规格向上圆整，并满足最小壁厚要求。
+      </div>
+    `;
+  } catch (e) {
+    resultEl.className = 'result-box error';
+    resultEl.innerHTML = `<h3>计算失败</h3><div style="color:#c0392b;">${e.message}</div>`;
+  }
+}
+
+function resetCalc() {
+  ['sigmaB','sigmaS','pressure','diameter','phi'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nb').value = '2.7';
+  document.getElementById('ns').value = '1.5';
+  document.getElementById('cAdd').value = '2';
+  document.getElementById('calcResult').innerHTML = '';
+}
+</script>
+</body>
+</html>

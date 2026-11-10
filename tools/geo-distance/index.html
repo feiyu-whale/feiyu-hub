@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌍 经纬度测距</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0b0f14; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe;
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:16px; }
+  .card { background:#111a24; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; color:#8fb3cf; margin-bottom:10px; font-weight:600; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  input[type=text] {
+    width:100%; background:#060a10; border:1px solid #24384c; border-radius:9px;
+    padding:11px 12px; font-size:16px; color:#9fe0ff; font-family:ui-monospace,Menlo,monospace; outline:none;
+  }
+  input:focus { border-color:#4d8fc9; }
+  label.sm { font-size:11px; color:#5b7a99; display:block; margin-bottom:4px; }
+  button { padding:11px 16px; font-size:14px; font-weight:700; background:#16273a; color:#cfe9ff;
+    border:1px solid #24384c; border-radius:9px; cursor:pointer; font-family:inherit; }
+  button:active { transform:scale(.96); }
+  button.go { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border-color:#4d8fc9; }
+  .result { text-align:center; font-size:15px; color:#bfe3ff; line-height:1.9; }
+  .result .big { font-size:14px; font-weight:800; color:#7dffb0; }
+  .row2 { display:flex; gap:8px; margin-top:10px; }
+  .row2 button { flex:1; }
+  canvas { display:block; width:100%; border-radius:10px; border:1px solid #24384c; margin-top:10px; background:#060a10; touch-action:none; }
+  .hint { text-align:center; color:#3f5a75; font-size:11px; margin-top:14px; line-height:1.7; }
+  .ver { text-align:center; color:#2b3f52; font-size:10px; margin-top:10px; }
+  .presets button { font-size:12px; padding:7px 10px; }
+  /* 城市搜索 */
+  .cityrow { position:relative; margin-bottom:9px; }
+  .citydrop { position:absolute; left:0; right:0; top:100%; z-index:50; max-height:220px; overflow-y:auto;
+    background:#0d1620; border:1px solid #2e6a8f; border-radius:9px; margin-top:2px; display:none; }
+  .citydrop.show { display:block; }
+  .citydrop .ci { padding:8px 12px; font-size:14px; color:#cfe9ff; cursor:pointer; border-bottom:1px solid #16222e; }
+  .citydrop .ci:last-child { border-bottom:none; }
+  .citydrop .ci:hover { background:#16324a; }
+  .citydrop .ci .cp { color:#5b7a99; font-size:11px; margin-left:6px; }
+  .citydrop .cempty { padding:9px 12px; font-size:13px; color:#5b7a99; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🌍 经纬度测距</h1>
+  <div class="sub">Haversine 球面距离 · 地球平均半径 6371km</div>
+
+  <div class="card">
+    <h3>🅰🅱 城市搜索（选两个城市测距）</h3>
+    <div class="cityrow">
+      <label class="sm">起点城市 A</label>
+      <input type="text" id="cityA" placeholder="如 北京" autocomplete="off" style="font-family:inherit;font-size:15px;letter-spacing:0">
+      <div class="citydrop" id="dropA"></div>
+    </div>
+    <div class="cityrow">
+      <label class="sm">终点城市 B</label>
+      <input type="text" id="cityB" placeholder="如 上海" autocomplete="off" style="font-family:inherit;font-size:15px;letter-spacing:0">
+      <div class="citydrop" id="dropB"></div>
+    </div>
+    <button class="go" id="calcCity" style="width:100%">算两城距离</button>
+    <div class="result" id="resCity" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="card">
+    <h3>① 手输坐标</h3>
+    <div class="two" style="margin-bottom:8px;">
+      <div><label class="sm">纬度 1 (°N/S)</label><input type="text" id="lat1" placeholder="如 39.9042" maxlength="20"></div>
+      <div><label class="sm">经度 1 (°E/W)</label><input type="text" id="lon1" placeholder="如 116.4074" maxlength="20"></div>
+    </div>
+    <div class="two" style="margin-bottom:10px;">
+      <div><label class="sm">纬度 2 (°N/S)</label><input type="text" id="lat2" placeholder="如 31.2304" maxlength="20"></div>
+      <div><label class="sm">经度 2 (°E/W)</label><input type="text" id="lon2" placeholder="如 121.4737" maxlength="20"></div>
+    </div>
+    <button class="go" id="calc" style="width:100%">计算距离</button>
+    <div class="result" id="res1" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="card">
+    <h3>② 地图点选（点两下落点）</h3>
+    <canvas id="map" width="520" height="360"></canvas>
+    <div class="result" id="res2" style="margin-top:10px;">点两下地图，自动算两点距离</div>
+  </div>
+
+  <div class="hint">纬度 -90~90，经度 -180~180 · 支持负数/小数 🐳<br>城市数据：全国省市区县 3337 条</div>
+  <div class="ver">v2-城市测距 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  // 依据：Haversine 大圆距离公式；地球平均半径 6371 km（IUGG 平均半径）。
+  // 说明：球面近似，长距离误差约 0.3%；更高精度需 WGS84 椭球（Vincenty）。
+  var R=6371; // km
+
+  function toNum(s){ s=(s||'').trim(); if(s.length>20) s=s.slice(0,20); var n=Number(s); return isFinite(n)?n:NaN; }
+
+  function haversine(lat1,lon1,lat2,lon2){
+    var d2r=Math.PI/180;
+    var p1=lat1*d2r, p2=lat2*d2r;
+    var dp=(lat2-lat1)*d2r, dl=(lon2-lon1)*d2r;
+    var a=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+    var c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    return R*c;
+  }
+
+  function fmtDist(km){
+    if(km<1) return (km*1000).toFixed(1)+' 米';
+    if(km<1000) return km.toFixed(2)+' km';
+    return km.toFixed(1)+' km';
+  }
+
+  // ① 手输
+  document.getElementById('calc').onclick=function(){
+    var la1=toNum(document.getElementById('lat1').value), lo1=toNum(document.getElementById('lon1').value);
+    var la2=toNum(document.getElementById('lat2').value), lo2=toNum(document.getElementById('lon2').value);
+    var r=document.getElementById('res1');
+    if([la1,lo1,la2,lo2].some(isNaN)){ r.innerHTML='<span style="color:#ff8fa3">四个坐标都要填数字</span>'; return; }
+    if(Math.abs(la1)>90||Math.abs(la2)>90){ r.innerHTML='<span style="color:#ff8fa3">纬度需在 -90~90</span>'; return; }
+    if(Math.abs(lo1)>180||Math.abs(lo2)>180){ r.innerHTML='<span style="color:#ff8fa3">经度需在 -180~180</span>'; return; }
+    var d=haversine(la1,lo1,la2,lo2);
+    r.innerHTML='两点距离<br><span class="big">'+fmtDist(d)+'</span><br><span style="font-size:12px;color:#5b7a99">≈ '+d.toFixed(3)+' km</span>';
+  };
+
+  // ② 地图点选
+  var cv=document.getElementById('map'), ctx=cv.getContext('2d');
+  var W=cv.width,H=cv.height;
+  var pts=[]; // [{lat,lon,x,y}]
+
+  function draw(){
+    ctx.fillStyle='#060a10'; ctx.fillRect(0,0,W,H);
+    // 经纬网：简化 equirectangular（-180..180, -90..90）
+    ctx.strokeStyle='rgba(40,70,100,.5)'; ctx.lineWidth=1;
+    for(var i=1;i<6;i++){ var x=W*i/6; ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+    for(var j=1;j<4;j++){ var y=H*j/4; ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+    ctx.strokeStyle='rgba(120,200,255,.85)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke(); // 赤道
+    // 点
+    pts.forEach(function(p,i){
+      ctx.fillStyle= i===0?'#7dffb0':'#ffb84d';
+      ctx.beginPath(); ctx.arc(p.x,p.y,6,0,6.283); ctx.fill();
+      ctx.fillStyle='#060a10'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(i+1),p.x,p.y);
+    });
+    // 连线
+    if(pts.length>=2){
+      ctx.strokeStyle='rgba(125,255,176,.8)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.stroke();
+    }
+  }
+  function posToCoord(x,y){
+    var lon=(x/W)*360-180;
+    var lat=90-(y/H)*180;
+    return {lat:lat,lon:lon};
+  }
+  cv.addEventListener('pointerdown',function(e){
+    var r=cv.getBoundingClientRect();
+    var x=(e.clientX-r.left)/r.width*W, y=(e.clientY-r.top)/r.height*H;
+    if(pts.length>=2) pts=[];
+    var c=posToCoord(x,y);
+    pts.push({lat:c.lat,lon:c.lon,x:x,y:y});
+    draw();
+    if(pts.length===2){
+      var d=haversine(pts[0].lat,pts[0].lon,pts[1].lat,pts[1].lon);
+      document.getElementById('res2').innerHTML=
+        '点1 ('+pts[0].lat.toFixed(1)+', '+pts[0].lon.toFixed(1)+') ↔ 点2 ('+pts[1].lat.toFixed(1)+', '+pts[1].lon.toFixed(1)+')<br>'+
+        '<span style="font-size:14px;font-weight:800;color:#7dffb0">'+fmtDist(d)+'</span>';
+    } else {
+      document.getElementById('res2').textContent='已落第 1 点，再点一下';
+    }
+  });
+
+  // ③ 城市搜索
+  var CITIES=[], selA=null, selB=null;
+  fetch('data/cities.json').then(function(r){return r.json();}).then(function(list){
+    CITIES = list.filter(function(c){return c.lat&&c.lng;}).map(function(c){
+      var name=c.area||c.city||c.province;
+      var label = (c.area? c.city+' · '+c.area : name) + (c.province&&c.province!==name?'（'+c.province+'）':'');
+      return {name:name, city:c.city, province:c.province, lat:parseFloat(c.lat), lng:parseFloat(c.lng), label:label};
+    });
+  }).catch(function(){});
+
+  function bindSearch(inputId, dropId, setSel){
+    var inp=document.getElementById(inputId), drop=document.getElementById(dropId);
+    function search(){
+      var q=inp.value.trim();
+      if(!q){ drop.classList.remove('show'); drop.innerHTML=''; return; }
+      var res=CITIES.filter(function(c){
+        return (c.name&&c.name.indexOf(q)>=0)||(c.city&&c.city.indexOf(q)>=0)||(c.province&&c.province.indexOf(q)>=0);
+      });
+      res.sort(function(a,b){
+        var ea=a.name===q?0:1, eb=b.name===q?0:1; if(ea!==eb) return ea-eb;
+        var da=a.city===q?0:1, db=b.city===q?0:1; if(da!==db) return da-db;
+        return (a.province||'').localeCompare(b.province||'');
+      });
+      var top=res.slice(0,30);
+      if(!top.length){ drop.innerHTML='<div class="cempty">没找到</div>'; drop.classList.add('show'); return; }
+      drop.innerHTML=top.map(function(c,i){ return '<div class="ci" data-i="'+i+'">'+c.name+'<span class="cp">'+(c.area? c.city+' · '+c.province : c.province)+'</span></div>'; }).join('');
+      drop.classList.add('show');
+      Array.prototype.forEach.call(drop.querySelectorAll('.ci'),function(el){
+        el.addEventListener('click',function(){
+          var c=top[parseInt(el.getAttribute('data-i'))];
+          inp.value=c.name;
+          drop.classList.remove('show');
+          setSel(c);
+        });
+      });
+    }
+    inp.addEventListener('input',search);
+    inp.addEventListener('focus',function(){ if(inp.value) search(); });
+    document.addEventListener('click',function(e){ if(!inp.contains(e.target)&&!drop.contains(e.target)) drop.classList.remove('show'); });
+  }
+
+  bindSearch('cityA','dropA',function(c){ selA=c; });
+  bindSearch('cityB','dropB',function(c){ selB=c; });
+
+  document.getElementById('calcCity').onclick=function(){
+    var r=document.getElementById('resCity');
+    if(!selA||!selB){ r.innerHTML='<span style="color:#ff8fa3">两个城市都要选（从下拉里点选）</span>'; return; }
+    var d=haversine(selA.lat,selA.lng,selB.lat,selB.lng);
+    r.innerHTML=selA.label+' ↔ '+selB.label+'<br><span class="big">'+fmtDist(d)+'</span><br>'+
+      '<span style="font-size:12px;color:#5b7a99">('+selA.lat.toFixed(3)+', '+selA.lng.toFixed(3)+') → ('+selB.lat.toFixed(3)+', '+selB.lng.toFixed(3)+')</span>';
+  };
+
+  draw();
+})();
+</script>
+</body>
+</html>

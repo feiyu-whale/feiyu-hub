@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>焊条型号含义解读</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;color:#333;font-size:14px;line-height:1.7;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:12px 14px 80px}
+h1{font-size:20px;text-align:center;margin:12px 0 16px;color:#1a1a1a}
+h2{font-size:15px;margin:0 0 12px;border-left:4px solid #1976d2;padding-left:10px;color:#1a1a1a}
+.card{background:#fff;border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.input-group{display:flex;gap:8px;margin-bottom:10px}
+input[type="text"]{flex:1;padding:10px 12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;outline:none;transition:border-color .2s}
+input[type="text"]:focus{border-color:#1976d2}
+.btn-primary{padding:10px 18px;background:#1976d2;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;white-space:nowrap;min-height:44px}
+.btn-primary:active{background:#1565c0}
+.presets{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.presets span{font-size:13px;color:#888}
+.btn-preset{padding:6px 12px;background:#e3f2fd;color:#1976d2;border:1px solid #bbdefb;border-radius:6px;font-size:13px;cursor:pointer;min-height:32px}
+.btn-preset:active{background:#bbdefb}
+.result-breakdown{display:flex;justify-content:center;gap:6px;margin:16px 0;flex-wrap:wrap}
+.rc{display:flex;flex-direction:column;align-items:center;padding:10px 14px;border-radius:8px;min-width:64px}
+.rc .ch{font-size:26px;font-weight:bold;letter-spacing:1px}
+.rc .lb{font-size:11px;margin-top:4px;opacity:.85}
+.c-e{background:#e8f5e9;color:#2e7d32}
+.c-s{background:#e3f2fd;color:#1565c0}
+.c-p{background:#fff3e0;color:#e65100}
+.c-c{background:#f3e5f5;color:#7b1fa2}
+.detail-list{margin-top:14px}
+.di{padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
+.di:last-child{border-bottom:none}
+.di b{color:#555}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 6px;text-align:left;border-bottom:1px solid #eee;vertical-align:top}
+th{background:#f8f9fa;font-weight:bold;color:#555;white-space:nowrap}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.note{background:#fffde7;border-left:3px solid #fbc02d;padding:10px 12px;margin:12px 0 0;font-size:13px;line-height:1.6;border-radius:0 6px 6px 0}
+.note-info{background:#e3f2fd;border-left:3px solid #42a5f5;padding:10px 12px;margin:12px 0 0;font-size:13px;line-height:1.6;border-radius:0 6px 6px 0}
+.warn{background:#fff3e0;border-left:3px solid #ff9800;padding:10px 12px;margin:12px 0 0;font-size:13px;line-height:1.6;border-radius:0 6px 6px 0}
+.error{color:#c62828;background:#ffebee;padding:14px;border-radius:8px;font-size:14px;text-align:center}
+.version{position:fixed;bottom:6px;right:10px;font-size:11px;color:#aaa;z-index:10}
+ul.basis{padding-left:20px;font-size:13px;line-height:2.1}
+ul.basis li{margin-bottom:2px}
+.hidden{display:none}
+.subtitle{font-size:13px;color:#777;text-align:center;margin:-10px 0 16px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🔧 焊条型号含义解读</h1>
+<p class="subtitle">基于 GB/T 5117 传统型号体系（E + 4位数字）</p>
+<div class="warn" style="margin-top:10px">⚠️ <b>数据来源提示：</b>本工具中烘干工艺参数、牌号对照（如 J422↔E4303）及部分强度等级（如 E46 ≥ 450 MPa）均为经验值/行业通行说法，<b>未经标准原文核对，无标准出处</b>，使用前请查证 GB/T 5117 等标准原文及厂家说明书。</div>
+
+<div class="card">
+<div class="input-group">
+<input type="text" id="modelInput" placeholder="输入型号，如 E4303" maxlength="10" autocomplete="off">
+<button class="btn-primary" onclick="parseModel()">🔍 解析</button>
+</div>
+<div class="presets">
+<span>常用：</span>
+<button class="btn-preset" onclick="setModel('E4303')">E4303</button>
+<button class="btn-preset" onclick="setModel('E5015')">E5015</button>
+<button class="btn-preset" onclick="setModel('E5016')">E5016</button>
+<button class="btn-preset" onclick="setModel('E4313')">E4313</button>
+<button class="btn-preset" onclick="setModel('E5024')">E5024</button>
+</div>
+</div>
+
+<div id="resultSection" class="card hidden"></div>
+
+<div class="card">
+<h2>📋 常用焊条对比（J422 / J507 / J506）</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>项目</th><th>J422<br>(E4303)</th><th>J507<br>(E5015)</th><th>J506<br>(E5016)</th></tr>
+<tr><td>药皮类型</td><td>钛钙型</td><td>低氢钠型</td><td>低氢钾型</td></tr>
+<tr><td>电流种类</td><td>交流或直流<br>正反接</td><td>直流反接<br>（DCEP）</td><td>交流或<br>直流反接</td></tr>
+<tr><td>抗拉强度</td><td>≥ 420 MPa</td><td>≥ 490 MPa</td><td>≥ 490 MPa</td></tr>
+<tr><td>适用钢材</td><td>低碳钢<br>（Q235等）</td><td>低合金钢<br>（Q345等）及<br>重要结构</td><td>低合金钢<br>（Q345等）及<br>重要结构</td></tr>
+<tr><td>烘干要求</td><td>一般免烘；<br>受潮时<br>150°C×1h</td><td>350～400°C<br>×1～2h<br>（必须烘干）</td><td>350～400°C<br>×1～2h<br>（必须烘干）</td></tr>
+<tr><td>抗裂性</td><td>一般</td><td>好</td><td>好</td></tr>
+<tr><td>典型用途</td><td>一般钢结构、<br>非重要构件</td><td>压力容器、桥梁、<br>船舶等重要结构</td><td>压力容器、桥梁、<br>船舶等重要结构</td></tr>
+</table>
+</div>
+<div class="note-info">💡 <b>J507 与 J506 核心区别：</b>J507（低氢钠型）仅可用直流反接；J506（低氢钾型）因药皮中含钾化合物（电离电位低），可交流使用。两者焊缝力学性能相近，均为低氢型，抗裂性好。</div>
+<div class="warn">⚠️ 本工具部分参数为经验值，未经标准核对。烘干温度与时间为行业通行工艺参数，具体应以焊材厂家说明书及焊接工艺规程（WPS）为准。低氢型焊条烘干后应置于 100～150°C 保温筒中随用随取，重复烘干不宜超过 3 次。</div>
+</div>
+
+<div class="card">
+<h2>📖 药皮类型与电流速查（第四位数字）</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>数字</th><th>药皮类型</th><th>适用电流</th></tr>
+<tr><td>0</td><td>不规定</td><td>交流或直流正反接</td></tr>
+<tr><td>1</td><td>氧化钛钠型</td><td>直流反接</td></tr>
+<tr><td>2</td><td>氧化钛钙型</td><td>交流或直流正反接</td></tr>
+<tr><td style="font-weight:bold;color:#7b1fa2">3</td><td style="font-weight:bold">钛钙型</td><td>交流或直流正反接</td></tr>
+<tr><td>4</td><td>氧化钛铁型</td><td>交流或直流正反接</td></tr>
+<tr><td style="font-weight:bold;color:#7b1fa2">5</td><td style="font-weight:bold">低氢钠型</td><td>直流反接</td></tr>
+<tr><td style="font-weight:bold;color:#7b1fa2">6</td><td style="font-weight:bold">低氢钾型</td><td>交流或直流反接</td></tr>
+<tr><td>7</td><td>铁粉氧化钛型</td><td>交流或直流正反接</td></tr>
+</table>
+</div>
+<div class="note">⚠️ 以上依据 GB/T 5117-1995 整理，加粗行为最常用条目。完整药皮类型表及详细化学成分需查 GB/T 5117 标准原文。直流反接 = 焊条接正极（DCEP），焊件接负极。<br><b>注意：</b>本表未收录第四位为 8 的铁粉低氢型等条目（如常见型号 E5018），相关代码的准确含义请查标准原文，本工具不提供未经核实的解读。</div>
+</div>
+
+<div class="card">
+<h2>📖 焊接位置速查（第三位数字）</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>数字</th><th>适用焊接位置</th></tr>
+<tr><td>0 或 1</td><td>全位置：平焊（1G）、立焊（3G）、横焊（2G）、仰焊（4G）<br><span style="color:#c62828">（"0"存疑：1995 版第三位仅 1/2/4 有定义）</span></td></tr>
+<tr><td>2</td><td>平焊及平角焊</td></tr>
+<tr><td>4</td><td>向下立焊</td></tr>
+</table>
+</div>
+<div class="note">⚠️ 依据 GB/T 5117-1995 型号编制规则。第三位数字仅 1、2、4 有明确定义，"0"条目存疑、未经标准原文核实，其余值需查标准原文。</div>
+</div>
+
+<div class="card">
+<h2>🏷️ 牌号与型号对照说明</h2>
+<p style="font-size:13px;margin-bottom:10px">中国焊条<b>牌号</b>（如 J422）与<b>型号</b>（如 E4303）是两套命名体系：</p>
+<div class="tbl-wrap">
+<table>
+<tr><th>牌号</th><th>型号</th><th>牌号含义拆解</th></tr>
+<tr><td><b>J422</b></td><td>E4303</td><td>J＝结构钢焊条；42＝抗拉强度 42 kgf/mm²；2＝钛钙型药皮</td></tr>
+<tr><td><b>J507</b></td><td>E5015</td><td>J＝结构钢焊条；50＝抗拉强度 50 kgf/mm²；7＝低氢钠型药皮</td></tr>
+<tr><td><b>J506</b></td><td>E5016</td><td>J＝结构钢焊条；50＝抗拉强度 50 kgf/mm²；6＝低氢钾型药皮</td></tr>
+</table>
+</div>
+<div class="note-info">💡 牌号中强度数字（如 J<b>42</b>2 的 42）与型号中（如 E<b>43</b>03 的 43）略有差异，但对应同一强度等级（≥420 MPa）。牌号体系属行业通行命名，非国标强制要求。</div>
+<div class="note">⚠️ 焊条牌号首位字母含义：J＝结构钢、R＝钼及铬钼耐热钢、W＝低温钢、A＝奥氏体不锈钢、D＝堆焊等。属行业通行说法，具体见相关焊接材料手册。</div>
+</div>
+
+<div class="card">
+<h2>📚 数据依据</h2>
+<ul class="basis">
+<li><b>GB/T 5117-1995</b>《碳钢焊条》—— 焊条型号编制方法（E + 4位数字体系），药皮类型与电流种类分类，熔敷金属力学性能要求</li>
+<li><b>GB/T 5117-2012</b>《非合金钢及细晶粒钢焊条》—— 现行有效版本，已改用 ISO 2560 分类体系（如 E 43 3 Mn X），与传统体系并存使用</li>
+<li>熔敷金属抗拉强度换算：型号前两位数字单位为 kgf/mm²，换算公式 MPa ≈ kgf/mm² × 9.807；标准规定值：E43 系列 ≥ 420 MPa、E50 系列 ≥ 490 MPa；E55 系列 ≥ 540 MPa 等更高强度等级属 GB/T 5118《热强钢焊条》体系，非 GB/T 5117 内容；E46 ≥ 450 MPa 无标准出处标注，仅供参考</li>
+<li>焊接位置代号（第三位 0/1/2/4）及药皮类型代号（第四位 0～7）依据 GB/T 5117-1995 型号编制规则，完整表值需查标准原文</li>
+<li>烘干温度等工艺参数属行业通行做法，具体以焊材厂家说明书及 <b>JB/T 3223</b>《焊接材料质量管理规程》为准</li>
+</ul>
+<div class="warn">⚠️ 本工具基于 GB/T 5117-1995 传统型号体系。2012 版已采用 ISO 2560 分类，两套体系在工程中并存。实际工程应用请以最新有效标准原文及设计文件为准。</div>
+</div>
+
+</div>
+
+<div class="version">v1.0.2-焊条型号解读-修审查问题 20261108</div>
+
+<script>
+var tensileData={
+'42':{kgf:42,mpa:420},'43':{kgf:43,mpa:420},
+'46':{kgf:46,mpa:450,src:'none'},'50':{kgf:50,mpa:490},
+// 注意：E55 及以上等级属 GB/T 5118 热强钢焊条体系，非 GB/T 5117 碳钢焊条范围；E46 未见标准出处
+'55':{kgf:55,mpa:540,src:'gbt5118'},'60':{kgf:60,mpa:590,src:'gbt5118'},
+'70':{kgf:70,mpa:690,src:'gbt5118'},'75':{kgf:75,mpa:740,src:'gbt5118'},
+'85':{kgf:85,mpa:830,src:'gbt5118'}
+};
+var positionData={
+'0':'全位置（存疑：GB/T 5117-1995 第三位仅 1/2/4 有定义，此条目未经标准核实）',
+'1':'全位置（平焊、立焊、横焊、仰焊）',
+'2':'平焊及平角焊',
+'4':'向下立焊'
+};
+var coatingData={
+'0':{name:'不规定',cur:'交流或直流正反接'},
+'1':{name:'氧化钛钠型',cur:'直流反接'},
+'2':{name:'氧化钛钙型',cur:'交流或直流正反接'},
+'3':{name:'钛钙型',cur:'交流或直流正反接'},
+'4':{name:'氧化钛铁型',cur:'交流或直流正反接'},
+'5':{name:'低氢钠型',cur:'直流反接'},
+'6':{name:'低氢钾型',cur:'交流或直流反接'},
+'7':{name:'铁粉氧化钛型',cur:'交流或直流正反接'}
+};
+var brandMap={
+'E4303':'J422','E5015':'J507','E5016':'J506',
+'E4313':'J423','E4315':'J427','E4316':'J426'
+};
+
+function setModel(m){
+document.getElementById('modelInput').value=m;
+parseModel();
+}
+
+function parseModel(){
+var raw=document.getElementById('modelInput').value.trim().toUpperCase();
+var sec=document.getElementById('resultSection');
+sec.classList.remove('hidden');
+
+if(!raw){
+sec.innerHTML='<div class="error">⚠️ 请输入焊条型号</div>';
+return;
+}
+
+var match=raw.match(/^E?(\d{4})$/);
+if(!match){
+sec.innerHTML='<div class="error">⚠️ 格式不正确<br><span style="font-size:13px">请输入 E + 4位数字，如 E4303、E5015</span></div>';
+return;
+}
+
+var d=match[1];
+var sc=d.substring(0,2);
+var pc=d.substring(2,3);
+var cc=d.substring(3,4);
+var full='E'+d;
+
+var h='<h2 style="margin-top:0">📊 解析结果：'+full+'</h2>';
+
+h+='<div class="result-breakdown">';
+h+='<div class="rc c-e"><span class="ch">E</span><span class="lb">焊条</span></div>';
+h+='<div class="rc c-s"><span class="ch">'+sc+'</span><span class="lb">抗拉强度</span></div>';
+h+='<div class="rc c-p"><span class="ch">'+pc+'</span><span class="lb">焊接位置</span></div>';
+h+='<div class="rc c-c"><span class="ch">'+cc+'</span><span class="lb">药皮/电流</span></div>';
+h+='</div>';
+
+h+='<div class="detail-list">';
+
+h+='<div class="di"><b>🔹 E — </b>表示焊条（Electrode）</div>';
+
+var st=tensileData[sc];
+if(st){
+var srcNote='';
+if(st.src==='gbt5118')srcNote='<br>⚠️ 该强度等级属 GB/T 5118《热强钢焊条》体系，不在 GB/T 5117 碳钢焊条范围内，请按相应标准解读';
+if(st.src==='none')srcNote='<br>⚠️ 该等级数值未标注标准出处（无来源），仅供参考，请查标准原文核实';
+h+='<div class="di"><b>🔹 '+sc+' — </b>熔敷金属抗拉强度最小值 <b>'+st.kgf+' kgf/mm²</b>（≈ ≥'+st.mpa+' MPa）'+srcNote+'</div>';
+}else{
+var kgf=parseInt(sc);
+var mpa=Math.round(kgf*9.807);
+h+='<div class="di"><b>🔹 '+sc+' — </b>熔敷金属抗拉强度最小值 '+kgf+' kgf/mm²（≈ ≥'+mpa+' MPa，具体规定值需查 GB/T 5117 标准原文）</div>';
+}
+
+var pos=positionData[pc];
+if(pos){
+h+='<div class="di"><b>🔹 '+pc+' — </b>焊接位置：'+pos+'</div>';
+}else{
+h+='<div class="di"><b>🔹 '+pc+' — </b>焊接位置：该代码不在常用范围（0/1/2/4），需查 GB/T 5117 标准原文</div>';
+}
+
+var coat=coatingData[cc];
+if(coat){
+h+='<div class="di"><b>🔹 '+cc+' — </b>药皮类型：<b>'+coat.name+'</b>；适用电流：'+coat.cur+'</div>';
+}else{
+if(cc==='8'){
+h+='<div class="di"><b>🔹 '+cc+' — </b>该代码常见于铁粉低氢型焊条（如 E5018），本工具数据表未收录、无来源标注，请查 GB/T 5117 标准原文核实</div>';
+}else{
+h+='<div class="di"><b>🔹 '+cc+' — </b>药皮类型及电流种类：该代码不在常用范围（0～7），需查 GB/T 5117 标准原文</div>';
+}
+}
+
+h+='</div>';
+
+if(brandMap[full]){
+h+='<div class="note-info">💡 该型号对应的常用牌号为 <b>'+brandMap[full]+'</b></div>';
+}
+
+sec.innerHTML=h;
+sec.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+document.getElementById('modelInput').addEventListener('keypress',function(e){
+if(e.key==='Enter')parseModel();
+});
+</script>
+</body>
+</html>

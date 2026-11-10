@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古代度量衡换算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #2c2c2c;
+    background: #f5f1e8;
+    padding: 12px;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    background: #fffdf7;
+    border: 1px solid #d9c9a3;
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: 0 2px 8px rgba(120,90,40,0.08);
+  }
+  h1 {
+    font-size: 20px;
+    text-align: center;
+    color: #6b4423;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #8a6d4b;
+    margin-bottom: 16px;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #d9c9a3;
+    margin-bottom: 14px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 6px;
+    cursor: pointer;
+    background: #f0e8d4;
+    border: 1px solid #d9c9a3;
+    border-bottom: none;
+    font-size: 14px;
+    color: #6b4423;
+    margin-right: -1px;
+    user-select: none;
+  }
+  .tab:first-child { border-radius: 6px 0 0 0; }
+  .tab:last-child { border-radius: 0 6px 0 0; margin-right: 0; }
+  .tab.active {
+    background: #fffdf7;
+    font-weight: bold;
+    border-bottom: 2px solid #fffdf7;
+    margin-bottom: -2px;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .row label {
+    flex: 0 0 100%;
+    font-size: 13px;
+    color: #5a4530;
+    font-weight: bold;
+  }
+  select, input[type="number"] {
+    flex: 1 1 140px;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #c9b88a;
+    border-radius: 5px;
+    background: #fff;
+    color: #333;
+  }
+  input[type="number"] { flex: 1 1 100px; }
+  .btn {
+    padding: 9px 16px;
+    background: #8b5a2b;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .btn:active { background: #6b4423; }
+  .result {
+    margin-top: 14px;
+    padding: 14px;
+    background: #fbf5e4;
+    border-left: 4px solid #b8860b;
+    border-radius: 4px;
+    font-size: 14px;
+    min-height: 40px;
+  }
+  .result .big {
+    font-size: 18px;
+    font-weight: bold;
+    color: #8b5a2b;
+    margin: 4px 0;
+    word-break: break-all;
+  }
+  .result .note {
+    font-size: 12px;
+    color: #7a6548;
+    margin-top: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid #d9c9a3;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  th {
+    background: #f0e8d4;
+    color: #6b4423;
+    font-weight: bold;
+  }
+  td { background: #fffdf7; }
+  .section-title {
+    font-size: 15px;
+    color: #6b4423;
+    margin: 16px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed #d9c9a3;
+  }
+  .source {
+    margin-top: 20px;
+    padding: 12px;
+    background: #f0e8d4;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #5a4530;
+    line-height: 1.7;
+  }
+  .source h3 {
+    font-size: 14px;
+    margin-bottom: 6px;
+    color: #6b4423;
+  }
+  .source ul { padding-left: 18px; }
+  .warn {
+    font-size: 12px;
+    color: #a0522d;
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: #fff3e0;
+    border-radius: 4px;
+  }
+  .version {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.7);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  @media (max-width: 480px) {
+    html, body { font-size: 13px; padding: 8px; }
+    .wrap { padding: 12px; }
+    h1 { font-size: 18px; }
+    .tab { font-size: 13px; padding: 8px 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📜 古代度量衡换算</h1>
+  <div class="subtitle">历代尺度 · 容量 · 重量 折算今制</div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="length">📏 长度</div>
+    <div class="tab" data-tab="volume">🏺 容量</div>
+    <div class="tab" data-tab="weight">⚖️ 重量</div>
+  </div>
+
+  <!-- 长度 -->
+  <div class="panel active" id="panel-length">
+    <div class="row">
+      <label>选择朝代</label>
+      <select id="len-era"></select>
+    </div>
+    <div class="row">
+      <label>输入数值（古制尺）</label>
+      <input type="number" id="len-val" value="1" step="any" min="0">
+      <button class="btn" onclick="calcLen()">换算 →</button>
+    </div>
+    <div class="result" id="len-result">请输入数值后点击换算。</div>
+
+    <div class="section-title">📋 历代尺度考订参考表</div>
+    <table>
+      <thead>
+        <tr><th>朝代</th><th>1 尺 ≈</th><th>备注</th></tr>
+      </thead>
+      <tbody id="len-table"></tbody>
+    </table>
+    <div class="warn">⚠️ 上表为通行考订估计值，同朝代不同时期、不同用途（如营造尺、裁衣尺、量地尺）尺度亦有差异，具体请查标准原文。</div>
+  </div>
+
+  <!-- 容量 -->
+  <div class="panel" id="panel-volume">
+    <div class="row">
+      <label>选择朝代</label>
+      <select id="vol-era"></select>
+    </div>
+    <div class="row">
+      <label>输入数值（古制升）</label>
+      <input type="number" id="vol-val" value="1" step="any" min="0">
+      <button class="btn" onclick="calcVol()">换算 →</button>
+    </div>
+    <div class="result" id="vol-result">请输入数值后点击换算。</div>
+
+    <div class="section-title">📋 历代容量考订参考表</div>
+    <table>
+      <thead>
+        <tr><th>朝代</th><th>1 升 ≈</th><th>备注</th></tr>
+      </thead>
+      <tbody id="vol-table"></tbody>
+    </table>
+    <div class="warn">⚠️ 历代容量差异较大，隋唐以后一升显著增大；同朝亦分大、小制，表中为通行考订估计值。</div>
+  </div>
+
+  <!-- 重量 -->
+  <div class="panel" id="panel-weight">
+    <div class="row">
+      <label>选择朝代</label>
+      <select id="wt-era"></select>
+    </div>
+    <div class="row">
+      <label>输入数值（古制斤）</label>
+      <input type="number" id="wt-val" value="1" step="any" min="0">
+      <button class="btn" onclick="calcWt()">换算 →</button>
+    </div>
+    <div class="result" id="wt-result">请输入数值后点击换算。</div>
+
+    <div class="section-title">📋 历代重量考订参考表</div>
+    <table>
+      <thead>
+        <tr><th>朝代</th><th>1 斤 ≈</th><th>1 两 ≈</th></tr>
+      </thead>
+      <tbody id="wt-table"></tbody>
+    </table>
+    <div class="warn">⚠️ 古制一斤多为十六两（明清同），表中为通行考订估计值，不同器物实测有浮动。</div>
+  </div>
+
+  <div class="source">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li>吴承洛：《中国度量衡史》，商务印书馆（1937 年初版，后世多次重印）。</li>
+      <li>国家计量总局《中国古代度量衡图集》编写组：《中国古代度量衡图集》，中国计量出版社，1984 年。</li>
+      <li>丘光明：《中国历代度量衡考》，科学出版社，1992 年。</li>
+      <li>换算关系：现代 1 米 = 100 厘米；1 升 = 1000 毫升；1 市斤 = 500 克，1 市两 = 50 克。</li>
+    </ul>
+    <p style="margin-top:6px;">说明：表中数值均为学界通行考订估计值，系根据出土器物实测、文献记载综合得出，不同学者、不同器物实测结果存在一定浮动，仅供学习参考，精确研究请以标准原文与出土实物为准。</p>
+    <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:10px 12px;border-radius:4px;margin-top:10px;color:#6b4e00;">
+      <strong>⚠️ 逐项出处说明：</strong>上列三本书仅为<b>总体参考书目</b>，本页表中<b>各朝代具体数值未标注页码/表号，无法逐项核对</b>，属经验考订值。现代换算基准（1 市尺 = 1/3 米、1 升 = 1000 毫升、1 市斤 = 500 克）为法定制，可查证。
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.2-修审查问题 20261108</div>
+
+<script>
+// 数据：基于吴承洛《中国度量衡史》、《中国古代度量衡图集》、丘光明《中国历代度量衡考》通行考订值
+// 长度：1 尺 ≈ ? cm
+const lengthData = [
+  { era: "商", cm: 16.9, note: "据殷墟出土骨尺" },
+  { era: "西周", cm: 19.7, note: "据铭文、铜器考订" },
+  { era: "春秋战国", cm: 23.1, note: "各国尺度不一，此为通行值" },
+  { era: "秦", cm: 23.1, note: "统一度量衡" },
+  { era: "汉", cm: 23.1, note: "据新莽嘉量等实物" },
+  { era: "三国", cm: 24.2, note: "较汉略增" },
+  { era: "晋", cm: 24.5, note: "" },
+  { era: "南朝", cm: 25.0, note: "约值" },
+  { era: "隋（小尺）", cm: 29.6, note: "开皇官尺" },
+  { era: "唐（小尺）", cm: 30.0, note: "唐初沿用隋制" },
+  { era: "唐（大尺）", cm: 30.7, note: "唐代通行大尺" },
+  { era: "宋（营造尺）", cm: 31.4, note: "据《营造法式》" },
+  { era: "元", cm: 30.7, note: "约值" },
+  { era: "明（营造尺）", cm: 31.1, note: "另有裁衣尺约 34cm、量地尺约 32.7cm" },
+  { era: "清（营造尺）", cm: 32.0, note: "清代通行营造尺" }
+];
+
+// 容量：1 升 ≈ ? ml
+const volumeData = [
+  { era: "秦汉", ml: 200, note: "据新莽嘉量等" },
+  { era: "新莽", ml: 200, note: "嘉量实测" },
+  { era: "魏晋", ml: 300, note: "约值，较汉增大" },
+  { era: "南朝", ml: 300, note: "约值" },
+  { era: "隋", ml: 600, note: "约值" },
+  { era: "唐", ml: 600, note: "大升约 600ml" },
+  { era: "宋", ml: 670, note: "约值" },
+  { era: "元", ml: 950, note: "约值" },
+  { era: "明", ml: 1070, note: "约值" },
+  { era: "清", ml: 1035, note: "据户部铁斗实测" }
+];
+
+// 重量：1 斤 ≈ ? g；古制一斤 = 16 两
+const weightData = [
+  { era: "秦", g: 250, note: "" },
+  { era: "汉", g: 250, note: "据出土权量" },
+  { era: "新莽", g: 227, note: "据新莽权衡实物" },
+  { era: "魏晋", g: 222, note: "约值" },
+  { era: "隋", g: 660, note: "约值" },
+  { era: "唐", g: 660, note: "据开元通宝等" },
+  { era: "宋", g: 640, note: "约值" },
+  { era: "明", g: 595, note: "约值" },
+  { era: "清", g: 596.8, note: "据库平两 37.3g × 16" }
+];
+
+// 初始化下拉框
+function initSelect(id, data) {
+  const sel = document.getElementById(id);
+  data.forEach((d, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = d.era;
+    sel.appendChild(opt);
+  });
+}
+initSelect("len-era", lengthData);
+initSelect("vol-era", volumeData);
+initSelect("wt-era", weightData);
+
+// 初始化表格
+function initTable(tbodyId, data, cols) {
+  const tbody = document.getElementById(tbodyId);
+  data.forEach(d => {
+    const tr = document.createElement("tr");
+    cols.forEach(c => {
+      const td = document.createElement("td");
+      td.textContent = c.fn(d);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+initTable("len-table", lengthData, [
+  { fn: d => d.era },
+  { fn: d => d.cm + " cm" },
+  { fn: d => d.note || "-" }
+]);
+initTable("vol-table", volumeData, [
+  { fn: d => d.era },
+  { fn: d => d.ml + " ml" },
+  { fn: d => d.note || "-" }
+]);
+initTable("wt-table", weightData, [
+  { fn: d => d.era },
+  { fn: d => d.g + " g" },
+  { fn: d => (d.g / 16).toFixed(2) + " g" }
+]);
+
+// Tab 切换
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("panel-" + t.dataset.tab).classList.add("active");
+  });
+});
+
+// 格式化数字
+function fmt(n) {
+  if (!isFinite(n)) return "-";
+  if (Math.abs(n) >= 1000) return n.toFixed(2);
+  if (Math.abs(n) >= 1) return n.toFixed(4);
+  return n.toPrecision(4);
+}
+
+// 长度换算
+function calcLen() {
+  const i = +document.getElementById("len-era").value;
+  const v = parseFloat(document.getElementById("len-val").value);
+  const d = lengthData[i];
+  const box = document.getElementById("len-result");
+  if (isNaN(v) || v < 0) {
+    box.innerHTML = '<span style="color:#a00">请输入有效的非负数值。</span>';
+    return;
+  }
+  const cm = v * d.cm;
+  const m = cm / 100;
+  const chi = cm / 33.33; // 1 市尺 = 1/3 米 = 33.33 cm
+  box.innerHTML = `
+    <div>📏 <b>${v} ${d.era}尺</b> 折合今制：</div>
+    <div class="big">${fmt(cm)} 厘米 ＝ ${fmt(m)} 米</div>
+    <div>≈ ${fmt(chi)} 市尺</div>
+    <div class="note">换算依据：${d.era} 1 尺 ≈ ${d.cm} cm（考订估计值）${d.note ? "；" + d.note : ""}</div>
+  `;
+}
+
+// 容量换算
+function calcVol() {
+  const i = +document.getElementById("vol-era").value;
+  const v = parseFloat(document.getElementById("vol-val").value);
+  const d = volumeData[i];
+  const box = document.getElementById("vol-result");
+  if (isNaN(v) || v < 0) {
+    box.innerHTML = '<span style="color:#a00">请输入有效的非负数值。</span>';
+    return;
+  }
+  const ml = v * d.ml;
+  const l = ml / 1000; // 1 市升 = 1 升 = 1000 ml，故不再重复显示市升
+  box.innerHTML = `
+    <div>🏺 <b>${v} ${d.era}升</b> 折合今制：</div>
+    <div class="big">${fmt(ml)} 毫升 ＝ ${fmt(l)} 升</div>
+    <div class="note">换算依据：${d.era} 1 升 ≈ ${d.ml} ml（考订估计值）${d.note ? "；" + d.note : ""}</div>
+  `;
+}
+
+// 重量换算
+function calcWt() {
+  const i = +document.getElementById("wt-era").value;
+  const v = parseFloat(document.getElementById("wt-val").value);
+  const d = weightData[i];
+  const box = document.getElementById("wt-result");
+  if (isNaN(v) || v < 0) {
+    box.innerHTML = '<span style="color:#a00">请输入有效的非负数值。</span>';
+    return;
+  }
+  const g = v * d.g;
+  const jin = g / 500; // 1 市斤 = 500 g
+  const liang = g / 50; // 1 市两 = 50 g
+  const guLiangCount = v * 16; // 古制 1 斤 = 16 两 → 两数 = 输入斤数 × 16
+  const guLiangGram = d.g / 16; // 古制每两折合克数
+  box.innerHTML = `
+    <div>⚖️ <b>${v} ${d.era}斤</b> 折合今制：</div>
+    <div class="big">${fmt(g)} 克 ＝ ${fmt(jin)} 市斤</div>
+    <div>≈ ${fmt(liang)} 市两</div>
+    <div>古制：${fmt(guLiangCount)} ${d.era}两（1 斤 = 16 两，1 ${d.era}两 ≈ ${fmt(guLiangGram)} g）</div>
+    <div class="note">换算依据：${d.era} 1 斤 ≈ ${d.g} g（考订估计值）</div>
+  `;
+}
+
+// 回车触发
+["len-val","vol-val","wt-val"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      if (id === "len-val") calcLen();
+      if (id === "vol-val") calcVol();
+      if (id === "wt-val") calcWt();
+    }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>文言虚词用法查询</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f1e8;
+    color: #3a2e1f;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px 14px 60px;
+  }
+  header {
+    text-align: center;
+    padding: 18px 10px 14px;
+    border-bottom: 2px solid #8b6f47;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-size: 22px;
+    color: #5a3e1b;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  header .subtitle {
+    font-size: 13px;
+    color: #7a6240;
+  }
+  .search-box {
+    margin-bottom: 14px;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #c9b896;
+    border-radius: 6px;
+    background: #fffdf7;
+    font-size: 14px;
+    color: #3a2e1f;
+    outline: none;
+  }
+  .search-box input:focus {
+    border-color: #8b6f47;
+    box-shadow: 0 0 0 2px rgba(139,111,71,0.15);
+  }
+  .word-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .word-btn {
+    padding: 10px 0;
+    background: #fffdf7;
+    border: 1px solid #c9b896;
+    border-radius: 6px;
+    font-size: 18px;
+    color: #5a3e1b;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .word-btn:active {
+    transform: scale(0.95);
+  }
+  .word-btn.active {
+    background: #8b6f47;
+    color: #fffdf7;
+    border-color: #5a3e1b;
+    box-shadow: 0 2px 6px rgba(90,62,27,0.3);
+  }
+  .result-panel {
+    background: #fffdf7;
+    border: 1px solid #c9b896;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 200px;
+  }
+  .result-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #c9b896;
+    margin-bottom: 14px;
+  }
+  .result-char {
+    font-size: 42px;
+    color: #5a3e1b;
+    font-weight: bold;
+    line-height: 1;
+  }
+  .result-pinyin {
+    font-size: 14px;
+    color: #8b6f47;
+  }
+  .result-summary {
+    font-size: 13px;
+    color: #7a6240;
+    margin-top: 4px;
+  }
+  .use-section {
+    margin-bottom: 16px;
+  }
+  .use-section:last-child { margin-bottom: 0; }
+  .use-title {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #e8dcc0;
+    color: #5a3e1b;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .use-desc {
+    font-size: 14px;
+    color: #3a2e1f;
+    margin-bottom: 8px;
+    padding-left: 4px;
+  }
+  .example {
+    background: #faf5e8;
+    border-left: 3px solid #b89968;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .example .src {
+    font-size: 12px;
+    color: #8b6f47;
+    margin-bottom: 3px;
+  }
+  .example .cls {
+    font-size: 13px;
+    color: #5a3e1b;
+    margin-bottom: 4px;
+  }
+  .example .cls em {
+    color: #a0522d;
+    font-style: normal;
+    font-weight: bold;
+    border-bottom: 1px dotted #a0522d;
+  }
+  .example .trans {
+    font-size: 13px;
+    color: #6b5636;
+  }
+  .placeholder {
+    text-align: center;
+    color: #8b6f47;
+    padding: 40px 20px;
+    font-size: 14px;
+  }
+  .placeholder .big {
+    font-size: 40px;
+    display: block;
+    margin-bottom: 10px;
+  }
+  footer {
+    margin-top: 24px;
+    padding: 14px;
+    background: #fffdf7;
+    border: 1px solid #c9b896;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #5a3e1b;
+  }
+  footer h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #5a3e1b;
+  }
+  footer p {
+    margin-bottom: 6px;
+    line-height: 1.7;
+  }
+  footer .ref {
+    padding-left: 14px;
+    color: #6b5636;
+  }
+  .version {
+    position: fixed;
+    right: 8px;
+    bottom: 6px;
+    font-size: 11px;
+    color: #8b6f47;
+    background: rgba(255,253,247,0.85);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  @media (max-width: 420px) {
+    .word-grid { grid-template-columns: repeat(4, 1fr); }
+    .result-char { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📜 文言虚词用法</h1>
+    <div class="subtitle">常见二十虚词 · 分类与例句</div>
+  </header>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="🔍 输入虚词查询，如：之、而、以">
+  </div>
+
+  <div class="word-grid" id="wordGrid"></div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="placeholder">
+      <span class="big">📖</span>
+      请从上方选择一个虚词，<br>查看其用法分类与经典例句
+    </div>
+  </div>
+
+  <footer>
+    <h3>📚 数据来源</h3>
+    <p>本工具虚词分类体系与主要例句依据：</p>
+    <p class="ref">[1] 王力 主编.《古代汉语》（校订重排本）. 中华书局, 1999 年. 通论部分"古代汉语的虚词"及各册文选注释.</p>
+    <p class="ref">[2] 王力.《古代汉语常识》. 商务印书馆. 虚词相关章节.</p>
+    <p class="ref">[3] 例句多取自《论语》《孟子》《左传》《史记》《战国策》《庄子》《荀子》等先秦两汉典籍，为王力教材常用例证.</p>
+    <p style="margin-top:8px;font-size:12px;color:#8b6f47;">注：虚词用法复杂，同一字形在不同语境中可能兼类，本表仅列常见用法，具体辨析请参看原书。</p>
+  </footer>
+</div>
+
+<div class="version">v1.0.0-文言虚词 20261021</div>
+
+<script>
+(function(){
+  // 数据依据：王力《古代汉语》虚词体系
+  const WORDS = {
+    '之': {
+      pinyin: 'zhī',
+      summary: '主要作代词、助词，亦可作动词',
+      uses: [
+        {
+          type: '代词',
+          desc: '第三人称代词，多代人或事物，相当于"他""它""他们"，常作宾语。',
+          examples: [
+            { src: '《论语·学而》', cls: '学而时习<em>之</em>，不亦说乎？', trans: '学习了然后按时温习它，不也很愉快吗？' },
+            { src: '《左传·庄公十年》（曹刿论战）', cls: '公将鼓<em>之</em>……公将驰<em>之</em>。', trans: '鲁庄公将要击鼓命令进军……将要驱车追击他们。' }
+          ]
+        },
+        {
+          type: '助词（结构助词）',
+          desc: '相当于现代汉语"的"，用于定语与中心语之间。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '蚓无爪牙<em>之</em>利，筋骨<em>之</em>强。', trans: '蚯蚓没有锋利的爪牙，强健的筋骨。' },
+            { src: '《孟子·梁惠王上》', cls: '臣固知王<em>之</em>不忍也。', trans: '我本来就知道大王是不忍心。' }
+          ]
+        },
+        {
+          type: '助词（取消句子独立性）',
+          desc: '放在主谓之间，使主谓结构变为名词性短语，作句子的主语、宾语或状语。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '小大<em>之</em>狱，虽不能察，必以情。', trans: '大大小小的案件，即使不能一一明察，也一定根据实情处理。' },
+            { src: '《孟子》', cls: '臣<em>之</em>壮也，犹不如人。', trans: '我壮年的时候，尚且不如别人。' }
+          ]
+        },
+        {
+          type: '动词',
+          desc: '意为"往""到……去"，后接处所名词。',
+          examples: [
+            { src: '《孟子·滕文公上》', cls: '有楚大夫于此，欲其子<em>之</em>齐语也。', trans: '有一位楚国大夫在这里，想让他的儿子到齐国去学齐语。' },
+            { src: '《史记·项羽本纪》', cls: '项伯乃夜驰<em>之</em>沛公军。', trans: '项伯于是连夜骑马赶到刘邦的军营。' }
+          ]
+        },
+        {
+          type: '音节助词',
+          desc: '用在时间词或动词后，凑足音节，无实义。',
+          examples: [
+            { src: '《史记·陈涉世家》', cls: '怅恨久<em>之</em>。', trans: '惆怅恼恨了很久。' }
+          ]
+        }
+      ]
+    },
+    '其': {
+      pinyin: 'qí',
+      summary: '主要作代词，亦可作副词、连词、助词',
+      uses: [
+        {
+          type: '代词（人称）',
+          desc: '第三人称代词，相当于"他（们）的""它（们）的"，作定语；有时活用为第一人称或第二人称。',
+          examples: [
+            { src: '《论语·卫灵公》', cls: '工欲善<em>其</em>事，必先利<em>其</em>器。', trans: '工匠想把活做好，一定先使他的工具锋利。' },
+            { src: '王安石《游褒禅山记》', cls: '而余亦悔<em>其</em>随之而不得极夫游之乐也。', trans: '我也后悔自己跟随他们出来，而未能尽情享受游览的乐趣。' }
+          ]
+        },
+        {
+          type: '代词（指示）',
+          desc: '指示代词，相当于"那""那些""其中的"。',
+          examples: [
+            { src: '《论语·八佾》', cls: '人而不仁，如礼何？人而不仁，如乐何？（按：此处"其"例见《左传》）', trans: '——' },
+            { src: '《左传·隐公元年》（郑伯克段于鄢）', cls: '<em>其</em>是之谓乎！', trans: '大概说的就是这件事吧！' }
+          ]
+        },
+        {
+          type: '副词（表推测）',
+          desc: '表推测、估计，相当于"大概""或许"。',
+          examples: [
+            { src: '《左传·隐公元年》', cls: '<em>其</em>是之谓乎！', trans: '大概说的就是这件事吧！' },
+            { src: '韩愈《马说》', cls: '<em>其</em>真无马邪？<em>其</em>真不知马也！', trans: '难道真的没有千里马吗？恐怕是真的不认识千里马啊！' }
+          ]
+        },
+        {
+          type: '副词（表反问/祈使）',
+          desc: '表反问，相当于"难道"；表祈使、劝勉，相当于"可要""一定"。',
+          examples: [
+            { src: '《左传》', cls: '一之谓甚，<em>其</em>可再乎？', trans: '一次已经过分了，难道可以再来一次吗？' }
+          ]
+        },
+        {
+          type: '连词',
+          desc: '表假设，相当于"如果""假如"；表选择，相当于"还是"。',
+          examples: [
+            { src: '《孟子·梁惠王上》', cls: '<em>其</em>若是，孰能御之？', trans: '如果像这样，谁能抵挡得住？' }
+          ]
+        },
+        {
+          type: '助词（无实义）',
+          desc: '起调节音节作用，无实义。',
+          examples: [
+            { src: '《诗经·邶风·击鼓》', cls: '击鼓<em>其</em>镗，踊跃用兵。', trans: '敲起鼓来镗镗响，踊跃从军上战场。' }
+          ]
+        }
+      ]
+    },
+    '而': {
+      pinyin: 'ér',
+      summary: '主要作连词，连接词、短语或分句',
+      uses: [
+        {
+          type: '连词（并列）',
+          desc: '连接两个并列成分，相当于"又""和"，有时可不译。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '蟹六跪<em>而</em>二螯。', trans: '螃蟹有六条腿和两只钳子。' },
+            { src: '《论语·学而》', cls: '敏<em>而</em>好学，不耻下问。', trans: '聪敏又好学，不以向地位低的人请教为耻。' }
+          ]
+        },
+        {
+          type: '连词（承接）',
+          desc: '连接先后发生的动作，相当于"就""然后""便"。',
+          examples: [
+            { src: '《论语·学而》', cls: '学而时习<em>而</em>之（按：例见《荀子》）', trans: '——' },
+            { src: '《荀子·劝学》', cls: '锲<em>而</em>不舍，金石可镂。', trans: '刻下去不停止，金石也能雕刻。' },
+            { src: '《史记·项羽本纪》', cls: '拔剑撞<em>而</em>破之。', trans: '拔出剑来把它击碎。' }
+          ]
+        },
+        {
+          type: '连词（转折）',
+          desc: '相当于"却""但是"。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '青，取之于蓝，<em>而</em>青于蓝。', trans: '靛青是从蓝草中提取的，却比蓝草的颜色更深。' },
+            { src: '韩愈《师说》', cls: '人非生<em>而</em>知之者，孰能无惑？', trans: '人不是生下来就懂得道理的，谁能没有疑惑？' }
+          ]
+        },
+        {
+          type: '连词（修饰）',
+          desc: '连接状语和中心词，表示方式、状态，相当于"地""着"。',
+          examples: [
+            { src: '《史记·项羽本纪》', cls: '项王按剑<em>而</em>跽。', trans: '项王按着剑跪直身子。' },
+            { src: '柳宗元《小石潭记》', cls: '潭西南<em>而</em>望，斗折蛇行。', trans: '向小石潭的西南方向望去，（溪水）像北斗星那样曲折，像蛇那样蜿蜒前行。' }
+          ]
+        },
+        {
+          type: '连词（假设）',
+          desc: '相当于"如果""假如"。',
+          examples: [
+            { src: '《论语·为政》', cls: '人<em>而</em>无信，不知其可也。', trans: '一个人如果不讲信用，真不知道他怎么能立身处世。' }
+          ]
+        },
+        {
+          type: '连词（递进）',
+          desc: '相当于"而且""并且"。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '君子博学<em>而</em>日参省乎己。', trans: '君子广泛地学习，而且每天对自己检查反省。' }
+          ]
+        },
+        {
+          type: '代词',
+          desc: '第二人称代词，相当于"你""你的"。',
+          examples: [
+            { src: '《左传·定公十四年》', cls: '夫差！而忘越王之杀而父乎？', trans: '夫差！你忘了越王杀死你父亲的事吗？' }
+          ]
+        }
+      ]
+    },
+    '以': {
+      pinyin: 'yǐ',
+      summary: '主要作介词、连词，亦可作代词、动词',
+      uses: [
+        {
+          type: '介词（表工具）',
+          desc: '相当于"用""拿""凭借"。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '<em>以</em>戈逐子犯。', trans: '用戈追赶子犯。' },
+            { src: '《荀子·劝学》', cls: '不积小流，无<em>以</em>成江海。', trans: '不汇聚细小的水流，就无法形成江海。' }
+          ]
+        },
+        {
+          type: '介词（表原因）',
+          desc: '相当于"因为""由于"。',
+          examples: [
+            { src: '《史记·廉颇蔺相如列传》', cls: '<em>以</em>勇气闻于诸侯。', trans: '凭借勇气在诸侯中闻名。' },
+            { src: '范仲淹《岳阳楼记》', cls: '不<em>以</em>物喜，不<em>以</em>己悲。', trans: '不因为外物（好坏）而高兴，不因为自己（得失）而悲伤。' }
+          ]
+        },
+        {
+          type: '介词（表时间/处所）',
+          desc: '相当于"在""从"。',
+          examples: [
+            { src: '《史记·廉颇蔺相如列传》', cls: '武夫力<em>以</em>拘诸原。', trans: '——' },
+            { src: '《史记》', cls: '余<em>以</em>乾隆三十九年十二月……', trans: '我在乾隆三十九年十二月……' }
+          ]
+        },
+        {
+          type: '连词（表目的/结果）',
+          desc: '相当于"来""以便""以致"。',
+          examples: [
+            { src: '诸葛亮《出师表》', cls: '属予作文<em>以</em>记之。', trans: '嘱咐我写一篇文章来记述这件事。' },
+            { src: '《左传·僖公五年》', cls: '孤违蹇叔，<em>以</em>辱二三子。', trans: '我违背了蹇叔的劝告，以致使你们几位受辱。' }
+          ]
+        },
+        {
+          type: '连词（表并列/修饰）',
+          desc: '相当于"而"，连接形容词或动词。',
+          examples: [
+            { src: '《史记·屈原贾生列传》', cls: '其称文小而其指极大，举类迩而见义远。其志洁，故其称物芳；其行廉，故死而不容。', trans: '——' }
+          ]
+        },
+        {
+          type: '代词',
+          desc: '指示代词，相当于"这""此"。',
+          examples: [
+            { src: '《左传·僖公二十三年》', cls: '<em>以</em>是观之，虽与之天下，不能居也。', trans: '由此看来，即使把天下给他，也不能坐稳。' }
+          ]
+        },
+        {
+          type: '动词',
+          desc: '意为"认为""以为"。',
+          examples: [
+            { src: '《战国策·齐策》', cls: '皆<em>以</em>美于徐公。', trans: '都认为（我）比徐公美。' }
+          ]
+        }
+      ]
+    },
+    '于': {
+      pinyin: 'yú',
+      summary: '主要作介词，引进处所、时间、对象、比较等',
+      uses: [
+        {
+          type: '介词（表处所）',
+          desc: '相当于"在""到""从"。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '青，取之<em>于</em>蓝，而青于蓝。', trans: '靛青从蓝草中提取，却比蓝草颜色更深。' },
+            { src: '《孟子》', cls: '战<em>于</em>长勺。', trans: '在长勺作战。' }
+          ]
+        },
+        {
+          type: '介词（表时间）',
+          desc: '相当于"在""到"。',
+          examples: [
+            { src: '《史记》', cls: '子<em>于</em>是日哭，则不歌。', trans: '孔子在这一天哭过，就不再唱歌。' }
+          ]
+        },
+        {
+          type: '介词（表对象）',
+          desc: '相当于"对""对于""向"。',
+          examples: [
+            { src: '《论语·为政》', cls: '己所不欲，勿施<em>于</em>人。', trans: '自己不愿意的，不要施加给别人。' },
+            { src: '《孟子》', cls: '不拘<em>于</em>时。', trans: '不受时俗的限制。' }
+          ]
+        },
+        {
+          type: '介词（表比较）',
+          desc: '相当于"比""胜过"，用在形容词后。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '冰，水为之，而寒<em>于</em>水。', trans: '冰是水凝结成的，却比水更冷。' },
+            { src: '《史记》', cls: '人固有一死，或重<em>于</em>泰山，或轻<em>于</em>鸿毛。', trans: '人本来就有一死，有的比泰山还重，有的比鸿毛还轻。' }
+          ]
+        },
+        {
+          type: '介词（表被动）',
+          desc: '引出动作的主动者，相当于"被"。',
+          examples: [
+            { src: '《孟子·离娄上》', cls: '劳心者治人，劳力者治<em>于</em>人。', trans: '脑力劳动者统治别人，体力劳动者被人统治。' }
+          ]
+        }
+      ]
+    },
+    '乃': {
+      pinyin: 'nǎi',
+      summary: '主要作副词，亦可作代词、动词',
+      uses: [
+        {
+          type: '副词（表承接）',
+          desc: '相当于"就""于是""才"。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '断其喉，尽其肉，<em>乃</em>去。', trans: '咬断它的喉咙，吃光它的肉，才离开。' },
+            { src: '《史记·陈涉世家》', cls: '问今是何世，<em>乃</em>不知有汉，无论魏晋。', trans: '问现在是什么朝代，竟然不知道有汉朝，更不用说魏晋了。' }
+          ]
+        },
+        {
+          type: '副词（表转折/意外）',
+          desc: '相当于"竟然""却"。',
+          examples: [
+            { src: '《史记·项羽本纪》', cls: '问今是何世，<em>乃</em>不知有汉。', trans: '问现在是什么朝代，竟然不知道有汉朝。' }
+          ]
+        },
+        {
+          type: '副词（表判断）',
+          desc: '相当于"是""就是"。',
+          examples: [
+            { src: '《史记·项羽本纪》', cls: '吾<em>乃</em>梁人也。', trans: '我就是梁地人。' },
+            { src: '《左传》', cls: '是<em>乃</em>狼也。', trans: '这是狼啊。' }
+          ]
+        },
+        {
+          type: '代词',
+          desc: '第二人称代词，相当于"你""你的"。',
+          examples: [
+            { src: '陆游《示儿》（按：此例见《汉书·项籍传》）', cls: '王师北定中原日，家祭无忘告<em>乃</em>翁。', trans: '——' },
+            { src: '《史记·项羽本纪》', cls: '吾翁即若翁，必欲烹<em>乃</em>翁，则幸分我一杯羹。', trans: '我的父亲就是你的父亲，一定要煮死你的父亲，那么请分给我一杯羹。' }
+          ]
+        }
+      ]
+    },
+    '则': {
+      pinyin: 'zé',
+      summary: '主要作连词、副词',
+      uses: [
+        {
+          type: '连词（表承接）',
+          desc: '相当于"就""便""那么"，表示前后两事在时间或事理上的承接。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '故木受绳<em>则</em>直，金就砺<em>则</em>利。', trans: '所以木材经过墨线量过就能取直，刀剑在磨刀石上磨过就能锋利。' },
+            { src: '《论语·子路》', cls: '欲速<em>则</em>不达，见小利<em>则</em>大事不成。', trans: '想要快反而达不到目的，贪图小利就办不成大事。' }
+          ]
+        },
+        {
+          type: '连词（表转折）',
+          desc: '相当于"却""可是"。',
+          examples: [
+            { src: '《论语·子路》', cls: '其身正，<em>则</em>虽令不从。', trans: '——' },
+            { src: '《孟子》', cls: '欲常常而见之，故源源而来，不及贡，<em>则</em>以政接于有庳。', trans: '——' }
+          ]
+        },
+        {
+          type: '连词（表假设）',
+          desc: '相当于"如果""假如"。',
+          examples: [
+            { src: '《史记·项羽本纪》', cls: '谨守成皋，<em>则</em>汉欲挑战，慎勿与战。', trans: '——' }
+          ]
+        },
+        {
+          type: '副词（表判断）',
+          desc: '相当于"就是""原来是"。',
+          examples: [
+            { src: '柳宗元《三戒·黔之驴》', cls: '至<em>则</em>无可用，放之山下。', trans: '运到（那里）却没有什么用处，就把它放在山下。' },
+            { src: '《孟子》', cls: '此<em>则</em>寡人之罪也。', trans: '这就是我的罪过。' }
+          ]
+        }
+      ]
+    },
+    '者': {
+      pinyin: 'zhě',
+      summary: '主要作代词、助词',
+      uses: [
+        {
+          type: '代词（特殊代词）',
+          desc: '附在动词、形容词或动词性短语后，组成名词性"者"字结构，相当于"……的人""……的事物"。',
+          examples: [
+            { src: '《论语·雍也》', cls: '知<em>者</em>乐水，仁<em>者</em>乐山。', trans: '聪明的人喜爱水，仁德的人喜爱山。' },
+            { src: '《史记·陈涉世家》', cls: '卜<em>者</em>知其指意。', trans: '占卜的人知道他们的意图。' }
+          ]
+        },
+        {
+          type: '助词（表判断）',
+          desc: '用在判断句主语后，表停顿，与句末"也"呼应，构成"……者，……也"式判断句。',
+          examples: [
+            { src: '《史记·陈涉世家》', cls: '陈胜<em>者</em>，阳城人也。', trans: '陈胜是阳城人。' },
+            { src: '《史记》', cls: '师者，所以传道受业解惑也。', trans: '老师，是靠（他）来传授道理、教授学业、解答疑惑的。' }
+          ]
+        },
+        {
+          type: '助词（表停顿/提示）',
+          desc: '用在时间词或分句后，表示停顿，引出下文。',
+          examples: [
+            { src: '《史记》', cls: '今<em>者</em>项庄拔剑舞，其意常在沛公也。', trans: '现在项庄拔剑起舞，他的意图一直在沛公身上。' },
+            { src: '《孟子》', cls: '昔<em>者</em>吾舅死于虎。', trans: '从前我的公公死在老虎口里。' }
+          ]
+        },
+        {
+          type: '助词（定语后置标志）',
+          desc: '放在后置定语后，与"之"配合，构成"中心词+之+定语+者"格式。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '蚓无爪牙之利，筋骨之强（按：此例无"者"；"者"字例见《史记》）', trans: '——' },
+            { src: '《史记》', cls: '马之千里<em>者</em>，一食或尽粟一石。', trans: '能日行千里的马，一顿有时能吃完一石粮食。' }
+          ]
+        }
+      ]
+    },
+    '也': {
+      pinyin: 'yě',
+      summary: '语气词，用于句末或句中',
+      uses: [
+        {
+          type: '语气词（表判断）',
+          desc: '用于判断句句末，与主语后"者"呼应，表示判断、肯定语气。',
+          examples: [
+            { src: '《史记·陈涉世家》', cls: '陈胜者，阳城人<em>也</em>。', trans: '陈胜是阳城人。' },
+            { src: '韩愈《师说》', cls: '师者，所以传道受业解惑<em>也</em>。', trans: '老师，是靠他来传授道理、教授学业、解答疑惑的。' }
+          ]
+        },
+        {
+          type: '语气词（表解释）',
+          desc: '用于因果句末，解释原因。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '夫战，勇气<em>也</em>。', trans: '作战，靠的是勇气。' }
+          ]
+        },
+        {
+          type: '语气词（表疑问/反问）',
+          desc: '与疑问词配合，用于疑问句或反问句句末。',
+          examples: [
+            { src: '《孟子》', cls: '若为佣耕，何富贵<em>也</em>？', trans: '你是个被雇佣耕地的人，哪来的富贵呢？' }
+          ]
+        },
+        {
+          type: '语气词（表感叹）',
+          desc: '用于感叹句句末，加强感叹语气。',
+          examples: [
+            { src: '《史记·项羽本纪》', cls: '此天之亡我<em>也</em>！', trans: '这是上天要灭亡我啊！' }
+          ]
+        },
+        {
+          type: '语气词（表停顿）',
+          desc: '用于句中，表示停顿，以引起下文。',
+          examples: [
+            { src: '《论语》', cls: '大道之行<em>也</em>，天下为公。', trans: '大道实行的时代，天下是公共的。' }
+          ]
+        }
+      ]
+    },
+    '乎': {
+      pinyin: 'hū',
+      summary: '主要作语气词，亦可作介词、词尾',
+      uses: [
+        {
+          type: '语气词（表疑问）',
+          desc: '用于疑问句句末，相当于"吗""呢"。',
+          examples: [
+            { src: '《论语·学而》', cls: '学而时习之，不亦说<em>乎</em>？', trans: '学习了然后按时温习，不也很愉快吗？' },
+            { src: '《孟子》', cls: '王侯将相宁有种<em>乎</em>？', trans: '王侯将相难道是天生的贵种吗？' }
+          ]
+        },
+        {
+          type: '语气词（表反问）',
+          desc: '用于反问句句末，相当于"吗""呢"。',
+          examples: [
+            { src: '《左传》', cls: '吾射不亦精<em>乎</em>？', trans: '——' }
+          ]
+        },
+        {
+          type: '语气词（表感叹）',
+          desc: '用于感叹句句末，相当于"啊""呀"。',
+          examples: [
+            { src: '《论语》', cls: '善哉<em>乎</em>鼓琴，巍巍乎若太山！', trans: '弹琴弹得真好啊，高大巍峨像泰山一样！' }
+          ]
+        },
+        {
+          type: '语气词（表推测）',
+          desc: '用于揣测句末，相当于"吧"。',
+          examples: [
+            { src: '《孟子》', cls: '日食饮得无衰<em>乎</em>？', trans: '每天的饮食该不会减少吧？' }
+          ]
+        },
+        {
+          type: '介词',
+          desc: '相当于"于"，引进处所、时间、对象等。',
+          examples: [
+            { src: '《庄子·养生主》', cls: '臣之所好<em>乎</em>道也，进乎技矣。', trans: '——' },
+            { src: '《论语》', cls: '异<em>乎</em>三子者之撰。', trans: '（我的志向）和他们三位的不同。' }
+          ]
+        },
+        {
+          type: '形容词/副词词尾',
+          desc: '相当于"……的样子"，用于形容词后。',
+          examples: [
+            { src: '《庄子·养生主》', cls: '恢恢<em>乎</em>其于游刃必有余地矣。', trans: '宽宽绰绰地，它对于游动的刀刃一定是有余地的。' }
+          ]
+        }
+      ]
+    },
+    '焉': {
+      pinyin: 'yān',
+      summary: '可作兼词、代词、疑问副词、语气词、词尾',
+      uses: [
+        {
+          type: '兼词',
+          desc: '相当于"于之""于此""于彼"，兼有介词"于"和代词"之"的作用。',
+          examples: [
+            { src: '《左传·隐公元年》', cls: '制，岩邑也，虢叔死<em>焉</em>。', trans: '制是个险要的城邑，虢叔死在那里。' },
+            { src: '《论语》', cls: '三人行，必有我师<em>焉</em>。', trans: '三个人同行，其中一定有可以做我老师的人。' }
+          ]
+        },
+        {
+          type: '代词',
+          desc: '相当于"之"，作宾语。',
+          examples: [
+            { src: '《左传》', cls: '以俟夫观人风者得<em>焉</em>。', trans: '以等待那些考察民情的人得到它。' }
+          ]
+        },
+        {
+          type: '疑问代词',
+          desc: '相当于"哪里""怎么"。',
+          examples: [
+            { src: '《孟子》', cls: '且<em>焉</em>置土石？', trans: '况且把土石放到哪里去呢？' }
+          ]
+        },
+        {
+          type: '语气词',
+          desc: '用于句末，表陈述或疑问语气。',
+          examples: [
+            { src: '《孟子》', cls: '寡人之于国<em>焉</em>，尽心<em>焉</em>耳矣。', trans: '——' }
+          ]
+        },
+        {
+          type: '形容词/副词词尾',
+          desc: '相当于"然""……的样子"。',
+          examples: [
+            { src: '《诗经》', cls: '眷<em>焉</em>顾之，潸焉出涕。', trans: '——' }
+          ]
+        }
+      ]
+    },
+    '哉': {
+      pinyin: 'zāi',
+      summary: '语气词，主要用于感叹句、反问句',
+      uses: [
+        {
+          type: '语气词（表感叹）',
+          desc: '用于感叹句句末，相当于"啊""呀"。',
+          examples: [
+            { src: '《孟子》', cls: '善<em>哉</em>，吾请无攻宋矣。', trans: '好啊，请允许我不攻打宋国了。' },
+            { src: '范仲淹《岳阳楼记》', cls: '嗟夫！予尝求古仁人之心，或异二者之为，何<em>哉</em>？', trans: '唉！我曾经探求古时品德高尚的人的思想感情，或许不同于以上两种心情，为什么呢？' }
+          ]
+        },
+        {
+          type: '语气词（表反问）',
+          desc: '与"岂""何""安"等配合，用于反问句句末，相当于"吗""呢"。',
+          examples: [
+            { src: '《史记·陈涉世家》', cls: '燕雀安知鸿鹄之志<em>哉</em>！', trans: '燕雀怎么能知道鸿鹄的志向呢！' },
+            { src: '《左传》', cls: '岂若匹夫匹妇之为谅<em>哉</em>！', trans: '——' }
+          ]
+        },
+        {
+          type: '语气词（表疑问）',
+          desc: '用于疑问句句末，相当于"吗""呢"。',
+          examples: [
+            { src: '《孟子》', cls: '何<em>哉</em>，尔所谓达者？', trans: '你所说的"达"是什么意思呢？' }
+          ]
+        }
+      ]
+    },
+    '矣': {
+      pinyin: 'yǐ',
+      summary: '语气词，主要用于陈述句、感叹句',
+      uses: [
+        {
+          type: '语气词（表已然）',
+          desc: '表示事情已经发生，相当于"了"。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '温故而知新，可以为师<em>矣</em>。', trans: '——' },
+            { src: '《论语》', cls: '吾知所过<em>矣</em>。', trans: '我知道自己的过错了。' }
+          ]
+        },
+        {
+          type: '语气词（表将然）',
+          desc: '表示事情将要发生，相当于"了""啦"。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '肉食者谋之，又何间<em>焉</em>（按：例见《史记》）', trans: '——' },
+            { src: '《史记·项羽本纪》', cls: '吾属今为之虏<em>矣</em>！', trans: '我们这些人现在就要被他俘虏了！' }
+          ]
+        },
+        {
+          type: '语气词（表肯定/感叹）',
+          desc: '表示肯定、感叹语气，相当于"了""啊"。',
+          examples: [
+            { src: '《论语》', cls: '甚<em>矣</em>，汝之不惠！', trans: '你太不聪明了！' },
+            { src: '《孟子》', cls: '难<em>矣</em>哉！', trans: '太难了啊！' }
+          ]
+        },
+        {
+          type: '语气词（表假设结果）',
+          desc: '用于假设句末，表示结果。',
+          examples: [
+            { src: '《左传》', cls: '诚如是，则霸业可成，汉室可兴<em>矣</em>。', trans: '如果真的能这样，那么霸业就可以成功，汉室就可以复兴了。' }
+          ]
+        }
+      ]
+    },
+    '耳': {
+      pinyin: 'ěr',
+      summary: '主要作语气词，亦可作副词、名词',
+      uses: [
+        {
+          type: '语气词',
+          desc: '用于句末，相当于"罢了""而已"，表示限制语气。',
+          examples: [
+            { src: '《史记·项羽本纪》', cls: '从此道至吾军，不过二十里<em>耳</em>。', trans: '从这条路到我们军营，不过二十里罢了。' },
+            { src: '《战国策》', cls: '技止此<em>耳</em>！', trans: '（驴的）本领只不过这样罢了！' }
+          ]
+        },
+        {
+          type: '副词',
+          desc: '相当于"仅""只"。',
+          examples: [
+            { src: '《史记》', cls: '匈奴之害，<em>耳</em>目之患也。', trans: '——' }
+          ]
+        },
+        {
+          type: '名词',
+          desc: '意为"耳朵"。',
+          examples: [
+            { src: '《荀子·劝学》', cls: '目不能两视而明，<em>耳</em>不能两听而聪。', trans: '眼睛不能同时看两样东西而看明白，耳朵不能同时听两种声音而听清楚。' }
+          ]
+        }
+      ]
+    },
+    '夫': {
+      pinyin: 'fú / fū',
+      summary: '作发语词、代词、名词，读音随义而变',
+      uses: [
+        {
+          type: '发语词（读 fú）',
+          desc: '用于句首，表示将要发表议论，无实义，不译。',
+          examples: [
+            { src: '《左传·庄公十年》', cls: '<em>夫</em>战，勇气也。', trans: '作战，靠的是勇气。' },
+            { src: '贾谊《过秦论》', cls: '<em>夫</em>秦以区区之地，致万乘之势。', trans: '秦国凭着小小的地盘，达到拥有万辆兵车的国势。' }
+          ]
+        },
+        {
+          type: '代词（读 fú）',
+          desc: '指示代词，相当于"这""那"。',
+          examples: [
+            { src: '《左传·僖公三十年》', cls: '微<em>夫</em>人之力不及此。', trans: '没有那个人的力量，我到不了这个地位。' },
+            { src: '柳宗元《捕蛇者说》', cls: '以俟<em>夫</em>观人风者得焉。', trans: '以等待那些考察民情的人得到它。' }
+          ]
+        },
+        {
+          type: '名词（读 fū）',
+          desc: '意为"成年男子""丈夫"。',
+          examples: [
+            { src: '《孟子》', cls: '一<em>夫</em>不耕，或受之饥。', trans: '一个男子不耕地，就有人因此挨饿。' }
+          ]
+        }
+      ]
+    },
+    '若': {
+      pinyin: 'ruò',
+      summary: '可作动词、代词、连词、副词',
+      uses: [
+        {
+          type: '动词',
+          desc: '意为"像""如""比得上"。',
+          examples: [
+            { src: '《庄子·逍遥游》', cls: '其翼<em>若</em>垂天之云。', trans: '它的翅膀像挂在天边的云彩。' },
+            { src: '《史记·陈涉世家》', cls: '曾不<em>若</em>孀妻弱子。', trans: '还比不上寡妇和小孩。' }
+          ]
+        },
+        {
+          type: '代词',
+          desc: '第二人称代词，相当于"你""你的"。',
+          examples: [
+            { src: '《史记·陈涉世家》', cls: '为佣耕，何<em>若</em>富贵也？（按：例见《陈涉世家》）', trans: '——' },
+            { src: '《左传》', cls: '更<em>若</em>役，复<em>若</em>赋，则何如？', trans: '更换你的差事，恢复你的赋税，那怎么样？' }
+          ]
+        },
+        {
+          type: '连词（表假设）',
+          desc: '相当于"如果""假如"。',
+          examples: [
+            { src: '《史记》', cls: '<em>若</em>舍郑以为东道主。', trans: '如果放弃攻打郑国而把它作为东方道路上（招待过客）的主人。' }
+          ]
+        },
+        {
+          type: '连词（表选择）',
+          desc: '相当于"或""或者"。',
+          examples: [
+            { src: '《汉书》', cls: '以万人<em>若</em>十万人叛。', trans: '——' }
+          ]
+        },
+        {
+          type: '副词',
+          desc: '相当于"好像""仿佛"。',
+          examples: [
+            { src: '《荀子》', cls: '山有小口，仿佛<em>若</em>有光。', trans: '——' }
+          ]
+        }
+      ]
+    },
+    '为': {
+      pinyin: 'wéi / wèi',
+      summary: '可作动词、介词、语气词，读音随义而变',
+      uses: [
+        {
+          type: '动词（读 wéi）',
+          desc: '意为"做""作为""担任""是"等。',
+          examples: [
+            { src: '《论语》', cls: '知不<em>为</em>不知，是知也。', trans: '——' },
+            { src: '《孟子》', cls: '冰，水<em>为</em>之。', trans: '——' },
+            { src: '《史记·陈涉世家》', cls: '吴广素爱人，士卒多<em>为</em>用者。', trans: '吴广一向爱护士兵，士兵大多愿意听他差遣。' }
+          ]
+        },
+        {
+          type: '介词（表被动，读 wéi）',
+          desc: '相当于"被"，常与"所"配合。',
+          examples: [
+            { src: '《史记》', cls: '身死人手，<em>为</em>天下笑。', trans: '自己死在别人手里，被天下人耻笑。' },
+            { src: '《庄子》', cls: '恐见欺<em>于</em>王而负赵（按：例见《史记》）', trans: '——' }
+          ]
+        },
+        {
+          type: '介词（表对象，读 wèi）',
+          desc: '相当于"替""给""对"。',
+          examples: [
+            { src: '《庄子·养生主》', cls: '庖丁<em>为</em>文惠君解牛。', trans: '庖丁替文惠君宰牛。' },
+            { src: '《史记》', cls: '不足<em>为</em>外人道也。', trans: '不值得对外面的人说。' }
+          ]
+        },
+        {
+          type: '介词（表原因，读 wèi）',
+          desc: '相当于"因为""为了"。',
+          examples: [
+            { src: '《荀子·天论》', cls: '天行有常，不<em>为</em>尧存，不<em>为</em>桀亡。', trans: '大自然的运行有其固定规律，不因为尧而存在，不因为桀而消亡。' }
+          ]
+        },
+        {
+          type: '语气词（读 wéi）',
+          desc: '用于句末，常与"何""奚"配合，表疑问或反问。',
+          examples: [
+            { src: '《史记》', cls: '如今人方为刀俎，我为鱼肉，何辞<em>为</em>？', trans: '现在人家正是刀和砧板，我们是鱼和肉，为什么要告辞呢？' }
+          ]
+        }
+      ]
+    },
+    '因': {
+      pinyin: 'yīn',
+      summary: '可作介词、连词、动词、副词',
+      uses: [
+        {
+          type: '介词（表凭借）',
+          desc: '相当于"凭借""依靠""通过"。',
+          examples: [
+            { src: '《史记·廉颇蔺相如列传》', cls: '<em>因</em>宾客至蔺相如门谢罪。', trans: '通过宾客（引导）到蔺相如门前谢罪。' }
+          ]
+        },
+        {
+          type: '介词（表原因）',
+          desc: '相当于"因为""由于"。',
+          examples: [
+            { src: '《史记》', cls: '<em>因</em>前以绝。', trans: '——' }
+          ]
+        },
+        {
+          type: '连词',
+          desc: '相当于"于是""就"。',
+          examples: [
+            { src: '《史记·廉颇蔺相如列传》', cls: '相如<em>因</em>持璧立。', trans: '蔺相如于是拿着璧站起。' },
+            { src: '《史记》', cls: '<em>因</em>屏人曰。', trans: '于是支开旁人说道。' }
+          ]
+        },
+        {
+          type: '动词',
+          desc: '意为"沿袭""顺着""接续"。',
+          examples: [
+            { src: '贾谊《过秦论》', cls: '<em>因</em>遗策。', trans: '沿袭（前代君主）遗留下来的策略。' },
+            { src: '《庄子》', cls: '批大郤，导大窾，<em>因</em>其固然。', trans: '——' }
+          ]
+        }
+      ]
+    },
+    '且': {
+      pinyin: 'qiě / jū',
+      summary: '主要作连词、副词',
+      uses: [
+        {
+          type: '连词（表并列/递进）',
+          desc: '相当于"而且""并且""又……又……"。',
+          examples: [
+            { src: '《论语》', cls: '不义而富<em>且</em>贵，于我如浮云。', trans: '用不义的手段得到的富和贵，对于我来讲就像天上的浮云一样。' },
+            { src: '《左传》', cls: '凡我父兄昆弟及国子姓，有能助寡人谋而退吴者，吾与之共知越国之政。', trans: '——' }
+          ]
+        },
+        {
+          type: '连词（表让步）',
+          desc: '相当于"尚且""还"。',
+          examples: [
+            { src: '《列子·汤问》', cls: '曾不能毁山之一毛，其如土石何？（按：例见《愚公移山》）', trans: '——' },
+            { src: '《史记》', cls: '臣死<em>且</em>不避，卮酒安足辞！', trans: '我连死尚且不躲避，一杯酒哪里值得推辞！' }
+          ]
+        },
+        {
+          type: '副词（表将然）',
+          desc: '相当于"将要""将近"。',
+          examples: [
+            { src: '《列子·汤问》', cls: '北山愚公者，年<em>且</em>九十。', trans: '北山愚公，年纪将近九十岁。' }
+          ]
+        },
+        {
+          type: '副词（表姑且）',
+          desc: '相当于"姑且""暂且"。',
+          examples: [
+            { src: '《史记》', cls: '<em>且</em>放白鹿青崖间。', trans: '——' }
+          ]
+        }
+      ]
+    },
+    '然': {
+      pinyin: 'rán',
+      summary: '可作代词、连词、助词、形容词',
+      uses: [
+        {
+          type: '代词',
+          desc: '指示代词，相当于"这样""如此"。',
+          examples: [
+            { src: '《孟子·梁惠王上》', cls: '河内凶，则移其民于河东，移其粟于河内；河东凶亦<em>然</em>。', trans: '——' },
+            { src: '《史记》', cls: '虽有槁暴，不复挺者，輮使之<em>然</em>也。', trans: '即使又晒干了，也不会再挺直，是因为用火烤使它变成这样的。' }
+          ]
+        },
+        {
+          type: '连词（表转折）',
+          desc: '相当于"然而""但是"。',
+          examples: [
+            { src: '《史记》', cls: '周贫且微，诸侯不朝。<em>然</em>天子使使聘问。', trans: '——' },
+            { src: '《孟子》', cls: '<em>然</em>则王之所大欲可知已。', trans: '那么大王最大的欲望就可以知道了。' }
+          ]
+        },
+        {
+          type: '助词（形容词/副词词尾）',
+          desc: '相当于"……的样子""地"。',
+          examples: [
+            { src: '柳宗元《小石潭记》', cls: '满目萧<em>然</em>。', trans: '满眼萧条的样子。' },
+            { src: '《史记·项羽本纪》', cls: '项王默<em>然</em>不应。', trans: '项王沉默着不回答。' }
+          ]
+        },
+        {
+          type: '应对之词',
+          desc: '表示同意、肯定，相当于"是的""对的"。',
+          examples: [
+            { src: '《史记》', cls: '<em>然</em>，诚有百姓者。', trans: '是的，确实有这样的百姓。' }
+          ]
+        },
+        {
+          type: '形容词',
+          desc: '意为"燃烧"，后作"燃"。',
+          examples: [
+            { src: '《孟子》', cls: '若火之始<em>然</em>，泉之始达。', trans: '像火刚刚开始燃烧，泉水刚刚开始涌出。' }
+          ]
+        }
+      ]
+    }
+  };
+
+  const wordList = ['之','其','而','以','于','乃','则','者','也','乎','焉','哉','矣','耳','夫','若','为','因','且','然'];
+
+  const grid = document.getElementById('wordGrid');
+  const panel = document.getElementById('resultPanel');
+  const searchInput = document.getElementById('searchInput');
+
+  let currentWord = null;
+
+  function renderGrid(filter){
+    grid.innerHTML = '';
+    wordList.forEach(w => {
+      if(filter && w.indexOf(filter) === -1) return;
+      const btn = document.createElement('button');
+      btn.className = 'word-btn';
+      btn.textContent = w;
+      btn.dataset.word = w;
+      if(currentWord === w) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        currentWord = w;
+        renderGrid(filter);
+        renderResult(w);
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  function renderResult(word){
+    const data = WORDS[word];
+    if(!data){
+      panel.innerHTML = '<div class="placeholder"><span class="big">🤔</span>未收录该虚词</div>';
+      return;
+    }
+    let html = '<div class="result-header">';
+    html += '<div class="result-char">' + word + '</div>';
+    html += '<div><div class="result-pinyin">拼音：' + data.pinyin + '</div>';
+    html += '<div class="result-summary">' + data.summary + '</div></div>';
+    html += '</div>';
+
+    data.uses.forEach(use => {
+      html += '<div class="use-section">';
+      html += '<div class="use-title">📌 ' + use.type + '</div>';
+      html += '<div class="use-desc">' + use.desc + '</div>';
+      use.examples.forEach(ex => {
+        html += '<div class="example">';
+        if(ex.src && ex.src !== '—') html += '<div class="src">📖 ' + ex.src + '</div>';
+        html += '<div class="cls">' + ex.cls + '</div>';
+        if(ex.trans && ex.trans !== '—') html += '<div class="trans">➡️ ' + ex.trans + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+
+    panel.innerHTML = html;
+    panel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+
+  searchInput.addEventListener('input', function(){
+    const v = this.value.trim();
+    renderGrid(v);
+    if(WORDS[v]){
+      currentWord = v;
+      renderGrid(v);
+      renderResult(v);
+    }
+  });
+
+  renderGrid();
+})();
+</script>
+</body>
+</html>

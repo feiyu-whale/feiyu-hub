@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圆柱螺旋弹簧计算器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #1a5490;
+}
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.card h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #1a5490;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+.form-group {
+  margin-bottom: 12px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #555;
+}
+input[type="number"], select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+}
+input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: #1a5490;
+}
+.btn {
+  width: 100%;
+  padding: 10px;
+  background: #1a5490;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.btn:active {
+  background: #144272;
+}
+.result {
+  background: #f0f7ff;
+  border-left: 3px solid #1a5490;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 4px;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px dashed #d0e0f0;
+}
+.result-item:last-child {
+  border-bottom: none;
+}
+.result-item .label {
+  color: #555;
+  flex: 1;
+}
+.result-item .value {
+  font-weight: bold;
+  color: #1a5490;
+  text-align: right;
+  font-family: "Courier New", monospace;
+}
+.formula {
+  background: #fafafa;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  margin: 8px 0;
+  overflow-x: auto;
+  border: 1px solid #eee;
+}
+.source {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.8;
+}
+.source ul {
+  padding-left: 20px;
+}
+.source li {
+  margin-bottom: 4px;
+}
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(255,255,255,0.8);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.hint {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}
+.error {
+  color: #c00;
+  font-size: 13px;
+  margin-top: 8px;
+  min-height: 16px;
+}
+.note {
+  background: #fff8e1;
+  border-left: 3px solid #f5a623;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #6a4a00;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔩 圆柱螺旋弹簧计算器</h1>
+
+  <div class="card">
+    <h2>📐 参数输入</h2>
+    <div class="form-group">
+      <label>材料 / 剪切模量 G (MPa)</label>
+      <select id="material" onchange="onMaterialChange()">
+        <option value="79000">碳素弹簧钢丝 (≈79000)</option>
+        <option value="79000">合金弹簧钢丝 60Si2Mn (≈79000)</option>
+        <option value="71000">奥氏体不锈钢丝 (≈71000)</option>
+        <option value="42000">青铜丝 (≈42000)</option>
+        <option value="custom">自定义…</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>剪切模量 G (MPa)</label>
+      <input type="number" id="G" value="79000" step="100" min="0">
+      <div class="hint">具体材料 G 值需查 GB/T 23935 或材料手册</div>
+    </div>
+    <div class="form-group">
+      <label>弹簧钢丝直径 d (mm)</label>
+      <input type="number" id="d" value="5" step="0.1" min="0">
+    </div>
+    <div class="form-group">
+      <label>弹簧中径 D (mm)</label>
+      <input type="number" id="D" value="30" step="0.1" min="0">
+    </div>
+    <div class="form-group">
+      <label>有效圈数 n</label>
+      <input type="number" id="n" value="8" step="0.5" min="0">
+    </div>
+    <div class="form-group">
+      <label>轴向载荷 F (N)</label>
+      <input type="number" id="F" value="500" step="10" min="0">
+    </div>
+    <button class="btn" onclick="calculate()">🧮 计算</button>
+    <div id="error" class="error"></div>
+  </div>
+
+  <div class="card">
+    <h2>📊 计算结果</h2>
+    <div id="result" class="result" style="display:none;">
+      <div class="result-item">
+        <span class="label">旋绕比 c = D/d</span>
+        <span class="value" id="res-c">-</span>
+      </div>
+      <div class="result-item">
+        <span class="label">弹簧刚度 k (N/mm)</span>
+        <span class="value" id="res-k">-</span>
+      </div>
+      <div class="result-item">
+        <span class="label">切应力 τ (MPa)</span>
+        <span class="value" id="res-tau">-</span>
+      </div>
+      <div class="result-item">
+        <span class="label">曲度系数 (1+0.5/c)</span>
+        <span class="value" id="res-K">-</span>
+      </div>
+      <div class="result-item">
+        <span class="label">Wahl 系数 K<sub>W</sub> (参考)</span>
+        <span class="value" id="res-Kw">-</span>
+      </div>
+    </div>
+    <div class="note">
+      💡 旋绕比 c 推荐范围 4~16；过小制造困难，过大易失稳。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📖 公式说明</h2>
+    <div>弹簧刚度：</div>
+    <div class="formula">k = G·d⁴ / (8·D³·n)</div>
+    <div>切应力（含曲率与直剪修正的简化式）：</div>
+    <div class="formula">τ = (8·F·D) / (π·d³) × (1 + 0.5/c)</div>
+    <div>旋绕比：</div>
+    <div class="formula">c = D / d</div>
+    <div>Wahl 精确曲度系数（参考）：</div>
+    <div class="formula">K<sub>W</sub> = (4c−1)/(4c−4) + 0.615/c</div>
+  </div>
+
+  <div class="card">
+    <h2>📚 数据来源</h2>
+    <div class="source">
+      <ul>
+        <li>GB/T 23935-2009《圆柱螺旋弹簧设计计算》</li>
+        <li>公式 k = Gd⁴/(8D³n) 与 τ = (8FD)/(πd³)·(1+0.5/c) 均出自该标准的设计计算章节</li>
+        <li>(1+0.5/c) 为曲度系数的简化近似；精确计算应采用 Wahl 系数 K<sub>W</sub> = (4c−1)/(4c−4) + 0.615/c</li>
+        <li>剪切模量 G 的具体取值需根据材料牌号查 GB/T 23935 或相关材料标准原文</li>
+        <li>旋绕比 c 的推荐范围参考机械设计手册通用取值</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-弹簧刚度与切应力计算 20261021</div>
+
+<script>
+function onMaterialChange() {
+  var sel = document.getElementById('material');
+  var gInput = document.getElementById('G');
+  if (sel.value !== 'custom') {
+    gInput.value = sel.value;
+  } else {
+    gInput.value = '';
+    gInput.focus();
+  }
+}
+
+function calculate() {
+  var G = parseFloat(document.getElementById('G').value);
+  var d = parseFloat(document.getElementById('d').value);
+  var D = parseFloat(document.getElementById('D').value);
+  var n = parseFloat(document.getElementById('n').value);
+  var F = parseFloat(document.getElementById('F').value);
+  var errEl = document.getElementById('error');
+  errEl.textContent = '';
+
+  if ([G, d, D, n, F].some(function(v){ return isNaN(v) || v <= 0; })) {
+    errEl.textContent = '⚠️ 请输入有效的正数参数';
+    document.getElementById('result').style.display = 'none';
+    return;
+  }
+
+  var c = D / d;
+  // 单位推导：G(MPa=N/mm²)·d⁴(mm⁴) / [8·D³(mm³)·n] = N/mm
+  var k = G * Math.pow(d, 4) / (8 * Math.pow(D, 3) * n);
+  // 切应力：τ = 8FD/(πd³) × (1+0.5/c)，单位 MPa
+  var Ks = 1 + 0.5 / c;
+  var tau = (8 * F * D) / (Math.PI * Math.pow(d, 3)) * Ks;
+  // Wahl 系数（参考）
+  var Kw = (4 * c - 1) / (4 * c - 4) + 0.615 / c;
+
+  document.getElementById('res-c').textContent = c.toFixed(3);
+  document.getElementById('res-k').textContent = k.toFixed(3);
+  document.getElementById('res-tau').textContent = tau.toFixed(2);
+  document.getElementById('res-K').textContent = Ks.toFixed(4);
+  document.getElementById('res-Kw').textContent = isFinite(Kw) ? Kw.toFixed(4) : '—';
+  document.getElementById('result').style.display = 'block';
+}
+
+window.addEventListener('load', calculate);
+</script>
+</body>
+</html>

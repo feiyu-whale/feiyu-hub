@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公差配合查询计算器</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#c8d8ea;font:14px/1.65 system-ui,"Microsoft YaHei",sans-serif;padding-bottom:44px}
+h1{margin:0;font-size:19px;color:#4a9eff}header{padding:16px 12px 4px;text-align:center}header p{margin:5px 0 0;font-size:11.5px;color:#6b8299}
+nav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;max-width:900px;margin:0 auto}
+nav button{flex:0 0 auto;background:#12243d;color:#8fb0d0;border:1px solid #1e3a5f;border-radius:6px;padding:7px 13px;font-size:13px;cursor:pointer;font-family:inherit}
+nav button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+main{max-width:900px;margin:0 auto;padding:0 12px}.pane{display:none}.pane.on{display:block}
+.card{background:#0f2038;border:1px solid #1e3a5f;border-radius:10px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:13.5px;color:#4a9eff;letter-spacing:.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fb0d0;margin-bottom:4px}
+input,select{width:100%;background:#0a1628;border:1px solid #1e3a5f;color:#e0ecf8;border-radius:6px;padding:8px;font-size:14px;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.act{width:100%;margin-top:13px;background:#4a9eff;color:#04101f;border:0;border-radius:7px;padding:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.res div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed #1a3050;font-size:13px}
+.res div:last-child{border-bottom:0}.res b{color:#4a9eff;text-align:right;white-space:nowrap}
+.err{color:#ff6b6b}.ok{color:#3ddc84}
+pre{background:#071120;border:1px solid #1e3a5f;border-radius:8px;padding:12px;overflow:auto;font-size:11.5px;line-height:1.5;color:#9fc4e8;margin:0}
+.tbox div{padding:5px 0;border-bottom:1px dashed #1a3050;font-size:13px}
+.card p{font-size:13px;margin:8px 0}.card p b{color:#4a9eff}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#3a5573;background:#0a1628;padding:2px 4px}
+</style>
+</head>
+<body>
+<header><h1>公差配合查询计算器</h1><p>GB/T 1800.1-2009 · GB/T 1800.2-2009 · GB/T 1801-2009</p></header>
+<nav>
+<button class="tab on" onclick="sw('calc',this)">计算工具</button>
+<button class="tab" onclick="sw('src',this)">JS 源码</button>
+<button class="tab" onclick="sw('test',this)">单元测试</button>
+<button class="tab" onclick="sw('doc',this)">使用说明</button>
+</nav>
+<main>
+<section id="calc" class="pane on">
+<div class="card"><h2>基本参数</h2>
+<div class="grid">
+<label>基本尺寸 D (mm)<input id="D" value="30" inputmode="decimal"></label>
+<label>配合制<select id="SYS" onchange="mk()"><option value="hole">基孔制</option><option value="shaft">基轴制</option></select></label>
+<label>孔公差带<select id="HL"></select></label>
+<label>孔公差等级<select id="HG"></select></label>
+<label>轴公差带<select id="SL"></select></label>
+<label>轴公差等级<select id="SG"></select></label>
+</div>
+<button class="act" onclick="run()">计 算</button>
+</div>
+<div class="card"><h2>计算结果</h2><div class="res" id="out"><div><span>请点击「计算」</span></div></div></div>
+</section>
+<section id="src" class="pane"><div class="card"><h2>核心 JS 源码（纯函数，可独立测试）</h2><pre id="srcbox"></pre></div></section>
+<section id="test" class="pane"><div class="card"><h2>单元测试（输入 → 期望输出）</h2>
+<button class="act" onclick="runTests()">运行全部测试</button>
+<div class="tbox" id="tres" style="margin-top:12px"></div></div></section>
+<section id="doc" class="pane"><div class="card"><h2>使用说明与数据来源</h2>
+<p><b>1 输入</b>　基本尺寸 D（0~250 mm）、配合制（基孔制／基轴制）、孔与轴公差带代号及公差等级，点击「计算」。</p>
+<p><b>2 输出</b>　孔／轴上下偏差（μm）、极限尺寸（mm）、最大/最小间隙或过盈（μm）、配合性质判定与基准制。</p>
+<p><b>3 判定规则（GB/T 1801-2009）</b>　Xmax = ES − ei，Xmin = EI − es；Xmin ≥ 0 为间隙配合，Xmax ≤ 0 为过盈配合，其余为过渡配合；过盈量 Ymax = es − EI，Ymin = ei − ES。</p>
+<p><b>4 数据来源</b>　标准公差数值取自 GB/T 1800.1-2009《极限与配合 基础 第1部分：公差、偏差和配合的基础》标准公差数值表（IT6~IT11，≤250 mm）；轴基本偏差 d/e/f/g/h、k/m/n/p 与孔基本偏差 D/E/F/G/H 取自 GB/T 1800.2-2009《第2部分：标准公差带代号和孔、轴的极限偏差表》。</p>
+<p><b>5 适用范围与限制</b>　仅覆盖基本尺寸 0~250 mm、IT6~IT11 及上述公差带代号；J、R、S、T 等代号未收录，请查标准原表。结果按基本尺寸计算极限偏差，未计入形状位置误差、材料与温度影响，重要配合须以标准原表复核。</p>
+</div></section>
+</main>
+<div class="ver">v1.0.0-fit-tolerance 20261108</div>
+<script id="core">
+const IT={6:[6,8,9,11,13,16,19,22,25,29],7:[10,12,15,18,21,25,30,35,40,46],8:[14,18,22,27,33,39,46,54,63,72],9:[25,30,36,43,52,62,74,87,100,115],10:[40,48,58,70,84,100,120,140,160,185],11:[60,75,90,110,130,160,190,220,250,290]};
+const R=[3,6,10,18,30,50,80,120,180,250];
+const SH={d:[-20,-30,-40,-50,-65,-80,-100,-120,-145,-170],e:[-14,-20,-25,-32,-40,-50,-60,-72,-85,-100],f:[-6,-10,-13,-16,-20,-25,-30,-36,-43,-50],g:[-2,-4,-5,-6,-7,-9,-10,-12,-14,-15],h:[0,0,0,0,0,0,0,0,0,0],k:[0,1,1,1,2,2,2,3,3,4],m:[2,4,6,7,8,9,11,13,15,17],n:[4,8,10,12,15,17,20,23,27,31],p:[6,12,15,18,22,26,32,37,43,50]};
+const HO={D:[20,30,40,50,65,80,100,120,145,170],E:[14,20,25,32,40,50,60,72,85,100],F:[6,10,13,16,20,25,30,36,43,50],G:[2,4,5,6,7,9,10,12,14,15],H:[0,0,0,0,0,0,0,0,0,0]};
+function seg(D){if(!(D>0)||D>250)return -1;let i=0;while(i<R.length){if(D<=R[i])return i;i++}return -1}
+function zone(hole,L,g,D){const i=seg(D);if(i<0||!IT[g])return null;const T=IT[g][i];
+if(L==='JS'||L==='js'){const t=T/2;return{up:t,lo:-t,T:T,i:i}}
+if(hole){if(!HO[L])return null;const e=HO[L][i];return{up:e+T,lo:e,T:T,i:i}}
+if(!SH[L])return null;const v=SH[L][i];
+if('defgh'.indexOf(L)>=0)return{up:v,lo:v-T,T:T,i:i};
+return{up:v+T,lo:v,T:T,i:i}}
+function fit(D,hL,hG,sL,sG){const H=zone(1,hL,hG,D),S=zone(0,sL,sG,D);if(!H||!S)return null;
+const ES=H.up,EI=H.lo,es=S.up,ei=S.lo,Xmax=ES-ei,Xmin=EI-es;
+let type;if(Xmin>=0)type='间隙配合';else if(Xmax<=0)type='过盈配合';else type='过渡配合';
+return{D:D,hole:hL+hG,shaft:sL+sG,ES:ES,EI:EI,es:es,ei:ei,Xmax:Xmax,Xmin:Xmin,type:type,
+Ymax:Xmin>=0?null:-Xmin,Ymin:Xmax<=0?-Xmax:null,base:hL==='H'?'基孔制':(sL==='h'?'基轴制':'混合制')}}
+</script>
+<script>
+const r2=x=>Math.round(x*100)/100,sg=x=>(x>0?'+':'')+r2(x);
+function sw(id,b){document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===id));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));}
+function opt(s,a,sel,v){s.innerHTML=a.map(x=>'<option'+(String(x)===String(sel)?' selected':'')+'>'+x+'</option>').join('');if(v)s.value=sel;}
+function mk(){const sys=document.getElementById('SYS').value;
+opt(document.getElementById('HL'),sys==='hole'?['H']:['H','G','F','E','D','JS'],sys==='hole'?'H':'G');
+opt(document.getElementById('SL'),sys==='shaft'?['h']:['h','g','f','e','d','k','m','n','p'],sys==='shaft'?'h':'g');}
+const L=(k,v)=>'<div><span>'+k+'</span><b>'+v+'</b></div>';
+function run(){const o=document.getElementById('out'),el=document.getElementById('D'),d=parseFloat(el.value);
+if(el.value.trim()===''||isNaN(d))return o.innerHTML='<div class="err">✗ 基本尺寸不能为空，请输入数字</div>';
+if(d<=0)return o.innerHTML='<div class="err">✗ 基本尺寸必须大于 0 mm</div>';
+if(d>250)return o.innerHTML='<div class="err">✗ 超出本工具数据范围（0~250 mm），请查标准原表</div>';
+const r=fit(d,document.getElementById('HL').value,+document.getElementById('HG').value,document.getElementById('SL').value,+document.getElementById('SG').value);
+if(!r)return o.innerHTML='<div class="err">✗ 该公差带组合暂不支持</div>';
+let h='';
+h+=L('配合代号',r.hole+'/'+r.shaft);
+h+=L('基准制',r.base);
+h+=L('孔 ES / EI',sg(r.ES)+' / '+sg(r.EI)+' μm');
+h+=L('孔公差 T',r2(r.ES-r.EI)+' μm');
+h+=L('孔极限尺寸',r2(d+r.EI/1000)+' ~ '+r2(d+r.ES/1000)+' mm');
+h+=L('轴 es / ei',sg(r.es)+' / '+sg(r.ei)+' μm');
+h+=L('轴公差 T',r2(r.es-r.ei)+' μm');
+h+=L('轴极限尺寸',r2(d+r.ei/1000)+' ~ '+r2(d+r.es/1000)+' mm');
+if(r.type==='过盈配合'){
+h+=L('最大过盈 Ymax=es−EI',sg(r.Ymax)+' μm');
+h+=L('最小过盈 Ymin=ei−ES',sg(r.Ymin)+' μm');}
+else if(r.type==='间隙配合'){
+h+=L('最大间隙 Xmax=ES−ei',sg(r.Xmax)+' μm');
+h+=L('最小间隙 Xmin=EI−es',sg(r.Xmin)+' μm');}
+else{
+h+=L('最大间隙 Xmax=ES−ei',sg(r.Xmax)+' μm');
+h+=L('最大过盈 Ymax=es−EI',sg(r.Ymax)+' μm');}
+h+='<div><span>配合性质</span><b class="'+(r.type==='间隙配合'?'ok':'')+'">'+r.type+'</b></div>';
+h+=L('依据','GB/T 1800.1/.2-2009、GB/T 1801-2009');
+o.innerHTML=h;}
+const T=[
+['H7@30 孔上偏差 ES',zone(1,'H',7,30).up,21],
+['H7@30 孔下偏差 EI',zone(1,'H',7,30).lo,0],
+['g6@30 轴上偏差 es',zone(0,'g',6,30).up,-7],
+['g6@30 轴下偏差 ei',zone(0,'g',6,30).lo,-20],
+['H7/g6@30 最大间隙',fit(30,'H',7,'g',6).Xmax,41],
+['H7/g6@30 最小间隙',fit(30,'H',7,'g',6).Xmin,7],
+['H7/g6@30 配合性质',fit(30,'H',7,'g',6).type,'间隙配合'],
+['H7/k6@30 配合性质',fit(30,'H',7,'k',6).type,'过渡配合'],
+['H7/p6@30 最大过盈',fit(30,'H',7,'p',6).Ymax,35],
+['H7/p6@30 配合性质',fit(30,'H',7,'p',6).type,'过盈配合'],
+['G7@20 孔下偏差 EI',zone(1,'G',7,20).lo,7],
+['h6@50 轴下偏差 ei',zone(0,'h',6,50).lo,-16],
+['H8/f7@30 配合性质',fit(30,'H',8,'f',7).type,'间隙配合'],
+['seg(250) 尺寸分段',seg(250),9]];
+function runTests(){const o=document.getElementById('tres');let p=0,h='';
+T.forEach((t,i)=>{const ok=String(r2(t[1]))===String(r2(t[2]))||String(t[1])===String(t[2]);if(ok)p++;
+h+='<div class="'+(ok?'ok':'err')+'">'+(ok?'✓':'✗')+' #'+(i+1)+' '+t[0]+' → 实测 '+t[1]+' ，期望 '+t[2]+'</div>';});
+o.innerHTML='<div class="'+(p===T.length?'ok':'err')+'"><b>通过 '+p+' / '+T.length+'</b></div>'+h;}
+opt(document.getElementById('HG'),[6,7,8,9,10,11],7);
+opt(document.getElementById('SG'),[6,7,8,9,10,11],6);
+mk();
+document.getElementById('srcbox').textContent=document.getElementById('core').textContent.trim();
+</script>
+</body>
+</html>

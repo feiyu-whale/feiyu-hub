@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>六十甲子表</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #f5f1e8 0%, #ebe3d0 100%);
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  padding-bottom: 60px;
+  min-height: 100vh;
+}
+.container { max-width: 640px; margin: 0 auto; }
+h1 {
+  text-align: center;
+  color: #8b0000;
+  font-size: 24px;
+  margin-bottom: 4px;
+  letter-spacing: 2px;
+}
+.subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(139,0,0,0.08);
+  border: 1px solid #e8dcc0;
+}
+.card h2 {
+  font-size: 16px;
+  color: #8b0000;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #d4af37;
+  padding-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.query-box { display: flex; gap: 8px; margin-bottom: 12px; }
+.query-box input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  min-width: 0;
+}
+.query-box input:focus { border-color: #8b0000; }
+.query-box button {
+  padding: 8px 16px;
+  background: #8b0000;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.query-box button:active { background: #6b0000; }
+.result {
+  background: #fdf8ec;
+  border-left: 4px solid #d4af37;
+  padding: 12px;
+  border-radius: 4px;
+  min-height: 60px;
+  font-size: 14px;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.result-item {
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 4px;
+}
+.result-label { color: #888; font-size: 12px; }
+.result-value {
+  color: #8b0000;
+  font-weight: bold;
+  font-size: 16px;
+  word-break: break-all;
+}
+.result-item.full { grid-column: span 2; }
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 520px;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 6px 4px;
+  text-align: center;
+}
+th {
+  background: #8b0000;
+  color: #fff;
+  font-weight: normal;
+}
+tr:nth-child(even) { background: #fdf8ec; }
+tr:hover { background: #f0e6c8; }
+.seq { color: #888; font-size: 12px; }
+.gz { font-weight: bold; color: #8b0000; font-size: 14px; }
+.wuxing {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #fff;
+  white-space: nowrap;
+}
+.wuxing-金 { background: #b8941f; }
+.wuxing-木 { background: #4a8b3a; }
+.wuxing-水 { background: #2a5a8b; }
+.wuxing-火 { background: #c03030; }
+.wuxing-土 { background: #8b6a3a; }
+.years { font-size: 12px; color: #555; }
+.source { font-size: 13px; color: #555; line-height: 1.8; }
+.source p { margin-bottom: 6px; }
+.source ul { margin-left: 20px; margin-bottom: 8px; }
+.source li { margin-bottom: 4px; }
+.source code {
+  background: #f0e6c8;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  color: #8b0000;
+  font-size: 12px;
+}
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(255,255,255,0.9);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #e8dcc0;
+}
+.tip { font-size: 12px; color: #888; margin-top: 8px; }
+@media (max-width: 480px) {
+  body { font-size: 13px; padding: 10px; }
+  h1 { font-size: 20px; }
+  .card { padding: 12px; }
+  table { font-size: 12px; }
+  th, td { padding: 4px 2px; }
+  .result-value { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📜 六十甲子表</h1>
+  <p class="subtitle">天干地支 · 纳音五行 · 生肖 · 公历对照</p>
+
+  <div class="card">
+    <h2>🔍 年份查询</h2>
+    <div class="query-box">
+      <input type="number" id="yearInput" placeholder="输入公历年份，如 1984" min="1" max="9999">
+      <button onclick="queryYear()">查询</button>
+    </div>
+    <div class="result" id="result">
+      <div style="color:#999;text-align:center;padding:10px;">请输入公历年份进行查询</div>
+    </div>
+    <p class="tip">💡 提示：干支纪年严格以立春为界，本工具按公历1月1日简化计算，立春前后出生者请结合节气精确判定。</p>
+  </div>
+
+  <div class="card">
+    <h2>📋 完整六十甲子表（1924—2023）</h2>
+    <div class="table-wrap">
+      <table id="jzTable">
+        <thead>
+          <tr>
+            <th>序号</th>
+            <th>干支</th>
+            <th>纳音五行</th>
+            <th>生肖</th>
+            <th>对应公历年份</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📖 数据来源</h2>
+    <div class="source">
+      <p>本工具所采用的六十甲子顺序、纳音五行、生肖对应关系，依据以下权威文献：</p>
+      <ul>
+        <li>《三命通会》（明·万民英）卷一"论纳音"，系统记载六十甲子纳音歌诀及五行归属，为纳音说之集大成者。</li>
+        <li>《协纪辨方书》（清·允禄等奉敕撰）卷三"本原"，载干支序与纳音，为清代官修历法典籍。</li>
+        <li>《尔雅·释天》载"太岁在甲曰阏逢…"等岁阳岁阴名，为干支别名之早期文献依据。</li>
+        <li>《史记·历书》载干支纪日之法，为干支历法之早期正史依据。</li>
+        <li>生肖（属相）与地支对应：子鼠、丑牛、寅虎、卯兔、辰龙、巳蛇、午马、未羊、申猴、酉鸡、戌狗、亥猪，为通行民俗定说，见《论衡·物势》（汉·王充）等。</li>
+      </ul>
+      <p>公历与干支换算公式：以公元4年为甲子年（据陈垣《二十史朔闰表》等推算），得 <code>序号 = (年份 − 4) mod 60 + 1</code>，序号1为甲子，序号60为癸亥。</p>
+      <p>⚠️ 注意：严格而言干支纪年以立春为分界，本工具按公历1月1日简化处理；具体节气时刻需查《寿星万年历》或紫金山天文台历表。</p>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-六十甲子 20261021</div>
+
+<script>
+const tianGan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const diZhi = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const shengXiao = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+// 纳音五行（每两个干支共用一纳音，共30组×2=60项）
+// 依据《三命通会》卷一"六十甲子纳音歌"
+const naYin = [
+  '海中金','海中金','炉中火','炉中火','大林木','大林木',
+  '路旁土','路旁土','剑锋金','剑锋金','山头火','山头火',
+  '涧下水','涧下水','城头土','城头土','白蜡金','白蜡金',
+  '杨柳木','杨柳木','泉中水','泉中水','屋上土','屋上土',
+  '霹雳火','霹雳火','松柏木','松柏木','长流水','长流水',
+  '沙中金','沙中金','山下火','山下火','平地木','平地木',
+  '壁上土','壁上土','金箔金','金箔金','覆灯火','覆灯火',
+  '天河水','天河水','大驿土','大驿土','钗钏金','钗钏金',
+  '桑柘木','桑柘木','大溪水','大溪水','沙中土','沙中土',
+  '天上火','天上火','石榴木','石榴木','大海水','大海水'
+];
+
+function getSeq(year) {
+  let s = (year - 4) % 60;
+  if (s < 0) s += 60;
+  return s + 1;
+}
+
+function getInfo(year) {
+  const seq = getSeq(year);
+  const idx = seq - 1;
+  const ganIdx = idx % 10;
+  const zhiIdx = idx % 12;
+  const ny = naYin[idx];
+  return {
+    seq: seq,
+    ganZhi: tianGan[ganIdx] + diZhi[zhiIdx],
+    naYin: ny,
+    shengXiao: shengXiao[zhiIdx],
+    wuXing: ny.slice(-1)
+  };
+}
+
+function getYearsForSeq(seq, startYear, endYear) {
+  const years = [];
+  for (let y = startYear; y <= endYear; y++) {
+    if (getSeq(y) === seq) years.push(y);
+  }
+  return years;
+}
+
+function queryYear() {
+  const input = document.getElementById('yearInput');
+  const result = document.getElementById('result');
+  const year = parseInt(input.value);
+  if (isNaN(year) || year < 1) {
+    result.innerHTML = '<div style="color:#c00;text-align:center;padding:10px;">请输入有效的公历年份（正整数）</div>';
+    return;
+  }
+  const info = getInfo(year);
+  result.innerHTML =
+    '<div class="result-grid">' +
+      '<div class="result-item">' +
+        '<div class="result-label">公历</div>' +
+        '<div class="result-value">' + year + '年</div>' +
+      '</div>' +
+      '<div class="result-item">' +
+        '<div class="result-label">甲子序号</div>' +
+        '<div class="result-value">第 ' + info.seq + ' 位</div>' +
+      '</div>' +
+      '<div class="result-item">' +
+        '<div class="result-label">干支</div>' +
+        '<div class="result-value">' + info.ganZhi + '年</div>' +
+      '</div>' +
+      '<div class="result-item">' +
+        '<div class="result-label">生肖</div>' +
+        '<div class="result-value">' + info.shengXiao + '</div>' +
+      '</div>' +
+      '<div class="result-item full">' +
+        '<div class="result-label">纳音五行</div>' +
+        '<div class="result-value"><span class="wuxing wuxing-' + info.wuXing + '">' + info.naYin + '</span></div>' +
+      '</div>' +
+    '</div>';
+}
+
+function buildTable() {
+  const tbody = document.querySelector('#jzTable tbody');
+  let html = '';
+  for (let seq = 1; seq <= 60; seq++) {
+    const idx = seq - 1;
+    const ganIdx = idx % 10;
+    const zhiIdx = idx % 12;
+    const ganZhi = tianGan[ganIdx] + diZhi[zhiIdx];
+    const ny = naYin[idx];
+    const sx = shengXiao[zhiIdx];
+    const wx = ny.slice(-1);
+    const years = getYearsForSeq(seq, 1924, 2023);
+    html += '<tr>' +
+      '<td class="seq">' + seq + '</td>' +
+      '<td class="gz">' + ganZhi + '</td>' +
+      '<td><span class="wuxing wuxing-' + wx + '">' + ny + '</span></td>' +
+      '<td>' + sx + '</td>' +
+      '<td class="years">' + years.join('、') + '</td>' +
+    '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+document.getElementById('yearInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') queryYear();
+});
+
+buildTable();
+</script>
+</body>
+</html>

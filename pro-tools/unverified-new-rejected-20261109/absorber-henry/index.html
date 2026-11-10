@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>气体吸收亨利定律计算器</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#0a1628;color:#c9dcf5;font:13px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:46px}
+header{padding:14px 16px;background:#0d1f36;border-bottom:1px solid #1b3a5e}
+h1{font-size:17px;color:#4a9eff;margin-bottom:3px}
+.sub{font-size:11px;color:#7d9ac0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;padding:9px 16px;background:#0b1a2e;border-bottom:1px solid #1b3a5e}
+.tabs button{background:#122b47;color:#9fc4ee;border:1px solid #1e4470;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:12px}
+.tabs button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:600}
+main{padding:14px;max-width:880px;margin:0 auto}
+.card{background:#0f2137;border:1px solid #1b3a5e;border-radius:10px;padding:13px;margin-bottom:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px}
+label{display:block;font-size:11px;color:#8fb2d8;margin-bottom:3px}
+input,select{width:100%;background:#0a1929;border:1px solid #23496f;color:#dceafc;padding:6px 7px;border-radius:6px;font-size:13px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.go{background:#4a9eff;border:0;color:#04101f;font-weight:700;padding:9px 18px;border-radius:7px;cursor:pointer;margin-top:11px;font-size:13px}
+h2{font-size:13px;color:#4a9eff;margin-bottom:7px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:5px 7px;border-bottom:1px solid #1b3a5e;text-align:left;vertical-align:top}
+th{color:#7d9ac0;font-weight:500;font-size:11px}
+td.v{color:#4a9eff;font-weight:600;text-align:right;font-family:ui-monospace,monospace;white-space:nowrap}
+td.f{font-size:11px;color:#7d9ac0}
+.err{color:#ff7b7b;margin-top:9px;font-size:12px}
+pre{overflow:auto;background:#08131f;border:1px solid #1b3a5e;border-radius:8px;padding:9px;font-size:10.5px;line-height:1.4;color:#9fc4ee;max-height:68vh}
+.note{font-size:11px;color:#7d9ac0;margin-top:9px}
+ul{padding-left:18px;font-size:12px;color:#a8c6e8}
+li{margin:4px 0}
+.ok{color:#4ade80}.bad{color:#ff7b7b}
+footer{position:fixed;right:8px;bottom:8px;background:#0f2137;border:1px solid #1b3a5e;border-radius:6px;padding:3px 7px;font-size:10.5px;color:#7d9ac0}
+@media(max-width:560px){td.f,th.f{display:none}}
+</style>
+</head>
+<body>
+<header><h1>气体吸收亨利定律计算器</h1><div class="sub">亨利常数 van't Hoff 温度修正 · 分压 / 液相浓度 · 吸收因子 · NTU/HTU</div></header>
+<div class="tabs"><button class="on" data-t="t1">计算工具</button><button data-t="t2">JS 源码</button><button data-t="t3">单元测试</button><button data-t="t4">使用说明</button></div>
+<main>
+<section id="t1">
+<div class="card">
+<div class="grid">
+<div><label>溶质组分（水溶液体系）</label><select id="sp"></select></div>
+<div><label>温度 T (℃)</label><input id="Tc" value="20"></div>
+<div><label>总压 P (kPa)</label><input id="P" value="101.325"></div>
+<div><label>进气摩尔分数 y₁ (%)</label><input id="y1" value="5"></div>
+<div><label>净化率 η (%)</label><input id="eta" value="95"></div>
+<div><label>液气比 L/G (kmol液/kmol气)</label><input id="LG" value="5"></div>
+<div><label>气相摩尔通量 G (kmol/(m²·h))</label><input id="G" value="100"></div>
+<div><label>体积传质系数 Kya (kmol/(m³·h))</label><input id="Kya" value="1000"></div>
+</div>
+<button class="go" id="run">开始计算</button>
+<div id="msg"></div>
+</div>
+<div class="card" id="outCard" style="display:none"><h2>计算结果</h2><table id="out"></table><p class="note" id="note"></p></div>
+</section>
+<section id="t2" style="display:none"><div class="card"><h2>JS 源码（纯原生，零外部依赖）</h2><pre id="codeOut"></pre></div></section>
+<section id="t3" style="display:none"><div class="card"><h2>单元测试</h2><button class="go" id="btnTest">运行全部测试</button><div id="testOut" style="margin-top:10px"></div></div></section>
+<section id="t4" style="display:none"><div class="card"><h2>使用说明与数据出处</h2><ul>
+<li><b>核心公式</b>：亨利定律 p*=E·x；温度修正 E(T)=E₂₀·exp[(ΔH_sol/R)(1/T−1/T₂₀)]（van't Hoff 式），R=8.314 J/(mol·K)，T₂₀=293.15 K。</li>
+<li><b>平衡数据出处</b>：E₂₀（20℃、常压下气体在水中的亨利系数）取自天津大学《化工原理》（第三版）上册附录「若干气体在水中的亨利系数」附表，介质为纯水、稀溶液。NH₃≈276 kPa、SO₂≈3550 kPa、CO₂≈1.44×10⁵ kPa、O₂≈4.06×10⁶ kPa。</li>
+<li><b>溶解焓 ΔH_sol</b>（−12～−34 kJ/mol）与 H₂S 的 E₂₀（5.52×10⁴ kPa）为公开物性汇编的近似取值，<b>本组参数为行业经验值，未经标准核对</b>；精确设计请查 NIST 或 Sander (2015) Henry's law data compilation。</li>
+<li><b>吸收因子法</b>：m=E/P，A=L/(m·G)，NTU=A/(A−1)·ln(y₁/y₂)（A=1 时取 ln(y₁/y₂)）。假设稀溶液、等温、进液不含溶质 x₂=0、气膜控制。</li>
+<li><b>HTU</b>=G/Kya，Z=NTU·HTU，属工程近似估算，实际须按填料类型与流体力学条件校核。</li>
+<li><b>适用工况</b>：0～100℃、10～20000 kPa 的近似估算；强电解质、高浓度及化学吸收（氨水/胺液）不适用。</li>
+<li><b>输入校验</b>：全部输入做非空、数值、区间检查，异常时输出中文提示，绝不渲染 NaN。</li>
+</ul></div></section>
+</main>
+<footer>v1.0.0-absorber-henry 20261108</footer>
+<script>
+const DB={
+ NH3:{E20:276,dH:-34,n:'氨 NH₃'},
+ SO2:{E20:3550,dH:-32,n:'二氧化硫 SO₂'},
+ H2S:{E20:55200,dH:-19,n:'硫化氢 H₂S'},
+ CO2:{E20:144000,dH:-20,n:'二氧化碳 CO₂'},
+ O2:{E20:4060000,dH:-12,n:'氧 O₂'}
+};
+const R=8.314,T20=293.15,CW=55.51;
+function henry(sp,Tc){const d=DB[sp],T=Tc+273.15;return d.E20*Math.exp(d.dH*1000/R*(1/T-1/T20));}
+function ntu(A,y1,y2){const l=Math.log(y1/y2);return Math.abs(A-1)<1e-6?l:A/(A-1)*l;}
+function compute(o){
+ const E=henry(o.sp,o.Tc),p=o.P*o.y1/100,x=p/E,c=x*CW,m=E/o.P,A=o.LG/m;
+ const y2=o.y1*(1-o.eta/100),N=ntu(A,o.y1,y2),H=o.G/o.Kya,Z=N*H;
+ const x1=(o.y1-y2)/100/o.LG;
+ return {E:E,p:p,x:x,c:c,m:m,A:A,y2:y2,N:N,H:H,Z:Z,x1:x1,Hc:c/p};
+}
+function validate(o){
+ const e=[],n=function(k,lbl,lo,hi){const raw=o[k],v=(raw===''||raw===null||raw===undefined)?NaN:Number(raw);
+  if(!isFinite(v))e.push(lbl+'不能为空，且须为数字');
+  else if(v<lo||v>hi)e.push(lbl+'须在 '+lo+' ~ '+hi+' 之间');};
+ n('Tc','温度(℃)',0,100);n('P','总压(kPa)',10,20000);n('y1','进气摩尔分数(%)',0.0001,100);
+ n('eta','净化率(%)',0.1,99.99);n('LG','液气比',0.01,100000);n('G','气相摩尔通量',0.01,10000);n('Kya','体积传质系数',0.01,100000);
+ return e;
+}
+const TESTS=[
+ {n:'CO2 20℃ 亨利系数≈144000 kPa',f:function(){return Math.abs(henry('CO2',20)/144000-1)<0.01}},
+ {n:'NH3 20℃ 亨利系数≈276 kPa',f:function(){return Math.abs(henry('NH3',20)/276-1)<0.01}},
+ {n:'SO2 20℃ 亨利系数≈3550 kPa',f:function(){return Math.abs(henry('SO2',20)/3550-1)<0.01}},
+ {n:'升温使亨利系数增大（溶解度下降）',f:function(){return henry('CO2',40)>henry('CO2',20)}},
+ {n:'CO2 40℃ 亨利系数≈243200 kPa',f:function(){return Math.abs(henry('CO2',40)/243200-1)<0.02}},
+ {n:'分压 p=P·y₁=10.1325 kPa',f:function(){return Math.abs(compute({sp:'CO2',Tc:20,P:101.325,y1:10,eta:90,LG:100,G:100,Kya:1000}).p-10.1325)<1e-6}},
+ {n:'相平衡常数 m=E/P≈1421.2',f:function(){return Math.abs(compute({sp:'CO2',Tc:20,P:101.325,y1:10,eta:90,LG:100,G:100,Kya:1000}).m-1421.2)<1}},
+ {n:'A=1 时 NTU=ln(y₁/y₂)',f:function(){return Math.abs(ntu(1,100,10)-Math.log(10))<1e-9}},
+ {n:'A=2 时 NTU=2ln10=4.6052',f:function(){return Math.abs(ntu(2,100,10)-2*Math.log(10))<1e-9}},
+ {n:'HTU=G/Kya=0.1 m',f:function(){return Math.abs(compute({sp:'NH3',Tc:20,P:101.325,y1:5,eta:95,LG:5,G:100,Kya:1000}).H-0.1)<1e-9}},
+ {n:'负温度被校验拦截',f:function(){return validate({Tc:-5,P:101,y1:5,eta:90,LG:2,G:100,Kya:1000}).length>0}},
+ {n:'空值被校验拦截',f:function(){return validate({Tc:'',P:101,y1:5,eta:90,LG:2,G:100,Kya:1000}).length>0}}
+];
+const $=function(id){return document.getElementById(id)};
+function fmt(v){if(!isFinite(v))return '—';const a=Math.abs(v);if(a===0)return '0';
+ if(a>=1e6||a<1e-4)return v.toExponential(2);return a>=100?v.toFixed(1):a>=1?v.toFixed(3):v.toFixed(5);}
+function run(){
+ const o={sp:$('sp').value};
+ ['Tc','P','y1','eta','LG','G','Kya'].forEach(function(k){const v=$('k')&&0;});
+ ['Tc','P','y1','eta','LG','G','Kya'].forEach(function(k){const raw=$(''+k).value.trim();o[k]=raw===''?NaN:Number(raw);});
+ const e=validate(o);
+ if(e.length){$('msg').innerHTML='<div class="err">⚠ '+e.join('；')+'</div>';$('outCard').style.display='none';return;}
+ $('msg').innerHTML='';
+ const r=compute(o);
+ const rows=[
+  ['亨利系数 E(T)',fmt(r.E),'kPa','E=E₂₀·exp[ΔH/R·(1/T−1/T₂₀)]'],
+  ['溶质分压 p',fmt(r.p),'kPa','p=P·y₁'],
+  ['平衡液相摩尔分数 x*',fmt(r.x),'mol/mol','x*=p/E(T)'],
+  ['液相平衡浓度 c*',fmt(r.c),'kmol/m³','c*≈x*·55.51'],
+  ['溶解度系数 Hc',fmt(r.Hc),'kmol/(m³·kPa)','Hc=c*/p'],
+  ['相平衡常数 m',fmt(r.m),'—','m=E/P，y=mx'],
+  ['吸收因子 A',fmt(r.A),'—','A=L/(m·G)'],
+  ['出气摩尔分数 y₂',fmt(r.y2),'%','y₂=y₁(1−η)'],
+  ['出液摩尔分数 x₁',fmt(r.x1),'mol/mol','x₁=G(y₁−y₂)/L'],
+  ['传质单元数 NTU',fmt(r.N),'—','N=A/(A−1)·ln(y₁/y₂)'],
+  ['传质单元高度 HTU',fmt(r.H),'m','HTU=G/Kya'],
+  ['所需填料高度 Z',fmt(r.Z),'m','Z=N·HTU']
+ ];
+ $('out').innerHTML='<tr><th>项目</th><th style="text-align:right">数值</th><th>单位</th><th class="f">公式</th></tr>'+
+  rows.map(function(x){return '<tr><td>'+x[0]+'</td><td class="v">'+x[1]+'</td><td>'+x[2]+'</td><td class="f">'+x[3]+'</td></tr>'}).join('');
+ let note='稀溶液、等温、气膜控制、进液不含溶质（x₂=0）假设下的估算值。';
+ if(r.A<=1)note='<span class="bad">⚠ 吸收因子 A='+fmt(r.A)+' ≤ 1，液气比不足（最小液气比 L/G≈'+fmt(r.m*o.eta/100)+'），设定净化率理论上无法实现，NTU 为负值仅供参考。</span> '+note;
+ $('note').innerHTML=note;
+ $('outCard').style.display='block';
+}
+function runTests(){
+ const res=TESTS.map(function(t){let ok=false,err='';try{ok=!!t.f()}catch(e){err=e.message}return {n:t.n,ok:ok,err:err}});
+ const pass=res.filter(function(r){return r.ok}).length;
+ $('testOut').innerHTML='<p class="'+(pass===res.length?'ok':'bad')+'" style="margin-bottom:8px">通过 '+pass+' / '+res.length+'</p>'+
+  res.map(function(r){return '<div class="'+(r.ok?'ok':'bad')+'" style="font-size:12px;margin:3px 0">'+(r.ok?'✔':'✘')+' '+r.n+(r.err?'（'+r.err+'）':'')+'</div>'}).join('');
+}
+document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){
+ document.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('on')});
+ document.querySelectorAll('main section').forEach(function(x){x.style.display='none'});
+ b.classList.add('on');$(b.dataset.t).style.display='block';};});
+$('sp').innerHTML=Object.keys(DB).map(function(k){return '<option value="'+k+'">'+DB[k].n+'</option>'}).join('');
+$('sp').value='NH3';
+$('run').onclick=run;
+$('btnTest').onclick=runTests;
+$('codeOut').textContent=document.querySelector('script').textContent;
+run();
+</script>
+</body>
+</html>

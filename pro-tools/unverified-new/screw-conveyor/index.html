@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>螺旋输送机输送量计算器</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#cfe3ff;font:14px/1.5 system-ui,"Segoe UI",sans-serif}header{padding:14px 16px;border-bottom:1px solid #17304f}h1{margin:0;font-size:17px;color:#4a9eff}.tabs{display:flex;gap:6px;padding:10px 16px 0}.tab{padding:6px 14px;border:1px solid #1d3a5c;border-radius:8px 8px 0 0;background:#0e1f36;cursor:pointer;font-size:13px}.tab.on{background:#12325a;border-color:#4a9eff;color:#fff}main{padding:12px 16px 64px;max-width:900px;margin:0 auto}.card{background:#0e1f36;border:1px solid #17304f;border-radius:10px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}label{display:block;font-size:12px;color:#8fb4d9;margin-bottom:3px}input,select{width:100%;padding:6px 8px;background:#081424;border:1px solid #1d3a5c;border-radius:6px;color:#e6f1ff;font-size:13px}button{background:#4a9eff;color:#05121f;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer}.res{font-family:ui-monospace,monospace;font-size:13px;white-space:pre-wrap;word-break:break-all}.big{font-size:20px;color:#4a9eff;font-weight:700}.err{color:#ff7b7b}.ok{color:#4ade80}#ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4a6d96}table{width:100%;border-collapse:collapse;font-size:13px}td,th{border-bottom:1px solid #17304f;padding:4px;text-align:left}.hide{display:none}h3{font-size:14px;color:#4a9eff;margin:6px 0}</style></head><body>
+<header><h1>螺旋输送机输送量计算器</h1></header>
+<div class="tabs"><div class="tab on" id="tabc">计算工具</div><div class="tab" id="tabt">测试与说明</div></div>
+<main>
+<section id="paneC">
+<div class="card"><div class="grid">
+<div><label>螺旋直径 D (mm) 100~800</label><input id="D" value="200"></div>
+<div><label>螺距 S (mm) 50~1000（常取0.8~1.0D）</label><input id="S" value="200"></div>
+<div><label>转速 n (r/min) 10~200</label><input id="n" value="60"></div>
+<div><label>物料类型（自动带入ψ、ρ）</label><select id="mt"><option value="水泥">水泥/粉状料</option><option value="谷物">谷物/颗粒料</option><option value="砂石">砂石/矿料</option><option value="煤粉">煤粉</option><option value="块状">块状物料</option></select></div>
+<div><label>填充系数 ψ 0.10~0.45</label><input id="psi" value="0.4"></div>
+<div><label>物料密度 ρ (t/m³) 0.2~3.0</label><input id="rho" value="1.2"></div>
+<div><label>输送倾角 α (°) 0~20</label><input id="a" value="0"></div>
+</div><div style="margin-top:10px"><button onclick="go()">计算</button></div></div>
+<div class="card" id="out"><span style="color:#8fb4d9">输入参数后点击「计算」。</span></div>
+</section>
+<section id="paneT" class="hide">
+<div class="card"><h3>单元测试</h3><button onclick="runTests()">运行全部测试</button><div id="tr" style="margin-top:10px"></div></div>
+<div class="card"><h3>数据来源与说明</h3><div class="res" style="color:#9fc0e0">1) 输送量基本公式：Q = 3600·(πD²/4)·(S·n/60)·ψ·ρ·C = 47.12·D²·S·n·ψ·ρ·C（D、S 取 m，n 取 r/min，ρ 取 t/m³）。系数 47.12=15π 为公式换算结果，与 JB/T 7679《螺旋输送机》及《运输机械设计选用手册》中螺旋输送机输送量公式 Q=47D²SnψρC 一致（手册取整为 47）。
+2) 倾斜输送修正系数 C：0°→1.00；≤5°→0.90；≤10°→0.80；≤15°→0.70；≤20°→0.65；>20° 不推荐采用螺旋输送。本参数为行业经验值，未经标准核对。
+3) 填充系数 ψ 推荐范围：流动性好粉状料 0.40~0.45，颗粒料 0.35~0.40，块状料 0.25~0.30，粘湿料应更低。本参数为行业经验值，未经标准核对。
+4) 物料密度 ρ 取常用堆积密度经验值：水泥 1.2、谷物 0.75、砂石 1.6、煤粉 0.9、块状料 1.4 t/m³；实际应按物料检测值输入。本参数为行业经验值，未经标准核对。
+5) 使用步骤：先选物料类型得到默认 ψ、ρ，再按设计需要修正；结果含中间量（截面积、轴向速度、倾角系数），可手工验算。超过 20° 的倾斜工况应向厂家另行校核。</div></div>
+</section>
+</main>
+<div id="ver">v1.0.0-screw-conveyor 20261108</div>
+<script>
+var $=function(i){return document.getElementById(i)};
+var M={水泥:{p:0.4,r:1.2},谷物:{p:0.4,r:0.75},砂石:{p:0.3,r:1.6},煤粉:{p:0.35,r:0.9},块状:{p:0.25,r:1.4}};
+function inclF(a){if(a<=0)return 1;if(a<=5)return 0.9;if(a<=10)return 0.8;if(a<=15)return 0.7;if(a<=20)return 0.65;return NaN}
+function calc(d){var e=[];
+if(!isFinite(d.D)||d.D<100||d.D>800)e.push('螺旋直径 D 需在 100~800 mm');
+if(!isFinite(d.S)||d.S<50||d.S>1000)e.push('螺距 S 需在 50~1000 mm');
+if(!isFinite(d.n)||d.n<10||d.n>200)e.push('转速 n 需在 10~200 r/min');
+if(!isFinite(d.psi)||d.psi<0.1||d.psi>0.45)e.push('填充系数 ψ 需在 0.10~0.45');
+if(!isFinite(d.rho)||d.rho<0.2||d.rho>3)e.push('物料密度 ρ 需在 0.2~3.0 t/m³');
+if(!isFinite(d.a)||d.a<0||d.a>20)e.push('倾角 α 需在 0~20°（>20° 不推荐螺旋输送）');
+if(e.length)return{err:e.join('；')};
+var D=d.D/1000,S=d.S/1000,C=inclF(d.a),A=Math.PI*D*D/4,v=S*d.n/60;
+var Qv=3600*A*v*d.psi*C;
+return{Q:Qv*d.rho,Qv:Qv,A:A,v:v,C:C,B:47.12*D*D*S*d.n*d.psi*d.rho*C}}
+function num(id){var v=$(id).value.trim();if(v==='')return NaN;return Number(v)}
+function go(){var d={D:num('D'),S:num('S'),n:num('n'),psi:num('psi'),rho:num('rho'),a:num('a')},r=calc(d);
+if(r.err){$('out').innerHTML='<span class="err">输入有误：'+r.err+'</span>';return}
+$('out').innerHTML='<div class="big">输送量 Q = '+r.Q.toFixed(2)+' t/h</div><div class="res" style="margin-top:8px">体积输送量 Qv = '+r.Qv.toFixed(2)+' m³/h\n螺旋截面积 A = πD²/4 = '+r.A.toFixed(5)+' m²\n轴向输送速度 v = S·n/60 = '+r.v.toFixed(4)+' m/s\n倾角修正系数 C = '+r.C+'（α = '+d.a+'°）\n填充系数 ψ = '+d.psi+'　物料密度 ρ = '+d.rho+' t/m³\n验算：Q = 47.12·D²·S·n·ψ·ρ·C = '+r.B.toFixed(2)+' t/h</div><div class="res" style="margin-top:8px;color:#8fb4d9">公式：Q = 47.12·D²·S·n·ψ·ρ·C（D、S 换算为 m，n 为 r/min，ρ 为 t/m³）。来源：JB/T 7679《螺旋输送机》、《运输机械设计选用手册》螺旋输送机输送量公式；倾角系数 C 与填充系数 ψ 取行业经验值。</div>'}
+$('mt').onchange=function(){var m=M[this.value];if(m){$('psi').value=m.p;$('rho').value=m.r}}
+var T=[{n:'水平：D200 S200 n60 ψ0.4 ρ1.2',i:{D:200,S:200,n:60,psi:0.4,rho:1.2,a:0},k:'Q',v:10.8564,tol:0.01},
+{n:'倾角15°：同参数乘 C=0.7',i:{D:200,S:200,n:60,psi:0.4,rho:1.2,a:15},k:'Q',v:7.5995,tol:0.01},
+{n:'超范围 D=50 应报错',i:{D:50,S:200,n:60,psi:0.4,rho:1.2,a:0},k:'err',v:true}];
+function runTests(){var h='<table><tr><th>状态</th><th>用例</th><th>实际</th></tr>',p=0,i,t,r,ok,act;
+for(i=0;i<T.length;i++){t=T[i];r=calc(t.i);
+if(t.k==='err'){ok=!!r.err;act=r.err||'未报错'}
+else{ok=!r.err&&Math.abs(r[t.k]-t.v)<=t.tol;act=r.err?r.err:r[t.k].toFixed(4)}
+if(ok)p++;h+='<tr><td>'+(ok?'<span class="ok">通过</span>':'<span class="err">失败</span>')+'</td><td>'+t.n+'</td><td class="res">'+act+'</td></tr>'}
+h+='</table><div style="margin-top:8px" class="'+(p===T.length?'ok':'err')+'">通过 '+p+' / '+T.length+'</div>';$('tr').innerHTML=h}
+function sw(c){$('paneC').className=c?'hide':'';$('paneT').className=c?'':'hide';$('tabc').className='tab'+(c?'':' on');$('tabt').className='tab'+(c?' on':'')}
+$('tabc').onclick=function(){sw(0)};$('tabt').onclick=function(){sw(1)};
+</script>
+</body></html>

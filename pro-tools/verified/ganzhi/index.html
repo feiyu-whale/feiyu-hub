@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐲 干支·生肖·年号</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  .f { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .f label { width:76px; font-size:13px; color:#c8b3ff; }
+  .f input, .f select { flex:1; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:10px 11px;
+    color:#e8e0f0; font-size:14px; font-family:inherit; }
+  .f input:focus, .f select:focus { outline:none; border-color:#7a5fc0; }
+  .stat { display:flex; justify-content:space-between; padding:9px 12px; background:#100b1c; border-radius:9px;
+    margin-bottom:7px; font-size:14px; gap:10px; }
+  .stat .k { color:#9a8fc0; }
+  .stat .v { color:#b8a0ff; font-weight:700; font-family:ui-monospace,monospace; text-align:right; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+  .hint { font-size:12px; color:#6a5f90; line-height:1.6; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>🐲 干支 · 生肖 · 纪年</h1>
+  <div class="sub">公历 → 干支/生肖 ⇄ 干支 → 公历（支持公元前）</div>
+
+  <div class="card">
+    <div class="lbl">正向：公历年份 → 干支/生肖</div>
+    <div class="f"><label>公元年份</label><input type="text" id="year" inputmode="numeric" value="2026"></div>
+    <div class="hint">支持任意年份（如 629 = 唐贞观三年；-221 表示公元前221年）</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">反向：干支 → 公历年份</div>
+    <div class="f"><label>干支</label><select id="gzin"></select></div>
+    <div class="f" style="margin-bottom:0"><label>范围</label>
+      <select id="rng">
+        <option value="60">近 60 年</option>
+        <option value="180">近 180 年</option>
+        <option value="600">近 600 年</option>
+        <option value="all">公元 1~2100</option>
+      </select>
+    </div>
+    <div class="hint">同一干支每 60 年重复，下方列出符合的年份</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div id="out"></div>
+    <div id="outRev"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">六十甲子表（点击回填反向查询）</div>
+    <div id="table60" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+  <div class="ver">v2-干支双向+六十甲子表 20261017</div>
+</div>
+<script>
+// 【ganzhi】公历年份⇄干支/生肖（支持公元前）+ 六十甲子表。依赖：无（60甲子纯算法）。输入：年份或干支；输出：干支+生肖或年份区间。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：天干(10)地支(12)60年循环；公历公元4年=甲子。生肖=地支对应。纯算法。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  var GAN = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+  var ZHI = ["子","丑","寅","宥","辰","巳","午","未","申","酉","戌","亥"];
+  var SX  = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
+
+  // 公历年份 → 干支（公元4年=甲子；公元前用天文纪年补位）
+  function ganzhi(year){
+    var n = ((year - 4) % 60 + 60) % 60;
+    return { gan: GAN[n % 10], zhi: ZHI[n % 12], full: GAN[n % 10] + ZHI[n % 12], sx: SX[n % 12], idx: n };
+  }
+  // 干支字符串 → 甲子序号(0..59)；非法返回 -1
+  function gzIndex(s){
+    if(!/^[\u4e00-\u9fa5]{2}$/.test(s)) return -1;
+    var g = GAN.indexOf(s[0]), z = ZHI.indexOf(s[1]);
+    if(g < 0 || z < 0) return -1;
+    for(var n=0;n<60;n++){ if(n % 10 === g && n % 12 === z) return n; }
+    return -1;
+  }
+  function yearLabel(y){
+    return y < 0 ? ("公元前 " + Math.abs(y) + " 年") : ("公元 " + y + " 年");
+  }
+
+  function renderFwd(){
+    var raw = $("year").value.trim();
+    if(raw === "" || !/^-?\d+$/.test(raw)){ $("out").innerHTML = "<span style='color:#8a7fb0'>输入年份</span>"; return; }
+    var y = parseInt(raw, 10);
+    if(y === 0){ $("out").innerHTML = "<span style='color:#ff8fa3'>历史上无公元 0 年</span>"; return; }
+    var gz = ganzhi(y >= 0 ? y : y + 1);
+    var rows = [
+      ["年份", yearLabel(y)],
+      ["干支", gz.full + " 年"],
+      ["生肖", gz.sx + " 年"],
+      ["天干", gz.gan],
+      ["地支", gz.zhi],
+    ];
+    $("out").innerHTML = rows.map(function(r){
+      return '<div class="stat"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+    }).join("");
+  }
+
+  function renderRev(){
+    var s = $("gzin").value;
+    var idx = gzIndex(s);
+    if(idx < 0){ $("outRev").innerHTML = ""; return; }
+    var nowYear = new Date().getFullYear();
+    var rng = $("rng").value;
+    var lo, hi;
+    if(rng === "all"){ lo = 1; hi = 2100; }
+    else { var span = parseInt(rng, 10); hi = nowYear + (span>>1); lo = nowYear - (span>>1); }
+    // 找区间内与 idx 同余的年份
+    var list = [];
+    for(var y=lo; y<=hi; y++){ if(ganzhi(y).idx === idx) list.push(y); }
+    if(!list.length){ $("outRev").innerHTML = "<div class='hint'>区间内无此干支</div>"; return; }
+    // 标出当前年
+    var chips = list.map(function(y){
+      var cur = (y === nowYear);
+      return '<span style="display:inline-block;margin:3px 5px 3px 0;padding:4px 9px;border-radius:7px;font-size:13px;'+
+        (cur ? 'background:#5a4a9a;color:#fff;border:1px solid #7a5fc0;' : 'background:#100b1c;color:#b8a0ff;border:1px solid #3a3050;')+'">'+y+(cur?' 今':'')+'</span>';
+    }).join("");
+    $("outRev").innerHTML = '<div class="lbl" style="margin-top:12px">'+s+' 年 → 符合的年份（共 '+list.length+' 个）</div>'+chips;
+  }
+
+  function buildSelect(){
+    var sel = $("gzin");
+    var opts = '';
+    for(var n=0;n<60;n++){
+      var s = GAN[n % 10] + ZHI[n % 12];
+      opts += '<option value="'+s+'">'+s+'</option>';
+    }
+    sel.innerHTML = opts;
+    sel.value = "丙午";
+  }
+  function buildTable(){
+    var box = $("table60");
+    var h = '';
+    for(var n=0;n<60;n++){
+      var s = GAN[n % 10] + ZHI[n % 12];
+      h += '<span class="gz-chip" data-gz="'+s+'" style="cursor:pointer;font-size:12.5px;background:#181228;border:1px solid #3a3050;border-radius:7px;padding:4px 9px;color:#c8b3ff">'+s+'</span>';
+    }
+    box.innerHTML = h;
+    box.querySelectorAll('[data-gz]').forEach(function(el){
+      el.onclick = function(){ $("gzin").value = el.getAttribute('data-gz'); renderRev(); };
+    });
+  }
+
+  $("year").addEventListener("input", renderFwd);
+  $("gzin").addEventListener("change", renderRev);
+  $("rng").addEventListener("change", renderRev);
+  buildSelect(); buildTable();
+  renderFwd(); renderRev();
+})();
+</script>
+</body>
+</html>

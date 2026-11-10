@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>对仗词库 · 工对宽对借对查询</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:linear-gradient(135deg,#f5ecd7 0%,#ebe0c4 100%);
+  color:#3a2e1f;
+  line-height:1.6;
+  padding:12px;
+  font-size:15px;
+  min-height:100vh;
+}
+.container{max-width:640px;margin:0 auto;padding-bottom:40px}
+header{
+  text-align:center;
+  padding:20px 12px;
+  background:rgba(255,248,236,0.7);
+  border:1px solid #c9b896;
+  border-radius:8px;
+  margin-bottom:16px;
+}
+h1{font-size:22px;color:#6b4423;margin-bottom:6px;letter-spacing:2px}
+.subtitle{font-size:13px;color:#8b6f47}
+.intro{font-size:13px;color:#5a4a32;margin-top:8px;line-height:1.7}
+.tabs{display:flex;margin-bottom:0;border-bottom:2px solid #8b6f47;flex-wrap:wrap}
+.tab{
+  flex:1;
+  min-width:60px;
+  padding:10px 4px;
+  text-align:center;
+  cursor:pointer;
+  background:#e8dcc4;
+  border:1px solid #c9b896;
+  border-bottom:none;
+  margin-right:-1px;
+  font-size:13px;
+  color:#6b4423;
+  transition:all 0.2s;
+  user-select:none;
+}
+.tab:first-child{border-radius:6px 0 0 0}
+.tab:last-child{border-radius:0 6px 0 0;margin-right:0}
+.tab.active{background:#fff8ec;font-weight:bold;border-bottom:1px solid #fff8ec;margin-bottom:-2px;z-index:1}
+.panel{
+  display:none;
+  background:#fff8ec;
+  padding:16px;
+  border:1px solid #c9b896;
+  border-top:none;
+  border-radius:0 0 6px 6px;
+  min-height:300px;
+}
+.panel.active{display:block}
+.search-box{
+  width:100%;
+  padding:10px 12px;
+  font-size:15px;
+  border:1px solid #c9b896;
+  border-radius:4px;
+  background:#fff;
+  margin-bottom:12px;
+  font-family:inherit;
+}
+.search-box:focus{outline:none;border-color:#8b6f47;box-shadow:0 0 0 2px rgba(139,111,71,0.2)}
+.btn{
+  padding:8px 16px;
+  background:#8b6f47;
+  color:#fff;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:14px;
+  margin-right:8px;
+  margin-bottom:8px;
+  font-family:inherit;
+}
+.btn:hover{background:#6b4423}
+.btn:active{transform:translateY(1px)}
+.cat-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
+  gap:8px;
+  margin-bottom:16px;
+}
+.cat-btn{
+  padding:10px 4px;
+  background:#e8dcc4;
+  border:1px solid #c9b896;
+  border-radius:4px;
+  cursor:pointer;
+  text-align:center;
+  font-size:14px;
+  color:#6b4423;
+  transition:all 0.2s;
+  font-family:inherit;
+}
+.cat-btn:hover{background:#d4c4a0}
+.cat-btn.active{background:#8b6f47;color:#fff;border-color:#6b4423}
+.word-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.word-tag{
+  padding:4px 10px;
+  background:#fff;
+  border:1px solid #c9b896;
+  border-radius:12px;
+  font-size:13px;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.word-tag:hover{background:#e8dcc4}
+.word-tag.highlight{background:#d4a574;color:#fff;border-color:#8b6f47;font-weight:bold}
+.type-card{
+  background:#fff;
+  border:1px solid #c9b896;
+  border-radius:6px;
+  padding:12px;
+  margin-bottom:12px;
+}
+.type-card h3{color:#6b4423;margin-bottom:6px;font-size:16px}
+.type-card .tag{display:inline-block;padding:2px 8px;background:#e8dcc4;border-radius:10px;font-size:12px;color:#6b4423;margin-right:6px}
+.type-card p{font-size:14px;color:#5a4a32;margin-top:6px}
+.type-card .ex{font-size:13px;color:#8b6f47;margin-top:6px;padding-left:10px;border-left:2px solid #c9b896}
+.example{
+  background:#fff;
+  border-left:4px solid #8b6f47;
+  padding:10px 12px;
+  margin-bottom:10px;
+  font-size:14px;
+  border-radius:0 4px 4px 0;
+}
+.example .src{font-size:12px;color:#8b6f47;margin-top:4px}
+.result-box{
+  background:#fff;
+  border:1px solid #c9b896;
+  border-radius:6px;
+  padding:12px;
+  margin-top:12px;
+}
+.result-box h4{color:#6b4423;margin-bottom:8px;font-size:15px}
+.result-box .label{display:inline-block;padding:2px 8px;background:#e8dcc4;border-radius:10px;font-size:12px;color:#6b4423;margin-right:6px;margin-bottom:4px}
+.section{margin-bottom:20px}
+.section h3{color:#6b4423;margin-bottom:8px;font-size:16px;border-bottom:1px dashed #c9b896;padding-bottom:4px}
+.source{font-size:13px;color:#5a4a32;background:#fff;padding:12px;border:1px solid #c9b896;border-radius:6px;line-height:1.8}
+.source h3{color:#6b4423;margin-bottom:8px;font-size:15px}
+.source ul{margin-left:20px;margin-top:6px}
+.source li{margin-bottom:4px}
+.version{position:fixed;right:8px;bottom:8px;font-size:11px;color:#8b6f47;background:rgba(255,248,236,0.95);padding:2px 8px;border-radius:3px;border:1px solid #c9b896}
+.note{font-size:12px;color:#8b6f47;font-style:italic;margin-top:8px;padding:8px;background:#f5ecd7;border-radius:4px}
+.empty{text-align:center;color:#8b6f47;padding:20px;font-size:14px}
+.pair-demo{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin:12px 0 4px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.pair-box{
+  padding:6px 12px;
+  background:#fff;
+  border:1px solid #c9b896;
+  border-radius:4px;
+  font-size:15px;
+  color:#6b4423;
+  min-width:36px;
+  text-align:center;
+}
+.pair-vs{color:#8b6f47;font-size:14px}
+.hint{font-size:12px;color:#8b6f47;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📜 对仗词库</h1>
+    <div class="subtitle">工对 · 宽对 · 借对 · 词性对应 · 分类查询</div>
+    <div class="intro">依据《声律启蒙》《笠翁对韵》分类体系，收录天文、地理、时令、草木、鸟兽等门类对仗词。</div>
+  </header>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="search">🔍 查询</div>
+    <div class="tab" data-tab="browse">📚 分类</div>
+    <div class="tab" data-tab="types">📖 对仗</div>
+    <div class="tab" data-tab="examples">✨ 例句</div>
+    <div class="tab" data-tab="source">📋 来源</div>
+  </div>
+  
+  <div class="panel active" id="panel-search">
+    <input type="text" class="search-box" id="searchInput" placeholder="输入汉字查询对仗词，如：天、云、花..." maxlength="4">
+    <div id="searchResult"></div>
+  </div>
+  
+  <div class="panel" id="panel-browse">
+    <div class="cat-grid" id="catGrid"></div>
+    <div id="catDetail"></div>
+  </div>
+  
+  <div class="panel" id="panel-types">
+    <div class="type-card">
+      <h3>🎯 工对</h3>
+      <span class="tag">严格同类</span>
+      <p>同一小类内的词相对，词性相同、意义相关或相反，为对仗之正格。</p>
+      <div class="ex">例：天↔地、日↔月、风↔雨、山↔水、花↔柳</div>
+    </div>
+    <div class="type-card">
+      <h3>🌊 宽对</h3>
+      <span class="tag">词性相同</span>
+      <p>词性相同而门类可不同，要求较工对宽松，近体诗中常见。</p>
+      <div class="ex">例：诗↔酒（器物对饮食）、春↔夜（时令之宽）</div>
+    </div>
+    <div class="type-card">
+      <h3>🎭 借对</h3>
+      <span class="tag">借音借义</span>
+      <p>借一字之音或义，使之与另一字成对。分借音对、借义对两种。</p>
+      <div class="ex">例："清"借"青"音对"白"；"厨"借"厨"（厨房）义对"酒"</div>
+    </div>
+    <div class="type-card">
+      <h3>📐 词性对应</h3>
+      <p>对仗基本要求：名对名、动对动、形对形、数对数、副对副、虚对虚。</p>
+      <div class="ex">名词↔名词、动词↔动词、形容词↔形容词、数词↔数词</div>
+    </div>
+    <div class="type-card">
+      <h3>🔁 流水对</h3>
+      <span class="tag">意义连贯</span>
+      <p>上下句意义相承，如流水贯注，对仗中别具一格。</p>
+      <div class="ex">例："行到水穷处，坐看云起时"（王维）</div>
+    </div>
+  </div>
+  
+  <div class="panel" id="panel-examples">
+    <div id="examplesList"></div>
+  </div>
+  
+  <div class="panel" id="panel-source">
+    <div class="source">
+      <h3>📚 数据来源</h3>
+      <p>本工具对仗分类体系依据以下典籍与学界共识：</p>
+      <ul>
+        <li>《声律启蒙》（清·车万裕编）：按平水韵三十韵部分类编排对仗词。</li>
+        <li>《笠翁对韵》（清·李渔编）：分上下卷，按韵部列对仗语汇。</li>
+        <li>传统诗学"三十六门类"分类法（天文、地理、时令、草木、鸟兽、器物、颜色、数目、方位、人事、形体、饮食等）。</li>
+        <li>王力《汉语诗律学》（上海教育出版社）：对仗类型（工对、宽对、借对、流水对）之权威论述。</li>
+        <li>启功《诗文声律论稿》（北京出版社）：对仗词类划分参考。</li>
+      </ul>
+      <p style="margin-top:10px">⚠️ 说明：具体韵部归属、门类细分以原典为准，本工具仅做教学演示，不替代原典查阅。词性标注依现代汉语语法，与传统"虚实"分类略有差异。</p>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-对仗词库 20261021</div>
+
+<script>
+// 数据：按传统诗学门类分类
+const categories = {
+  "天文": {
+    words: ["天","日","月","星","风","云","雨","雪","霜","露","雷","电","霞","雾","虹","烟","岚","霭","霄","汉","阳","阴","晴","晦","晖","曜","魄","轮"],
+    pos: "名词",
+    desc: "天象、气象、光影之类"
+  },
+  "地理": {
+    words: ["山","水","江","河","湖","海","峰","岭","谷","溪","泉","石","沙","土","地","岛","屿","崖","岩","涧","潭","浦","岸","洲","渚","壑","岫","陵","原","野"],
+    pos: "名词",
+    desc: "山川、地形、水陆之类"
+  },
+  "时令": {
+    words: ["春","夏","秋","冬","朝","暮","昼","夜","晨","昏","年","月","日","时","节","晓","晚","夕","曙","暝","岁","旬","刻","更","宵","晷","辰","寒","暑"],
+    pos: "名词",
+    desc: "四时、昼夜、时辰之类"
+  },
+  "器物": {
+    words: ["刀","剑","琴","棋","书","画","钟","鼓","灯","烛","杯","盘","碗","盏","镜","屏","帘","帐","枕","席","床","榻","几","案","箫","笛","弓","箭","帆","桨","舟","车","鞍","鞭"],
+    pos: "名词",
+    desc: "文房、乐器、日用器具之类"
+  },
+  "草木": {
+    words: ["花","草","树","木","柳","桃","梅","竹","松","柏","荷","菊","兰","桂","棠","杏","李","梨","桑","榆","杨","槐","桐","蕉","藤","苔","萍","藻","荇","苇","枫","杉"],
+    pos: "名词",
+    desc: "花卉、树木、藤蔓之类"
+  },
+  "鸟兽": {
+    words: ["龙","凤","虎","豹","马","牛","羊","鸡","犬","鸟","莺","燕","鹤","鸿","雁","鸥","鹭","鹊","鸦","雀","蝶","蜂","蚁","鱼","虾","蟹","龟","蛇","猿","鹿","狐","兔","鹏","鸠"],
+    pos: "名词",
+    desc: "飞禽、走兽、鳞介之类"
+  },
+  "人事": {
+    words: ["人","我","他","君","臣","父","子","兄","弟","夫","妻","友","朋","宾","主","将","兵","士","民","官","宦","儒","侠","仙","佛","僧","道","童","翁","媪","姑","娘"],
+    pos: "名词",
+    desc: "人物、身份、关系之类"
+  },
+  "形体": {
+    words: ["身","心","头","面","眼","耳","口","手","足","骨","肉","发","眉","目","鼻","舌","齿","唇","颜","容","影","魂","胆","肠","胸","腹","腰","臂","掌","指","腮","颈"],
+    pos: "名词",
+    desc: "身体、容貌、精神之类"
+  },
+  "颜色": {
+    words: ["红","白","黑","青","黄","紫","绿","蓝","翠","碧","丹","素","朱","赤","苍","玄","绯","绛","黛","墨","银","金","玉","彩","彤","缃","缥","绀"],
+    pos: "形容词/名词",
+    desc: "色彩、光泽之类"
+  },
+  "数目": {
+    words: ["一","二","三","四","五","六","七","八","九","十","百","千","万","亿","两","双","半","孤","独","群","众","诸","几","数","单","偶"],
+    pos: "数词",
+    desc: "基数、序数、约数之类"
+  },
+  "方位": {
+    words: ["东","西","南","北","上","下","左","右","前","后","内","外","中","间","旁","侧","边","际","央","表","里","顶","底","头","尾","端"],
+    pos: "方位词/名词",
+    desc: "方向、位置之类"
+  },
+  "饮食": {
+    words: ["茶","酒","饭","菜","汤","粥","糕","饼","果","蔬","粮","米","盐","酱","醋","油","肉","笋","蕨","芹","藕","菱","瓜","豆","麦","黍","稷"],
+    pos: "名词",
+    desc: "食物、饮品之类"
+  }
+};
+
+// 建立词→分类索引
+const wordIndex = {};
+for(const cat in categories){
+  categories[cat].words.forEach(w=>{
+    if(!wordIndex[w]) wordIndex[w]=[];
+    if(!wordIndex[w].includes(cat)) wordIndex[w].push(cat);
+  });
+}
+
+// 经典对仗例句
+const examples = [
+  {text:"云对雨，雪对风，晚照对晴空。", src:"《声律启蒙》一东", pairs:[["云","雨"],["雪","风"],["晚照","晴空"]]},
+  {text:"来鸿对去燕，宿鸟对鸣虫。", src:"《声律启蒙》一东", pairs:[["来鸿","去燕"],["宿鸟","鸣虫"]]},
+  {text:"三尺剑，六钧弓，岭北对江东。", src:"《声律启蒙》一东", pairs:[["三尺剑","六钧弓"],["岭北","江东"]]},
+  {text:"人间清暑殿，天上广寒宫。", src:"《声律启蒙》一东", pairs:[["人间","天上"],["清暑殿","广寒宫"]]},
+  {text:"两岸晓烟杨柳绿，一园春雨杏花红。", src:"《声律启蒙》一东", pairs:[["两岸","一园"],["晓烟","春雨"],["杨柳","杏花"],["绿","红"]]},
+  {text:"沿对革，异对同，白叟对黄童。", src:"《声律启蒙》一东", pairs:[["沿","革"],["异","同"],["白叟","黄童"]]},
+  {text:"江风对海雾，牧童对渔翁。", src:"《声律启蒙》一东", pairs:[["江风","海雾"],["牧童","渔翁"]]},
+  {text:"颜巷陋，阮途穷，冀北对辽东。", src:"《声律启蒙》一东", pairs:[["颜巷","阮途"],["冀北","辽东"]]},
+  {text:"池中濯足水，门外打头风。", src:"《声律启蒙》一东", pairs:[["池中","门外"],["濯足水","打头风"]]},
+  {text:"天对地，雨对风，大陆对长空。", src:"《笠翁对韵》一东", pairs:[["天","地"],["雨","风"],["大陆","长空"]]},
+  {text:"山花对海树，赤日对苍穹。", src:"《笠翁对韵》一东", pairs:[["山花","海树"],["赤日","苍穹"]]},
+  {text:"雷隐隐，雾蒙蒙，日下对天中。", src:"《笠翁对韵》一东", pairs:[["雷隐隐","雾蒙蒙"],["日下","天中"]]},
+  {text:"风高秋月白，雨霁晚霞红。", src:"《笠翁对韵》一东", pairs:[["风高","雨霁"],["秋月","晚霞"],["白","红"]]},
+  {text:"河对汉，绿对红，雨伯对雷公。", src:"《笠翁对韵》一东", pairs:[["河","汉"],["绿","红"],["雨伯","雷公"]]},
+  {text:"楼对阁，户对窗，巨海对长江。", src:"《笠翁对韵》三江", pairs:[["楼","阁"],["户","窗"],["巨海","长江"]]},
+  {text:"奇对偶，只对双，大海对长江。", src:"《笠翁对韵》三江", pairs:[["奇","偶"],["只","双"],["大海","长江"]]},
+  {text:"春对夏，秋对冬，暮鼓对晨钟。", src:"《笠翁对韵》二冬", pairs:[["春","夏"],["秋","冬"],["暮鼓","晨钟"]]},
+  {text:"明对暗，淡对浓，上智对中庸。", src:"《笠翁对韵》二冬", pairs:[["明","暗"],["淡","浓"],["上智","中庸"]]}
+];
+
+// Tab切换
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 搜索功能
+const searchInput = document.getElementById('searchInput');
+const searchResult = document.getElementById('searchResult');
+
+function doSearch(){
+  const q = searchInput.value.trim();
+  if(!q){
+    searchResult.innerHTML = '<div class="empty">💡 请输入一个汉字查询对仗词</div>';
+    return;
+  }
+  const cats = wordIndex[q];
+  if(!cats){
+    let found = false;
+    let html = '';
+    for(const cat in categories){
+      categories[cat].words.forEach(w=>{
+        if(w!==q && (w.includes(q) || q.includes(w))){
+          if(!found){
+            html = '<div class="result-box"><h4>🔎 相关匹配</h4><p class="hint">未找到"'+escapeHtml(q)+'"，以下为相关字：</p><div class="word-list">';
+            found = true;
+          }
+          html += '<span class="word-tag" onclick="searchInput.value=\''+w+'\';doSearch()">'+w+'</span>';
+        }
+      });
+    }
+    if(found){
+      html += '</div></div>';
+    } else {
+      html = '<div class="empty">未找到"'+escapeHtml(q)+'"，试试其他字？</div>';
+    }
+    searchResult.innerHTML = html;
+    return;
+  }
+  
+  let html = '';
+  cats.forEach(cat=>{
+    const info = categories[cat];
+    html += '<div class="result-box">';
+    html += '<h4>📂 所属分类：'+cat+' <span class="label">'+info.pos+'</span></h4>';
+    html += '<p style="font-size:13px;color:#8b6f47;margin-bottom:8px">'+info.desc+'</p>';
+    html += '<p style="font-size:13px;margin-bottom:8px"><strong>🎯 工对候选</strong>（同门类词）：</p>';
+    html += '<div class="word-list">';
+    info.words.forEach(w=>{
+      const cls = w===q ? 'word-tag highlight' : 'word-tag';
+      html += '<span class="'+cls+'" onclick="searchInput.value=\''+w+'\';doSearch()">'+w+'</span>';
+    });
+    html += '</div>';
+    html += '</div>';
+  });
+  
+  // 宽对候选
+  const mainPos = categories[cats[0]].pos.split('/')[0];
+  const wideCats = [];
+  for(const cat in categories){
+    if(!cats.includes(cat)){
+      const catPos = categories[cat].pos.split('/')[0];
+      if(catPos === mainPos || (mainPos==='名词' && catPos.includes('名词'))){
+        wideCats.push(cat);
+      }
+    }
+  }
+  if(wideCats.length>0){
+    html += '<div class="result-box">';
+    html += '<h4>🌊 宽对参考</h4>';
+    html += '<p style="font-size:13px;color:#8b6f47;margin-bottom:8px">其他分类中词性相近的门类（宽对）：</p>';
+    html += '<div class="word-list">';
+    wideCats.forEach(cat=>{
+      html += '<span class="word-tag" style="background:#f0e6d2" onclick="switchToBrowse(\''+cat+'\')">'+cat+' →</span>';
+    });
+    html += '</div>';
+    html += '</div>';
+  }
+  
+  // 相关例句
+  const matchedExamples = examples.filter(e=>e.text.includes(q));
+  if(matchedExamples.length>0){
+    html += '<div class="result-box">';
+    html += '<h4>✨ 相关例句</h4>';
+    matchedExamples.slice(0,5).forEach(e=>{
+      html += '<div class="example">'+highlightText(e.text,q)+'<div class="src">—— '+e.src+'</div></div>';
+    });
+    html += '</div>';
+  }
+  
+  searchResult.innerHTML = html;
+}
+
+function highlightText(text, q){
+  return text.replace(new RegExp(escapeRegExp(q),'g'),'<span style="color:#d4574a;font-weight:bold">'+q+'</span>');
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function escapeRegExp(s){
+  return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+}
+
+searchInput.addEventListener('input', doSearch);
+searchInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') doSearch();
+});
+
+// 分类浏览
+const catGrid = document.getElementById('catGrid');
+const catDetail = document.getElementById('catDetail');
+
+function renderCatGrid(){
+  let html = '';
+  for(const cat in categories){
+    html += '<button class="cat-btn" data-cat="'+cat+'">'+cat+'</button>';
+  }
+  catGrid.innerHTML = html;
+  document.querySelectorAll('.cat-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCatDetail(btn.dataset.cat);
+    });
+  });
+}
+
+function renderCatDetail(cat){
+  const info = categories[cat];
+  let html = '<div class="result-box">';
+  html += '<h4>📂 '+cat+' <span class="label">'+info.pos+'</span></h4>';
+  html += '<p style="font-size:13px;color:#8b6f47;margin-bottom:8px">'+info.desc+'</p>';
+  html += '<p style="font-size:13px;margin-bottom:8px">本类词互为<strong>工对</strong>：</p>';
+  html += '<div class="word-list">';
+  info.words.forEach(w=>{
+    html += '<span class="word-tag" onclick="goSearch(\''+w+'\')">'+w+'</span>';
+  });
+  html += '</div>';
+  html += '</div>';
+  
+  const matchedExamples = examples.filter(e=>{
+    return info.words.some(w=>e.text.includes(w));
+  }).slice(0,3);
+  if(matchedExamples.length>0){
+    html += '<div class="result-box">';
+    html += '<h4>✨ 相关例句</h4>';
+    matchedExamples.forEach(e=>{
+      html += '<div class="example">'+e.text+'<div class="src">—— '+e.src+'</div></div>';
+    });
+    html += '</div>';
+  }
+  
+  catDetail.innerHTML = html;
+}
+
+function switchToBrowse(cat){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-tab="browse"]').classList.add('active');
+  document.getElementById('panel-browse').classList.add('active');
+  document.querySelectorAll('.cat-btn').forEach(b=>{
+    b.classList.remove('active');
+    if(b.dataset.cat===cat) b.classList.add('active');
+  });
+  renderCatDetail(cat);
+}
+
+function goSearch(w){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-tab="search"]').classList.add('active');
+  document.getElementById('panel-search').classList.add('active');
+  searchInput.value = w;
+  doSearch();
+}
+
+// 例句
+function renderExamples(){
+  const list = document.getElementById('examplesList');
+  let html = '';
+  examples.forEach(e=>{
+    html += '<div class="example">';
+    html += '<div style="font-size:15px;margin-bottom:4px">'+e.text+'</div>';
+    html += '<div class="src">—— '+e.src+'</div>';
+    if(e.pairs && e.pairs.length>0){
+      html += '<div class="pair-demo">';
+      e.pairs.forEach((p,i)=>{
+        if(i>0) html += '<span class="pair-vs">·</span>';
+        html += '<span class="pair-box">'+p[0]+'</span>';
+        html += '<span class="pair-vs">↔</span>';
+        html += '<span class="pair-box">'+p[1]+'</span>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+// 初始化
+renderCatGrid();
+renderExamples();
+doSearch();
+</script>
+</body>
+</html>

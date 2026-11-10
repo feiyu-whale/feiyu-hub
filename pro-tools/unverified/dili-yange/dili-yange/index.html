@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>历史地名对照工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;background:#f5f0e8;color:#333;font-size:15px;line-height:1.6;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:12px}
+h1{text-align:center;font-size:22px;color:#8b4513;margin:16px 0 4px;letter-spacing:2px}
+.subtitle{text-align:center;font-size:13px;color:#999;margin-bottom:16px}
+.search-box{position:relative;margin-bottom:12px}
+.search-box input{width:100%;padding:10px 14px 10px 36px;border:2px solid #d4c5a9;border-radius:8px;font-size:15px;background:#fff;outline:none;transition:border-color .2s}
+.search-box input:focus{border-color:#8b4513}
+.search-box .icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px}
+.filter-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.filter-bar select{padding:6px 10px;border:1px solid #d4c5a9;border-radius:6px;font-size:13px;background:#fff;color:#333;outline:none;flex:1;min-width:120px}
+.stats{text-align:center;font-size:13px;color:#888;margin-bottom:10px}
+.card-list{display:flex;flex-direction:column;gap:8px}
+.card{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid #8b4513;transition:transform .15s}
+.card:active{transform:scale(.98)}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.ancient-name{font-size:18px;font-weight:700;color:#8b4513}
+.arrow{color:#ccc;font-size:16px}
+.modern-name{font-size:18px;font-weight:700;color:#2d6a4f}
+.card-body{font-size:13px;color:#555;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;line-height:1.6}
+.tag-dynasty{background:#fef3e2;color:#b8860b}
+.tag-province{background:#e8f5e9;color:#2e7d32}
+.tag-note{background:#f3e5f5;color:#7b1fa2}
+.no-result{text-align:center;padding:40px 20px;color:#999;font-size:15px}
+.section-title{font-size:16px;font-weight:700;color:#8b4513;margin:24px 0 8px;padding-bottom:4px;border-bottom:2px solid #d4c5a9}
+.source-box{background:#fff;border-radius:10px;padding:14px;font-size:13px;color:#555;line-height:1.8;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:20px}
+.source-box p{margin-bottom:6px}
+.source-box strong{color:#8b4513}
+.version{position:fixed;right:8px;bottom:8px;font-size:11px;color:#bbb;z-index:99}
+.expand-btn{background:none;border:none;color:#8b4513;font-size:13px;cursor:pointer;padding:2px 4px;text-decoration:underline}
+@media(max-width:640px){
+.container{padding:8px}
+h1{font-size:19px}
+.card{padding:10px 12px}
+.ancient-name,.modern-name{font-size:16px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📜 历史地名对照</h1>
+<p class="subtitle">古今地名查询 · 朝代 · 今属省份</p>
+
+<div class="search-box">
+<span class="icon">🔍</span>
+<input type="text" id="searchInput" placeholder="输入古地名或今地名搜索…">
+</div>
+
+<div class="filter-bar">
+<select id="filterDynasty">
+<option value="">全部朝代</option>
+</select>
+<select id="filterProvince">
+<option value="">全部省份</option>
+</select>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="card-list" id="cardList"></div>
+
+<div class="section-title">📖 数据来源</div>
+<div class="source-box">
+<p><strong>主要依据：</strong></p>
+<p>谭其骧 主编，《中国历史地图集》（共八册），中国地图出版社，1982–1988年出版。</p>
+<p><strong>辅助参考：</strong></p>
+<p>1. 复旦大学历史地理研究中心相关研究成果。</p>
+<p>2. 史为乐 主编，《中国历史地名大辞典》，中国社会科学出版社，2005年。</p>
+<p><strong>说明：</strong></p>
+<p>• 同一古地名在不同朝代可能对应不同今地（如"南京"在辽代指今内蒙古宁城，在明代指今江苏南京），本工具尽量标注主要对应关系。</p>
+<p>• 部分地名古今辖区范围差异较大，今地名取治所（行政中心）所在地。</p>
+<p>• 朝代标注为该地名作为重要行政区划名称的主要使用时期，不代表唯一使用时期。</p>
+</div>
+</div>
+
+<div class="version">v1.0.0-古今地名对照 20261021</div>
+
+<script>
+var DATA = [
+{g:"长安",j:"西安",s:"陕西",d:"西周、秦、西汉、隋、唐",n:"汉唐都城，唐末以后改称西安"},
+{g:"镐京",j:"西安",s:"陕西",d:"西周",n:"西周都城，在今西安市长安区西北"},
+{g:"咸阳",j:"咸阳",s:"陕西",d:"秦",n:"秦都城，在今咸阳市东北"},
+{g:"陈仓",j:"宝鸡",s:"陕西",d:"秦至唐",n:"秦置县，唐至德二年改称宝鸡"},
+{g:"凤翔",j:"凤翔",s:"陕西",d:"唐",n:"唐肃宗时曾为西京"},
+{g:"延州",j:"延安",s:"陕西",d:"隋至元",n:"宋为延安府"},
+{g:"夏州",j:"靖边",s:"陕西",d:"南北朝至宋",n:"治所在今靖边县北白城子，北宋废"},
+{g:"金陵",j:"南京",s:"江苏",d:"战国楚、六朝",n:"楚威王置金陵邑，后世常用作南京别称"},
+{g:"建业",j:"南京",s:"江苏",d:"三国吴",n:"孙权改秣陵为建业，东晋改建康"},
+{g:"建康",j:"南京",s:"江苏",d:"东晋、南朝",n:"东晋至南朝宋齐梁陈都城"},
+{g:"应天",j:"南京",s:"江苏",d:"明初",n:"明洪武元年建都应天府"},
+{g:"江宁",j:"南京",s:"江苏",d:"清",n:"清设江宁府，为两江总督驻地"},
+{g:"天京",j:"南京",s:"江苏",d:"太平天国",n:"太平天国定都后改名天京"},
+{g:"京口",j:"镇江",s:"江苏",d:"三国吴至南朝",n:"孙权筑铁瓮城，南朝为军事重镇"},
+{g:"广陵",j:"扬州",s:"江苏",d:"汉",n:"汉广陵国，后为扬州治所"},
+{g:"江都",j:"扬州",s:"江苏",d:"隋",n:"隋炀帝幸江都，即今扬州"},
+{g:"姑苏",j:"苏州",s:"江苏",d:"春秋吴",n:"吴王阖闾筑阖闾大城，即今苏州"},
+{g:"吴郡",j:"苏州",s:"江苏",d:"秦汉至隋",n:"秦置会稽郡，东汉分置吴郡"},
+{g:"平江",j:"苏州",s:"江苏",d:"宋元",n:"宋为平江府，元为平江路"},
+{g:"汴梁",j:"开封",s:"河南",d:"五代、北宋",n:"北宋都城东京开封府，又称汴京"},
+{g:"汴京",j:"开封",s:"河南",d:"北宋",n:"即东京开封府"},
+{g:"东京",j:"开封",s:"河南",d:"北宋",n:"北宋都城，正式名称为东京开封府"},
+{g:"汴州",j:"开封",s:"河南",d:"唐",n:"唐设汴州，后梁升为开封府"},
+{g:"洛邑",j:"洛阳",s:"河南",d:"西周",n:"周成王营建洛邑，为东都"},
+{g:"洛阳",j:"洛阳",s:"河南",d:"东周、东汉、曹魏、西晋、北魏、武周",n:"多朝都城或陪都"},
+{g:"洛邑",j:"洛阳",s:"河南",d:"东周",n:"周平王东迁洛邑"},
+{g:"神都",j:"洛阳",s:"河南",d:"武周",n:"武则天改洛阳为神都"},
+{g:"东都",j:"洛阳",s:"河南",d:"隋唐",n:"隋唐以洛阳为东都"},
+{g:"西京",j:"洛阳",s:"河南",d:"北宋",n:"北宋以洛阳为西京"},
+{g:"许昌",j:"许昌",s:"河南",d:"曹魏",n:"曹魏初都许昌，后迁洛阳"},
+{g:"邺城",j:"临漳",s:"河北",d:"曹魏、后赵、冉魏、前燕、东魏、北齐",n:"治所在今河北临漳县西南邺镇"},
+{g:"真定",j:"正定",s:"河北",d:"汉至清",n:"汉置真定国，清雍正元年改正定"},
+{g:"常山",j:"正定",s:"河北",d:"汉",n:"汉置常山郡，治所在今正定"},
+{g:"涿郡",j:"涿州",s:"河北",d:"隋",n:"隋置涿郡，治所在今涿州市"},
+{g:"蓟",j:"北京",s:"北京",d:"战国燕",n:"燕国都城蓟，在今北京城区西南"},
+{g:"燕京",j:"北京",s:"北京",d:"辽",n:"辽设南京析津府，又称燕京"},
+{g:"中都",j:"北京",s:"北京",d:"金",n:"金贞元元年迁都中都"},
+{g:"大都",j:"北京",s:"北京",d:"元",n:"元世祖建大都，为元朝都城"},
+{g:"顺天",j:"北京",s:"北京",d:"清",n:"清设顺天府"},
+{g:"盛京",j:"沈阳",s:"辽宁",d:"清",n:"清入关前都城，后为留都"},
+{g:"奉天",j:"沈阳",s:"辽宁",d:"清",n:"清设奉天府，民国初改沈阳"},
+{g:"上京",j:"巴林左旗",s:"内蒙古",d:"辽",n:"辽上京临潢府，在今内蒙古巴林左旗南"},
+{g:"中京",j:"宁城",s:"内蒙古",d:"辽",n:"辽中京大定府，在今内蒙古宁城县"},
+{g:"晋阳",j:"太原",s:"山西",d:"春秋至唐",n:"春秋晋国都城，唐为北都"},
+{g:"并州",j:"太原",s:"山西",d:"汉",n:"汉并州刺史部治晋阳"},
+{g:"平阳",j:"临汾",s:"山西",d:"汉至南北朝",n:"汉置平阳县，治所在今临汾西南"},
+{g:"蒲州",j:"永济",s:"山西",d:"唐至清",n:"治所在今永济市蒲州镇"},
+{g:"临安",j:"杭州",s:"浙江",d:"南宋",n:"南宋行在临安府，实际都城"},
+{g:"钱塘",j:"杭州",s:"浙江",d:"秦汉",n:"秦置钱塘县"},
+{g:"余杭",j:"杭州",s:"浙江",d:"秦",n:"秦置余杭县，与钱塘同属会稽郡"},
+{g:"明州",j:"宁波",s:"浙江",d:"唐至元",n:"唐开元二十六年置明州，明改宁波府"},
+{g:"越州",j:"绍兴",s:"浙江",d:"隋至南宋",n:"南宋升为绍兴府"},
+{g:"会稽",j:"绍兴",s:"浙江",d:"秦至隋",n:"秦置会稽郡，治所在今绍兴"},
+{g:"婺州",j:"金华",s:"浙江",d:"隋至元",n:"隋置婺州，元改婺州路"},
+{g:"豫章",j:"南昌",s:"江西",d:"汉",n:"汉置豫章郡，治所在今南昌"},
+{g:"洪州",j:"南昌",s:"江西",d:"唐至宋",n:"唐设洪州都督府，宋改隆兴府"},
+{g:"江州",j:"九江",s:"江西",d:"晋至唐",n:"晋置江州，治所在今九江"},
+{g:"吉州",j:"吉安",s:"江西",d:"隋至元",n:"隋置吉州，元改吉安路"},
+{g:"虔州",j:"赣州",s:"江西",d:"隋至宋",n:"隋置虔州，宋改赣州"},
+{g:"庐州",j:"合肥",s:"安徽",d:"隋至元",n:"隋置庐州，元改庐州路"},
+{g:"寿春",j:"寿县",s:"安徽",d:"汉",n:"汉置寿春县，为淮南国都"},
+{g:"寿州",j:"寿县",s:"安徽",d:"隋至清",n:"隋改寿州"},
+{g:"徽州",j:"歙县",s:"安徽",d:"宋至清",n:"宋宣和三年改歙州为徽州，治所在歙县"},
+{g:"江夏",j:"武汉",s:"湖北",d:"隋至清",n:"隋置江夏县，为鄂州、武昌府治所"},
+{g:"鄂州",j:"武汉",s:"湖北",d:"三国吴至元",n:"三国吴黄武二年置鄂州，治所在今鄂州；隋唐后鄂州治江夏即今武汉武昌"},
+{g:"江陵",j:"荆州",s:"湖北",d:"春秋楚至清",n:"楚郢都所在，汉为江陵县，历代为荆州治所"},
+{g:"襄阳",j:"襄阳",s:"湖北",d:"汉至清",n:"汉置襄阳县，历代为军事重镇"},
+{g:"潭州",j:"长沙",s:"湖南",d:"隋唐至元",n:"隋唐置潭州，元改潭州路"},
+{g:"衡州",j:"衡阳",s:"湖南",d:"隋至清",n:"隋置衡州"},
+{g:"岳州",j:"岳阳",s:"湖南",d:"隋至清",n:"隋置岳州，宋为岳州巴陵郡"},
+{g:"朗州",j:"常德",s:"湖南",d:"隋至宋",n:"隋置朗州，宋改鼎州"},
+{g:"武陵",j:"常德",s:"湖南",d:"汉",n:"汉置武陵郡，治所在今常德"},
+{g:"益州",j:"成都",s:"四川",d:"汉",n:"汉置益州刺史部，治所在今成都"},
+{g:"蜀郡",j:"成都",s:"四川",d:"秦至隋",n:"秦置蜀郡，治所在今成都"},
+{g:"梓州",j:"三台",s:"四川",d:"隋唐至宋",n:"治所在今三台县"},
+{g:"渝州",j:"重庆",s:"重庆",d:"隋至北宋",n:"隋改楚州为渝州，北宋改恭州"},
+{g:"恭州",j:"重庆",s:"重庆",d:"南宋",n:"南宋淳熙十六年升恭州为重庆府"},
+{g:"番禺",j:"广州",s:"广东",d:"秦汉",n:"秦置南海郡，治所在番禺"},
+{g:"南海",j:"广州",s:"广东",d:"隋唐",n:"隋改番禺县为南海县，为广州治所"},
+{g:"桂州",j:"桂林",s:"广西",d:"隋唐至宋",n:"隋置桂州，唐为桂管经略使驻地"},
+{g:"邕州",j:"南宁",s:"广西",d:"唐至元",n:"唐置邕州，元改南宁路"},
+{g:"柳州",j:"柳州",s:"广西",d:"唐至清",n:"唐置柳州，柳宗元曾任柳州刺史"},
+{g:"交州",j:"河内",s:"越南",d:"汉至唐",n:"汉置交州，治所在今越南河内"},
+{g:"琼州",j:"海口",s:"海南",d:"唐至元",n:"唐置琼州，治所在今海口琼山区"},
+{g:"崖州",j:"三亚",s:"海南",d:"隋至宋",n:"治所历代有迁移，宋以后在今三亚"},
+{g:"福州",j:"福州",s:"福建",d:"唐至清",n:"唐开元十三年改闽州为福州"},
+{g:"泉州",j:"福州",s:"福建",d:"隋",n:"隋置泉州，治所在今福州；唐以后泉州指今泉州市"},
+{g:"建州",j:"建瓯",s:"福建",d:"唐至宋",n:"治所在今建瓯市"},
+{g:"汀州",j:"长汀",s:"福建",d:"唐至清",n:"唐置汀州，治所在今长汀县"},
+{g:"凉州",j:"武威",s:"甘肃",d:"汉至唐",n:"汉置凉州刺史部，治所在今武威"},
+{g:"甘州",j:"张掖",s:"甘肃",d:"隋至元",n:"隋置甘州，治所在今张掖"},
+{g:"肃州",j:"酒泉",s:"甘肃",d:"隋至清",n:"隋置肃州，治所在今酒泉"},
+{g:"沙州",j:"敦煌",s:"甘肃",d:"汉至宋",n:"汉置敦煌郡，隋改敦煌为沙州"},
+{g:"秦州",j:"天水",s:"甘肃",d:"汉至清",n:"汉置汉阳郡，后改称秦州"},
+{g:"兴庆",j:"银川",s:"宁夏",d:"西夏",n:"西夏都城兴庆府"},
+{g:"灵州",j:"灵武",s:"宁夏",d:"隋至西夏",n:"隋置灵州，治所在今灵武"},
+{g:"鄯州",j:"乐都",s:"青海",d:"隋至唐",n:"治所在今海东市乐都区"},
+{g:"西平",j:"西宁",s:"青海",d:"宋",n:"宋设西宁卫，取'西陲安宁'之意"},
+{g:"上京",j:"哈尔滨",s:"黑龙江",d:"金",n:"金上京会宁府，在今哈尔滨市阿城区"},
+{g:"东京",j:"辽阳",s:"辽宁",d:"辽",n:"辽东京辽阳府，在今辽阳市"},
+{g:"中京",j:"洛阳",s:"河南",d:"曹魏",n:"曹魏以洛阳为中京（一说仍称洛阳）"},
+{g:"西京",j:"西安",s:"陕西",d:"唐、北宋",n:"唐以长安为西京，北宋以长安为西京"},
+{g:"南京",j:"商丘",s:"河南",d:"宋",n:"北宋以宋州（今商丘）为南京"},
+{g:"北京",j:"大名",s:"河北",d:"北宋",n:"北宋以大名府为北京"},
+{g:"南京",j:"成都",s:"四川",d:"唐",n:"唐至德二年以蜀郡为南京"},
+{g:"北京",j:"太原",s:"山西",d:"唐",n:"唐以并州为北京"},
+{g:"西京",j:"大同",s:"山西",d:"辽",n:"辽西京大同府"},
+{g:"南京",j:"大定",s:"内蒙古",d:"辽",n:"辽南京析津府一说又称燕京，此指辽中京大定府附近"},
+{g:"中都",j:"大定",s:"内蒙古",n:"金初沿辽制，后迁都燕京改称中都",d:"金初"},
+{g:"上京",j:"宁城",s:"内蒙古",d:"金",n:"金上京会宁府初在会宁（哈尔滨阿城），后有多次迁移争议，此处取主流说法"},
+{g:"归德",j:"商丘",s:"河南",d:"宋至清",n:"宋为归德府"},
+{g:"汝南",j:"汝南",s:"河南",d:"汉",n:"汉置汝南郡，治所在今汝南县"},
+{g:"陈留",j:"开封",s:"河南",d:"汉",n:"汉置陈留郡，治所在今开封东南"},
+{g:"颍川",j:"许昌",s:"河南",d:"汉",n:"汉置颍川郡，治所在今禹州；东汉末荀彧为颍川人"},
+{g:"南阳",j:"南阳",s:"河南",d:"汉至清",n:"汉置南阳郡，治所在今南阳市"},
+{g:"汉中",j:"汉中",s:"陕西",d:"汉至清",n:"汉置汉中郡，治所在今汉中市"},
+{g:"天水",j:"天水",s:"甘肃",d:"汉",n:"汉置天水郡"},
+{g:"安定",j:"泾川",s:"甘肃",d:"汉",n:"汉置安定郡，治所在今泾川县"},
+{g:"陇西",j:"陇西",s:"甘肃",d:"汉至唐",n:"汉置陇西郡，治所在今陇西县"},
+{g:"武威",j:"武威",s:"甘肃",d:"汉",n:"汉武帝置武威郡"},
+{g:"张掖",j:"张掖",s:"甘肃",d:"汉",n:"汉武帝置张掖郡"},
+{g:"敦煌",j:"敦煌",s:"甘肃",d:"汉",n:"汉武帝置敦煌郡"},
+{g:"酒泉",j:"酒泉",s:"甘肃",d:"汉",n:"汉武帝置酒泉郡"},
+{g:"金城",j:"兰州",s:"甘肃",d:"汉",n:"汉置金城郡，治所在今兰州西固"},
+{g:"狄道",j:"临洮",s:"甘肃",d:"汉至唐",n:"汉置狄道县，为陇西郡治"},
+{g:"梓潼",j:"梓潼",s:"四川",d:"汉",n:"汉置梓潼郡"},
+{g:"巴郡",j:"重庆",s:"重庆",d:"汉",n:"汉置巴郡，治所在江州（今重庆）"},
+{g:"犍为",j:"彭山",s:"四川",d:"汉",n:"汉置犍为郡，治所在今彭山区"},
+{g:"牂牁",j:"贵定",s:"贵州",d:"汉",n:"汉置牂牁郡，治所在今贵州贵定附近"},
+{g:"越嶲",j:"西昌",s:"四川",d:"汉",n:"汉置越嶲郡，治所在今西昌"},
+{g:"益州",j:"成都",s:"四川",d:"汉",n:"汉置益州刺史部"},
+{g:"交趾",j:"河内",s:"越南",d:"汉",n:"汉置交趾郡，治所在今越南河内西北"},
+{g:"九真",j:"清化",s:"越南",d:"汉",n:"汉置九真郡，治所在今越南清化"},
+{g:"日南",j:"广治",s:"越南",d:"汉",n:"汉置日南郡，治所在今越南广治西北"},
+{g:"南海",j:"广州",s:"广东",d:"汉",n:"汉置南海郡，治所在番禺（今广州）"},
+{g:"苍梧",j:"梧州",s:"广西",d:"汉",n:"汉置苍梧郡，治所在今梧州"},
+{g:"郁林",j:"桂平",s:"广西",d:"汉",n:"汉置郁林郡，治所在今桂平西"},
+{g:"合浦",j:"合浦",s:"广西",d:"汉",n:"汉置合浦郡，治所在今合浦县"},
+{g:"象郡",j:"崇左",s:"广西",d:"秦",n:"秦置象郡，治所说法不一，一说在今崇左"},
+{g:"长沙",j:"长沙",s:"湖南",d:"汉",n:"汉置长沙国"},
+{g:"零陵",j:"永州",s:"湖南",d:"汉",n:"汉置零陵郡，治所在今永州零陵区"},
+{g:"武陵",j:"常德",s:"湖南",d:"汉",n:"汉置武陵郡"},
+{g:"丹阳",j:"当涂",s:"安徽",d:"汉",n:"汉置丹阳郡，治所在今当涂县东北"},
+{g:"庐江",j:"庐江",s:"安徽",d:"汉",n:"汉置庐江郡，治所历代有迁移"},
+{g:"九江",j:"寿县",s:"安徽",d:"汉",n:"汉置九江郡，治所在寿春（今寿县）"},
+{g:"沛郡",j:"淮北",s:"安徽",d:"汉",n:"汉置沛郡，治所在今淮北市"},
+{g:"会稽",j:"绍兴",s:"浙江",d:"秦",n:"秦置会稽郡，治所在吴县（今苏州）；东汉分会稽，治所移至山阴（今绍兴）"},
+{g:"吴郡",j:"苏州",s:"江苏",d:"东汉",n:"东汉分会稽郡置吴郡"},
+{g:"广陵",j:"扬州",s:"江苏",d:"汉",n:"汉置广陵国"},
+{g:"彭城",j:"徐州",s:"江苏",d:"汉",n:"汉置楚国，都彭城（今徐州）"},
+{g:"下邳",j:"邳州",s:"江苏",d:"汉至南北朝",n:"汉置下邳国"},
+{g:"东海",j:"郯城",s:"山东",d:"汉",n:"汉置东海郡，治所在郯县（今郯城）"},
+{g:"琅琊",j:"临沂",s:"山东",d:"秦至隋",n:"秦置琅琊郡，治所在今青岛附近；东汉移治开阳（今临沂）"},
+{g:"齐郡",j:"淄博",s:"山东",d:"汉",n:"汉置齐郡，治所在临淄（今淄博临淄区）"},
+{g:"临淄",j:"淄博",s:"山东",d:"春秋战国",n:"齐国都城临淄"},
+{g:"济南",j:"章丘",s:"山东",d:"汉",n:"汉置济南郡，治所在东平陵（今章丘）"},
+{g:"平原",j:"平原",s:"山东",d:"汉",n:"汉置平原郡"},
+{g:"清河",j:"清河",s:"河北",d:"汉",n:"汉置清河郡"},
+{g:"河内",j:"沁阳",s:"河南",d:"汉",n:"汉置河内郡，治所在怀县（今武陟西南）"},
+{g:"河东",j:"夏县",s:"山西",d:"汉",n:"汉置河东郡，治所在安邑（今夏县西北）"},
+{g:"弘农",j:"灵宝",s:"河南",d:"汉",n:"汉置弘农郡，治所在今灵宝东北"},
+{g:"陈郡",j:"淮阳",s:"河南",d:"汉",n:"汉置陈郡（后为陈国）"},
+{g:"梁国",j:"商丘",s:"河南",d:"汉",n:"汉置梁国，都睢阳（今商丘）"},
+{g:"魏郡",j:"临漳",s:"河北",d:"汉",n:"汉置魏郡，治所在邺县（今临漳西南）"},
+{g:"赵国",j:"邯郸",s:"河北",d:"汉",n:"汉置赵国，都邯郸"},
+{g:"中山",j:"定州",s:"河北",d:"汉",n:"汉置中山国，治所在今定州"},
+{g:"渤海",j:"南皮",s:"河北",d:"汉",n:"汉置渤海郡，治所在今南皮"},
+{g:"渔阳",j:"蓟州",s:"天津",d:"汉",n:"汉置渔阳郡，治所在今蓟州区（天津）"},
+{g:"右北平",j:"唐山",s:"河北",d:"汉",n:"汉置右北平郡，治所在今唐山附近"},
+{g:"辽东",j:"辽阳",s:"辽宁",d:"汉",n:"汉置辽东郡，治所在襄平（今辽阳）"},
+{g:"辽西",j:"卢龙",s:"河北",d:"汉",n:"汉置辽西郡，治所在阳乐（今卢龙东）"},
+{g:"乐浪",j:"平壤",s:"朝鲜",d:"汉",n:"汉武帝置乐浪郡，治所在朝鲜县（今平壤南）"},
+{g:"玄菟",j:"沈阳",s:"辽宁",d:"汉",n:"汉置玄菟郡，治所历代有迁移"},
+{g:"五原",j:"包头",s:"内蒙古",d:"汉",n:"汉置五原郡，治所在今包头西"},
+{g:"朔方",j:"杭锦旗",s:"内蒙古",d:"汉",n:"汉置朔方郡，治所在今杭锦旗北"},
+{g:"云中",j:"托克托",s:"内蒙古",d:"汉",n:"汉置云中郡，治所在今托克托"},
+{g:"雁门",j:"代县",s:"山西",d:"汉",n:"汉置雁门郡，治所在今代县"},
+{g:"代郡",j:"蔚县",s:"河北",d:"汉",n:"汉置代郡，治所在今蔚县东北"},
+{g:"上谷",j:"易县",s:"河北",d:"汉",n:"汉置上谷郡，治所在沮阳（今怀来东南）"},
+{g:"涿郡",j:"涿州",s:"河北",d:"汉",n:"汉置涿郡"},
+{g:"广阳",j:"北京",s:"北京",d:"汉",n:"汉置广阳郡"},
+{g:"张掖",j:"张掖",s:"甘肃",d:"汉",n:"汉武帝置张掖郡，取'张国臂掖'之意"},
+{g:"武威",j:"武威",s:"甘肃",d:"汉",n:"汉武帝置武威郡"},
+{g:"酒泉",j:"酒泉",s:"甘肃",d:"汉",n:"汉武帝置酒泉郡"},
+{g:"敦煌",j:"敦煌",s:"甘肃",d:"汉",n:"汉武帝置敦煌郡"},
+{g:"金城",j:"兰州",s:"甘肃",d:"汉",n:"汉昭帝置金城郡"},
+{g:"西海",j:"海晏",s:"青海",d:"新莽",n:"王莽置西海郡，治所在今海晏县"},
+{g:"蜀",j:"成都",s:"四川",d:"古蜀国",n:"古蜀国都城，在今成都"},
+{g:"巴",j:"重庆",s:"重庆",d:"古巴国",n:"古巴国都城，在今重庆"},
+{g:"楚",j:"荆州",s:"湖北",d:"春秋战国",n:"楚郢都在今荆州纪南城"},
+{g:"吴",j:"苏州",s:"江苏",d:"春秋",n:"吴国都城阖闾城，在今苏州"},
+{g:"越",j:"绍兴",s:"浙江",d:"春秋",n:"越国都城，在今绍兴"},
+{g:"蓟",j:"北京",s:"北京",d:"西周",n:"西周燕国封于蓟"},
+{g:"朝歌",j:"淇县",s:"河南",d:"商",n:"商代晚期都城之一，在今淇县"},
+{g:"殷",j:"安阳",s:"河南",d:"商",n:"商王盘庚迁殷，在今安阳殷墟"},
+{g:"亳",j:"商丘",s:"河南",d:"商",n:"商汤都城亳，一说在今商丘"},
+{g:"偃师",j:"偃师",s:"河南",d:"夏",n:"二里头遗址在今偃师，被认为是夏都"},
+{g:"阳城",j:"登封",s:"河南",d:"夏",n:"传说禹都阳城，在今登封告成镇"},
+{g:"安邑",j:"夏县",s:"山西",d:"夏",n:"传说夏都安邑，在今夏县"}
+];
+
+// Deduplicate by ancient name + modern name + dynasty
+var seen = {};
+var data = [];
+for (var i = 0; i < DATA.length; i++) {
+  var key = DATA[i].g + "|" + DATA[i].j + "|" + DATA[i].d;
+  if (!seen[key]) {
+    seen[key] = true;
+    data.push(DATA[i]);
+  }
+}
+
+var searchInput = document.getElementById("searchInput");
+var filterDynasty = document.getElementById("filterDynasty");
+var filterProvince = document.getElementById("filterProvince");
+var cardList = document.getElementById("cardList");
+var statsEl = document.getElementById("stats");
+
+// Populate filters
+var dynasties = {};
+var provinces = {};
+for (var i = 0; i < data.length; i++) {
+  var ds = data[i].d.split(/[、，,]/);
+  for (var j = 0; j < ds.length; j++) {
+    var dd = ds[j].replace(/^\s+|\s+$/g, "");
+    if (dd) dynasties[dd] = true;
+  }
+  if (data[i].s) provinces[data[i].s] = true;
+}
+
+var dKeys = Object.keys(dynasties).sort();
+for (var i = 0; i < dKeys.length; i++) {
+  var opt = document.createElement("option");
+  opt.value = dKeys[i];
+  opt.textContent = dKeys[i];
+  filterDynasty.appendChild(opt);
+}
+
+var pKeys = Object.keys(provinces).sort();
+for (var i = 0; i < pKeys.length; i++) {
+  var opt = document.createElement("option");
+  opt.value = pKeys[i];
+  opt.textContent = pKeys[i];
+  filterProvince.appendChild(opt);
+}
+
+function render() {
+  var q = searchInput.value.replace(/^\s+|\s+$/g, "").toLowerCase();
+  var fd = filterDynasty.value;
+  var fp = filterProvince.value;
+  var filtered = [];
+
+  for (var i = 0; i < data.length; i++) {
+    var item = data[i];
+    // Search filter
+    if (q) {
+      var haystack = (item.g + item.j + item.s + item.d + (item.n || "")).toLowerCase();
+      if (haystack.indexOf(q) === -1) continue;
+    }
+    // Dynasty filter
+    if (fd) {
+      if (item.d.indexOf(fd) === -1) continue;
+    }
+    // Province filter
+    if (fp) {
+      if (item.s !== fp) continue;
+    }
+    filtered.push(item);
+  }
+
+  statsEl.textContent = "共 " + filtered.length + " 条结果";
+
+  if (filtered.length === 0) {
+    cardList.innerHTML = '<div class="no-result">😔 未找到匹配的地名</div>';
+    return;
+  }
+
+  var html = "";
+  for (var i = 0; i < filtered.length; i++) {
+    var item = filtered[i];
+    html += '<div class="card">';
+    html += '<div class="card-top">';
+    html += '<span class="ancient-name">' + esc(item.g) + '</span>';
+    html += '<span class="arrow">→</span>';
+    html += '<span class="modern-name">' + esc(item.j) + '</span>';
+    html += '</div>';
+    html += '<div class="card-body">';
+    html += '<span class="tag tag-dynasty">📅 ' + esc(item.d) + '</span>';
+    html += '<span class="tag tag-province">📍 ' + esc(item.s) + '</span>';
+    if (item.n) {
+      html += '<span class="tag tag-note">📝 ' + esc(item.n) + '</span>';
+    }
+    html += '</div>';
+    html += '</div>';
+  }
+  cardList.innerHTML = html;
+}
+
+function esc(s) {
+  var d = document.createElement("div");
+  d.appendChild(document.createTextNode(s));
+  return d.innerHTML;
+}
+
+searchInput.addEventListener("input", render);
+filterDynasty.addEventListener("change", render);
+filterProvince.addEventListener("change", render);
+
+render();
+</script>
+</body>
+</html>

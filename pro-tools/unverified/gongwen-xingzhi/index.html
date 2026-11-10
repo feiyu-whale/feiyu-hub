@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>公文行文关系查询 · 15种法定公文</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f1ea; color: #2c2c2c; font-size: 14px; line-height: 1.6; }
+  .container { max-width: 640px; margin: 0 auto; padding: 16px 14px 80px; }
+  header { background: linear-gradient(135deg, #a02020 0%, #7a1818 100%); color: #fff; padding: 20px 16px; border-radius: 10px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(160,32,32,0.15); }
+  header h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; }
+  header p { font-size: 13px; opacity: 0.92; line-height: 1.5; }
+  .legend { background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .legend-title { font-size: 13px; font-weight: 600; color: #a02020; margin-bottom: 8px; }
+  .legend-items { display: flex; flex-wrap: wrap; gap: 8px; }
+  .legend-item { display: inline-flex; align-items: center; font-size: 12px; color: #555; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; display: inline-block; }
+  .dot.up { background: #d97706; }
+  .dot.down { background: #a02020; }
+  .dot.parallel { background: #0369a1; }
+  .dot.multi { background: linear-gradient(135deg, #d97706 33%, #a02020 33% 66%, #0369a1 66%); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .search { flex: 1; min-width: 160px; padding: 9px 12px; border: 1px solid #d6cfc2; border-radius: 8px; font-size: 14px; background: #fff; outline: none; transition: border-color 0.2s; }
+  .search:focus { border-color: #a02020; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filter-btn { padding: 7px 12px; border: 1px solid #d6cfc2; background: #fff; border-radius: 8px; font-size: 13px; color: #555; cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { background: #a02020; color: #fff; border-color: #a02020; }
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+  .card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: box-shadow 0.2s; border-left: 4px solid #d6cfc2; }
+  .card.up { border-left-color: #d97706; }
+  .card.down { border-left-color: #a02020; }
+  .card.parallel { border-left-color: #0369a1; }
+  .card.multi { border-left: 4px solid; border-image: linear-gradient(to bottom, #d97706 0%, #d97706 33%, #a02020 33%, #a02020 66%, #0369a1 66%, #0369a1 100%) 1; }
+  .card-head { padding: 12px 14px; display: flex; align-items: center; cursor: pointer; user-select: none; }
+  .card-emoji { font-size: 26px; margin-right: 10px; flex-shrink: 0; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-size: 16px; font-weight: 700; color: #2c2c2c; margin-bottom: 2px; }
+  .card-dir { font-size: 12px; color: #777; display: flex; flex-wrap: wrap; gap: 4px; }
+  .dir-tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px; }
+  .dir-tag.up { background: #fef3c7; color: #92400e; }
+  .dir-tag.down { background: #fee2e2; color: #991b1b; }
+  .dir-tag.parallel { background: #dbeafe; color: #1e40af; }
+  .card-arrow { font-size: 14px; color: #999; transition: transform 0.25s; margin-left: 6px; }
+  .card.open .card-arrow { transform: rotate(90deg); }
+  .card-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .card.open .card-body { max-height: none; }
+  .card-content { padding: 0 14px 14px; border-top: 1px dashed #e8e2d6; }
+  .section { margin-top: 12px; }
+  .section-title { font-size: 13px; font-weight: 600; color: #a02020; margin-bottom: 6px; display: flex; align-items: center; }
+  .section-title::before { content: ""; display: inline-block; width: 3px; height: 12px; background: #a02020; margin-right: 6px; border-radius: 2px; }
+  .section-text { font-size: 13px; color: #444; line-height: 1.7; }
+  .element-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .element-tag { font-size: 12px; padding: 3px 8px; background: #f5f1ea; color: #555; border-radius: 4px; border: 1px solid #e8e2d6; }
+  .element-tag.special { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .note { font-size: 12px; color: #777; background: #faf7f2; padding: 8px 10px; border-radius: 6px; margin-top: 8px; line-height: 1.6; }
+  .note::before { content: "⚠️ "; }
+  .source { background: #fff; border-radius: 10px; padding: 14px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .source h3 { font-size: 14px; color: #a02020; margin-bottom: 8px; }
+  .source ol { padding-left: 20px; font-size: 12px; color: #555; line-height: 1.8; }
+  .source li { margin-bottom: 2px; }
+  .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 13px; }
+  .version { position: fixed; right: 10px; bottom: 8px; font-size: 10px; color: #aaa; background: rgba(255,255,255,0.8); padding: 2px 6px; border-radius: 4px; z-index: 10; }
+  @media (max-width: 380px) {
+    header h1 { font-size: 18px; }
+    .card-name { font-size: 15px; }
+    .card-emoji { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📜 公文行文关系查询</h1>
+    <p>依据《党政机关公文处理工作条例》（中办发〔2012〕14号）列示 15 种法定公文的适用范围、行文方向与格式要素。</p>
+  </header>
+
+  <div class="legend">
+    <div class="legend-title">🧭 行文方向图例</div>
+    <div class="legend-items">
+      <span class="legend-item"><span class="dot up"></span>上行文</span>
+      <span class="legend-item"><span class="dot down"></span>下行文</span>
+      <span class="legend-item"><span class="dot parallel"></span>平行文</span>
+      <span class="legend-item"><span class="dot multi"></span>多向行文</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" class="search" id="search" placeholder="🔍 搜索文种名称或适用范围…">
+  </div>
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-dir="all">全部</button>
+    <button class="filter-btn" data-dir="上行">上行文</button>
+    <button class="filter-btn" data-dir="下行">下行文</button>
+    <button class="filter-btn" data-dir="平行">平行文</button>
+    <button class="filter-btn" data-dir="多向">多向行文</button>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <section class="source">
+    <h3>📚 数据来源</h3>
+    <ol>
+      <li>中共中央办公厅、国务院办公厅：《党政机关公文处理工作条例》（中办发〔2012〕14 号，2012 年 4 月 16 日发布，2012 年 7 月 1 日起施行）第八条（公文种类）、第九条（公文格式）、第十四条至第十八条（行文规则）。</li>
+      <li>中华人民共和国国家标准 GB/T 9704—2012《党政机关公文格式》（2012-06-29 发布，2012-07-01 实施）：规定了公文通用的纸张要求、排版与印制要求，以及各格式要素编排规则。</li>
+      <li>中华人民共和国国家标准 GB/T 9705—2008《文书档案案卷格式》（相关配套标准）。</li>
+      <li>本页面所列"适用范围"均逐字引自《条例》第八条原文；"行文方向"依据《条例》第三章行文规则（第十四条至第二十一条）归纳；"格式要素"依据 GB/T 9704—2012 第 7 章"公文格式各要素编排规则"归纳，具体表值（如份号、密级、紧急程度、发文字号、签发人、标题、主送机关、正文、附件说明、发文机关署名、成文日期、印章、附注、抄送机关、印发机关和印发日期、页码等）的编排细则请查标准原文。</li>
+    </ol>
+  </section>
+</div>
+
+<div class="version">v1.0.1-公文行文关系 20261021-修审查问题 20261108</div>
+
+<script>
+(function(){
+  // 数据：适用范围严格引自《党政机关公文处理工作条例》第八条原文
+  var docs = [
+    {
+      id: "jueyi", name: "决议", emoji: "📜",
+      scope: "适用于会议讨论通过的重大决策事项。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","发文字号","标题","正文","成文日期","印章","页码"],
+      special: ["须经会议（如党代会、人代会、全会等）讨论通过方可发布"],
+      note: "决议体现会议集体意志，通常以会议名义发布。"
+    },
+    {
+      id: "jueding", name: "决定", emoji: "⚖️",
+      scope: "适用于对重要事项作出决策和部署、奖惩有关单位和人员、变更或者撤销下级机关不适当的决定事项。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","发文字号","标题","正文","成文日期","印章","页码"],
+      special: ["可用于奖惩、变更或撤销下级不适当事项"],
+      note: "决定具有强制性和约束力，下级必须执行。"
+    },
+    {
+      id: "mingling", name: "命令（令）", emoji: "📯",
+      scope: "适用于公布行政法规和规章、宣布施行重大强制性措施、批准授予和晋升衔级、嘉奖有关单位和人员。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","令号","标题","正文","签发人署名","成文日期","页码"],
+      special: ["令号","签发人署名（签署人职务+姓名）"],
+      note: "命令（令）由法定机关首长签署发布，依宪法和组织法规定的权限使用。"
+    },
+    {
+      id: "gongbao", name: "公报", emoji: "📢",
+      scope: "适用于公布重要决定或者重大事项。",
+      direction: ["下行","平行"],
+      dirType: "multi",
+      elements: ["发文机关标志","标题","正文","成文日期","页码"],
+      special: ["可向社会公开发布"],
+      note: "常见如会议公报、统计公报、联合公报等，具有权威性和公开性。"
+    },
+    {
+      id: "gonggao", name: "公告", emoji: "📣",
+      scope: "适用于向国内外宣布重要事项或者法定事项。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","发文字号","标题","正文","成文日期","印章","页码"],
+      special: ["面向国内外发布"],
+      note: "公告发布范围最广，事项重大，通常通过媒体公开发布。"
+    },
+    {
+      id: "tonggao", name: "通告", emoji: "📋",
+      scope: "适用于在一定范围内公布应当遵守或者周知的事项。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","发文字号","标题","正文","成文日期","印章","页码"],
+      special: ["限定在一定范围内公布"],
+      note: "通告范围较公告窄，多用于特定区域或行业，可张贴或通过媒体发布。"
+    },
+    {
+      id: "yijian", name: "意见", emoji: "💡",
+      scope: "适用于对重要问题提出见解和处理办法。",
+      direction: ["上行","下行","平行"],
+      dirType: "multi",
+      elements: ["发文机关标志","发文字号","签发人（上行时）","标题","主送机关","正文","成文日期","印章","页码"],
+      special: ["上行、下行、平行均可使用"],
+      note: "上行时供上级参考，下行时具有指导作用，平行时供对方参考。"
+    },
+    {
+      id: "tongzhi", name: "通知", emoji: "📬",
+      scope: "适用于发布、传达要求下级机关执行和有关单位周知或者执行的事项，批转、转发公文。",
+      direction: ["下行","平行"],
+      dirType: "multi",
+      elements: ["发文机关标志","发文字号","标题","主送机关","正文","附件说明","成文日期","印章","抄送机关","页码"],
+      special: ["可批转、转发公文"],
+      note: "通知是使用最广泛的文种，含指示性通知、批转性通知、转发性通知、知照性通知、任免通知等。"
+    },
+    {
+      id: "tongbao", name: "通报", emoji: "🔔",
+      scope: "适用于表彰先进、批评错误、传达重要精神和告知重要情况。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","发文字号","标题","主送机关","正文","成文日期","印章","页码"],
+      special: ["表彰、批评、情况传达"],
+      note: "通报具有教育、引导和警示作用，分表彰性通报、批评性通报、情况通报。"
+    },
+    {
+      id: "baogao", name: "报告", emoji: "📊",
+      scope: "适用于向上级机关汇报工作、反映情况，回复上级机关的询问。",
+      direction: ["上行"],
+      dirType: "up",
+      elements: ["发文机关标志","发文字号","签发人","标题","主送机关","正文","成文日期","印章","页码"],
+      special: ["签发人（上行文必须标注）"],
+      note: "报告中不得夹带请示事项（《条例》第十五条第四项）。"
+    },
+    {
+      id: "qingshi", name: "请示", emoji: "🙏",
+      scope: "适用于向上级机关请求指示、批准。",
+      direction: ["上行"],
+      dirType: "up",
+      elements: ["发文机关标志","发文字号","签发人","标题","主送机关","正文","成文日期","印章","联系人及电话（附注）","页码"],
+      special: ["签发人","附注（联系人和联系电话）"],
+      note: "请示应当一文一事，不得在报告等非请示性公文中夹带请示事项（《条例》第十五条）。一般只写一个主送机关。"
+    },
+    {
+      id: "pifu", name: "批复", emoji: "✅",
+      scope: "适用于答复下级机关请示事项。",
+      direction: ["下行"],
+      dirType: "down",
+      elements: ["发文机关标志","发文字号","标题","主送机关","正文","成文日期","印章","页码"],
+      special: ["针对性答复请示"],
+      note: "批复与请示一一对应，标题中常含「关于××请示的批复」。"
+    },
+    {
+      id: "yian", name: "议案", emoji: "🏛️",
+      scope: "适用于各级人民政府按照法律程序向同级人民代表大会或者人民代表大会常务委员会提请审议事项。",
+      direction: ["平行"],
+      dirType: "parallel",
+      elements: ["发文机关标志","发文字号","签发人","标题","主送机关","正文","成文日期","印章","页码"],
+      special: ["政府向同级人大或人大常委会提请"],
+      note: "议案主体限定为各级人民政府，依据宪法和地方组织法规定的程序提出。"
+    },
+    {
+      id: "han", name: "函", emoji: "✉️",
+      scope: "适用于不相隶属机关之间商洽工作、询问和答复问题、请求批准和答复审批事项。",
+      direction: ["平行"],
+      dirType: "parallel",
+      elements: ["发文机关标志","发文字号","标题","主送机关","正文","成文日期","印章","页码"],
+      special: ["不相隶属机关之间使用"],
+      note: "函分为商洽函、询问函、答复函、请批函、审批函等，是不相隶属机关之间往来的主要文种。"
+    },
+    {
+      id: "jiyao", name: "纪要", emoji: "📝",
+      scope: "适用于记载会议主要情况和议定事项。",
+      direction: ["下行","平行"],
+      dirType: "multi",
+      elements: ["纪要标志","发文字号（或编号）","标题","正文","成文日期","页码"],
+      special: ["纪要标志（「×××××纪要」）","出席、列席、请假人员等会议信息"],
+      note: "纪要不加盖印章（GB/T 9704—2012 相关规定），由会议主持人或机关主要负责人签发。"
+    }
+  ];
+
+  var cardsEl = document.getElementById("cards");
+  var searchEl = document.getElementById("search");
+  var filtersEl = document.getElementById("filters");
+  var currentDir = "all";
+  var currentKeyword = "";
+
+  function getDirClass(d){
+    if(d.length > 1) return "multi";
+    if(d[0] === "上行") return "up";
+    if(d[0] === "下行") return "down";
+    if(d[0] === "平行") return "parallel";
+    return "";
+  }
+
+  function matchDir(doc){
+    if(currentDir === "all") return true;
+    if(currentDir === "多向") return doc.direction.length > 1;
+    return doc.direction.indexOf(currentDir) !== -1;
+  }
+
+  function matchKeyword(doc){
+    if(!currentKeyword) return true;
+    var kw = currentKeyword.toLowerCase();
+    return doc.name.toLowerCase().indexOf(kw) !== -1 ||
+           doc.scope.toLowerCase().indexOf(kw) !== -1 ||
+           (doc.note && doc.note.toLowerCase().indexOf(kw) !== -1);
+  }
+
+  function render(){
+    var list = docs.filter(function(d){ return matchDir(d) && matchKeyword(d); });
+    if(list.length === 0){
+      cardsEl.innerHTML = '<div class="empty">😕 未找到匹配的公文文种</div>';
+      return;
+    }
+    var html = "";
+    list.forEach(function(d){
+      var dirClass = getDirClass(d.direction);
+      var dirTags = d.direction.map(function(x){
+        var cls = x === "上行" ? "up" : (x === "下行" ? "down" : "parallel");
+        return '<span class="dir-tag '+cls+'">'+x+'文</span>';
+      }).join("");
+      var elemHtml = d.elements.map(function(e){ return '<span class="element-tag">'+e+'</span>'; }).join("");
+      var specialHtml = d.special ? d.special.map(function(e){ return '<span class="element-tag special">'+e+'</span>'; }).join("") : "";
+      html += '<div class="card '+dirClass+'" data-id="'+d.id+'">' +
+        '<div class="card-head">' +
+          '<div class="card-emoji">'+d.emoji+'</div>' +
+          '<div class="card-info">' +
+            '<div class="card-name">'+d.name+'</div>' +
+            '<div class="card-dir">'+dirTags+'</div>' +
+          '</div>' +
+          '<div class="card-arrow">▶</div>' +
+        '</div>' +
+        '<div class="card-body"><div class="card-content">' +
+          '<div class="section"><div class="section-title">适用范围</div><div class="section-text">'+d.scope+'</div></div>' +
+          '<div class="section"><div class="section-title">行文方向</div><div class="section-text">'+d.direction.join("、")+'</div></div>' +
+          '<div class="section"><div class="section-title">通用格式要素</div><div class="element-list">'+elemHtml+'</div></div>' +
+          (specialHtml ? '<div class="section"><div class="section-title">特定要素</div><div class="element-list">'+specialHtml+'</div></div>' : '') +
+          (d.note ? '<div class="note">'+d.note+'</div>' : '') +
+        '</div></div>' +
+      '</div>';
+    });
+    cardsEl.innerHTML = html;
+    // 绑定展开
+    var heads = cardsEl.querySelectorAll(".card-head");
+    for(var i=0;i<heads.length;i++){
+      heads[i].addEventListener("click", function(){
+        this.parentNode.classList.toggle("open");
+      });
+    }
+  }
+
+  filtersEl.addEventListener("click", function(e){
+    var btn = e.target;
+    if(!btn.classList.contains("filter-btn")) return;
+    var btns = filtersEl.querySelectorAll(".filter-btn");
+    for(var i=0;i<btns.length;i++) btns[i].classList.remove("active");
+    btn.classList.add("active");
+    currentDir = btn.getAttribute("data-dir");
+    render();
+  });
+
+  searchEl.addEventListener("input", function(){
+    currentKeyword = this.value.trim();
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

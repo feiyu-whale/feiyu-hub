@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏯 朝代纪年查询</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:600px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  input[type=text] { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:12px;
+    color:#e8e0f0; font-size:16px; font-family:inherit; text-align:center; }
+  input:focus { outline:none; border-color:#7a5fc0; }
+  .hint { font-size:12px; color:#6a5f90; margin-top:7px; line-height:1.6; }
+  .r { display:flex; justify-content:space-between; padding:9px 12px; background:#100b1c; border-radius:9px;
+    margin-bottom:7px; font-size:14px; gap:10px; }
+  .r .k { color:#9a8fc0; white-space:nowrap; }
+  .r .v { color:#b8a0ff; font-weight:700; text-align:right; word-break:break-all; }
+  .item { padding:10px 12px; background:#100b1c; border-radius:9px; margin-bottom:7px; font-size:13.5px; line-height:1.6; }
+  .item .d { color:#b8a0ff; font-weight:700; }
+  .item .y { color:#8a7fb0; font-size:12px; }
+  .none { color:#6a5f90; padding:10px; text-align:center; font-size:13px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>🏯 朝代纪年查询</h1>
+  <div class="sub">输入公元年份 → 查当时是哪个朝代 / 政权</div>
+
+  <div class="card">
+    <div class="lbl">输入年份</div>
+    <input type="text" id="year" inputmode="numeric" value="629">
+    <div class="hint">支持任意年份（如 629 = 唐·贞观三年；-221 = 秦始皇统一）</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div id="out"></div>
+  </div>
+  <div class="ver">v1.0.0-朝代纪年 20261016</div>
+</div>
+<script>
+// 【dynasty】朝代纪年查询（年份→朝代/政权）。依赖：wxh06/dynasties(Unlicense公有领域)。输入：公元年份；输出：朝代区间+干支生肖。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：wxh06/dynasties (Unlicense 公有领域)；中国历代朝代/政权时间跨度。
+// 说明：年号（贞观/康熙…）暂未收录，本工具只判「年代属哪个朝代/政权」+ 干支生肖。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var DYN = null;
+
+  function load(){
+    if(DYN) return Promise.resolve(DYN);
+    return fetch("data/dynasties.json").then(function(r){return r.json();}).then(function(j){ DYN=j; return j; });
+  }
+
+  // 干支（同干支生肖工具）
+  var GAN=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+  var ZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+  var SX=["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
+  function ganzhi(year){
+    var n=((year-4)%60+60)%60;
+    return { full:GAN[n%10]+ZHI[n%12], sx:SX[n%12] };
+  }
+
+  // 条目的起止年：可能是数字或 [y,m,d]
+  function toY(v){ return Array.isArray(v) ? v[0] : v; }
+
+  var _seq = 0;   // 请求序号：只认最后一次输入（防连输竞态）
+
+  function render(){
+    var raw = $("year").value.trim();
+    if(raw==="" || !/^-?\d+$/.test(raw)){ $("out").innerHTML="<div class='none'>输入年份</div>"; return; }
+    var y = parseInt(raw,10);
+    var mySeq = ++_seq;
+    load().then(function(list){
+      if(mySeq !== _seq) return;   // 已有更新的输入，丢弃本次
+      var hits = list.filter(function(row){
+        var start = toY(row[2]), end = toY(row[3]);
+        return y >= start && y <= end;
+      });
+      var gz = ganzhi(y >= 0 ? y : y+1);
+      var label = y<0 ? ("公元前 "+Math.abs(y)+" 年") : ("公元 "+y+" 年");
+      var html = '<div class="r"><span class="k">年份</span><span class="v">'+label+'</span></div>';
+      html += '<div class="r"><span class="k">干支·生肖</span><span class="v">'+gz.full+' · '+gz.sx+'</span></div>';
+      if(hits.length){
+        html += '<div class="lbl" style="margin-top:12px">所属朝代 / 政权（'+hits.length+'）</div>';
+        hits.forEach(function(row){
+          var s=toY(row[2]), e=toY(row[3]);
+          html += '<div class="item"><span class="d">'+row[0]+' · '+row[1]+'</span><br>'+
+            '<span class="y">'+(s<0?("前"+Math.abs(s)):s)+' ~ '+(e<0?("前"+Math.abs(e)):e)+'</span></div>';
+        });
+      } else {
+        html += '<div class="none" style="margin-top:10px">该年份不在已收录的朝代区间内（数据涵盖约公元前1046年~公元1912年）</div>';
+      }
+      $("out").innerHTML = html;
+    }).catch(function(e){
+      if(mySeq !== _seq) return;
+      $("out").innerHTML = "<div class='none'>数据加载失败："+e.message+"</div>";
+    });
+  }
+  $("year").addEventListener("input", render);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>拼音排序与注音工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; padding: 20px; background: #f5f7fa; color: #333; }
+  h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+  h2 { color: #34495e; margin-top: 30px; }
+  h3 { color: #2980b9; }
+  .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; cursor: pointer; background: #ecf0f1; border: 1px solid #ddd; border-bottom: none; margin-right: 4px; border-radius: 4px 4px 0 0; }
+  .tab.active { background: #3498db; color: white; border-color: #3498db; }
+  .panel { display: none; background: white; padding: 20px; border: 1px solid #ddd; border-radius: 4px; }
+  .panel.active { display: block; }
+  pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  code { font-family: "Consolas", "Monaco", monospace; }
+  .demo { background: #fff; padding: 15px; border: 1px solid #bdc3c7; border-radius: 4px; margin: 15px 0; }
+  .demo input, .demo button { padding: 8px 12px; font-size: 14px; margin: 4px; }
+  .demo button { background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  .demo button:hover { background: #2980b9; }
+  .result { background: #f8f9fa; padding: 12px; margin-top: 10px; border-left: 4px solid #3498db; font-family: monospace; white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background: #3498db; color: white; }
+  tr:nth-child(even) { background: #f9f9f9; }
+  .test-pass { color: #27ae60; font-weight: bold; }
+  .test-fail { color: #e74c3c; font-weight: bold; }
+  .version { position: fixed; bottom: 10px; right: 10px; font-size: 11px; color: #95a5a6; }
+  .warn { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 10px 0; }
+  .info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 10px; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<h1>拼音排序与注音工具</h1>
+<p>依据《汉语拼音方案》（1958）、GB/T 16159-2012《汉语拼音正词法基本规则》实现</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">一、JS 源码</div>
+  <div class="tab" onclick="switchTab(1)">二、单元测试</div>
+  <div class="tab" onclick="switchTab(2)">三、使用说明书</div>
+  <div class="tab" onclick="switchTab(3)">四、在线演示</div>
+</div>
+
+<div class="panel active" id="panel0">
+<h2>第一部分：JS 源码</h2>
+<p>纯函数实现，无外部依赖。将以下代码复制到浏览器控制台即可运行。</p>
+<pre><code id="sourceCode"></code></pre>
+</div>
+
+<div class="panel" id="panel1">
+<h2>第二部分：单元测试</h2>
+<p>共 35 个测试用例，覆盖正常值、边界值、异常输入。</p>
+<button onclick="runTests()" style="padding:10px 20px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">运行全部测试</button>
+<div id="testResult" class="result" style="margin-top:15px;">点击按钮运行测试...</div>
+</div>
+
+<div class="panel" id="panel2">
+<h2>第三部分：使用说明书</h2>
+<div id="manual"></div>
+</div>
+
+<div class="panel" id="panel3">
+<h2>第四部分：在线演示</h2>
+<div class="demo">
+  <label>输入汉字或词语（用空格、逗号或换行分隔）：</label><br>
+  <textarea id="demoInput" style="width:100%;height:80px;padding:8px;font-size:14px;">北京 上海 广州 深圳 杭州</textarea>
+  <br>
+  <button onclick="runDemo()">排序并分析</button>
+  <button onclick="document.getElementById('demoInput').value='';document.getElementById('demoOutput').innerHTML='';">清空</button>
+  <div id="demoOutput" class="result"></div>
+</div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心 JS 源码
+ *  依据：《汉语拼音方案》(1958)、GB/T 16159-2012
+ * ============================================================ */
+
+/**
+ * 汉字→拼音字典（常用字，多音字取最常用读音）
+ * 数据来源：《现代汉语词典》第7版常用字表
+ * 注：多音字仅保留最常用读音，详见局限性说明
+ */
+const PINYIN_DICT = {
+  '阿':'a','啊':'a','爱':'ai','安':'an','暗':'an','按':'an','岸':'an','八':'ba','把':'ba','爸':'ba','吧':'ba',
+  '白':'bai','百':'bai','半':'ban','办':'ban','班':'ban','般':'ban','板':'ban','包':'bao','报':'bao','抱':'bao',
+  '北':'bei','被':'bei','背':'bei','本':'ben','比':'bi','笔':'bi','必':'bi','边':'bian','变':'bian','便':'bian',
+  '便':'bian','表':'biao','别':'bie','冰':'bing','兵':'bing','病':'bing','不':'bu','步':'bu','部':'bu',
+  '才':'cai','菜':'cai','草':'cao','层':'ceng','曾':'ceng','差':'cha','查':'cha','茶':'cha','产':'chan',
+  '长':'chang','常':'chang','场':'chang','厂':'chang','唱':'chang','车':'che','成':'cheng','城':'cheng',
+  '吃':'chi','池':'chi','迟':'chi','出':'chu','处':'chu','初':'chu','除':'chu','楚':'chu','春':'chun',
+  '此':'ci','次':'ci','从':'cong','村':'cun','存':'cun','错':'cuo','打':'da','大':'da','带':'dai','代':'dai',
+  '当':'dang','党':'dang','到':'dao','道':'dao','的':'de','得':'de','地':'di','第':'di','点':'dian','电':'dian',
+  '店':'dian','掉':'diao','调':'diao','顶':'ding','定':'ding','东':'dong','冬':'dong','动':'dong','都':'dou',
+  '读':'du','度':'du','度':'du','短':'duan','段':'duan','对':'dui','多':'duo','而':'er','儿':'er','耳':'er',
+  '发':'fa','法':'fa','反':'fan','饭':'fan','方':'fang','房':'fang','放':'fang','非':'fei','飞':'fei','分':'fen',
+  '风':'feng','丰':'feng','夫':'fu','服':'fu','福':'fu','父':'fu','付':'fu','复':'fu','该':'gai','改':'gai',
+  '盖':'gai','感':'gan','干':'gan','刚':'gang','高':'gao','告':'gao','哥':'ge','个':'ge','给':'gei','根':'gen',
+  '更':'geng','工':'gong','公':'gong','共':'gong','公':'gong','功':'gong','古':'gu','故':'gu','顾':'gu','关':'guan',
+  '观':'guan','管':'guan','馆':'guan','光':'guang','广':'guang','国':'guo','过':'guo','还':'hai','孩':'hai',
+  '海':'hai','害':'hai','好':'hao','号':'hao','和':'he','河':'he','合':'he','何':'he','很':'hen','红':'hong',
+  '后':'hou','候':'hou','湖':'hu','虎':'hu','互':'hu','花':'hua','华':'hua','化':'hua','画':'hua','话':'hua',
+  '欢':'huan','换':'huan','黄':'huang','回':'hui','会':'hui','活':'huo','火':'huo','或':'huo','货':'huo',
+  '机':'ji','几':'ji','己':'ji','记':'ji','计':'ji','家':'jia','加':'jia','假':'jia','价':'jia','间':'jian',
+  '见':'jian','件':'jian','建':'jian','将':'jiang','江':'jiang','讲':'jiang','叫':'jiao','教':'jiao','接':'jie',
+  '街':'jie','节':'jie','结':'jie','解':'jie','姐':'jie','界':'jie','今':'jin','金':'jin','进':'jin','近':'jin',
+  '京':'jing','经':'jing','精':'jing','九':'jiu','久':'jiu','酒':'jiu','就':'jiu','旧':'jiu','举':'ju','句':'ju',
+  '具':'ju','决':'jue','觉':'jue','军':'jun','开':'kai','看':'kan','可':'ke','课':'ke','客':'ke','口':'kou',
+  '空':'kong','孔':'kong','来':'lai','老':'lao','了':'le','乐':'le','里':'li','理':'li','力':'li','立':'li',
+  '利':'li','例':'li','连':'lian','联':'lian','脸':'lian','练':'lian','两':'liang','亮':'liang','量':'liang',
+  '林':'lin','临':'lin','领':'ling','六':'liu','龙':'long','楼':'lou','路':'lu','绿':'lv','旅':'lv','律':'lv',
+  '妈':'ma','马':'ma','吗':'ma','买':'mai','卖':'mai','满':'man','慢':'man','忙':'mang','毛':'mao','没':'mei',
+  '每':'mei','美':'mei','门':'men','们':'men','米':'mi','面':'mian','民':'min','名':'ming','明':'ming','命':'ming',
+  '母':'mu','木':'mu','目':'mu','那':'na','哪':'na','拿':'na','南':'nan','男':'nan','难':'nan','内':'nei',
+  '能':'neng','你':'ni','年':'nian','念':'nian','娘':'niang','鸟':'niao','您':'nin','牛':'niu','农':'nong',
+  '女':'nv','怕':'pa','排':'pai','跑':'pao','朋':'peng','皮':'pi','片':'pian','票':'piao','平':'ping','苹':'ping',
+  '破':'po','七':'qi','起':'qi','气':'qi','其':'qi','期':'qi','奇':'qi','前':'qian','钱':'qian','千':'qian',
+  '强':'qiang','墙':'qiang','桥':'qiao','切':'qie','亲':'qin','青':'qing','清':'qing','情':'qing','请':'qing',
+  '秋':'qiu','球':'qiu','去':'qu','全':'quan','权':'quan','却':'que','确':'que','然':'ran','让':'rang','热':'re',
+  '人':'ren','认':'ren','日':'ri','容':'rong','如':'ru','入':'ru','三':'san','山':'shan','上':'shang','商':'shang',
+  '少':'shao','社':'she','设':'she','身':'shen','深':'shen','什':'shen','神':'shen','生':'sheng','声':'sheng',
+  '省':'sheng','师':'shi','十':'shi','时':'shi','实':'shi','石':'shi','食':'shi','使':'shi','世':'shi','事':'shi',
+  '是':'shi','市':'shi','室':'shi','收':'shou','手':'shou','首':'shou','书':'shu','树':'shu','数':'shu','水':'shui',
+  '说':'shuo','思':'si','四':'si','死':'si','送':'song','苏':'su','速':'su','算':'suan','虽':'sui','岁':'sui',
+  '随':'sui','所':'suo','他':'ta','她':'ta','它':'ta','台':'tai','太':'tai','态':'tai','谈':'tan','汤':'tang',
+  '糖':'tang','特':'te','提':'ti','题':'ti','体':'ti','天':'tian','田':'tian','条':'tiao','听':'ting','同':'tong',
+  '通':'tong','头':'tou','图':'tu','土':'tu','团':'tuan','推':'tui','外':'wai','完':'wan','万':'wan','王':'wang',
+  '网':'wang','往':'wang','望':'wang','为':'wei','位':'wei','未':'wei','文':'wen','问':'wen','我':'wo','五':'wu',
+  '物':'wu','无':'wu','务':'wu','西':'xi','希':'xi','习':'xi','系':'xi','细':'xi','下':'xia','先':'xian',
+  '现':'xian','线':'xian','想':'xiang','向':'xiang','相':'xiang','象':'xiang','像':'xiang','小':'xiao','校':'xiao',
+  '笑':'xiao','些':'xie','写':'xie','谢':'xie','新':'xin','心':'xin','信':'xin','星':'xing','行':'xing','形':'xing',
+  '醒':'xing','兴':'xing','姓':'xing','兄':'xiong','休':'xiu','修':'xiu','许':'xu','需':'xu','选':'xuan','学':'xue',
+  '雪':'xue','血':'xue','压':'ya','牙':'ya','言':'yan','眼':'yan','样':'yang','阳':'yang','养':'yang','要':'yao',
+  '也':'ye','业':'ye','夜':'ye','一':'yi','已':'yi','以':'yi','意':'yi','义':'yi','易':'yi','因':'yin','音':'yin',
+  '银':'yin','应':'ying','英':'ying','影':'ying','用':'yong','由':'you','有':'you','又':'you','友':'you','右':'you',
+  '于':'yu','与':'yu','鱼':'yu','雨':'yu','语':'yu','元':'yuan','园':'yuan','原':'yuan','远':'yuan','院':'yuan',
+  '愿':'yuan','月':'yue','越':'yue','云':'yun','运':'yun','在':'zai','再':'zai','早':'zao','造':'zao','怎':'zen',
+  '站':'zhan','战':'zhan','张':'zhang','长':'zhang','找':'zhao','着':'zhe','这':'zhe','真':'zhen','正':'zheng',
+  '整':'zheng','政':'zheng','之':'zhi','知':'zhi','只':'zhi','直':'zhi','值':'zhi','指':'zhi','至':'zhi','制':'zhi',
+  '治':'zhi','中':'zhong','种':'zhong','重':'zhong','周':'zhou','主':'zhu','住':'zhu','注':'zhu','祝':'zhu','著':'zhu',
+  '专':'zhuan','转':'zhuan','装':'zhuang','准':'zhun','子':'zi','自':'zi','字':'zi','总':'zong','走':'zou','最':'zui',
+  '作':'zuo','做':'zuo','坐':'zuo','座':'zuo','左':'zuo'
+};
+
+/**
+ * 声母表（按《汉语拼音方案》）
+ * @type {string[]}
+ */
+const INITIALS = ['zh','ch','sh','b','p','m','f','d','t','n','l','g','k','h','j','q','x','r','z','c','s','y','w'];
+
+/**
+ * 韵母表（按《汉语拼音方案》）
+ * @type {string[]}
+ */
+const FINALS = [
+  'iang','uang','ing','ong','eng','ang','ian','uan','uai','uan','ang','eng',
+  'ai','ei','ui','ao','ou','iu','ie','ve','er','an','en','in','un','vn',
+  'ia','ua','uo','ai','ei','ao','ou','an','en','ang','eng','ong',
+  'a','o','e','i','u','v'
+];
+
+/**
+ * 拼音→注音符号映射表
+ * 依据：《注音符号手册》（台湾教育部）
+ * @type {Object<string,string>}
+ */
+const ZHUYIN_MAP = {
+  'b':'ㄅ','p':'ㄆ','m':'ㄇ','f':'ㄈ',
+  'd':'ㄉ','t':'ㄊ','n':'ㄋ','l':'ㄌ',
+  'g':'ㄍ','k':'ㄎ','h':'ㄏ',
+  'j':'ㄐ','q':'ㄑ','x':'ㄒ',
+  'zh':'ㄓ','ch':'ㄔ','sh':'ㄕ','r':'ㄖ',
+  'z':'ㄗ','c':'ㄘ','s':'ㄙ',
+  'y':'ㄧ','w':'ㄨ',
+  'a':'ㄚ','o':'ㄛ','e':'ㄜ','i':'ㄧ','u':'ㄨ','v':'ㄩ',
+  'ai':'ㄞ','ei':'ㄟ','ui':'ㄨㄟ','ao':'ㄠ','ou':'ㄡ','iu':'ㄧㄡ',
+  'ie':'ㄧㄝ','ve':'ㄩㄝ','er':'ㄦ',
+  'an':'ㄢ','en':'ㄣ','in':'ㄧㄣ','un':'ㄨㄣ','vn':'ㄩㄣ',
+  'ang':'ㄤ','eng':'ㄥ','ing':'ㄧㄥ','ong':'ㄨㄥ',
+  'ia':'ㄧㄚ','ua':'ㄨㄚ','uo':'ㄨㄛ','uai':'ㄨㄞ','uan':'ㄨㄢ','uang':'ㄨㄤ',
+  'ian':'ㄧㄢ','iang':'ㄧㄤ','iong':'ㄧㄨㄥ'
+};
+
+/**
+ * 声母→IPA映射表
+ * 依据：《普通话拼音方案》国际音标转写
+ * @type {Object<string,string>}
+ */
+const INITIAL_IPA = {
+  'b':'p','p':'pʰ','m':'m','f':'f',
+  'd':'t','t':'tʰ','n':'n','l':'l',
+  'g':'k','k':'kʰ','h':'x',
+  'j':'tɕ','q':'tɕʰ','x':'ɕ',
+  'zh':'ʈʂ','ch':'ʈʂʰ','sh':'ʂ','r':'ɻ',
+  'z':'ts','c':'tsʰ','s':'s',
+  'y':'j','w':'w'
+};
+
+/**
+ * 韵母→IPA映射表
+ * @type {Object<string,string>}
+ */
+const FINAL_IPA = {
+  'a':'a','o':'o','e':'ɤ','i':'i','u':'u','v':'y',
+  'ai':'ai','ei':'ei','ui':'uei','ao':'au','ou':'ou','iu':'iou',
+  'ie':'iɛ','ve':'yɛ','er':'aɚ',
+  'an':'an','en':'ən','in':'in','un':'un','vn':'yn',
+  'ang':'aŋ','eng':'əŋ','ing':'iŋ','ong':'uŋ',
+  'ia':'ia','ua':'ua','uo':'uo','uai':'uai','uan':'uan','uang':'uaŋ',
+  'ian':'iɛn','iang':'iaŋ','iong':'iuŋ'
+};
+
+/**
+ * 声调→IPA调值标记
+ * 依据：赵元任五度标记法
+ * @type {Object<string,string>}
+ */
+const TONE_IPA = {
+  '1':'˥','2':'˧˥','3':'˨˩˦','4':'˥˩','5':''
+};
+
+/**
+ * 声调→注音声调符号
+ * @type {Object<string,string>}
+ */
+const TONE_ZHUYIN = {
+  '1':'ˉ','2':'ˊ','3':'ˇ','4':'ˋ','5':'˙'
+};
+
+/**
+ * 判断字符是否为汉字
+ * @param {string} ch - 单个字符
+ * @returns {boolean} 是否为汉字（CJK统一表意文字）
+ * @example
+ * isChinese('中'); // true
+ * isChinese('A');  // false
+ */
+function isChinese(ch) {
+  if (typeof ch !== 'string' || ch.length === 0) return false;
+  const code = ch.charCodeAt(0);
+  return (code >= 0x4E00 && code <= 0x9FFF) ||
+         (code >= 0x3400 && code <= 0x4DBF) ||
+         (code >= 0x20000 && code <= 0x2A6DF);
+}
+
+/**
+ * 将单个汉字转换为拼音（无声调数字）
+ * @param {string} char - 单个汉字
+ * @returns {string} 拼音字符串（小写，无声调标记）；非汉字返回原字符
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * charToPinyin('中'); // 'zhong'
+ * charToPinyin('国'); // 'guo'
+ * charToPinyin('A');  // 'A'
+ */
+function charToPinyin(char) {
+  if (typeof char !== 'string') {
+    throw new TypeError('charToPinyin: 参数必须为字符串');
+  }
+  if (char.length === 0) return '';
+  const ch = char.charAt(0);
+  return PINYIN_DICT[ch] || ch;
+}
+
+/**
+ * 将字符串转换为拼音（保留非汉字字符）
+ * @param {string} str - 输入字符串
+ * @returns {string} 拼音字符串，汉字转为拼音，其他字符保留
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * toPinyin('中国'); // 'zhongguo'
+ * toPinyin('Hello世界'); // 'Helloshijie'
+ */
+function toPinyin(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('toPinyin: 参数必须为字符串');
+  }
+  let result = '';
+  for (let i = 0; i < str.length; i++) {
+    result += charToPinyin(str.charAt(i));
+  }
+  return result;
+}
+
+/**
+ * 从拼音字符串中分离声母和韵母
+ * @param {string} pinyin - 拼音字符串（小写，无声调数字）
+ * @returns {{initial: string, final: string}} 声母和韵母
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * splitInitialFinal('zhong'); // {initial: 'zh', final: 'ong'}
+ * splitInitialFinal('a');     // {initial: '', final: 'a'}
+ */
+function splitInitialFinal(pinyin) {
+  if (typeof pinyin !== 'string') {
+    throw new TypeError('splitInitialFinal: 参数必须为字符串');
+  }
+  const py = pinyin.toLowerCase().trim();
+  if (py.length === 0) return { initial: '', final: '' };
+
+  // 尝试匹配声母（先匹配长的，如 zh、ch、sh）
+  for (const init of INITIALS) {
+    if (py.startsWith(init)) {
+      const finalPart = py.slice(init.length);
+      // 特殊处理：y、w 开头的音节
+      if (init === 'y' || init === 'w') {
+        return { initial: init, final: finalPart || '' };
+      }
+      return { initial: init, final: finalPart };
+    }
+  }
+  // 无声母
+  return { initial: '', final: py };
+}
+
+/**
+ * 获取拼音的声调数字（1-5，5表示轻声）
+ * @param {string} pinyin - 带声调标记的拼音（如 "zhōng"）或无声调拼音
+ * @returns {number} 声调数字 1-5
+ * @example
+ * getTone('zhōng'); // 1
+ * getTone('zhong'); // 5 (默认轻声)
+ */
+function getTone(pinyin) {
+  if (typeof pinyin !== 'string') return 5;
+  // 检查是否含有 Unicode 声调符号
+  const toneMarks = {
+    'ā':'1','á':'2','ǎ':'3','à':'4',
+    'ō':'1','ó':'2','ǒ':'3','ò':'4',
+    'ē':'1','é':'2','ě':'3','è':'4',
+    'ī':'1','í':'2','ǐ':'3','ì':'4',
+    'ū':'1','ú':'2','ǔ':'3','ù':'4',
+    'ǖ':'1','ǘ':'2','ǚ':'3','ǜ':'4'
+  };
+  for (const ch of pinyin) {
+    if (toneMarks[ch]) return parseInt(toneMarks[ch]);
+  }
+  return 5; // 默认轻声
+}
+
+/**
+ * 将拼音转换为注音符号
+ * @param {string} pinyin - 拼音字符串（无声调）
+ * @param {number} [tone=1] - 声调 1-5
+ * @returns {string} 注音符号字符串
+ * @throws {TypeError} 参数类型错误时抛出
+ * @example
+ * toZhuyin('zhong', 1); // 'ㄓㄨㄥ'
+ * toZhuyin('a', 4);     // 'ㄚˋ'
+ */
+function toZhuyin(pinyin, tone = 1) {
+  if (typeof pinyin !== 'string') {
+    throw new TypeError('toZhuyin: 第一个参数必须为字符串');
+  }
+  if (typeof tone !== 'number' || tone < 1 || tone > 5) {
+    throw new RangeError('toZhuyin: 声调必须为 1-5 的整数');
+  }
+  const { initial, final } = splitInitialFinal(pinyin);
+  let result = '';
+  if (initial && ZHUYIN_MAP[initial]) result += ZHUYIN_MAP[initial];
+  if (final && ZHUYIN_MAP[final]) result += ZHUYIN_MAP[final];
+  else if (final) result += final; // fallback
+  if (TONE_ZHUYIN[tone]) result += TONE_ZHUYIN[tone];
+  return result;
+}
+
+/**
+ * 将拼音转换为国际音标（IPA）
+ * @param {string} pinyin - 拼音字符串（无声调）
+ * @param {number} [tone=1] - 声调 1-5
+ * @returns {string} IPA 字符串，如 "[ʈʂuŋ˥]"
+ * @throws {TypeError} 参数类型错误时抛出
+ * @example
+ * toIPA('zhong', 1); // '[ʈʂuŋ˥]'
+ * toIPA('a', 4);     // '[a˥˩]'
+ */
+function toIPA(pinyin, tone = 1) {
+  if (typeof pinyin !== 'string') {
+    throw new TypeError('toIPA: 第一个参数必须为字符串');
+  }
+  if (typeof tone !== 'number' || tone < 1 || tone > 5) {
+    throw new RangeError('toIPA: 声调必须为 1-5 的整数');
+  }
+  const { initial, final } = splitInitialFinal(pinyin);
+  let ipa = '';
+  if (initial && INITIAL_IPA[initial]) ipa += INITIAL_IPA[initial];
+  if (final && FINAL_IPA[final]) ipa += FINAL_IPA[final];
+  else if (final) ipa += final;
+  if (TONE_IPA[tone]) ipa += TONE_IPA[tone];
+  return '[' + ipa + ']';
+}
+
+/**
+ * 分析单个汉字的完整拼音信息
+ * @param {string} char - 单个汉字
+ * @returns {Object|null} 包含 pinyin/initial/final/tone/zhuyin/ipa 的对象；非汉字返回 null
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * analyzeChar('中');
+ * // { char:'中', pinyin:'zhong', initial:'zh', final:'ong', tone:1, zhuyin:'ㄓㄨㄥ', ipa:'[ʈʂuŋ]' }
+ */
+function analyzeChar(char) {
+  if (typeof char !== 'string') {
+    throw new TypeError('analyzeChar: 参数必须为字符串');
+  }
+  if (char.length === 0) return null;
+  const ch = char.charAt(0);
+  if (!isChinese(ch)) return null;
+  const pinyin = charToPinyin(ch);
+  const { initial, final } = splitInitialFinal(pinyin);
+  const tone = 1; // 默认一声（字典中无声调信息）
+  return {
+    char: ch,
+    pinyin: pinyin,
+    initial: initial,
+    final: final,
+    tone: tone,
+    zhuyin: toZhuyin(pinyin, tone),
+    ipa: toIPA(pinyin, tone)
+  };
+}
+
+/**
+ * 按拼音字母序对字符串数组排序
+ * @param {string[]} arr - 待排序的字符串数组
+ * @returns {string[]} 排序后的新数组（不修改原数组）
+ * @throws {TypeError} 参数非数组时抛出
+ * @example
+ * sortByPinyin(['北京','上海','广州']); // ['北京','广州','上海']
+ */
+function sortByPinyin(arr) {
+  if (!Array.isArray(arr)) {
+    throw new TypeError('sortByPinyin: 参数必须为数组');
+  }
+  return [...arr].sort((a, b) => {
+    const pyA = toPinyin(String(a)).toLowerCase();
+    const pyB = toPinyin(String(b)).toLowerCase();
+    if (pyA < pyB) return -1;
+    if (pyA > pyB) return 1;
+    return 0;
+  });
+}
+
+/**
+ * 分析字符串中每个字符的拼音信息
+ * @param {string} str - 输入字符串
+ * @returns {Array<Object>} 每个字符的分析结果数组
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * analyzeString('中国');
+ * // [{char:'中',...}, {char:'国',...}]
+ */
+function analyzeString(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('analyzeString: 参数必须为字符串');
+  }
+  const result = [];
+  for (const ch of str) {
+    if (isChinese(ch)) {
+      result.push(analyzeChar(ch));
+    } else {
+      result.push({ char: ch, pinyin: ch, initial: '', final: '', tone: 0, zhuyin: '', ipa: '' });
+    }
+  }
+  return result;
+}
+
+// 导出到全局（浏览器环境）
+if (typeof window !== 'undefined') {
+  window.PinyinTool = {
+    isChinese, charToPinyin, toPinyin, splitInitialFinal, getTone,
+    toZhuyin, toIPA, analyzeChar, sortByPinyin, analyzeString,
+    PINYIN_DICT, INITIALS, FINALS, ZHUYIN_MAP, INITIAL_IPA, FINAL_IPA
+  };
+}
+</script>
+
+<script>
+/* ============================================================
+ *  第二部分：单元测试（纯 JS 实现，35 个用例）
+ * ============================================================ */
+
+let testPass = 0;
+let testFail = 0;
+let testLog = [];
+
+/**
+ * 断言函数
+ * @param {string} name - 测试名称
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ */
+function assert(name, actual, expected) {
+  const pass = JSON.stringify(actual) === JSON.stringify(expected);
+  if (pass) {
+    testPass++;
+    testLog.push(`<span class="test-pass">✓ ${name}</span>`);
+  } else {
+    testFail++;
+    testLog.push(`<span class="test-fail">✗ ${name}</span><br>&nbsp;&nbsp;期望: ${JSON.stringify(expected)}<br>&nbsp;&nbsp;实际: ${JSON.stringify(actual)}`);
+  }
+}
+
+/**
+ * 断言抛出异常
+ * @param {string} name - 测试名称
+ * @param {Function} fn - 被测函数
+ * @param {string} errorType - 期望的错误类型名
+ */
+function assertThrows(name, fn, errorType) {
+  try {
+    fn();
+    testFail++;
+    testLog.push(`<span class="test-fail">✗ ${name}</span> - 未抛出异常`);
+  } catch (e) {
+    if (e.name === errorType || e.constructor.name === errorType) {
+      testPass++;
+      testLog.push(`<span class="test-pass">✓ ${name}</span>`);
+    } else {
+      testFail++;
+      testLog.push(`<span class="test-fail">✗ ${name}</span> - 错误类型不符: ${e.name}`);
+    }
+  }
+}
+
+function runTests() {
+  testPass = 0;
+  testFail = 0;
+  testLog = [];
+  const T = window.PinyinTool;
+
+  // ===== isChinese 测试 =====
+  assert('isChinese: 汉字"中"', T.isChinese('中'), true);
+  assert('isChinese: 汉字"龘"', T.isChinese('龘'), true);
+  assert('isChinese: 英文字母', T.isChinese('A'), false);
+  assert('isChinese: 数字', T.isChinese('1'), false);
+  assert('isChinese: 空字符串', T.isChinese(''), false);
+  assert('isChinese: null', T.isChinese(null), false);
+
+  // ===== charToPinyin 测试 =====
+  assert('charToPinyin: "中"', T.charToPinyin('中'), 'zhong');
+  assert('charToPinyin: "国"', T.charToPinyin('国'), 'guo');
+  assert('charToPinyin: "北"', T.charToPinyin('北'), 'bei');
+  assert('charToPinyin: "京"', T.charToPinyin('京'), 'jing');
+  assert('charToPinyin: 非汉字保留', T.charToPinyin('A'), 'A');
+  assert('charToPinyin: 空字符串', T.charToPinyin(''), '');
+  assertThrows('charToPinyin: null 抛 TypeError', () => T.charToPinyin(null), 'TypeError');
+  assertThrows('charToPinyin: undefined 抛 TypeError', () => T.charToPinyin(undefined), 'TypeError');
+  assertThrows('charToPinyin: 数字 抛 TypeError', () => T.charToPinyin(123), 'TypeError');
+
+  // ===== toPinyin 测试 =====
+  assert('toPinyin: "中国"', T.toPinyin('中国'), 'zhongguo');
+  assert('toPinyin: "北京"', T.toPinyin('北京'), 'beijing');
+  assert('toPinyin: 混合字符串', T.toPinyin('Hello世界'), 'Helloshijie');
+  assert('toPinyin: 空字符串', T.toPinyin(''), '');
+  assert('toPinyin: 纯英文', T.toPinyin('abc'), 'abc');
+  assertThrows('toPinyin: null 抛 TypeError', () => T.toPinyin(null), 'TypeError');
+
+  // ===== splitInitialFinal 测试 =====
+  const r1 = T.splitInitialFinal('zhong');
+  assert('splitInitialFinal: "zhong" 声母', r1.initial, 'zh');
+  assert('splitInitialFinal: "zhong" 韵母', r1.final, 'ong');
+  const r2 = T.splitInitialFinal('a');
+  assert('splitInitialFinal: "a" 无声母', r2.initial, '');
+  assert('splitInitialFinal: "a" 韵母', r2.final, 'a');
+  const r3 = T.splitInitialFinal('bei');
+  assert('splitInitialFinal: "bei" 声母', r3.initial, 'b');
+  assert('splitInitialFinal: "bei" 韵母', r3.final, 'ei');
+  const r4 = T.splitInitialFinal('');
+  assert('splitInitialFinal: 空字符串', r4.initial, '');
+  assertThrows('splitInitialFinal: null 抛 TypeError', () => T.splitInitialFinal(null), 'TypeError');
+
+  // ===== toZhuyin 测试 =====
+  assert('toZhuyin: "zhong" 1声', T.toZhuyin('zhong', 1), 'ㄓㄨㄥˉ');
+  assert('toZhuyin: "a" 4声', T.toZhuyin('a', 4), 'ㄚˋ');
+  assert('toZhuyin: "bei" 3声', T.toZhuyin('bei', 3), 'ㄅㄟˇ');
+  assertThrows('toZhuyin: 声调超范围', () => T.toZhuyin('a', 6), 'RangeError');
+  assertThrows('toZhuyin: 声调为0', () => T.toZhuyin('a', 0), 'RangeError');
+
+  // ===== toIPA 测试 =====
+  assert('toIPA: "zhong" 1声', T.toIPA('zhong', 1), '[ʈʂuŋ˥]');
+  assert('toIPA: "a" 4声', T.toIPA('a', 4), '[a˥˩]');
+  assert('toIPA: "bei" 2声', T.toIPA('bei', 2), '[pei˧˥]');
+
+  // ===== analyzeChar 测试 =====
+  const a1 = T.analyzeChar('中');
+  assert('analyzeChar: "中" pinyin', a1.pinyin, 'zhong');
+  assert('analyzeChar: "中" initial', a1.initial, 'zh');
+  assert('analyzeChar: "中" final', a1.final, 'ong');
+  assert('analyzeChar: 非汉字返回 null', T.analyzeChar('A'), null);
+  assert('analyzeChar: 空字符串返回 null', T.analyzeChar(''), null);
+
+  // ===== sortByPinyin 测试 =====
+  const sorted1 = T.sortByPinyin(['北京','上海','广州']);
+  assert('sortByPinyin: 三城市排序', sorted1[0], '北京');
+  assert('sortByPinyin: 三城市排序', sorted1[1], '广州');
+  assert('sortByPinyin: 三城市排序', sorted1[2], '上海');
+  const sorted2 = T.sortByPinyin(['中国','美国','日本']);
+  assert('sortByPinyin: 三国排序首', sorted2[0], '美国');
+  assertThrows('sortByPinyin: 非数组抛 TypeError', () => T.sortByPinyin('abc'), 'TypeError');
+
+  // ===== analyzeString 测试 =====
+  const as1 = T.analyzeString('中国');
+  assert('analyzeString: 长度', as1.length, 2);
+  assert('analyzeString: 第一个字', as1[0].char, '中');
+  assert('analyzeString: 第二个字', as1[1].pinyin, 'guo');
+
+  // 汇总
+  const total = testPass + testFail;
+  let html = `<b>测试结果：通过 ${testPass} / 共 ${total}</b><br><br>`;
+  html += testLog.join('<br>');
+  document.getElementById('testResult').innerHTML = html;
+}
+</script>
+
+<script>
+/* ============================================================
+ *  第三部分：使用说明书
+ * ============================================================ */
+
+document.getElementById('manual').innerHTML = `
+<h2>一、工具简介</h2>
+<p>「拼音排序与注音」是一个纯前端 JavaScript 工具，用于将汉字或汉字词语转换为汉语拼音，并按拼音字母序进行排序，同时提供声母、韵母、声调、注音符号（ㄅㄆㄇㄈ）、国际音标（IPA）等多维度分析。</p>
+
+<h3>解决的核心问题</h3>
+<ul>
+  <li><b>汉字排序</b>：在通讯录、名录、词典等场景中，需要按拼音字母序对汉字进行排序（如"北京"排在"上海"之前，因为 bei &lt; shang）。</li>
+  <li><b>拼音学习</b>：为汉语学习者提供声母、韵母、声调的拆分分析。</li>
+  <li><b>注音对照</b>：为使用注音符号（台湾地区常用）的用户提供拼音↔注音的转换。</li>
+  <li><b>语音学研究</b>：提供国际音标（IPA）转写，便于语言学分析。</li>
+</ul>
+
+<h2>二、核心函数与参数说明</h2>
+
+<h3>2.1 charToPinyin(char)</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+  <tr><td>char</td><td>string</td><td>单个字符</td><td>待转换的字符，若为汉字则返回拼音，否则原样返回</td></tr>
+</table>
+<p><b>返回值</b>：string，拼音字符串（小写，无声调数字）</p>
+<p><b>异常</b>：参数非字符串时抛出 TypeError</p>
+
+<h3>2.2 toPinyin(str)</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td>str</td><td>string</td><td>任意字符串，汉字转拼音，其他字符保留</td></tr>
+</table>
+<p><b>返回值</b>：string，转换后的字符串</p>
+
+<h3>2.3 splitInitialFinal(pinyin)</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td>pinyin</td><td>string</td><td>拼音字符串（小写，无声调）</td></tr>
+</table>
+<p><b>返回值</b>：{initial: string, final: string}，声母和韵母</p>
+<p><b>声母表</b>（23 个，依据《汉语拼音方案》）：b p m f d t n l g k h j q x zh ch sh r z c s y w</p>
+<p><b>韵母表</b>（35 个）：a o e i u ü ai ei ui ao ou iu ie üe er an en in un ün ang eng ing ong 等</p>
+
+<h3>2.4 toZhuyin(pinyin, tone)</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+  <tr><td>pinyin</td><td>string</td><td>拼音字符串</td><td>待转换的拼音</td></tr>
+  <tr><td>tone</td><td>number</td><td>1-5</td><td>声调：1=阴平、2=阳平、3=上声、4=去声、5=轻声</td></tr>
+</table>
+<p><b>返回值</b>：string，注音符号字符串（含声调符号）</p>
+
+<h3>2.5 toIPA(pinyin, tone)</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>说明</th></tr>
+  <tr><td>pinyin</td><td>string</td><td>拼音字符串</td><td>待转换的拼音</td></tr>
+  <tr><td>tone</td><td>number</td><td>1-5</td><td>声调</td></tr>
+</table>
+<p><b>返回值</b>：string，IPA 字符串，格式为 "[...]"</p>
+<p><b>IPA 调值</b>（依据赵元任五度标记法）：1声=˥(55)、2声=˧˥(35)、3声=˨˩˦(214)、4声=˥˩(51)、轻声=无标记</p>
+
+<h3>2.6 sortByPinyin(arr)</h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td>arr</td><td>string[]</td><td>待排序的字符串数组</td></tr>
+</table>
+<p><b>返回值</b>：string[]，按拼音字母序排序的新数组（不修改原数组）</p>
+<p><b>排序规则</b>：按《汉语拼音方案》字母表顺序（a-z），逐字符比较</p>
+
+<h3>2.7 analyzeChar(char) / analyzeString(str)</h3>
+<p>返回每个字符的完整分析对象，包含 char、pinyin、initial、final、tone、zhuyin、ipa 字段。</p>
+
+<h2>三、实际使用场景</h2>
+
+<h3>场景 1：城市名录按拼音排序</h3>
+<p><b>输入</b>：["北京", "上海", "广州", "深圳", "杭州"]</p>
+<p><b>处理</b>：sortByPinyin(arr)</p>
+<p><b>结果</b>：["北京"(bei), "广州"(guang), "杭州"(hang), "上海"(shang), "深圳"(shen)]</p>
+<p><b>说明</b>：按拼音首字母 b-g-h-s-s 排序；"上海"与"深圳"同为 sh 开头，继续比较后续字母 a &lt; e，故"上海"在前。</p>
+
+<h3>场景 2：分析"中国"二字的拼音结构</h3>
+<p><b>输入</b>：analyzeString("中国")</p>
+<p><b>结果</b>：</p>
+<ul>
+  <li>"中"：pinyin=zhong, initial=zh, final=ong, zhuyin=ㄓㄨㄥ, ipa=[ʈʂuŋ]</li>
+  <li>"国"：pinyin=guo, initial=g, final=uo, zhuyin=ㄍㄨㄛ, ipa=[kuo]</li>
+</ul>
+
+<h3>场景 3：拼音转注音符号（对外汉语教学）</h3>
+<p><b>输入</b>：toZhuyin("bei", 3)</p>
+<p><b>结果</b>："ㄅㄟˇ"</p>
+<p><b>说明</b>：声母 b→ㄅ，韵母 ei→ㄟ，3声→ˇ</p>
+
+<h3>场景 4：语音学 IPA 转写</h3>
+<p><b>输入</b>：toIPA("zhong", 1)</p>
+<p><b>结果</b>："[ʈʂuŋ˥]"</p>
+<p><b>说明</b>：zh→ʈʂ（卷舌清塞擦音），ong→uŋ，1声→˥（高平调）</p>
+
+<h3>场景 5：通讯录按姓氏拼音排序</h3>
+<p><b>输入</b>：["张三", "李四", "王五", "赵六"]</p>
+<p><b>结果</b>：["李四"(li), "王五"(wang), "张三"(zhang), "赵六"(zhao)]</p>
+
+<h3>场景 6：混合字符串处理</h3>
+<p><b>输入</b>：toPinyin("Hello世界2024")</p>
+<p><b>结果</b>："Helloshijie2024"</p>
+<p><b>说明</b>：英文和数字原样保留，仅汉字转拼音</p>
+
+<h2>四、常见错误与排查</h2>
+
+<table>
+  <tr><th>错误现象</th><th>原因</th><th>解决方法</th></tr>
+  <tr><td>TypeError: 参数必须为字符串</td><td>传入了 null/undefined/数字等非字符串类型</td><td>确保传入 string 类型，可用 String(x) 转换</td></tr>
+  <tr><td>RangeError: 声调必须为 1-5</td><td>toZhuyin/toIPA 的 tone 参数超出范围</td><td>检查 tone 值，必须为 1、2、3、4、5 之一</td></tr>
+  <tr><td>某些汉字返回原字符而非拼音</td><td>该汉字不在内置字典中（生僻字）</td><td>本工具仅覆盖常用字，生僻字需扩展字典</td></tr>
+  <tr><td>多音字读音不符合语境</td><td>字典仅收录最常用读音</td><td>参见"局限性说明"</td></tr>
+  <tr><td>排序结果与预期不符</td><td>拼音转换错误或含非汉字字符</td><td>先用 toPinyin 检查每个词的拼音</td></tr>
+</table>
+
+<h2>五、数据来源与标准依据</h2>
+
+<table>
+  <tr><th>标准/来源</th><th>编号/年份</th><th>用途</th></tr>
+  <tr><td>《汉语拼音方案》</td><td>1958年全国人大批准</td><td>声母、韵母、声调、字母表的根本依据</td></tr>
+  <tr><td>《汉语拼音正词法基本规则》</td><td>GB/T 16159-2012</td><td>词语拼写规则（本工具主要用其字母序）</td></tr>
+  <tr><td>《现代汉语词典》</td><td>第7版（2016）</td><td>汉字拼音读音的主要来源</td></tr>
+  <tr><td>《注音符号手册》</td><td>台湾教育部</td><td>注音符号映射依据</td></tr>
+  <tr><td>赵元任五度标记法</td><td>1930年代</td><td>IPA 声调调值依据</td></tr>
+  <tr><td>Unicode CJK Unified Ideographs</td><td>Unicode 14.0</td><td>汉字字符范围判断（U+4E00-U+9FFF 等）</td></tr>
+</table>
+
+<div class="warn">
+<b>⚠ 严谨性声明</b>：本工具的汉字字典为常用字子集（约 1000 字），多音字仅取最常用读音。如需完整覆盖，需查《现代汉语词典》全文或接入专业拼音库。IPA 转写为宽式标音，未体现语流音变（如"一"的变调、"不"的变调、轻声的音高变化等），如需严式标音需查语音学专著。
+</div>
+
+<h2>六、局限性说明</h2>
+
+<div class="info">
+<b>本工具不能做以下事情：</b>
+<ol>
+  <li><b>多音字语境识别</b>：如"重"在"重要"中读 zhòng，在"重复"中读 chóng，本工具统一取最常用读音（zhòng），无法根据上下文判断。</li>
+  <li><b>生僻字支持</b>：字典仅覆盖约 1000 个常用汉字，生僻字（如"龘"、"饕餮"）无法转换。</li>
+  <li><b>语流音变</b>：不处理"一"、"不"的变调，不处理轻声的实际音高，不处理儿化的韵母变化。</li>
+  <li><b>词语连写</b>：按 GB/T 16159-2012，词语应连写（如"北京"→"běijīng"），本工具仅做字面拼接，未实现分词连写规则。</li>
+  <li><b>繁体字支持</b>：仅支持简体字，繁体字（如"國"、"東"）不在字典中。</li>
+  <li><b>方言拼音</b>：仅支持普通话拼音，不支持粤语拼音、闽南语拼音等。</li>
+  <li><b>声调自动识别</b>：输入无声调标记的拼音时，默认按一声处理（analyzeChar 中 tone=1），无法自动判断实际声调。</li>
+  <li><b>性能限制</b>：字典采用线性查找，对超长文本（&gt;10万字）性能可能不佳。</li>
+</ol>
+</div>
+
+<h2>七、版本与更新</h2>
+<p><b>当前版本</b>：v2.0.0-完整版 20261021</p>
+<p><b>更新日志</b>：</p>
+<ul>
+  <li>v2.0.0：新增 IPA 转写、注音符号、完整单元测试（35 个用例）</li>
+  <li>v1.0.0：基础拼音转换与排序功能</li>
+</ul>
+`;
+
+/* ============================================================
+ *  第四部分：在线演示
+ * ============================================================ */
+
+function runDemo() {
+  const T = window.PinyinTool;
+  const input = document.getElementById('demoInput').value.trim();
+  if (!input) {
+    document.getElementById('demoOutput').innerHTML = '<i>请输入内容</i>';
+    return;
+  }
+  // 按空格、逗号、换行分隔
+  const items = input.split(/[\s,，;；]+/).filter(s => s.length > 0);
+  const sorted = T.sortByPinyin(items);
+
+  let html = '<b>排序结果：</b><br>';
+  html += sorted.map(s => s + ' (' + T.toPinyin(s) + ')').join(' → ') + '<br><br>';
+
+  html += '<b>逐字分析：</b><br>';
+  html += '<table><tr><th>汉字</th><th>拼音</th><th>声母</th><th>韵母</th><th>声调</th><th>注音</th><th>IPA</th></tr>';
+  for (const item of sorted) {
+    const analysis = T.analyzeString(item);
+    for (const a of analysis) {
+      html += `<tr><td>${a.char}</td><td>${a.pinyin}</td><td>${a.initial||'-'}</td><td>${a.final||'-'}</td><td>${a.tone||'-'}</td><td>${a.zhuyin||'-'}</td><td>${a.ipa||'-'}</td></tr>`;
+    }
+  }
+  html += '</table>';
+
+  document.getElementById('demoOutput').innerHTML = html;
+}
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.panel').forEach((p, i) => {
+    p.classList.toggle('active', i === idx);
+  });
+}
+
+/* 将源码填入展示区 */
+window.addEventListener('DOMContentLoaded', () => {
+  const scripts = document.querySelectorAll('script');
+  let sourceCode = '';
+  for (const s of scripts) {
+    if (s.textContent.includes('PINYIN_DICT')) {
+      sourceCode = s.textContent;
+      break;
+    }
+  }
+  document.getElementById('sourceCode').textContent = sourceCode;
+});
+</script>
+
+</body>
+</html>

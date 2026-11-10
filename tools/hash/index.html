@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>#️⃣ 哈希生成</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #14283a 0%, #0a1622 60%, #060a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:6px 6px 12px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#6b8fb3; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #22384c; border-radius:20px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:16px; }
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:7px; letter-spacing:1px; }
+  textarea { width:100%; background:#060a10; border:1px solid #24384c; border-radius:9px; padding:11px 12px;
+    color:#eaf4ff; font-size:14px; font-family:inherit; resize:vertical; min-height:80px; line-height:1.6; }
+  textarea:focus { outline:none; border-color:#4d8fc9; }
+  .h { margin-top:12px; }
+  .h .t { font-size:12px; color:#9fe0ff; margin-bottom:4px; }
+  .h .v { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; color:#8fe0c0;
+    word-break:break-all; background:#060a10; border-radius:8px; padding:9px 11px; line-height:1.6; }
+  .cp { float:right; font-size:11px; color:#6b8fb3; cursor:pointer; border:1px solid #2e5f8e; border-radius:6px;
+    padding:1px 7px; }
+  .empty { color:#5b7a99; padding:6px 2px; font-size:13px; line-height:1.6; }
+  .ver { text-align:center; color:#22383c; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回工具区</a>
+  <h1>#️⃣ 哈希生成</h1>
+  <div class="sub">MD5 · SHA-1 · SHA-256 · SHA-512（纯 JS，不依赖浏览器 API）</div>
+
+  <div class="card">
+    <div class="lbl">输入文本（输入即算，支持中文）</div>
+    <textarea id="in" placeholder="输入要计算哈希的文本…（中英文都可以）"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div id="out"><div class="empty">输入文本后，这里会自动列出 MD5 / SHA-1 / SHA-256 / SHA-512 结果</div></div>
+  </div>
+  <div class="ver">v3-改纯JS(不依赖crypto) 20261016</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  // 依据：MD5 (RFC 1321) / SHA-1 (FIPS 180-4) / SHA-256 / SHA-512 标准算法；纯 JS 实现。
+  // 已对照系统 md5sum/sha1sum/sha256sum/sha512sum 验证（含中文、空串、长串）。
+  var $ = function(id){ return document.getElementById(id); };
+
+  // ===== UTF-8 编码（支持中文；不依赖 TextEncoder）=====
+  function utf8Bytes(str){
+    var bytes = [];
+    for(var i=0;i<str.length;i++){
+      var c = str.charCodeAt(i);
+      if(c < 0x80){ bytes.push(c); }
+      else if(c < 0x800){ bytes.push(0xC0|(c>>6), 0x80|(c&0x3F)); }
+      else if(c < 0xD800 || c >= 0xE000){ bytes.push(0xE0|(c>>12), 0x80|((c>>6)&0x3F), 0x80|(c&0x3F)); }
+      else {
+        i++; var c2 = str.charCodeAt(i);
+        var cp = 0x10000 + (((c&0x3FF)<<10) | (c2&0x3FF));
+        bytes.push(0xF0|(cp>>18), 0x80|((cp>>12)&0x3F), 0x80|((cp>>6)&0x3F), 0x80|(cp&0x3F));
+      }
+    }
+    return bytes;
+  }
+
+  function toHex(arr){
+    var s = "";
+    for(var i=0;i<arr.length;i++) s += (arr[i]>>>0).toString(16).padStart(2,"0");
+    return s;
+  }
+  function toHex32(words){
+    var s = "";
+    for(var i=0;i<words.length;i++) s += (words[i]>>>0).toString(16).padStart(8,"0");
+    return s;
+  }
+
+  // ===== MD5（RFC 1321）=====
+  function md5(bytes){
+    function rl(x,c){ return (x<<c)|(x>>>(32-c)); }
+    function add(a,b){ return (a+b)|0; }
+    var s=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,
+           5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+           4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,
+           6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+    var K=new Array(64);
+    for(var i=0;i<64;i++) K[i]=Math.floor(Math.abs(Math.sin(i+1))*4294967296);
+    var len=bytes.length;
+    var withOne=new Uint8Array((((len+8)>>6)+1)<<6);
+    withOne.set(bytes); withOne[len]=0x80;
+    var dv=new DataView(withOne.buffer);
+    dv.setUint32(withOne.length-8,(len*8)>>>0,true);
+    dv.setUint32(withOne.length-4,Math.floor(len/536870912),true);
+    var a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476;
+    for(var b=0;b<withOne.length;b+=64){
+      var M=new Uint32Array(16);
+      for(var j=0;j<16;j++) M[j]=dv.getUint32(b+j*4,true);
+      var A=a0,B=b0,C=c0,D=d0;
+      for(var k=0;k<64;k++){
+        var F,g;
+        if(k<16){ F=(B&C)|(~B&D); g=k; }
+        else if(k<32){ F=(D&B)|(~D&C); g=(5*k+1)%16; }
+        else if(k<48){ F=B^C^D; g=(3*k+5)%16; }
+        else { F=C^(B|~D); g=(7*k)%16; }
+        F=add(add(add(F,A),K[k]),M[g]);
+        A=D; D=C; C=B; B=add(B,rl(F,s[k]));
+      }
+      a0=add(a0,A); b0=add(b0,B); c0=add(c0,C); d0=add(d0,D);
+    }
+    var out=new Uint8Array(16); var odv=new DataView(out.buffer);
+    odv.setUint32(0,a0>>>0,true); odv.setUint32(4,b0>>>0,true);
+    odv.setUint32(8,c0>>>0,true); odv.setUint32(12,d0>>>0,true);
+    return toHex(out);
+  }
+
+  // ===== SHA-1 =====
+  function sha1(bytes){
+    var len=bytes.length;
+    var withOne=new Uint8Array((((len+8)>>6)+1)<<6);
+    withOne.set(bytes); withOne[len]=0x80;
+    var dv=new DataView(withOne.buffer);
+    dv.setUint32(withOne.length-8, Math.floor(len/536870912), false);
+    dv.setUint32(withOne.length-4, (len*8)>>>0, false);
+    var h0=0x67452301,h1=0xEFCDAB89,h2=0x98BADCFE,h3=0x10325476,h4=0xC3D2E1F0;
+    var w=new Array(80);
+    for(var b=0;b<withOne.length;b+=64){
+      for(var i=0;i<16;i++) w[i]=dv.getUint32(b+i*4,false);
+      for(var i=16;i<80;i++) w[i]=rol(w[i-3]^w[i-8]^w[i-14]^w[i-16],1);
+      var a=h0,bb=h1,c=h2,d=h3,e=h4;
+      for(var i=0;i<80;i++){
+        var f,k;
+        if(i<20){ f=(bb&c)|(~bb&d); k=0x5A827999; }
+        else if(i<40){ f=bb^c^d; k=0x6ED9EBA1; }
+        else if(i<60){ f=(bb&c)|(bb&d)|(c&d); k=0x8F1BBCDC; }
+        else { f=bb^c^d; k=0xCA62C1D6; }
+        var temp=(rol(a,5)+f+e+k+w[i])|0;
+        e=d; d=c; c=rol(bb,30); bb=a; a=temp;
+      }
+      h0=(h0+a)|0; h1=(h1+bb)|0; h2=(h2+c)|0; h3=(h3+d)|0; h4=(h4+e)|0;
+    }
+    return toHex32([h0>>>0,h1>>>0,h2>>>0,h3>>>0,h4>>>0]);
+  }
+  function rol(n,c){ return ((n<<c)|(n>>>(32-c)))>>>0; }
+
+  // ===== SHA-256 =====
+  function sha256(bytes){
+    var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+      0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+      0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+      0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+      0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+      0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+      0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+      0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    var len=bytes.length;
+    var withOne=new Uint8Array((((len+8)>>6)+1)<<6);
+    withOne.set(bytes); withOne[len]=0x80;
+    var dv=new DataView(withOne.buffer);
+    dv.setUint32(withOne.length-8, Math.floor(len/536870912), false);
+    dv.setUint32(withOne.length-4, (len*8)>>>0, false);
+    var w=new Array(64);
+    for(var b=0;b<withOne.length;b+=64){
+      for(var i=0;i<16;i++) w[i]=dv.getUint32(b+i*4,false);
+      for(var i=16;i<64;i++){
+        var s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3);
+        var s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10);
+        w[i]=(w[i-16]+s0+w[i-7]+s1)|0;
+      }
+      var a=H[0],bb=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+      for(var i=0;i<64;i++){
+        var S1=rr(e,6)^rr(e,11)^rr(e,25);
+        var ch=(e&f)^(~e&g);
+        var t1=(h+S1+ch+K[i]+w[i])|0;
+        var S0=rr(a,2)^rr(a,13)^rr(a,22);
+        var maj=(a&bb)^(a&c)^(bb&c);
+        var t2=(S0+maj)|0;
+        h=g; g=f; f=e; e=(d+t1)|0; d=c; c=bb; bb=a; a=(t1+t2)|0;
+      }
+      H[0]=(H[0]+a)|0; H[1]=(H[1]+bb)|0; H[2]=(H[2]+c)|0; H[3]=(H[3]+d)|0;
+      H[4]=(H[4]+e)|0; H[5]=(H[5]+f)|0; H[6]=(H[6]+g)|0; H[7]=(H[7]+h)|0;
+    }
+    return toHex32(H.map(function(x){return x>>>0;}));
+  }
+  function rr(n,c){ return (n>>>c)|(n<<(32-c)); }
+
+  // ===== SHA-512（64位，用两个32位模拟）=====
+  function sha512(bytes){
+    var K=[
+      [0x428a2f98,0xd728ae22],[0x71374491,0x23ef65cd],[0xb5c0fbcf,0xec4d3b2f],[0xe9b5dba5,0x8189dbbc],
+      [0x3956c25b,0xf348b538],[0x59f111f1,0xb605d019],[0x923f82a4,0xaf194f9b],[0xab1c5ed5,0xda6d8118],
+      [0xd807aa98,0xa3030242],[0x12835b01,0x45706fbe],[0x243185be,0x4ee4b28c],[0x550c7dc3,0xd5ffb4e2],
+      [0x72be5d74,0xf27b896f],[0x80deb1fe,0x3b1696b1],[0x9bdc06a7,0x25c71235],[0xc19bf174,0xcf692694],
+      [0xe49b69c1,0x9ef14ad2],[0xefbe4786,0x384f25e3],[0x0fc19dc6,0x8b8cd5b5],[0x240ca1cc,0x77ac9c65],
+      [0x2de92c6f,0x592b0275],[0x4a7484aa,0x6ea6e483],[0x5cb0a9dc,0xbd41fbd4],[0x76f988da,0x831153b5],
+      [0x983e5152,0xee66dfab],[0xa831c66d,0x2db43210],[0xb00327c8,0x98fb213f],[0xbf597fc7,0xbeef0ee4],
+      [0xc6e00bf3,0x3da88fc2],[0xd5a79147,0x930aa725],[0x06ca6351,0xe003826f],[0x14292967,0x0a0e6e70],
+      [0x27b70a85,0x46d22ffc],[0x2e1b2138,0x5c26c926],[0x4d2c6dfc,0x5ac42aed],[0x53380d13,0x9d95b3df],
+      [0x650a7354,0x8baf63de],[0x766a0abb,0x3c77b2a8],[0x81c2c92e,0x47edaee6],[0x92722c85,0x1482353b],
+      [0xa2bfe8a1,0x4cf10364],[0xa81a664b,0xbc423001],[0xc24b8b70,0xd0f89791],[0xc76c51a3,0x0654be30],
+      [0xd192e819,0xd6ef5218],[0xd6990624,0x5565a910],[0xf40e3585,0x5771202a],[0x106aa070,0x32bbd1b8],
+      [0x19a4c116,0xb8d2d0c8],[0x1e376c08,0x5141ab53],[0x2748774c,0xdf8eeb99],[0x34b0bcb5,0xe19b48a8],
+      [0x391c0cb3,0xc5c95a63],[0x4ed8aa4a,0xe3418acb],[0x5b9cca4f,0x7763e373],[0x682e6ff3,0xd6b2b8a3],
+      [0x748f82ee,0x5defb2fc],[0x78a5636f,0x43172f60],[0x84c87814,0xa1f0ab72],[0x8cc70208,0x1a6439ec],
+      [0x90befffa,0x23631e28],[0xa4506ceb,0xde82bde9],[0xbef9a3f7,0xb2c67915],[0xc67178f2,0xe372532b],
+      [0xca273ece,0xea26619c],[0xd186b8c7,0x21c0c207],[0xeada7dd6,0xcde0eb1e],[0xf57d4f7f,0xee6ed178],
+      [0x06f067aa,0x72176fba],[0x0a637dc5,0xa2c898a6],[0x113f9804,0xbef90dae],[0x1b710b35,0x131c471b],
+      [0x28db77f5,0x23047d84],[0x32caab7b,0x40c72493],[0x3c9ebe0a,0x15c9bebc],[0x431d67c4,0x9c100d4c],
+      [0x4cc5d4be,0xcb3e42b6],[0x597f299c,0xfc657e2a],[0x5fcb6fab,0x3ad6faec],[0x6c44198c,0x4a475817]];
+    var H=[[0x6a09e667,0xf3bcc908],[0xbb67ae85,0x84caa73b],[0x3c6ef372,0xfe94f82b],[0xa54ff53a,0x5f1d36f1],
+      [0x510e527f,0xade682d1],[0x9b05688c,0x2b3e6c1f],[0x1f83d9ab,0xfb41bd6b],[0x5be0cd19,0x137e2179]];
+    function hi(x){ return Math.floor(x/4294967296); }
+    function lo(x){ return x>>>0; }
+    function and(a,b){ return [a[0]&b[0], a[1]&b[1]]; }
+    function xor(a,b){ return [a[0]^b[0], a[1]^b[1]]; }
+    function not(a){ return [~a[0], ~a[1]]; }
+    function add64(a,b){
+      var l=(a[1]>>>0)+(b[1]>>>0);
+      var h=(a[0]>>>0)+(b[0]>>>0)+Math.floor(l/4294967296);
+      return [h>>>0, l>>>0];
+    }
+    function rrot(a,n){
+      var h=a[0]>>>0, l=a[1]>>>0;
+      if(n<32){ var nh=((h>>>n)|(l<<(32-n)))>>>0; var nl=((l>>>n)|(h<<(32-n)))>>>0; return [nh,nl]; }
+      n-=32; return [((l>>>n)|(h<<(32-n)))>>>0, ((h>>>n)|(l<<(32-n)))>>>0];
+    }
+    function shr(a,n){
+      if(n<32) return [(a[0]>>>n), ((a[1]>>>n)|(a[0]<<(32-n)))>>>0];
+      return [0, a[0]>>> (n-32)];
+    }
+    var len=bytes.length;
+    var withOne=new Uint8Array((((len+16+((len+16)%128===0?0:128))>>7)<<7));
+    withOne.set(bytes); withOne[len]=0x80;
+    var dv=new DataView(withOne.buffer);
+    var tail=withOne.length;
+    // 128 位大端长度（单位 bit）：高 64 位清零，低 64 位存 len*8
+    dv.setUint32(tail-16, 0, false);
+    dv.setUint32(tail-12, 0, false);
+    dv.setUint32(tail-8, Math.floor((len*8)/4294967296), false);
+    dv.setUint32(tail-4, (len*8)>>>0, false);
+    var w=new Array(80);
+    for(var b=0;b<withOne.length;b+=128){
+      for(var i=0;i<16;i++) w[i]=[dv.getUint32(b+i*8,false), dv.getUint32(b+i*8+4,false)];
+      for(var i=16;i<80;i++){
+        var s0=xor(xor(rrot(w[i-15],1),rrot(w[i-15],8)),shr(w[i-15],7));
+        var s1=xor(xor(rrot(w[i-2],19),rrot(w[i-2],61)),shr(w[i-2],6));
+        w[i]=add64(add64(w[i-16],s0),add64(w[i-7],s1));
+      }
+      var a=H[0].slice(),bb=H[1].slice(),c=H[2].slice(),d=H[3].slice(),e=H[4].slice(),f=H[5].slice(),g=H[6].slice(),h=H[7].slice();
+      for(var i=0;i<80;i++){
+        var S1=xor(xor(rrot(e,14),rrot(e,18)),rrot(e,41));
+        var ch=xor(and(e,f),and(not(e),g));
+        var t1=add64(add64(add64(h,S1),add64(ch,[K[i][0],K[i][1]])),w[i]);
+        var S0=xor(xor(rrot(a,28),rrot(a,34)),rrot(a,39));
+        var maj=xor(xor(and(a,bb),and(a,c)),and(bb,c));
+        var t2=add64(S0,maj);
+        h=g; g=f; f=e; e=add64(d,t1); d=c; c=bb; bb=a; a=add64(t1,t2);
+      }
+      H[0]=add64(H[0],a); H[1]=add64(H[1],bb); H[2]=add64(H[2],c); H[3]=add64(H[3],d);
+      H[4]=add64(H[4],e); H[5]=add64(H[5],f); H[6]=add64(H[6],g); H[7]=add64(H[7],h);
+    }
+    var out="";
+    for(var i=0;i<8;i++){ out+=(H[i][0]>>>0).toString(16).padStart(8,"0")+(H[i][1]>>>0).toString(16).padStart(8,"0"); }
+    return out;
+  }
+
+  // ===== 复制（稳妥版）=====
+  function doCopy(text){
+    return new Promise(function(resolve, reject){
+      function fallback(){
+        try{
+          var ta=document.createElement('textarea');
+          ta.value=text;
+          ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0';
+          ta.setAttribute('readonly','');
+          document.body.appendChild(ta);
+          ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+          var ok=false;
+          try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+          document.body.removeChild(ta);
+          ok?resolve():reject(new Error('复制不受支持'));
+        }catch(e){ reject(e); }
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(resolve).catch(fallback);
+      } else { fallback(); }
+    });
+  }
+
+  var ALGS = ["MD5","SHA-1","SHA-256","SHA-512"];
+  var FN = { "MD5":md5, "SHA-1":sha1, "SHA-256":sha256, "SHA-512":sha512 };
+
+  function run(){
+    var t = $("in").value;
+    if(!t){
+      $("out").innerHTML = '<div class="empty">输入文本后，这里会自动列出 MD5 / SHA-1 / SHA-256 / SHA-512 结果</div>';
+      return;
+    }
+    var bytes = utf8Bytes(t);
+    var html = "";
+    for(var i=0;i<ALGS.length;i++){
+      var a = ALGS[i];
+      var v;
+      try { v = FN[a](bytes); }
+      catch(e){ v = "计算错误：" + e.message; }
+      html += "<div class='h' style='margin-top:10px'><div class='t'>"+a+" <span class='cp' data-v='"+v+"'>复制</span></div><div class='v'>"+v+"</div></div>";
+    }
+    $("out").innerHTML = html;
+  }
+
+  $("in").addEventListener("input", run);
+  $("out").addEventListener("click", function(e){
+    if(e.target.classList.contains("cp")){
+      doCopy(e.target.dataset.v).then(function(){
+        e.target.textContent = "已复制"; setTimeout(function(){ e.target.textContent="复制"; },1200);
+      }).catch(function(){
+        e.target.textContent = "复制失败"; setTimeout(function(){ e.target.textContent="复制"; },1500);
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>

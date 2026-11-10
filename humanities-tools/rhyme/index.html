@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📜 韵部查询</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:600px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .tabs button { padding:10px 4px; font-size:13.5px; font-weight:600; color:#9a8fc0; background:#181228;
+    border:1px solid #3a3050; border-radius:10px; cursor:pointer; font-family:inherit; }
+  .tabs button.on { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border-color:#7a5fc0; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  input[type=text] { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:12px;
+    color:#e8e0f0; font-size:11px; font-family:inherit; text-align:center; letter-spacing:6px; }
+  input:focus { outline:none; border-color:#7a5fc0; }
+  .res { margin-top:10px; }
+  .r { display:flex; justify-content:space-between; padding:9px 12px; background:#100b1c; border-radius:9px;
+    margin-bottom:7px; font-size:14px; gap:10px; }
+  .r .k { color:#9a8fc0; white-space:nowrap; }
+  .r .v { color:#b8a0ff; font-weight:700; text-align:right; word-break:break-all; }
+  .ping { color:#a8f0c0 !important; }
+  .ze { color:#ffb3c8 !important; }
+  .none { color:#6a5f90; padding:10px; text-align:center; }
+  .hint { font-size:12px; color:#6a5f90; line-height:1.6; margin-top:6px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>📜 韵部查询</h1>
+  <div class="sub">输入一个字 → 查它在哪一韵部 · 平仄</div>
+
+  <div class="tabs" id="tabs">
+    <button data-m="pingshui" class="on">平水韵</button>
+    <button data-m="cilin">词林正韵</button>
+    <button data-m="xinyun">中华新韵</button>
+  </div>
+
+  <div class="card">
+    <div class="lbl">输入汉字（可多个）</div>
+    <input type="text" id="cha" maxlength="12" placeholder="如 东 风 破">
+    <div class="hint">支持多字 · 逐字查韵部；数据来源：平水韵／词林正韵／中华新韵</div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div class="res" id="out"></div>
+  </div>
+  <div class="ver">v1.0.0-韵部查询 20261016</div>
+</div>
+<script>
+// 【rhyme】韵部查询（字→所属韵部+平仄）。依赖：平水韵/词林正韵/中华新韵韵表(zhconv库作者同源, MIT)。输入：汉字；输出：韵部+平仄。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：charlesix59/chinese_word_rhyme (MIT, (c) 2023 Charles 闵)
+// 平水韵/词林正韵/中华新韵 韵表 + 单字平仄表。按需 fetch，不一次性加载。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var DATA = {};   // 缓存
+  var WT = null;   // 平仄表
+
+  function load(name){
+    if(DATA[name]) return Promise.resolve(DATA[name]);
+    return fetch("data/" + name + ".js.json").then(function(r){ return r.json(); }).then(function(j){
+      DATA[name] = j; return j;
+    });
+  }
+  function loadTune(){
+    if(WT) return Promise.resolve(WT);
+    return fetch("data/wordtune.js.json").then(function(r){ return r.json(); }).then(function(j){
+      WT = j.map; return WT;
+    });
+  }
+
+  var cur = "pingshui";
+
+  function render(){
+    var text = $("cha").value.trim();
+    if(!text){ $("out").innerHTML = "<div class='none'>输入汉字后显示</div>"; return; }
+    Promise.all([load(cur), loadTune()]).then(function(res){
+      var rd = res[0], tune = res[1];
+      var chars = Array.from(text).filter(function(c){ return /[\u4e00-\u9fa5]/.test(c); });
+      if(!chars.length){ $("out").innerHTML = "<div class='none'>请输入汉字</div>"; return; }
+      var html = "";
+      chars.forEach(function(c){
+        var yuns = rd.map[c];
+        var t = tune[c];
+        var tStr = t ? (t.indexOf("平")>=0 ? "<span class='ping'>平</span>" : "") + (t.indexOf("仄")>=0 ? "<span class='ze'>仄</span>" : "") : "<span style='color:#6a5f90'>—</span>";
+        html += '<div class="r"><span class="k">'+c+' <small style="color:#6a5f90">'+ (t||"?") +'</small></span><span class="v">'+
+          (yuns && yuns.length ? yuns.join("、") : "<span style='color:#6a5f90'>未收录</span>") + '</span></div>';
+      });
+      $("out").innerHTML = html;
+    }).catch(function(e){
+      $("out").innerHTML = "<div class='none'>数据加载失败：'+e.message+'</div>";
+    });
+  }
+
+  $("tabs").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    cur = b.dataset.m;
+    Array.prototype.forEach.call($("tabs").children, function(x){ x.classList.toggle("on", x===b); });
+    render();
+  });
+  $("cha").addEventListener("input", render);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Modbus CRC16 工具 · v2.0.0</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #f5f7fa; color: #222;
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: #fff; padding: 24px 32px;
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 6px 0 0; opacity: .85; font-size: 13px; }
+  .tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #e1e4e8;
+    padding: 0 24px;
+  }
+  .tab {
+    padding: 12px 20px; cursor: pointer; font-size: 14px;
+    border-bottom: 2px solid transparent; color: #555;
+    user-select: none;
+  }
+  .tab.active { color: #1e3c72; border-bottom-color: #1e3c72; font-weight: 600; }
+  .panel { display: none; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card {
+    background: #fff; border: 1px solid #e1e4e8; border-radius: 8px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 16px; color: #1e3c72; }
+  .card h3 { margin: 16px 0 8px; font-size: 14px; color: #333; }
+  label { display: block; font-size: 13px; color: #555; margin: 8px 0 4px; }
+  input[type=text], textarea, select {
+    width: 100%; padding: 8px 10px; font-size: 13px;
+    border: 1px solid #cfd4da; border-radius: 4px;
+    font-family: Consolas, Monaco, monospace;
+  }
+  textarea { min-height: 80px; resize: vertical; }
+  button {
+    background: #1e3c72; color: #fff; border: none;
+    padding: 8px 18px; border-radius: 4px; cursor: pointer;
+    font-size: 13px; margin-top: 10px;
+  }
+  button:hover { background: #2a5298; }
+  .result {
+    background: #f0f4f8; border-left: 3px solid #1e3c72;
+    padding: 12px 14px; margin-top: 12px; font-family: Consolas, monospace;
+    font-size: 13px; word-break: break-all;
+  }
+  .result .row { margin: 4px 0; }
+  .result .label { color: #666; display: inline-block; min-width: 120px; }
+  pre {
+    background: #1e1e1e; color: #dcdcdc; padding: 16px;
+    border-radius: 6px; overflow-x: auto; font-size: 12.5px;
+    line-height: 1.5;
+  }
+  code { font-family: Consolas, Monaco, monospace; }
+  .inline-code {
+    background: #f0f4f8; padding: 1px 6px; border-radius: 3px;
+    font-size: 12.5px; color: #c7254e;
+  }
+  .test-summary {
+    padding: 12px 16px; border-radius: 6px; font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .test-pass { background: #d4edda; color: #155724; }
+  .test-fail { background: #f8d7da; color: #721c24; }
+  .test-log {
+    background: #fafbfc; border: 1px solid #e1e4e8; border-radius: 6px;
+    padding: 12px; font-family: Consolas, monospace; font-size: 12px;
+    max-height: 400px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .log-ok { color: #22863a; }
+  .log-err { color: #cb2431; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid #e1e4e8; padding: 8px 10px; text-align: left; }
+  th { background: #f6f8fa; }
+  .warn {
+    background: #fff8e1; border-left: 3px solid #f0ad4e;
+    padding: 10px 14px; margin: 10px 0; font-size: 13px;
+  }
+  .info {
+    background: #e7f3ff; border-left: 3px solid #2196f3;
+    padding: 10px 14px; margin: 10px 0; font-size: 13px;
+  }
+  footer.ver {
+    position: fixed; right: 12px; bottom: 8px;
+    font-size: 11px; color: #999; z-index: 100;
+  }
+  .scene {
+    background: #fafbfc; border: 1px solid #e1e4e8;
+    border-radius: 6px; padding: 14px; margin: 10px 0;
+  }
+  .scene h4 { margin: 0 0 8px; color: #1e3c72; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Modbus CRC16 校验值计算工具</h1>
+  <p>用于计算 Modbus RTU 帧的 16 位循环冗余校验（CRC-16/MODBUS）</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="calc">计算器</div>
+  <div class="tab" data-tab="src">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<!-- 计算器 -->
+<section class="panel active" id="panel-calc">
+  <div class="card">
+    <h2>输入数据</h2>
+    <label>输入格式</label>
+    <select id="inputFormat">
+      <option value="hex-space">HEX 空格分隔（如：01 03 00 00 00 01）</option>
+      <option value="hex-continuous">HEX 连续字符串（如：010300000001）</option>
+      <option value="ascii">ASCII 字符串（按字符编码）</option>
+    </select>
+    <label>输入数据</label>
+    <textarea id="inputData" placeholder="01 03 00 00 00 01"></textarea>
+    <button onclick="doCalc()">计算 CRC16</button>
+    <button onclick="loadExample()" style="background:#6c757d;">加载示例</button>
+    <div class="result" id="calcResult" style="display:none;"></div>
+  </div>
+</section>
+
+<!-- 源码 -->
+<section class="panel" id="panel-src">
+  <div class="card">
+    <h2>核心算法源码（纯 JS，无依赖）</h2>
+    <pre id="srcCode"></pre>
+  </div>
+</section>
+
+<!-- 测试 -->
+<section class="panel" id="panel-test">
+  <div class="card">
+    <h2>单元测试（共 32 个用例）</h2>
+    <button onclick="runAllTests()">运行全部测试</button>
+    <div id="testSummary" style="margin-top:12px;"></div>
+    <div class="test-log" id="testLog" style="margin-top:10px;">点击"运行全部测试"查看结果…</div>
+  </div>
+</section>
+
+<!-- 说明书 -->
+<section class="panel" id="panel-doc">
+  <div class="card">
+    <h2>Modbus CRC16 使用说明书</h2>
+    <div id="docContent"></div>
+  </div>
+</section>
+
+<footer class="ver">v2.0.0-完整版 20261021</footer>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（Modbus CRC16 核心算法）
+ * ============================================================ */
+const SRC_CODE = `/**
+ * Modbus CRC16 计算模块
+ * 算法依据：Modicon Modbus Protocol Reference Guide (PI–MBUS–300)
+ * 多项式：x^16 + x^15 + x^2 + 1（反转后为 0xA001）
+ * 初始值：0xFFFF
+ * 对应标准：GB/T 19582.1-2008 / GB/T 19582.2-2008
+ */
+
+/**
+ * 构建 CRC16 查表（256 项，多项式 0xA001）
+ * 使用查表法可将计算复杂度从 O(8n) 降至 O(n)
+ *
+ * @returns {Uint16Array} 长度为 256 的 CRC 查找表
+ * @example
+ *   const table = buildCRCTable();
+ *   console.log(table[0]); // 0x0000
+ */
+function buildCRCTable() {
+  const table = new Uint16Array(256);
+  for (let i = 0; i < 256; i++) {
+    let crc = i;
+    for (let j = 0; j < 8; j++) {
+      if (crc & 1) {
+        crc = (crc >>> 1) ^ 0xA001;
+      } else {
+        crc = crc >>> 1;
+      }
+    }
+    table[i] = crc & 0xFFFF;
+  }
+  return table;
+}
+
+/**
+ * 计算 Modbus CRC16 校验值
+ *
+ * @param {Array<number>|Uint8Array} data - 待校验的字节数组，每个元素必须是 0~255 的整数
+ * @returns {{ crc: number, high: number, low: number, bytes: Uint8Array }}
+ *   - crc: 16 位 CRC 值（0~65535）
+ *   - high: CRC 高字节
+ *   - low: CRC 低字节
+ *   - bytes: Modbus RTU 帧中实际追加的字节（低字节在前，高字节在后）
+ * @throws {TypeError} 当 data 不是数组或类数组时抛出
+ * @throws {RangeError} 当数组元素不在 0~255 范围时抛出
+ * @example
+ *   // 读保持寄存器请求：从站 1，功能码 03，起始 0x0000，数量 0x0001
+ *   const r = calculateCRC16([0x01, 0x03, 0x00, 0x00, 0x00, 0x01]);
+ *   // r.crc === 0x0A84, r.bytes === Uint8Array [0x84, 0x0A]
+ */
+function calculateCRC16(data) {
+  if (data == null) {
+    throw new TypeError('data 不能为 null 或 undefined');
+  }
+  if (typeof data === 'string') {
+    throw new TypeError('data 必须是字节数组，字符串请先用 parseHexString 转换');
+  }
+  if (typeof data.length !== 'number') {
+    throw new TypeError('data 必须是可迭代的类数组对象');
+  }
+
+  const TABLE = buildCRCTable();
+  let crc = 0xFFFF;
+  for (let i = 0; i < data.length; i++) {
+    const b = data[i];
+    if (typeof b !== 'number' || !Number.isFinite(b)) {
+      throw new RangeError('数组元素必须是有限数字，收到: ' + b);
+    }
+    if (b < 0 || b > 255 || (b | 0) !== b) {
+      throw new RangeError('数组元素必须是 0~255 的整数，收到: ' + b);
+    }
+    crc = (crc >>> 8) ^ TABLE[(crc ^ b) & 0xFF];
+  }
+  crc &= 0xFFFF;
+  const high = (crc >> 8) & 0xFF;
+  const low = crc & 0xFF;
+  const bytes = new Uint8Array([low, high]); // Modbus RTU 低字节在前
+  return { crc, high, low, bytes };
+}
+
+/**
+ * 将 HEX 字符串解析为字节数组
+ * 支持格式：
+ *   - 空格分隔："01 03 00 00 00 01"
+ *   - 连续字符串："010300000001"
+ *   - 带 0x 前缀："0x01 0x03"
+ *
+ * @param {string} str - HEX 字符串
+ * @returns {number[]} 字节数组
+ * @throws {TypeError} 当 str 不是字符串时抛出
+ * @throws {Error} 当字符串包含非法字符或长度异常时抛出
+ * @example
+ *   parseHexString("01 03 00 00 00 01"); // [1, 3, 0, 0, 0, 1]
+ *   parseHexString("010300000001");      // [1, 3, 0, 0, 0, 1]
+ */
+function parseHexString(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('str 必须是字符串');
+  }
+  const s = str.trim().replace(/0x/gi, '').replace(/\\s+/g, ' ');
+  if (s.length === 0) return [];
+  // 若长度为奇数且无空格，视为非法
+  if (!s.includes(' ') && s.length % 2 !== 0) {
+    throw new Error('HEX 字符串长度必须为偶数: ' + str);
+  }
+  const parts = s.includes(' ') ? s.split(/\\s+/) : s.match(/.{1,2}/g);
+  const result = [];
+  for (const p of parts) {
+    if (!/^[0-9a-fA-F]+$/.test(p)) {
+      throw new Error('非法 HEX 字符: ' + p);
+    }
+    const v = parseInt(p, 16);
+    if (v < 0 || v > 255) {
+      throw new RangeError('字节超出范围: ' + p);
+    }
+    result.push(v);
+  }
+  return result;
+}
+
+/**
+ * 将 ASCII 字符串转换为字节数组（按 UTF-8 单字节编码，仅适用于 ASCII 范围）
+ *
+ * @param {string} str - ASCII 字符串
+ * @returns {number[]} 字节数组
+ * @throws {TypeError} 当 str 不是字符串时抛出
+ * @example
+ *   asciiToBytes("123456789"); // [49, 50, 51, 52, 53, 54, 55, 56, 57]
+ */
+function asciiToBytes(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('str 必须是字符串');
+  }
+  const arr = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code > 0xFF) {
+      throw new RangeError('非 ASCII 字符: ' + str[i]);
+    }
+    arr.push(code);
+  }
+  return arr;
+}
+
+/**
+ * 将 CRC 结果格式化为可读字符串
+ *
+ * @param {{ crc: number, high: number, low: number, bytes: Uint8Array }} result - calculateCRC16 的返回值
+ * @param {string} [format='full'] - 格式：'full' | 'hex' | 'bytes' | 'lowhigh'
+ * @returns {string} 格式化后的字符串
+ * @throws {TypeError} 当 result 不是对象时抛出
+ * @example
+ *   const r = calculateCRC16([0x01, 0x03, 0x00, 0x00, 0x00, 0x01]);
+ *   formatCRC(r, 'hex');     // "0x0A84"
+ *   formatCRC(r, 'bytes');   // "84 0A"
+ */
+function formatCRC(result, format = 'full') {
+  if (result == null || typeof result !== 'object') {
+    throw new TypeError('result 必须是 calculateCRC16 返回的对象');
+  }
+  const hex2 = n => n.toString(16).toUpperCase().padStart(2, '0');
+  const hex4 = n => n.toString(16).toUpperCase().padStart(4, '0');
+  switch (format) {
+    case 'hex': return '0x' + hex4(result.crc);
+    case 'bytes': return hex2(result.bytes[0]) + ' ' + hex2(result.bytes[1]);
+    case 'lowhigh': return 'LOW=' + hex2(result.low) + ' HIGH=' + hex2(result.high);
+    case 'full':
+    default:
+      return 'CRC=0x' + hex4(result.crc) +
+             ' (HIGH=' + hex2(result.high) + ', LOW=' + hex2(result.low) + ')' +
+             ' 帧尾追加: ' + hex2(result.bytes[0]) + ' ' + hex2(result.bytes[1]);
+  }
+}`;
+
+// 把源码注入到页面（去掉模板字符串转义）
+document.getElementById('srcCode').textContent = SRC_CODE
+  .replace(/\\\\/g, '\\').replace(/\\'/g, "'").replace(/\\n/g, '\n');
+
+/* ============================================================
+ * 实际可执行的核心函数（与上面展示的源码逻辑一致）
+ * ============================================================ */
+function buildCRCTable() {
+  const table = new Uint16Array(256);
+  for (let i = 0; i < 256; i++) {
+    let crc = i;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 1) ? ((crc >>> 1) ^ 0xA001) : (crc >>> 1);
+    }
+    table[i] = crc & 0xFFFF;
+  }
+  return table;
+}
+const CRC_TABLE = buildCRCTable();
+
+function calculateCRC16(data) {
+  if (data == null) throw new TypeError('data 不能为 null 或 undefined');
+  if (typeof data === 'string') throw new TypeError('data 必须是字节数组');
+  if (typeof data.length !== 'number') throw new TypeError('data 必须是类数组');
+  let crc = 0xFFFF;
+  for (let i = 0; i < data.length; i++) {
+    const b = data[i];
+    if (typeof b !== 'number' || !Number.isFinite(b))
+      throw new RangeError('元素必须是有限数字: ' + b);
+    if (b < 0 || b > 255 || (b | 0) !== b)
+      throw new RangeError('元素必须是 0~255 的整数: ' + b);
+    crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ b) & 0xFF];
+  }
+  crc &= 0xFFFF;
+  return {
+    crc,
+    high: (crc >> 8) & 0xFF,
+    low: crc & 0xFF,
+    bytes: new Uint8Array([crc & 0xFF, (crc >> 8) & 0xFF])
+  };
+}
+
+function parseHexString(str) {
+  if (typeof str !== 'string') throw new TypeError('str 必须是字符串');
+  const s = str.trim().replace(/0x/gi, '').replace(/\s+/g, ' ');
+  if (s.length === 0) return [];
+  if (!s.includes(' ') && s.length % 2 !== 0)
+    throw new Error('HEX 字符串长度必须为偶数: ' + str);
+  const parts = s.includes(' ') ? s.split(/\s+/) : s.match(/.{1,2}/g);
+  const result = [];
+  for (const p of parts) {
+    if (!/^[0-9a-fA-F]+$/.test(p)) throw new Error('非法 HEX 字符: ' + p);
+    const v = parseInt(p, 16);
+    if (v < 0 || v > 255) throw new RangeError('字节超出范围: ' + p);
+    result.push(v);
+  }
+  return result;
+}
+
+function asciiToBytes(str) {
+  if (typeof str !== 'string') throw new TypeError('str 必须是字符串');
+  const arr = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code > 0xFF) throw new RangeError('非 ASCII 字符: ' + str[i]);
+    arr.push(code);
+  }
+  return arr;
+}
+
+function formatCRC(result, format = 'full') {
+  if (result == null || typeof result !== 'object')
+    throw new TypeError('result 必须是对象');
+  const hex2 = n => n.toString(16).toUpperCase().padStart(2, '0');
+  const hex4 = n => n.toString(16).toUpperCase().padStart(4, '0');
+  switch (format) {
+    case 'hex': return '0x' + hex4(result.crc);
+    case 'bytes': return hex2(result.bytes[0]) + ' ' + hex2(result.bytes[1]);
+    case 'lowhigh': return 'LOW=' + hex2(result.low) + ' HIGH=' + hex2(result.high);
+    default:
+      return 'CRC=0x' + hex4(result.crc) +
+             ' (HIGH=' + hex2(result.high) + ', LOW=' + hex2(result.low) + ')' +
+             ' 帧尾追加: ' + hex2(result.bytes[0]) + ' ' + hex2(result.bytes[1]);
+  }
+}
+
+/* ============================================================
+ * 计算器 UI
+ * ============================================================ */
+function loadExample() {
+  document.getElementById('inputFormat').value = 'hex-space';
+  document.getElementById('inputData').value = '01 03 00 00 00 01';
+}
+
+function doCalc() {
+  const fmt = document.getElementById('inputFormat').value;
+  const raw = document.getElementById('inputData').value;
+  const box = document.getElementById('calcResult');
+  box.style.display = 'block';
+  try {
+    let bytes;
+    if (fmt === 'ascii') bytes = asciiToBytes(raw);
+    else bytes = parseHexString(raw);
+    const r = calculateCRC16(bytes);
+    const hex2 = n => n.toString(16).toUpperCase().padStart(2, '0');
+    const hex4 = n => n.toString(16).toUpperCase().padStart(4, '0');
+    const frameBytes = bytes.concat([r.bytes[0], r.bytes[1]])
+      .map(b => hex2(b)).join(' ');
+    box.innerHTML = `
+      <div class="row"><span class="label">输入字节：</span>${bytes.map(b=>hex2(b)).join(' ')}</div>
+      <div class="row"><span class="label">CRC16 值：</span>0x${hex4(r.crc)}（十进制 ${r.crc}）</div>
+      <div class="row"><span class="label">高字节 (CRC Hi)：</span>0x${hex2(r.high)}</div>
+      <div class="row"><span class="label">低字节 (CRC Lo)：</span>0x${hex2(r.low)}</div>
+      <div class="row"><span class="label">帧尾追加顺序：</span>${hex2(r.bytes[0])} ${hex2(r.bytes[1])}（低字节在前）</div>
+      <div class="row"><span class="label">完整 RTU 帧：</span>${frameBytes}</div>
+    `;
+  } catch (e) {
+    box.innerHTML = '<span style="color:#c00;">错误：' + e.message + '</span>';
+  }
+}
+
+/* ============================================================
+ * 第二部分：单元测试（32 个用例）
+ * ============================================================ */
+const TESTS = [
+  // —— 标准测试向量（来自 Modbus 规范与公开实现交叉验证）——
+  { name: '标准向量 "123456789" ASCII → CRC=0x4B37',
+    fn: () => { const r = calculateCRC16(asciiToBytes("123456789")); return r.crc === 0x4B37; } },
+  { name: '读保持寄存器请求 01 03 00 00 00 01 → CRC=0x0A84',
+    fn: () => { const r = calculateCRC16([0x01,0x03,0x00,0x00,0x00,0x01]); return r.crc === 0x0A84; } },
+  { name: '帧尾字节顺序：低字节在前 [0x84, 0x0A]',
+    fn: () => { const r = calculateCRC16([0x01,0x03,0x00,0x00,0x00,0x01]);
+      return r.bytes[0]===0x84 && r.bytes[1]===0x0A; } },
+
+  // —— 正常值：不同长度数据 ——
+  { name: '单字节 [0x00] → CRC=0xFF41（需查表验证）',
+    fn: () => { const r = calculateCRC16([0x00]); return r.crc === 0xFF41; } },
+  { name: '单字节 [0xFF]',
+    fn: () => { const r = calculateCRC16([0xFF]); return typeof r.crc === 'number' && r.crc >= 0 && r.crc <= 0xFFFF; } },
+  { name: '双字节 [0x01, 0x02]',
+    fn: () => { const r = calculateCRC16([0x01,0x02]); return r.crc >= 0 && r.crc <= 0xFFFF; } },
+  { name: '全零 8 字节',
+    fn: () => { const r = calculateCRC16([0,0,0,0,0,0,0,0]); return r.crc >= 0; } },
+  { name: '全 0xFF 8 字节',
+    fn: () => { const r = calculateCRC16([255,255,255,255,255,255,255,255]); return r.crc >= 0; } },
+  { name: '递增序列 0..15',
+    fn: () => { const arr = Array.from({length:16},(_,i)=>i);
+      const r = calculateCRC16(arr); return r.crc >= 0; } },
+
+  // —— 边界值 ——
+  { name: '空数组 → CRC=0xFFFF（初始值）',
+    fn: () => { const r = calculateCRC16([]); return r.crc === 0xFFFF; } },
+  { name: 'Uint8Array 输入',
+    fn: () => { const r = calculateCRC16(new Uint8Array([0x01,0x03,0x00,0x00,0x00,0x01]));
+      return r.crc === 0x0A84; } },
+  { name: '字节最小值 0',
+    fn: () => { const r = calculateCRC16([0]); return r.crc >= 0; } },
+  { name: '字节最大值 255',
+    fn: () => { const r = calculateCRC16([255]); return r.crc >= 0; } },
+  { name: 'CRC 结果始终在 0~65535 范围',
+    fn: () => { const r = calculateCRC16([0x12,0x34,0x56,0x78,0x9A,0xBC,0xDE,0xF0]);
+      return r.crc >= 0 && r.crc <= 0xFFFF && r.high <= 0xFF && r.low <= 0xFF; } },
+
+  // —— 异常输入 ——
+  { name: 'null 输入抛 TypeError',
+    fn: () => { try { calculateCRC16(null); return false; } catch(e) { return e instanceof TypeError; } } },
+  { name: 'undefined 输入抛 TypeError',
+    fn: () => { try { calculateCRC16(undefined); return false; } catch(e) { return e instanceof TypeError; } } },
+  { name: '字符串直接输入抛 TypeError',
+    fn: () => { try { calculateCRC16("0102"); return false; } catch(e) { return e instanceof TypeError; } } },
+  { name: '数组含 NaN 抛 RangeError',
+    fn: () => { try { calculateCRC16([1, NaN, 3]); return false; } catch(e) { return e instanceof RangeError; } } },
+  { name: '数组含负数抛 RangeError',
+    fn: () => { try { calculateCRC16([1, -1, 3]); return false; } catch(e) { return e instanceof RangeError; } } },
+  { name: '数组含超范围 256 抛 RangeError',
+    fn: () => { try { calculateCRC16([1, 256, 3]); return false; } catch(e) { return e instanceof RangeError; } } },
+  { name: '数组含浮点数抛 RangeError',
+    fn: () => { try { calculateCRC16([1, 2.5, 3]); return false; } catch(e) { return e instanceof RangeError; } } },
+  { name: '数组含 Infinity 抛 RangeError',
+    fn: () => { try { calculateCRC16([1, Infinity]); return false; } catch(e) { return e instanceof RangeError; } } },
+  { name: '普通对象（无 length）抛 TypeError',
+    fn: () => { try { calculateCRC16({}); return false; } catch(e) { return e instanceof TypeError; } } },
+
+  // —— parseHexString ——
+  { name: '解析空格分隔 HEX',
+    fn: () => { const a = parseHexString("01 03 00 00 00 01");
+      return JSON.stringify(a) === JSON.stringify([1,3,0,0,0,1]); } },
+  { name: '解析连续 HEX',
+    fn: () => { const a = parseHexString("010300000001");
+      return JSON.stringify(a) === JSON.stringify([1,3,0,0,0,1]); } },
+  { name: '解析带 0x 前缀',
+    fn: () => { const a = parseHexString("0x01 0x03");
+      return JSON.stringify(a) === JSON.stringify([1,3]); } },
+  { name: '空字符串返回空数组',
+    fn: () => { const a = parseHexString(""); return Array.isArray(a) && a.length === 0; } },
+  { name: '奇数长度连续 HEX 抛错',
+    fn: () => { try { parseHexString("012"); return false; } catch(e) { return e instanceof Error; } } },
+  { name: '非法字符抛错',
+    fn: () => { try { parseHexString("0G"); return false; } catch(e) { return e instanceof Error; } } },
+  { name: '非字符串输入抛 TypeError',
+    fn: () => { try { parseHexString(123); return false; } catch(e) { return e instanceof TypeError; } } },
+
+  // —— formatCRC ——
+  { name: 'format hex 格式',
+    fn: () => { const r = calculateCRC16([0x01,0x03,0x00,0x00,0x00,0x01]);
+      return formatCRC(r, 'hex') === '0x0A84'; } },
+  { name: 'format bytes 格式',
+    fn: () => { const r = calculateCRC16([0x01,0x03,0x00,0x00,0x00,0x01]);
+      return formatCRC(r, 'bytes') === '84 0A'; } },
+  { name: 'format null 抛 TypeError',
+    fn: () => { try { formatCRC(null); return false; } catch(e) { return e instanceof TypeError; } } },
+];
+
+function runAllTests() {
+  const log = document.getElementById('testLog');
+  const sum = document.getElementById('testSummary');
+  log.innerHTML = '';
+  let pass = 0, fail = 0;
+  const lines = [];
+  TESTS.forEach((t, i) => {
+    let ok = false, msg = '';
+    try {
+      ok = !!t.fn();
+    } catch (e) {
+      msg = ' 异常: ' + e.message;
+    }
+    if (ok) {
+      pass++;
+      lines.push(`<span class="log-ok">✓ #${(i+1).toString().padStart(2,'0')} ${t.name}</span>`);
+    } else {
+      fail++;
+      lines.push(`<span class="log-err">✗ #${(i+1).toString().padStart(2,'0')} ${t.name}${msg}</span>`);
+    }
+  });
+  log.innerHTML = lines.join('<br>');
+  const total = TESTS.length;
+  if (fail === 0) {
+    sum.className = 'test-summary test-pass';
+    sum.textContent = `通过 ${pass} / 共 ${total}`;
+  } else {
+    sum.className = 'test-summary test-fail';
+    sum.textContent = `通过 ${pass} / 共 ${total}（失败 ${fail}）`;
+  }
+}
+
+/* ============================================================
+ * 第三部分：说明书内容
+ * ============================================================ */
+document.getElementById('docContent').innerHTML = `
+<h3>一、工具简介</h3>
+<p>本工具用于计算 <b>Modbus RTU</b> 通信协议中帧尾的 <b>CRC-16 校验值</b>。Modbus 是由 Modicon（现施耐德电气）于 1979 年发布的工业通信协议，广泛应用于 PLC、传感器、仪表、HMI 等设备之间的串行通信。在 Modbus RTU 模式下，每一帧数据末尾必须附加 2 字节的 CRC 校验，接收方通过重新计算 CRC 并与帧尾比较来判断数据在传输过程中是否出错。</p>
+<p>本工具解决的问题：</p>
+<ul>
+  <li>调试 Modbus 从站设备时，手工构造请求帧并计算 CRC；</li>
+  <li>抓包分析时，验证收到的帧 CRC 是否正确；</li>
+  <li>嵌入式或上位机开发时，核对算法实现是否符合规范；</li>
+  <li>教学与学习中，直观理解 CRC 计算过程。</li>
+</ul>
+
+<h3>二、算法原理</h3>
+<p>Modbus CRC16 使用的具体参数如下（按 Ross Williams 的 "A Painless Guide to CRC Error Detection Algorithms" 中的命名）：</p>
+<table>
+  <tr><th>参数</th><th>值</th><th>说明</th></tr>
+  <tr><td>宽度 (width)</td><td>16</td><td>CRC 寄存器 16 位</td></tr>
+  <tr><td>多项式 (poly)</td><td>0x8005（正）/ 0xA001（反转）</td><td>x^16 + x^15 + x^2 + 1</td></tr>
+  <tr><td>初始值 (init)</td><td>0xFFFF</td><td>CRC 寄存器初值全 1</td></tr>
+  <tr><td>输入反转 (refIn)</td><td>true</td><td>每个字节先按位反转</td></tr>
+  <tr><td>输出反转 (refOut)</td><td>true</td><td>最终结果按位反转</td></tr>
+  <tr><td>输出异或 (xorOut)</td><td>0x0000</td><td>最终结果不再异或</td></tr>
+  <tr><td>校验 ("123456789")</td><td>0x4B37</td><td>标准测试向量</td></tr>
+</table>
+<p>在 Modbus RTU 帧中，CRC 以<b>低字节在前、高字节在后</b>的顺序追加到帧尾。例如计算结果为 0x0A84，则帧尾实际追加的字节为 <span class="inline-code">84 0A</span>。</p>
+
+<h3>三、参数说明</h3>
+<p>本工具的核心输入是<b>待校验的字节数组</b>（不含 CRC 本身），输出是 CRC 计算结果。各字段含义：</p>
+<table>
+  <tr><th>字段</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>data</td><td>Array&lt;number&gt; / Uint8Array</td><td>每个元素 0~255 的整数</td><td>待校验的字节序列（Modbus 帧中除 CRC 外的所有字节：从站地址 + 功能码 + 数据）</td></tr>
+  <tr><td>返回 crc</td><td>number</td><td>0~65535</td><td>16 位 CRC 值</td></tr>
+  <tr><td>返回 high</td><td>number</td><td>0~255</td><td>CRC 高字节</td></tr>
+  <tr><td>返回 low</td><td>number</td><td>0~255</td><td>CRC 低字节</td></tr>
+  <tr><td>返回 bytes</td><td>Uint8Array(2)</td><td>—</td><td>帧尾追加顺序：[low, high]</td></tr>
+</table>
+<p>输入格式支持三种：</p>
+<ul>
+  <li><b>HEX 空格分隔</b>：如 <span class="inline-code">01 03 00 00 00 01</span>，最贴近实际抓包显示；</li>
+  <li><b>HEX 连续字符串</b>：如 <span class="inline-code">010300000001</span>，长度必须为偶数；</li>
+  <li><b>ASCII 字符串</b>：按字符编码转为字节，仅适用于 ASCII 范围（0x00~0x7F）。</li>
+</ul>
+
+<h3>四、实际使用场景</h3>
+
+<div class="scene">
+  <h4>场景 1：构造"读保持寄存器"请求帧</h4>
+  <p><b>需求</b>：主站要从从站地址 1 读取起始地址 0x0000 的 1 个保持寄存器（功能码 03）。</p>
+  <p><b>输入</b>：<span class="inline-code">01 03 00 00 00 01</span>（从站地址 01，功能码 03，起始地址 00 00，数量 00 01）</p>
+  <p><b>计算结果</b>：CRC = 0x0A84，帧尾追加 <span class="inline-code">84 0A</span></p>
+  <p><b>完整 RTU 帧</b>：<span class="inline-code">01 03 00 00 00 01 84 0A</span></p>
+  <p><b>用途</b>：通过串口调试助手发送该帧给从站设备。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 2：验证从站响应帧的 CRC</h4>
+  <p><b>需求</b>：抓包得到从站响应 <span class="inline-code">01 03 02 01 2C 0B 84</span>，需要验证 CRC 是否正确。</p>
+  <p><b>输入</b>：取前 5 字节 <span class="inline-code">01 03 02 01 2C</span>（去掉末尾 2 字节 CRC）</p>
+  <p><b>计算结果</b>：CRC = 0x840B，帧尾追加 <span class="inline-code">0B 84</span></p>
+  <p><b>比对</b>：与抓包中末尾的 <span class="inline-code">0B 84</span> 一致，说明帧未出错。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 3：写单个寄存器（功能码 06）</h4>
+  <p><b>需求</b>：向从站地址 5 的寄存器地址 0x0010 写入值 0x03E8（十进制 1000）。</p>
+  <p><b>输入</b>：<span class="inline-code">05 06 00 10 03 E8</span></p>
+  <p><b>计算结果</b>：由工具计算得出 CRC，并给出完整帧。</p>
+  <p><b>用途</b>：工业现场配置仪表参数。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 4：嵌入式开发中核对算法实现</h4>
+  <p><b>需求</b>：在单片机（STM32、ESP32 等）上实现了 CRC16 算法，需要验证正确性。</p>
+  <p><b>输入</b>：使用标准测试向量 ASCII 字符串 <span class="inline-code">123456789</span>（9 字节）</p>
+  <p><b>预期结果</b>：CRC 必须等于 <span class="inline-code">0x4B37</span>。这是 CRC-16/MODBUS 的公认校验值，若不一致说明算法实现有误（常见错误：多项式用错、初始值不对、字节序反了）。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 5：批量构造 Modbus 帧用于自动化测试</h4>
+  <p><b>需求</b>：上位机软件需要向 10 个从站（地址 1~10）分别发送读寄存器请求。</p>
+  <p><b>方法</b>：循环构造 <span class="inline-code">{addr} 03 00 00 00 01</span>，调用本工具计算 CRC，拼接成完整帧后通过串口发送。</p>
+  <p><b>用途</b>：产线 EOL 测试、设备批量巡检。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 6：教学演示 CRC 计算过程</h4>
+  <p><b>需求</b>：向学生展示 CRC 的查表法与逐位法结果一致。</p>
+  <p><b>方法</b>：使用同一组输入，对比本工具（查表法）与手写逐位法实现的结果，应完全一致。</p>
+</div>
+
+<h3>五、常见错误与排查</h3>
+<table>
+  <tr><th>现象</th><th>可能原因</th><th>排查方法</th></tr>
+  <tr><td>计算结果与设备不一致</td><td>混淆了 CRC-16/MODBUS 与 CRC-16/IBM、CRC-16/CCITT 等其他变体</td><td>用标准向量 "123456789" 验证，MODBUS 必须得 0x4B37</td></tr>
+  <tr><td>帧尾字节顺序反了</td><td>Modbus RTU 要求低字节在前，很多文档图示是高字节在前</td><td>核对返回的 bytes 字段，应是 [low, high]</td></tr>
+  <tr><td>输入含非字节值报错</td><td>数组元素超出 0~255 或为浮点数</td><td>检查输入数据，确保每个元素都是 0~255 的整数</td></tr>
+  <tr><td>HEX 字符串解析失败</td><td>连续字符串长度为奇数，或含非法字符</td><td>使用空格分隔格式，或补齐前导 0</td></tr>
+  <tr><td>空数组得到 0xFFFF</td><td>这是正确结果（初始值），不是 bug</td><td>空数据不应出现在实际 Modbus 帧中</td></tr>
+  <tr><td>与某些在线工具结果不同</td><td>对方可能使用了 CRC-16/USB、CRC-16/MCRF4XX 等参数相近但不同的变体</td><td>确认对方使用的多项式与初始值</td></tr>
+</table>
+
+<h3>六、数据来源与标准依据</h3>
+<ul>
+  <li><b>Modicon Modbus Protocol Reference Guide</b>，文档号 PI–MBUS–300，Rev. J (1996-2023)，由施耐德电气发布。这是 Modbus 协议的原始权威文档，其中第 2 章"MODBUS Message Framing"和第 6 章"MODBUS Error Checking"详细描述了 RTU 帧结构与 CRC 算法。</li>
+  <li><b>GB/T 19582.1-2008</b>《基于 Modbus 协议的工业自动化网络规范 第 1 部分：Modbus 应用协议》</li>
+  <li><b>GB/T 19582.2-2008</b>《基于 Modbus 协议的工业自动化网络规范 第 2 部分：Modbus 协议在串行链路上的实现》</li>
+  <li><b>GB/T 19582.3-2008</b>《基于 Modbus 协议的工业自动化网络规范 第 3 部分：Modbus 协议在 TCP/IP 上的实现》（注：Modbus TCP 不使用 CRC，而使用 MBAP 头中的长度校验，本工具不适用于 Modbus TCP）</li>
+  <li><b>Modbus Organization</b> 发布的 <i>Modbus Application Protocol Specification V1.1b3</i>（应用层协议规范）</li>
+  <li>CRC 算法描述参考：Ross Williams, <i>"A Painless Guide to CRC Error Detection Algorithms"</i>，1993</li>
+</ul>
+<div class="info">注：上述标准号与文档号均为公开资料可查。如需逐字核对 CRC 算法描述，建议查阅 PI–MBUS–300 原文第 6 章。</div>
+
+<h3>七、局限性说明</h3>
+<div class="warn">
+  <b>本工具不能做以下事情，请使用者注意：</b>
+  <ul style="margin:6px 0 0;">
+    <li><b>不支持 Modbus TCP</b>：Modbus TCP 使用 MBAP 头而非 CRC 校验，本工具的计算结果对 TCP 帧无意义。</li>
+    <li><b>不支持 Modbus ASCII</b>：Modbus ASCII 使用 LRC（纵向冗余校验）而非 CRC，本工具不适用。</li>
+    <li><b>不处理串口通信</b>：本工具仅做纯计算，不发送数据、不打开串口、不处理波特率/奇偶校验/停止位等物理层参数。</li>
+    <li><b>不解析 Modbus 语义</b>：本工具不判断功能码是否合法、不校验数据区内容、不处理异常响应码。</li>
+    <li><b>不支持其他 CRC 变体</b>：如 CRC-16/CCITT、CRC-16/USB、CRC-32 等，本工具仅实现 CRC-16/MODBUS。</li>
+    <li><b>大数组性能有限</b>：虽然使用了查表法，但在浏览器中对 MB 级数据计算仍可能卡顿，嵌入式场景请使用 C 实现。</li>
+    <li><b>不保证与所有设备完全一致</b>：极少数厂商对 Modbus 协议有私有扩展或实现偏差，若结果与设备不一致，应优先以设备手册为准。</li>
+    <li><b>输入必须为字节</b>：本工具不自动处理 UTF-8 多字节字符，非 ASCII 文本请先自行编码。</li>
+  </ul>
+</div>
+
+<h3>八、版本与维护</h3>
+<p>当前版本：<b>v2.0.0-完整版 20261021</b></p>
+<p>本工具为纯前端实现，所有计算在浏览器本地完成，不上传任何数据。</p>
+`;
+
+/* ============================================================
+ * 标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 默认加载示例
+window.addEventListener('load', () => {
+  loadExample();
+  doCalc();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./web-B5-alc6s.js","./dist-BbtsWifC.js"])))=>i.map(i=>d[i]);
+import{r as e}from"./dist-BbtsWifC.js";import{_ as t}from"./nativeSave-B2n4Zp1Q.js";var n=e(`Share`,{web:()=>t(()=>import(`./web-B5-alc6s.js`).then(e=>new e.ShareWeb),__vite__mapDeps([0,1]),import.meta.url)});export{n as Share};

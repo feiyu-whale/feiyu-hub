@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌀 太乙神数</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0a0c14; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e0e4f0;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:600px; }
+  h1 { font-size:12px; text-align:center; color:#8fb8e8; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#6a7a99; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#121824,#0a0f18); border:1px solid #2a4060;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#7098c8; margin-bottom:10px; border-left:3px solid #7098c8; padding-left:8px; }
+  input, select { width:100%; background:#080d16; border:1px solid #2a4060; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#d0e0f5; outline:none; font-family:inherit; }
+  input:focus, select:focus { border-color:#5090d0; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .lbl { font-size:11px; color:#6a7a99; margin-bottom:4px; display:block; }
+  button.go { width:100%; padding:13px; font-size:11px; font-weight:700; color:#04101c;
+    background:linear-gradient(160deg,#8fb8e8,#3a6a98); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px; }
+  button.go:active { transform:scale(.98); }
+  .err { color:#e08080; text-align:center; padding:20px; }
+  /* 5x5 式盘：外环十六辰南上北下，内三×三九宫 */
+  .board { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; grid-auto-rows:1fr; }
+  .bcell { background:#101826; border:1px solid #24384f; border-radius:8px; padding:4px 2px; min-height:0; aspect-ratio:1/1; text-align:center; position:relative; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; font-size:11px; }
+  .bcell.rim { background:#141e30; }
+  .bcell .ch { font-size:13px; font-weight:700; color:#a8c8f0; line-height:1.05; }
+  .bcell .god { font-size:8px; color:#7090b8; line-height:1.1; }
+  .bcell .stars { margin-top:2px; display:flex; flex-direction:column; gap:1px; width:100%; }
+  .bcell .star { font-size:8px; line-height:1.15; padding:0 2px; border-radius:3px;
+    background:#1e2e44; color:#c0d8f0; }
+  .bcell .star.taiyi { background:#3a2a10; color:#f0c060; font-weight:700; }
+  .bcell .star.key { background:#1a3a2a; color:#70e0a0; }
+  .bcell .star.home { background:#3a1a1a; color:#f09080; }
+  .bcell .star.away { background:#1a1a3a; color:#90a0f0; }
+  .bcell.inner { background:#0e1626; border-color:#3050a0; }
+  .bcell .gnum { font-size:10px; color:#6080b0; line-height:1.1; }
+  .bcell .door { font-size:10px; color:#d0a860; font-weight:700; line-height:1.15; }
+  .bcell .wz { font-size:8px; color:#8090a8; line-height:1.1; }
+  .bcell .note { font-size:7px; color:#607090; }
+  .jiflag { position:absolute; top:3px; right:3px; font-size:8px; padding:0 3px;
+    border-radius:4px; background:#6030a0; color:#e0c0ff; }
+  /* 三算 */
+  .suan { display:flex; gap:6px; }
+  .scol { flex:1; text-align:center; background:#101826; border:1px solid #24384f;
+    border-radius:8px; padding:8px 4px; }
+  .scol .ttl { font-size:11px; color:#7098c8; }
+  .scol .val { font-size:12px; font-weight:700; color:#f0d090; }
+  .scol .g { font-size:12px; color:#a0b8d8; }
+  .info-row { display:flex; justify-content:space-between; padding:5px 0;
+    border-bottom:1px solid #1e2a3a; font-size:13px; gap:8px; }
+  .info-row:last-child { border-bottom:none; }
+  .info-row .k { color:#6a7a99; flex-shrink:0; }
+  .info-row .v { color:#d0e0f5; text-align:right; }
+  .geju { font-size:12px; line-height:1.7; color:#c8d8f0; }
+  .geju .gi { margin-bottom:5px; }
+  .geju .gi b { color:#f0c060; }
+  .sect { font-size:13px; color:#8fb8e8; margin:16px 0 8px; border-left:3px solid #7098c8; padding-left:8px; }
+  .interp { font-size:13px; line-height:1.85; color:#c8d4e4; }
+  .disclaim { font-size:11px; color:#9098a8; background:#141c28; border:1px solid #2a3a50;
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .interp ul { padding-left:18px; margin:8px 0; }
+  .interp li { margin-bottom:5px; }
+  .hint { text-align:center; font-size:11px; color:#5a6a80; margin-top:16px; line-height:1.7; }
+  .ver { text-align:center; font-size:10px; color:#3a4a60; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🌀 太 乙 神 数</h1>
+  <div class="sub">三式之首 · 十六神盘 · 主客定三算 · 三基五将<br>纯本地计算 · 引擎 react-taiyi（移植 kintaiyi, MIT）</div>
+
+  <div class="card">
+    <div class="line">
+      <div><span class="lbl">日期</span><input type="date" id="date"></div>
+      <div><span class="lbl">时间（当地）</span><input type="time" id="time" value="12:00"></div>
+    </div>
+    <div class="line">
+      <div><span class="lbl">计式</span>
+        <select id="jiStyle">
+          <option value="0">年计</option><option value="1">月计</option>
+          <option value="2">日计</option><option value="3">时计</option><option value="4">分计</option>
+        </select>
+      </div>
+      <div><span class="lbl">积年流派</span>
+        <select id="acumYear">
+          <option value="0">太乙统宗</option><option value="1">太乙金镜</option>
+          <option value="2">太乙淘金歌</option><option value="3">太乙局</option>
+        </select>
+      </div>
+    </div>
+    <button class="go" id="calc">排 盘</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">太乙由 react-taiyi（移植 kintaiyi, MIT）计算 · 传统文化参考 🐳<br>属传统术数，非科学结论，仅供娱乐参考</div>
+  <div class="ver">v1.0.0-太乙神数 20261015</div>
+</div>
+
+<script src="lib/taiyi.js"></script>
+<script>
+(function(){
+  'use strict';
+  var T = window.Taiyi;
+  if(!T){ document.getElementById('result').innerHTML='<div class="err">引擎加载失败</div>'; return; }
+
+  // 5x5 式盘布局（南上北下）：外环十六辰 + 内三×三九宫
+  // 2026-10-16 盘面重排：内九宫位置照库 NUM_TO_GONG（权威），不再用手写映射
+  // NUM_TO_GONG={1:乾,2:午,3:艮,4:卯,5:中,6:酉,7:坤,8:子,9:巽}
+  // ⚠️ 只改本页展示逻辑，不要去动底层 react-taiyi 库！
+  var RIM = [
+    ['巽','巳','午','未','坤'],
+    ['辰', null, null, null, '申'],
+    ['卯', null, null, null, '酉'],
+    ['寅', null, null, null, '戌'],
+    ['艮','丑','子','亥','乾']
+  ];
+  // 内宫 = 库 NUM_TO_GONG 的辰名 → 九宫号（每格标宫号，盘位由库钦定）
+  var NUM_TO_GONG = {1:'乾',2:'午',3:'艮',4:'卯',5:'中',6:'酉',7:'坤',8:'子',9:'巽'};
+  // 辰名 → 宫号（反查）
+  function gongOfChen(chen){
+    for(var g in NUM_TO_GONG){ if(NUM_TO_GONG[g]===chen) return parseInt(g,10); }
+    return null;
+  }
+  // 3x3 内盘每格对应的辰（南上北下、左东右西的常规排法）
+  var INNER_CHEN = {
+    '1,1':'巽', '1,2':'午', '1,3':'坤',
+    '2,1':'卯', '2,2':'中', '2,3':'酉',
+    '3,1':'艮', '3,2':'子', '3,3':'乾'
+  };
+  var STAR_CLASS = {
+    '太乙':'taiyi', '文昌':'key','始击':'key','定計':'key','定计':'key',
+    '主大':'home','主參':'home','主参':'home','客大':'away','客參':'away','客参':'away'
+  };
+  var GONG_CN = ['一','二','三','四','五','六','七','八','九'];
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function starCls(name){
+    for(var k in STAR_CLASS){ if(name.indexOf(k)>=0) return STAR_CLASS[k]; }
+    return '';
+  }
+
+  function calc(){
+    var res = document.getElementById('result');
+    var d = document.getElementById('date').value;
+    var t = document.getElementById('time').value;
+    if(!d || !t){ res.innerHTML='<div class="err">日期时间要填</div>'; return; }
+    var ps = d.split('-').map(Number), tp = t.split(':').map(Number);
+    var jiStyle = parseInt(document.getElementById('jiStyle').value,10);
+    var acumYear = parseInt(document.getElementById('acumYear').value,10);
+
+    var r;
+    try {
+      r = T.calculateTaiyi({ year:ps[0], month:ps[1], day:ps[2], hour:tp[0], minute:tp[1]||0,
+        jiStyle:jiStyle, acumYear:acumYear });
+    } catch(e){ res.innerHTML='<div class="err">排盘失败：'+(e.message||e)+'</div>'; return; }
+
+    var h = '';
+
+    // ===== 基本信息 =====
+    h += '<div class="card"><h3>基本信息</h3>';
+    h += '<div class="info-row"><span class="k">公历</span><span class="v">'+d+' '+t+'</span></div>';
+    h += '<div class="info-row"><span class="k">计式 / 流派</span><span class="v">'+r.jiName+' / '+r.methodName+'</span></div>';
+    h += '<div class="info-row"><span class="k">干支</span><span class="v">'+r.ganzhi.join(' ')+'</span></div>';
+    h += '<div class="info-row"><span class="k">农历 / 节气</span><span class="v">'+r.lunar.text+' / '+r.jieqi+'</span></div>';
+    h += '<div class="info-row"><span class="k">纪元 / 太岁</span><span class="v">'+r.jiyuan+' / '+r.taisui+'</span></div>';
+    h += '<div class="info-row"><span class="k">局 / 三才</span><span class="v">'+r.kook.text+' · '+r.kook.sanYear+' · 积数'+r.kook.accNum+'</span></div>';
+    h += '<div class="info-row"><span class="k">太乙落宫</span><span class="v">'+GONG_CN[r.taiyiGong-1]+'宫('+r.taiyiGongName+') · '+r.homeAwayHint+'</span></div>';
+    h += '</div>';
+
+    // ===== 5x5 式盘 =====
+    h += '<div class="card"><h3>十六神式盘（南上北下）</h3><div class="board">';
+    var doorMap = r.doors || {}, wzMap = r.wangZhuai || {}, board = r.board || {};
+    for(var rr=0; rr<5; rr++){
+      for(var cc=0; cc<5; cc++){
+        var rimName = RIM[rr][cc];
+        if(rimName !== null && rimName !== undefined){
+          // 外环辰
+          var stars = board[rimName] || [];
+          h += '<div class="bcell rim">';
+          h += '<div class="ch">'+rimName+'</div>';
+          if(T.SIXTEEN_GOD && T.SIXTEEN_GOD[rimName]) h += '<div class="god">'+T.SIXTEEN_GOD[rimName]+'</div>';
+          h += '<div class="stars">';
+          for(var si=0; si<stars.length; si++){
+            h += '<span class="star '+starCls(stars[si])+'">'+esc(stars[si])+'</span>';
+          }
+          h += '</div></div>';
+        } else {
+          // 内九宫：位置由库 NUM_TO_GONG 定（2026-10-16 盘面重排）
+          var ik = (rr+1)+','+(cc+1);
+          var chen = INNER_CHEN[ik];
+          var gnum = chen?gongOfChen(chen):null;
+          if(!chen || gnum==null){ h += '<div class="bcell"></div>'; continue; }
+          h += '<div class="bcell inner">';
+          h += '<div class="gnum">'+chen+'宫'+(chen==='中'?'':'('+GONG_CN[gnum-1]+')')+'</div>';
+          if(doorMap[gnum]) h += '<div class="door">'+doorMap[gnum]+'门</div>';
+          if(wzMap[gnum]) h += '<div class="wz">'+wzMap[gnum]+'</div>';
+          h += '</div>';
+        }
+      }
+    }
+    h += '</div></div>';
+
+    // ===== 主客定三算 =====
+    h += '<div class="card"><h3>主客定三算</h3><div class="suan">';
+    var sans = [
+      ['主算', r.homeSuan.value, r.homeGeneral, r.homeVGen, '主大将/主参将'],
+      ['客算', r.awaySuan.value, r.awayGeneral, r.awayVGen, '客大将/客参将'],
+      ['定算', r.setSuan.value, r.setGeneral, r.setVGen, '定大将/定参将']
+    ];
+    for(var i=0;i<sans.length;i++){
+      h += '<div class="scol"><div class="ttl">'+sans[i][0]+'</div>';
+      h += '<div class="val">'+sans[i][1]+(sans[i][1]===0?'<span style="font-size:11px;color:#8090a8">（空）</span>':'')+'</div>';
+      h += '<div class="g">大将'+GONG_CN[sans[i][2]-1]+' · 参将'+GONG_CN[sans[i][3]-1]+'</div>';
+      h += '</div>';
+    }
+    h += '</div>';
+    // 算数阴阳解
+    if(r.homeSuan.descriptions && r.homeSuan.descriptions.length)
+      h += '<div class="info-row" style="margin-top:8px"><span class="k">主算解</span><span class="v">'+esc(r.homeSuan.descriptions.join('、'))+'</span></div>';
+    if(r.awaySuan.descriptions && r.awaySuan.descriptions.length)
+      h += '<div class="info-row"><span class="k">客算解</span><span class="v">'+esc(r.awaySuan.descriptions.join('、'))+'</span></div>';
+    h += '</div>';
+
+    // ===== 三星神将 =====
+    h += '<div class="card"><h3>星神将位</h3>';
+    h += '<div class="info-row"><span class="k">太乙 / 文昌(天目)</span><span class="v">'+GONG_CN[r.taiyiGong-1]+'宫 / '+r.skyEyes+'</span></div>';
+    h += '<div class="info-row"><span class="k">始击 / 定目</span><span class="v">'+r.shiJi+' / '+r.dingMu+'</span></div>';
+    h += '<div class="info-row"><span class="k">合神 / 计神</span><span class="v">'+r.heGod+' / '+r.jiGod+'</span></div>';
+    h += '<div class="info-row"><span class="k">君基 / 臣基 / 民基</span><span class="v">'+r.kingBase+' / '+r.officerBase+' / '+r.pplBase+'</span></div>';
+    h += '<div class="info-row"><span class="k">四神 / 天乙 / 地乙</span><span class="v">'+r.fourGod+' / '+r.skyYi+' / '+r.earthYi+'</span></div>';
+    h += '<div class="info-row"><span class="k">直符 / 飞符</span><span class="v">'+r.zhiFu+' / '+r.flyFu+'</span></div>';
+    h += '<div class="info-row"><span class="k">阳九 / 百六</span><span class="v">'+r.yangjiu+' / '+r.bailiu+'</span></div>';
+    h += '<div class="info-row"><span class="k">值事门 / 三门 / 五将</span><span class="v">'+r.zhishiDoor+'门 · '+r.threeDoors+' · '+r.fiveGenerals+'</span></div>';
+    h += '</div>';
+
+    // ===== 格局 =====
+    var geju = r.geJu || {}, gk = Object.keys(geju);
+    if(gk.length){
+      h += '<div class="card"><h3>太乙格局</h3><div class="geju">';
+      for(var g=0; g<gk.length; g++){
+        h += '<div class="gi"><b>'+esc(gk[g])+'</b>：'+esc(geju[gk[g]])+'</div>';
+      }
+      h += '</div></div>';
+    }
+
+    // ===== 卦象 =====
+    if(r.yearGua || r.dayGua || r.hourGua){
+      h += '<div class="card"><h3>值卦</h3>';
+      h += '<div class="info-row"><span class="k">年卦 / 日卦 / 时卦</span><span class="v">'+(r.yearGua||'—')+' / '+(r.dayGua||'—')+' / '+(r.hourGua||'—')+'</span></div>';
+      h += '</div>';
+    }
+
+    // ===== 解读 =====
+    h += '<div class="sect">📖 解读</div><div class="interp">';
+    h += '<div class="disclaim">⚠️ 太乙神数为传统术数（三式之首），以下为传统说法，非科学结论，仅供娱乐参考。</div>';
+    h += '<p>本盘为 <b>'+r.jiName+'</b>（'+r.methodName+'），'+r.kook.text+'，太乙落 <b>'+GONG_CN[r.taiyiGong-1]+'宫</b>（'+r.taiyiGongName+'），'+r.homeAwayHint+'。</p>';
+    h += '<ul>';
+    h += '<li><b>十六神盘</b>：外环十六辰（子丑寅…乾坤巽艮）配十六神（地主/阳德/和德…），内九宫布太乙及诸星神将。</li>';
+    h += '<li><b>三算</b>：主算看主（我方）、客算看客（彼方）、定算为变数；大将参将落宫示事态方位。</li>';
+    h += '<li><b>三基</b>：君基、臣基、民基——传统上分主君、臣、民之象。</li>';
+    h += '<li><b>五将</b>：主客大将参将及定大将——发与不发，看能否成事。</li>';
+    h += '<li><b>格局</b>：迫、格、对、掩、关、囚等格局，示事情缓急轻重与吉凶。</li>';
+    h += '</ul>';
+    // ===== 白话解读（看得懂版）=====
+    var GONGPLAIN={'乾':'乾宫·西北·主老者/权威','坤':'坤宫·西南·主母/土地','艮':'艮宫·东北·主少男/山林','震':'震宫·东方·长男/行动','巽':'巽宫·东南·长女/风入','坎':'坎宫·北方·中男/隐伏','离':'离宫·南方·中女/明亮','兑':'兑宫·西方·少女/口舌','中':'中宫·中央·主事之核心'};
+    h += '<div class="sect" style="margin-top:14px">💡 白话解读</div><div class="interp">';
+    h += '<p><b>一句话：</b>太乙把"谁占上风"算成主客两方——<b>主方</b>看你/我方，<b>客方</b>看对方/外界。本盘'+r.homeAwayHint+'。</p>';
+    h += '<ul>';
+    // 2026-10-16 收严：本盘态直接照采用库 homeAwayHint 原文，不再二次加「占优势」主观判词
+    // ⚠️ 只改本页展示逻辑，不要去动底层 react-taiyi 库！
+    h += '<li><b>本盘态：</b>'+(r.homeAwayHint||'—')+'。</li>';
+    if(r.homeSuan) h += '<li><b>主算（我方）＝'+r.homeSuan.value+'：</b>'+(r.homeSuan.descriptions&&r.homeSuan.descriptions.length?'传统解为「'+r.homeSuan.descriptions.join('、')+'」':'(看主方形势)')+'。</li>';
+    if(r.awaySuan) h += '<li><b>客算（对方）＝'+r.awaySuan.value+'：</b>'+(r.awaySuan.descriptions&&r.awaySuan.descriptions.length?'传统解为「'+r.awaySuan.descriptions.join('、')+'」':'(看客方形势)')+'。</li>';
+    h += '<li><b>太乙落宫·'+GONG_CN[r.taiyiGong-1]+'：</b>'+(GONGPLAIN[GONG_CN[r.taiyiGong-1]]||'（方位）')+'——太乙所临之宫，传统主大方向、大环境的色彩。</li>';
+    h += '<li><b>三基（君/臣/民）：</b>君基'+r.kingBase+'、臣基'+r.officerBase+'、民基'+r.pplBase+'——分别象征上级、同級、下层三个层面的形势。</li>';
+    h += '<li><b>怎么用这盘：</b>太乙主"主客对阵"之事——比如竞技、竞争、谈判、对抗，看哪方助、大将落哪宫，就知哪边顺。</li>';
+    h += '</ul>';
+    h += '<p style="font-size:12px;color:#8898b0">※ 白话解读为"看懂版"提示；太乙流派分歧多（积年常数、太乙起宫、计式口径各家不一），深断请咨询专业人士。仅供参考娱乐。</p>';
+    h += '</div>';
+
+    res.innerHTML = h;
+  }
+
+  document.getElementById('calc').addEventListener('click', calc);
+  var now = new Date(), pad = function(n){ return String(n).padStart(2,'0'); };
+  document.getElementById('date').value = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  document.getElementById('time').value = pad(now.getHours())+':'+pad(now.getMinutes());
+  calc();
+})();
+</script>
+</body>
+</html>

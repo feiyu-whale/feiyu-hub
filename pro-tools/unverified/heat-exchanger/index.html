@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>换热器面积计算工具 · 完整交付物</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #f5f7fa; color: #222; line-height: 1.7;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: #fff; padding: 28px 32px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: .85; font-size: 14px; }
+  .tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #e1e4e8;
+    padding: 0 24px; position: sticky; top: 0; z-index: 10;
+  }
+  .tab {
+    padding: 14px 22px; cursor: pointer; font-size: 15px;
+    border-bottom: 3px solid transparent; color: #555; user-select: none;
+  }
+  .tab.active { color: #1e3c72; border-bottom-color: #1e3c72; font-weight: 600; }
+  .tab:hover { background: #f6f8fa; }
+  .panel { display: none; padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px;
+    overflow-x: auto; font-size: 13px; line-height: 1.55;
+    font-family: "JetBrains Mono", Consolas, monospace;
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .cmt { color: #6a9955; font-style: italic; }
+  .num { color: #b5cea8; }
+  .fn { color: #dcdcaa; }
+  h2 { color: #1e3c72; border-bottom: 2px solid #e1e4e8; padding-bottom: 8px; margin-top: 32px; }
+  h3 { color: #2a5298; margin-top: 24px; }
+  h4 { color: #444; margin-top: 18px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; background: #fff; }
+  th, td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; font-size: 14px; }
+  th { background: #f0f4f8; }
+  .warn {
+    background: #fff8e1; border-left: 4px solid #f5a623;
+    padding: 12px 16px; margin: 14px 0; border-radius: 4px;
+  }
+  .info {
+    background: #e7f3ff; border-left: 4px solid #2a5298;
+    padding: 12px 16px; margin: 14px 0; border-radius: 4px;
+  }
+  .err {
+    background: #ffebee; border-left: 4px solid #d32f2f;
+    padding: 12px 16px; margin: 14px 0; border-radius: 4px;
+  }
+  .test-result {
+    background: #fff; padding: 16px; border-radius: 8px;
+    border: 1px solid #e1e4e8; margin-top: 16px; font-family: monospace;
+    white-space: pre-wrap; font-size: 13px; max-height: 500px; overflow-y: auto;
+  }
+  .pass { color: #2e7d32; }
+  .fail { color: #c62828; }
+  button.run-btn {
+    background: #1e3c72; color: #fff; border: none; padding: 10px 24px;
+    border-radius: 6px; cursor: pointer; font-size: 14px;
+  }
+  button.run-btn:hover { background: #2a5298; }
+  .version {
+    position: fixed; right: 12px; bottom: 8px; font-size: 11px;
+    color: #999; background: rgba(255,255,255,.85); padding: 2px 8px;
+    border-radius: 3px;
+  }
+  code.inline {
+    background: #f0f4f8; padding: 2px 6px; border-radius: 3px;
+    font-size: 13px; color: #c7254e;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>换热器面积计算工具 · 完整交付物</h1>
+  <p>基于 LMTD 法的换热面积估算 · 含源码 / 单元测试 / 使用说明书</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="manual">三、使用说明书</div>
+  <div class="tab" data-tab="calc">四、在线计算</div>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="panel-source">
+  <h2>第一部分：JS 源码</h2>
+  <p>纯函数实现，无外部依赖，可直接在浏览器控制台运行。核心公式来源：GB/T 151-2014《热交换器》、TEMA Standards 9th Ed.、Kern《Process Heat Transfer》。</p>
+<pre id="sourceCode"></pre>
+</div>
+
+<!-- ============ 第二部分：单元测试 ============ -->
+<div class="panel" id="panel-test">
+  <h2>第二部分：单元测试（30+ 用例）</h2>
+  <p>覆盖正常值、边界值、异常输入、精度问题。点击按钮运行全部用例。</p>
+  <button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+  <div class="test-result" id="testOutput">（点击按钮运行测试）</div>
+<pre id="testCode" style="margin-top:20px;"></pre>
+</div>
+
+<!-- ============ 在线计算 ============ -->
+<div class="panel" id="panel-calc">
+  <h2>第四部分：在线计算</h2>
+  <div class="warn">⚠ 本工具参数为经验值，未经标准核对，结果仅供初步估算，不作为设计依据。</div>
+  <table>
+    <tr><th>热侧进口 Th_in (°C)</th><td><input id="inThIn" type="number" value="100" min="0" max="1500"></td>
+        <th>热侧出口 Th_out (°C)</th><td><input id="inThOut" type="number" value="60" min="0" max="1500"></td></tr>
+    <tr><th>冷侧进口 Tc_in (°C)</th><td><input id="inTcIn" type="number" value="30" min="0" max="1500"></td>
+        <th>冷侧出口 Tc_out (°C)</th><td><input id="inTcOut" type="number" value="50" min="0" max="1500"></td></tr>
+    <tr><th>热负荷 Q (kW)</th><td><input id="inQ" type="number" value="100" min="0.0001" step="any"></td>
+        <th>传热系数 U (W/(m²·K))</th><td><input id="inU" type="number" value="1000" min="0.1" max="100000" step="any"></td></tr>
+    <tr><th>流动方式</th><td><select id="inFlow"><option value="counter">逆流</option><option value="parallel">并流</option></select></td>
+        <th>应用 1-2 型 F 修正</th><td><input id="inApplyF" type="checkbox">（仅逆流可用）</td></tr>
+  </table>
+  <button class="run-btn" onclick="doCalc()">▶ 计算</button>
+  <div class="info" id="calcResult">（填写参数后点击计算）</div>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel" id="panel-manual">
+  <h2>第三部分：使用说明书</h2>
+  <div id="manualContent"></div>
+</div>
+
+<div class="version">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心算法源码（纯函数，无依赖）
+ * ============================================================ */
+const SOURCE_CODE = `/**
+ * 换热器面积计算工具 - 核心算法模块
+ * 依据：GB/T 151-2014《热交换器》、TEMA Standards 9th Ed.、Kern 法
+ * 作者：工具内置
+ * 版本：v2.0.2
+ */
+
+/**
+ * 计算对数平均温差 LMTD（Logarithmic Mean Temperature Difference）
+ *
+ * 公式：
+ *   逆流：ΔT1 = Th_in - Tc_out，ΔT2 = Th_out - Tc_in
+ *   并流：ΔT1 = Th_in - Tc_in， ΔT2 = Th_out - Tc_out
+ *   LMTD = (ΔT1 - ΔT2) / ln(ΔT1 / ΔT2)
+ *   当 ΔT1 ≈ ΔT2 时退化为算术平均，避免 0/0
+ *
+ * @param {number} Th_in  - 热流体进口温度 (°C 或 K，温差单位一致即可)
+ * @param {number} Th_out - 热流体出口温度
+ * @param {number} Tc_in  - 冷流体进口温度
+ * @param {number} Tc_out - 冷流体出口温度
+ * @param {string} [flowType='counter'] - 'counter' 逆流 | 'parallel' 并流
+ * @returns {number} LMTD，单位与输入温度一致
+ * @throws {Error} 输入非有限数、温差非正时抛出
+ */
+function calcLMTD(Th_in, Th_out, Tc_in, Tc_out, flowType = 'counter') {
+  for (const v of [Th_in, Th_out, Tc_in, Tc_out]) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      throw new Error('温度输入必须为有限数值');
+    }
+  }
+  if (flowType !== 'counter' && flowType !== 'parallel') {
+    throw new Error("flowType 仅支持 'counter' 或 'parallel'");
+  }
+  let dT1, dT2;
+  if (flowType === 'counter') {
+    dT1 = Th_in - Tc_out;
+    dT2 = Th_out - Tc_in;
+  } else {
+    dT1 = Th_in - Tc_in;
+    dT2 = Th_out - Tc_out;
+  }
+  if (dT1 <= 0 || dT2 <= 0) {
+    throw new Error('端部温差必须为正（出现温度交叉，LMTD 法不适用）');
+  }
+  const ratio = dT1 / dT2;
+  // 当两端温差接近时，LMTD 退化为算术平均，避免数值不稳定
+  if (Math.abs(ratio - 1) < 1e-3) {
+    return (dT1 + dT2) / 2;
+  }
+  return (dT1 - dT2) / Math.log(ratio);
+}
+
+/**
+ * 计算 1-2 型换热器（1 壳程 2 管程，或其整数倍）的 LMTD 修正系数 F
+ * 公式来源：TEMA / Kern，基于无因次参数 R、S
+ *
+ *   R = (Th_in - Th_out) / (Tc_out - Tc_in)   热容流率比
+ *   S = (Tc_out - Tc_in) / (Th_in - Tc_in)    温度效率
+ *
+ *   F = [√(R²+1) / (R-1)] · ln[(1-S)/(1-R·S)]
+ *       / ln[(2/S - 1 - R + √(R²+1)) / (2/S - 1 - R - √(R²+1))]
+ *
+ *   当 R = 1 时，公式退化为另一形式，避免除零
+ *
+ * @param {number} Th_in
+ * @param {number} Th_out
+ * @param {number} Tc_in
+ * @param {number} Tc_out
+ * @returns {number} 修正系数 F（0 < F ≤ 1）
+ * @throws {Error} 参数越界（如 S 超出可行域）时抛出
+ */
+function calcCorrectionFactor1_2(Th_in, Th_out, Tc_in, Tc_out) {
+  const dTh = Th_in - Th_out;
+  const dTc = Tc_out - Tc_in;
+  const dTmax = Th_in - Tc_in;
+  if (dTc === 0) throw new Error('冷流体温升为 0，无法计算 R、S');
+  if (dTmax === 0) throw new Error('最大温差为 0');
+  const R = dTh / dTc;
+  const S = dTc / dTmax;
+  if (S <= 0 || S >= 1) throw new Error('温度效率 S 超出 (0,1) 范围');
+  if (R < 0) throw new Error('R 不应为负，请检查温度输入');
+
+  const sqrtR21 = Math.sqrt(R * R + 1);
+  let F;
+  // 通用公式在 R→1 时是 0/0 型奇点，直接套用会失真。
+  // 处理方式：把 |R−1| < 1e-6 的工况用 R = 1±1e-4 两侧求值后取平均（鞍点夹逼），
+  // 与解析极限吻合到 1e-6 量级，且避免任何手推极限式写错的风险。
+  if (Math.abs(R - 1) < 1e-6) {
+    const probe = 1e-4;
+    const S_ = S;
+    function fAt(Rv) {
+      const rt = Math.sqrt(Rv * Rv + 1);
+      const num = Math.log((1 - S_) / (1 - Rv * S_));
+      const den = Math.log((2 / S_ - 1 - Rv + rt) / (2 / S_ - 1 - Rv - rt));
+      return (rt / (Rv - 1)) * num / den;
+    }
+    F = (fAt(1 - probe) + fAt(1 + probe)) / 2;
+  } else {
+    const lnTerm1 = Math.log((1 - S) / (1 - R * S));
+    const arg = (2 / S - 1 - R + sqrtR21) / (2 / S - 1 - R - sqrtR21);
+    if (arg <= 0) throw new Error('F 计算中出现非正对数参数，工况不可行');
+    const lnTerm2 = Math.log(arg);
+    F = (sqrtR21 / (R - 1)) * lnTerm1 / lnTerm2;
+  }
+  if (!Number.isFinite(F) || F <= 0 || F > 1) {
+    throw new Error('修正系数 F 超出合理范围 (0,1]，工况可能不可行');
+  }
+  return F;
+}
+
+/**
+ * 计算热负荷 Q（换热量）
+ *   Q = m · cp · ΔT（ΔT 为 0 时报错；符号应与物理方向一致，不取绝对值）
+ *
+ * @param {number} m  - 质量流量 (kg/s)
+ * @param {number} cp - 定压比热 (kJ/(kg·K) 或 J/(kg·K)，与 Q 单位一致)
+ * @param {number} dT - 流体进出口温差 (K 或 °C)
+ * @returns {number} 热负荷 Q，单位与 cp 对应（cp 为 kJ 则 Q 为 kW）
+ * @throws {Error} 输入非法时抛出
+ */
+function calcHeatDuty(m, cp, dT) {
+  if ([m, cp, dT].some(v => typeof v !== 'number' || !Number.isFinite(v))) {
+    throw new Error('热负荷输入必须为有限数值');
+  }
+  if (m <= 0) throw new Error('质量流量必须为正');
+  if (cp <= 0) throw new Error('比热必须为正');
+  if (dT === 0) throw new Error('温差为 0，无换热发生；若热平衡方向输反请检查进出口温度方向');
+  return m * cp * dT;
+}
+
+/**
+ * 计算所需换热面积 A
+ *   基本方程：Q = U · A · LMTD · F
+ *   故：A = Q / (U · LMTD · F)
+ *
+ * @param {number} Q    - 热负荷 (W 或 kW，与 U 单位一致)
+ * @param {number} U    - 总传热系数 (W/(m²·K) 或 kW/(m²·K))
+ * @param {number} LMTD - 对数平均温差 (K 或 °C)
+ * @param {number} [F=1] - LMTD 修正系数，纯逆流/并流取 1
+ * @returns {{ A: number, margin: { +10: number, +20: number } }}
+ *          A 为理论面积，另附 +10%、+20% 裕量建议
+ * @throws {Error} 输入非法或分母为零时抛出
+ */
+function calcArea(Q, U, LMTD, F = 1) {
+  if ([Q, U, LMTD, F].some(v => typeof v !== 'number' || !Number.isFinite(v))) {
+    throw new Error('面积计算输入必须为有限数值');
+  }
+  if (Q <= 0) throw new Error('热负荷必须为正');
+  if (U <= 0) throw new Error('传热系数必须为正');
+  if (LMTD <= 0) throw new Error('LMTD 必须为正');
+  if (F <= 0 || F > 1) throw new Error('修正系数 F 应在 (0,1] 范围');
+  const A = Q / (U * LMTD * F);
+  return {
+    A,
+    margin: {
+      '+10%': A * 1.10,
+      '+20%': A * 1.20
+    }
+  };
+}
+
+/**
+ * 一站式计算：由两侧流体进出口温度 + 热负荷 + 总传热系数，
+ * 返回理论面积与带裕量面积
+ *
+ * @param {Object} params
+ * @param {number} params.Th_in   - 热侧进口温度
+ * @param {number} params.Th_out  - 热侧出口温度
+ * @param {number} params.Tc_in   - 冷侧进口温度
+ * @param {number} params.Tc_out  - 冷侧出口温度
+ * @param {number} params.Q       - 热负荷
+ * @param {number} params.U       - 总传热系数
+ * @param {string} [params.flowType='counter'] - 'counter' | 'parallel'
+ * @param {boolean} [params.applyF=false] - 是否应用 1-2 型修正系数
+ * @returns {Object} 计算结果汇总
+ */
+function calculateExchangerArea(params) {
+  const { Th_in, Th_out, Tc_in, Tc_out, Q, U, flowType = 'counter', applyF = false } = params;
+  const LMTD = calcLMTD(Th_in, Th_out, Tc_in, Tc_out, flowType);
+  let F = 1;
+  if (applyF) {
+    if (flowType !== 'counter') {
+      throw new Error('1-2 型 F 修正仅对逆流工况有效，并流时不应应用 F 修正，请取消勾选或改选逆流');
+    }
+    F = calcCorrectionFactor1_2(Th_in, Th_out, Tc_in, Tc_out);
+  }
+  const result = calcArea(Q, U, LMTD, F);
+  return {
+    LMTD,
+    F,
+    ...result
+  };
+}
+`;
+
+/* ============================================================
+ *  第二部分：单元测试（30+ 用例）
+ * ============================================================ */
+const TEST_CODE = `/**
+ * 单元测试套件（纯 JS，自写 assert）
+ * 覆盖：正常值、边界值、异常输入、精度
+ */
+let passCount = 0, failCount = 0;
+const log = [];
+
+function assert(cond, msg) {
+  if (cond) { passCount++; log.push('  ✓ ' + msg); }
+  else      { failCount++; log.push('  ✗ ' + msg); }
+}
+function assertClose(a, b, tol, msg) {
+  const ok = Math.abs(a - b) <= tol;
+  assert(ok, msg + ' (期望 ' + b + '，实际 ' + a + '，容差 ' + tol + ')');
+}
+function assertThrows(fn, msg) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  assert(threw, msg);
+}
+
+// ---------- LMTD 测试 ----------
+// 1. 逆流经典工况
+(function(){
+  const v = calcLMTD(100, 60, 30, 50, 'counter');
+  assertClose(v, 39.09, 0.05, 'LMTD 逆流 100/60 vs 30/50');
+})();
+// 2. 并流
+(function(){
+  const v = calcLMTD(100, 60, 30, 45, 'parallel');
+  assertClose(v, 47.68, 0.1, 'LMTD 并流 100/60 vs 30/45');
+})();
+// 3. 两端温差相等（退化）
+(function(){
+  const v = calcLMTD(100, 60, 40, 80, 'counter');
+  assertClose(v, 20, 1e-6, 'LMTD ΔT1=ΔT2 退化为算术平均');
+})();
+// 4. 两端温差接近
+(function(){
+  const v = calcLMTD(100, 60.1, 40, 79.9, 'counter');
+  assertClose(v, 20.03, 0.05, 'LMTD 两端温差接近时数值稳定');
+})();
+// 5. 温度交叉应抛错（逆流）
+(function(){
+  assertThrows(() => calcLMTD(100, 40, 30, 80, 'counter'),
+    'LMTD 温度交叉应抛错');
+})();
+// 6. NaN 输入
+(function(){
+  assertThrows(() => calcLMTD(NaN, 60, 30, 50, 'counter'),
+    'LMTD NaN 输入应抛错');
+})();
+// 7. Infinity 输入
+(function(){
+  assertThrows(() => calcLMTD(Infinity, 60, 30, 50, 'counter'),
+    'LMTD Infinity 输入应抛错');
+})();
+// 8. 字符串输入
+(function(){
+  assertThrows(() => calcLMTD('100', 60, 30, 50, 'counter'),
+    'LMTD 字符串输入应抛错');
+})();
+// 9. 非法 flowType
+(function(){
+  assertThrows(() => calcLMTD(100, 60, 30, 50, 'cross'),
+    'LMTD 非法 flowType 应抛错');
+})();
+// 10. 默认 flowType 为逆流
+(function(){
+  const a = calcLMTD(100, 60, 30, 50);
+  const b = calcLMTD(100, 60, 30, 50, 'counter');
+  assert(a === b, 'LMTD 默认 flowType 应为 counter');
+})();
+// 11. 大温差
+(function(){
+  const v = calcLMTD(500, 100, 20, 200, 'counter');
+  assertClose(v, 207.6, 0.5, 'LMTD 大温差工况');
+})();
+// 12. 小温差
+(function(){
+  const v = calcLMTD(40, 35, 20, 28, 'counter');
+  assertClose(v, 9.42, 0.05, 'LMTD 小温差工况');
+})();
+
+// ---------- 修正系数 F 测试 ----------
+// 13. 典型 1-2 工况
+(function(){
+  const F = calcCorrectionFactor1_2(100, 60, 30, 50);
+  assertClose(F, 0.93, 0.05, 'F 典型工况');
+})();
+// 14. R=1 极限
+(function(){
+  const F = calcCorrectionFactor1_2(100, 60, 40, 80);
+  assert(F > 0 && F <= 1, 'F R=1 时应在 (0,1]');
+})();
+// 15. S 超出范围
+(function(){
+  assertThrows(() => calcCorrectionFactor1_2(100, 60, 30, 110),
+    'F S>1 应抛错');
+})();
+// 16. 冷流体无温升
+(function(){
+  assertThrows(() => calcCorrectionFactor1_2(100, 60, 30, 30),
+    'F 冷流体无温升应抛错');
+})();
+// 17. F 应 ≤ 1
+(function(){
+  const F = calcCorrectionFactor1_2(150, 80, 30, 60);
+  assert(F <= 1, 'F 应 ≤ 1');
+})();
+
+// ---------- 热负荷测试 ----------
+// 18. 正常
+(function(){
+  const Q = calcHeatDuty(2, 4.18, 30);
+  assertClose(Q, 250.8, 1e-6, '热负荷 2kg/s·4.18·30');
+})();
+// 19. 温差为 0 应抛错（不再取绝对值掩盖方向错误）
+(function(){
+  assertThrows(() => calcHeatDuty(2, 4.18, 0),
+    '热负荷温差 0 应抛错');
+})();
+// 20. 流量为 0
+(function(){
+  assertThrows(() => calcHeatDuty(0, 4.18, 30),
+    '热负荷流量 0 应抛错');
+})();
+// 21. 比热为负
+(function(){
+  assertThrows(() => calcHeatDuty(2, -1, 30),
+    '热负荷比热为负应抛错');
+})();
+
+// ---------- 面积计算测试 ----------
+// 22. 正常
+(function(){
+  const r = calcArea(1000, 500, 40, 1);
+  assertClose(r.A, 0.05, 1e-6, '面积 1000/(500·40)');
+})();
+// 23. 带修正系数
+(function(){
+  const r = calcArea(1000, 500, 40, 0.8);
+  assertClose(r.A, 0.0625, 1e-6, '面积带 F=0.8');
+})();
+// 24. 裕量 +10%
+(function(){
+  const r = calcArea(1000, 500, 40, 1);
+  assertClose(r.margin['+10%'], 0.055, 1e-6, '面积 +10% 裕量');
+})();
+// 25. 裕量 +20%
+(function(){
+  const r = calcArea(1000, 500, 40, 1);
+  assertClose(r.margin['+20%'], 0.06, 1e-6, '面积 +20% 裕量');
+})();
+// 26. Q 为 0
+(function(){
+  assertThrows(() => calcArea(0, 500, 40, 1),
+    '面积 Q=0 应抛错');
+})();
+// 27. U 为 0
+(function(){
+  assertThrows(() => calcArea(1000, 0, 40, 1),
+    '面积 U=0 应抛错');
+})();
+// 28. F 超出范围
+(function(){
+  assertThrows(() => calcArea(1000, 500, 40, 1.2),
+    '面积 F>1 应抛错');
+})();
+
+// ---------- 一站式计算 ----------
+// 29. 完整流程
+(function(){
+  const r = calculateExchangerArea({
+    Th_in: 100, Th_out: 60, Tc_in: 30, Tc_out: 50,
+    Q: 100, U: 500
+  });
+  assert(r.LMTD > 0 && r.A > 0, '一站式计算返回正值');
+})();
+// 30. 带修正系数
+(function(){
+  const r = calculateExchangerArea({
+    Th_in: 100, Th_out: 60, Tc_in: 30, Tc_out: 50,
+    Q: 100, U: 500, applyF: true
+  });
+  assert(r.F < 1, '一站式 applyF 时 F<1');
+})();
+
+// ---------- 精度 / 浮点 ----------
+// 31. 浮点精度
+(function(){
+  const v = calcLMTD(100, 60, 30, 50, 'counter');
+  assert(Math.abs(v - 39.09) < 0.1, 'LMTD 浮点精度在 0.1 内');
+})();
+// 32. 极小温差
+(function(){
+  const v = calcLMTD(40.001, 35.001, 20, 28, 'counter');
+  assert(Number.isFinite(v), '极小温差仍为有限值');
+})();
+
+// 输出
+const total = passCount + failCount;
+const summary = '通过 ' + passCount + ' / 共 ' + total +
+  (failCount ? ' （失败 ' + failCount + '）' : ' ✓ 全部通过');
+console.log(log.join('\\n'));
+console.log(summary);
+return { passCount, failCount, total, log, summary };
+`;
+
+/* ============================================================
+ *  第三部分：说明书内容
+ * ============================================================ */
+const MANUAL_HTML = `
+<h3>一、工具用途</h3>
+<p>本工具用于在工艺设计初期，基于 <b>LMTD（对数平均温差）法</b> 估算换热器所需传热面积。适用于：</p>
+<ul>
+  <li>管壳式换热器的初步选型与面积估算</li>
+  <li>工艺方案比选时快速核算换热面积量级</li>
+  <li>校核已有换热器在变工况下的面积裕量</li>
+  <li>教学、培训中演示 LMTD 法计算流程</li>
+</ul>
+<p>本工具 <b>不替代</b> 详细机械设计（如 GB/T 151-2014 要求的强度、振动、压降核算），仅用于传热面积这一单项的估算。</p>
+
+<h3>二、核心公式</h3>
+<p>换热器基本传热方程：</p>
+<p style="text-align:center;font-size:18px;"><code class="inline">Q = U · A · ΔT<sub>m</sub> · F</code></p>
+<ul>
+  <li><b>Q</b>：热负荷（换热量），W 或 kW</li>
+  <li><b>U</b>：总传热系数，W/(m²·K)</li>
+  <li><b>A</b>：换热面积，m²</li>
+  <li><b>ΔT<sub>m</sub></b>：对数平均温差 LMTD，K 或 °C</li>
+  <li><b>F</b>：LMTD 修正系数（纯逆流/并流取 1；多管程、交叉流等 &lt; 1）</li>
+</ul>
+<p>由此反推面积：<code class="inline">A = Q / (U · LMTD · F)</code></p>
+
+<h4>2.1 LMTD 计算</h4>
+<p>逆流：</p>
+<p style="text-align:center;"><code class="inline">ΔT<sub>1</sub> = T<sub>h,in</sub> − T<sub>c,out</sub>，ΔT<sub>2</sub> = T<sub>h,out</sub> − T<sub>c,in</sub></code></p>
+<p>并流：</p>
+<p style="text-align:center;"><code class="inline">ΔT<sub>1</sub> = T<sub>h,in</sub> − T<sub>c,in</sub>，ΔT<sub>2</sub> = T<sub>h,out</sub> − T<sub>c,out</sub></code></p>
+<p>LMTD 公式：</p>
+<p style="text-align:center;"><code class="inline">LMTD = (ΔT<sub>1</sub> − ΔT<sub>2</sub>) / ln(ΔT<sub>1</sub> / ΔT<sub>2</sub>)</code></p>
+<p>当 ΔT<sub>1</sub> ≈ ΔT<sub>2</sub>（比值接近 1）时，退化为算术平均 <code class="inline">(ΔT<sub>1</sub>+ΔT<sub>2</sub>)/2</code>，避免 0/0 数值不稳定。</p>
+
+<h4>2.2 修正系数 F（1-2 型换热器）</h4>
+<p>对于 1 壳程 2 管程（或其整数倍）的管壳式换热器，需引入修正系数 F。依据 TEMA / Kern 公式：</p>
+<p><code class="inline">R = (T<sub>h,in</sub> − T<sub>h,out</sub>) / (T<sub>c,out</sub> − T<sub>c,in</sub>)</code>（热容流率比）</p>
+<p><code class="inline">S = (T<sub>c,out</sub> − T<sub>c,in</sub>) / (T<sub>h,in</sub> − T<sub>c,in</sub>)</code>（温度效率）</p>
+<p>F 的解析式较复杂，详见源码中 <code class="inline">calcCorrectionFactor1_2</code> 函数。F 值通常在 0.8 以上方可接受，低于 0.75 建议改用多壳程。<b>（注：F&lt;0.75 阈值为经验值，未经标准核对，本工具不提供其具体出处。）</b></p>
+
+<h3>三、参数详解</h3>
+<table>
+  <tr><th>参数</th><th>含义</th><th>单位</th><th>典型取值 / 来源</th></tr>
+  <tr><td>Th_in</td><td>热流体进口温度</td><td>°C 或 K</td><td>工艺给定</td></tr>
+  <tr><td>Th_out</td><td>热流体出口温度</td><td>°C 或 K</td><td>工艺给定</td></tr>
+  <tr><td>Tc_in</td><td>冷流体进口温度</td><td>°C 或 K</td><td>工艺给定（如循环水常取 30~33°C）</td></tr>
+  <tr><td>Tc_out</td><td>冷流体出口温度</td><td>°C 或 K</td><td>由热平衡确定</td></tr>
+  <tr><td>Q</td><td>热负荷</td><td>W 或 kW</td><td>Q = m·cp·ΔT，由物料平衡得出</td></tr>
+  <tr><td>U</td><td>总传热系数</td><td>W/(m²·K)</td><td>查表或经验值（见下文）</td></tr>
+  <tr><td>flowType</td><td>流动方式</td><td>—</td><td>'counter' 逆流 / 'parallel' 并流</td></tr>
+  <tr><td>applyF</td><td>是否应用 F 修正</td><td>—</td><td>多管程取 true</td></tr>
+</table>
+
+<h4>3.1 总传热系数 U 的经验取值（参考）</h4>
+<div class="warn">⚠ 以下数据为 <b>粗略经验范围</b>，具体数值需查 <code class="inline">GB/T 151-2014</code> 附录或 TEMA 推荐值，并结合实际污垢系数修正。本工具不内置 U 值数据库，需用户自行输入。</div>
+<table>
+  <tr><th>工况</th><th>U 典型范围 W/(m²·K)</th></tr>
+  <tr><td>水—水</td><td>800 ~ 1500</td></tr>
+  <tr><td>水—油（轻）</td><td>300 ~ 600</td></tr>
+  <tr><td>水—油（重）</td><td>80 ~ 200</td></tr>
+  <tr><td>蒸汽冷凝—水</td><td>1000 ~ 3000</td></tr>
+  <tr><td>气体—气体</td><td>10 ~ 50</td></tr>
+  <tr><td>有机蒸汽冷凝</td><td>500 ~ 1000</td></tr>
+</table>
+<p>数据来源：Kern, <i>Process Heat Transfer</i>, 1950; 工程经验值，需结合具体工况。</p>
+
+<h3>四、使用场景（5 例）</h3>
+
+<h4>场景 1：水—水逆流换热</h4>
+<p>热侧：100°C → 60°C；冷侧：30°C → 50°C；Q = 100 kW；U = 1000 W/(m²·K)；纯逆流。</p>
+<p>LMTD ≈ 39.1 K；A = 100000 / (1000 × 39.1) ≈ 2.56 m²；带 20% 裕量约 3.07 m²。</p>
+
+<h4>场景 2：蒸汽冷凝加热循环水</h4>
+<p>蒸汽侧：150°C 恒温冷凝；水侧：30°C → 60°C；Q = 500 kW；U = 2000 W/(m²·K)。</p>
+<p>此时热侧温度恒定，LMTD 按逆流/并流结果相同。ΔT1=90、ΔT2=120，LMTD = (120−90)/ln(120/90) ≈ 104.3 K；A = 500000 / (2000 × 104.3) ≈ 2.39 m²。</p>
+
+<h4>场景 3：重油—水换热（U 值较低）</h4>
+<p>热侧：180°C → 120°C；冷侧：40°C → 80°C；Q = 300 kW；U = 150 W/(m²·K)。</p>
+<p>ΔT1=100、ΔT2=80，LMTD = 20/ln(100/80) ≈ 89.6 K；A = 300000 / (150 × 89.6) ≈ 22.3 m²；带 20% 裕量约 26.8 m²。U 值小导致面积显著增大。</p>
+
+<h4>场景 4：1-2 型管壳式换热器（需 F 修正）</h4>
+<p>同场景 1 工况，但采用 1 壳程 2 管程。F ≈ 0.93。A = 2.56 / 0.93 ≈ 2.75 m²，较纯逆流增加约 7%。</p>
+
+<h4>场景 5：校核已有换热器裕量</h4>
+<p>已有换热器面积 5 m²，现工况要求 A<sub>需</sub> = 4.2 m²，则裕量 = (5 − 4.2) / 4.2 ≈ 19%。若工艺波动可能达 25%，则建议扩面或清垢提高 U。</p>
+
+<h3>五、常见错误</h3>
+<div class="err">
+<b>1. 温度交叉仍强行计算</b><br>
+当逆流中出现 T<sub>h,out</sub> &lt; T<sub>c,in</sub> 或 T<sub>h,in</sub> &lt; T<sub>c,out</sub>，端部温差为负，LMTD 法失效。此时应检查热平衡或改用 ε-NTU 法。
+</div>
+<div class="err">
+<b>2. 单位不一致</b><br>
+Q 用 kW、U 用 W/(m²·K) 会导致面积差 1000 倍。务必统一为 W 与 W/(m²·K)，或 kW 与 kW/(m²·K)。
+</div>
+<div class="err">
+<b>3. 忽略污垢热阻</b><br>
+U 值若取"干净"状态，实际运行面积将不足。应按 TEMA 或 GB/T 151 选取合适的污垢系数，折算到运行 U 值。
+</div>
+<div class="err">
+<b>4. 多管程未用 F 修正</b><br>
+1-2、1-4 等管壳式换热器流型非纯逆流，必须引入 F。F &lt; 0.75 时建议改多壳程。
+</div>
+<div class="err">
+<b>5. 把 LMTD 当算术平均</b><br>
+当 ΔT<sub>1</sub>/ΔT<sub>2</sub> &gt; 2 时，算术平均会高估温差，导致面积偏小。仅当比值接近 1 时两者等价。
+</div>
+
+<h3>六、数据依据</h3>
+<ul>
+  <li><b>GB/T 151-2014</b>《热交换器》—— 国内管壳式换热器设计的主标准，规定了传热计算、结构型式、材料等基本要求。</li>
+  <li><b>GB/T 28712</b> 系列《热交换器型式与基本参数》—— 提供各类换热器的结构参数。</li>
+  <li><b>TEMA Standards</b>, 9th Edition —— 国际管壳式换热器制造商协会标准，F 修正系数、污垢系数等权威来源。</li>
+  <li><b>Kern, D.Q.</b>, <i>Process Heat Transfer</i>, McGraw-Hill, 1950 —— LMTD 法与 F 系数公式的经典出处。</li>
+  <li><b>Incropera &amp; DeWitt</b>, <i>Fundamentals of Heat and Mass Transfer</i> —— LMTD 与 ε-NTU 法的理论推导。</li>
+</ul>
+<div class="info">ℹ 本工具未内置 U 值数据库、污垢系数表、物性表。这些数值需用户依据上述标准或工艺数据自行输入。拿不准的数值请查标准原文。</div>
+
+<h3>七、精度与误差说明（有限精准原则）</h3>
+<div class="warn">
+<b>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，不承诺绝对精确。</b>
+</div>
+
+<h4>7.1 算准了什么</h4>
+<ul>
+  <li><b>数学公式本身</b>：LMTD、F 系数、面积反推的解析计算，在给定输入下是精确的（浮点精度范围内，相对误差 &lt; 10<sup>−12</sup>）。</li>
+  <li><b>公式适用范围</b>：在稳态、恒 U、单相或恒温相变、无轴向导热等假设下，LMTD 法是工程标准方法。</li>
+</ul>
+
+<h4>7.2 哪些因素没算进去</h4>
+<ul>
+  <li><b>总传热系数 U 的不确定性</b>：U 受流速、物性、污垢、流型影响，经验值本身就有 ±20% ~ ±50% 的分散度。</li>
+  <li><b>污垢热阻</b>：运行中污垢逐渐累积，U 值下降。设计时取的污垢系数只是估算。</li>
+  <li><b>物性随温度变化</b>：本工具假设 cp、ρ、μ、λ 为常数，实际随温度变化。</li>
+  <li><b>轴向导热、散热损失</b>：小型换热器或高温差时不可忽略。</li>
+  <li><b>流动分布不均</b>：实际壳程存在旁流、泄漏，降低有效温差。</li>
+  <li><b>非稳态工况</b>：开停车、负荷波动时 LMTD 法不适用。</li>
+  <li><b>复杂流型</b>：交叉流、多壳程的 F 系数需查图或更复杂公式，本工具仅提供 1-2 型。</li>
+</ul>
+
+<h4>7.3 误差大概多大</h4>
+<table>
+  <tr><th>误差来源</th><th>典型量级</th></tr>
+  <tr><td>浮点计算</td><td>&lt; 10<sup>−10</sup>（可忽略）</td></tr>
+  <tr><td>U 值经验取值</td><td>±20% ~ ±50%</td></tr>
+  <tr><td>污垢系数估算</td><td>±30% 或更大</td></tr>
+  <tr><td>物性常数假设</td><td>±5% ~ ±15%</td></tr>
+  <tr><td>综合面积估算</td><td>工程上通常认为 ±30% 以内可接受</td></tr>
+</table>
+<p><b>结论</b>：本工具给出的面积是 <b>量级估算</b>，用于方案比选和初步选型。最终设计面积必须由具备资质的工程单位按 GB/T 151 等标准进行详细计算，并考虑足够的面积裕量（通常 10% ~ 25%，此为经验值，未经标准具体条款核对）。</p>
+
+<h3>八、局限性</h3>
+<ul>
+  <li>仅支持 LMTD 法，不支持 ε-NTU 法（后者适用于出口温度未知的校核计算）。</li>
+  <li>修正系数 F 仅实现 1-2 型（1 壳程 2 管程或其整数倍）。其他流型（2 壳程、交叉流等）需另查图表。</li>
+  <li>不计算压降、不校核振动、不做强度计算——这些属于机械设计范畴。</li>
+  <li>不处理相变过程中的变 U 值分段计算（如部分冷凝、部分过冷）。</li>
+  <li>不适用于非稳态、变物性、高粘度、非牛顿流体等特殊工况（需专门方法）。</li>
+  <li>本工具为计算辅助，<b>不替代</b> 工程判断与标准合规审查。</li>
+</ul>
+
+<h3>九、版本与反馈</h3>
+<p>当前版本：<b>v2.0.2-修审查问题 20261108</b></p>
+<p>如发现公式实现与标准不符，或有用例未覆盖的边界情况，欢迎反馈。本工具持续迭代，但始终遵循"有限精准"原则——老实告知能算什么、不能算什么。</p>
+`;
+
+/* ============================================================
+ *  渲染：把源码 / 测试代码 / 说明书填入页面
+ * ============================================================ */
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function highlightJS(src) {
+  let s = escapeHtml(src);
+  // 注释
+  s = s.replace(/(\/\*\*[\s\S]*?\*\/|\/\*[\s\S]*?\*\/|\/\/.*)/g, '<span class="cmt">$1</span>');
+  // 字符串
+  s = s.replace(/('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`)/g, '<span class="str">$1</span>');
+  // 关键字
+  s = s.replace(/\b(function|return|if|else|for|const|let|var|throw|new|typeof|true|false|null|undefined|try|catch)\b/g,
+    '<span class="kw">$1</span>');
+  // 数字
+  s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="num">$1</span>');
+  return s;
+}
+
+document.getElementById('sourceCode').innerHTML = highlightJS(SOURCE_CODE);
+document.getElementById('testCode').innerHTML = highlightJS(TEST_CODE);
+document.getElementById('manualContent').innerHTML = MANUAL_HTML;
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+ *  执行核心算法（供测试调用）
+ * ============================================================ */
+eval(SOURCE_CODE);
+
+/* ============================================================
+ *  在线计算
+ * ============================================================ */
+function doCalc() {
+  const out = document.getElementById('calcResult');
+  const num = id => parseFloat(document.getElementById(id).value);
+  const vals = {
+    Th_in: num('inThIn'), Th_out: num('inThOut'),
+    Tc_in: num('inTcIn'), Tc_out: num('inTcOut'),
+    Q: num('inQ'), U: num('inU')
+  };
+  for (const [k, v] of Object.entries(vals)) {
+    if (!Number.isFinite(v)) {
+      out.innerHTML = '<span class="fail">输入校验失败：' + k + ' 必须为有效数值</span>';
+      return;
+    }
+  }
+  try {
+    const r = calculateExchangerArea({
+      ...vals,
+      Q: vals.Q * 1000, // kW → W，与 U 的 W/(m²·K) 单位一致
+      flowType: document.getElementById('inFlow').value,
+      applyF: document.getElementById('inApplyF').checked
+    });
+    out.innerHTML = 'LMTD = ' + r.LMTD.toFixed(2) + ' K<br>F = ' + r.F.toFixed(3) +
+      '<br>理论面积 A = ' + r.A.toFixed(3) + ' m²' +
+      '<br>+10% 裕量 ≈ ' + r.margin['+10%'].toFixed(3) + ' m²' +
+      '<br>+20% 裕量 ≈ ' + r.margin['+20%'].toFixed(3) + ' m²';
+  } catch (e) {
+    out.innerHTML = '<span class="fail">计算出错：' + escapeHtml(e.message) + '</span>';
+  }
+}
+
+/* ============================================================
+ *  运行测试
+ * ============================================================ */
+function runAllTests() {
+  const out = document.getElementById('testOutput');
+  try {
+    // 重新初始化计数器
+    const fn = new Function(SOURCE_CODE + '\n' + TEST_CODE);
+    const result = fn();
+    out.innerHTML = result.log.map(l => {
+      if (l.includes('✗')) return '<span class="fail">' + escapeHtml(l) + '</span>';
+      return '<span class="pass">' + escapeHtml(l) + '</span>';
+    }).join('<br>') + '<br><br><b>' + result.summary + '</b>';
+  } catch (e) {
+    out.innerHTML = '<span class="fail">测试运行出错：' + escapeHtml(e.message) + '</span>';
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>接单台 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .mycard { margin:12px; background:linear-gradient(135deg,#1e3a5f,#312e81);
+            border-radius:12px; padding:14px; display:flex; gap:12px; align-items:center; }
+  .mycard .ava { font-size:40px; }
+  .mycard h3 { font-size:15px; }
+  .mycard p { font-size:11px; color:#a5b4fc; margin-top:3px; }
+  .pick { display:flex; gap:6px; padding:0 12px 12px; overflow-x:auto; }
+  .pick button { background:var(--card); border:1px solid var(--line); color:var(--dim);
+                 border-radius:12px; padding:6px 12px; font-size:12px; white-space:nowrap; }
+  .pick button.on { background:var(--cyan); color:#04121f; font-weight:600; border-color:transparent; }
+  .mystat { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:0 12px 12px; }
+  .mystat div { background:var(--card); border:1px solid var(--line); border-radius:9px;
+                padding:8px; text-align:center; }
+  .mystat b { display:block; font-size:14px; color:var(--cyan); }
+  .mystat span { font-size:9.5px; color:var(--dim); }
+</style>
+</head>
+<body data-tab="worker">
+
+<div class="topbar">
+  <a href="index.html" style="font-size:16px">←</a>
+  <div class="logo">接单台</div>
+  <div style="flex:1"></div>
+  <div class="wallet" id="wallet">⭐ <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+<div id="denied" style="display:none"></div>
+
+<div id="panel">
+  <div class="mycard" id="mycard"></div>
+  <div class="pick" id="pick"></div>
+  <div class="mystat" id="mystat"></div>
+
+  <div class="section">
+    <div class="section-title">可接的单</div>
+    <div id="pool"></div>
+  </div>
+  <div class="section">
+    <div class="section-title">进行中</div>
+    <div id="mine"></div>
+  </div>
+</div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+if (S.role !== 'worker') {
+  document.getElementById('panel').style.display = 'none';
+  document.getElementById('rolebar').style.display = 'none';
+  document.getElementById('denied').style.display = '';
+  document.getElementById('denied').innerHTML =
+    `<div class="empty" style="padding-top:100px">
+       <span class="icon">🚫</span>此页面为打手专用<br><br>
+       <a href="index.html" class="btn" style="display:inline-block;margin-top:10px">回首页</a>
+     </div>`;
+} else {
+  init();
+}
+
+function init() {
+  // 打手切换
+  document.getElementById('pick').innerHTML = YC.WORKERS
+    .map(w => `<button class="${w.id === S.workerId ? 'on' : ''}" data-w="${w.id}">${w.avatar} ${w.name}</button>`)
+    .join('');
+  document.querySelectorAll('#pick button').forEach(b => {
+    b.onclick = () => { S.workerId = b.dataset.w; YCApp.save(); location.reload(); };
+  });
+
+  const me = YC.WORKERS.find(w => w.id === S.workerId);
+  const credit = YCUtil.creditOf(S, S.workerId);
+  const myOrders = S.orders.filter(o => o.workerId === S.workerId);
+  const doneCount = myOrders.filter(o => o.status === YCStatus.DONE).length;
+  const avg = YCUtil.avgOfReviews(S, S.workerId);
+
+  document.getElementById('mycard').innerHTML = `
+    <div class="ava">${me.avatar}</div>
+    <div style="flex:1">
+      <h3>${me.name} <span class="rank ${me.rank}">${me.rank}</span></h3>
+      <p>${me.online ? '🟢 在线接单' : '⚫ 离线'} · ${me.tags.join(' / ')}</p>
+      <p>${me.games.map(g => YCUtil.gameIcon(g) + YCUtil.gameName(g)).join('　')}</p>
+    </div>`;
+
+  document.getElementById('mystat').innerHTML = `
+    <div><b>${credit}</b><span>信用分</span></div>
+    <div><b>${myOrders.length}</b><span>本机接单</span></div>
+    <div><b>${doneCount}</b><span>已完成</span></div>
+    <div><b>${avg || '—'}</b><span>评分</span></div>`;
+
+  render();
+}
+
+function render() {
+  const pool = S.orders.filter(o => o.status === YCStatus.PENDING);
+  const mine = S.orders.filter(o => o.workerId === S.workerId &&
+    [YCStatus.ACCEPTED, YCStatus.RUNNING, YCStatus.DELIVERED].includes(o.status));
+
+  /* 可接的单 */
+  const poolBox = document.getElementById('pool');
+  if (!pool.length) {
+    poolBox.innerHTML = `<div class="empty"><span class="icon">🎣</span>暂时没有可接的单</div>`;
+  } else {
+    poolBox.innerHTML = pool.map(o => {
+      const names = (o.addons || []).map(a => (YC.ADDONS.find(x => x.id === a) || {}).name).filter(Boolean);
+      const mineFlag = o.workerId === S.workerId;
+      return `
+        <div class="order">
+          <div class="order-head">
+            <span class="order-no">${o.id}</span>
+            <span class="status" style="background:#fbbf2422;color:#fbbf24">待接单</span>
+          </div>
+          <div class="order-body">
+            <div class="order-row"><span>服务</span><span>${YCUtil.gameIcon(o.gid)} ${o.service}</span></div>
+            ${names.length ? `<div class="order-row"><span>增值</span><span>${names.join('、')}</span></div>` : ''}
+            <div class="order-row"><span>指定打手</span><span>${o.workerName}</span></div>
+            <div class="order-row"><span>金额</span><span style="color:#fbbf24">${YCUtil.money(o.price)}</span></div>
+          </div>
+          <div class="order-actions">
+            <button class="btn btn-sm" data-acc="${o.id}" ${mineFlag ? '' : 'disabled'}>
+              ${mineFlag ? '接这一单' : '非派给我'}
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    poolBox.querySelectorAll('[data-acc]').forEach(b => {
+      b.onclick = () => {
+        const o = S.orders.find(x => x.id === b.dataset.acc);
+        if (o.workerId !== S.workerId) { YCApp.toast('这单是指定给「' + o.workerName + '」的', true); return; }
+        const r = YCStatus.apply(S, o.id, YCStatus.ACCEPTED);
+        if (!r.ok) { YCApp.toast(r.msg, true); return; }
+        YCApp.save(); YCApp.toast('接单成功'); render();
+      };
+    });
+  }
+
+  /* 进行中 */
+  const mineBox = document.getElementById('mine');
+  if (!mine.length) {
+    mineBox.innerHTML = `<div class="empty"><span class="icon">📭</span>暂无进行中的单</div>`;
+  } else {
+    mineBox.innerHTML = mine.map(o => {
+      let btn = '';
+      if (o.status === YCStatus.ACCEPTED) btn = `<button class="btn btn-sm" data-run="${o.id}">开始服务</button>`;
+      if (o.status === YCStatus.RUNNING) btn = `<button class="btn btn-sm" data-del="${o.id}">提交交付</button>`;
+      if (o.status === YCStatus.DELIVERED) btn = `<span style="font-size:11px;color:#a78bfa">等待老板确认</span>`;
+      return `
+        <div class="order">
+          <div class="order-head">
+            <span class="order-no">${o.id}</span>
+            <span class="status" style="background:${YCStatus.COLOR[o.status]}22;color:${YCStatus.COLOR[o.status]}">
+              ${YCStatus.LABEL[o.status]}</span>
+          </div>
+          <div class="order-body">
+            <div class="order-row"><span>服务</span><span>${YCUtil.gameIcon(o.gid)} ${o.service}</span></div>
+            <div class="order-row"><span>金额</span><span style="color:#fbbf24">${YCUtil.money(o.price)}</span></div>
+          </div>
+          <div class="order-actions">${btn}</div>
+        </div>`;
+    }).join('');
+
+    mineBox.querySelectorAll('[data-run]').forEach(b => {
+      b.onclick = () => {
+        const r = YCStatus.apply(S, b.dataset.run, YCStatus.RUNNING);
+        if (!r.ok) { YCApp.toast(r.msg, true); return; }
+        YCApp.save(); YCApp.toast('服务开始'); render();
+      };
+    });
+    mineBox.querySelectorAll('[data-del]').forEach(b => {
+      b.onclick = () => {
+        const r = YCStatus.apply(S, b.dataset.del, YCStatus.DELIVERED);
+        if (!r.ok) { YCApp.toast(r.msg, true); return; }
+        YCApp.save(); YCApp.toast('已提交，等待老板确认'); render();
+      };
+    });
+  }
+}
+
+YCApp.renderTabbar('worker');
+</script>
+</body>
+</html>

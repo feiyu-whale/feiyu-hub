@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>音频裁剪</title>
+<style>
+  :root{--bg:#0a0f1a;--panel:#111a2b;--line:#1e2a41;--fg:#dbe7f5;--dim:#7b8ba3;--acc:#4aa8ff;--acc2:#7d5cff;--ok:#3ddc97;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding-bottom:40px}
+  header{padding:16px 18px 12px;border-bottom:1px solid var(--line);
+    background:linear-gradient(135deg,rgba(74,168,255,.14),rgba(125,92,255,.12))}
+  header h1{margin:0;font-size:17px}
+  header p{margin:4px 0 0;font-size:11px;color:var(--dim)}
+  .back{color:var(--acc);text-decoration:none;font-size:12px;display:inline-block;margin-bottom:8px}
+  .wrap{max-width:760px;margin:0 auto;padding:16px 14px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+  .box h2{margin:0 0 10px;font-size:13px;color:var(--acc)}
+  #drop{border:2px dashed var(--line);border-radius:12px;padding:36px 16px;text-align:center;
+    cursor:pointer;transition:.2s;background:#0d1626}
+  #drop:active,#drop.over{border-color:var(--acc);background:#132033}
+  #drop .big{font-size:14px;margin-bottom:5px}
+  #drop .small{font-size:11px;color:var(--dim)}
+  label{display:block;font-size:12px;color:var(--dim);margin:12px 0 5px}
+  input[type=number],select{width:100%;padding:9px 11px;font-size:13px;color:var(--fg);
+    background:#0b1421;border:1px solid var(--line);border-radius:8px;outline:none}
+  input:focus,select:focus{border-color:var(--acc)}
+  .row{display:flex;gap:8px}
+  .row>div{flex:1}
+  .btn{display:block;width:100%;padding:12px;font-size:14px;border-radius:9px;border:none;
+    cursor:pointer;font-weight:600;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;margin-top:14px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);font-weight:400}
+  canvas{width:100%;height:80px;display:block;background:#0b1421;border-radius:8px}
+  .time{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:6px}
+  audio{width:100%;height:36px;margin-top:10px}
+  .status{font-size:12px;min-height:18px;margin-top:10px;color:var(--dim)}
+  .status.ok{color:var(--ok)}
+  .status.err{color:#ff6b6b}
+  #result{display:none}
+  .ver{text-align:center;font-size:10px;color:#3d4a61;padding:20px 0}
+  .hide{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="../../">← 返回</a>
+  <h1>✂️ 音频裁剪</h1>
+  <p>掐头去尾 · 淡入淡出 · 本地处理</p>
+</header>
+
+<div class="wrap">
+
+  <div class="box">
+    <div id="drop">
+      <div class="big">点这里选音频文件</div>
+      <div class="small">支持 mp3 / wav / ogg / m4a / flac</div>
+    </div>
+    <input type="file" id="file" accept="audio/*" class="hide">
+    <div id="fileInfo" class="status"></div>
+  </div>
+
+  <div class="box hide" id="editBox">
+    <h2>波形</h2>
+    <canvas id="wave"></canvas>
+    <div class="time"><span id="t0">0:00.0</span><span id="dur">0:00.0</span></div>
+    <audio id="player" controls></audio>
+
+    <h2 style="margin-top:18px">裁剪范围</h2>
+    <div class="row">
+      <div>
+        <label>开始（秒）</label>
+        <input type="number" id="start" min="0" step="0.1" value="0">
+      </div>
+      <div>
+        <label>结束（秒）</label>
+        <input type="number" id="end" min="0" step="0.1" value="0">
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost" style="margin-top:0" id="setStart">用当前位置作起点</button>
+      <button class="btn ghost" style="margin-top:0" id="setEnd">用当前位置作终点</button>
+    </div>
+
+    <h2 style="margin-top:18px">淡入淡出</h2>
+    <div class="row">
+      <div>
+        <label>淡入（秒）</label>
+        <input type="number" id="fadeIn" min="0" step="0.1" value="0">
+      </div>
+      <div>
+        <label>淡出（秒）</label>
+        <input type="number" id="fadeOut" min="0" step="0.1" value="0">
+      </div>
+    </div>
+
+    <label>输出格式</label>
+    <select id="fmt">
+      <option value="wav">WAV（无损，文件大）</option>
+      <option value="mp3">MP3（需要浏览器支持编码）</option>
+    </select>
+
+    <button class="btn" id="go">开始裁剪</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="box" id="result">
+    <h2>✅ 处理完成</h2>
+    <audio id="outPlayer" controls></audio>
+    <a class="btn" id="dl" download>下载文件</a>
+  </div>
+
+  <div class="ver" id="ver"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var VERSION = "v1.0.0-裁剪初版 20261103";
+  document.getElementById("ver").textContent = VERSION;
+
+  var drop = document.getElementById("drop");
+  var fileInput = document.getElementById("file");
+  var editBox = document.getElementById("editBox");
+  var statusEl = document.getElementById("status");
+  var fileInfo = document.getElementById("fileInfo");
+  var player = document.getElementById("player");
+  var wave = document.getElementById("wave");
+
+  var audioCtx = null;
+  var buffer = null;      // AudioBuffer
+  var fileName = "";
+
+  function st(msg, cls){ statusEl.textContent = msg; statusEl.className = "status" + (cls ? " " + cls : ""); }
+
+  drop.addEventListener("click", function(){ fileInput.click(); });
+  drop.addEventListener("dragover", function(e){ e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", function(){ drop.classList.remove("over"); });
+  drop.addEventListener("drop", function(e){
+    e.preventDefault(); drop.classList.remove("over");
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", function(){
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(f){
+    if (!/^audio\//.test(f.type) && !/\.(mp3|wav|ogg|m4a|flac|aac|webm)$/i.test(f.name)) {
+      fileInfo.textContent = "❌ 这不像音频文件"; fileInfo.className = "status err"; return;
+    }
+    fileName = f.name.replace(/\.[^.]+$/, "");
+    fileInfo.textContent = "读取中：" + f.name + "（" + (f.size/1048576).toFixed(1) + " MB）";
+    fileInfo.className = "status";
+
+    var reader = new FileReader();
+    reader.onload = function(){
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.decodeAudioData(reader.result.slice(0))
+        .then(function(buf){
+          buffer = buf;
+          audioCtx = ctx;
+          fileInfo.textContent = "✅ " + f.name + " · " + buf.duration.toFixed(1) + " 秒 · " + buf.numberOfChannels + " 声道";
+          fileInfo.className = "status ok";
+          editBox.classList.remove("hide");
+          setupUI(buf);
+        })
+        .catch(function(err){
+          fileInfo.textContent = "❌ 解不开这个格式（" + (err.message || err) + "）";
+          fileInfo.className = "status err";
+        });
+    };
+    reader.readAsArrayBuffer(f);
+  }
+
+  function fmtTime(s){
+    var m = Math.floor(s/60), sec = s % 60;
+    return m + ":" + (sec < 10 ? "0" : "") + sec.toFixed(1);
+  }
+
+  function setupUI(buf){
+    var dur = buf.duration;
+    document.getElementById("end").value = dur.toFixed(1);
+    document.getElementById("end").max = dur;
+    document.getElementById("start").max = dur;
+    document.getElementById("dur").textContent = fmtTime(dur);
+    drawWave(buf);
+
+    // 播放指针
+    player.src = URL.createObjectURL(new Blob([], {type:"audio/wav"}));
+    player.removeAttribute("src");
+
+    document.getElementById("setStart").onclick = function(){
+      document.getElementById("start").value = player.currentTime.toFixed(1);
+    };
+    document.getElementById("setEnd").onclick = function(){
+      document.getElementById("end").value = player.currentTime.toFixed(1);
+    };
+  }
+
+  function drawWave(buf){
+    var dpr = window.devicePixelRatio || 1;
+    var w = wave.clientWidth, h = 80;
+    wave.width = w * dpr; wave.height = h * dpr;
+    var g = wave.getContext("2d");
+    g.scale(dpr, dpr);
+    g.clearRect(0, 0, w, h);
+
+    var data = buf.getChannelData(0);
+    var step = Math.ceil(data.length / w);
+    g.fillStyle = "#4aa8ff";
+    for (var i = 0; i < w; i++) {
+      var min = 1, max = -1;
+      for (var j = 0; j < step; j++) {
+        var v = data[i*step + j] || 0;
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      var y1 = (1 + min) * h/2, y2 = (1 + max) * h/2;
+      g.fillRect(i, y1, 1, Math.max(1, y2 - y1));
+    }
+  }
+
+  /* ---------- 导出 WAV ---------- */
+  function encodeWav(buffers, sampleRate){
+    var numCh = buffers.length;
+    var len = buffers[0].length;
+    var bytes = 44 + len * numCh * 2;
+    var ab = new ArrayBuffer(bytes);
+    var view = new DataView(ab);
+
+    function str(off, s){ for (var i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); }
+    str(0, "RIFF");
+    view.setUint32(4, bytes - 8, true);
+    str(8, "WAVE");
+    str(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numCh * 2, true);
+    view.setUint16(32, numCh * 2, true);
+    view.setUint16(34, 16, true);
+    str(36, "data");
+    view.setUint32(40, len * numCh * 2, true);
+
+    var off = 44;
+    for (var i = 0; i < len; i++) {
+      for (var c = 0; c < numCh; c++) {
+        var s = Math.max(-1, Math.min(1, buffers[c][i]));
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        off += 2;
+      }
+    }
+    return new Blob([ab], {type:"audio/wav"});
+  }
+
+  document.getElementById("go").addEventListener("click", function(){
+    if (!buffer) return;
+
+    var start = parseFloat(document.getElementById("start").value) || 0;
+    var end = parseFloat(document.getElementById("end").value) || buffer.duration;
+    var fi = parseFloat(document.getElementById("fadeIn").value) || 0;
+    var fo = parseFloat(document.getElementById("fadeOut").value) || 0;
+
+    if (end <= start) { st("❌ 结束时间要大于开始时间", "err"); return; }
+
+    st("处理中…");
+    var btn = this; btn.disabled = true;
+
+    setTimeout(function(){
+      try {
+        var sr = buffer.sampleRate;
+        var s0 = Math.floor(start * sr);
+        var s1 = Math.min(Math.floor(end * sr), buffer.length);
+        var len = s1 - s0;
+
+        var chans = [];
+        for (var c = 0; c < buffer.numberOfChannels; c++) {
+          var src = buffer.getChannelData(c);
+          var dst = new Float32Array(len);
+          dst.set(src.subarray(s0, s1));
+
+          // 淡入
+          if (fi > 0) {
+            var n = Math.min(Math.floor(fi * sr), len);
+            for (var i = 0; i < n; i++) dst[i] *= i / n;
+          }
+          // 淡出
+          if (fo > 0) {
+            var m = Math.min(Math.floor(fo * sr), len);
+            for (var i = 0; i < m; i++) dst[len - 1 - i] *= i / m;
+          }
+          chans.push(dst);
+        }
+
+        var blob = encodeWav(chans, sr);
+        var url = URL.createObjectURL(blob);
+
+        document.getElementById("outPlayer").src = url;
+        var dl = document.getElementById("dl");
+        dl.href = url;
+        dl.download = fileName + "_裁剪.wav";
+        document.getElementById("result").style.display = "block";
+
+        st("✅ 完成 · " + (end - start).toFixed(1) + " 秒 · " + (blob.size/1048576).toFixed(2) + " MB", "ok");
+        document.getElementById("result").scrollIntoView({behavior:"smooth"});
+      } catch (e) {
+        st("❌ 出错了：" + e.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    }, 30);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>线路电压降计算器 · voltage-drop</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#c9d8ea;font:13px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:42px;-webkit-text-size-adjust:100%}
+header{padding:14px 16px;background:#0d1e35;border-bottom:1px solid #1d3557}
+h1{margin:0 0 3px;font-size:17px;color:#4a9eff}
+.sub,.note{color:#7f9ab5;font-size:11px;margin:6px 0 0}
+nav{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
+nav button{background:#132a45;color:#8fb0cf;border:1px solid #1d3557;border-bottom:0;padding:7px 13px;border-radius:7px 7px 0 0;font:inherit;cursor:pointer}
+nav button.on{background:#4a9eff;color:#05131f;font-weight:600;border-color:#4a9eff}
+main{padding:0 12px 12px}
+.card{background:#0f2137;border:1px solid #1d3557;border-radius:9px;padding:12px;margin-bottom:12px}
+h3{margin:0 0 9px;font-size:13px;color:#4a9eff;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px}
+label{display:block;font-size:11px;color:#7f9ab5;margin-bottom:3px}
+input,select{width:100%;min-width:0;background:#0a1628;color:#dceaf7;border:1px solid #24486e;border-radius:6px;padding:7px;font:inherit}
+input:focus,select:focus{outline:0;border-color:#4a9eff}
+button.go{display:block;width:100%;padding:11px;background:#4a9eff;color:#05131f;border:0;border-radius:8px;font:600 14px/1 inherit;cursor:pointer;margin-bottom:12px}
+button.go:active{background:#2f7fd6}
+.err{display:none;background:#3a1520;border:1px solid #7a2436;color:#ff8f8f;border-radius:7px;padding:8px 10px;font-size:12px;margin-bottom:12px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:8px}
+.k{background:#0a1728;border:1px solid #1d3557;border-radius:7px;padding:9px}
+.k span{display:block;font-size:10.5px;color:#7f9ab5}
+.k b{font-size:17px;color:#4a9eff}
+.ok{color:#38d39f!important}.bad{color:#ff6b6b!important}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:5px 4px;border-bottom:1px solid #1d3557;text-align:left}
+th{color:#7f9ab5;font-weight:500;font-size:11px}
+pre{background:#071220;border:1px solid #1d3557;border-radius:7px;padding:9px;font-size:10.5px;line-height:1.45;color:#8fd0a8;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:0}
+.foot{position:fixed;right:6px;bottom:4px;font-size:10px;color:#6b8ba8;background:#0a1628ee;border:1px solid #1d3557;border-radius:5px;padding:2px 7px}
+.hide{display:none}
+</style></head><body>
+<header><h1>线路电压降计算器</h1><div class="sub">单相/三相 · 电阻率温度修正 · 功率因数 · 铜铝对比 · 压降校核</div></header>
+<nav><button class="on" data-t="t1">计算工具</button><button data-t="t2">源码 / 测试 / 说明</button></nav>
+<main>
+<section id="t1">
+<div class="card"><h3>输入条件</h3><div class="grid">
+<div><label>系统类型</label><select id="ph" onchange="document.getElementById('Un').value=this.value==1?220:380"><option value="3">三相</option><option value="1">单相</option></select></div>
+<div><label>导体材料</label><select id="mat"><option value="Cu">铜 Cu</option><option value="Al">铝 Al</option></select></div>
+<div><label>截面积 A (mm²)</label><input id="A" value="4"></div>
+<div><label>工作电流 I (A)</label><input id="I" value="100"></div>
+<div><label>线路长度 L (m)</label><input id="L" value="50"></div>
+<div><label>功率因数 cosφ</label><input id="pf" value="0.85"></div>
+<div><label>导体温度 (°C)</label><input id="T" value="20"></div>
+<div><label>系统电压 Un (V)</label><input id="Un" value="380"></div>
+<div><label>电抗 X (Ω/km)</label><input id="X" value="0.08"></div>
+<div><label>允许压降 (%)</label><input id="allow" value="5"></div>
+</div></div>
+<button class="go" onclick="run()">开始计算</button>
+<div id="err" class="err"></div>
+<div id="out"></div>
+</section>
+<section id="t2" class="hide">
+<div class="card"><h3>单元测试</h3><button class="go" onclick="runTests()">运行全部测试</button><div id="tres"></div></div>
+<div class="card"><h3>JS 源码（本页计算核心）</h3><pre id="srcbox"></pre></div>
+<div class="card"><h3>使用说明与依据</h3><p class="note">
+1. 填写系统类型、材料、截面、电流、长度、功率因数、导体温度与允许压降，点「开始计算」。<br>
+2. 单相按相线+中性线双程计：ΔU=2·I·L·(R·cosφ+X·sinφ)；三相：ΔU=√3·I·L·(R·cosφ+X·sinφ)。<br>
+3. R=ρ(T)·1000/A，ρ(T)=ρ20·[1+α·(T−20)]。<br>
+4. 依据：ρ20(Cu)=0.017241 Ω·mm²/m、ρ20(Al)=0.028264 Ω·mm²/m，α(Cu)=0.00393/℃、α(Al)=0.00403/℃ —— 《工业与民用配电设计手册》（第四版）导体电阻参数；其测定方法见 GB/T 3048.4《电线电缆电性能试验方法 第4部分：导体直流电阻试验》。<br>
+5. 电抗 X 默认 0.08 Ω/km 为低压电缆行业经验值，未经标准核对；架空线及大截面电缆请查手册取值。<br>
+6. 允许压降 5% 参照 GB 50052《供配电系统设计规范》对用电设备端子电压偏差的要求，具体以设计文件为准。<br>
+7. 本工具供方案估算使用，不替代正式设计计算。</p></div>
+</section>
+</main>
+<div class="foot">v1.0.0-voltage-drop 20261108</div>
+<script id="ms">
+const $=id=>document.getElementById(id),RHO={Cu:[0.017241,0.00393],Al:[0.028264,0.00403]};
+const rhoT=(m,T)=>RHO[m][0]*(1+RHO[m][1]*(T-20));
+const rRes=(A,m,T)=>rhoT(m,T)*1000/A;
+function calc(o){const R=rRes(o.A,o.mat,o.T),k=o.phase==1?2:Math.sqrt(3),s=Math.sqrt(Math.max(0,1-o.pf*o.pf)),x=o.X||0,d=k*o.I*(o.L/1000)*(R*o.pf+x*s),p=d/o.Un*100;return{R:R,du:d,p:p,Ue:o.Un-d,ok:p<=o.allow}}
+const B={phase:3,mat:'Cu',A:4,I:100,L:50,pf:.85,T:20,Un:380,X:.08,allow:5},kk=o=>calc(Object.assign({},B,o));
+const CASES=[
+['铜 20℃ 电阻率 ρ20=0.017241',()=>Math.abs(rhoT('Cu',20)-0.017241)<1e-9],
+['铝 70℃ 电阻率=0.033959',()=>Math.abs(rhoT('Al',70)-0.033959)<1e-5],
+['铜 4mm²/20℃ R=4.310 Ω/km',()=>Math.abs(rRes(4,'Cu',20)-4.31025)<1e-3],
+['三相基准 ΔU≈32.09 V',()=>Math.abs(kk({}).du-32.094)<0.02],
+['三相基准 ΔU%≈8.45',()=>Math.abs(kk({}).p-8.4457)<0.01],
+['单相基准 ΔU≈37.06 V',()=>Math.abs(kk({phase:1}).du-37.0586)<0.02],
+['ΔU%>5% 判超限',()=>kk({}).ok===false],
+['电流减半 ΔU 减半',()=>Math.abs(kk({I:50}).du*2-kk({}).du)<1e-9],
+['温度升高电阻增大',()=>rRes(4,'Cu',70)>rRes(4,'Cu',20)],
+['长度 20m 判合格',()=>kk({L:20}).ok===true]
+];
+function readInputs(){
+const e=[],g=(id,lo,hi,nm)=>{const v=$(id).value.trim();if(v===''){e.push(nm+'不能为空');return NaN}const n=Number(v);if(!isFinite(n)){e.push(nm+'必须为数字');return NaN}if(n<lo||n>hi){e.push(nm+'应在 '+lo+'~'+hi+' 之间');return NaN}return n};
+const o={phase:+$('ph').value,mat:$('mat').value,A:g('A',0.5,500,'截面积'),I:g('I',0.1,2000,'电流'),L:g('L',0.5,20000,'线路长度'),pf:g('pf',0.1,1,'功率因数'),T:g('T',-40,120,'导体温度'),Un:g('Un',12,760,'系统电压'),X:g('X',0,1,'电抗'),allow:g('allow',0.5,15,'允许压降')};
+return{e:e,o:o};
+}
+function run(){
+const r=readInputs(),eb=$('err'),out=$('out');
+if(r.e.length){eb.textContent='⚠ '+r.e.join('；');eb.style.display='block';out.innerHTML='';return}
+eb.style.display='none';
+const o=r.o,a=calc(o),ot=o.mat==='Cu'?'Al':'Cu',b=calc(Object.assign({},o,{mat:ot})),NM={Cu:'铜',Al:'铝'},c=x=>x?'ok':'bad';
+const row=m=>{const q=m===o.mat?a:b;return '<tr><td>'+NM[m]+'</td><td>'+q.R.toFixed(3)+'</td><td>'+q.du.toFixed(2)+'</td><td class="'+c(q.ok)+'">'+q.p.toFixed(2)+'</td><td class="'+c(q.ok)+'">'+(q.ok?'合格':'超限')+'</td></tr>'};
+out.innerHTML=
+'<div class="card"><h3>计算结果 · '+NM[o.mat]+' / '+(o.phase==1?'单相':'三相')+'</h3><div class="res">'+
+'<div class="k"><span>工作电阻 R (Ω/km)</span><b>'+a.R.toFixed(3)+'</b></div>'+
+'<div class="k"><span>电压降 ΔU (V)</span><b>'+a.du.toFixed(2)+'</b></div>'+
+'<div class="k"><span>电压降率 (%)</span><b class="'+c(a.ok)+'">'+a.p.toFixed(2)+'</b></div>'+
+'<div class="k"><span>末端电压 (V)</span><b>'+a.Ue.toFixed(1)+'</b></div></div>'+
+'<p class="note">校核：ΔU% = '+a.p.toFixed(2)+'% '+(a.ok?'≤':'＞')+' 允许 '+o.allow+'% → <b class="'+c(a.ok)+'">'+(a.ok?'合格':'超限，应增大截面或缩短线路')+'</b></p></div>'+
+'<div class="card"><h3>铜 / 铝对比（同截面·同工况）</h3><table><tr><th>材料</th><th>R (Ω/km)</th><th>ΔU (V)</th><th>ΔU (%)</th><th>校核</th></tr>'+row(o.mat)+row(ot)+'</table></div>'+
+'<div class="card"><h3>中间量与公式</h3><p class="note">ρ('+o.T+'℃,'+NM[o.mat]+') = '+rhoT(o.mat,o.T).toFixed(6)+' Ω·mm²/m；R = ρ×1000/A = '+a.R.toFixed(4)+' Ω/km；sinφ = '+Math.sqrt(1-o.pf*o.pf).toFixed(4)+'<br>'+
+(o.phase==1?'单相 ΔU = 2·I·L·(R·cosφ+X·sinφ)':'三相 ΔU = √3·I·L·(R·cosφ+X·sinφ)')+'；ΔU% = ΔU/Un×100<br>'+
+'依据：ρ20(Cu)=0.017241、ρ20(Al)=0.028264 Ω·mm²/m，α(Cu)=0.00393、α(Al)=0.00403/℃ ——《工业与民用配电设计手册》第四版 / GB/T 3048.4；X 默认 0.08 Ω/km 为行业经验值，未经标准核对。</p></div>';
+}
+function runTests(){
+let h='',p=0;
+CASES.forEach(function(c,i){let ok=false,m='';try{ok=!!c[1]()}catch(x){m=x.message}
+if(ok)p++;
+h+='<tr><td>'+(i+1)+'</td><td>'+c[0]+'</td><td class="'+(ok?'ok':'bad')+'">'+(ok?'通过':'失败')+(m?' '+m:'')+'</td></tr>'});
+$('tres').innerHTML='<p class="note">共 '+CASES.length+' 项：通过 <b class="ok">'+p+'</b>，失败 <b class="'+(p===CASES.length?'ok':'bad')+'">'+(CASES.length-p)+'</b></p><table><tr><th>#</th><th>用例</th><th>结果</th></tr>'+h+'</table>';
+}
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});
+b.classList.add('on');
+$('t1').classList.toggle('hide',b.dataset.t!=='t1');
+$('t2').classList.toggle('hide',b.dataset.t!=='t2');
+}});
+$('srcbox').textContent=$('ms').textContent.trim();
+</script>
+</body></html>

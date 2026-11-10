@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IP 与子网掩码工具 · CIDR 计算器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: #fff;
+    padding: 28px 20px;
+    text-align: center;
+  }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 0;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #586069;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .tab:hover { background: #f6f8fa; }
+  .tab.active {
+    color: #0366d6;
+    border-bottom-color: #0366d6;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  .doc h2 { margin: 24px 0 12px; color: #2c3e50; border-bottom: 2px solid #e1e4e8; padding-bottom: 6px; }
+  .doc h3 { margin: 18px 0 10px; color: #34495e; }
+  .doc p { margin: 8px 0; }
+  .doc ul, .doc ol { margin: 8px 0 8px 24px; }
+  .doc li { margin: 4px 0; }
+  .doc table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  .doc th, .doc td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; }
+  .doc th { background: #f6f8fa; font-weight: 600; }
+  .doc code {
+    background: #f0f2f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    color: #c7254e;
+  }
+  .scene {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 12px 0;
+  }
+  .scene h4 { color: #0366d6; margin-bottom: 8px; }
+  .warn {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .info {
+    background: #e7f3ff;
+    border-left: 4px solid #0366d6;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #959da5;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid #e1e4e8;
+  }
+  .test-result {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 14px;
+    margin-top: 12px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .pass { color: #28a745; }
+  .fail { color: #d73a49; }
+  button.run-btn {
+    background: #0366d6;
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  button.run-btn:hover { background: #0256b9; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>IP 与子网掩码工具</h1>
+  <p>CIDR 计算 · 子网划分 · 纯前端实现</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="panel-source">
+  <h2 style="margin-bottom:12px;">核心算法源码（纯函数，无外部依赖）</h2>
+<pre id="source-code"></pre>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div class="panel" id="panel-test">
+  <h2 style="margin-bottom:12px;">单元测试（纯 JS 实现，共 30+ 用例）</h2>
+  <button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+  <div class="test-result" id="test-output">点击按钮运行测试…</div>
+<pre id="test-code" style="margin-top:16px;"></pre>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel" id="panel-doc">
+  <div class="doc" id="doc-content"></div>
+</div>
+
+<div class="version">v2.0.1-修-私有地址判定 20261025</div>
+
+<script>
+/* ============================================================
+ *  第一部分：核心算法源码（纯函数）
+ * ============================================================ */
+const SubnetCalc = (function () {
+  'use strict';
+
+  /**
+   * 将 IPv4 点分十进制字符串转换为 32 位无符号整数。
+   *
+   * @param {string} ip - IPv4 地址字符串，形如 "192.168.1.1"
+   * @returns {number} 32 位无符号整数（范围 0 ~ 4294967295）
+   * @throws {TypeError} 参数非字符串
+   * @throws {Error} IP 格式非法（段数不对、段值越界、含非数字字符）
+   * @example
+   *   ipToInt("192.168.1.1"); // => 3232235777
+   *   ipToInt("0.0.0.0");     // => 0
+   *   ipToInt("255.255.255.255"); // => 4294967295
+   */
+  function ipToInt(ip) {
+    if (typeof ip !== 'string') {
+      throw new TypeError('ip 必须是字符串');
+    }
+    const parts = ip.split('.');
+    if (parts.length !== 4) {
+      throw new Error('IP 必须由 4 段组成：' + ip);
+    }
+    let result = 0;
+    for (let i = 0; i < 4; i++) {
+      const p = parts[i];
+      if (!/^\d+$/.test(p)) {
+        throw new Error('IP 段必须为非负整数：' + p);
+      }
+      const n = Number(p);
+      if (n < 0 || n > 255 || !Number.isInteger(n)) {
+        throw new Error('IP 段必须在 0~255 之间：' + p);
+      }
+      // 使用 Math.imul 与移位组合，避免有符号溢出问题
+      result = (result * 256 + n) >>> 0;
+    }
+    return result;
+  }
+
+  /**
+   * 将 32 位无符号整数转换为 IPv4 点分十进制字符串。
+   *
+   * @param {number} n - 32 位无符号整数（0 ~ 4294967295）
+   * @returns {string} IPv4 字符串
+   * @throws {TypeError} 参数非数字
+   * @throws {Error} 数值越界或非整数
+   * @example
+   *   intToIp(3232235777); // => "192.168.1.1"
+   *   intToIp(0);          // => "0.0.0.0"
+   */
+  function intToIp(n) {
+    if (typeof n !== 'number') {
+      throw new TypeError('n 必须是数字');
+    }
+    if (!Number.isInteger(n) || n < 0 || n > 4294967295) {
+      throw new Error('n 必须是 0~4294967295 之间的整数');
+    }
+    return [
+      (n >>> 24) & 0xff,
+      (n >>> 16) & 0xff,
+      (n >>> 8) & 0xff,
+      n & 0xff
+    ].join('.');
+  }
+
+  /**
+   * 校验 IPv4 字符串是否合法。
+   *
+   * @param {string} ip - 待校验字符串
+   * @returns {boolean} 合法返回 true，否则 false
+   * @example
+   *   isValidIp("10.0.0.1"); // => true
+   *   isValidIp("256.0.0.1"); // => false
+   *   isValidIp(null);        // => false
+   */
+  function isValidIp(ip) {
+    try { ipToInt(ip); return true; } catch (e) { return false; }
+  }
+
+  /**
+   * 校验前缀长度是否合法（0~32 的整数）。
+   *
+   * @param {number} prefix - 前缀长度
+   * @returns {boolean} 合法返回 true
+   * @example
+   *   isValidPrefix(24);  // => true
+   *   isValidPrefix(33);  // => false
+   *   isValidPrefix(-1);  // => false
+   */
+  function isValidPrefix(prefix) {
+    return Number.isInteger(prefix) && prefix >= 0 && prefix <= 32;
+  }
+
+  /**
+   * 解析 CIDR 字符串（如 "192.168.1.10/24"）。
+   *
+   * @param {string} cidr - CIDR 表示法字符串
+   * @returns {{ ip: number, prefix: number, network: number, broadcast: number, mask: number }}
+   * @throws {Error} 格式非法
+   * @example
+   *   parseCidr("192.168.1.10/24");
+   *   // => { ip: 3232235786, prefix: 24, network: 3232235776, broadcast: 3232236031, mask: 4294967040 }
+   */
+  function parseCidr(cidr) {
+    if (typeof cidr !== 'string') {
+      throw new TypeError('cidr 必须是字符串');
+    }
+    const idx = cidr.indexOf('/');
+    if (idx < 0) throw new Error('CIDR 缺少 "/"：' + cidr);
+    const ipStr = cidr.slice(0, idx);
+    const prefixStr = cidr.slice(idx + 1);
+    const ip = ipToInt(ipStr);
+    const prefix = Number(prefixStr);
+    if (!isValidPrefix(prefix)) {
+      throw new Error('前缀长度必须在 0~32 之间：' + prefixStr);
+    }
+    const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+    const network = (ip & mask) >>> 0;
+    const broadcast = (network | (~mask >>> 0)) >>> 0;
+    return { ip, prefix, network, broadcast, mask };
+  }
+
+  /**
+   * 根据 IP 与前缀长度计算网络地址（整数）。
+   *
+   * @param {string} ip - IPv4 字符串
+   * @param {number} prefix - 前缀长度（0~32）
+   * @returns {number} 网络地址（32 位无符号整数）
+   * @throws {Error} 参数非法
+   * @example
+   *   calcNetwork("192.168.1.10", 24); // => 3232235776  (即 192.168.1.0)
+   */
+  function calcNetwork(ip, prefix) {
+    if (!isValidPrefix(prefix)) throw new Error('前缀长度非法：' + prefix);
+    const ipInt = ipToInt(ip);
+    const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+    return (ipInt & mask) >>> 0;
+  }
+
+  /**
+   * 根据 IP 与前缀长度计算广播地址（整数）。
+   *
+   * @param {string} ip - IPv4 字符串
+   * @param {number} prefix - 前缀长度（0~32）
+   * @returns {number} 广播地址（32 位无符号整数）
+   * @throws {Error} 参数非法
+   * @example
+   *   calcBroadcast("192.168.1.10", 24); // => 3232236031 (即 192.168.1.255)
+   */
+  function calcBroadcast(ip, prefix) {
+    if (!isValidPrefix(prefix)) throw new Error('前缀长度非法：' + prefix);
+    const ipInt = ipToInt(ip);
+    const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+    const network = (ipInt & mask) >>> 0;
+    return (network | (~mask >>> 0)) >>> 0;
+  }
+
+  /**
+   * 计算给定前缀长度下的可用主机数。
+   * 规则：
+   *   - /32：1（单主机网络，无网络/广播地址之分）
+   *   - /31：2（RFC 3021，用于点对点链路）
+   *   - /30 及以下：2^(32-prefix) - 2
+   *
+   * @param {number} prefix - 前缀长度（0~32）
+   * @returns {number} 可用主机数
+   * @throws {Error} 前缀非法
+   * @example
+   *   calcHostCount(24); // => 254
+   *   calcHostCount(32); // => 1
+   *   calcHostCount(31); // => 2
+   *   calcHostCount(0);  // => 4294967294
+   */
+  function calcHostCount(prefix) {
+    if (!isValidPrefix(prefix)) throw new Error('前缀长度非法：' + prefix);
+    if (prefix === 32) return 1;
+    if (prefix === 31) return 2;
+    // 2^(32-prefix) - 2，使用 Math.pow 避免位运算在 32 位时的溢出
+    return Math.pow(2, 32 - prefix) - 2;
+  }
+
+  /**
+   * 将一个网络按新前缀长度划分为子网列表。
+   *
+   * @param {string} networkIp - 原网络的网络地址（IPv4 字符串）
+   * @param {number} oldPrefix - 原前缀长度（0~32）
+   * @param {number} newPrefix - 新前缀长度（oldPrefix ~ 32）
+   * @param {number} [maxCount=1024] - 最多返回的子网数量，防止生成过多
+   * @returns {{ subnets: Array<{network:string, broadcast:string, hosts:number, cidr:string}>, total: number, truncated: boolean }}
+   * @throws {Error} 参数非法或 newPrefix < oldPrefix
+   * @example
+   *   calcSubnets("192.168.1.0", 24, 26);
+   *   // => { subnets: [{network:"192.168.1.0", broadcast:"192.168.1.63", hosts:62, cidr:"192.168.1.0/26"}, ...], total: 4, truncated: false }
+   */
+  function calcSubnets(networkIp, oldPrefix, newPrefix, maxCount) {
+    if (!isValidPrefix(oldPrefix)) throw new Error('原前缀非法：' + oldPrefix);
+    if (!isValidPrefix(newPrefix)) throw new Error('新前缀非法：' + newPrefix);
+    if (newPrefix < oldPrefix) {
+      throw new Error('新前缀不能小于原前缀');
+    }
+    if (maxCount === undefined) maxCount = 1024;
+    if (!Number.isInteger(maxCount) || maxCount <= 0) {
+      throw new Error('maxCount 必须为正整数');
+    }
+
+    const netInt = ipToInt(networkIp);
+    const oldMask = oldPrefix === 0 ? 0 : (~0 << (32 - oldPrefix)) >>> 0;
+    if ((netInt & oldMask) >>> 0 !== netInt >>> 0) {
+      throw new Error('给定的 networkIp 不是对应前缀的网络地址：' + networkIp + '/' + oldPrefix);
+    }
+
+    const total = Math.pow(2, newPrefix - oldPrefix);
+    const truncated = total > maxCount;
+    const count = truncated ? maxCount : total;
+    const newMask = newPrefix === 0 ? 0 : (~0 << (32 - newPrefix)) >>> 0;
+    const step = newPrefix === 0 ? 0 : Math.pow(2, 32 - newPrefix);
+
+    const subnets = [];
+    for (let i = 0; i < count; i++) {
+      const curNet = (netInt + i * step) >>> 0;
+      const curBc = (curNet | (~newMask >>> 0)) >>> 0;
+      subnets.push({
+        network: intToIp(curNet),
+        broadcast: intToIp(curBc),
+        hosts: calcHostCount(newPrefix),
+        cidr: intToIp(curNet) + '/' + newPrefix
+      });
+    }
+    return { subnets, total, truncated };
+  }
+
+  /**
+   * 一次性返回 CIDR 的完整信息（便于 UI 展示）。
+   *
+   * @param {string} cidr - CIDR 字符串，如 "10.0.0.5/16"
+   * @returns {{ ip:string, prefix:number, mask:string, wildcard:string, network:string, broadcast:string, hosts:number, firstHost:string, lastHost:string, ipClass:string, isPrivate:boolean }}
+   * @throws {Error} 参数非法
+   * @example
+   *   analyze("192.168.1.10/24");
+   */
+  function analyze(cidr) {
+    const p = parseCidr(cidr);
+    const wildcard = (~p.mask) >>> 0;
+    const firstHost = p.prefix >= 31 ? intToIp(p.network) : intToIp((p.network + 1) >>> 0);
+    const lastHost = p.prefix >= 31 ? intToIp(p.broadcast) : intToIp((p.broadcast - 1) >>> 0);
+    const firstOctet = (p.ip >>> 24) & 0xff;
+    let ipClass = '其他';
+    if (firstOctet < 128) ipClass = 'A';
+    else if (firstOctet < 192) ipClass = 'B';
+    else if (firstOctet < 224) ipClass = 'C';
+    else if (firstOctet < 240) ipClass = 'D';
+    else ipClass = 'E';
+    const isPrivate =
+      (firstOctet === 10) ||
+      (firstOctet === 172 && ((p.ip >>> 16) & 0xff) >= 16 && ((p.ip >>> 16) & 0xff) <= 31) ||
+      (firstOctet === 192 && ((p.ip >>> 16) & 0xff) === 168);
+    return {
+      ip: intToIp(p.ip),
+      prefix: p.prefix,
+      mask: intToIp(p.mask),
+      wildcard: intToIp(wildcard),
+      network: intToIp(p.network),
+      broadcast: intToIp(p.broadcast),
+      hosts: calcHostCount(p.prefix),
+      firstHost,
+      lastHost,
+      ipClass,
+      isPrivate
+    };
+  }
+
+  return {
+    ipToInt, intToIp, isValidIp, isValidPrefix,
+    parseCidr, calcNetwork, calcBroadcast, calcHostCount,
+    calcSubnets, analyze
+  };
+})();
+
+/* 将源码以字符串形式展示 */
+(function showSource() {
+  const scripts = document.querySelectorAll('script');
+  let src = '';
+  for (const s of scripts) {
+    if (s.textContent.indexOf('SubnetCalc = (function') !== -1) {
+      src = s.textContent;
+      break;
+    }
+  }
+  document.getElementById('source-code').textContent = src;
+})();
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，不依赖任何框架）
+ * ============================================================ */
+const TestRunner = (function () {
+  'use strict';
+  let pass = 0, fail = 0, total = 0;
+  const log = [];
+
+  function eq(a, b) {
+    if (a === b) return true;
+    if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+    return false;
+  }
+
+  function assert(name, actual, expected) {
+    total++;
+    if (eq(actual, expected)) {
+      pass++;
+      log.push('[PASS] ' + name);
+    } else {
+      fail++;
+      log.push('[FAIL] ' + name + ' | 期望 ' + JSON.stringify(expected) + ' 实际 ' + JSON.stringify(actual));
+    }
+  }
+
+  function assertThrow(name, fn) {
+    total++;
+    try {
+      fn();
+      fail++;
+      log.push('[FAIL] ' + name + ' | 期望抛出异常但未抛出');
+    } catch (e) {
+      pass++;
+      log.push('[PASS] ' + name + ' (抛出: ' + e.message + ')');
+    }
+  }
+
+  function run() {
+    pass = 0; fail = 0; total = 0; log.length = 0;
+    const S = SubnetCalc;
+
+    /* ---------- ipToInt 正常值 ---------- */
+    assert('ipToInt: 192.168.1.1', S.ipToInt('192.168.1.1'), 3232235777);
+    assert('ipToInt: 0.0.0.0', S.ipToInt('0.0.0.0'), 0);
+    assert('ipToInt: 255.255.255.255', S.ipToInt('255.255.255.255'), 4294967295);
+    assert('ipToInt: 10.0.0.1', S.ipToInt('10.0.0.1'), 167772161);
+    assert('ipToInt: 172.16.0.1', S.ipToInt('172.16.0.1'), 2886729729);
+
+    /* ---------- ipToInt 异常 ---------- */
+    assertThrow('ipToInt: null', () => S.ipToInt(null));
+    assertThrow('ipToInt: undefined', () => S.ipToInt(undefined));
+    assertThrow('ipToInt: 空字符串', () => S.ipToInt(''));
+    assertThrow('ipToInt: 段数不足', () => S.ipToInt('192.168.1'));
+    assertThrow('ipToInt: 段数过多', () => S.ipToInt('1.2.3.4.5'));
+    assertThrow('ipToInt: 段值越界 256', () => S.ipToInt('256.0.0.1'));
+    assertThrow('ipToInt: 段值负数', () => S.ipToInt('-1.0.0.1'));
+    assertThrow('ipToInt: 含字母', () => S.ipToInt('192.168.a.1'));
+    assertThrow('ipToInt: 数字', () => S.ipToInt(123));
+
+    /* ---------- intToIp 正常值 ---------- */
+    assert('intToIp: 3232235777', S.intToIp(3232235777), '192.168.1.1');
+    assert('intToIp: 0', S.intToIp(0), '0.0.0.0');
+    assert('intToIp: 4294967295', S.intToIp(4294967295), '255.255.255.255');
+    assert('intToIp: 167772161', S.intToIp(167772161), '10.0.0.1');
+
+    /* ---------- intToIp 异常 ---------- */
+    assertThrow('intToIp: 负数', () => S.intToIp(-1));
+    assertThrow('intToIp: 超范围', () => S.intToIp(4294967296));
+    assertThrow('intToIp: 浮点', () => S.intToIp(1.5));
+    assertThrow('intToIp: NaN', () => S.intToIp(NaN));
+    assertThrow('intToIp: 字符串', () => S.intToIp('123'));
+
+    /* ---------- isValidIp / isValidPrefix ---------- */
+    assert('isValidIp: 合法', S.isValidIp('1.2.3.4'), true);
+    assert('isValidIp: 非法', S.isValidIp('999.0.0.1'), false);
+    assert('isValidIp: null', S.isValidIp(null), false);
+    assert('isValidPrefix: 0', S.isValidPrefix(0), true);
+    assert('isValidPrefix: 32', S.isValidPrefix(32), true);
+    assert('isValidPrefix: 33', S.isValidPrefix(33), false);
+    assert('isValidPrefix: -1', S.isValidPrefix(-1), false);
+    assert('isValidPrefix: 1.5', S.isValidPrefix(1.5), false);
+
+    /* ---------- parseCidr ---------- */
+    const c1 = S.parseCidr('192.168.1.10/24');
+    assert('parseCidr: prefix', c1.prefix, 24);
+    assert('parseCidr: network', S.intToIp(c1.network), '192.168.1.0');
+    assert('parseCidr: broadcast', S.intToIp(c1.broadcast), '192.168.1.255');
+    assert('parseCidr: mask', S.intToIp(c1.mask), '255.255.255.0');
+    assertThrow('parseCidr: 缺 /', () => S.parseCidr('192.168.1.1'));
+    assertThrow('parseCidr: 前缀越界', () => S.parseCidr('10.0.0.1/33'));
+
+    /* ---------- calcNetwork / calcBroadcast ---------- */
+    assert('calcNetwork: /24', S.intToIp(S.calcNetwork('192.168.1.10', 24)), '192.168.1.0');
+    assert('calcNetwork: /16', S.intToIp(S.calcNetwork('10.20.30.40', 16)), '10.20.0.0');
+    assert('calcNetwork: /32', S.intToIp(S.calcNetwork('1.2.3.4', 32)), '1.2.3.4');
+    assert('calcNetwork: /0', S.intToIp(S.calcNetwork('1.2.3.4', 0)), '0.0.0.0');
+    assert('calcBroadcast: /24', S.intToIp(S.calcBroadcast('192.168.1.10', 24)), '192.168.1.255');
+    assert('calcBroadcast: /32', S.intToIp(S.calcBroadcast('1.2.3.4', 32)), '1.2.3.4');
+    assert('calcBroadcast: /0', S.intToIp(S.calcBroadcast('1.2.3.4', 0)), '255.255.255.255');
+
+    /* ---------- calcHostCount ---------- */
+    assert('calcHostCount: /24', S.calcHostCount(24), 254);
+    assert('calcHostCount: /32', S.calcHostCount(32), 1);
+    assert('calcHostCount: /31', S.calcHostCount(31), 2);
+    assert('calcHostCount: /30', S.calcHostCount(30), 2);
+    assert('calcHostCount: /16', S.calcHostCount(16), 65534);
+    assert('calcHostCount: /8', S.calcHostCount(8), 16777214);
+    assert('calcHostCount: /0', S.calcHostCount(0), 4294967294);
+    assertThrow('calcHostCount: 越界', () => S.calcHostCount(33));
+
+    /* ---------- calcSubnets ---------- */
+    const sub = S.calcSubnets('192.168.1.0', 24, 26);
+    assert('calcSubnets: total', sub.total, 4);
+    assert('calcSubnets: truncated', sub.truncated, false);
+    assert('calcSubnets: 第1个网络', sub.subnets[0].network, '192.168.1.0');
+    assert('calcSubnets: 第1个广播', sub.subnets[0].broadcast, '192.168.1.63');
+    assert('calcSubnets: 第4个网络', sub.subnets[3].network, '192.168.1.192');
+    assert('calcSubnets: 主机数', sub.subnets[0].hosts, 62);
+    assertThrow('calcSubnets: 新前缀小于旧', () => S.calcSubnets('192.168.1.0', 24, 20));
+    assertThrow('calcSubnets: 非网络地址', () => S.calcSubnets('192.168.1.5', 24, 26));
+
+    /* 截断测试 */
+    const sub2 = S.calcSubnets('10.0.0.0', 8, 16, 10);
+    assert('calcSubnets: 截断 total', sub2.total, 256);
+    assert('calcSubnets: 截断 truncated', sub2.truncated, true);
+    assert('calcSubnets: 截断 返回数', sub2.subnets.length, 10);
+
+    /* ---------- analyze ---------- */
+    const a = S.analyze('192.168.1.10/24');
+    assert('analyze: mask', a.mask, '255.255.255.0');
+    assert('analyze: wildcard', a.wildcard, '0.0.0.255');
+    assert('analyze: firstHost', a.firstHost, '192.168.1.1');
+    assert('analyze: lastHost', a.lastHost, '192.168.1.254');
+    assert('analyze: ipClass', a.ipClass, 'C');
+    assert('analyze: isPrivate', a.isPrivate, true);
+
+    const a2 = S.analyze('8.8.8.8/32');
+    assert('analyze: /32 firstHost', a2.firstHost, '8.8.8.8');
+    assert('analyze: /32 isPrivate', a2.isPrivate, false);
+
+    return { pass, fail, total, log };
+  }
+
+  return { run };
+})();
+
+/* 将测试代码以字符串形式展示 */
+(function showTestCode() {
+  const scripts = document.querySelectorAll('script');
+  let src = '';
+  for (const s of scripts) {
+    if (s.textContent.indexOf('TestRunner = (function') !== -1) {
+      src = s.textContent;
+      break;
+    }
+  }
+  document.getElementById('test-code').textContent = src;
+})();
+
+function runAllTests() {
+  const r = TestRunner.run();
+  const out = document.getElementById('test-output');
+  out.textContent = r.log.join('\n') + '\n\n========== 结果 ==========\n通过 ' + r.pass + ' / 共 ' + r.total + '（失败 ' + r.fail + '）';
+}
+
+/* ============================================================
+ *  第三部分：使用说明书
+ * ============================================================ */
+document.getElementById('doc-content').innerHTML = `
+<h2>一、工具简介</h2>
+<p>本工具是一个纯前端实现的 <strong>IPv4 / CIDR 计算器</strong>，用于完成以下任务：</p>
+<ul>
+  <li>将 CIDR 表示（如 <code>192.168.1.10/24</code>）解析为网络地址、广播地址、子网掩码、反掩码（wildcard）</li>
+  <li>计算该网段内的可用主机数、第一个可用主机地址、最后一个可用主机地址</li>
+  <li>将一个网络按更长的前缀长度划分为若干子网</li>
+  <li>识别 IP 类别（A/B/C/D/E）以及是否为私有地址</li>
+</ul>
+<p>它解决的问题是：网络工程师、运维、后端开发、学生在做子网规划、排障、考试复习时，不必再手算二进制，也不必依赖在线服务（避免把内部 IP 信息泄露到第三方）。</p>
+
+<h2>二、参数说明</h2>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>ip</td><td>string</td><td>点分十进制，每段 0~255，共 4 段</td><td>IPv4 地址字符串</td></tr>
+  <tr><td>prefix</td><td>number</td><td>0 ~ 32 的整数</td><td>CIDR 前缀长度，即子网掩码中连续 1 的位数</td></tr>
+  <tr><td>cidr</td><td>string</td><td>"&lt;ip&gt;/&lt;prefix&gt;"</td><td>CIDR 表示法，例如 "10.0.0.5/16"</td></tr>
+  <tr><td>networkIp</td><td>string</td><td>必须是给定前缀下的网络地址</td><td>子网划分时的起始网络</td></tr>
+  <tr><td>oldPrefix / newPrefix</td><td>number</td><td>0~32，且 newPrefix ≥ oldPrefix</td><td>原前缀 / 新前缀</td></tr>
+  <tr><td>maxCount</td><td>number</td><td>正整数，默认 1024</td><td>子网划分时最多返回的子网数，防止浏览器卡死</td></tr>
+</table>
+
+<h2>三、核心函数一览</h2>
+<ul>
+  <li><code>ipToInt(ip)</code>：IPv4 字符串 → 32 位无符号整数</li>
+  <li><code>intToIp(n)</code>：32 位无符号整数 → IPv4 字符串</li>
+  <li><code>isValidIp(ip)</code> / <code>isValidPrefix(prefix)</code>：参数校验</li>
+  <li><code>parseCidr(cidr)</code>：解析 CIDR，返回 ip / prefix / network / broadcast / mask</li>
+  <li><code>calcNetwork(ip, prefix)</code>：计算网络地址</li>
+  <li><code>calcBroadcast(ip, prefix)</code>：计算广播地址</li>
+  <li><code>calcHostCount(prefix)</code>：计算可用主机数</li>
+  <li><code>calcSubnets(networkIp, oldPrefix, newPrefix, maxCount?)</code>：子网划分</li>
+  <li><code>analyze(cidr)</code>：一次性返回完整信息</li>
+</ul>
+
+<h2>四、实际使用场景</h2>
+
+<div class="scene">
+  <h4>场景 1：确认一个 IP 所在网段</h4>
+  <p><strong>输入：</strong><code>analyze("192.168.1.137/24")</code></p>
+  <p><strong>结果：</strong></p>
+  <ul>
+    <li>网络地址：<code>192.168.1.0</code></li>
+    <li>广播地址：<code>192.168.1.255</code></li>
+    <li>子网掩码：<code>255.255.255.0</code></li>
+    <li>可用主机数：254</li>
+    <li>第一个可用主机：<code>192.168.1.1</code>，最后一个：<code>192.168.1.254</code></li>
+    <li>IP 类别：C，私有地址：是</li>
+  </ul>
+  <p><strong>用途：</strong>排障时判断目标 IP 是否与自己同网段，决定是否需要走网关。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 2：为部门划分 VLAN 子网</h4>
+  <p><strong>需求：</strong>公司拿到 <code>10.20.0.0/16</code>，要给 8 个部门各分一个子网，每个部门至少 200 台主机。</p>
+  <p><strong>输入：</strong><code>calcSubnets("10.20.0.0", 16, 24)</code></p>
+  <p><strong>结果：</strong>得到 256 个 <code>/24</code> 子网，每个子网可用主机 254 台，满足需求。前 8 个分别用于 8 个部门。</p>
+  <p><strong>用途：</strong>企业内网 VLAN 规划。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 3：点对点链路（/31）</h4>
+  <p><strong>输入：</strong><code>analyze("10.0.0.0/31")</code></p>
+  <p><strong>结果：</strong></p>
+  <ul>
+    <li>网络地址：<code>10.0.0.0</code>，广播地址：<code>10.0.0.1</code></li>
+    <li>可用主机数：2（按 RFC 3021，/31 用于点对点链路，两个地址都可用于主机）</li>
+  </ul>
+  <p><strong>用途：</strong>路由器之间互联，节省地址。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 4：单主机路由（/32）</h4>
+  <p><strong>输入：</strong><code>analyze("203.0.113.7/32")</code></p>
+  <p><strong>结果：</strong>网络地址 = 广播地址 = <code>203.0.113.7</code>，可用主机数 1。</p>
+  <p><strong>用途：</strong>在路由表中表示一条指向具体主机的路由（host route）。</p>
+</div>
+
+<div class="scene">
+  <h4>场景 5：大网段细分并限制输出</h4>
+  <p><strong>输入：</strong><code>calcSubnets("10.0.0.0", 8, 20, 16)</code></p>
+  <p><strong>结果：</strong>理论上 <code>/8</code> 划分为 <code>/20</code> 应得 4096 个子网；由于 <code>maxCount=16</code>，只返回前 16 个，<code>truncated=true</code>。</p>
+  <p><strong>用途：</strong>在 UI 中预览前若干个子网，避免一次性渲染数千条导致页面卡顿。</p>
+</div>
+
+<h2>五、常见错误与排查</h2>
+<table>
+  <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+  <tr><td>抛出 "IP 必须由 4 段组成"</td><td>传入的 IP 段数不是 4</td><td>检查输入，去除多余空格或 IPv6 格式</td></tr>
+  <tr><td>抛出 "IP 段必须在 0~255 之间"</td><td>某段数值越界（如 256、-1）</td><td>修正 IP 字符串</td></tr>
+  <tr><td>抛出 "前缀长度必须在 0~32 之间"</td><td>前缀 &lt;0 或 &gt;32，或非整数</td><td>传入 0~32 的整数</td></tr>
+  <tr><td>抛出 "给定的 networkIp 不是对应前缀的网络地址"</td><td>子网划分时起始 IP 不是网络地址</td><td>先用 <code>calcNetwork</code> 算出网络地址再传入</td></tr>
+  <tr><td>抛出 "新前缀不能小于原前缀"</td><td>newPrefix &lt; oldPrefix</td><td>子网划分只能向更长前缀（更小网段）方向进行</td></tr>
+  <tr><td>子网划分返回的 truncated=true</td><td>子网总数超过 maxCount</td><td>增大 maxCount 或分批处理</td></tr>
+  <tr><td>计算 /0 的主机数得到 4294967294</td><td>这是正确结果（整个 IPv4 空间减去网络/广播）</td><td>不是 bug</td></tr>
+</table>
+
+<h2>六、数据来源与标准依据</h2>
+<ul>
+  <li><strong>RFC 4632</strong>（2006）：Classless Inter-domain Routing (CIDR)，取代 RFC 1518 / RFC 1519，定义前缀表示法与聚合规则。</li>
+  <li><strong>RFC 3021</strong>（2000）：在点对点链路上使用 31 位前缀（/31），本工具按此标准让 /31 可用主机数为 2。</li>
+  <li><strong>RFC 4291</strong>（2006）：IP 地址架构（含私有地址段定义，本工具的 <code>isPrivate</code> 字段依据此标准）。</li>
+  <li><strong>RFC 1918</strong>（1996）：私有 IPv4 地址空间（10/8、172.16/12、192.168/16）。</li>
+  <li><strong>IPv4 地址空间管理</strong>：全球由 IANA 分配至五大 RIR（APNIC、ARIN、RIPE NCC、LACNIC、AFRINIC）；中国大陆由 APNIC 及 CNNIC 管理。</li>
+  <li>关于中国国家标准（GB/T）中是否对 CIDR 计算有专门条款，<strong>需查标准原文</strong>确认（可能涉及 GB/T 15629.3、GB/T 9387 等系列，但本工具未逐条核对，不作断言）。</li>
+</ul>
+<div class="info">本工具的算法严格遵循上述 RFC；对于国标部分，因未逐条核对原文，建议以 RFC 为准。</div>
+
+<h2>七、局限性说明</h2>
+<div class="warn">
+  <ul>
+    <li><strong>仅支持 IPv4</strong>：不支持 IPv6（如 <code>2001:db8::/32</code>）。如需 IPv6，请使用专门工具。</li>
+    <li><strong>不做路由可达性判断</strong>：本工具只做数学计算，不判断某个 IP 是否真实可路由、是否被保留（如 0.0.0.0/8、127.0.0.0/8、224.0.0.0/4 等仅部分识别）。</li>
+    <li><strong>不查询 WHOIS / GeoIP</strong>：无法告诉你某个 IP 属于哪个组织、位于哪个国家。</li>
+    <li><strong>大数精度</strong>：JavaScript 的 <code>Number</code> 是双精度浮点，能精确表示到 2^53；本工具涉及的整数最大为 2^32，在安全范围内。但 <code>calcSubnets</code> 中 <code>i * step</code> 在极端情况下（/0 划到 /32）会超出安全整数，因此默认 <code>maxCount=1024</code>，避免生成过多子网。</li>
+    <li><strong>不处理 CIDR 之外的掩码写法</strong>：如 <code>192.168.1.0 255.255.255.0</code> 这种"IP + 子网掩码"的写法不在本工具输入范围内（需先自行转换为 CIDR）。</li>
+    <li><strong>不做输入归一化</strong>：不会自动去除前导零（如 <code>192.168.01.1</code> 会被当作合法输入，按十进制解析；某些系统会把前导零当作八进制，本工具不模拟这种行为）。</li>
+    <li><strong>不保证与所有操作系统/设备的行为一致</strong>：某些老旧设备对 /31、/0 的处理可能不符合 RFC，本工具按 RFC 实现。</li>
+  </ul>
+</div>
+
+<h2>八、版本与许可</h2>
+<p>版本：v2.0.1-修-私有地址判定 20261025</p>
+<p>本工具代码为纯函数实现，无外部依赖，可在任何现代浏览器中直接运行。可自由用于学习、内部工具、教学演示等场景。</p>
+`;
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

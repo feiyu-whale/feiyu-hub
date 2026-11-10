@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>干燥器物料与热量衡算</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#dbe7f5;font:14px/1.55 system-ui,"Microsoft YaHei",sans-serif}
+header,nav,main{max-width:1080px;margin:0 auto}
+header{padding:14px 16px 4px}
+h1{font-size:16px;margin:0;color:#4a9eff}
+h3{font-size:14px;margin:0 0 8px;color:#4a9eff}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:8px 16px}
+nav button{background:#122542;color:#9fb6d0;border:1px solid #1d3557;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#04121f;border-color:#4a9eff;font-weight:700}
+main{padding:0 16px 70px}
+.card{background:#0f1f36;border:1px solid #1d3557;border-radius:10px;padding:14px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fa9c6;margin-bottom:3px}
+input,select{width:100%;background:#0a1628;border:1px solid #24405f;color:#e8f2ff;border-radius:6px;padding:7px 8px;font-size:13px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+.go{background:#4a9eff;color:#04121f;border:0;border-radius:8px;padding:10px 20px;font-weight:700;font-size:14px;cursor:pointer;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+td,th{padding:6px 4px;border-bottom:1px solid #17293f;text-align:left;word-break:break-word}
+th{color:#8fa9c6;font-weight:500;font-size:12px}
+td.n{color:#7de3b1;text-align:right;font-variant-numeric:tabular-nums}
+td:first-child{width:44%}
+.err{color:#ff8a8a;font-size:12px;margin-top:8px}
+.hint{color:#7d93ab;font-size:12px;line-height:1.7}
+.ok{color:#7de3b1;font-size:13px;padding:2px 0}
+.bad{color:#ff8a8a;font-size:13px;padding:2px 0}
+pre{background:#08131f;border-radius:8px;padding:10px;font-size:12px;color:#9fd0ff;overflow:auto;max-height:62vh;white-space:pre-wrap}
+footer{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4d6b8a;background:#0a1628ee;padding:2px 6px;border-radius:4px}
+</style></head><body>
+<header><h1>干燥器物料与热量衡算</h1></header>
+<nav><button class="on" data-t="c">计算工具</button><button data-t="s">JS 源码</button><button data-t="t">单元测试</button><button data-t="h">使用说明</button></nav>
+<main>
+<section id="c">
+<div class="card"><div class="grid">
+<div><label>物料类型（干物料比热 cp_s）</label><select id="mat">
+<option value="1.2">化工粉体/无机盐 cp=1.2</option><option value="1.6">谷物/淀粉 cp=1.6</option>
+<option value="2.0">食品/果蔬 cp=2.0</option><option value="0.9">陶瓷/矿物 cp=0.9</option>
+<option value="1.5">聚合物颗粒 cp=1.5</option></select></div>
+<div><label>干燥器型式（散热损失系数）</label><select id="typ">
+<option value="0.08">并流回转/带式 0.08</option><option value="0.10">逆流回转 0.10</option>
+<option value="0.12">流化床 0.12</option><option value="0.15">喷雾干燥 0.15</option></select></div>
+<div><label>湿物料处理量 G₁ (kg/h)</label><input id="G1" value="1000"></div>
+<div><label>初含水率 w₁ (%) 湿基</label><input id="w1" value="30"></div>
+<div><label>终含水率 w₂ (%) 湿基</label><input id="w2" value="10"></div>
+<div><label>物料进口温度 t_m1 (℃)</label><input id="tm1" value="20"></div>
+<div><label>物料出口温度 t_m2 (℃)</label><input id="tm2" value="50"></div>
+<div><label>新鲜空气温度 t₀ (℃)</label><input id="t0" value="20"></div>
+<div><label>新鲜空气相对湿度 φ₀ (%)</label><input id="rh0" value="50"></div>
+<div><label>大气压 P (kPa)</label><input id="P" value="101.325"></div>
+<div><label>预热后空气温度 t₁ (℃)</label><input id="t1" value="120"></div>
+<div><label>干燥器排气温度 t₂ (℃)</label><input id="t2" value="60"></div>
+</div><button class="go" id="run">开始计算</button><div id="msg" class="err"></div></div>
+<div id="out"></div>
+</section>
+<section id="s" style="display:none"><div class="card"><h3>核心计算函数（纯函数，可直接测试）</h3><pre id="src"></pre></div></section>
+<section id="t" style="display:none"><div class="card"><button class="go" id="runt" style="margin-top:0">运行全部测试</button></div><div id="tres"></div></section>
+<section id="h" style="display:none">
+<div class="card"><h3>计算依据与出处</h3><div class="hint">
+① 湿空气湿度 H=0.622·φp_s/(P−φp_s)，焓 I=(1.005+1.88H)t+2500H，比容 v=(0.7734+1.244H)(273+t)/273 —— 出处：《化工原理》（天津大学 夏清/陈常贵 主编）湿空气性质章节；1.005、1.88、2500 kJ/(kg·K) 为该教材通用常数。<br>
+② 饱和蒸汽压 p_s：Antoine 方程 lg p(mmHg)=8.07131−1730.63/(233.426+t)，适用 1~100℃ —— 出处：Perry's Chemical Engineers' Handbook, 8th Ed., Table 2-8。<br>
+③ 水汽化潜热 r=2500−2.35t₂ (kJ/kg) —— 出自《化工原理》水蒸气焓值线性近似（2500 kJ/kg @0℃）。<br>
+④ 物料比热 cp_s（0.9~2.0 kJ/(kg·K)）：本参数为行业经验值，未经标准核对。<br>
+⑤ 散热损失系数 0.08~0.15：本参数为行业经验值，未经标准核对。<br>
+⑥ 物料衡算 W=G_c(w₁−w₂)/(100−w₂)、G_c=G₁(1−w₁/100)：湿基含水率基准的干燥通用衡算式，见《化工原理》干燥章节。<br>
+⑦ 热量衡算：预热 Q_p=L(I₁−I₀)；干燥器 L(I₁−I₂)=Q_e+Q_m+Q_l，联立解析求得干空气用量 L。<br>
+⑧ 热效率 η=W·r/Q_p（仅计蒸发潜热），未计入尾气余热回收；行业能效考核请按对应行业标准另行核算。
+</div></div>
+<div class="card"><h3>使用提示</h3><div class="hint">
+• 含水率均为湿基质量分数(%)，G₁ 为湿物料处理量(kg/h)。<br>
+• 预热为等湿加热过程，故 H₁=H₀。<br>
+• 若提示出口湿度超饱和，应降低排气温度 t₂ 或加大风量。<br>
+• 结果用于方案估算与教学；施工图设计请以实测干燥曲线复核。
+</div></div></section>
+</main>
+<footer>v1.0.0-dryer-mass-balance 20261108</footer>
+<script id="core">
+function psat(t){if(t<-50||t>200)throw new Error('温度超出 Antoine 方程适用区间(-50~200℃)');return Math.pow(10,8.07131-1730.63/(233.426+t))*0.133322}
+function rh2H(t,rh,P){var ps=psat(t)*rh/100,d=P-ps;if(d<=0)throw new Error('水蒸气分压已超过大气压，请检查相对湿度与气压');return 0.622*ps/d}
+function hAir(t,H){return 1.005*t+H*(2500+1.88*t)}
+function dew(H,P){var ps=H*P/(0.622+H),mm=ps/0.133322;return 1730.63/(8.07131-Math.log10(mm))-233.426}
+function wetBulb(t,H,P){var lo=-50,hi=t,m,i;for(i=0;i<80;i++){m=(lo+hi)/2;if(hAir(m,rh2H(m,100,P))>hAir(t,H))hi=m;else lo=m}return(lo+hi)/2}
+function solve(o){
+if(!(o.w1>o.w2))throw new Error('初含水率 w₁ 必须大于终含水率 w₂');
+if(!(o.t1>o.t0))throw new Error('预热后空气温度 t₁ 必须高于新鲜空气温度 t₀');
+if(!(o.t2<o.t1))throw new Error('排气温度 t₂ 必须低于预热温度 t₁');
+if(!(o.tm2>=o.tm1))throw new Error('物料出口温度不应低于进口温度');
+var Gc=o.G1*(1-o.w1/100),W=Gc*(o.w1-o.w2)/(100-o.w2),
+H0=rh2H(o.t0,o.rh0,o.P),I0=hAir(o.t0,H0),I1=hAir(o.t1,H0),
+r=2500-2.35*o.t2,Qe=W*r,Qm=Gc*o.cp*(o.tm2-o.tm1),Ql=(Qe+Qm)*o.loss,Quse=Qe+Qm+Ql,
+den=I1-1.005*o.t2-H0*(2500+1.88*o.t2);
+if(den<=0)throw new Error('空气焓差不足，无法完成热量衡算，请提高预热温度或降低排气温度');
+var L=(Quse+W*(2500+1.88*o.t2))/den,H2=H0+W/L,Qp=L*(I1-I0);
+return{Gc:Gc,W:W,G2:o.G1-W,H0:H0,I0:I0,I1:I1,H2:H2,I2:hAir(o.t2,H2),r:r,
+Qe:Qe,Qm:Qm,Ql:Ql,Qp:Qp,L:L,V0:L*(0.7734+1.244*H0)*(273+o.t0)/273,
+eff:Qp>0?Qe/Qp:0,unit:Qp/W,dew0:dew(H0,o.P),wb0:wetBulb(o.t0,H0,o.P),
+dew2:dew(H2,o.P),sat2:rh2H(o.t2,100,o.P)}}
+</script>
+<script>
+var base={G1:1000,w1:30,w2:10,tm1:20,tm2:50,t0:20,rh0:50,P:101.325,t1:120,t2:60,cp:1.2,loss:0.08};
+var near=function(a,b,t){return Math.abs(a-b)<=t};
+var TESTS=[
+['饱和蒸汽压 psat(20℃)=2.339 kPa',function(){return near(psat(20),2.339,0.02)}],
+['饱和蒸汽压 psat(100℃)=101.3 kPa',function(){return near(psat(100),101.3,0.3)}],
+['20℃/50% 空气湿度 =0.00726 kg/kg',function(){return near(rh2H(20,50,101.325),0.00726,0.0001)}],
+['20℃/H=0.00726 湿空气焓 =38.5 kJ/kg',function(){return near(hAir(20,0.00726),38.5,0.5)}],
+['20℃/50% 露点 =9.3℃',function(){return near(dew(0.00726,101.325),9.3,0.5)}],
+['20℃/50% 湿球温度 =13.8℃',function(){return near(wetBulb(20,0.00726,101.325),13.8,0.8)}],
+['基准工况绝干物料量 =700 kg/h',function(){return near(solve(base).Gc,700,0.01)}],
+['基准工况水分蒸发量 =155.6 kg/h',function(){return near(solve(base).W,155.6,0.2)}],
+['基准工况产品量 =844.4 kg/h',function(){return near(solve(base).G2,844.4,0.2)}],
+['出口湿度 H₂ 必须高于进口 H₀',function(){var s=solve(base);return s.H2>s.H0}],
+['热效率介于 0~100%',function(){var e=solve(base).eff;return e>0&&e<1}],
+['w₂≥w₁ 时抛出中文错误',function(){try{solve(Object.assign({},base,{w2:40}));return false}catch(e){return /初含水率/.test(e.message)}}],
+['预热热量与单位耗热量均为正',function(){var s=solve(base);return s.Qp>0&&s.unit>0}]
+];
+var R=function(a,b,c){return'<tr><td>'+a+'</td><td class="n">'+b+'</td><td>'+c+'</td></tr>'};
+function fmt(x,d){if(!isFinite(x))return'—';return(Math.abs(x)>=1e5||(x!==0&&Math.abs(x)<1e-3))?x.toExponential(3):x.toFixed(d===undefined?2:d)}
+function vnum(id,n,lo,hi){var s=document.getElementById(id).value.trim();if(s==='')throw new Error(n+' 不能为空');var x=Number(s);if(!isFinite(x))throw new Error(n+' 必须为数字');if(x<lo||x>hi)throw new Error(n+' 应在 '+lo+'~'+hi+' 之间');return x}
+function calc(){
+try{
+var o={cp:+document.getElementById('mat').value,loss:+document.getElementById('typ').value,
+G1:vnum('G1','湿物料处理量',0.1,1000000),w1:vnum('w1','初含水率',0,99),w2:vnum('w2','终含水率',0,99),
+tm1:vnum('tm1','物料进口温度',-20,200),tm2:vnum('tm2','物料出口温度',-20,300),
+t0:vnum('t0','新鲜空气温度',-30,60),rh0:vnum('rh0','相对湿度',1,100),P:vnum('P','大气压',50,110),
+t1:vnum('t1','预热后温度',30,600),t2:vnum('t2','排气温度',20,95)};
+var s=solve(o);document.getElementById('msg').textContent='';
+document.getElementById('out').innerHTML=
+'<div class="card"><h3>主要结果</h3><table><tr><th>项目</th><th>数值</th><th>单位</th></tr>'
++R('水分蒸发量 W',fmt(s.W),'kg/h')+R('绝干物料量 G<sub>c</sub>',fmt(s.Gc),'kg/h')
++R('干燥产品量 G<sub>2</sub>',fmt(s.G2),'kg/h')+R('绝干空气用量 L',fmt(s.L),'kg干空气/h')
++R('预热热量 Q<sub>p</sub>',fmt(s.Qp/3600),'kW')+R('干燥器热效率 η',fmt(s.eff*100,1),'% = W·r/Q<sub>p</sub>')
++R('单位耗热量',fmt(s.unit),'kJ/kg水')+'</table></div>'
++'<div class="card"><h3>中间量与湿空气焓湿参数</h3><table><tr><th>项目</th><th>数值</th><th>单位</th></tr>'
++R('新鲜空气湿度 H<sub>0</sub>',fmt(s.H0*1000),'g/kg干空气')+R('新鲜空气焓 I<sub>0</sub>',fmt(s.I0),'kJ/kg干空气')
++R('预热后焓 I<sub>1</sub>',fmt(s.I1),'kJ/kg干空气')+R('出口湿度 H<sub>2</sub>',fmt(s.H2*1000),'g/kg干空气')
++R('出口焓 I<sub>2</sub>',fmt(s.I2),'kJ/kg干空气')+R('新鲜空气露点 t<sub>d0</sub>',fmt(s.dew0,1),'℃')
++R('新鲜空气湿球温度 t<sub>w0</sub>',fmt(s.wb0,1),'℃')+R('出口空气露点 t<sub>d2</sub>',fmt(s.dew2,1),'℃')
++R('蒸发耗热 Q<sub>e</sub>',fmt(s.Qe/3600),'kW')+R('物料升温热 Q<sub>m</sub>',fmt(s.Qm/3600),'kW')
++R('散热损失 Q<sub>l</sub>',fmt(s.Ql/3600),'kW')+R('湿空气体积流量(t₀)',fmt(s.V0),'m³/h')
++'</table>'+(s.H2>s.sat2?'<div class="err">⚠ 出口湿度已超过 t₂ 下饱和湿度，实际将析水，请降低 t₂ 或加大风量。</div>':'')
++'<div class="hint">G<sub>c</sub>=G₁(1−w₁/100)；W=G<sub>c</sub>(w₁−w₂)/(100−w₂)；H=0.622φp<sub>s</sub>/(P−φp<sub>s</sub>)；I=(1.005+1.88H)t+2500H；L=[Q<sub>use</sub>+W(2500+1.88t₂)]/[I₁−1.005t₂−H₀(2500+1.88t₂)]；η=W·r/Q<sub>p</sub>，r=2500−2.35t₂。</div></div>';
+}catch(e){document.getElementById('msg').textContent='✗ '+e.message;document.getElementById('out').innerHTML=''}}
+function runTests(){var p=0,h='';
+TESTS.forEach(function(t){var ok=false,m='';try{ok=!!t[1]()}catch(e){m=e.message||String(e)}
+if(ok)p++;h+='<div class="'+(ok?'ok':'bad')+'">'+(ok?'✓ ':'✗ ')+t[0]+(ok?'':' → '+(m||'断言不成立'))+'</div>'});
+document.getElementById('tres').innerHTML='<div class="card"><h3>测试结果 '+p+'/'+TESTS.length+' 通过</h3>'+h+'</div>'}
+document.getElementById('run').onclick=calc;
+document.getElementById('runt').onclick=runTests;
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){
+document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');
+['c','s','t','h'].forEach(function(k){document.getElementById(k).style.display=(k===b.dataset.t)?'':'none'});
+if(b.dataset.t==='s'&&!document.getElementById('src').textContent)
+document.getElementById('src').textContent=document.getElementById('core').textContent.trim();
+}});
+calc();
+</script>
+</body></html>

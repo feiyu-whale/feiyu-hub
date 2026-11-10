@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管道沿程阻力与水头损失计算工具 v2.0.0</title>
+<style>
+:root {
+    --primary: #1a5276;
+    --primary-light: #2980b9;
+    --accent: #e74c3c;
+    --bg: #f4f6f9;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --border: #dce1e8;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --info: #3498db;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+}
+.header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: #fff;
+    padding: 28px 20px 20px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.header p { font-size: 13px; opacity: 0.85; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+.safety-banner {
+    background: linear-gradient(90deg, #fdf2f2, #fef9e7);
+    border: 2px solid var(--danger);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #922;
+    font-weight: 600;
+    text-align: center;
+}
+.safety-banner .icon { font-size: 18px; margin-right: 6px; }
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+    border-bottom: 3px solid var(--primary);
+    flex-wrap: wrap;
+}
+.tab-btn {
+    padding: 12px 24px;
+    background: #e8ecf1;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    transition: all 0.2s;
+    border-radius: 8px 8px 0 0;
+    white-space: nowrap;
+}
+.tab-btn:hover { background: #d5dce6; }
+.tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.tab-content {
+    display: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.tab-content.active { display: block; }
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 5px;
+    color: #555;
+}
+.form-group label .unit { font-weight: 400; color: #999; }
+.form-group input {
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+    width: 100%;
+}
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(41,128,185,0.12);
+}
+.form-group input.error { border-color: var(--danger); }
+.btn-calc {
+    display: block;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 24px;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+}
+.btn-calc:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,82,118,0.3); }
+.btn-calc:active { transform: translateY(0); }
+.results-panel {
+    background: #f8fafb;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    display: none;
+}
+.results-panel.show { display: block; }
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    flex-wrap: wrap;
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { font-weight: 600; color: #555; font-size: 14px; }
+.result-value { font-size: 18px; font-weight: 700; color: var(--primary); font-family: "Courier New", monospace; }
+.result-note {
+    width: 100%;
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+    font-style: italic;
+}
+.regime-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+}
+.regime-laminar { background: var(--success); }
+.regime-transition { background: var(--warning); }
+.regime-turbulent { background: var(--danger); }
+.warning-box {
+    background: #fff8e1;
+    border-left: 4px solid var(--warning);
+    padding: 12px 16px;
+    margin-top: 16px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #7a6100;
+}
+.error-box {
+    background: #fdecea;
+    border-left: 4px solid var(--danger);
+    padding: 12px 16px;
+    margin-top: 16px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #922;
+    display: none;
+}
+.error-box.show { display: block; }
+/* Unit test styles */
+.test-results { margin-top: 16px; }
+.test-item {
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: "Courier New", monospace;
+    border-left: 4px solid;
+}
+.test-pass { background: #eafaf1; border-color: var(--success); color: #1e7e4a; }
+.test-fail { background: #fdecea; border-color: var(--danger); color: #922; }
+.btn-test {
+    padding: 12px 32px;
+    background: var(--success);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+.btn-test:hover { background: #219a52; }
+/* Documentation styles */
+.doc-section { margin-bottom: 28px; }
+.doc-section h3 {
+    font-size: 18px;
+    color: var(--primary);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--primary-light);
+}
+.doc-section h4 { font-size: 15px; color: #444; margin: 14px 0 6px; }
+.doc-section p, .doc-section li { font-size: 14px; margin-bottom: 6px; }
+.doc-section ul, .doc-section ol { padding-left: 24px; }
+.doc-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+}
+.doc-section th, .doc-section td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+}
+.doc-section th { background: #eef2f7; font-weight: 600; }
+.doc-section code {
+    background: #f0f3f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #c0392b;
+}
+.safety-section {
+    background: #fdf2f2;
+    border: 2px solid var(--danger);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.safety-section h3 { color: var(--danger); }
+.version-tag {
+    position: fixed;
+    bottom: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: #aaa;
+    z-index: 999;
+    font-family: monospace;
+}
+.formula-box {
+    background: #f0f4f8;
+    border: 1px solid #d0d8e0;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 10px 0;
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    overflow-x: auto;
+}
+@media (max-width: 600px) {
+    .tab-btn { padding: 10px 14px; font-size: 12px; }
+    .container { padding: 12px; }
+    .tab-content { padding: 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>管道沿程阻力与水头损失计算工具</h1>
+    <p>Pipe Friction Factor &amp; Head Loss Calculator — Colebrook-White / Darcy-Weisbach</p>
+</div>
+
+<div class="container">
+
+    <div class="safety-banner">
+        <span class="icon">⚠️</span>
+        安全声明：本工具仅供工程与科研专业人员参考，不构成任何设计审批依据。实际工程设计须由具备相应资质的工程师审核确认。计算结果受输入参数精度、公式适用范围等因素影响，使用者须自行验证。
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('calc')">📐 计算器</button>
+        <button class="tab-btn" onclick="switchTab('test')">🧪 单元测试</button>
+        <button class="tab-btn" onclick="switchTab('doc')">📖 专业说明</button>
+        <button class="tab-btn" onclick="switchTab('safety')">🛡️ 安全声明</button>
+    </div>
+
+    <!-- TAB 1: Calculator -->
+    <div id="tab-calc" class="tab-content active">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>管径 D <span class="unit">(mm)</span></label>
+                <input type="number" id="inp-D" step="any" placeholder="如：100">
+            </div>
+            <div class="form-group">
+                <label>管道长度 L <span class="unit">(m)</span></label>
+                <input type="number" id="inp-L" step="any" placeholder="如：50">
+            </div>
+            <div class="form-group">
+                <label>流速 v <span class="unit">(m/s)</span></label>
+                <input type="number" id="inp-v" step="any" placeholder="如：1.5">
+            </div>
+            <div class="form-group">
+                <label>流体密度 ρ <span class="unit">(kg/m³)</span></label>
+                <input type="number" id="inp-rho" step="any" placeholder="如：998（20°C水）">
+            </div>
+            <div class="form-group">
+                <label>动力粘度 μ <span class="unit">(Pa·s)</span></label>
+                <input type="number" id="inp-mu" step="any" placeholder="如：0.001002（20°C水）">
+            </div>
+            <div class="form-group">
+                <label>管壁粗糙度 ε <span class="unit">(mm)</span></label>
+                <input type="number" id="inp-eps" step="any" placeholder="如：0.045（商用钢管）">
+            </div>
+        </div>
+        <button class="btn-calc" onclick="calculate()">计 算</button>
+        <div id="error-box" class="error-box"></div>
+        <div id="results-panel" class="results-panel">
+            <div class="result-row">
+                <span class="result-label">雷诺数 Re</span>
+                <span class="result-value" id="res-Re">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">流态判定</span>
+                <span id="res-regime">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Darcy 摩擦因子 f</span>
+                <span class="result-value" id="res-f">—</span>
+                <div class="result-note" id="res-f-note"></div>
+            </div>
+            <div class="result-row">
+                <span class="result-label">相对粗糙度 ε/D</span>
+                <span class="result-value" id="res-relrough">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">沿程水头损失 h<sub>f</sub></span>
+                <span class="result-value" id="res-hf">—</span>
+                <div class="result-note">单位：m（液柱）</div>
+            </div>
+            <div class="result-row">
+                <span class="result-label">沿程压降 Δp</span>
+                <span class="result-value" id="res-dp">—</span>
+                <div class="result-note">单位：Pa</div>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Colebrook 迭代次数</span>
+                <span class="result-value" id="res-iter">—</span>
+            </div>
+            <div id="warning-area"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: Unit Tests -->
+    <div id="tab-test" class="tab-content">
+        <h3 style="margin-bottom:16px; color:var(--primary);">单元测试（10 项）</h3>
+        <p style="margin-bottom:12px; font-size:14px; color:#666;">覆盖：正常工况、层流、湍流、过渡区、零值、负值、NaN、极高值、极低值、单位边界。</p>
+        <button class="btn-test" onclick="runAllTests()">▶ 运行全部测试</button>
+        <div id="test-summary" style="font-weight:700; margin-bottom:12px;"></div>
+        <div id="test-results" class="test-results"></div>
+    </div>
+
+    <!-- TAB 3: Documentation -->
+    <div id="tab-doc" class="tab-content">
+        <div class="doc-section">
+            <h3>一、工具概述</h3>
+            <p>本工具用于计算圆管内牛顿流体稳态流动的沿程阻力系数（Darcy摩擦因子 f）及相应的沿程水头损失 h<sub>f</sub> 和压降 Δp。核心算法基于 Colebrook-White 隐式方程的迭代求解，辅以层流解析解和 Swamee-Jain 显式近似。</p>
+        </div>
+
+        <div class="doc-section">
+            <h3>二、公式体系与文献出处</h3>
+
+            <h4>2.1 雷诺数（Reynolds Number）</h4>
+            <div class="formula-box">Re = ρ · v · D / μ</div>
+            <p>其中 D 为管道内径（m），v 为截面平均流速（m/s），ρ 为流体密度（kg/m³），μ 为动力粘度（Pa·s）。雷诺数是惯性力与粘性力之比，用于判定流态。</p>
+            <p><strong>文献：</strong>Reynolds O. "An experimental investigation of the circumstances which determine whether the motion of water shall be direct or sinuous, and of the laws of resistance in parallel channels." Proc R Soc Lond. 1883;35:84-86.</p>
+
+            <h4>2.2 层流摩擦因子（Hagen-Poiseuille）</h4>
+            <div class="formula-box">f = 64 / Re &nbsp;&nbsp; (Re &lt; 2300)</div>
+            <p>此为圆管内充分发展层流的解析解，由 Hagen-Poiseuille 方程推导得出。此处 f 为 Darcy 摩擦因子（亦称 Moody 摩擦因子），注意与 Fanning 摩擦因子 f_F = 16/Re 的区别（f = 4·f_F）。</p>
+            <p><strong>文献：</strong>White FM. Fluid Mechanics. 8th ed. McGraw-Hill; 2016. Chapter 6.</p>
+
+            <h4>2.3 Colebrook-White 方程（湍流）</h4>
+            <div class="formula-box">1/√f = −2 · log₁₀[ ε/(3.7D) + 2.51/(Re·√f) ]</div>
+            <p>这是湍流区摩擦因子的隐式方程，适用于 Re &gt; 4000 的充分发展湍流。由于 f 同时出现在等式两侧，需迭代求解。本工具采用不动点迭代法，初始值由 Swamee-Jain 显式公式提供，收敛判据为 |f_new − f_old| &lt; 1×10⁻⁸，最大迭代 100 次。</p>
+            <p><strong>文献：</strong>Colebrook CF. "Turbulent flow in pipes, with particular reference to the transition region between the smooth and rough pipe laws." J Inst Civ Eng. 1939;11(4):133-156.</p>
+            <p><strong>文献：</strong>Moody LF. "Friction factors for pipe flow." Trans ASME. 1944;66(8):671-684.</p>
+
+            <h4>2.4 Swamee-Jain 显式近似</h4>
+            <div class="formula-box">f = 0.25 / [ log₁₀( ε/(3.7D) + 5.74/Re^0.9 ) ]²</div>
+            <p>用于过渡区（2300 ≤ Re ≤ 4000）的估算，以及作为 Colebrook 迭代的初始值。在 Re &gt; 4000 范围内与 Colebrook 方程的偏差通常 &lt; 1%。</p>
+            <p><strong>文献：</strong>Swamee PK, Jain AK. "Explicit equations for pipe-flow problems." J Hydraul Div ASCE. 1976;102(HY5):657-664.</p>
+
+            <h4>2.5 Darcy-Weisbach 水头损失</h4>
+            <div class="formula-box">h_f = f · (L/D) · (v² / 2g)</div>
+            <p>其中 g = 9.80665 m/s²（标准重力加速度）。h_f 单位为 m（液柱高度）。</p>
+            <p><strong>文献：</strong>Darcy H. "Recherches expérimentales relatives au mouvement de l'eau dans les tuyaux." Paris: Carilian-Goeury et V. Dalmont; 1857.</p>
+            <p><strong>文献：</strong>Weisbach J. "Lehrbuch der Ingenieur- und Maschinen-Mechanik." Braunschweig: F. Vieweg und Sohn; 1855.</p>
+
+            <h4>2.6 沿程压降</h4>
+            <div class="formula-box">Δp = f · (L/D) · (ρ·v² / 2)</div>
+            <p>Δp 单位为 Pa。此式与 h_f 的关系为 Δp = ρ·g·h_f。</p>
+        </div>
+
+        <div class="doc-section">
+            <h3>三、计算步骤详解</h3>
+            <ol>
+                <li><strong>单位换算：</strong>将管径 D 从 mm 转换为 m（D_m = D/1000），粗糙度 ε 从 mm 转换为 m（ε_m = ε/1000）。</li>
+                <li><strong>输入验证：</strong>检查所有输入是否为正有限数值。D、L、v、ρ、μ 必须 &gt; 0；ε ≥ 0。</li>
+                <li><strong>计算雷诺数：</strong>Re = ρ·v·D_m / μ。</li>
+                <li><strong>流态判定：</strong>
+                    <ul>
+                        <li>Re &lt; 2300：层流，f = 64/Re</li>
+                        <li>2300 ≤ Re ≤ 4000：过渡区，使用 Swamee-Jain 近似，标注不确定性</li>
+                        <li>Re &gt; 4000：湍流，Colebrook-White 迭代求解</li>
+                    </ul>
+                </li>
+                <li><strong>Colebrook 迭代：</strong>
+                    <ul>
+                        <li>初始值 f₀ 由 Swamee-Jain 公式计算</li>
+                        <li>迭代：f_{n+1} = 1 / [−2·log₁₀(ε_m/(3.7·D_m) + 2.51/(Re·√f_n))]²</li>
+                        <li>收敛判据：|f_{n+1} − f_n| &lt; 1×10⁻⁸</li>
+                        <li>最大迭代 100 次（通常 6-12 次即收敛）</li>
+                    </ul>
+                </li>
+                <li><strong>计算水头损失：</strong>h_f = f·(L/D_m)·(v²/(2·9.80665))</li>
+                <li><strong>计算压降：</strong>Δp = f·(L/D_m)·(ρ·v²/2)</li>
+            </ol>
+        </div>
+
+        <div class="doc-section">
+            <h3>四、适用场景与不适用场景</h3>
+            <h4>4.1 适用场景</h4>
+            <ul>
+                <li>圆形截面直管的充分发展稳态流动</li>
+                <li>牛顿流体（粘度与剪切速率无关）</li>
+                <li>不可压缩流体或低速可压缩流体（Ma &lt; 0.3）</li>
+                <li>等温或近似等温条件</li>
+                <li>管道为满流状态（非部分充液）</li>
+                <li>管径沿程不变（等截面管道）</li>
+            </ul>
+            <h4>4.2 不适用场景</h4>
+            <ul>
+                <li><strong>非圆管：</strong>需使用水力直径 D_h = 4A/P（A 为流通面积，P 为湿周），但 Colebrook 公式对非圆截面的适用性有限，矩形、椭圆形截面需查专用图表或 CFD 验证</li>
+                <li><strong>非牛顿流体：</strong>如血液（剪切稀化）、泥浆（宾汉流体）、聚合物溶液等，需使用修正的 Metzner-Reed 方法</li>
+                <li><strong>入口段流动：</strong>入口段长度约 L_e ≈ 0.05·Re·D（层流）或 L_e ≈ 4.4·D^(1/6)·Re^(1/6)·D（湍流），此段内摩擦因子高于充分发展值</li>
+                <li><strong>局部阻力：</strong>弯头、阀门、变径等局部损失不在本工具计算范围内，需另加 K·v²/(2g)</li>
+                <li><strong>部分充液管道：</strong>如排水管道非满流状态，需按明渠流计算</li>
+                <li><strong>极高雷诺数（Re &gt; 10⁸）：</strong>实验数据稀少，公式外推可靠性降低</li>
+                <li><strong>粗糙度极大（ε/D &gt; 0.05）：</strong>超出 Moody 图适用范围</li>
+            </ul>
+        </div>
+
+        <div class="doc-section">
+            <h3>五、工程意义</h3>
+            <p>沿程阻力计算是管道系统设计的核心环节，其结果直接影响：</p>
+            <ul>
+                <li><strong>泵的选型：</strong>水头损失决定了系统所需的扬程，进而决定泵的功率和型号。低估 h_f 将导致泵选型偏小，系统流量不足；高估则造成能源浪费。</li>
+                <li><strong>管径优化：</strong>管径增大可降低流速和 h_f，但增加管材成本。工程设计需在运行能耗与投资之间取得经济平衡（经济流速法）。</li>
+                <li><strong>管网水力分析：</strong>在供水、暖通、化工管道网络中，各管段的 h_f 是节点方程和环路方程的基础数据。</li>
+                <li><strong>系统安全性：</strong>压降计算关系到管道承压等级的选择，以及末端设备能否获得足够的工作压力。</li>
+            </ul>
+        </div>
+
+        <div class="doc-section">
+            <h3>六、已知局限与误差来源</h3>
+            <table>
+                <tr><th>误差来源</th><th>影响程度</th><th>说明</th></tr>
+                <tr><td>粗糙度取值</td><td>高</td><td>管壁粗糙度随使用年限变化（腐蚀、结垢），新管与旧管差异可达数倍。工程手册给出的粗糙度为典型范围值，非精确值。</td></tr>
+                <tr><td>过渡区不确定性</td><td>中-高</td><td>2300 &lt; Re &lt; 4000 区间流态不稳定，可能为层流也可能为湍流，不同公式给出差异显著的结果。Moody 图在此区域为虚线。</td></tr>
+                <tr><td>温度变化</td><td>中</td><td>粘度随温度变化显著（水从 5°C 到 80°C，μ 变化约 5 倍），若取平均温度可能引入误差。</td></tr>
+                <tr><td>管道几何偏差</td><td>低-中</td><td>实际管道存在椭圆度、焊缝凸起、内壁不均匀等，与理想圆管假设有偏差。</td></tr>
+                <tr><td>Colebrook 迭代精度</td><td>极低</td><td>本工具收敛判据 10⁻⁸，迭代误差可忽略。Swamee-Jain 近似在湍流区与 Colebrook 偏差通常 &lt; 1%。</td></tr>
+                <tr><td>入口段效应</td><td>低-中</td><td>短管道中入口段占比大，实际 h_f 高于充分发展值预测。</td></tr>
+            </table>
+        </div>
+
+        <div class="doc-section">
+            <h3>七、精度与误差说明</h3>
+            <h4>① 算准了什么</h4>
+            <ul>
+                <li>雷诺数计算：在输入参数准确的前提下，Re 的计算为精确的代数运算，无近似误差。</li>
+                <li>层流摩擦因子：f = 64/Re 为解析解，精确。</li>
+                <li>Colebrook 方程求解：迭代收敛精度达 10⁻⁸ 量级，数值误差可忽略。</li>
+                <li>Darcy-Weisbach 公式：在 f 已知的前提下，h_f 和 Δp 的计算为精确代数运算。</li>
+            </ul>
+            <h4>② 哪些因素没算进去</h4>
+            <ul>
+                <li>局部阻力损失（弯头、阀门、三通等）</li>
+                <li>管道入口段效应</li>
+                <li>管道高程变化（重力分量）</li>
+                <li>流体压缩性（高速气体）</li>
+                <li>温度沿程变化导致的物性变化</li>
+                <li>管道振动、水锤等瞬态效应</li>
+                <li>非圆截面的形状修正</li>
+            </ul>
+            <h4>③ 误差大概多大</h4>
+            <ul>
+                <li>在输入参数可靠、工况在公式适用范围内时，摩擦因子 f 的工程精度约为 ±5%~15%（主要受粗糙度取值不确定性影响）。</li>
+                <li>水头损失 h_f 的总误差取决于 f 的误差以及 L、D、v 的测量精度，工程实际中 ±10%~25% 是合理预期。</li>
+                <li>过渡区（2300 &lt; Re &lt; 4000）的不确定性可能更大，不同方法给出的 f 值差异可达 50% 以上。</li>
+            </ul>
+            <p><strong>注意：本工具不做"精确计算"或"绝对准确"的保证。所有结果均为工程估算，使用者须结合实际情况判断。</strong></p>
+        </div>
+
+        <div class="doc-section">
+            <h3>八、常见管壁粗糙度参考值</h3>
+            <table>
+                <tr><th>管材</th><th>粗糙度 ε (mm)</th><th>来源</th></tr>
+                <tr><td>玻璃管、铜管（新）</td><td>0.0015 ~ 0.003</td><td>White FM, Fluid Mechanics, 8th ed.</td></tr>
+                <tr><td>商用钢管（新）</td><td>0.045</td><td>Moody LF, Trans ASME 1944</td></tr>
+                <tr><td>镀锌钢管</td><td>0.15</td><td>Idelchik IE, Handbook of Hydraulic Resistance</td></tr>
+                <tr><td>铸铁管（新）</td><td>0.25 ~ 0.26</td><td>Crane Co., Technical Paper 410</td></tr>
+                <tr><td>混凝土管</td><td>0.3 ~ 3.0</td><td>取决于表面光洁度</td></tr>
+                <tr><td>PVC / PE 塑料管</td><td>0.0015 ~ 0.007</td><td>制造商数据</td></tr>
+                <tr><td>锈蚀钢管（旧）</td><td>0.5 ~ 4.0</td><td>取决于锈蚀程度</td></tr>
+            </table>
+            <p style="font-size:12px; color:#888; margin-top:6px;">注：以上为典型参考值，实际粗糙度受制造工艺、使用年限、介质腐蚀性等多种因素影响。</p>
+        </div>
+    </div>
+
+    <!-- TAB 4: Safety -->
+    <div id="tab-safety" class="tab-content">
+        <div class="safety-section">
+            <h3>🛡️ 安全与免责声明</h3>
+            <h4 style="color:var(--danger); margin:12px 0 8px;">重要声明</h4>
+            <p style="font-size:15px; font-weight:600; color:#922; margin-bottom:12px;">
+                本工具仅供具备专业资质的工程技术人员参考使用，不构成任何工程设计审批依据、施工指导或安全认证。
+            </p>
+            <ol style="padding-left:20px;">
+                <li style="margin-bottom:8px;"><strong>非设计替代：</strong>本工具的计算结果不能替代正式的工程设计文件。所有管道系统设计须由具备相应资质的注册工程师（如注册公用设备工程师、注册化工工程师等）审核、签字并盖章。</li>
+                <li style="margin-bottom:8px;"><strong>输入责任：</strong>计算结果的准确性完全取决于输入参数的准确性。使用者有责任核实管径、流速、流体物性、粗糙度等参数的来源和适用性。</li>
+                <li style="margin-bottom:8px;"><strong>适用范围限制：</strong>本工具基于 Colebrook-White 方程和 Darcy-Weisbach 公式，仅适用于圆管满流牛顿流体的稳态流动。超出此范围的结果不保证可靠性。</li>
+                <li style="margin-bottom:8px;"><strong>安全系数：</strong>实际工程设计中应在计算结果基础上增加适当的安全系数，并考虑工况波动、老化、腐蚀等不确定因素。</li>
+                <li style="margin-bottom:8px;"><strong>规范合规：</strong>设计须符合当地法规和行业标准（如 GB 50013、GB 50015、ASME B31.3、EN 806 等），本工具不保证输出符合任何特定规范要求。</li>
+                <li style="margin-bottom:8px;"><strong>无担保：</strong>本工具按"原样"提供，不对其适用性、准确性或完整性做任何明示或暗示的保证。因使用本工具造成的任何直接或间接损失，开发者不承担责任。</li>
+            </ol>
+        </div>
+
+        <div class="doc-section">
+            <h3>物理/工程适用范围与假设条件</h3>
+            <table>
+                <tr><th>假设条件</th><th>说明</th></tr>
+                <tr><td>圆形截面</td><td>公式严格适用于圆管。非圆管需用水力直径，精度降低。</td></tr>
+                <tr><td>满流</td><td>管道完全充满流体。部分充液需按明渠流处理。</td></tr>
+                <tr><td>牛顿流体</td><td>剪切应力与剪切速率成线性关系。非牛顿流体需修正。</td></tr>
+                <tr><td>稳态流动</td><td>流速不随时间变化。瞬态流动（水锤、启停泵）不适用。</td></tr>
+                <tr><td>充分发展流</td><td>远离入口段和出口段。短管道需考虑入口效应修正。</td></tr>
+                <tr><td>等温</td><td>流体温度恒定或变化很小。大温差需分段计算。</td></tr>
+                <tr><td>不可压缩</td><td>流体密度恒定。气体在 Ma &lt; 0.3 时可近似适用。</td></tr>
+                <tr><td>均匀粗糙度</td><td>管壁粗糙度沿程均匀。实际管道可能存在局部粗糙度变化。</td></tr>
+            </table>
+        </div>
+
+        <div class="doc-section">
+            <h3>数据隐私</h3>
+            <p>本工具为纯前端计算，所有数据均在用户浏览器本地处理，不向任何服务器传输数据。关闭页面后所有输入数据即被清除。</p>
+        </div>
+    </div>
+
+</div>
+
+<div class="version-tag">v2.0.0-专业版 20261021</div>
+
+<script>
+/**
+ * ============================================================
+ * 管道沿程阻力与水头损失计算引擎
+ * Pipe Friction & Head Loss Calculation Engine
+ * ============================================================
+ */
+
+/**
+ * 标准重力加速度 (m/s²)
+ * @constant {number}
+ */
+const G_STANDARD = 9.80665;
+
+/**
+ * 计算雷诺数
+ *
+ * 公式：Re = ρ·v·D / μ
+ * 文献：Reynolds O. Proc R Soc Lond. 1883;35:84-86.
+ *
+ * @param {number} rho - 流体密度 (kg/m³)，必须 > 0
+ * @param {number} v - 流速 (m/s)，必须 > 0
+ * @param {number} D_m - 管道内径 (m)，必须 > 0
+ * @param {number} mu - 动力粘度 (Pa·s)，必须 > 0
+ * @returns {number} 雷诺数（无量纲）
+ * @throws {Error} 输入参数无效时抛出错误
+ */
+function calcReynolds(rho, v, D_m, mu) {
+    return (rho * v * D_m) / mu;
+}
+
+/**
+ * 计算层流 Darcy 摩擦因子
+ *
+ * 公式：f = 64 / Re
+ * 适用条件：Re < 2300，圆管充分发展层流
+ * 文献：White FM. Fluid Mechanics. 8th ed. McGraw-Hill; 2016. Ch.6.
+ * 此为 Hagen-Poiseuille 解析解的 Darcy 因子形式。
+ *
+ * @param {number} Re - 雷诺数，必须 > 0 且 < 2300
+ * @returns {number} Darcy 摩擦因子 f（无量纲）
+ */
+function calcFrictionLaminar(Re) {
+    return 64.0 / Re;
+}
+
+/**
+ * Swamee-Jain 显式摩擦因子近似公式
+ *
+ * 公式：f = 0.25 / [log₁₀(ε/(3.7D) + 5.74/Re^0.9)]²
+ * 适用条件：10⁻⁶ ≤ ε/D ≤ 10⁻²，5000 ≤ Re ≤ 10⁸
+ * 文献：Swamee PK, Jain AK. J Hydraul Div ASCE. 1976;102(HY5):657-664.
+ *
+ * @param {number} Re - 雷诺数
+ * @param {number} relRough - 相对粗糙度 ε/D（无量纲）
+ * @returns {number} Darcy 摩擦因子 f 的近似值
+ */
+function calcSwameeJain(Re, relRough) {
+    var logArg = relRough / 3.7 + 5.74 / Math.pow(Re, 0.9);
+    var logVal = Math.log10(logArg);
+    return 0.25 / (logVal * logVal);
+}
+
+/**
+ * Colebrook-White 方程迭代求解 Darcy 摩擦因子
+ *
+ * 公式：1/√f = −2·log₁₀[ε/(3.7D) + 2.51/(Re·√f)]
+ * 方法：不动点迭代，初始值由 Swamee-Jain 提供
+ * 收敛判据：|f_{n+1} − f_n| < 1×10⁻⁸
+ * 最大迭代次数：100
+ *
+ * 文献：Colebrook CF. J Inst Civ Eng. 1939;11(4):133-156.
+ * 文献：Moody LF. Trans ASME. 1944;66(8):671-684.
+ *
+ * 适用条件：
+ *   - 圆管满流
+ *   - 牛顿流体
+ *   - Re > 4000（充分发展湍流）
+ *   - 非圆管需用水力直径当量，但精度降低
+ *
+ * @param {number} Re - 雷诺数，必须 > 4000
+ * @param {number} relRough - 相对粗糙度 ε/D（无量纲），≥ 0
+ * @returns {{f: number, iterations: number, converged: boolean}} 摩擦因子、迭代次数、是否收敛
+ */
+function calcColebrook(Re, relRough) {
+    var maxIter = 100;
+    var tolerance = 1e-8;
+
+    // 初始值由 Swamee-Jain 提供
+    var f = calcSwameeJain(Re, relRough);
+
+    var converged = false;
+    var iter = 0;
+
+    for (var i = 0; i < maxIter; i++) {
+        iter = i + 1;
+        var sqrtF = Math.sqrt(f);
+        var logArg = relRough / 3.7 + 2.51 / (Re * sqrtF);
+        var logVal = Math.log10(logArg);
+        var fNew = 1.0 / (4.0 * logVal * logVal); // 1/(-2*log10(...))^2 = 1/(4*(log10(...))^2)
+
+        if (Math.abs(fNew - f) < tolerance) {
+            f = fNew;
+            converged = true;
+            break;
+        }
+        f = fNew;
+    }
+
+    return { f: f, iterations: iter, converged: converged };
+}
+
+/**
+ * 计算沿程水头损失
+ *
+ * 公式：h_f = f · (L/D) · (v² / 2g)
+ * 文献：Darcy H. 1857; Weisbach J. 1855.
+ * 综合称为 Darcy-Weisbach 方程。
+ * 文献：White FM. Fluid Mechanics. 8th ed. McGraw-Hill; 2016.
+ *
+ * @param {number} f - Darcy 摩擦因子（无量纲）
+ * @param {number} L_m - 管道长度 (m)，必须 > 0
+ * @param {number} D_m - 管道内径 (m)，必须 > 0
+ * @param {number} v - 流速 (m/s)，必须 > 0
+ * @param {number} [g=G_STANDARD] - 重力加速度 (m/s²)
+ * @returns {number} 沿程水头损失 h_f (m)
+ */
+function calcHeadLoss(f, L_m, D_m, v, g) {
+    if (g === undefined) g = G_STANDARD;
+    return f * (L_m / D_m) * (v * v) / (2.0 * g);
+}
+
+/**
+ * 计算沿程压降
+ *
+ * 公式：Δp = f · (L/D) · (ρ·v² / 2)
+ * 此式等价于 Δp = ρ·g·h_f
+ * 文献：White FM. Fluid Mechanics. 8th ed. McGraw-Hill; 2016.
+ *
+ * @param {number} f - Darcy 摩擦因子（无量纲）
+ * @param {number} L_m - 管道长度 (m)
+ * @param {number} D_m - 管道内径 (m)
+ * @param {number} rho - 流体密度 (kg/m³)
+ * @param {number} v - 流速 (m/s)
+ * @returns {number} 沿程压降 Δp (Pa)
+ */
+function calcPressureDrop(f, L_m, D_m, rho, v) {
+    return f * (L_m / D_m) * (rho * v * v / 2.0);
+}
+
+/**
+ * 主计算函数 - 整合所有计算步骤
+ *
+ * @param {number} D_mm - 管径 (mm)
+ * @param {number} L_m - 管道长度 (m)
+ * @param {number} v - 流速 (m/s)
+ * @param {number} rho - 密度 (kg/m³)
+ * @param {number} mu - 动力粘度 (Pa·s)
+ * @param {number} eps_mm - 管壁粗糙度 (mm)
+ * @returns {object} 包含所有计算结果的对象，或包含 error 字段的错误对象
+ */
+function mainCalculation(D_mm, L_m, v, rho, mu, eps_mm) {
+    // 输入验证
+    var inputs = { D_mm: D_mm, L_m: L_m, v: v, rho: rho, mu: mu, eps_mm: eps_mm };
+    var names = { D_mm: '管径D', L_m: '管道长度L', v: '流速v', rho: '密度ρ', mu: '动力粘度μ', eps_mm: '粗糙度ε' };
+
+    for (var key in inputs) {
+        var val = inputs[key];
+        if (typeof val !== 'number' || isNaN(val)) {
+            return { error: names[key] + ' 不是有效数值（NaN 或非数字）' };
+        }
+        if (!isFinite(val)) {
+            return { error: names[key] + ' 为无穷大，请输入有限数值' };
+        }
+    }
+
+    if (D_mm <= 0) return { error: '管径 D 必须 > 0' };
+    if (L_m <= 0) return { error: '管道长度 L 必须 > 0' };
+    if (v <= 0) return { error: '流速 v 必须 > 0' };
+    if (rho <= 0) return { error: '密度 ρ 必须 > 0' };
+    if (mu <= 0) return { error: '动力粘度 μ 必须 > 0' };
+    if (eps_mm < 0) return { error: '粗糙度 ε 不能为负值' };
+
+    // 单位换算
+    var D_m = D_mm / 1000.0;
+    var eps_m = eps_mm / 1000.0;
+
+    // 雷诺数
+    var Re = calcReynolds(rho, v, D_m, mu);
+
+    // 相对粗糙度
+    var relRough = eps_m / D_m;
+
+    var f, regime, regimeNote, iterations = 0;
+    var warnings = [];
+
+    if (Re < 2300) {
+        // 层流
+        regime = 'laminar';
+        regimeNote = '层流 (Re < 2300)';
+        f = calcFrictionLaminar(Re);
+    } else if (Re > 4000) {
+        // 湍流 - Colebrook 迭代
+        regime = 'turbulent';
+        regimeNote = '湍流 (Re > 4000)，Colebrook-White 迭代求解';
+        var result = calcColebrook(Re, relRough);
+        f = result.f;
+        iterations = result.iterations;
+        if (!result.converged) {
+            warnings.push('Colebrook 迭代未在 100 次内收敛，结果可能不准确。');
+        }
+    } else {
+        // 过渡区
+        regime = 'transition';
+        regimeNote = '过渡区 (2300 ≤ Re ≤ 4000)，使用 Swamee-Jain 近似，结果具有较大不确定性';
+        f = calcSwameeJain(Re, relRough);
+        warnings.push('⚠️ 过渡区（2300 ≤ Re ≤ 4000）流态不稳定，摩擦因子存在较大不确定性。Moody 图在此区域以虚线表示。建议：①若可能，调整工况使 Re 远离此区间；②设计时取较大安全系数。');
+    }
+
+    // 额外检查
+    if (relRough > 0.05) {
+        warnings.push('相对粗糙度 ε/D = ' + relRough.toExponential(3) + ' > 0.05，超出 Moody 图/Colebrook 公式的典型适用范围，结果仅供参考。');
+    }
+    if (Re > 1e8) {
+        warnings.push('雷诺数 Re = ' + Re.toExponential(3) + ' > 10⁸，超出 Colebrook 公式的实验验证范围，结果外推可靠性降低。');
+    }
+
+    // 水头损失和压降
+    var hf = calcHeadLoss(f, L_m, D_m, v);
+    var dp = calcPressureDrop(f, L_m, D_m, rho, v);
+
+    return {
+        Re: Re,
+        regime: regime,
+        regimeNote: regimeNote,
+        f: f,
+        relRough: relRough,
+        hf: hf,
+        dp: dp,
+        iterations: iterations,
+        warnings: warnings,
+        error: null
+    };
+}
+
+/**
+ * UI 计算入口函数
+ * 从页面输入框读取数据，调用 mainCalculation，更新结果面板
+ */
+function calculate() {
+    var D_mm = parseFloat(document.getElementById('inp-D').value);
+    var L_m = parseFloat(document.getElementById('inp-L').value);
+    var v = parseFloat(document.getElementById('inp-v').value);
+    var rho = parseFloat(document.getElementById('inp-rho').value);
+    var mu = parseFloat(document.getElementById('inp-mu').value);
+    var eps_mm = parseFloat(document.getElementById('inp-eps').value);
+
+    var errBox = document.getElementById('error-box');
+    var resPanel = document.getElementById('results-panel');
+
+    errBox.className = 'error-box';
+    errBox.textContent = '';
+    resPanel.className = 'results-panel';
+
+    var res = mainCalculation(D_mm, L_m, v, rho, mu, eps_mm);
+
+    if (res.error) {
+        errBox.textContent = '❌ ' + res.error;
+        errBox.className = 'error-box show';
+        return;
+    }
+
+    // 显示结果
+    document.getElementById('res-Re').textContent = formatSci(res.Re);
+    document.getElementById('res-f').textContent = res.f.toFixed(8);
+    document.getElementById('res-relrough').textContent = formatSci(res.relRough);
+    document.getElementById('res-hf').textContent = formatNum(res.hf, 4) + ' m';
+    document.getElementById('res-dp').textContent = formatSci(res.dp) + ' Pa';
+    document.getElementById('res-iter').textContent = res.iterations > 0 ? res.iterations : '—（层流解析解）';
+
+    // 流态标签
+    var regimeEl = document.getElementById('res-regime');
+    var badgeClass = res.regime === 'laminar' ? 'regime-laminar' :
+                     res.regime === 'transition' ? 'regime-transition' : 'regime-turbulent';
+    regimeEl.innerHTML = '<span class="regime-badge ' + badgeClass + '">' + res.regimeNote + '</span>';
+
+    // 摩擦因子注释
+    var fNote = document.getElementById('res-f-note');
+    if (res.regime === 'laminar') {
+        fNote.textContent = '层流解析解 f = 64/Re';
+    } else if (res.regime === 'transition') {
+        fNote.textContent = 'Swamee-Jain 近似（过渡区，不确定性较大）';
+    } else {
+        fNote.textContent = 'Colebrook-White 迭代求解（收敛精度 10⁻⁸）';
+    }
+
+    // 警告
+    var warnArea = document.getElementById('warning-area');
+    warnArea.innerHTML = '';
+    if (res.warnings && res.warnings.length > 0) {
+        for (var i = 0; i < res.warnings.length; i++) {
+            var div = document.createElement('div');
+            div.className = 'warning-box';
+            div.textContent = res.warnings[i];
+            warnArea.appendChild(div);
+        }
+    }
+
+    // 添加适用条件提示
+    var noteDiv = document.createElement('div');
+    noteDiv.className = 'warning-box';
+    noteDiv.style.borderLeftColor = '#3498db';
+    noteDiv.style.background = '#eaf4fd';
+    noteDiv.style.color = '#1a5276';
+    noteDiv.innerHTML = '📌 <strong>适用条件提示：</strong>Colebrook 公式适用于圆管满流的牛顿流体。非圆管需用当量直径（水力直径），但精度降低。本计算未包含局部阻力损失、入口段效应及高程变化。';
+    warnArea.appendChild(noteDiv);
+
+    resPanel.className = 'results-panel show';
+}
+
+/**
+ * 格式化数字为科学计数法（适当时）
+ * @param {number} val - 数值
+ * @returns {string} 格式化字符串
+ */
+function formatSci(val) {
+    if (val === 0) return '0';
+    if (Math.abs(val) >= 1e6 || Math.abs(val) < 0.001) {
+        return val.toExponential(4);
+    }
+    return val.toPrecision(6);
+}
+
+/**
+ * 格式化数字为定点小数
+ * @param {number} val - 数值
+ * @param {number} digits - 小数位数
+ * @returns {string} 格式化字符串
+ */
+function formatNum(val, digits) {
+    if (Math.abs(val) >= 1e6 || (Math.abs(val) < 0.001 && val !== 0)) {
+        return val.toExponential(digits);
+    }
+    return val.toFixed(digits);
+}
+
+/**
+ * 标签页切换
+ * @param {string} tabId - 标签页 ID 后缀
+ */
+function switchTab(tabId) {
+    var tabs = document.querySelectorAll('.tab-content');
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].className = 'tab-content';
+    }
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].className = 'tab-btn';
+    }
+    document.getElementById('tab-' + tabId).className = 'tab-content active';
+    event.target.className = 'tab-btn active';
+}
+
+// ============================================================
+// 单元测试模块
+// ============================================================
+
+/**
+ * 简单断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} message - 断言描述
+ * @returns {{pass: boolean, message: string}}
+ */
+function assert(condition, message) {
+    return { pass: !!condition, message: message };
+}
+
+/**
+ * 近似相等判断
+ * @param {number} a - 值A
+ * @param {number} b - 值B
+ * @param {number} tol - 容差（相对或绝对）
+ * @returns {boolean}
+ */
+function approxEqual(a, b, tol) {
+    if (!isFinite(a) || !isFinite(b)) return a === b;
+    if (b === 0) return Math.abs(a) < tol;
+    return Math.abs((a - b) / b) < tol;
+}
+
+/**
+ * 运行全部单元测试（10 项）
+ * 覆盖：正常湍流、正常层流、过渡区、零值、负值、NaN、极高值、极低值、单位边界、极端粗糙度
+ */
+function runAllTests() {
+    var results = [];
+    var passCount = 0;
+    var totalCount = 10;
+
+    // ---- 测试 1：正常湍流工况（20°C 水在 100mm 钢管中，v=1.5 m/s）----
+    // D=0.1m, v=1.5, ρ=998, μ=0.001002, ε=0.045mm=0.000045m
+    // Re = 998*1.5*0.1/0.001002 = 149401
+    // ε/D = 0.00045
+    // Colebrook 迭代 → f ≈ 0.01896 (参考 Moody 图)
+    (function() {
+        var res = mainCalculation(100, 50, 1.5, 998, 0.001002, 0.045);
+        var Re_expected = 998 * 1.5 * 0.1 / 0.001002; // ≈ 149401
+        var passRe = approxEqual(res.Re, Re_expected, 1e-6);
+        var passRegime = res.regime === 'turbulent';
+        var passF = res.f > 0.017 && res.f < 0.021; // 合理范围
+        var passHf = res.hf > 0;
+        var pass = passRe && passRegime && passF && passHf;
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试1：正常湍流工况',
+            detail: 'D=100mm, L=50m, v=1.5m/s, ρ=998, μ=0.001002, ε=0.045mm | ' +
+                    'Re=' + (res.error ? 'ERR' : res.Re.toFixed(1)) + '(期望≈149401), ' +
+                    'f=' + (res.error ? 'ERR' : res.f.toFixed(6)) + '(期望≈0.019), ' +
+                    'regime=' + (res.error ? 'ERR' : res.regime) +
+                    ' | 测什么：标准湍流工况下 Colebrook 迭代正确性'
+        });
+    })();
+
+    // ---- 测试 2：层流工况（高粘度流体，低流速）----
+    // D=50mm, v=0.01m/s, ρ=1000, μ=0.1 Pa·s (高粘度)
+    // Re = 1000*0.01*0.05/0.1 = 5 → 层流
+    // f = 64/5 = 12.8
+    (function() {
+        var res = mainCalculation(50, 10, 0.01, 1000, 0.1, 0.001);
+        var Re_expected = 1000 * 0.01 * 0.05 / 0.1; // = 5
+        var f_expected = 64.0 / 5.0; // = 12.8
+        var pass = !res.error &&
+                   approxEqual(res.Re, Re_expected, 1e-6) &&
+                   approxEqual(res.f, f_expected, 1e-6) &&
+                   res.regime === 'laminar';
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试2：层流工况',
+            detail: 'D=50mm, v=0.01m/s, μ=0.1Pa·s | ' +
+                    'Re=' + (res.error ? 'ERR' : res.Re.toFixed(2)) + '(期望=5), ' +
+                    'f=' + (res.error ? 'ERR' : res.f.toFixed(4)) + '(期望=12.8), ' +
+                    'regime=' + (res.error ? 'ERR' : res.regime) +
+                    ' | 测什么：层流解析解 f=64/Re 的正确性'
+        });
+    })();
+
+    // ---- 测试 3：过渡区工况 ----
+    // D=100mm, v=0.03m/s, ρ=998, μ=0.001002
+    // Re = 998*0.03*0.1/0.001002 ≈ 2988 → 过渡区
+    (function() {
+        var res = mainCalculation(100, 20, 0.03, 998, 0.001002, 0.045);
+        var pass = !res.error &&
+                   res.Re > 2300 && res.Re < 4000 &&
+                   res.regime === 'transition' &&
+                   res.f > 0 && isFinite(res.f) &&
+                   res.warnings.length > 0; // 应有不确定性警告
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试3：过渡区工况',
+            detail: 'D=100mm, v=0.03m/s | ' +
+                    'Re=' + (res.error ? 'ERR' : res.Re.toFixed(1)) + '(期望≈2988, 过渡区), ' +
+                    'regime=' + (res.error ? 'ERR' : res.regime) +
+                    ', warnings=' + (res.error ? 'ERR' : res.warnings.length) +
+                    ' | 测什么：过渡区识别与 Swamee-Jain 近似及不确定性警告'
+        });
+    })();
+
+    // ---- 测试 4：零值输入（管径=0）----
+    (function() {
+        var res = mainCalculation(0, 50, 1.5, 998, 0.001002, 0.045);
+        var pass = res.error && res.error.indexOf('管径') !== -1;
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试4：零值输入（D=0）',
+            detail: 'D=0mm | 期望：返回错误信息，提及管径 | ' +
+                    '实际：' + (res.error || '无错误') +
+                    ' | 测什么：零值边界条件处理'
+        });
+    })();
+
+    // ---- 测试 5：负值输入（流速为负）----
+    (function() {
+        var res = mainCalculation(100, 50, -1.5, 998, 0.001002, 0.045);
+        var pass = res.error && res.error.indexOf('流速') !== -1;
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试5：负值输入（v=-1.5）',
+            detail: 'v=-1.5m/s | 期望：返回错误信息，提及流速 | ' +
+                    '实际：' + (res.error || '无错误') +
+                    ' | 测什么：负值边界条件处理'
+        });
+    })();
+
+    // ---- 测试 6：NaN 输入 ----
+    (function() {
+        var res = mainCalculation(NaN, 50, 1.5, 998, 0.001002, 0.045);
+        var pass = res.error && (res.error.indexOf('NaN') !== -1 || res.error.indexOf('有效数值') !== -1 || res.error.indexOf('不是有效') !== -1);
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试6：NaN 输入（D=NaN）',
+            detail: 'D=NaN | 期望：返回错误信息，提示非有效数值 | ' +
+                    '实际：' + (res.error || '无错误') +
+                    ' | 测什么：NaN 输入处理'
+        });
+    })();
+
+    // ---- 测试 7：极高雷诺数（极高流速）----
+    // D=500mm, v=50m/s, ρ=998, μ=0.001002
+    // Re = 998*50*0.5/0.001002 ≈ 2.49×10⁷
+    (function() {
+        var res = mainCalculation(500, 100, 50, 998, 0.001002, 0.045);
+        var Re_expected = 998 * 50 * 0.5 / 0.001002;
+        var pass = !res.error &&
+                   approxEqual(res.Re, Re_expected, 1e-4) &&
+                   res.regime === 'turbulent' &&
+                   res.f > 0 && res.f < 0.1 &&
+                   isFinite(res.hf) && isFinite(res.dp);
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试7：极高雷诺数',
+            detail: 'D=500mm, v=50m/s | ' +
+                    'Re=' + (res.error ? 'ERR' : res.Re.toExponential(4)) + '(期望≈2.49e7), ' +
+                    'f=' + (res.error ? 'ERR' : res.f.toFixed(6)) +
+                    ' | 测什么：极高 Re 下 Colebrook 迭代的稳定性和有穷性'
+        });
+    })();
+
+    // ---- 测试 8：极低雷诺数（极低流速、高粘度）----
+    // D=10mm, v=0.0001m/s, ρ=1000, μ=10 Pa·s
+    // Re = 1000*0.0001*0.01/10 = 0.0001
+    // f = 64/0.0001 = 640000
+    (function() {
+        var res = mainCalculation(10, 1, 0.0001, 1000, 10, 0.001);
+        var Re_expected = 1000 * 0.0001 * 0.01 / 10; // = 0.0001
+        var f_expected = 64.0 / 0.0001; // = 640000
+        var pass = !res.error &&
+                   approxEqual(res.Re, Re_expected, 1e-6) &&
+                   approxEqual(res.f, f_expected, 1e-6) &&
+                   res.regime === 'laminar';
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试8：极低雷诺数',
+            detail: 'D=10mm, v=0.0001m/s, μ=10Pa·s | ' +
+                    'Re=' + (res.error ? 'ERR' : res.Re.toExponential(4)) + '(期望=1e-4), ' +
+                    'f=' + (res.error ? 'ERR' : res.f.toFixed(1)) + '(期望=640000), ' +
+                    'regime=' + (res.error ? 'ERR' : res.regime) +
+                    ' | 测什么：极低 Re 边界，层流公式的极端值处理'
+        });
+    })();
+
+    // ---- 测试 9：单位边界 - 极小管径（毛细管）----
+    // D=0.5mm, v=0.1m/s, ρ=998, μ=0.001002
+    // Re = 998*0.1*0.0005/0.001002 ≈ 49.8 → 层流
+    (function() {
+        var res = mainCalculation(0.5, 0.1, 0.1, 998, 0.001002, 0.0015);
+        var Re_expected = 998 * 0.1 * 0.0005 / 0.001002;
+        var pass = !res.error &&
+                   approxEqual(res.Re, Re_expected, 1e-3) &&
+                   res.regime === 'laminar' &&
+                   res.f > 0 && isFinite(res.f) &&
+                   isFinite(res.hf) && res.hf > 0;
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试9：极小管径（毛细管 D=0.5mm）',
+            detail: 'D=0.5mm, L=0.1m, v=0.1m/s | ' +
+                    'Re=' + (res.error ? 'ERR' : res.Re.toFixed(2)) + '(期望≈49.8), ' +
+                    'regime=' + (res.error ? 'ERR' : res.regime) +
+                    ', hf=' + (res.error ? 'ERR' : formatSci(res.hf)) +
+                    ' | 测什么：极小管径下的单位换算和计算正确性'
+        });
+    })();
+
+    // ---- 测试 10：极端粗糙度（ε/D 极大）----
+    // D=10mm, ε=5mm → ε/D = 0.5 > 0.05（超出适用范围）
+    // 应给出警告但仍能计算
+    (function() {
+        var res = mainCalculation(10, 10, 2.0, 998, 0.001002, 5.0);
+        var hasWarning = res.warnings && res.warnings.some(function(w) {
+            return w.indexOf('相对粗糙度') !== -1 || w.indexOf('0.05') !== -1;
+        });
+        var pass = !res.error &&
+                   res.regime === 'turbulent' &&
+                   res.f > 0 && isFinite(res.f) &&
+                   hasWarning;
+        if (pass) passCount++;
+        results.push({
+            pass: pass,
+            name: '测试10：极端粗糙度（ε/D=0.5，超出适用范围）',
+            detail: 'D=10mm, ε=5mm → ε/D=0.5 | ' +
+                    'f=' + (res.error ? 'ERR' : res.f.toFixed(6)) +
+                    ', warnings含粗糙度警告=' + hasWarning +
+                    ' | 测什么：超出公式适用范围时是否正确发出警告'
+        });
+    })();
+
+    // 显示结果
+    var summaryEl = document.getElementById('test-summary');
+    summaryEl.textContent = '结果：' + passCount + ' / ' + totalCount + ' 通过';
+    summaryEl.style.color = passCount === totalCount ? 'var(--success)' : 'var(--danger)';
+
+    var container = document.getElementById('test-results');
+    container.innerHTML = '';
+    for (var i = 0; i < results.length; i++) {
+        var div = document.createElement('div');
+        div.className = 'test-item ' + (results[i].pass ? 'test-pass' : 'test-fail');
+        div.innerHTML = (results[i].pass ? '✅ PASS' : '❌ FAIL') +
+                        ' | <strong>' + results[i].name + '</strong><br>' +
+                        '<span style="font-size:12px;">' + results[i].detail + '</span>';
+        container.appendChild(div);
+    }
+}
+
+// Polyfill for Math.log10 if needed
+if (!Math.log10) {
+    Math.log10 = function(x) {
+        return Math.log(x) / Math.LN10;
+    };
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>普通螺纹尺寸查询工具 v2.0.3</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; padding: 24px; color: #222; background: #f7f8fa; line-height: 1.6; }
+  h1 { margin: 0 0 16px; font-size: 22px; }
+  h2 { margin: 24px 0 12px; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+  h3 { margin: 16px 0 8px; font-size: 15px; }
+  .tabs { display: flex; border-bottom: 2px solid #2563eb; margin-bottom: 16px; }
+  .tab { padding: 10px 18px; cursor: pointer; background: #e5e7eb; border: none; margin-right: 4px; border-radius: 6px 6px 0 0; font-size: 14px; }
+  .tab.active { background: #2563eb; color: #fff; }
+  .panel { display: none; background: #fff; padding: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .panel.active { display: block; }
+  pre { background: #1e1e1e; color: #eee; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  code.inline { background: #eef2ff; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: #f0f3f8; }
+  .tool-box { background: #eef6ff; padding: 16px; border-radius: 6px; margin: 12px 0; }
+  .tool-box label { margin-right: 10px; font-weight: 600; }
+  .tool-box select, .tool-box button { padding: 6px 12px; font-size: 14px; }
+  .result { margin-top: 12px; font-family: "Consolas", monospace; }
+  .pass { color: #16a34a; }
+  .fail { color: #dc2626; }
+  .version { position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #999; }
+  .warn { background: #fff7e6; border-left: 4px solid #f59e0b; padding: 10px 14px; margin: 10px 0; }
+  .note { background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 10px 14px; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<h1>普通螺纹尺寸查询工具（GB/T 196）</h1>
+
+<div class="tabs">
+  <button class="tab active" data-tab="tool">🔧 在线查询</button>
+  <button class="tab" data-tab="source">📄 JS 源码</button>
+  <button class="tab" data-tab="test">🧪 单元测试</button>
+  <button class="tab" data-tab="doc">📘 使用说明书</button>
+</div>
+
+<!-- ============ 在线查询 ============ -->
+<div class="panel active" id="panel-tool">
+  <div class="tool-box">
+    <label>公称直径 d (mm)：</label>
+    <select id="sel-d">
+      <option value="">-- 请选择 --</option>
+    </select>
+    <button id="btn-query">查询</button>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div class="result" id="result">请选择公称直径后点击"查询"。</div>
+</div>
+
+<!-- ============ JS 源码 ============ -->
+<div class="panel" id="panel-source">
+  <h2>第一部分：JS 源码（纯函数实现，无外部依赖）</h2>
+  <p>以下代码可直接复制到浏览器控制台运行。核心数据来自 GB/T 196-2003《普通螺纹 基本尺寸》。</p>
+  <pre id="src-code"></pre>
+</div>
+
+<!-- ============ 单元测试 ============ -->
+<div class="panel" id="panel-test">
+  <h2>第二部分：单元测试（纯 JS 实现，≥30 用例）</h2>
+  <button id="btn-run">▶ 运行全部测试</button>
+  <pre id="test-out" style="margin-top:12px; min-height:200px;">点击"运行全部测试"查看结果。</pre>
+</div>
+
+<!-- ============ 使用说明书 ============ -->
+<div class="panel" id="panel-doc">
+  <h2>第三部分：使用说明书</h2>
+  <div id="doc-content"></div>
+</div>
+
+<div class="version">v2.0.3-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ * 第一部分：核心 JS 源码
+ * ============================================================ */
+const SOURCE_CODE = `
+/**
+ * 普通螺纹尺寸查询模块（依据 GB/T 196-2003）
+ * 仅支持粗牙系列，公称直径 M3 ~ M30。
+ */
+(function (global) {
+  'use strict';
+
+  /**
+   * 粗牙螺距表（GB/T 196-2003 表1）。
+   * 键：公称直径 d（mm）；值：粗牙螺距 P（mm）。
+   * @type {Object.<number, number>}
+   */
+  const COARSE_PITCH_TABLE = {
+    3: 0.5, 4: 0.7, 5: 0.8, 6: 1.0, 8: 1.25,
+    10: 1.5, 12: 1.75, 14: 2.0, 16: 2.0, 18: 2.5,
+    20: 2.5, 22: 2.5, 24: 3.0, 27: 3.0, 30: 3.5
+  };
+
+  /**
+   * 原始三角形高度系数 H/P = √3/2 ≈ 0.8660254038
+   * @constant {number}
+   */
+  const H_RATIO = Math.sqrt(3) / 2;
+
+  /**
+   * 获取支持的公称直径列表（升序）。
+   * @returns {number[]} 公称直径数组，单位 mm
+   * @example
+   *   getSupportedDiameters(); // [3,4,5,6,8,10,12,14,16,18,20,22,24,27,30]
+   */
+  function getSupportedDiameters() {
+    return Object.keys(COARSE_PITCH_TABLE).map(Number).sort((a, b) => a - b);
+  }
+
+  /**
+   * 根据公称直径查询粗牙螺距。
+   * @param {number} d - 公称直径（mm），必须是 COARSE_PITCH_TABLE 中的键
+   * @returns {number} 粗牙螺距 P（mm）
+   * @throws {TypeError} 参数非 number 或为 NaN
+   * @throws {RangeError} 参数不在支持范围内
+   * @example
+   *   getCoarsePitch(10); // 1.5
+   *   getCoarsePitch(3);  // 0.5
+   */
+  function getCoarsePitch(d) {
+    if (typeof d !== 'number' || Number.isNaN(d)) {
+      throw new TypeError('公称直径必须是有效数字');
+    }
+    if (!Object.prototype.hasOwnProperty.call(COARSE_PITCH_TABLE, d)) {
+      throw new RangeError('不支持的公称直径：' + d + '，仅支持 M3~M30 粗牙系列');
+    }
+    return COARSE_PITCH_TABLE[d];
+  }
+
+  /**
+   * 计算普通螺纹中径 d2（或内螺纹中径 D2，二者相等）。
+   * 公式：d2 = d - 0.649519 * P （GB/T 196-2003 表2）
+   * @param {number} d - 公称直径（mm）
+   * @param {number} P - 螺距（mm）
+   * @returns {number} 中径（mm），保留 4 位小数
+   * @throws {TypeError} 参数非 number
+   * @throws {RangeError} 参数为负
+   * @example
+   *   calcPitchDiameter(10, 1.5); // 9.0257
+   */
+  function calcPitchDiameter(d, P) {
+    validateInputs(d, P);
+    return round4(d - 0.649519 * P);
+  }
+
+  /**
+   * 计算内螺纹小径 D1。
+   * 公式：D1 = d - 1.082532 * P （GB/T 196-2003 表2）
+   * @param {number} d - 公称直径（mm）
+   * @param {number} P - 螺距（mm）
+   * @returns {number} 内螺纹小径 D1（mm），保留 4 位小数
+   * @throws {TypeError} 参数非 number
+   * @throws {RangeError} 参数为负
+   * @example
+   *   calcInternalMinorDiameter(10, 1.5); // 8.3762
+   */
+  function calcInternalMinorDiameter(d, P) {
+    validateInputs(d, P);
+    return round4(d - 1.082532 * P);
+  }
+
+  /**
+   * 计算外螺纹小径 d3（用于强度校核）。
+   * 公式：d3 = d - 1.226869 * P （GB/T 196-2003 表2）
+   * @param {number} d - 公称直径（mm）
+   * @param {number} P - 螺距（mm）
+   * @returns {number} 外螺纹小径 d3（mm），保留 4 位小数
+   * @throws {TypeError} 参数非 number
+   * @throws {RangeError} 参数为负
+   * @example
+   *   calcExternalMinorDiameter(10, 1.5); // 8.1597
+   */
+  function calcExternalMinorDiameter(d, P) {
+    validateInputs(d, P);
+    return round4(d - 1.226869 * P);
+  }
+
+  /**
+   * 一次性查询 M 粗牙螺纹的全部基本尺寸。
+   * @param {number} d - 公称直径（mm），M3~M30
+   * @returns {{d:number, P:number, d2:number, D1:number, d3:number}}
+   *   d  公称直径
+   *   P  粗牙螺距
+   *   d2 中径
+   *   D1 内螺纹小径
+   *   d3 外螺纹小径
+   * @throws {TypeError} 参数非 number
+   * @throws {RangeError} 参数不在支持范围
+   * @example
+   *   queryThread(10);
+   *   // { d:10, P:1.5, d2:9.0257, D1:8.3762, d3:8.1597 }
+   */
+  function queryThread(d) {
+    const P = getCoarsePitch(d);
+    return {
+      d: d,
+      P: P,
+      d2: calcPitchDiameter(d, P),
+      D1: calcInternalMinorDiameter(d, P),
+      d3: calcExternalMinorDiameter(d, P)
+    };
+  }
+
+  /**
+   * 内部校验：d、P 必须为非负有限数字。
+   * @param {number} d
+   * @param {number} P
+   * @throws {TypeError|RangeError}
+   */
+  function validateInputs(d, P) {
+    if (typeof d !== 'number' || typeof P !== 'number') {
+      throw new TypeError('d 与 P 必须是 number');
+    }
+    if (Number.isNaN(d) || Number.isNaN(P)) {
+      throw new TypeError('d 与 P 不能为 NaN');
+    }
+    if (!Number.isFinite(d) || !Number.isFinite(P)) {
+      throw new RangeError('d 与 P 必须为有限数');
+    }
+    if (d < 0 || P < 0) {
+      throw new RangeError('d 与 P 不能为负数');
+    }
+  }
+
+  /**
+   * 四舍五入到 4 位小数（避免浮点误差）。
+   * @param {number} v
+   * @returns {number}
+   */
+  function round4(v) {
+    return Math.round(v * 10000) / 10000;
+  }
+
+  // 导出
+  const api = {
+    COARSE_PITCH_TABLE: COARSE_PITCH_TABLE,
+    getSupportedDiameters: getSupportedDiameters,
+    getCoarsePitch: getCoarsePitch,
+    calcPitchDiameter: calcPitchDiameter,
+    calcInternalMinorDiameter: calcInternalMinorDiameter,
+    calcExternalMinorDiameter: calcExternalMinorDiameter,
+    queryThread: queryThread
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  global.ThreadGB196 = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+`;
+
+// 执行源码，让 ThreadGB196 可用
+(function () {
+  const fn = new Function(SOURCE_CODE + '; return ThreadGB196;');
+  window.ThreadGB196 = fn();
+})();
+
+document.getElementById('src-code').textContent = SOURCE_CODE;
+
+/* ============================================================
+ * 第二部分：单元测试（≥30 用例）
+ * ============================================================ */
+const TEST_CODE = `
+(function () {
+  const T = window.ThreadGB196;
+  let passed = 0, failed = 0, total = 0;
+  const log = [];
+
+  function approx(a, b, eps) {
+    eps = eps || 1e-4;
+    return Math.abs(a - b) <= eps;
+  }
+
+  function assert(name, cond, detail) {
+    total++;
+    if (cond) { passed++; log.push('[PASS] ' + name); }
+    else { failed++; log.push('[FAIL] ' + name + (detail ? ' —— ' + detail : '')); }
+  }
+
+  function assertThrow(name, fn, errType) {
+    total++;
+    try { fn(); log.push('[FAIL] ' + name + ' —— 未抛出异常'); failed++; }
+    catch (e) {
+      if (errType && !(e instanceof errType)) {
+        log.push('[FAIL] ' + name + ' —— 异常类型不符：' + e.constructor.name); failed++;
+      } else { passed++; log.push('[PASS] ' + name); }
+    }
+  }
+
+  // ---------- 1. getSupportedDiameters ----------
+  assert('支持列表长度 = 15', T.getSupportedDiameters().length === 15);
+  assert('支持列表首项 = 3', T.getSupportedDiameters()[0] === 3);
+  assert('支持列表末项 = 30', T.getSupportedDiameters()[14] === 30);
+
+  // ---------- 2. getCoarsePitch 正常值 ----------
+  assert('M3 螺距 = 0.5', T.getCoarsePitch(3) === 0.5);
+  assert('M10 螺距 = 1.5', T.getCoarsePitch(10) === 1.5);
+  assert('M30 螺距 = 3.5', T.getCoarsePitch(30) === 3.5);
+  assert('M16 螺距 = 2.0', T.getCoarsePitch(16) === 2.0);
+  assert('M24 螺距 = 3.0', T.getCoarsePitch(24) === 3.0);
+
+  // ---------- 3. getCoarsePitch 异常 ----------
+  assertThrow('getCoarsePitch(null) 抛 TypeError', () => T.getCoarsePitch(null), TypeError);
+  assertThrow('getCoarsePitch(undefined) 抛 TypeError', () => T.getCoarsePitch(undefined), TypeError);
+  assertThrow('getCoarsePitch(NaN) 抛 TypeError', () => T.getCoarsePitch(NaN), TypeError);
+  assertThrow('getCoarsePitch("M10") 抛 TypeError', () => T.getCoarsePitch('M10'), TypeError);
+  assertThrow('getCoarsePitch(7) 抛 RangeError', () => T.getCoarsePitch(7), RangeError);
+  assertThrow('getCoarsePitch(0) 抛 RangeError', () => T.getCoarsePitch(0), RangeError);
+  assertThrow('getCoarsePitch(-5) 抛 RangeError', () => T.getCoarsePitch(-5), RangeError);
+  assertThrow('getCoarsePitch(100) 抛 RangeError', () => T.getCoarsePitch(100), RangeError);
+
+  // ---------- 4. calcPitchDiameter 正常值 ----------
+  assert('M10 中径 ≈ 9.0257', approx(T.calcPitchDiameter(10, 1.5), 9.0257));
+  assert('M3 中径 ≈ 2.6752', approx(T.calcPitchDiameter(3, 0.5), 2.6752));
+  assert('M30 中径 ≈ 27.7267', approx(T.calcPitchDiameter(30, 3.5), 27.7267));
+
+  // ---------- 5. calcInternalMinorDiameter ----------
+  assert('M10 D1 ≈ 8.3762', approx(T.calcInternalMinorDiameter(10, 1.5), 8.3762));
+  assert('M3 D1 ≈ 2.4587', approx(T.calcInternalMinorDiameter(3, 0.5), 2.4587));
+  assert('M20 D1 ≈ 17.2937', approx(T.calcInternalMinorDiameter(20, 2.5), 17.2937));
+
+  // ---------- 6. calcExternalMinorDiameter ----------
+  assert('M10 d3 ≈ 8.1597', approx(T.calcExternalMinorDiameter(10, 1.5), 8.1597));
+  assert('M3 d3 ≈ 2.3866', approx(T.calcExternalMinorDiameter(3, 0.5), 2.3866));
+  assert('M24 d3 ≈ 20.3194', approx(T.calcExternalMinorDiameter(24, 3.0), 20.3194));
+
+  // ---------- 7. 异常输入 ----------
+  assertThrow('calcPitchDiameter(NaN,1) 抛 TypeError', () => T.calcPitchDiameter(NaN, 1), TypeError);
+  assertThrow('calcPitchDiameter(10,-1) 抛 RangeError', () => T.calcPitchDiameter(10, -1), RangeError);
+  assertThrow('calcInternalMinorDiameter("a",1) 抛 TypeError', () => T.calcInternalMinorDiameter('a', 1), TypeError);
+  assertThrow('calcExternalMinorDiameter(10,Infinity) 抛 RangeError', () => T.calcExternalMinorDiameter(10, Infinity), RangeError);
+
+  // ---------- 8. 精度（浮点误差） ----------
+  // 0.649519 * 1.5 在 IEEE754 下会有微小误差，round4 应消除
+  assert('精度：M12 中径 = 10.8633', T.calcPitchDiameter(12, 1.75) === 10.8633);
+  assert('精度：M14 D1 = 11.8349', T.calcInternalMinorDiameter(14, 2.0) === 11.8349);
+
+  // ---------- 9. queryThread 综合 ----------
+  const r = T.queryThread(10);
+  assert('queryThread(10).d = 10', r.d === 10);
+  assert('queryThread(10).P = 1.5', r.P === 1.5);
+  assert('queryThread(10).d2 = 9.0257', r.d2 === 9.0257);
+  assert('queryThread(10).D1 = 8.3762', r.D1 === 8.3762);
+  assert('queryThread(10).d3 = 8.1597', r.d3 === 8.1597);
+
+  assertThrow('queryThread(99) 抛 RangeError', () => T.queryThread(99), RangeError);
+
+  // ---------- 10. 边界值 0 ----------
+  // d=0, P=0 在数学上合法（非负），但实际无意义；函数不应抛错
+  assert('d=0,P=0 返回 0', T.calcPitchDiameter(0, 0) === 0);
+
+  // 汇总
+  const summary = '通过 ' + passed + ' / 共 ' + total + ' （失败 ' + failed + '）';
+  return { log: log, summary: summary, passed: passed, failed: failed, total: total };
+})();
+`;
+
+document.getElementById('btn-run').addEventListener('click', function () {
+  try {
+    const fn = new Function(TEST_CODE);
+    const result = fn();
+    const out = result.log.join('\n') + '\n\n==========\n' + result.summary;
+    document.getElementById('test-out').textContent = out;
+  } catch (e) {
+    document.getElementById('test-out').textContent = '测试执行出错：' + e.message;
+  }
+});
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+const DOC_HTML = `
+<h3>一、工具简介</h3>
+<p>本工具用于查询 <b>普通公制螺纹（米制螺纹）粗牙系列</b> 的基本尺寸，覆盖公称直径 M3 ~ M30。输入公称直径后，一次性输出：</p>
+<ul>
+  <li><b>P</b>：粗牙螺距（mm）</li>
+  <li><b>d2 / D2</b>：中径（mm）</li>
+  <li><b>D1</b>：内螺纹小径（mm）</li>
+  <li><b>d3</b>：外螺纹小径（mm，用于强度校核）</li>
+</ul>
+<p>适用人群：机械设计工程师、工艺人员、检验人员、采购与仓库人员、职业院校师生。</p>
+
+<h3>二、参数说明</h3>
+<table>
+  <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>备注</th></tr>
+  <tr><td>d</td><td>公称直径（螺纹大径的基本尺寸）</td><td>mm</td><td>3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 27, 30</td><td>必须为粗牙系列的标准值</td></tr>
+  <tr><td>P</td><td>螺距（相邻两牙在中径线上对应两点间的轴向距离）</td><td>mm</td><td>由 d 唯一确定（粗牙）</td><td>细牙需另查 GB/T 196 表3</td></tr>
+  <tr><td>d2 = D2</td><td>中径（外螺纹与内螺纹相等）</td><td>mm</td><td>—</td><td>d2 = d − 0.649519·P</td></tr>
+  <tr><td>D1</td><td>内螺纹小径（内螺纹牙底所在圆柱直径）</td><td>mm</td><td>—</td><td>D1 = d − 1.082532·P</td></tr>
+  <tr><td>d3</td><td>外螺纹小径（外螺纹牙底所在圆柱直径，用于强度计算）</td><td>mm</td><td>—</td><td>d3 = d − 1.226869·P</td></tr>
+</table>
+<div class="note">注：所有输出值均为<b>基本尺寸</b>（理论值），实际加工需按 GB/T 197 规定的公差带确定极限偏差。</div>
+
+<h3>三、实际使用场景</h3>
+
+<h4>场景 1：设计阶段确定 M10 螺栓的螺纹参数</h4>
+<p><b>输入：</b>d = 10 mm</p>
+<p><b>输出：</b>P = 1.5 mm，d2 = 9.0257 mm，D1 = 8.3762 mm，d3 = 8.1597 mm</p>
+<p><b>用途：</b>在装配图上标注螺纹规格 M10，并据此选择底孔直径（≈ 8.5 mm，略大于 D1）。</p>
+
+<h4>场景 2：工艺人员确定 M20 攻丝底孔</h4>
+<p><b>输入：</b>d = 20 mm</p>
+<p><b>输出：</b>P = 2.5 mm，D1 = 17.2937 mm</p>
+<p><b>用途：</b>攻丝前钻孔直径一般取 D1 附近（常用 17.5 mm 左右，需结合材料、公差带 6H 等查表）。</p>
+
+<h4>场景 3：检验员校核 M16 外螺纹中径</h4>
+<p><b>输入：</b>d = 16 mm</p>
+<p><b>输出：</b>P = 2.0 mm，d2 = 14.7010 mm</p>
+<p><b>用途：</b>用螺纹千分尺或三针法实测中径，与 14.7010 mm 对比，再按 GB/T 197 的 6g 公差带判断合格性。</p>
+
+<h4>场景 4：强度校核 M24 螺栓的应力截面积</h4>
+<p><b>输入：</b>d = 24 mm</p>
+<p><b>输出：</b>d3 = 20.3194 mm</p>
+<p><b>用途：</b>应力截面积 As = π/4 · ((d2 + d3)/2)²，用于计算螺栓抗拉承载力。</p>
+
+<h4>场景 5：采购 M30 地脚螺栓，核对图纸参数</h4>
+<p><b>输入：</b>d = 30 mm</p>
+<p><b>输出：</b>P = 3.5 mm，d2 = 27.7267 mm，D1 = 26.2111 mm，d3 = 25.7060 mm</p>
+<p><b>用途：</b>与供应商图纸逐项核对，避免粗牙/细牙混淆。</p>
+
+<h3>四、常见错误与排查</h3>
+<table>
+  <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+  <tr><td>提示"不支持的公称直径"</td><td>输入了非标准值（如 7、9、11、15、33 等）</td><td>只能选 M3~M30 中的 15 个标准值</td></tr>
+  <tr><td>提示"参数必须是有效数字"</td><td>传入了字符串、null、undefined、NaN</td><td>检查调用方式，确保传入 number 类型</td></tr>
+  <tr><td>结果与手册有 0.0001 mm 差异</td><td>不同版本手册修约规则不同</td><td>本工具统一四舍五入到 4 位小数，以 GB/T 196 原文为准</td></tr>
+  <tr><td>想查细牙（如 M10×1.25）</td><td>本工具仅支持粗牙</td><td>细牙需查 GB/T 196 表3，或扩展本工具</td></tr>
+  <tr><td>想查公差（如 6g/6H）</td><td>本工具只输出基本尺寸</td><td>公差需查 GB/T 197-2018</td></tr>
+</table>
+
+<h3>五、数据来源与标准依据</h3>
+<ul>
+  <li><b>GB/T 196-2003</b>《普通螺纹 基本尺寸》（ISO 724:1993, MOD）—— 基本尺寸表</li>
+  <li><b>GB/T 192-2003</b>《普通螺纹 基本牙型》—— 牙型几何关系（H、系数来源）</li>
+  <li><b>GB/T 197-2018</b>《普通螺纹 公差》—— 本工具未涉及，需另行查阅</li>
+</ul>
+<div class="warn">⚠ 严谨性声明：本工具的系数 0.649519、1.082532、1.226869 由基本牙型几何关系推导（H = √3/2 · P），与 GB/T 196 表2 数值一致。但本工具<b>不能替代标准原文</b>，用于正式图纸、合同、仲裁时，请务必核对 GB/T 196-2003 原文。</div>
+
+<h3>六、局限性说明</h3>
+<ul>
+  <li>❌ 不支持<b>细牙</b>螺纹（如 M10×1.25、M12×1.25 等）。</li>
+  <li>❌ 不支持<b>非公称直径</b>（如 M3.5、M7、M9、M11、M15、M33 等）。</li>
+  <li>❌ 不输出<b>公差</b>（基本偏差、公差等级、极限尺寸）——需查 GB/T 197。</li>
+  <li>❌ 不输出<b>旋合长度</b>分组（S/N/L）。</li>
+  <li>❌ 不适用于<b>英制螺纹</b>（UNC/UNF/BSW）、<b>管螺纹</b>（G/R/NPT）、<b>梯形螺纹</b>（Tr）、<b>锯齿形螺纹</b>（B）。</li>
+  <li>❌ 不处理<b>多线螺纹</b>（导程 ≠ 螺距的情况）。</li>
+  <li>❌ 数值精度固定为 4 位小数，不满足超高精度场合。</li>
+  <li>❌ 本工具为<b>查询工具</b>，不替代设计计算（如强度、预紧力、防松）。</li>
+</ul>
+
+<h3>七、版本信息</h3>
+<p>版本号：v2.0.3-修审查问题 20261108</p>
+<p>作者角色：资深前端工程师 + 技术写作者</p>
+<p>交付物组成：JS 源码（含完整 JSDoc）+ 单元测试（≥30 用例）+ 使用说明书（≥2000 字）</p>
+`;
+document.getElementById('doc-content').innerHTML = DOC_HTML;
+
+/* ============================================================
+ * 在线查询 UI
+ * ============================================================ */
+(function () {
+  const sel = document.getElementById('sel-d');
+  const T = window.ThreadGB196;
+  T.getSupportedDiameters().forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = 'M' + d;
+    sel.appendChild(opt);
+  });
+  document.getElementById('btn-query').addEventListener('click', () => {
+    const v = sel.value;
+    const box = document.getElementById('result');
+    if (!v) { box.innerHTML = '<span style="color:#c00">请先选择公称直径</span>'; return; }
+    try {
+      const r = T.queryThread(Number(v));
+      box.innerHTML = `
+        <table>
+          <tr><th>参数</th><th>符号</th><th>数值 (mm)</th></tr>
+          <tr><td>公称直径</td><td>d</td><td>${r.d}</td></tr>
+          <tr><td>粗牙螺距</td><td>P</td><td>${r.P}</td></tr>
+          <tr><td>中径</td><td>d2 = D2</td><td>${r.d2}</td></tr>
+          <tr><td>内螺纹小径</td><td>D1</td><td>${r.D1}</td></tr>
+          <tr><td>外螺纹小径</td><td>d3</td><td>${r.d3}</td></tr>
+        </table>
+        <div class="note">依据 GB/T 196-2003，数值为基本尺寸（四舍五入至 4 位小数），实际加工需按 GB/T 197 查公差。</div>
+      `;
+    } catch (e) {
+      box.innerHTML = '<span style="color:#c00">' + e.message + '</span>';
+    }
+  });
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    sel.value = '';
+    document.getElementById('result').textContent = '请选择公称直径后点击"查询"。';
+  });
+})();
+
+/* ============================================================
+ * 标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简支梁弯矩挠度计算工具 v2.0.2-修审查问题 20261108</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;color:#1f2937;line-height:1.6}
+header{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:#fff;padding:28px 24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+header h1{font-size:26px;font-weight:600;margin-bottom:6px}
+header p{font-size:14px;opacity:.9}
+nav{background:#fff;border-bottom:1px solid #e5e7eb;display:flex;padding:0 24px;position:sticky;top:0;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.tab{background:none;border:none;padding:14px 22px;font-size:15px;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;font-weight:500}
+.tab:hover{color:#1e40af;background:#f9fafb}
+.tab.active{color:#1e40af;border-bottom-color:#1e40af}
+main{max-width:1200px;margin:24px auto;padding:0 24px}
+.tab-content{display:none;background:#fff;border-radius:8px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tab-content.active{display:block}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:768px){.calc-grid{grid-template-columns:1fr}}
+.panel{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px}
+.panel h3{font-size:16px;color:#1e40af;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #e5e7eb}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;color:#4b5563;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:4px;font-size:14px;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.form-group small{display:block;margin-top:4px;color:#9ca3af;font-size:12px}
+.btn{background:#1e40af;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-size:14px;cursor:pointer;font-weight:500;transition:background .2s;width:100%;margin-top:8px}
+.btn:hover{background:#1e3a8a}
+.btn-secondary{background:#6b7280}
+.btn-secondary:hover{background:#4b5563}
+.result-box{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-bottom:12px}
+.result-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f3f4f6}
+.result-item:last-child{border-bottom:none}
+.result-label{color:#6b7280;font-size:14px}
+.result-value{font-size:18px;font-weight:600;color:#1e40af;font-family:"SF Mono",Consolas,monospace}
+.result-unit{color:#9ca3af;font-size:13px;margin-left:4px;font-weight:400}
+.error-msg{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px;border-radius:4px;font-size:13px;margin-top:12px}
+pre{background:#1f2937;color:#e5e7eb;padding:20px;border-radius:6px;overflow-x:auto;font-size:13px;line-height:1.6;font-family:"SF Mono",Consolas,"Courier New",monospace}
+code{font-family:"SF Mono",Consolas,"Courier New",monospace}
+.test-result{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-top:16px;max-height:500px;overflow-y:auto}
+.test-item{padding:8px 12px;margin-bottom:6px;border-radius:4px;font-size:13px;font-family:"SF Mono",Consolas,monospace}
+.test-pass{background:#d1fae5;color:#065f46;border-left:3px solid #10b981}
+.test-fail{background:#fee2e2;color:#991b1b;border-left:3px solid #ef4444}
+.test-summary{background:#dbeafe;color:#1e40af;padding:12px;border-radius:4px;font-weight:600;margin-bottom:12px;font-size:15px}
+.doc-content{line-height:1.8;color:#374151}
+.doc-content h2{color:#1e40af;font-size:20px;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid #3b82f6}
+.doc-content h3{color:#1f2937;font-size:16px;margin:18px 0 10px}
+.doc-content p{margin-bottom:12px}
+.doc-content ul,.doc-content ol{margin:10px 0 10px 24px}
+.doc-content li{margin-bottom:6px}
+.doc-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+.doc-content th,.doc-content td{border:1px solid #e5e7eb;padding:10px;text-align:left}
+.doc-content th{background:#f3f4f6;font-weight:600;color:#1f2937}
+.doc-content .note{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;margin:12px 0;font-size:14px}
+.doc-content .warning{background:#fee2e2;border-left:4px solid #ef4444;padding:12px;margin:12px 0;font-size:14px}
+.version{position:fixed;bottom:12px;right:16px;font-size:11px;color:#9ca3af;background:rgba(255,255,255,.9);padding:4px 8px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.formula{background:#f3f4f6;padding:10px 14px;border-radius:4px;font-family:"SF Mono",Consolas,monospace;font-size:13px;margin:8px 0;color:#1f2937}
+</style>
+</head>
+<body>
+<header>
+<h1>简支梁弯矩挠度计算工具</h1>
+<p>均布荷载 / 集中荷载下的最大弯矩、剪力、挠度计算 · 基于材料力学经典公式</p>
+</header>
+
+<nav>
+<button class="tab active" data-tab="calc">📐 计算器</button>
+<button class="tab" data-tab="source">💻 源码</button>
+<button class="tab" data-tab="test">✅ 测试</button>
+<button class="tab" data-tab="doc">📖 使用说明</button>
+</nav>
+
+<main>
+<section id="calc" class="tab-content active">
+<div class="calc-grid">
+<div class="panel">
+<h3>输入参数</h3>
+<div class="form-group">
+<label>荷载类型</label>
+<select id="loadType">
+<option value="udl">均布荷载（全跨）</option>
+<option value="mid">集中荷载（跨中）</option>
+<option value="eccentric">集中荷载（偏心）</option>
+</select>
+</div>
+<div class="form-group">
+<label>跨度 L (m)</label>
+<input type="number" id="L" value="6" step="0.1" min="0">
+<small>梁的支座间距，单位：米</small>
+</div>
+<div class="form-group" id="qGroup">
+<label>均布荷载 q (kN/m)</label>
+<input type="number" id="q" value="10" step="0.1" min="0">
+<small>沿梁全长均匀分布的荷载，单位：千牛/米</small>
+</div>
+<div class="form-group" id="pGroup" style="display:none">
+<label>集中荷载 P (kN)</label>
+<input type="number" id="P" value="20" step="0.1" min="0">
+<small>作用在梁上的集中力，单位：千牛</small>
+</div>
+<div class="form-group" id="aGroup" style="display:none">
+<label>荷载位置 a (m)</label>
+<input type="number" id="a" value="2" step="0.1" min="0">
+<small>集中荷载距左支座的距离，单位：米</small>
+</div>
+<div class="form-group">
+<label>弹性模量 E (GPa)</label>
+<input type="number" id="E" value="200" step="1" min="0">
+<small>钢材约200，混凝土约30，铝约70</small>
+</div>
+<div class="form-group">
+<label>截面惯性矩 I (cm⁴)</label>
+<input type="number" id="I" value="10000" step="100" min="0">
+<small>截面抵抗弯曲变形的能力</small>
+</div>
+<button class="btn" onclick="calculate()">计算</button>
+<button class="btn btn-secondary" onclick="resetForm()" style="margin-top:8px">重置</button>
+</div>
+
+<div class="panel">
+<h3>计算结果</h3>
+<div id="results">
+<div class="result-box">
+<div class="result-item">
+<span class="result-label">最大弯矩 M<sub>max</sub></span>
+<span><span class="result-value" id="M_max">-</span><span class="result-unit">kN·m</span></span>
+</div>
+<div class="result-item">
+<span class="result-label">最大剪力 V<sub>max</sub></span>
+<span><span class="result-value" id="V_max">-</span><span class="result-unit">kN</span></span>
+</div>
+<div class="result-item">
+<span class="result-label">最大挠度 f<sub>max</sub></span>
+<span><span class="result-value" id="f_max">-</span><span class="result-unit">mm</span></span>
+</div>
+</div>
+</div>
+<div id="errorMsg" class="error-msg" style="display:none"></div>
+<div id="formulaInfo" style="margin-top:16px;font-size:13px;color:#6b7280"></div>
+</div>
+</div>
+</section>
+
+<section id="source" class="tab-content">
+<h2 style="color:#1e40af;margin-bottom:16px">核心算法源码</h2>
+<p style="color:#6b7280;margin-bottom:16px;font-size:14px">纯 JavaScript 实现，无外部依赖，所有函数均含完整 JSDoc 注释</p>
+<pre id="sourceCode"></pre>
+</section>
+
+<section id="test" class="tab-content">
+<h2 style="color:#1e40af;margin-bottom:16px">单元测试</h2>
+<p style="color:#6b7280;margin-bottom:16px;font-size:14px">共 30 个测试用例，覆盖正常值、边界值、异常输入、精度问题</p>
+<button class="btn" onclick="runTests()" style="width:auto;padding:10px 32px">运行全部测试</button>
+<div id="testResults" class="test-result" style="display:none"></div>
+</section>
+
+<section id="doc" class="tab-content">
+<div class="doc-content">
+<h2>一、工具简介</h2>
+<p>本工具用于计算<strong>简支梁</strong>在常见荷载工况下的内力与变形，包括最大弯矩、最大剪力、最大挠度三个关键指标。适用于建筑结构、桥梁工程、机械设计等领域的初步设计与校核。</p>
+<p>简支梁是工程中最基本的梁式结构形式：一端为固定铰支座，另一端为滚动铰支座，梁端可自由转动但不能移动。本工具支持三种典型荷载工况：</p>
+<ul>
+<li><strong>均布荷载（全跨）</strong>：荷载沿梁全长均匀分布，如楼板自重、墙体重量等</li>
+<li><strong>集中荷载（跨中）</strong>：荷载作用在梁的跨中位置，如设备重量、柱传来的集中力等</li>
+<li><strong>集中荷载（偏心）</strong>：荷载作用在梁的任意位置，如吊车荷载、次梁传来的集中力等</li>
+</ul>
+
+<h2>二、参数说明</h2>
+<table>
+<tr><th>参数</th><th>符号</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+<tr><td>跨度</td><td>L</td><td>m</td><td>&gt; 0</td><td>梁的支座间距，即两支座中心线之间的距离</td></tr>
+<tr><td>均布荷载</td><td>q</td><td>kN/m</td><td>&gt; 0</td><td>沿梁全长均匀分布的线荷载，包括恒载和活载</td></tr>
+<tr><td>集中荷载</td><td>P</td><td>kN</td><td>&gt; 0</td><td>作用在梁上某一点的集中力</td></tr>
+<tr><td>荷载位置</td><td>a</td><td>m</td><td>0 &lt; a &lt; L</td><td>集中荷载距左支座的距离</td></tr>
+<tr><td>弹性模量</td><td>E</td><td>GPa</td><td>&gt; 0</td><td>材料抵抗弹性变形的能力，钢材约200，混凝土约30，铝约70</td></tr>
+<tr><td>截面惯性矩</td><td>I</td><td>cm⁴</td><td>&gt; 0</td><td>截面对中性轴的惯性矩，反映截面抵抗弯曲变形的能力</td></tr>
+</table>
+
+<div class="note">
+<strong>单位换算提示：</strong><br>
+1 GPa = 10⁹ Pa = 10⁶ kN/m²<br>
+1 cm⁴ = 10⁻⁸ m⁴<br>
+计算结果中：弯矩单位为 kN·m，剪力单位为 kN，挠度单位为 mm
+</div>
+
+<h2>三、计算公式</h2>
+<h3>1. 均布荷载（全跨）</h3>
+<div class="formula">
+M<sub>max</sub> = qL²/8 （跨中）<br>
+V<sub>max</sub> = qL/2 （支座处）<br>
+f<sub>max</sub> = 5qL⁴/(384EI) （跨中）
+</div>
+
+<h3>2. 集中荷载（跨中）</h3>
+<div class="formula">
+M<sub>max</sub> = PL/4 （跨中）<br>
+V<sub>max</sub> = P/2 （支座处）<br>
+f<sub>max</sub> = PL³/(48EI) （跨中）
+</div>
+
+<h3>3. 集中荷载（偏心）</h3>
+<p>设荷载 P 距左支座 a，距右支座 b = L-a，且 a ≤ b（即荷载偏左）：</p>
+<div class="formula">
+M<sub>max</sub> = Pab/L （荷载作用点）<br>
+V<sub>max</sub> = Pb/L （较大支座反力）<br>
+f<sub>max</sub> = Pb(L²-b²)<sup>3/2</sup>/(9√3·EIL) （x = √((L²-b²)/3) 处）
+</div>
+
+<h2>四、实际使用场景</h2>
+<div class="warning">
+<strong>提示：</strong>本页算例中的截面惯性矩 I 与弹性模量 E 为经验估算值，未经标准核对，无具体文献来源，仅作公式演示用途，实际工程请按正式设计取值。
+</div>
+
+<h3>场景1：住宅楼板梁设计</h3>
+<p><strong>工况：</strong>某住宅客厅楼板梁，跨度 6m，承受均布荷载 10 kN/m（含板自重、面层、活载），采用热轧 H 型钢 HN400×200，弹性模量 E=200 GPa，截面惯性矩 I=23700 cm⁴。</p>
+<p><strong>输入：</strong>L=6, q=10, E=200, I=23700</p>
+<p><strong>结果：</strong>M<sub>max</sub>=45 kN·m, V<sub>max</sub>=30 kN, f<sub>max</sub>=3.56 mm</p>
+<p><strong>校核：</strong>挠度限值通常为 L/250 = 24 mm，实际挠度 3.56 mm &lt; 24 mm，满足要求。</p>
+
+<h3>场景2：吊车梁设计</h3>
+<p><strong>工况：</strong>厂房吊车梁，跨度 8m，吊车最大轮压 P=200 kN，作用在跨中，采用焊接工字钢，E=200 GPa, I=150000 cm⁴。</p>
+<p><strong>输入：</strong>L=8, P=200, E=200, I=150000</p>
+<p><strong>结果：</strong>M<sub>max</sub>=400 kN·m, V<sub>max</sub>=100 kN, f<sub>max</sub>=7.11 mm</p>
+<p><strong>校核：</strong>吊车梁挠度限值通常为 L/600 = 13.3 mm，实际 7.11 mm &lt; 13.3 mm，满足要求。</p>
+
+<h3>场景3：混凝土次梁</h3>
+<p><strong>工况：</strong>混凝土框架结构次梁，跨度 5m，均布荷载 15 kN/m，混凝土 C30（E=30 GPa），截面 250×500 mm，I=26042 cm⁴（按矩形截面 bh³/12 计算，未考虑开裂）。</p>
+<p><strong>输入：</strong>L=5, q=15, E=30, I=26042</p>
+<p><strong>结果：</strong>M<sub>max</sub>=46.88 kN·m, V<sub>max</sub>=37.5 kN, f<sub>max</sub>=3.16 mm</p>
+<p><strong>注意：</strong>混凝土梁需考虑开裂后惯性矩折减，实际挠度会更大，需按 GB 50010 进行长期挠度验算。</p>
+
+<h3>场景4：偏心荷载作用</h3>
+<p><strong>工况：</strong>某梁跨度 6m，在距左支座 2m 处作用集中荷载 P=30 kN，钢梁 E=200 GPa, I=8000 cm⁴。</p>
+<p><strong>输入：</strong>L=6, P=30, a=2, E=200, I=8000</p>
+<p><strong>结果：</strong>M<sub>max</sub>=40 kN·m, V<sub>max</sub>=20 kN, f<sub>max</sub>=7.26 mm</p>
+<p><strong>分析：</strong>最大弯矩发生在荷载作用点，最大挠度发生在 x=√((36-4)/3)=3.27 m 处（偏右）。</p>
+
+<h3>场景5：铝型材梁</h3>
+<p><strong>工况：</strong>铝合金幕墙横梁，跨度 1.5m，均布荷载 2 kN/m（风荷载），6063-T5 铝型材 E=70 GPa, I=50 cm⁴。</p>
+<p><strong>输入：</strong>L=1.5, q=2, E=70, I=50</p>
+<p><strong>结果：</strong>M<sub>max</sub>=0.56 kN·m, V<sub>max</sub>=1.5 kN, f<sub>max</sub>=3.77 mm</p>
+<p><strong>校核：</strong>幕墙横梁挠度限值通常为 L/180 = 8.3 mm，实际 3.77 mm &lt; 8.3 mm，满足要求。</p>
+
+<h2>五、常见错误与排查</h2>
+<ul>
+<li><strong>单位错误：</strong>最常见错误。确保 E 输入单位为 GPa（不是 MPa 或 Pa），I 输入单位为 cm⁴（不是 mm⁴ 或 m⁴）</li>
+<li><strong>惯性矩计算错误：</strong>矩形截面 I=bh³/12，其中 b 为宽度，h 为高度（沿弯曲方向）。注意 h 是三次方</li>
+<li><strong>荷载取值错误：</strong>均布荷载应包含恒载（自重）和活载，需按荷载规范进行组合</li>
+<li><strong>偏心荷载位置错误：</strong>a 必须满足 0 &lt; a &lt; L，不能等于 0 或 L（此时为支座处，无意义）</li>
+<li><strong>材料参数错误：</strong>不同材料 E 值差异很大，钢材 200-206 GPa，混凝土 30 GPa（C30），铝 70 GPa</li>
+</ul>
+
+<h2>六、数据来源与标准依据</h2>
+<p>本工具的计算公式基于材料力学经典理论，主要参考：</p>
+<ul>
+<li><strong>GB 50009-2012</strong>《建筑结构荷载规范》：荷载取值与组合</li>
+<li><strong>GB 50017-2017</strong>《钢结构设计标准》：钢梁设计与验算</li>
+<li><strong>GB 50010-2010</strong>《混凝土结构设计规范》：混凝土梁设计与挠度验算</li>
+<li><strong>GB 50005-2017</strong>《木结构设计标准》：木梁设计</li>
+<li>刘鸿文，《材料力学》（第6版），高等教育出版社</li>
+<li>Timoshenko S.P., Gere J.M., "Mechanics of Materials"</li>
+</ul>
+<div class="note">
+<strong>说明：</strong>本工具仅提供弹性阶段的理论计算结果，实际工程设计需考虑塑性发展、稳定性、疲劳、构造要求等因素，并满足相应规范的详细规定。重要工程应由注册结构工程师进行完整设计计算。
+</div>
+
+<h2>七、局限性说明</h2>
+<div class="warning">
+<strong>本工具不能做什么：</strong>
+<ul style="margin-top:8px">
+<li>❌ 不能计算连续梁、悬臂梁、固端梁等其他支座形式</li>
+<li>❌ 不能计算多种荷载组合（需手动叠加）</li>
+<li>❌ 不能考虑梁的自重（需手动加入均布荷载）</li>
+<li>❌ 不能计算剪应力、正应力分布（仅提供内力）</li>
+<li>❌ 不能考虑塑性变形、徐变、收缩等非线性效应</li>
+<li>❌ 不能进行稳定性验算（整体稳定、局部稳定）</li>
+<li>❌ 不能考虑动力荷载、冲击荷载</li>
+<li>❌ 不能计算变截面梁、曲线梁</li>
+<li>❌ 不适用于大变形情况（小变形假设）</li>
+<li>❌ 混凝土梁未考虑开裂、配筋影响</li>
+</ul>
+</div>
+
+<p style="margin-top:24px;padding:16px;background:#f3f4f6;border-radius:4px;font-size:13px;color:#6b7280">
+<strong>版本信息：</strong>v2.0.2-修审查问题 20261108<br>
+<strong>更新日期：</strong>2026年11月8日<br>
+<strong>适用范围：</strong>教学、初步设计、方案比选、快速估算<br>
+<strong>免责声明：</strong>本工具仅供学习参考，工程设计请以正式计算书为准
+</p>
+</div>
+</section>
+</main>
+
+<div class="version">v2.0.2-修审查问题 20261108</div>
+
+<script>
+// ============================================================================
+// 第一部分：核心算法源码
+// ============================================================================
+
+/**
+ * 校验正数参数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @throws {TypeError} 当值为 null、undefined 或非数字时
+ * @throws {RangeError} 当值小于等于 0 或为无穷大时
+ * @example
+ * validatePositive(10, '跨度'); // 通过
+ * validatePositive(-1, '跨度'); // 抛出 RangeError
+ * validatePositive(null, '跨度'); // 抛出 TypeError
+ */
+function validatePositive(value, name) {
+  if (value === null || value === undefined) {
+    throw new TypeError(`${name} 不能为空`);
+  }
+  if (typeof value !== 'number' || isNaN(value)) {
+    throw new TypeError(`${name} 必须是数字，当前值: ${value}`);
+  }
+  if (!isFinite(value)) {
+    throw new RangeError(`${name} 不能为无穷大`);
+  }
+  if (value <= 0) {
+    throw new RangeError(`${name} 必须大于 0，当前值: ${value}`);
+  }
+}
+
+/**
+ * 校验非负数参数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @throws {TypeError} 当值为 null、undefined 或非数字时
+ * @throws {RangeError} 当值小于 0 或为无穷大时
+ * @example
+ * validateNonNegative(0, '位置'); // 通过
+ * validateNonNegative(-1, '位置'); // 抛出 RangeError
+ */
+function validateNonNegative(value, name) {
+  if (value === null || value === undefined) {
+    throw new TypeError(`${name} 不能为空`);
+  }
+  if (typeof value !== 'number' || isNaN(value)) {
+    throw new TypeError(`${name} 必须是数字，当前值: ${value}`);
+  }
+  if (!isFinite(value)) {
+    throw new RangeError(`${name} 不能为无穷大`);
+  }
+  if (value < 0) {
+    throw new RangeError(`${name} 不能为负数，当前值: ${value}`);
+  }
+}
+
+/**
+ * 计算均布荷载下简支梁的最大弯矩、剪力、挠度
+ * 
+ * 公式来源：材料力学经典公式
+ * - 最大弯矩 M_max = qL²/8 （发生在跨中）
+ * - 最大剪力 V_max = qL/2 （发生在支座处）
+ * - 最大挠度 f_max = 5qL⁴/(384EI) （发生在跨中）
+ * 
+ * @param {number} q - 均布荷载，单位 kN/m，必须大于 0
+ * @param {number} L - 梁跨度，单位 m，必须大于 0
+ * @param {number} E - 弹性模量，单位 GPa，必须大于 0
+ * @param {number} I - 截面惯性矩，单位 cm⁴，必须大于 0
+ * @returns {{M_max: number, V_max: number, f_max: number}} 
+ *          M_max: 最大弯矩 (kN·m)
+ *          V_max: 最大剪力 (kN)
+ *          f_max: 最大挠度 (mm)
+ * @throws {TypeError} 参数为空或非数字
+ * @throws {RangeError} 参数小于等于 0
+ * @example
+ * calcUDL(10, 6, 200, 10000);
+ * // 返回: {M_max: 45, V_max: 30, f_max: 8.4375}
+ */
+function calcUDL(q, L, E, I) {
+  validatePositive(q, '均布荷载 q');
+  validatePositive(L, '跨度 L');
+  validatePositive(E, '弹性模量 E');
+  validatePositive(I, '截面惯性矩 I');
+  
+  const M_max = q * L * L / 8;
+  const V_max = q * L / 2;
+  // 单位换算：f_m = 5qL⁴/(384EI)
+  // q[kN/m], L[m], E[GPa=10⁶kN/m²], I[cm⁴=10⁻⁸m⁴]
+  // f_m = 5·q·L⁴ / (384·E·10⁶·I·10⁻⁸) = 500·q·L⁴/(384·E·I) [m]
+  // f_mm = 500000·q·L⁴/(384·E·I) [mm]
+  const f_max = 500000 * q * Math.pow(L, 4) / (384 * E * I);
+  
+  return { M_max, V_max, f_max };
+}
+
+/**
+ * 计算跨中集中荷载下简支梁的最大弯矩、剪力、挠度
+ * 
+ * 公式来源：材料力学经典公式
+ * - 最大弯矩 M_max = PL/4 （发生在跨中）
+ * - 最大剪力 V_max = P/2 （发生在支座处）
+ * - 最大挠度 f_max = PL³/(48EI) （发生在跨中）
+ * 
+ * @param {number} P - 集中荷载，单位 kN，必须大于 0
+ * @param {number} L - 梁跨度，单位 m，必须大于 0
+ * @param {number} E - 弹性模量，单位 GPa，必须大于 0
+ * @param {number} I - 截面惯性矩，单位 cm⁴，必须大于 0
+ * @returns {{M_max: number, V_max: number, f_max: number}}
+ *          M_max: 最大弯矩 (kN·m)
+ *          V_max: 最大剪力 (kN)
+ *          f_max: 最大挠度 (mm)
+ * @throws {TypeError} 参数为空或非数字
+ * @throws {RangeError} 参数小于等于 0
+ * @example
+ * calcConcentratedMid(20, 6, 200, 10000);
+ * // 返回: {M_max: 30, V_max: 10, f_max: 4.5}
+ */
+function calcConcentratedMid(P, L, E, I) {
+  validatePositive(P, '集中荷载 P');
+  validatePositive(L, '跨度 L');
+  validatePositive(E, '弹性模量 E');
+  validatePositive(I, '截面惯性矩 I');
+  
+  const M_max = P * L / 4;
+  const V_max = P / 2;
+  // 单位换算：f_m = PL³/(48EI)
+  // f_m = P·10³·L³ / (48·E·10⁹·I·10⁻⁸) = 100·P·L³/(48·E·I) [m]
+  // f_mm = 100000·P·L³/(48·E·I) [mm]
+  const f_max = 100000 * P * Math.pow(L, 3) / (48 * E * I);
+  
+  return { M_max, V_max, f_max };
+}
+
+/**
+ * 计算偏心集中荷载下简支梁的最大弯矩、剪力、挠度
+ * 
+ * 公式来源：材料力学经典公式（Timoshenko）
+ * 设荷载 P 距左支座 a，距右支座 b = L-a
+ * - 最大弯矩 M_max = Pab/L （发生在荷载作用点）
+ * - 最大剪力 V_max = P·max(a,b)/L （发生在较大反力的支座）
+ * - 最大挠度 f_max = Pb(L²-b²)^(3/2)/(9√3·EIL)
+ *   其中 b = min(a, L-a)，发生在 x = √((L²-b²)/3) 处
+ * 
+ * @param {number} P - 集中荷载，单位 kN，必须大于 0
+ * @param {number} L - 梁跨度，单位 m，必须大于 0
+ * @param {number} a - 荷载距左支座距离，单位 m，必须满足 0 < a < L
+ * @param {number} E - 弹性模量，单位 GPa，必须大于 0
+ * @param {number} I - 截面惯性矩，单位 cm⁴，必须大于 0
+ * @returns {{M_max: number, V_max: number, f_max: number}}
+ *          M_max: 最大弯矩 (kN·m)
+ *          V_max: 最大剪力 (kN)
+ *          f_max: 最大挠度 (mm)
+ * @throws {TypeError} 参数为空或非数字
+ * @throws {RangeError} 参数超出范围
+ * @example
+ * calcConcentratedEccentric(30, 6, 2, 200, 10000);
+ * // 返回: {M_max: 40, V_max: 20, f_max: 5.81}
+ */
+function calcConcentratedEccentric(P, L, a, E, I) {
+  validatePositive(P, '集中荷载 P');
+  validatePositive(L, '跨度 L');
+  validatePositive(E, '弹性模量 E');
+  validatePositive(I, '截面惯性矩 I');
+  
+  if (a === null || a === undefined) {
+    throw new TypeError('荷载位置 a 不能为空');
+  }
+  if (typeof a !== 'number' || isNaN(a)) {
+    throw new TypeError('荷载位置 a 必须是数字');
+  }
+  if (!isFinite(a)) {
+    throw new RangeError('荷载位置 a 不能为无穷大');
+  }
+  if (a <= 0 || a >= L) {
+    throw new RangeError(`荷载位置 a 必须满足 0 < a < L，当前 a=${a}, L=${L}`);
+  }
+  
+  const b = Math.min(a, L - a);
+  const M_max = P * a * (L - a) / L;
+  const V_max = P * Math.max(a, L - a) / L;
+  // 单位换算：f_m = Pb(L²-b²)^(3/2)/(9√3·EIL)
+  // f_m = P·10³·b·(L²-b²)^(3/2) / (9√3·E·10⁹·I·10⁻⁸·L)
+  //     = 100·P·b·(L²-b²)^(3/2) / (9√3·E·I·L) [m]
+  // f_mm = 100000·P·b·(L²-b²)^(3/2) / (9√3·E·I·L) [mm]
+  const f_max = 100000 * P * b * Math.pow(L * L - b * b, 1.5) / (9 * Math.sqrt(3) * E * I * L);
+  
+  return { M_max, V_max, f_max };
+}
+
+// ============================================================================
+// 第二部分：单元测试框架与用例
+// ============================================================================
+
+let testResults = [];
+let passCount = 0;
+let totalCount = 0;
+
+/**
+ * 断言函数：检查实际值是否等于期望值
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} message - 测试描述
+ * @param {number} [tolerance=1e-6] - 浮点数容差
+ */
+function assertEqual(actual, expected, message, tolerance = 1e-6) {
+  totalCount++;
+  let passed = false;
+  let errorMsg = '';
+  
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    if (isNaN(expected) && isNaN(actual)) {
+      passed = true;
+    } else if (Math.abs(actual - expected) <= tolerance) {
+      passed = true;
+    } else {
+      errorMsg = `期望 ${expected}，实际 ${actual}`;
+    }
+  } else if (actual === expected) {
+    passed = true;
+  } else {
+    errorMsg = `期望 ${expected}，实际 ${actual}`;
+  }
+  
+  if (passed) {
+    passCount++;
+    testResults.push({ passed: true, message });
+  } else {
+    testResults.push({ passed: false, message: `${message} - ${errorMsg}` });
+  }
+}
+
+/**
+ * 断言函数：检查是否抛出指定类型的错误
+ * @param {Function} fn - 待测试的函数
+ * @param {Function} ErrorType - 期望的错误类型
+ * @param {string} message - 测试描述
+ */
+function assertThrows(fn, ErrorType, message) {
+  totalCount++;
+  try {
+    fn();
+    testResults.push({ passed: false, message: `${message} - 未抛出异常` });
+  } catch (e) {
+    if (e instanceof ErrorType) {
+      passCount++;
+      testResults.push({ passed: true, message });
+    } else {
+      testResults.push({ passed: false, message: `${message} - 抛出错误类型错误: ${e.constructor.name}` });
+    }
+  }
+}
+
+/**
+ * 运行所有测试用例
+ */
+function runAllTests() {
+  testResults = [];
+  passCount = 0;
+  totalCount = 0;
+  
+  // ========== 均布荷载测试 (1-9) ==========
+  
+  // 测试1：均布荷载正常值1
+  let r1 = calcUDL(10, 6, 200, 10000);
+  assertEqual(r1.M_max, 45, '均布荷载正常值1 - 弯矩');
+  assertEqual(r1.V_max, 30, '均布荷载正常值1 - 剪力');
+  assertEqual(r1.f_max, 8.4375, '均布荷载正常值1 - 挠度');
+  
+  // 测试2：均布荷载正常值2
+  let r2 = calcUDL(5, 4, 30, 5000);
+  assertEqual(r2.M_max, 10, '均布荷载正常值2 - 弯矩');
+  assertEqual(r2.V_max, 10, '均布荷载正常值2 - 剪力');
+  assertEqual(r2.f_max, 11.1111, '均布荷载正常值2 - 挠度', 0.001);
+  
+  // 测试3：均布荷载正常值3
+  let r3 = calcUDL(20, 8, 200, 20000);
+  assertEqual(r3.M_max, 160, '均布荷载正常值3 - 弯矩');
+  assertEqual(r3.V_max, 80, '均布荷载正常值3 - 剪力');
+  /* 修正：f = 500000×20×8⁴/(384×200×20000) = 26.6667 mm（原期望 2.6667 少了一个数量级） */
+  assertEqual(r3.f_max, 26.6667, '均布荷载正常值3 - 挠度', 0.001);
+  
+  // 测试4：均布荷载边界值 - 极小值
+  let r4 = calcUDL(0.001, 0.1, 1, 0.001);
+  assertEqual(r4.M_max > 0, true, '均布荷载边界值 - 极小值弯矩>0');
+  assertEqual(r4.V_max > 0, true, '均布荷载边界值 - 极小值剪力>0');
+  assertEqual(r4.f_max > 0, true, '均布荷载边界值 - 极小值挠度>0');
+  
+  // 测试5：均布荷载边界值 - 极大值
+  let r5 = calcUDL(1000, 100, 1000, 1000000);
+  assertEqual(r5.M_max, 1250000, '均布荷载边界值 - 极大值弯矩');
+  assertEqual(r5.V_max, 50000, '均布荷载边界值 - 极大值剪力');
+  assertEqual(r5.f_max > 0, true, '均布荷载边界值 - 极大值挠度>0');
+  
+  // 测试6：均布荷载边界值 - 单位值
+  let r6 = calcUDL(1, 1, 1, 1);
+  assertEqual(r6.M_max, 0.125, '均布荷载边界值 - 单位值弯矩');
+  assertEqual(r6.V_max, 0.5, '均布荷载边界值 - 单位值剪力');
+  assertEqual(r6.f_max, 1302.0833, '均布荷载边界值 - 单位值挠度', 0.001);
+  
+  // 测试7：均布荷载异常 - null
+  assertThrows(() => calcUDL(null, 6, 200, 10000), TypeError, '均布荷载异常 - q为null');
+  
+  // 测试8：均布荷载异常 - NaN
+  assertThrows(() => calcUDL(NaN, 6, 200, 10000), TypeError, '均布荷载异常 - q为NaN');
+  
+  // 测试9：均布荷载异常 - 负数
+  assertThrows(() => calcUDL(-10, 6, 200, 10000), RangeError, '均布荷载异常 - q为负数');
+  
+  // ========== 集中荷载跨中测试 (10-18) ==========
+  
+  // 测试10：集中荷载跨中正常值1
+  let r10 = calcConcentratedMid(10, 6, 200, 10000);
+  assertEqual(r10.M_max, 15, '集中荷载跨中正常值1 - 弯矩');
+  assertEqual(r10.V_max, 5, '集中荷载跨中正常值1 - 剪力');
+  assertEqual(r10.f_max, 2.25, '集中荷载跨中正常值1 - 挠度');
+  
+  // 测试11：集中荷载跨中正常值2
+  let r11 = calcConcentratedMid(20, 4, 30, 5000);
+  assertEqual(r11.M_max, 20, '集中荷载跨中正常值2 - 弯矩');
+  assertEqual(r11.V_max, 10, '集中荷载跨中正常值2 - 剪力');
+  assertEqual(r11.f_max, 17.7778, '集中荷载跨中正常值2 - 挠度', 0.001);
+  
+  // 测试12：集中荷载跨中正常值3
+  let r12 = calcConcentratedMid(5, 8, 200, 20000);
+  assertEqual(r12.M_max, 10, '集中荷载跨中正常值3 - 弯矩');
+  assertEqual(r12.V_max, 2.5, '集中荷载跨中正常值3 - 剪力');
+  /* 修正：f = 100000×5×8³/(48×200×20000) = 1.3333 mm（原期望 0.1333 少了一个数量级） */
+  assertEqual(r12.f_max, 1.3333, '集中荷载跨中正常值3 - 挠度', 0.001);
+  
+  // 测试13：集中荷载跨中边界值 - 极小值
+  let r13 = calcConcentratedMid(0.001, 0.1, 1, 0.001);
+  assertEqual(r13.M_max > 0, true, '集中荷载跨中边界值 - 极小值弯矩>0');
+  assertEqual(r13.V_max > 0, true, '集中荷载跨中边界值 - 极小值剪力>0');
+  assertEqual(r13.f_max > 0, true, '集中荷载跨中边界值 - 极小值挠度>0');
+  
+  // 测试14：集中荷载跨中边界值 - 极大值
+  let r14 = calcConcentratedMid(1000, 100, 1000, 1000000);
+  assertEqual(r14.M_max, 25000, '集中荷载跨中边界值 - 极大值弯矩');
+  assertEqual(r14.V_max, 500, '集中荷载跨中边界值 - 极大值剪力');
+  assertEqual(r14.f_max > 0, true, '集中荷载跨中边界值 - 极大值挠度>0');
+  
+  // 测试15：集中荷载跨中边界值 - 单位值
+  let r15 = calcConcentratedMid(1, 1, 1, 1);
+  assertEqual(r15.M_max, 0.25, '集中荷载跨中边界值 - 单位值弯矩');
+  assertEqual(r15.V_max, 0.5, '集中荷载跨中边界值 - 单位值剪力');
+  assertEqual(r15.f_max, 2083.3333, '集中荷载跨中边界值 - 单位值挠度', 0.001);
+  
+  // 测试16：集中荷载跨中异常 - undefined
+  assertThrows(() => calcConcentratedMid(undefined, 6, 200, 10000), TypeError, '集中荷载跨中异常 - P为undefined');
+  
+  // 测试17：集中荷载跨中异常 - 字符串
+  assertThrows(() => calcConcentratedMid('10', 6, 200, 10000), TypeError, '集中荷载跨中异常 - P为字符串');
+  
+  // 测试18：集中荷载跨中异常 - 0
+  assertThrows(() => calcConcentratedMid(0, 6, 200, 10000), RangeError, '集中荷载跨中异常 - P为0');
+  
+  // ========== 集中荷载偏心测试 (19-27) ==========
+  
+  // 测试19：集中荷载偏心正常值1
+  let r19 = calcConcentratedEccentric(10, 6, 2, 200, 10000);
+  assertEqual(r19.M_max, 13.3333, '集中荷载偏心正常值1 - 弯矩', 0.001);
+  assertEqual(r19.V_max, 6.6667, '集中荷载偏心正常值1 - 剪力', 0.001);
+  assertEqual(r19.f_max, 1.9354, '集中荷载偏心正常值1 - 挠度', 0.001);
+  
+  // 测试20：集中荷载偏心正常值2
+  let r20 = calcConcentratedEccentric(20, 8, 3, 200, 15000);
+  assertEqual(r20.M_max, 37.5, '集中荷载偏心正常值2 - 弯矩');
+  assertEqual(r20.V_max, 12.5, '集中荷载偏心正常值2 - 剪力');
+  assertEqual(r20.f_max, 6.5420, '集中荷载偏心正常值2 - 挠度', 0.001);
+  
+  // 测试21：集中荷载偏心正常值3 - 跨中（应等于跨中集中荷载）
+  let r21 = calcConcentratedEccentric(10, 6, 3, 200, 10000);
+  let r21_mid = calcConcentratedMid(10, 6, 200, 10000);
+  assertEqual(r21.M_max, r21_mid.M_max, '集中荷载偏心跨中 - 弯矩等于跨中公式');
+  assertEqual(r21.V_max, r21_mid.V_max, '集中荷载偏心跨中 - 剪力等于跨中公式');
+  assertEqual(r21.f_max, r21_mid.f_max, '集中荷载偏心跨中 - 挠度等于跨中公式', 0.001);
+  
+  // 测试22：集中荷载偏心边界值 - 极小值
+  let r22 = calcConcentratedEccentric(0.001, 0.1, 0.01, 1, 0.001);
+  assertEqual(r22.M_max > 0, true, '集中荷载偏心边界值 - 极小值弯矩>0');
+  assertEqual(r22.V_max > 0, true, '集中荷载偏心边界值 - 极小值剪力>0');
+  assertEqual(r22.f_max > 0, true, '集中荷载偏心边界值 - 极小值挠度>0');
+  
+  // 测试23：集中荷载偏心边界值 - 极大值
+  let r23 = calcConcentratedEccentric(1000, 100, 10, 1000, 1000000);
+  assertEqual(r23.M_max > 0, true, '集中荷载偏心边界值 - 极大值弯矩>0');
+  assertEqual(r23.V_max > 0, true, '集中荷载偏心边界值 - 极大值剪力>0');
+  assertEqual(r23.f_max > 0, true, '集中荷载偏心边界值 - 极大值挠度>0');
+  
+  // 测试24：集中荷载偏心边界值 - 接近支座
+  let r24 = calcConcentratedEccentric(10, 6, 0.01, 200, 10000);
+  assertEqual(r24.M_max > 0, true, '集中荷载偏心边界值 - 接近支座弯矩>0');
+  assertEqual(r24.V_max > 0, true, '集中荷载偏心边界值 - 接近支座剪力>0');
+  assertEqual(r24.f_max > 0, true, '集中荷载偏心边界值 - 接近支座挠度>0');
+  
+  // 测试25：集中荷载偏心异常 - a=0
+  assertThrows(() => calcConcentratedEccentric(10, 6, 0, 200, 10000), RangeError, '集中荷载偏心异常 - a为0');
+  
+  // 测试26：集中荷载偏心异常 - a=L
+  assertThrows(() => calcConcentratedEccentric(10, 6, 6, 200, 10000), RangeError, '集中荷载偏心异常 - a等于L');
+  
+  // 测试27：集中荷载偏心异常 - a>L
+  assertThrows(() => calcConcentratedEccentric(10, 6, 7, 200, 10000), RangeError, '集中荷载偏心异常 - a大于L');
+  
+  // ========== 精度测试 (28-30) ==========
+  
+  // 测试28：浮点精度 - 均布荷载
+  let r28 = calcUDL(1, 3, 1, 1);
+  assertEqual(r28.M_max, 1.125, '浮点精度 - 均布荷载弯矩');
+  assertEqual(r28.V_max, 1.5, '浮点精度 - 均布荷载剪力');
+  assertEqual(r28.f_max, 105468.75, '浮点精度 - 均布荷载挠度');
+  
+  // 测试29：浮点精度 - 集中荷载跨中
+  let r29 = calcConcentratedMid(1, 3, 1, 1);
+  assertEqual(r29.M_max, 0.75, '浮点精度 - 集中荷载跨中弯矩');
+  assertEqual(r29.V_max, 0.5, '浮点精度 - 集中荷载跨中剪力');
+  assertEqual(r29.f_max, 56250, '浮点精度 - 集中荷载跨中挠度');
+  
+  // 测试30：大数计算
+  let r30 = calcUDL(100, 50, 200, 100000);
+  assertEqual(r30.M_max, 31250, '大数计算 - 弯矩');
+  assertEqual(r30.V_max, 2500, '大数计算 - 剪力');
+  assertEqual(r30.f_max > 0, true, '大数计算 - 挠度>0');
+}
+
+// ============================================================================
+// 第三部分：界面交互
+// ============================================================================
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 荷载类型切换
+document.getElementById('loadType').addEventListener('change', function() {
+  const type = this.value;
+  document.getElementById('qGroup').style.display = type === 'udl' ? 'block' : 'none';
+  document.getElementById('pGroup').style.display = type !== 'udl' ? 'block' : 'none';
+  document.getElementById('aGroup').style.display = type === 'eccentric' ? 'block' : 'none';
+});
+
+// 计算函数
+function calculate() {
+  const loadType = document.getElementById('loadType').value;
+  const L = parseFloat(document.getElementById('L').value);
+  const E = parseFloat(document.getElementById('E').value);
+  const I = parseFloat(document.getElementById('I').value);
+  
+  const errorMsg = document.getElementById('errorMsg');
+  errorMsg.style.display = 'none';
+  
+  try {
+    let result;
+    let formulaText = '';
+    
+    if (loadType === 'udl') {
+      const q = parseFloat(document.getElementById('q').value);
+      result = calcUDL(q, L, E, I);
+      formulaText = '公式：M=qL²/8, V=qL/2, f=5qL⁴/(384EI)';
+    } else if (loadType === 'mid') {
+      const P = parseFloat(document.getElementById('P').value);
+      result = calcConcentratedMid(P, L, E, I);
+      formulaText = '公式：M=PL/4, V=P/2, f=PL³/(48EI)';
+    } else {
+      const P = parseFloat(document.getElementById('P').value);
+      const a = parseFloat(document.getElementById('a').value);
+      result = calcConcentratedEccentric(P, L, a, E, I);
+      formulaText = '公式：M=Pab/L, V=Pb/L, f=Pb(L²-b²)^(3/2)/(9√3·EIL)';
+    }
+    
+    document.getElementById('M_max').textContent = result.M_max.toFixed(4);
+    document.getElementById('V_max').textContent = result.V_max.toFixed(4);
+    document.getElementById('f_max').textContent = result.f_max.toFixed(4);
+    document.getElementById('formulaInfo').innerHTML = `<strong>${formulaText}</strong>`;
+    
+  } catch (e) {
+    errorMsg.textContent = `输入有误：${e.message}。请为所有参数填写有效的正数（不能为空、0 或非数字），然后重新计算。`;
+    errorMsg.style.display = 'block';
+    document.getElementById('M_max').textContent = '-';
+    document.getElementById('V_max').textContent = '-';
+    document.getElementById('f_max').textContent = '-';
+    document.getElementById('formulaInfo').innerHTML = '';
+  }
+}
+
+// 重置函数
+function resetForm() {
+  document.getElementById('loadType').value = 'udl';
+  document.getElementById('L').value = '6';
+  document.getElementById('q').value = '10';
+  document.getElementById('P').value = '20';
+  document.getElementById('a').value = '2';
+  document.getElementById('E').value = '200';
+  document.getElementById('I').value = '10000';
+  document.getElementById('loadType').dispatchEvent(new Event('change'));
+  document.getElementById('M_max').textContent = '-';
+  document.getElementById('V_max').textContent = '-';
+  document.getElementById('f_max').textContent = '-';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('formulaInfo').innerHTML = '';
+}
+
+// 运行测试
+function runTests() {
+  runAllTests();
+  const container = document.getElementById('testResults');
+  container.style.display = 'block';
+  
+  let html = `<div class="test-summary">测试结果：通过 ${passCount} / 共 ${totalCount}</div>`;
+  
+  testResults.forEach((result, index) => {
+    const className = result.passed ? 'test-pass' : 'test-fail';
+    const icon = result.passed ? '✓' : '✗';
+    html += `<div class="${className}">${icon} 测试${index + 1}: ${result.message}</div>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+// 显示源码
+function displaySource() {
+  const sourceCode = `/**
+ * 校验正数参数
+ * @param {number} value - 待校验的值
+ * @param {string} name - 参数名称
+ * @throws {TypeError} 当值为 null、undefined 或非数字时
+ * @throws {RangeError} 当值小于等于 0 或为无穷大时
+ */
+function validatePositive(value, name) {
+  if (value === null || value === undefined) {
+    throw new TypeError(\`\${name} 不能为空\`);
+  }
+  if (typeof value !== 'number' || isNaN(value)) {
+    throw new TypeError(\`\${name} 必须是数字，当前值: \${value}\`);
+  }
+  if (!isFinite(value)) {
+    throw new RangeError(\`\${name} 不能为无穷大\`);
+  }
+  if (value <= 0) {
+    throw new RangeError(\`\${name} 必须大于 0，当前值: \${value}\`);
+  }
+}
+
+/**
+ * 计算均布荷载下简支梁的最大弯矩、剪力、挠度
+ * @param {number} q - 均布荷载 (kN/m)
+ * @param {number} L - 跨度 (m)
+ * @param {number} E - 弹性模量 (GPa)
+ * @param {number} I - 截面惯性矩 (cm⁴)
+ * @returns {{M_max: number, V_max: number, f_max: number}}
+ */
+function calcUDL(q, L, E, I) {
+  validatePositive(q, '均布荷载 q');
+  validatePositive(L, '跨度 L');
+  validatePositive(E, '弹性模量 E');
+  validatePositive(I, '截面惯性矩 I');
+  
+  const M_max = q * L * L / 8;
+  const V_max = q * L / 2;
+  const f_max = 500000 * q * Math.pow(L, 4) / (384 * E * I);
+  
+  return { M_max, V_max, f_max };
+}
+
+/**
+ * 计算跨中集中荷载下简支梁的最大弯矩、剪力、挠度
+ * @param {number} P - 集中荷载 (kN)
+ * @param {number} L - 跨度 (m)
+ * @param {number} E - 弹性模量 (GPa)
+ * @param {number} I - 截面惯性矩 (cm⁴)
+ * @returns {{M_max: number, V_max: number, f_max: number}}
+ */
+function calcConcentratedMid(P, L, E, I) {
+  validatePositive(P, '集中荷载 P');
+  validatePositive(L, '跨度 L');
+  validatePositive(E, '弹性模量 E');
+  validatePositive(I, '截面惯性矩 I');
+  
+  const M_max = P * L / 4;
+  const V_max = P / 2;
+  const f_max = 100000 * P * Math.pow(L, 3) / (48 * E * I);
+  
+  return { M_max, V_max, f_max };
+}
+
+/**
+ * 计算偏心集中荷载下简支梁的最大弯矩、剪力、挠度
+ * @param {number} P - 集中荷载 (kN)
+ * @param {number} L - 跨度 (m)
+ * @param {number} a - 荷载位置 (m)
+ * @param {number} E - 弹性模量 (GPa)
+ * @param {number} I - 截面惯性矩 (cm⁴)
+ * @returns {{M_max: number, V_max: number, f_max: number}}
+ */
+function calcConcentratedEccentric(P, L, a, E, I) {
+  validatePositive(P, '集中荷载 P');
+  validatePositive(L, '跨度 L');
+  validatePositive(E, '弹性模量 E');
+  validatePositive(I, '截面惯性矩 I');
+  
+  if (a <= 0 || a >= L) {
+    throw new RangeError(\`荷载位置 a 必须满足 0 < a < L\`);
+  }
+  
+  const b = Math.min(a, L - a);
+  const M_max = P * a * (L - a) / L;
+  const V_max = P * Math.max(a, L - a) / L;
+  const f_max = 100000 * P * b * Math.pow(L * L - b * b, 1.5) / 
+                (9 * Math.sqrt(3) * E * I * L);
+  
+  return { M_max, V_max, f_max };
+}`;
+  
+  document.getElementById('sourceCode').textContent = sourceCode;
+}
+
+// 初始化
+displaySource();
+calculate();
+</script>
+</body>
+</html>

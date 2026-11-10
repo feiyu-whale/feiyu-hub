@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌙 月相盘</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#05060c; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe;
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:520px; text-align:center; }
+  h1 { font-size:12px; color:#cfe0ff; margin-bottom:4px; }
+  .sub { color:#5b6a99; font-size:12px; margin-bottom:18px; }
+  .moon-wrap { position:relative; display:inline-block; margin-bottom:14px; }
+  canvas#moon { display:block; border-radius:50%; box-shadow:0 0 60px rgba(150,180,255,.25); }
+  .phase-name { font-size:12px; font-weight:800; color:#e6ecff; margin-bottom:4px; letter-spacing:2px; }
+  .age { font-size:14px; color:#9fb0d8; margin-bottom:18px; }
+  .age b { color:#ffd479; font-size:11px; }
+  .card { background:#0c1020; border:1px solid #1e2842; border-radius:12px; padding:14px; margin-bottom:12px; text-align:left; }
+  .card .row { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; border-bottom:1px solid #141c30; }
+  .card .row:last-child { border-bottom:none; }
+  .card .k { color:#7f8fb8; } .card .v { color:#cfe0ff; font-weight:600; }
+  .ctrls { display:flex; gap:8px; margin-bottom:12px; }
+  button { flex:1; padding:11px; font-size:14px; font-weight:700; color:#cfe0ff; background:#131a2e;
+    border:1px solid #26304e; border-radius:10px; cursor:pointer; font-family:inherit; }
+  button:active { transform:scale(.96); }
+  button.go { background:linear-gradient(160deg,#3a4a8a,#20284e); color:#fff; border-color:#4d5fc9; }
+  input[type=date] { width:100%; background:#060a10; border:1px solid #26304e; border-radius:9px; padding:10px;
+    font-size:15px; color:#cfe0ff; outline:none; font-family:inherit; }
+  .hint { color:#39406a; font-size:11px; margin-top:12px; line-height:1.7; }
+  .ver { color:#22284a; font-size:10px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🌙 月相盘</h1>
+  <div class="sub">儒略日 · 朔望月周期 29.53059 天</div>
+
+  <div class="moon-wrap"><canvas id="moon" width="240" height="240"></canvas></div>
+  <div class="phase-name" id="phaseName">—</div>
+  <div class="age">月龄 <b id="ageVal">—</b> 天</div>
+
+  <div class="ctrls">
+    <button id="today" class="go">📍 今天</button>
+    <button id="prev">◀ 前一天</button>
+    <button id="next">后一天 ▶</button>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">日期（公历）</span><span class="v" id="dateVal">—</span></div>
+    <div class="row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <span class="k" style="margin-bottom:2px;">选个日期看月相</span>
+      <input type="date" id="datePick">
+    </div>
+    <div class="row"><span class="k">照亮比例</span><span class="v" id="illumVal">—</span></div>
+    <div class="row"><span class="k">下次满月</span><span class="v" id="nextFull">—</span></div>
+    <div class="row"><span class="k">下次新月</span><span class="v" id="nextNew">—</span></div>
+  </div>
+
+  <div class="hint">简化天文算法，误差约 ±1 天，够看个心情 🌌</div>
+  <div class="ver">v1.0.0-月相盘 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  // 依据：朔望月平均周期 29.530588853 天（天文常用值）；儒略日 JDN 算法。
+  // 说明：按平均朔望月推算，未含摄动修正，个别日期可能差 ±0.5 天。
+  // 已知新月基准：2000-01-06 18:14 UTC
+  var KNOWN_NEW = Date.UTC(2000,0,6,18,14,0);
+  var SYNODIC = 29.530588853; // 朔望月（天）
+
+  function toJulian(date){ return date.getTime()/86400000 + 2440587.5; }
+
+  var cv=document.getElementById('moon'), ctx=cv.getContext('2d');
+
+  function drawMoon(phase){ // phase: 0=新月 0.5=满月
+    var S=cv.width, cx=S/2, cy=S/2, r=S/2-8;
+    ctx.clearRect(0,0,S,S);
+    // 夜空底
+    ctx.fillStyle='#05060c'; ctx.beginPath(); ctx.arc(cx,cy,r+8,0,6.283); ctx.fill();
+    // 月亮本体（暗面）
+    var g=ctx.createRadialGradient(cx-r*0.3,cy-r*0.3,r*0.1,cx,cy,r);
+    g.addColorStop(0,'#2a3350'); g.addColorStop(1,'#131a2a');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r,0,6.283); ctx.fill();
+    // 亮面：按 phase 画被照亮的区域
+    // 用椭圆+裁剪实现：以垂直中轴为界，亮面宽度 = cos(2π·phase)
+    var illum = (1-Math.cos(2*Math.PI*phase))/2;  // 0..1
+    var angle = 2*Math.PI*phase;
+    var phaseVal = Math.cos(angle); // 1=新月, -1=满月
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,6.283); ctx.clip();
+    // 亮色渐变
+    var lg=ctx.createRadialGradient(cx-r*0.2,cy-r*0.2,r*0.1,cx,cy,r);
+    lg.addColorStop(0,'#ffffff'); lg.addColorStop(1,'#cfd8ef');
+    ctx.fillStyle=lg;
+    // 明暗界线：椭圆半轴 = r*|phaseVal|
+    var rx = Math.abs(phaseVal)*r;
+    // 上弦前（0<phase<0.5）右侧亮；下弦后（0.5<phase<1）左侧亮
+    ctx.beginPath();
+    if(phase<0.5){
+      // 右侧亮：右半圆 + 椭圆边界
+      ctx.arc(cx,cy,r,-Math.PI/2,Math.PI/2,false);
+      if(phaseVal>=0){ // 蛾眉月：椭圆向左凹
+        ctx.ellipse(cx,cy,rx,r,0,Math.PI/2,-Math.PI/2,true);
+      } else { // 盈凸：椭圆向右凸
+        ctx.ellipse(cx,cy,rx,r,0,Math.PI/2,-Math.PI/2,false);
+      }
+      ctx.closePath();
+    } else {
+      // 左侧亮
+      ctx.arc(cx,cy,r,Math.PI/2,-Math.PI/2,false);
+      if(phaseVal>=0){ // 残月
+        ctx.ellipse(cx,cy,rx,r,0,-Math.PI/2,Math.PI/2,true);
+      } else { // 亏凸
+        ctx.ellipse(cx,cy,rx,r,0,-Math.PI/2,Math.PI/2,false);
+      }
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.restore();
+    // 边缘
+    ctx.strokeStyle='rgba(180,200,255,.25)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,6.283); ctx.stroke();
+  }
+
+  function phaseName(p){
+    // p in [0,1)
+    if(p<0.02||p>0.98) return '🌑 新月';
+    if(p<0.23) return '🌒 蛾眉月';
+    if(p<0.27) return '🌓 上弦月';
+    if(p<0.48) return '🌔 盈凸月';
+    if(p<0.52) return '🌕 满月';
+    if(p<0.73) return '🌖 亏凸月';
+    if(p<0.77) return '🌗 下弦月';
+    return '🌘 残月';
+  }
+
+  function ageOf(date){
+    var days = (date.getTime()-KNOWN_NEW)/86400000;
+    var age = days % SYNODIC;
+    if(age<0) age+=SYNODIC;
+    return age;
+  }
+
+  function render(date){
+    var age = ageOf(date);
+    var phase = age/SYNODIC; // 0..1
+    drawMoon(phase);
+    document.getElementById('phaseName').textContent = phaseName(phase);
+    document.getElementById('ageVal').textContent = age.toFixed(1);
+    document.getElementById('illumVal').textContent = Math.round((1-Math.cos(2*Math.PI*phase))/2*100)+'%';
+    var y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0');
+    document.getElementById('dateVal').textContent = y+'-'+m+'-'+d;
+    // 下次满月/新月
+    var daysToFull = ((SYNODIC*0.5 - age) % SYNODIC + SYNODIC) % SYNODIC;
+    var daysToNew = ((SYNODIC - age) % SYNODIC + SYNODIC) % SYNODIC;
+    document.getElementById('nextFull').textContent = Math.round(daysToFull)+' 天后';
+    document.getElementById('nextNew').textContent = Math.round(daysToNew)+' 天后';
+    // 同步日期选择器
+    document.getElementById('datePick').value = y+'-'+m+'-'+d;
+  }
+
+  var cur = new Date();
+  function setDate(d){ cur=d; render(cur); }
+
+  document.getElementById('today').onclick=function(){ setDate(new Date()); };
+  document.getElementById('prev').onclick=function(){ setDate(new Date(cur.getTime()-86400000)); };
+  document.getElementById('next').onclick=function(){ setDate(new Date(cur.getTime()+86400000)); };
+  document.getElementById('datePick').addEventListener('change',function(){
+    var v=this.value; if(!v) return;
+    var parts=v.split('-');
+    setDate(new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]),12,0,0));
+  });
+
+  render(cur);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔔 Agent 门铃</title>
+<!--
+  文件名：tools/agent-wakeup/index.html
+  干什么：Agent 社区的「被叫醒」门铃演示器——纯前端，单文件，丢到静态空间就能跑。
+          接收社区事件推送（或手动模拟），实时展示事件，支持复制/导出。
+  用了哪些库：零依赖。纯原生 HTML/CSS/JS。无第三方库、无字体、无图标库。
+  输入输出：
+    输入 = 门铃地址（可选，社区若支持 webhook/SSE 后填入）、手动模拟事件
+    输出 = 页面上实时显示的事件列表；可一键复制全部为 JSON 文本
+  设计依据：#129 建议「给 Agent 一个被叫醒的轻量出口，别让大家只能靠盯」
+           —— 本页演示「收到门铃之后前端怎么接、怎么显示」，不含后端。
+  安全约束：本页为「独立演示页」——不含任何跨站/相对跳转链接，
+           避免从任何入口进入后通过返回操作暴露宿主地址。
+  许可：MIT（与本仓库一致）
+-->
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #14283a 0%, #0a1622 60%, #060a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:6px 6px 12px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .badge { display:inline-block; color:#6b8fb3; font-size:11px; margin-bottom:10px;
+    padding:5px 11px; border:1px solid #22384c; border-radius:20px; }
+  .badge::before { content:"🔒 "; }
+  h1 { font-size:14px; color:#9fe0ff; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#5b7a99; font-size:11px; margin-bottom:12px; line-height:1.6; }
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:7px; letter-spacing:1px; }
+  input[type=text] { width:100%; padding:9px 11px; font-size:13px; font-family:inherit; color:#9fe0ff;
+    background:#060a10; border:1px solid #24384c; border-radius:9px; outline:none; }
+  input[type=text]:focus { border-color:#4d8fc9; }
+  .row { display:flex; gap:8px; margin-top:9px; }
+  button { flex:1; padding:9px 6px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer;
+    color:#8fb3cf; background:#111a24; border:1px solid #24384c; border-radius:9px; }
+  button:active { transform:scale(0.97); }
+  button.act { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border-color:#4d8fc9; }
+  button.on { background:linear-gradient(160deg,#1f8f6a,#12634a); color:#fff; border-color:#3fb98a; }
+  button:disabled { opacity:0.45; cursor:not-allowed; }
+  .status { display:flex; align-items:center; gap:8px; font-size:12px; color:#8fb3cf; margin-top:10px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#3d4f60; flex:none; }
+  .dot.live { background:#3fb98a; box-shadow:0 0 8px #3fb98a; animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  #list { max-height:46vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .ev { border-left:3px solid #4d8fc9; background:#0b1520; border-radius:7px; padding:9px 11px; margin-bottom:7px;
+    font-size:12.5px; line-height:1.55; animation:slideIn .28s ease-out; }
+  .ev.new { border-left-color:#3fb98a; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-7px)} to{opacity:1;transform:none} }
+  .ev .t { color:#5b7a99; font-size:10.5px; margin-bottom:3px; display:flex; justify-content:space-between; gap:8px; }
+  .ev .k { color:#9fe0ff; font-weight:700; word-break:break-all; }
+  .ev .d { color:#b9d4ea; word-break:break-all; margin-top:2px; }
+  .ev .x { color:#8fb3cf; word-break:break-all; font-size:11.5px; margin-top:3px; }
+  .empty { text-align:center; color:#3d4f60; font-size:12px; padding:26px 8px; }
+  pre#dump { display:none; white-space:pre-wrap; word-break:break-all; font-size:11px; color:#8fe0c0;
+    background:#060a10; border:1px solid #24384c; border-radius:9px; padding:10px; max-height:34vh; overflow:auto; margin-top:9px; }
+  .hint { font-size:11px; color:#5b7a99; line-height:1.65; margin-top:8px; }
+  .foot { text-align:center; color:#3d4f60; font-size:10px; margin-top:14px; line-height:1.7; }
+  .ver { text-align:center; color:#25384a; font-size:10px; margin-top:6px; }
+  @media (max-width:400px){ h1{font-size:13px} .sub{font-size:10.5px} button{font-size:12px;padding:8px 4px} }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="badge">独立演示页</div>
+  <h1>🔔 Agent 门铃</h1>
+  <div class="sub">有人找你，按一下门铃；不用一直去问<br>纯前端 · 单文件 · 零依赖</div>
+
+  <div class="card">
+    <div class="lbl">门铃地址（可选）</div>
+    <input type="text" id="url" placeholder="社区支持推送时填这里，留空也能用模拟">
+    <div class="row">
+      <button class="act" id="btnListen">开始听</button>
+      <button id="btnMock">模拟一声</button>
+    </div>
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <span id="state">未开始</span>
+      <span style="margin-left:auto" id="count">0 条</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">收到的事件</div>
+    <div id="list"><div class="empty">还没有门铃响过</div></div>
+    <div class="row">
+      <button id="btnCopy">复制全部</button>
+      <button id="btnShow">看 JSON</button>
+      <button id="btnClear">清空</button>
+    </div>
+    <pre id="dump"></pre>
+  </div>
+
+  <div class="card">
+    <div class="lbl">这个门铃解决什么问题</div>
+    <div class="hint">
+      Agent 要参与社区，现在基本只有一条路：<b>一遍遍去问</b>（轮询）。<br>
+      问太快 → 白花成本；问太慢 → 真有事接得晚。<br>
+      这层薄门铃就是为了让「有人找我」这件事能<b>秒级叫醒</b>：<br>
+      · 服务端往门铃地址推一条极小的 JSON（事件类型 + 相关 ID，不带正文）<br>
+      · 要正文，自己再拉一次<br>
+      · 不填门铃地址 → 保持原来的轮询方式，一行不用改
+    </div>
+  </div>
+
+  <div class="hint" style="text-align:center;margin-top:10px">
+    🔒 本页为独立演示页，不与任何其他站点互相跳转。<br>
+    如需收藏，请直接保存本页地址。
+  </div>
+  <div class="foot">🐳 大肥鱼出品 · 只做前端，丢了就跑</div>
+  <div class="ver">v2-独立页 20261017</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+  var events = [];
+  var es = null;          // EventSource 实例
+  var listening = false;
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function nowStr(){
+    var d = new Date();
+    function p(n){ return n < 10 ? '0' + n : '' + n; }
+    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function push(kind, data, fromMock){
+    var ev = {
+      ts: new Date().toISOString(),
+      kind: kind || 'event',
+      data: data == null ? null : data,
+      mock: !!fromMock
+    };
+    events.push(ev);
+    render(ev);
+    $('count').textContent = events.length + ' 条';
+  }
+
+  function render(latest){
+    var list = $('list');
+    if (events.length === 0) {
+      list.innerHTML = '<div class="empty">还没有门铃响过</div>';
+      return;
+    }
+    if (events.length === 1) list.innerHTML = '';
+
+    var d = latest.data || {};
+    var type = d.type || latest.kind;
+    var id = d.id || d.task_id || d.event_id || d.message_id || '—';
+    var body = d.body || d.title || d.summary || '';
+    var extra = '';
+    if (d.agent || d.name) extra = '来自：' + esc(d.agent || d.name);
+
+    var el = document.createElement('div');
+    el.className = 'ev new';
+    el.innerHTML =
+      '<div class="t"><span>' + esc(nowStr()) + (latest.mock ? ' · 模拟' : ' · 真实') + '</span></div>' +
+      '<div class="k">' + esc(type) + ' · #' + esc(id) + '</div>' +
+      (body ? '<div class="d">' + esc(body) + '</div>' : '') +
+      (extra ? '<div class="x">' + extra + '</div>' : '');
+    list.insertBefore(el, list.firstChild);
+
+    // 只让最新一条有绿的边
+    setTimeout(function(){ el.classList.remove('new'); }, 1600);
+  }
+
+  // ---------- 真实门铃（SSE） ----------
+  function startListen(){
+    var url = $('url').value.trim();
+    if (!url) {
+      $('state').textContent = '请先填门铃地址';
+      return;
+    }
+    if (typeof EventSource === 'undefined') {
+      $('state').textContent = '这个浏览器不支持订阅';
+      return;
+    }
+    stopListen();
+    try {
+      es = new EventSource(url);
+    } catch (e) {
+      $('state').textContent = '地址格式不对';
+      return;
+    }
+    listening = true;
+    $('dot').classList.add('live');
+    $('btnListen').textContent = '停止';
+    $('btnListen').classList.add('on');
+    $('state').textContent = '正在听门铃…';
+
+    es.onmessage = function(e){
+      var data = null;
+      try { data = JSON.parse(e.data); } catch (err) { data = { body: e.data }; }
+      push(data.type || 'event', data, false);
+    };
+    es.onerror = function(){
+      if (!listening) return;
+      $('state').textContent = '门铃断了，正在重连…';
+    };
+  }
+
+  function stopListen(){
+    if (es) {
+      try { es.close(); } catch (e) {}
+      es = null;
+    }
+    listening = false;
+    $('dot').classList.remove('live');
+    $('btnListen').textContent = '开始听';
+    $('btnListen').classList.remove('on');
+    $('state').textContent = '已停止';
+  }
+
+  // ---------- 模拟门铃 ----------
+  var MOCK_TYPES = [
+    { type: 'task.claimed', body: '你名下的任务被认领了' },
+    { type: 'task.delivered', body: '有人交付了，等你确认' },
+    { type: 'task.confirmed', body: '任务已确认结算' },
+    { type: 'message.new', body: '有人给你发了私信' },
+    { type: 'mention', body: '有人在帖子里提到了你' },
+    { type: 'challenge', body: '来了一个新挑战，需要应答' }
+  ];
+
+  function mockOnce(){
+    var t = MOCK_TYPES[Math.floor(Math.random() * MOCK_TYPES.length)];
+    push(t.type, {
+      type: t.type,
+      id: 8900 + Math.floor(Math.random() * 99),
+      body: t.body
+    }, true);
+  }
+
+  // ---------- 复制 / 导出 / 清空 ----------
+  function dumpJSON(){
+    return JSON.stringify(events.map(function(e){
+      return { ts: e.ts, kind: e.kind, mock: e.mock, data: e.data };
+    }), null, 2);
+  }
+
+  function copyAll(){
+    if (events.length === 0) { $('state').textContent = '还没有事件可复制'; return; }
+    var txt = dumpJSON();
+    function done(){ $('state').textContent = '已复制 ' + events.length + ' 条'; }
+    function fail(){
+      // 降级：显示出来让人手动选
+      $('dump').style.display = 'block';
+      $('dump').textContent = txt;
+      $('state').textContent = '复制不了，已展开，手动选吧';
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
+  function toggleDump(){
+    var d = $('dump');
+    if (d.style.display === 'block') {
+      d.style.display = 'none';
+    } else {
+      d.textContent = events.length ? dumpJSON() : '（还没有事件）';
+      d.style.display = 'block';
+    }
+  }
+
+  function clearAll(){
+    events = [];
+    $('list').innerHTML = '<div class="empty">还没有门铃响过</div>';
+    $('dump').style.display = 'none';
+    $('dump').textContent = '';
+    $('count').textContent = '0 条';
+    $('state').textContent = listening ? '正在听门铃…' : '未开始';
+  }
+
+  // ---------- 绑定 ----------
+  $('btnListen').onclick = function(){ listening ? stopListen() : startListen(); };
+  $('btnMock').onclick = mockOnce;
+  $('btnCopy').onclick = copyAll;
+  $('btnShow').onclick = toggleDump;
+  $('btnClear').onclick = clearAll;
+
+  $('url').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') startListen();
+  });
+
+  // 页面演示：进来先自动响两声，让人一眼看到它在干嘛
+  setTimeout(function(){ mockOnce(); }, 700);
+  setTimeout(function(){ mockOnce(); }, 1900);
+
+})();
+</script>
+</body>
+</html>

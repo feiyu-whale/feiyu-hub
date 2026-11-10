@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⏳ 沙堆模型 · Abelian Sandpile</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #100c06; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; user-select: none; color: #ffe9c8;
+    display: flex; align-items: center; justify-content: center; }
+  #wrap { position: relative; width: 100%; max-width: 620px; height: 100%; max-height: 100vh; display: flex; flex-direction: column; }
+  canvas { display: block; width: 100%; flex: 1 1 auto; touch-action: none; image-rendering: pixelated; background: #100c06; }
+  .hud { position: absolute; top: 10px; left: 14px; right: 14px; display: flex; justify-content: space-between;
+    font-size: 14px; font-weight: 700; pointer-events: none; text-shadow: 0 2px 6px rgba(0,0,0,.9); z-index: 5; }
+  .hud .grains { color: #ffd479; } .hud .grains small, .hud .aval small { display:block; font-size:10px; font-weight:400; color:#8a7048; }
+  .hud .aval { color: #ff9e6d; text-align: right; }
+  .controls { flex: 0 0 auto; padding: 7px 10px calc(7px + env(safe-area-inset-bottom));
+    background: linear-gradient(0deg,#140f08,#100c06); border-top: 1px solid #3a2a14; }
+  .row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .row:last-child { margin-bottom: 0; }
+  .lbl { font-size: 12px; color: #b8935a; min-width: 46px; }
+  input[type=range] { flex: 1; accent-color: #ffb84d; height: 22px; }
+  .val { font-size: 13px; font-weight: 700; color: #ffd479; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+  button { flex: 1; padding: 8px 5px; font-size: 13px; font-weight: 700; color: #ffe9c8; background: #2a1e10;
+    border: 1px solid #5c4122; border-radius: 9px; cursor: pointer; font-family: inherit; transition: .15s; white-space: nowrap; }
+  button:active { transform: scale(.96); }
+  button.primary { background: linear-gradient(160deg,#c98a2e,#8a5a1b); border-color:#e0a84d; color:#fff; }
+  .ver { position: absolute; bottom: calc(4px + env(safe-area-inset-bottom)); right: 10px; font-size: 10px; color: #4a3a20; z-index: 6; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <div class="grains"><span id="grains">0</span><small>沙粒总数</small></div>
+    <div class="aval"><span id="aval">0</span><small>雪崩次数</small></div>
+  </div>
+  <div class="controls">
+    <div class="row">
+      <span class="lbl">加沙</span>
+      <input type="range" id="drop" min="1" max="8" value="4">
+      <span class="val" id="dropVal">4 粒/点</span>
+    </div>
+    <div class="row">
+      <button class="primary" id="bigBtn">🏔 大坍缩</button>
+      <button id="randomBtn">🎲 随机铺沙</button>
+      <button id="clearBtn">⟲ 清空</button>
+    </div>
+  </div>
+  <div class="ver">v1.0.0-沙堆模型 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var W=0,H=0,DPR=1;
+  var N=101;            // 网格 N×N
+  var CELL=5;           // 每格像素（自动算）
+  var grid, offX=0, offY=0;
+  var grains=0, avalanches=0;
+  var queue=[];         // 待处理不稳定格
+  var dropPerClick=4;
+
+  function resize(){
+    var r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+    CELL=Math.max(3, Math.floor(Math.min(W,H)/N));
+    offX=(W-N*CELL)/2; offY=(H-N*CELL)/2;
+    draw();
+  }
+  window.addEventListener('resize', resize);
+
+  function resetGrid(){ grid=new Int32Array(N*N); grains=0; avalanches=0; queue=[]; }
+  function idx(x,y){ return y*N+x; }
+  function inBounds(x,y){ return x>=0&&y>=0&&x<N&&y<N; }
+
+  // 推入待处理队列
+  function pushIfUnstable(x,y){
+    if (!inBounds(x,y)) return;
+    if (grid[idx(x,y)] >= 4) queue.push([x,y]);
+  }
+
+  function toppleAll(){
+    var guard=0;
+    while (queue.length && guard < 5000000){
+      var cell = queue.pop();
+      var x=cell[0], y=cell[1];
+      if (grid[idx(x,y)] < 4) continue;
+      var k = idx(x,y);
+      grid[k] -= 4;
+      // 四邻 +1（边界外丢失 = 开放边界）
+      if (x>0) grid[idx(x-1,y)]++;
+      if (x<N-1) grid[idx(x+1,y)]++;
+      if (y>0) grid[idx(x,y-1)]++;
+      if (y<N-1) grid[idx(x,y+1)]++;
+      avalanches++;
+      // 重新检查
+      pushIfUnstable(x,y);
+      pushIfUnstable(x-1,y); pushIfUnstable(x+1,y);
+      pushIfUnstable(x,y-1); pushIfUnstable(x,y+1);
+      guard++;
+      if (guard % 200000 === 0) break; // 防单帧卡死，剩下下帧继续
+    }
+  }
+
+  function dropCenter(n){
+    var c=Math.floor(N/2);
+    grid[idx(c,c)] += n; grains += n;
+    pushIfUnstable(c,c);
+    toppleAll();
+  }
+  function bigCollapse(){
+    var c=Math.floor(N/2);
+    var add = 8000;
+    grid[idx(c,c)] += add; grains += add;
+    pushIfUnstable(c,c);
+    toppleAll();
+    render();
+  }
+  function randomFill(){
+    for (var i=0;i<grid.length;i++){ var v=Math.floor(Math.random()*4); grid[i]=v; grains+=v; }
+    // 收集不稳定
+    for (var y=0;y<N;y++) for (var x=0;x<N;x++) pushIfUnstable(x,y);
+    toppleAll(); render();
+  }
+
+  // 颜色映射 0..3+
+  var COLORS = ['#100c06','#3a2a14','#7a5a24','#c98a2e','#ffd479'];
+  function draw(){
+    ctx.fillStyle='#100c06'; ctx.fillRect(0,0,W,H);
+    if (!grid) return;
+    for (var y=0;y<N;y++){
+      for (var x=0;x<N;x++){
+        var v=grid[idx(x,y)];
+        if (!v) continue;
+        ctx.fillStyle = COLORS[Math.min(v,4)];
+        ctx.fillRect(offX+x*CELL, offY+y*CELL, CELL, CELL);
+      }
+    }
+  }
+  function render(){ draw(); updateHUD(); }
+  function updateHUD(){
+    document.getElementById('grains').textContent = fmt(grains);
+    document.getElementById('aval').textContent = fmt(avalanches);
+  }
+  function fmt(n){ if(n<10000)return String(n); if(n<1e6)return (n/1000).toFixed(1)+'K'; if(n<1e9)return (n/1e6).toFixed(1)+'M'; return (n/1e9).toFixed(2)+'G'; }
+
+  // ---- 交互：点/拖撒沙 ----
+  var dropping=false;
+  function cellAt(e){
+    var r=cv.getBoundingClientRect();
+    var x=Math.floor((e.clientX-r.left-offX)/CELL), y=Math.floor((e.clientY-r.top-offY)/CELL);
+    return [x,y];
+  }
+  cv.addEventListener('pointerdown', function(e){ e.preventDefault(); dropping=true; dropAt(cellAt(e)); });
+  cv.addEventListener('pointermove', function(e){ if(!dropping)return; e.preventDefault(); dropAt(cellAt(e)); });
+  cv.addEventListener('pointerup', function(){ dropping=false; });
+  cv.addEventListener('pointercancel', function(){ dropping=false; });
+  cv.addEventListener('pointerleave', function(){ dropping=false; });
+  function dropAt(c){
+    var x=c[0], y=c[1]; if(!inBounds(x,y)) return;
+    grid[idx(x,y)] += dropPerClick; grains += dropPerClick;
+    pushIfUnstable(x,y); toppleAll(); render();
+  }
+
+  // ---- 控件 ----
+  document.getElementById('bigBtn').addEventListener('click', bigCollapse);
+  document.getElementById('randomBtn').addEventListener('click', randomFill);
+  document.getElementById('clearBtn').addEventListener('click', function(){ resetGrid(); render(); });
+  var drop=document.getElementById('drop');
+  drop.addEventListener('input', function(){ dropPerClick=+drop.value; document.getElementById('dropVal').textContent=dropPerClick+' 粒/点'; });
+
+  resetGrid();
+  resize();
+  dropCenter(2000);
+  render();
+})();
+</script>
+</body>
+</html>

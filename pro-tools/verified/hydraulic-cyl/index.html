@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>液压缸推力计算工具 · 依据 GB/T 2348</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2028; --panel2:#232b36; --border:#2d3744;
+    --text:#e6edf3; --muted:#8b949e; --accent:#4a9eff; --accent2:#2d7dd2;
+    --ok:#3fb950; --err:#f85149; --warn:#d29922;
+    --mono:'SF Mono','Consolas','Liberation Mono','Menlo',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;padding-bottom:60px}
+  header{padding:28px 24px 20px;border-bottom:1px solid var(--border);background:var(--panel)}
+  header h1{font-size:22px;font-weight:600;letter-spacing:.3px}
+  header p{color:var(--muted);font-size:13px;margin-top:4px}
+  .tabs{display:flex;gap:2px;background:var(--panel);padding:0 24px;border-bottom:1px solid var(--border);overflow-x:auto}
+  .tab{background:transparent;color:var(--muted);border:none;padding:12px 18px;font-size:14px;cursor:pointer;
+    border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:inherit}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .panel{display:none;padding:24px;max-width:1200px;margin:0 auto}
+  .panel.active{display:block}
+  .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:820px){.calc-grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px}
+  .card h2{font-size:15px;font-weight:600;margin-bottom:14px;color:var(--accent);display:flex;align-items:center;gap:8px}
+  .card h2::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+  .field-row{display:flex;gap:8px;align-items:center}
+  .field input,.field select{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:8px 10px;border-radius:5px;font-size:14px;font-family:var(--mono);outline:none;transition:border-color .15s}
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .field .unit{color:var(--muted);font-size:12px;min-width:40px;text-align:right}
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .result-item{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:12px}
+  .result-item .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .result-item .value{font-size:18px;font-weight:600;color:var(--text);font-family:var(--mono);margin-top:4px}
+  .result-item .sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .result-item.highlight{border-color:var(--accent);background:rgba(74,158,255,.05)}
+  .btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:5px;font-size:14px;
+    cursor:pointer;font-weight:500;transition:background .15s;font-family:inherit}
+  .btn:hover{background:var(--accent2)}
+  .btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+  .btn.secondary:hover{background:var(--border)}
+  .btn-row{display:flex;gap:10px;margin-top:16px}
+  .err-msg{color:var(--err);font-size:12px;margin-top:8px;min-height:18px}
+  pre.source{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;
+    overflow-x:auto;font-size:12.5px;line-height:1.7;font-family:var(--mono);color:var(--text);max-height:75vh}
+  .kw{color:#ff7b72}.str{color:#a5d6ff}.num{color:#79c0ff}.cmt{color:#8b949e;font-style:italic}.fn{color:#d2a8ff}
+  .test-output{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;
+    font-family:var(--mono);font-size:13px;line-height:1.8;max-height:75vh;overflow-y:auto}
+  .test-pass{color:var(--ok)}.test-fail{color:var(--err)}.test-summary{font-size:16px;font-weight:600;margin-bottom:12px}
+  .manual{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:32px;
+    font-size:14.5px;line-height:1.9;color:var(--text);max-width:860px}
+  .manual h2{font-size:18px;margin:28px 0 12px;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:8px}
+  .manual h2:first-child{margin-top:0}
+  .manual h3{font-size:15px;margin:20px 0 8px;color:var(--text)}
+  .manual p{margin-bottom:12px;color:#c9d1d9}
+  .manual ul,.manual ol{margin:8px 0 12px 24px;color:#c9d1d9}
+  .manual li{margin-bottom:6px}
+  .manual code{background:var(--panel2);padding:2px 6px;border-radius:3px;font-family:var(--mono);font-size:13px;color:var(--accent)}
+  .manual table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  .manual th,.manual td{border:1px solid var(--border);padding:8px 12px;text-align:left}
+  .manual th{background:var(--panel2);font-weight:600;color:var(--text)}
+  .manual td{color:#c9d1d9}
+  .manual .warn-box{background:rgba(210,153,34,.08);border:1px solid var(--warn);border-radius:6px;padding:14px;margin:14px 0}
+  .manual .warn-box strong{color:var(--warn)}
+  .version{position:fixed;right:16px;bottom:12px;font-size:11px;color:var(--muted);font-family:var(--mono);opacity:.7}
+  .note{background:rgba(74,158,255,.06);border-left:3px solid var(--accent);padding:10px 14px;margin:12px 0;font-size:13px;color:var(--muted);border-radius:0 4px 4px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>液压缸推力计算工具</h1>
+  <p>依据 GB/T 2348《流体传动系统及元件 缸内径及活塞杆外径》· 理论计算 · 不承诺绝对精确</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="calc">计算器</button>
+  <button class="tab" data-tab="source">JS 源码</button>
+  <button class="tab" data-tab="test">单元测试</button>
+  <button class="tab" data-tab="manual">使用说明书</button>
+</nav>
+
+<!-- ============ 计算器 ============ -->
+<section id="calc" class="panel active">
+  <div class="calc-grid">
+    <div class="card">
+      <h2>输入参数</h2>
+      <div class="field">
+        <label>缸径 D（依据 GB/T 2348 优先数列）</label>
+        <div class="field-row">
+          <select id="selD">
+            <option value="">自定义</option>
+          </select>
+          <input type="number" id="inD" placeholder="如 100" step="any" min="0">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>杆径 d（必须 &lt; 缸径）</label>
+        <div class="field-row">
+          <select id="seld">
+            <option value="">自定义</option>
+          </select>
+          <input type="number" id="ind" placeholder="如 50" step="any" min="0">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>工作压力 p</label>
+        <div class="field-row">
+          <input type="number" id="inP" placeholder="如 16" step="any" min="0">
+          <span class="unit">MPa</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>供油流量 Q</label>
+        <div class="field-row">
+          <input type="number" id="inQ" placeholder="如 40" step="any" min="0">
+          <span class="unit">L/min</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>目标速度 v（用于反算流量）</label>
+        <div class="field-row">
+          <input type="number" id="inV" placeholder="如 0.1" step="any" min="0">
+          <span class="unit">m/s</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btnCalc">计算</button>
+        <button class="btn secondary" id="btnReset">清空</button>
+      </div>
+      <div class="err-msg" id="errMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>计算结果</h2>
+      <div class="result-grid" id="resultGrid">
+        <div class="result-item highlight"><div class="label">推力 F<sub>push</sub></div><div class="value" id="rFpush">—</div><div class="sub">无杆腔进油</div></div>
+        <div class="result-item highlight"><div class="label">拉力 F<sub>pull</sub></div><div class="value" id="rFpull">—</div><div class="sub">有杆腔进油</div></div>
+        <div class="result-item"><div class="label">无杆腔面积 A₁</div><div class="value" id="rA1">—</div><div class="sub">cm²</div></div>
+        <div class="result-item"><div class="label">有杆腔面积 A₂</div><div class="value" id="rA2">—</div><div class="sub">cm²</div></div>
+        <div class="result-item"><div class="label">推出速度 v<sub>push</sub></div><div class="value" id="rVpush">—</div><div class="sub">m/s</div></div>
+        <div class="result-item"><div class="label">拉回速度 v<sub>pull</sub></div><div class="value" id="rVpull">—</div><div class="sub">m/s</div></div>
+        <div class="result-item"><div class="label">推出所需流量</div><div class="value" id="rQpush">—</div><div class="sub">L/min</div></div>
+        <div class="result-item"><div class="label">拉回所需流量</div><div class="value" id="rQpull">—</div><div class="sub">L/min</div></div>
+        <div class="result-item"><div class="label">面积比 φ = A₁/A₂</div><div class="value" id="rPhi">—</div><div class="sub">无量纲</div></div>
+      </div>
+      <div class="note" style="margin-top:16px">
+        结果为理论值，未计入密封摩擦、泄漏、油液压缩、背压等因素。实际出力通常比理论值低 5%~15%，详见《说明书 · 精度与误差说明》。
+      </div>
+      <div class="note" style="border-left-color:var(--warn)">
+        ⚠ 数据来源提示：「实际出力低 5%~15%」「效率 0.85~0.95」「常用速度 0.01~0.5 m/s」「压力等级 7~31.5 MPa」等参数为工程经验值，未经标准或文献核对，仅供估算参考；标准尺寸数列亦需查 GB/T 2348 原文确认。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ JS 源码 ============ -->
+<section id="source" class="panel">
+  <div class="card">
+    <h2>核心算法源码（纯函数 · 无外部依赖）</h2>
+    <pre class="source" id="sourceCode"></pre>
+  </div>
+</section>
+
+<!-- ============ 单元测试 ============ -->
+<section id="test" class="panel">
+  <div class="card">
+    <h2>单元测试运行结果</h2>
+    <div class="btn-row" style="margin-bottom:14px">
+      <button class="btn" id="btnRunTest">重新运行测试</button>
+    </div>
+    <div class="test-output" id="testOutput">点击"重新运行测试"查看结果…</div>
+  </div>
+</section>
+
+<!-- ============ 使用说明书 ============ -->
+<section id="manual" class="panel">
+  <div class="manual" id="manualContent"></div>
+</section>
+
+<div class="version">v2.0.2-完整版 20261021-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（核心算法 · 纯函数 · 完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 依据 GB/T 2348 的缸内径优先数列（单位 mm）
+ * 注：具体数值需查标准原文确认，本列表为常用系列
+ * @type {number[]}
+ */
+const STANDARD_BORE = [8,10,12,16,20,25,32,40,50,63,80,100,125,160,200,250,320,400,500];
+
+/**
+ * 依据 GB/T 2348 的活塞杆外径优先数列（单位 mm）
+ * 注：具体数值需查标准原文确认，本列表为常用系列
+ * @type {number[]}
+ */
+const STANDARD_ROD = [4,5,6,8,10,12,14,16,18,20,22,25,28,32,36,40,45,50,56,63,70,80,90,100,110,125,140,160,180,200,220,250,280,320,360];
+
+/**
+ * 计算无杆腔（活塞全面积）有效面积
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @returns {number} 无杆腔有效面积，单位 mm²
+ * @throws {Error} 当 D 非正数或非数字时抛出
+ * @description 公式 A₁ = π/4 × D²
+ */
+function calcAreaPush(D){
+  if(typeof D!=='number'||isNaN(D)) throw new Error('缸径必须为数字');
+  if(D<=0) throw new Error('缸径必须大于 0');
+  return Math.PI/4*D*D;
+}
+
+/**
+ * 计算有杆腔（环形面积）有效面积
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @param {number} d - 杆径，单位 mm，必须 >= 0 且 < D
+ * @returns {number} 有杆腔有效面积，单位 mm²
+ * @throws {Error} 参数非法时抛出
+ * @description 公式 A₂ = π/4 × (D² - d²)
+ */
+function calcAreaPull(D,d){
+  if(typeof D!=='number'||isNaN(D)) throw new Error('缸径必须为数字');
+  if(typeof d!=='number'||isNaN(d)) throw new Error('杆径必须为数字');
+  if(D<=0) throw new Error('缸径必须大于 0');
+  if(d<0) throw new Error('杆径不能为负');
+  if(d>=D) throw new Error('杆径必须小于缸径');
+  return Math.PI/4*(D*D-d*d);
+}
+
+/**
+ * 计算液压缸推力（无杆腔进油）
+ * @param {number} p - 工作压力，单位 MPa，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @returns {number} 推力，单位 kN
+ * @throws {Error} 参数非法时抛出
+ * @description 公式 F = p × A₁
+ *   单位换算：1 MPa × 1 mm² = 1 N，结果 ÷ 1000 得 kN
+ */
+function calcForcePush(p,D){
+  if(typeof p!=='number'||isNaN(p)) throw new Error('压力必须为数字');
+  if(p<=0) throw new Error('压力必须大于 0');
+  return p*calcAreaPush(D)/1000;
+}
+
+/**
+ * 计算液压缸拉力（有杆腔进油）
+ * @param {number} p - 工作压力，单位 MPa，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @param {number} d - 杆径，单位 mm，必须 >= 0 且 < D
+ * @returns {number} 拉力，单位 kN
+ * @throws {Error} 参数非法时抛出
+ * @description 公式 F = p × A₂
+ */
+function calcForcePull(p,D,d){
+  if(typeof p!=='number'||isNaN(p)) throw new Error('压力必须为数字');
+  if(p<=0) throw new Error('压力必须大于 0');
+  return p*calcAreaPull(D,d)/1000;
+}
+
+/**
+ * 计算推出速度（无杆腔进油）
+ * @param {number} Q - 流量，单位 L/min，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @returns {number} 推出速度，单位 m/s
+ * @throws {Error} 参数非法时抛出
+ * @description 公式 v = Q / A₁
+ *   单位换算：Q(L/min) = Q/60000 m³/s，A(mm²) = A×10⁻⁶ m²
+ *   推导：v = (Q/60000) / (A×10⁻⁶) = Q / (A × 0.06) m/s
+ */
+function calcSpeedPush(Q,D){
+  if(typeof Q!=='number'||isNaN(Q)) throw new Error('流量必须为数字');
+  if(Q<=0) throw new Error('流量必须大于 0');
+  return Q/(calcAreaPush(D)*0.06);
+}
+
+/**
+ * 计算拉回速度（有杆腔进油）
+ * @param {number} Q - 流量，单位 L/min，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @param {number} d - 杆径，单位 mm，必须 >= 0 且 < D
+ * @returns {number} 拉回速度，单位 m/s
+ * @throws {Error} 参数非法时抛出
+ */
+function calcSpeedPull(Q,D,d){
+  if(typeof Q!=='number'||isNaN(Q)) throw new Error('流量必须为数字');
+  if(Q<=0) throw new Error('流量必须大于 0');
+  return Q/(calcAreaPull(D,d)*0.06);
+}
+
+/**
+ * 计算推出所需流量
+ * @param {number} v - 速度，单位 m/s，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @returns {number} 流量，单位 L/min
+ * @throws {Error} 参数非法时抛出
+ * @description 公式 Q = v × A₁
+ *   单位换算：v(m/s) × A(mm²) = v×A×10⁻⁶ m³/s = v×A×0.06 L/min
+ */
+function calcFlowPush(v,D){
+  if(typeof v!=='number'||isNaN(v)) throw new Error('速度必须为数字');
+  if(v<=0) throw new Error('速度必须大于 0');
+  return v*calcAreaPush(D)*0.06;
+}
+
+/**
+ * 计算拉回所需流量
+ * @param {number} v - 速度，单位 m/s，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @param {number} d - 杆径，单位 mm，必须 >= 0 且 < D
+ * @returns {number} 流量，单位 L/min
+ * @throws {Error} 参数非法时抛出
+ */
+function calcFlowPull(v,D,d){
+  if(typeof v!=='number'||isNaN(v)) throw new Error('速度必须为数字');
+  if(v<=0) throw new Error('速度必须大于 0');
+  return v*calcAreaPull(D,d)*0.06;
+}
+
+/**
+ * 由推力反算所需工作压力
+ * @param {number} F - 推力，单位 kN，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @returns {number} 压力，单位 MPa
+ * @throws {Error} 参数非法时抛出
+ * @description 公式 p = F / A₁（F 单位 kN，A₁ 单位 mm²，结果单位 MPa）
+ */
+function calcPressureFromForcePush(F,D){
+  if(typeof F!=='number'||isNaN(F)) throw new Error('推力必须为数字');
+  if(F<=0) throw new Error('推力必须大于 0');
+  return F*1000/calcAreaPush(D);
+}
+
+/**
+ * 由拉力反算所需工作压力
+ * @param {number} F - 拉力，单位 kN，必须 > 0
+ * @param {number} D - 缸径，单位 mm，必须 > 0
+ * @param {number} d - 杆径，单位 mm，必须 >= 0 且 < D
+ * @returns {number} 压力，单位 MPa
+ * @throws {Error} 参数非法时抛出
+ */
+function calcPressureFromForcePull(F,D,d){
+  if(typeof F!=='number'||isNaN(F)) throw new Error('拉力必须为数字');
+  if(F<=0) throw new Error('拉力必须大于 0');
+  return F*1000/calcAreaPull(D,d);
+}
+
+/**
+ * 校验输入参数合法性
+ * @param {Object} params - 参数对象 {D, d, p, Q, v}
+ * @returns {{valid:boolean, message:string}} 校验结果
+ */
+function validateInputs(params){
+  const {D,d,p,Q,v}=params;
+  if(D!==undefined&&(typeof D!=='number'||isNaN(D)||D<=0))
+    return {valid:false,message:'缸径必须为大于 0 的数字'};
+  if(d!==undefined){
+    if(typeof d!=='number'||isNaN(d)||d<0)
+      return {valid:false,message:'杆径不能为负数'};
+    if(D!==undefined&&d>=D)
+      return {valid:false,message:'杆径必须小于缸径'};
+  }
+  if(p!==undefined&&(typeof p!=='number'||isNaN(p)||p<=0))
+    return {valid:false,message:'压力必须为大于 0 的数字'};
+  if(Q!==undefined&&(typeof Q!=='number'||isNaN(Q)||Q<=0))
+    return {valid:false,message:'流量必须为大于 0 的数字'};
+  if(v!==undefined&&(typeof v!=='number'||isNaN(v)||v<=0))
+    return {valid:false,message:'速度必须为大于 0 的数字'};
+  return {valid:true,message:''};
+}
+
+/**
+ * 获取标准缸径列表
+ * @returns {number[]} 标准缸径数组（mm）
+ */
+function getStandardBore(){ return STANDARD_BORE.slice(); }
+
+/**
+ * 获取标准杆径列表
+ * @returns {number[]} 标准杆径数组（mm）
+ */
+function getStandardRod(){ return STANDARD_ROD.slice(); }
+
+/**
+ * 格式化数字输出（保留合理有效位）
+ * @param {number} n - 待格式化数字
+ * @param {number} [digits=4] - 有效位数
+ * @returns {string} 格式化后的字符串
+ */
+function fmt(n,digits){
+  if(typeof n!=='number'||isNaN(n)) return '—';
+  digits=digits||4;
+  if(Math.abs(n)>=1000) return n.toFixed(2);
+  if(Math.abs(n)>=1) return n.toFixed(digits);
+  if(Math.abs(n)>=0.001) return n.toFixed(5);
+  return n.toExponential(3);
+}
+
+
+/* ============================================================
+ *  第二部分：单元测试（≥30 个）
+ * ============================================================ */
+
+function runAllTests(){
+  let passed=0, total=0;
+  const log=[];
+
+  function approx(a,b,tol){
+    tol=tol===undefined?1e-4:tol;
+    if(b===0) return Math.abs(a)<tol;
+    return Math.abs(a-b)/Math.max(Math.abs(a),Math.abs(b))<tol;
+  }
+
+  function ok(cond,name,detail){
+    total++;
+    if(cond){ passed++; log.push('<span class="test-pass">✓ '+name+'</span>'); }
+    else{ log.push('<span class="test-fail">✗ '+name+(detail?' — '+detail:'')+'</span>'); }
+  }
+
+  function throws(fn,name){
+    total++;
+    try{ fn(); log.push('<span class="test-fail">✗ '+name+' — 应抛出异常但未抛出</span>'); }
+    catch(e){ passed++; log.push('<span class="test-pass">✓ '+name+' (抛出: '+e.message+')</span>'); }
+  }
+
+  // ===== 面积计算 =====
+  ok(approx(calcAreaPush(100),Math.PI/4*10000),
+    '面积·无杆腔 D=100');
+  ok(approx(calcAreaPush(50),Math.PI/4*2500),
+    '面积·无杆腔 D=50');
+  ok(approx(calcAreaPull(100,50),Math.PI/4*7500),
+    '面积·有杆腔 D=100 d=50');
+  ok(approx(calcAreaPull(100,70),Math.PI/4*5100),
+    '面积·有杆腔 D=100 d=70');
+  ok(approx(calcAreaPull(100,0),calcAreaPush(100)),
+    '面积·d=0 时有杆腔等于无杆腔');
+
+  // ===== 推力计算 =====
+  ok(approx(calcForcePush(10,100),10*Math.PI/4*10000/1000,1e-3),
+    '推力·D=100 p=10 → 78.54 kN');
+  ok(approx(calcForcePush(16,50),16*Math.PI/4*2500/1000,1e-3),
+    '推力·D=50 p=16 → 31.42 kN');
+  ok(approx(calcForcePush(25,80),25*Math.PI/4*6400/1000,1e-3),
+    '推力·D=80 p=25 → 125.66 kN');
+  ok(approx(calcForcePush(10,8),10*Math.PI/4*64/1000,1e-5),
+    '推力·最小缸径 D=8');
+
+  // ===== 拉力计算 =====
+  ok(approx(calcForcePull(10,100,50),10*Math.PI/4*7500/1000,1e-3),
+    '拉力·D=100 d=50 p=10 → 58.90 kN');
+  ok(approx(calcForcePull(10,100,70),10*Math.PI/4*5100/1000,1e-3),
+    '拉力·D=100 d=70 p=10 → 40.06 kN');
+  ok(approx(calcForcePull(10,100,0),calcForcePush(10,100)),
+    '拉力·d=0 时等于推力');
+  ok(approx(calcForcePull(16,80,40),16*Math.PI/4*(6400-1600)/1000,1e-3),
+    '拉力·D=80 d=40 p=16');
+
+  // ===== 速度计算 =====
+  ok(approx(calcSpeedPush(10,100),10/(Math.PI/4*10000*0.06),1e-6),
+    '速度·推出 Q=10 D=100');
+  ok(approx(calcSpeedPull(10,100,50),10/(Math.PI/4*7500*0.06),1e-6),
+    '速度·拉回 Q=10 D=100 d=50');
+  ok(calcSpeedPull(10,100,50)>calcSpeedPush(10,100),
+    '速度·同流量下拉回速度 > 推出速度（面积更小）');
+
+  // ===== 流量计算 =====
+  ok(approx(calcFlowPush(0.02122,100),0.02122*Math.PI/4*10000*0.06,1e-3),
+    '流量·推出 v=0.02122 D=100');
+  ok(approx(calcFlowPull(0.03,100,50),0.03*Math.PI/4*7500*0.06,1e-3),
+    '流量·拉回 v=0.03 D=100 d=50');
+
+  // ===== 互逆运算 =====
+  const F0=calcForcePush(16,100);
+  const p0=calcPressureFromForcePush(F0,100);
+  ok(approx(p0,16,1e-6),
+    '互逆·推力→压力→原压力 16 MPa');
+
+  const v1=calcSpeedPush(40,100);
+  const Q1=calcFlowPush(v1,100);
+  ok(approx(Q1,40,1e-4),
+    '互逆·速度→流量→原流量 40 L/min');
+
+  const v2=calcSpeedPull(40,100,50);
+  const Q2=calcFlowPull(v2,100,50);
+  ok(approx(Q2,40,1e-4),
+    '互逆·拉回速度→流量→原流量');
+
+  // ===== 反算压力 =====
+  ok(approx(calcPressureFromForcePush(78.5398,100),10,1e-2),
+    '反算·推力 78.54 kN D=100 → 10 MPa');
+  ok(approx(calcPressureFromForcePull(58.9049,100,50),10,1e-2),
+    '反算·拉力 58.90 kN D=100 d=50 → 10 MPa');
+
+  // ===== 边界值 =====
+  throws(()=>calcAreaPush(0),'边界·D=0 抛异常');
+  throws(()=>calcAreaPush(-10),'边界·D<0 抛异常');
+  throws(()=>calcAreaPull(100,100),'边界·d=D 抛异常');
+  throws(()=>calcAreaPull(100,120),'边界·d>D 抛异常');
+  throws(()=>calcAreaPull(100,-5),'边界·d<0 抛异常');
+  throws(()=>calcForcePush(0,100),'边界·p=0 抛异常');
+  throws(()=>calcForcePush(-5,100),'边界·p<0 抛异常');
+  throws(()=>calcSpeedPush(0,100),'边界·Q=0 抛异常');
+  throws(()=>calcFlowPush(0,100),'边界·v=0 抛异常');
+
+  // ===== 异常输入 =====
+  throws(()=>calcAreaPush(NaN),'异常·D=NaN');
+  throws(()=>calcAreaPush('100'),'异常·D=字符串');
+  throws(()=>calcForcePush(NaN,100),'异常·p=NaN');
+  throws(()=>calcSpeedPush(NaN,100),'异常·Q=NaN');
+  throws(()=>calcFlowPush(NaN,100),'异常·v=NaN');
+
+  // ===== 校验函数 =====
+  ok(validateInputs({D:100,d:50,p:10}).valid===true,
+    '校验·合法输入返回 true');
+  ok(validateInputs({D:-1}).valid===false,
+    '校验·D<0 返回 false');
+  ok(validateInputs({D:100,d:120}).valid===false,
+    '校验·d>D 返回 false');
+  ok(validateInputs({p:0}).valid===false,
+    '校验·p=0 返回 false');
+
+  // ===== 标准尺寸 =====
+  ok(getStandardBore().indexOf(100)!==-1,'标准·缸径含 100');
+  ok(getStandardBore().indexOf(8)!==-1,'标准·缸径含最小值 8');
+  ok(getStandardBore().indexOf(500)!==-1,'标准·缸径含最大值 500');
+  ok(getStandardRod().indexOf(50)!==-1,'标准·杆径含 50');
+  ok(getStandardRod().length>=30,'标准·杆径列表长度 ≥ 30');
+
+  // ===== 精度 =====
+  const big=calcForcePush(31.5,500);
+  ok(typeof big==='number'&&isFinite(big),'精度·大数值可计算');
+  const small=calcSpeedPush(0.001,8);
+  ok(typeof small==='number'&&isFinite(small),'精度·小数值可计算');
+
+  // ===== 单位一致性 =====
+  const A1=calcAreaPush(100);
+  const F1=10*A1/1000;
+  ok(approx(calcForcePush(10,100),F1,1e-9),
+    '单位·推力公式 F=p×A/1000 一致');
+
+  // ===== 面积比 =====
+  const phi=calcAreaPush(100)/calcAreaPull(100,50);
+  ok(approx(phi,10000/7500,1e-9),
+    '面积比·D=100 d=50 → φ=1.333');
+
+  // 输出
+  const summary='<div class="test-summary">通过 '+passed+' / 共 '+total+'</div>';
+  return summary+log.join('<br>');
+}
+
+
+/* ============================================================
+ *  第三部分：使用说明书
+ * ============================================================ */
+
+const MANUAL_HTML = `
+<h2>一、工具用途</h2>
+<p>本工具用于液压缸（油缸）的<strong>理论出力与运动参数计算</strong>，覆盖以下核心场景：</p>
+<ul>
+  <li>已知缸径、杆径、工作压力，计算<strong>推力与拉力</strong>；</li>
+  <li>已知缸径、杆径、流量，计算<strong>推出与拉回速度</strong>；</li>
+  <li>已知缸径、杆径、目标速度，反算<strong>所需流量</strong>；</li>
+  <li>已知所需推力，反算<strong>工作压力</strong>，用于选型校核。</li>
+</ul>
+<p>适用于液压系统设计初期的方案比选、缸径初选、泵流量匹配、现场故障排查时的参数复核等场景。工具依据 <code>GB/T 2348</code> 给出的缸内径与活塞杆外径优先数列提供标准尺寸下拉选项，方便工程师直接选用标准规格。</p>
+
+<h2>二、参数详解</h2>
+<h3>2.1 缸径 D（单位 mm）</h3>
+<p>活塞直径，决定无杆腔有效面积 A₁ = π/4 × D²。缸径越大，同压力下推力越大，但所需流量也越大。GB/T 2348 规定的优先数列包含 8、10、12、16、20、25、32、40、50、63、80、100、125、160、200、250、320、400、500 mm 等规格（具体以标准原文为准）。</p>
+
+<h3>2.2 杆径 d（单位 mm）</h3>
+<p>活塞杆直径，决定有杆腔环形面积 A₂ = π/4 × (D² − d²)。杆径必须严格小于缸径，否则物理上无法装配。杆径越大，拉力越小但拉回速度越快（同流量下）。GB/T 2348 同样给出了杆径优先数列。</p>
+
+<h3>2.3 工作压力 p（单位 MPa）</h3>
+<p>系统供油压力，常见等级有 7、14、16、21、25、31.5 MPa 等。压力越高，同缸径下出力越大，但对密封、缸体强度、管路等级的要求也越高。</p>
+
+<h3>2.4 流量 Q（单位 L/min）</h3>
+<p>液压泵输出到缸的体积流量。流量决定活塞运动速度：同缸径下流量越大速度越快。注意：本工具计算的是<strong>进入工作腔的流量</strong>，未考虑泵容积效率、阀口压降、管路泄漏。</p>
+
+<h3>2.5 速度 v（单位 m/s）</h3>
+<p>活塞杆直线运动速度。工业液压缸常用速度范围 0.01 ~ 0.5 m/s，高速场合可达 1 m/s 以上。速度过高会引起冲击、密封磨损加剧、油液发热。</p>
+
+<h3>2.6 面积比 φ</h3>
+<p>φ = A₁ / A₂，反映推拉出力不对称程度。φ 越大，拉力相对推力越小，拉回速度相对推出速度越快。差动连接时需用到该比值。</p>
+
+<h2>三、使用场景</h2>
+
+<h3>场景 1：已知负载，选择缸径与压力</h3>
+<p>某设备需要 100 kN 推力，系统额定压力 16 MPa。输入推力反算功能：F = 100 kN，尝试 D = 100 mm，得 p ≈ 12.73 MPa，在 16 MPa 以内，选型可行。若选 D = 80 mm，则需 p ≈ 19.9 MPa，超出系统能力，需换更大缸径或提高压力等级。</p>
+
+<h3>场景 2：已知缸径压力，校核出力</h3>
+<p>现有缸 D = 125 mm、d = 70 mm，系统压力 21 MPa。输入后得推力 ≈ 257.6 kN、拉力 ≈ 176.9 kN（A₂ = π/4 × (15625 − 4900) ≈ 8422 mm²，F = 21 × 8422 / 1000 ≈ 176.9 kN）。对比实际负载（含安全系数 1.3~1.5），判断是否满足要求。</p>
+
+<h3>场景 3：已知速度要求，匹配泵流量</h3>
+<p>要求推出速度 0.1 m/s，缸径 D = 100 mm。输入后得推出所需流量 ≈ 47.1 L/min，拉回所需流量 ≈ 35.3 L/min（d = 50 mm 时，A₂ ≈ 5890 mm²，Q = 0.1 × 5890 × 0.06 ≈ 35.3 L/min）。据此选择泵排量与电机转速。</p>
+
+<h3>场景 4：现场故障排查</h3>
+<p>设备推力不足，实测压力 14 MPa，缸径 100 mm。理论推力 ≈ 110 kN，但实际只能推动 90 kN 负载。差值约 18%，可能原因：密封摩擦、内泄、背压过高、油温异常导致粘度变化。工具给出的是理论上限，实际偏低属正常现象。</p>
+
+<h3>场景 5：差动连接快速推出</h3>
+<p>差动连接时，无杆腔与有杆腔同时进油，推出速度 v = Q / (A₁ − A₂) = Q / (π/4 × d²)。本工具未直接提供差动模式，但可通过面积差手动计算。例如 D = 100、d = 70，A₁ − A₂ = π/4 × 4900 ≈ 3848 mm²，同流量下差动速度约为普通推出的 2.04 倍。</p>
+
+<h2>四、常见错误</h2>
+<ul>
+  <li><strong>杆径 ≥ 缸径</strong>：物理上不可能，工具会报错。请检查输入。</li>
+  <li><strong>单位混淆</strong>：压力必须用 MPa（不是 bar、Pa），流量必须用 L/min（不是 m³/s），缸径杆径必须用 mm。1 MPa = 10 bar，混淆会导致结果差 10 倍。</li>
+  <li><strong>忽略效率</strong>：理论推力未计入机械效率（通常 0.85 ~ 0.95），实际出力要打折。</li>
+  <li><strong>忽略背压</strong>：回油腔若有背压（如通过节流阀），会抵消部分出力。拉力计算时尤其要注意。</li>
+  <li><strong>把流量当速度</strong>：流量是体积流率，速度是线速度，二者通过面积换算，不可直接等同。</li>
+  <li><strong>动态工况当稳态</strong>：启动、制动、换向瞬间的冲击力远大于稳态值，本工具仅算稳态。</li>
+</ul>
+
+<h2>五、数据依据</h2>
+<p>缸径与杆径的优先数列依据 <code>GB/T 2348《流体传动系统及元件 缸内径及活塞杆外径》</code>。该标准等效采用 ISO 3320，规定了液压缸内径与活塞杆外径的优先尺寸，目的是实现元件互换性与系列化。</p>
+<p>推力、拉力、速度、流量的计算公式为流体传动领域通用理论公式，可见于《液压传动》教材及 GB/T 17446《流体传动系统及元件 词汇》相关条目。</p>
+<div class="warn-box">
+  <strong>⚠ 注意：</strong>本工具列出的标准尺寸系列基于对 GB/T 2348 常用规格的整理，<strong>具体完整数列、公差带、配合要求需查标准原文</strong>。用于正式设计图纸时，必须以现行有效版本的标准为准。
+  <br><br>
+  <strong>⚠ 数据来源提示：</strong>本工具中「误差 5%~15%」「效率 0.85~0.95」「常用速度范围 0.01~0.5 m/s」「压力等级 7~31.5 MPa」等数值均为工程经验值，<strong>无标准或文献出处，未经核对</strong>，仅作估算参考。标准尺寸数列亦自称未经 GB/T 2348 原文逐值核对。
+</div>
+
+<h2>六、精度与误差说明（有限精准原则）</h2>
+<p>现实世界的物理量是连续的、无限的，而本工具作为数字计算程序，只能做到"<strong>方法准、输入项准、结果给误差范围</strong>"，<strong>不承诺绝对精确</strong>。使用者必须理解以下三点：</p>
+
+<h3>6.1 算准了什么</h3>
+<ul>
+  <li>理论公式的数学计算：在给定输入下，面积、推力、拉力、速度、流量的数值计算精度受限于 IEEE 754 双精度浮点数（约 15~17 位有效数字），<strong>公式本身的数学实现是准确的</strong>。</li>
+  <li>单位换算：MPa·mm² → kN、L/min·mm² → m/s 等换算系数经过推导验证，<strong>换算逻辑无误</strong>。</li>
+  <li>标准尺寸列表：依据 GB/T 2348 整理，<strong>列表本身与标准一致</strong>（需查原文确认完整数列）。</li>
+</ul>
+
+<h3>6.2 哪些因素没算进去</h3>
+<ul>
+  <li><strong>密封摩擦</strong>：活塞密封、杆密封的摩擦力通常占理论出力的 5%~15%，随压力、速度、温度、密封磨损状态变化。</li>
+  <li><strong>容积效率</strong>：泵、阀、缸都有内泄，实际流量小于理论流量。</li>
+  <li><strong>机械效率</strong>：导向套、密封件的摩擦使实际出力小于理论值。</li>
+  <li><strong>背压</strong>：回油腔压力不为零时，会抵消部分出力。</li>
+  <li><strong>油液压缩性</strong>：高压下油液体积变化影响速度精度。</li>
+  <li><strong>温度影响</strong>：油温变化改变粘度，影响泄漏与摩擦。</li>
+  <li><strong>加工公差</strong>：实际缸径、杆径与名义尺寸有偏差，影响面积计算。</li>
+  <li><strong>动态效应</strong>：惯性力、液动力、水锤效应在启停瞬间显著。</li>
+</ul>
+
+<h3>6.3 误差大概多大</h3>
+<table>
+  <tr><th>项目</th><th>理论计算误差</th><th>与实际出力偏差</th></tr>
+  <tr><td>面积计算</td><td>&lt; 10⁻¹⁰（浮点精度）</td><td>受加工公差影响 ±0.5%~1%</td></tr>
+  <tr><td>推力 / 拉力</td><td>公式无误</td><td>实际值通常低 5%~15%（密封摩擦、机械效率）</td></tr>
+  <tr><td>速度</td><td>公式无误</td><td>实际值受泄漏影响低 2%~10%</td></tr>
+  <tr><td>流量</td><td>公式无误</td><td>泵实际输出受容积效率影响</td></tr>
+</table>
+<p><strong>结论</strong>：本工具给出的是<strong>理论上限值</strong>，用于方案估算、选型初筛是足够的；用于正式设计、安全校核时，必须乘以效率系数（通常 0.85~0.95）并留足安全裕度。</p>
+
+<h2>七、局限性</h2>
+<ul>
+  <li><strong>仅适用于单活塞杆双作用缸</strong>：双活塞杆缸、柱塞缸、伸缩缸、增压缸等需另行计算。</li>
+  <li><strong>仅算稳态</strong>：不处理启动、制动、换向瞬间的动态力。</li>
+  <li><strong>不做强度校核</strong>：缸体壁厚、活塞杆稳定性、耳环/铰轴强度需另算。</li>
+  <li><strong>不考虑行程</strong>：长行程缸的挠度、导向长度不在本工具范围内。</li>
+  <li><strong>不做选型推荐</strong>：工具只算数，不判断某规格是否停产、是否适合你的工况。</li>
+  <li><strong>不替代标准原文</strong>：公差、配合、试验方法、标记规则等必须查 GB/T 2348、GB/T 7935 等现行标准。</li>
+</ul>
+
+<h2>八、版本与维护</h2>
+<p>当前版本 <code>v2.0.2-完整版 20261021-修审查问题 20261108</code>。本工具为纯前端实现，无后端依赖，可在离线环境运行。如发现计算疑问，请优先核对输入单位与公式推导，必要时查阅《液压传动》教材或相关国家标准。</p>
+`;
+
+
+/* ============================================================
+ *  UI 逻辑
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 填充标准尺寸下拉
+(function fillSelects(){
+  const selD=document.getElementById('selD');
+  const seld=document.getElementById('seld');
+  STANDARD_BORE.forEach(v=>{
+    const o=document.createElement('option');o.value=v;o.textContent=v+' mm';selD.appendChild(o);
+  });
+  STANDARD_ROD.forEach(v=>{
+    const o=document.createElement('option');o.value=v;o.textContent=v+' mm';seld.appendChild(o);
+  });
+  selD.addEventListener('change',()=>{ if(selD.value) document.getElementById('inD').value=selD.value; });
+  seld.addEventListener('change',()=>{ if(seld.value) document.getElementById('ind').value=seld.value; });
+  // 手改输入框时反向同步下拉，避免下拉显示与实际值不符
+  document.getElementById('inD').addEventListener('input',function(){
+    selD.value=STANDARD_BORE.includes(parseFloat(this.value))?this.value:'';
+  });
+  document.getElementById('ind').addEventListener('input',function(){
+    seld.value=STANDARD_ROD.includes(parseFloat(this.value))?this.value:'';
+  });
+})();
+
+// 计算按钮
+document.getElementById('btnCalc').addEventListener('click',doCalc);
+document.getElementById('btnReset').addEventListener('click',()=>{
+  ['inD','ind','inP','inQ','inV'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('errMsg').textContent='';
+  ['rFpush','rFpull','rA1','rA2','rVpush','rVpull','rQpush','rQpull','rPhi'].forEach(id=>
+    document.getElementById(id).textContent='—');
+});
+
+function doCalc(){
+  const err=document.getElementById('errMsg');
+  err.textContent='';
+  const D=parseFloat(document.getElementById('inD').value);
+  const d=parseFloat(document.getElementById('ind').value);
+  const p=parseFloat(document.getElementById('inP').value);
+  const Q=parseFloat(document.getElementById('inQ').value);
+  const v=parseFloat(document.getElementById('inV').value);
+
+  if(isNaN(D)||D<=0){ err.textContent='请输入有效的缸径 D (> 0)'; return; }
+  if(!isNaN(d)&&(d<0||d>=D)){ err.textContent='杆径 d 必须满足 0 ≤ d < D'; return; }
+
+  const hasD=!isNaN(D)&&D>0;
+  const hasd=!isNaN(d)&&d>=0&&d<D;
+  const hasp=!isNaN(p)&&p>0;
+  const hasQ=!isNaN(Q)&&Q>0;
+  const hasv=!isNaN(v)&&v>0;
+
+  // 速度与流量互算仅取其一，同时填写时提示
+  if(hasQ&&hasv){
+    err.textContent='流量 Q 与目标速度 v 互算仅取其一：同时填写时结果可能自相矛盾，请只填其中一项';
+    ['rFpush','rFpull','rA1','rA2','rVpush','rVpull','rQpush','rQpull','rPhi'].forEach(id=>
+      document.getElementById(id).textContent='—');
+    return;
+  }
+
+  // 面积
+  if(hasD){
+    const A1=calcAreaPush(D);
+    document.getElementById('rA1').textContent=fmt(A1/100); // mm² → cm²
+    if(hasd){
+      const A2=calcAreaPull(D,d);
+      document.getElementById('rA2').textContent=fmt(A2/100);
+      document.getElementById('rPhi').textContent=fmt(A1/A2);
+    } else {
+      document.getElementById('rA2').textContent='—';
+      document.getElementById('rPhi').textContent='—';
+    }
+  }
+
+  // 推力 / 拉力
+  if(hasp&&hasD){
+    document.getElementById('rFpush').textContent=fmt(calcForcePush(p,D))+' kN';
+    if(hasd){
+      document.getElementById('rFpull').textContent=fmt(calcForcePull(p,D,d))+' kN';
+    } else {
+      document.getElementById('rFpull').textContent='—';
+    }
+  } else {
+    document.getElementById('rFpush').textContent='—';
+    document.getElementById('rFpull').textContent='—';
+  }
+
+  // 速度（由流量算）
+  if(hasQ&&hasD){
+    document.getElementById('rVpush').textContent=fmt(calcSpeedPush(Q,D))+' m/s';
+    if(hasd){
+      document.getElementById('rVpull').textContent=fmt(calcSpeedPull(Q,D,d))+' m/s';
+    } else {
+      document.getElementById('rVpull').textContent='—';
+    }
+  } else {
+    document.getElementById('rVpush').textContent='—';
+    document.getElementById('rVpull').textContent='—';
+  }
+
+  // 流量（由速度算）
+  if(hasv&&hasD){
+    document.getElementById('rQpush').textContent=fmt(calcFlowPush(v,D))+' L/min';
+    if(hasd){
+      document.getElementById('rQpull').textContent=fmt(calcFlowPull(v,D,d))+' L/min';
+    } else {
+      document.getElementById('rQpull').textContent='—';
+    }
+  } else {
+    document.getElementById('rQpush').textContent='—';
+    document.getElementById('rQpull').textContent='—';
+  }
+}
+
+// 源码展示（带简易语法高亮）
+(function renderSource(){
+  const src=document.querySelector('script').textContent;
+  // 截取核心算法部分
+  const start=src.indexOf('/* ============================================================\n *  第一部分');
+  const end=src.indexOf('/* ============================================================\n *  UI 逻辑');
+  const core=src.substring(start,end).trim();
+  const el=document.getElementById('sourceCode');
+  let html=core
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(\/\*\*[\s\S]*?\*\/|\/\/.*)/g,'<span class="cmt">$1</span>')
+    .replace(/\b(function|const|let|var|if|else|return|throw|new|try|catch|typeof|isNaN)\b/g,'<span class="kw">$1</span>')
+    .replace(/\b(calc\w+|validate\w+|get\w+|fmt)\b/g,'<span class="fn">$1</span>')
+    .replace(/('([^'\\]|\\.)*'|\"([^\"\\]|\\.)*\")/g,'<span class="str">$1</span>')
+    .replace(/\b(\d+\.?\d*)\b/g,'<span class="num">$1</span>');
+  el.innerHTML=html;
+})();
+
+// 说明书
+document.getElementById('manualContent').innerHTML=MANUAL_HTML;
+
+// 测试按钮
+document.getElementById('btnRunTest').addEventListener('click',()=>{
+  document.getElementById('testOutput').innerHTML=runAllTests();
+});
+// 初次加载自动跑一次
+document.getElementById('testOutput').innerHTML=runAllTests();
+
+</script>
+</body>
+</html>

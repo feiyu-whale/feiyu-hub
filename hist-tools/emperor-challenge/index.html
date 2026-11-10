@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>👑 历代帝王年号挑战</title>
+<!--
+  文件名：hist-tools/emperor-challenge/index.html
+  干什么：中国历代帝王年号挑战——两小时内按年表填年号/填名字，最后统计对错
+  用了哪些库：零依赖。纯原生 HTML/CSS/JS。数据在同目录 eras-data.js
+  输入输出：
+    输入 = 玩家在输入框里填的年号或人名
+    输出 = 实时对错反馈、交卷统计（对/错/空）、可看答案复盘
+  设计要点：
+    · 812 个年号，84 个政权，394 位君主（正统 + 割据）
+    · 模式一：给年号填名字（姓名或庙号任一对即算对）
+    · 模式二：给名字（带朝代提示）填年号，需填全部年号，分「全对/部分对」
+    · 两小时倒计时，到点自动交卷
+    · 判分只报统计，答案要点按钮才看
+  许可：MIT
+-->
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #1a1420 0%, #100c14 60%, #08060a 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#d8d0c8;
+    padding:10px 10px 40px; font-size:13px; user-select:none; }
+  .back { display:inline-block; text-decoration:none; color:#8a7a8a; font-size:10px;
+    padding:5px 11px; border:1px solid #3a2a3a; border-radius:20px; margin-bottom:8px; }
+  h1 { font-size:14px; text-align:center; color:#e0b860; font-weight:700; letter-spacing:3px; margin:4px 0 6px; }
+  .sub { text-align:center; color:#7a6a7a; font-size:10px; margin-bottom:10px; line-height:1.6; }
+
+  /* 顶部状态栏 */
+  .bar { position:sticky; top:0; z-index:20; background:#120e16ee; backdrop-filter:blur(6px);
+    border:1px solid #3a2a3a; border-radius:10px; padding:8px 10px; margin-bottom:8px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .timer { font-size:19px; font-weight:800; color:#e0b860; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+  .timer.warn { color:#ff9060; }
+  .timer.danger { color:#ff4040; animation:blink 1s infinite; }
+  @keyframes blink { 50%{opacity:.35} }
+  .stat { font-size:11px; color:#9a8a9a; display:flex; gap:10px; flex-wrap:wrap; }
+  .stat b { font-size:13px; }
+  .ok { color:#7fe0a8; } .bad { color:#ff8080; } .skip { color:#8a8a9a; }
+
+  /* 模式选择 */
+  .modes { display:flex; gap:6px; margin-bottom:8px; }
+  .modes button { flex:1; padding:9px 4px; font-size:12px; font-weight:600; font-family:inherit;
+    cursor:pointer; color:#a898a8; background:#1c1620; border:1px solid #3a2a3a; border-radius:9px; }
+  .modes button.on { background:linear-gradient(160deg,#7a5220,#4a3010); color:#ffe0a0; border-color:#c09040; }
+
+  /* 题目卡 */
+  .qcard { background:linear-gradient(160deg,#1e1824,#141018); border:1px solid #3a2a3a;
+    border-radius:12px; padding:14px 12px; margin-bottom:8px; }
+  .qtop { display:flex; justify-content:space-between; align-items:center; font-size:10px; color:#7a6a7a; margin-bottom:8px; }
+  .qidx { color:#c09040; font-weight:700; }
+  .qprompt { text-align:center; font-size:30px; font-weight:800; color:#ffd870;
+    letter-spacing:4px; margin:6px 0 4px; line-height:1.3; }
+  .qhint { text-align:center; font-size:11px; color:#8a7a8a; margin-bottom:10px; line-height:1.6; }
+  .qhint em { color:#c09040; font-style:normal; }
+  input[type=text] { width:100%; padding:12px; font-size:17px; font-family:inherit; text-align:center;
+    color:#ffd870; background:#0a080c; border:2px solid #3a2a3a; border-radius:10px; outline:none; }
+  input[type=text]:focus { border-color:#c09040; }
+  input[type=text].correct { border-color:#3fb98a; color:#7fe0a8; }
+  input[type=text].wrong { border-color:#ff5050; color:#ff8080; }
+  .qbtns { display:flex; gap:6px; margin-top:8px; }
+  .qbtns button { flex:1; padding:10px 4px; font-size:13px; font-weight:600; font-family:inherit;
+    cursor:pointer; color:#c8b8c8; background:#241a28; border:1px solid #3a2a3a; border-radius:9px; }
+  .qbtns button.primary { background:linear-gradient(160deg,#7a5220,#4a3010); color:#ffe0a0; border-color:#c09040; }
+  .qbtns button:active { transform:scale(.97); }
+  .qbtns button:disabled { opacity:.35; cursor:not-allowed; }
+  .fb { min-height:18px; text-align:center; font-size:12px; margin-top:7px; line-height:1.6; }
+
+  /* 模式二：多格 */
+  .multi { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+  .multi input { font-size:14px; padding:9px; }
+
+  /* 开始/结束面板 */
+  .panel { background:#16121c; border:1px solid #3a2a3a; border-radius:14px; padding:20px 16px; }
+  .panel h2 { font-size:15px; color:#e0b860; margin-bottom:12px; text-align:center; letter-spacing:2px; }
+  .panel p { font-size:12px; color:#9a8a9a; line-height:1.9; margin-bottom:8px; }
+  .panel .big { font-size:13px; color:#d8d0c8; }
+  .panel button.go { display:block; width:100%; margin-top:14px; padding:13px; font-size:15px;
+    font-weight:700; font-family:inherit; cursor:pointer; color:#1a1008;
+    background:linear-gradient(160deg,#f0c060,#c09040); border:none; border-radius:10px; }
+  .panel button.go:active { transform:scale(.98); }
+
+  /* 结果 */
+  .score { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0; }
+  .score > div { background:#0e0a12; border:1px solid #3a2a3a; border-radius:10px; padding:12px 6px; text-align:center; }
+  .score .n { font-size:26px; font-weight:800; line-height:1.2; }
+  .score .l { font-size:10px; color:#8a7a8a; margin-top:3px; }
+
+  /* 答案表 */
+  .anslist { max-height:60vh; overflow-y:auto; -webkit-overflow-scrolling:touch; margin-top:10px; }
+  .arow { display:grid; grid-template-columns:52px 1fr 1fr; gap:5px; padding:5px 3px; font-size:11px;
+    border-bottom:1px solid #241a28; }
+  .arow .dy { color:#7a6a7a; }
+  .arow .er { color:#ffd870; }
+  .arow .mo { color:#a8c8e0; }
+  .arow.miss .er { color:#5a4a5a; }
+  .arow.wrong { background:#2a1010; }
+
+  .ver { text-align:center; color:#3a2a3a; font-size:9px; margin-top:16px; }
+  @media (max-width:400px){
+    .qprompt{font-size:24px} .timer{font-size:17px} body{font-size:12px;padding:8px 8px 30px}
+  }
+</style>
+</head>
+<body>
+  <a class="back" href="../">← 回历史工具</a>
+  <h1>👑 历 代 帝 王 年 号 挑 战</h1>
+  <div class="sub">812 个年号 · 84 个政权 · 394 位君主<br>正统与割据全收，按年表依次作答</div>
+
+  <!-- 开始面板 -->
+  <div id="startPanel" class="panel">
+    <h2>选择模式</h2>
+    <p><b class="big">模式一 · 给年号，填帝王</b><br>
+      屏幕给你一个年号（如「贞观」），你填名字或庙号（「李世民」「唐太宗」都算对）。</p>
+    <p><b class="big">模式二 · 给帝王，填年号</b><br>
+      屏幕给一个帝王（附朝代提示），你要把他<b>所有年号全部填上</b>。<br>
+      判定分两档：<span class="ok">全对</span>（年号全填对）／<span style="color:#e0b060">部分对</span>（填对一部分）。</p>
+    <p style="color:#c09040">限时 <b>2 小时</b>，时间到自动交卷。共 812 格。</p>
+    <button class="go" onclick="startGame(1)">模式一 · 给年号填帝王</button>
+    <button class="go" onclick="startGame(2)" style="background:linear-gradient(160deg,#a070c0,#604080);color:#f0e0ff">模式二 · 给帝王填年号</button>
+  </div>
+
+  <!-- 游戏区 -->
+  <div id="gameWrap" style="display:none">
+    <div class="bar">
+      <div class="timer" id="timer">02:00:00</div>
+      <div class="stat">
+        <span>进度 <b id="prog">0/812</b></span>
+        <span class="ok">对 <b id="cOk">0</b></span>
+        <span class="bad">错 <b id="cBad">0</b></span>
+        <span class="skip">空 <b id="cSkip">0</b></span>
+      </div>
+    </div>
+
+    <div class="qcard">
+      <div class="qtop">
+        <span class="qidx" id="qIdx">第 1 题</span>
+        <span id="qDyn">西汉</span>
+      </div>
+      <div class="qprompt" id="qPrompt">—</div>
+      <div class="qhint" id="qHint"></div>
+      <div id="answerArea"></div>
+      <div class="qbtns">
+        <button id="btnSkip">跳过</button>
+        <button class="primary" id="btnSubmit">提交</button>
+      </div>
+      <div class="fb" id="fb"></div>
+    </div>
+
+    <div class="qbtns" style="margin-top:8px">
+      <button onclick="finishGame(false)">提前交卷</button>
+    </div>
+  </div>
+
+  <!-- 结果 -->
+  <div id="resultPanel" class="panel" style="display:none">
+    <h2>挑战结束</h2>
+    <div class="score">
+      <div><div class="n ok" id="rOk">0</div><div class="l">答对</div></div>
+      <div><div class="n bad" id="rBad">0</div><div class="l">答错</div></div>
+      <div><div class="n skip" id="rSkip">0</div><div class="l">未答</div></div>
+    </div>
+    <div class="sub" id="rDetail" style="margin:8px 0 0"></div>
+    <button class="go" onclick="toggleAnswers()" id="btnAns">查看完整答案</button>
+    <button class="go" onclick="location.reload()" style="background:linear-gradient(160deg,#8a7a8a,#5a4a5a);color:#f0e8f0">再来一局</button>
+    <div class="anslist" id="ansList" style="display:none"></div>
+  </div>
+
+  <div class="ver">v1.0.0-历代帝王年号挑战 20261028</div>
+
+<script src="eras-data.js"></script>
+<script>
+(function(){
+'use strict';
+
+var DURATION = 2 * 60 * 60 * 1000;   // 2 小时
+var $ = function(id){ return document.getElementById(id); };
+
+var state = {
+  mode: 1,
+  index: 0,
+  questions: [],     // 题目列表
+  results: [],       // {status: 'ok'|'bad'|'skip'|'partial'}
+  deadline: 0,
+  timerId: null,
+  running: false,
+  keyCount: 0          // 模式二的填空数量
+};
+
+/* ---------- 归一化：去空白/标点/繁简常见异体 ---------- */
+function norm(s){
+  if (!s) return '';
+  s = String(s).replace(/[\s\u3000·・\.,，。、()（）「」『』【】\[\]"'"'']/g, '');
+  // 常见异体字归一
+  s = s.replace(/[炀煬]/g,'炀').replace(/[庙廟]/g,'庙');
+  return s.trim();
+}
+
+/* ---------- 构建题目 ---------- */
+function buildQuestions(mode){
+  var qs = [];
+  if (mode === 1){
+    // 模式一：每个年号一题
+    for (var i = 0; i < ERAS.length; i++){
+      var x = ERAS[i];
+      qs.push({
+        kind: 'era2mon',
+        dynasty: x.d,
+        prompt: x.e,
+        answers: [x.m, x.t].filter(Boolean),
+        era: x.e, monarch: x.m, temple: x.t, begin: x.b, end: x.n
+      });
+    }
+  } else {
+    // 模式二：按（政权, 君主）聚合，一个君主一题，要求填全部年号
+    var map = {}, order = [];
+    for (var j = 0; j < ERAS.length; j++){
+      var y = ERAS[j];
+      var k = y.d + '|' + y.m;
+      if (!map[k]){ map[k] = { d: y.d, m: y.m, t: y.t, eras: [] }; order.push(k); }
+      map[k].eras.push(y.e);
+    }
+    for (var n = 0; n < order.length; n++){
+      var g = map[order[n]];
+      qs.push({
+        kind: 'mon2era',
+        dynasty: g.d,
+        prompt: g.t || g.m,
+        subPrompt: g.t ? g.m : '',
+        eras: g.eras.slice(),
+        answers: g.eras.slice(),
+        monarch: g.m, temple: g.t
+      });
+    }
+  }
+  return qs;
+}
+
+/* ---------- 开始 ---------- */
+function startGame(mode){
+  state.mode = mode;
+  state.questions = buildQuestions(mode);
+  state.index = 0;
+  state.results = [];
+  state.running = true;
+  state.deadline = Date.now() + DURATION;
+
+  $('startPanel').style.display = 'none';
+  $('resultPanel').style.display = 'none';
+  $('gameWrap').style.display = 'block';
+
+  state.timerId = setInterval(tick, 250);
+  renderQuestion();
+  tick();
+}
+
+function tick(){
+  var left = state.deadline - Date.now();
+  if (left <= 0){
+    $('timer').textContent = '00:00:00';
+    finishGame(true);
+    return;
+  }
+  var s = Math.floor(left / 1000);
+  var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  var t = $('timer');
+  t.textContent = pad(h) + ':' + pad(m) + ':' + pad(sec);
+  t.className = 'timer' + (left < 60000 ? ' danger' : (left < 600000 ? ' warn' : ''));
+}
+function pad(n){ return n < 10 ? '0' + n : '' + n; }
+
+/* ---------- 渲染题目 ---------- */
+function renderQuestion(){
+  var q = state.questions[state.index];
+  if (!q){ finishGame(false); return; }
+  var total = state.questions.length;
+
+  $('qIdx').textContent = '第 ' + (state.index + 1) + ' / ' + total + ' 题';
+  $('qDyn').textContent = q.dynasty;
+  $('fb').textContent = '';
+  $('fb').className = 'fb';
+  $('btnSubmit').disabled = false;
+  $('btnSkip').disabled = false;
+
+  var area = $('answerArea');
+  if (q.kind === 'era2mon'){
+    $('qPrompt').textContent = q.prompt;
+    $('qHint').innerHTML = '（' + q.dynasty + '朝 · ' + yearText(q.begin, q.end) + '）填<b>帝王姓名或庙号</b>';
+    area.innerHTML = '<input type="text" id="ans1" autocomplete="off" placeholder="填帝王姓名或庙号">';
+    var el = $('ans1');
+    el.addEventListener('keydown', function(e){ if (e.key === 'Enter') submit(); });
+    setTimeout(function(){ el.focus(); }, 30);
+  } else {
+    $('qPrompt').textContent = q.prompt;
+    $('qHint').innerHTML = '（<em>' + q.dynasty + '</em>' + (q.subPrompt ? ' · ' + q.subPrompt : '') +
+      '）共 <b>' + q.eras.length + '</b> 个年号，<b>全部填上</b>';
+    var html = '<div class="multi">';
+    for (var i = 0; i < q.eras.length; i++){
+      html += '<input type="text" class="mIn" data-i="' + i + '" autocomplete="off" placeholder="年号 ' + (i+1) + '">';
+    }
+    html += '</div>';
+    area.innerHTML = html;
+    state.keyCount = q.eras.length;
+    var ins = area.querySelectorAll('.mIn');
+    for (var k = 0; k < ins.length; k++){
+      ins[k].addEventListener('keydown', function(e){
+        if (e.key === 'Enter'){
+          var idx = parseInt(this.getAttribute('data-i'), 10);
+          if (idx + 1 < ins.length) ins[idx + 1].focus();
+          else submit();
+        }
+      });
+    }
+    setTimeout(function(){ if (ins[0]) ins[0].focus(); }, 30);
+  }
+}
+
+function yearText(b, e){
+  var f = function(y){ return y < 0 ? '前' + (-y) : (y + ''); };
+  return b === e ? (f(b) + '年') : (f(b) + '—' + f(e) + '年');
+}
+
+/* ---------- 判分 ---------- */
+function checkAnswer(q){
+  if (q.kind === 'era2mon'){
+    var v = norm(($('ans1') || {}).value);
+    if (!v) return { status: 'skip' };
+    for (var i = 0; i < q.answers.length; i++){
+      var a = norm(q.answers[i]);
+      if (!a) continue;
+      if (v === a) return { status: 'ok' };
+      // 允许「唐太宗」写成「太宗」
+      if (a.indexOf(v) === 0 && v.length >= 2) return { status: 'ok' };
+      if (v.indexOf(a) === 0 && a.length >= 2) return { status: 'ok' };
+      // 允许「李世民」对「唐太宗李世民」
+      if (q.monarch && v === norm(q.monarch)) return { status: 'ok' };
+    }
+    return { status: 'bad' };
+  } else {
+    var ins = document.querySelectorAll('.mIn');
+    var filled = 0, right = 0;
+    for (var j = 0; j < ins.length; j++){
+      var val = norm(ins[j].value);
+      if (val) filled++;
+      var target = norm(q.eras[j]);
+      if (val && val === target) right++;
+    }
+    if (filled === 0) return { status: 'skip', right: 0, total: q.eras.length };
+    if (right === q.eras.length) return { status: 'ok', right: right, total: q.eras.length };
+    if (right > 0) return { status: 'partial', right: right, total: q.eras.length };
+    return { status: 'bad', right: 0, total: q.eras.length };
+  }
+}
+
+function submit(){
+  if (!state.running) return;
+  var q = state.questions[state.index];
+  var r = checkAnswer(q);
+  state.results[state.index] = r;
+
+  // 反馈
+  var fb = $('fb');
+  if (r.status === 'ok'){
+    fb.textContent = '✓ 答对！' + (q.kind === 'era2mon'
+      ? (q.temple ? q.temple + '（' + q.monarch + '）' : q.monarch)
+      : '全部 ' + q.eras.length + ' 个年号都对');
+    fb.className = 'fb ok';
+  } else if (r.status === 'partial'){
+    fb.textContent = '◐ 部分对：' + r.right + '/' + r.total + ' 个年号正确';
+    fb.className = 'fb';
+    fb.style.color = '#e0b060';
+  } else if (r.status === 'bad'){
+    fb.textContent = '✗ 答错。正确答案：' + (q.kind === 'era2mon'
+      ? (q.temple ? q.temple + '（' + q.monarch + '）' : q.monarch)
+      : q.eras.join('、'));
+    fb.className = 'fb bad';
+  } else {
+    fb.textContent = '— 跳过。答案：' + (q.kind === 'era2mon'
+      ? (q.temple ? q.temple + '（' + q.monarch + '）' : q.monarch)
+      : q.eras.join('、'));
+    fb.className = 'fb skip';
+  }
+
+  $('btnSubmit').disabled = true;
+  $('btnSkip').disabled = true;
+  updateCounters();
+
+  setTimeout(function(){
+    state.index++;
+    renderQuestion();
+  }, r.status === 'ok' ? 350 : 900);
+}
+
+function skip(){
+  if (!state.running) return;
+  state.results[state.index] = { status: 'skip' };
+  var q = state.questions[state.index];
+  var fb = $('fb');
+  fb.textContent = '— 跳过。答案：' + (q.kind === 'era2mon'
+    ? (q.temple ? q.temple + '（' + q.monarch + '）' : q.monarch)
+    : q.eras.join('、'));
+  fb.className = 'fb skip';
+  $('btnSubmit').disabled = true;
+  $('btnSkip').disabled = true;
+  updateCounters();
+  setTimeout(function(){ state.index++; renderQuestion(); }, 320);
+}
+
+function updateCounters(){
+  var ok = 0, bad = 0, remain = 0;
+  for (var i = 0; i < state.questions.length; i++){
+    var r = state.results[i];
+    if (!r){ remain++; continue; }
+    if (r.status === 'ok') ok++;
+    else if (r.status === 'bad') bad++;
+    else if (r.status === 'partial') bad++;
+    else remain++;
+  }
+  $('cOk').textContent = ok;
+  $('cBad').textContent = bad;
+  $('cSkip').textContent = remain;
+  $('prog').textContent = (ok + bad) + '/' + state.questions.length;
+}
+
+/* ---------- 结束 ---------- */
+function finishGame(timeUp){
+  if (!state.running) return;
+  state.running = false;
+  if (state.timerId) clearInterval(state.timerId);
+
+  var ok = 0, bad = 0, partial = 0, skip = 0, partialPts = 0;
+  for (var i = 0; i < state.questions.length; i++){
+    var r = state.results[i];
+    if (!r || r.status === 'skip'){ skip++; continue; }
+    if (r.status === 'ok') ok++;
+    else if (r.status === 'partial'){ partial++; partialPts += r.right; }
+    else bad++;
+  }
+
+  $('gameWrap').style.display = 'none';
+  $('resultPanel').style.display = 'block';
+  $('rOk').textContent = ok;
+  $('rBad').textContent = bad;
+  $('rSkip').textContent = skip;
+
+  var extra = '';
+  if (state.mode === 2 && partial > 0){
+    extra = '另有 <b style="color:#e0b060">' + partial + '</b> 题部分正确（共填对 ' + partialPts + ' 个年号）<br>';
+  }
+  $('rDetail').innerHTML = (timeUp ? '⏰ 时间到，自动交卷<br>' : '') +
+    '共 ' + state.questions.length + ' 题 · 正确率 ' +
+    (state.questions.length ? (ok / state.questions.length * 100).toFixed(1) : '0') + '%<br>' + extra;
+}
+
+function toggleAnswers(){
+  var list = $('ansList');
+  if (list.style.display === 'none'){
+    var html = '';
+    for (var i = 0; i < state.questions.length; i++){
+      var q = state.questions[i], r = state.results[i];
+      var cls = 'arow';
+      if (!r || r.status === 'skip') cls += ' miss';
+      else if (r.status === 'bad') cls += ' wrong';
+      html += '<div class="' + cls + '">' +
+        '<span class="dy">' + q.dynasty + '</span>' +
+        '<span class="mo">' + (q.kind === 'era2mon' ? q.era : (q.temple || q.monarch)) + '</span>' +
+        '<span class="er">' + (q.kind === 'era2mon' ? (q.temple || q.monarch) : q.eras.join('、')) + '</span>' +
+        '</div>';
+    }
+    list.innerHTML = html;
+    list.style.display = 'block';
+    $('btnAns').textContent = '收起答案';
+  } else {
+    list.style.display = 'none';
+    $('btnAns').textContent = '查看完整答案';
+  }
+}
+
+$('btnSubmit').addEventListener('click', submit);
+$('btnSkip').addEventListener('click', skip);
+
+
+/* 暴露给 onclick 用 */
+window.startGame = startGame;
+window.finishGame = finishGame;
+window.toggleAnswers = toggleAnswers;
+
+})();
+</script>
+</body>
+</html>

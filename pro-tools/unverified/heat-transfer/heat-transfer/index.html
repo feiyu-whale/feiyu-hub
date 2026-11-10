@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>传热与保温计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1f2937;
+    background: #f3f4f6;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px 14px 80px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: #fff;
+    padding: 20px 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(30,58,138,0.2);
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  header p {
+    font-size: 13px;
+    opacity: 0.92;
+  }
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .tab {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+    padding: 10px 8px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #374151;
+  }
+  .tab.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+  }
+  .panel {
+    display: none;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+  }
+  .panel.active { display: block; }
+  .panel h2 {
+    font-size: 16px;
+    color: #1e3a8a;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .formula {
+    background: #eff6ff;
+    border-left: 3px solid #2563eb;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #1e40af;
+    margin: 10px 0 14px;
+    border-radius: 0 6px 6px 0;
+    font-family: "Cambria Math", "Times New Roman", serif;
+  }
+  .field {
+    margin-bottom: 10px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: #4b5563;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .field .hint {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: normal;
+    margin-left: 4px;
+  }
+  .input-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .field input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fff;
+  }
+  .field input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+  }
+  .unit {
+    padding: 9px 10px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #6b7280;
+    white-space: nowrap;
+    min-width: 64px;
+    text-align: center;
+  }
+  .btn {
+    width: 100%;
+    padding: 11px;
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: transform 0.1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .result {
+    margin-top: 14px;
+    padding: 12px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 8px;
+    border: 1px solid #fcd34d;
+    display: none;
+  }
+  .result.show { display: block; }
+  .result .label {
+    font-size: 12px;
+    color: #92400e;
+    margin-bottom: 4px;
+  }
+  .result .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #78350f;
+    word-break: break-all;
+  }
+  .result .detail {
+    font-size: 12px;
+    color: #78350f;
+    margin-top: 6px;
+    line-height: 1.5;
+    opacity: 0.85;
+  }
+  .err {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 8px;
+    display: none;
+  }
+  .err.show { display: block; }
+  .source {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    font-size: 13px;
+    color: #4b5563;
+  }
+  .source h3 {
+    font-size: 14px;
+    color: #1e3a8a;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .source ul {
+    list-style: none;
+    padding: 0;
+  }
+  .source li {
+    padding: 4px 0 4px 18px;
+    position: relative;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .source li::before {
+    content: "📖";
+    position: absolute;
+    left: 0;
+    top: 4px;
+    font-size: 12px;
+  }
+  .version {
+    position: fixed;
+    right: 10px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: rgba(255,255,255,0.85);
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 10;
+  }
+  @media (max-width: 380px) {
+    .tab { font-size: 12px; padding: 9px 6px; }
+    header h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🔥 传热与保温计算</h1>
+    <p>平壁/圆筒壁导热 · 对流 · 辐射</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="flat">🧱 平壁导热</div>
+    <div class="tab" data-tab="cyl">🛢️ 圆筒壁导热</div>
+    <div class="tab" data-tab="conv">💨 对流换热</div>
+    <div class="tab" data-tab="rad">☀️ 辐射换热</div>
+  </div>
+
+  <!-- 平壁导热 -->
+  <div class="panel active" id="panel-flat">
+    <h2>🧱 平壁稳态导热</h2>
+    <div class="formula">Q = A · λ · ΔT / δ</div>
+    <div class="field">
+      <label>传热面积 A <span class="hint">（平壁面积）</span></label>
+      <div class="input-row">
+        <input type="number" id="flat-A" step="any" placeholder="例如 10">
+        <div class="unit">m²</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>导热系数 λ</label>
+      <div class="input-row">
+        <input type="number" id="flat-lam" step="any" placeholder="例如 0.04">
+        <div class="unit">W/(m·K)</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>两侧温差 ΔT <span class="hint">（T₁−T₂，可正可负）</span></label>
+      <div class="input-row">
+        <input type="number" id="flat-dT" step="any" placeholder="例如 50">
+        <div class="unit">K 或 °C</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>壁厚 δ</label>
+      <div class="input-row">
+        <input type="number" id="flat-d" step="any" placeholder="例如 0.05">
+        <div class="unit">m</div>
+      </div>
+    </div>
+    <button class="btn" onclick="calcFlat()">计算热流量 Q</button>
+    <div class="err" id="err-flat"></div>
+    <div class="result" id="res-flat">
+      <div class="label">计算结果</div>
+      <div class="value" id="val-flat"></div>
+      <div class="detail" id="det-flat"></div>
+    </div>
+  </div>
+
+  <!-- 圆筒壁导热 -->
+  <div class="panel" id="panel-cyl">
+    <h2>🛢️ 圆筒壁稳态导热</h2>
+    <div class="formula">Q = 2π · L · λ · ΔT / ln(r₂/r₁)</div>
+    <div class="field">
+      <label>管长 L</label>
+      <div class="input-row">
+        <input type="number" id="cyl-L" step="any" placeholder="例如 5">
+        <div class="unit">m</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>导热系数 λ</label>
+      <div class="input-row">
+        <input type="number" id="cyl-lam" step="any" placeholder="例如 0.04">
+        <div class="unit">W/(m·K)</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>内外壁温差 ΔT <span class="hint">（T₁−T₂）</span></label>
+      <div class="input-row">
+        <input type="number" id="cyl-dT" step="any" placeholder="例如 80">
+        <div class="unit">K 或 °C</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>内半径 r₁</label>
+      <div class="input-row">
+        <input type="number" id="cyl-r1" step="any" placeholder="例如 0.05">
+        <div class="unit">m</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>外半径 r₂ <span class="hint">（须大于 r₁）</span></label>
+      <div class="input-row">
+        <input type="number" id="cyl-r2" step="any" placeholder="例如 0.1">
+        <div class="unit">m</div>
+      </div>
+    </div>
+    <button class="btn" onclick="calcCyl()">计算热流量 Q</button>
+    <div class="err" id="err-cyl"></div>
+    <div class="result" id="res-cyl">
+      <div class="label">计算结果</div>
+      <div class="value" id="val-cyl"></div>
+      <div class="detail" id="det-cyl"></div>
+    </div>
+  </div>
+
+  <!-- 对流换热 -->
+  <div class="panel" id="panel-conv">
+    <h2>💨 对流换热（牛顿冷却公式）</h2>
+    <div class="formula">Q = h · A · ΔT</div>
+    <div class="field">
+      <label>换热面积 A</label>
+      <div class="input-row">
+        <input type="number" id="conv-A" step="any" placeholder="例如 2">
+        <div class="unit">m²</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>对流换热系数 h <span class="hint">（自然对流 5~25；强制对流 10~500）</span></label>
+      <div class="input-row">
+        <input type="number" id="conv-h" step="any" placeholder="例如 10">
+        <div class="unit">W/(m²·K)</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>壁面与流体温差 ΔT</label>
+      <div class="input-row">
+        <input type="number" id="conv-dT" step="any" placeholder="例如 30">
+        <div class="unit">K 或 °C</div>
+      </div>
+    </div>
+    <button class="btn" onclick="calcConv()">计算热流量 Q</button>
+    <div class="err" id="err-conv"></div>
+    <div class="result" id="res-conv">
+      <div class="label">计算结果</div>
+      <div class="value" id="val-conv"></div>
+      <div class="detail" id="det-conv"></div>
+    </div>
+  </div>
+
+  <!-- 辐射换热 -->
+  <div class="panel" id="panel-rad">
+    <h2>☀️ 表面辐射换热（斯蒂芬-玻尔兹曼定律）</h2>
+    <div class="formula">Q = ε · σ · A · (T₁⁴ − T₂⁴)，σ = 5.67×10⁻⁸ W/(m²·K⁴)</div>
+    <div class="field">
+      <label>辐射面积 A</label>
+      <div class="input-row">
+        <input type="number" id="rad-A" step="any" placeholder="例如 1">
+        <div class="unit">m²</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>表面发射率 ε <span class="hint">（0~1，黑体=1）</span></label>
+      <div class="input-row">
+        <input type="number" id="rad-eps" step="any" min="0" max="1" placeholder="例如 0.9">
+        <div class="unit">—</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>表面温度 T₁</label>
+      <div class="input-row">
+        <input type="number" id="rad-T1" step="any" placeholder="例如 80">
+        <div class="unit">°C</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>环境（周围）温度 T₂</label>
+      <div class="input-row">
+        <input type="number" id="rad-T2" step="any" placeholder="例如 20">
+        <div class="unit">°C</div>
+      </div>
+    </div>
+    <button class="btn" onclick="calcRad()">计算辐射热流量 Q</button>
+    <div class="err" id="err-rad"></div>
+    <div class="result" id="res-rad">
+      <div class="label">计算结果</div>
+      <div class="value" id="val-rad"></div>
+      <div class="detail" id="det-rad"></div>
+    </div>
+  </div>
+
+  <div class="source">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li>GB/T 4272-2008《设备及管道绝热技术通则》——平壁/圆筒壁导热及保温计算基本公式。</li>
+      <li>杨世铭、陶文铨《传热学》（第四版），高等教育出版社——对流换热牛顿冷却公式、辐射换热斯蒂芬-玻尔兹曼定律。</li>
+      <li>斯蒂芬-玻尔兹曼常数 σ = 5.670374419×10⁻⁸ W/(m²·K⁴)（CODATA 推荐值，本工具取 5.67×10⁻⁸）。</li>
+      <li>对流换热系数 h 的典型范围参考《传热学》教材：自然对流（气体 5~25，液体 20~100）；强制对流（气体 10~500，液体 50~20000）。</li>
+      <li>本工具仅做公式计算，材料导热系数 λ、发射率 ε 等具体物性表值需查标准原文或材料手册。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="version">v1.0.0-传热保温计算 20261021</div>
+
+<script>
+  // 选项卡切换
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+      document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active');});
+      t.classList.add('active');
+      document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 工具函数
+  function getNum(id) {
+    var v = document.getElementById(id).value.trim();
+    if (v === '') return NaN;
+    var n = Number(v);
+    return n;
+  }
+  function showErr(id, msg) {
+    var el = document.getElementById(id);
+    el.textContent = '⚠️ ' + msg;
+    el.classList.add('show');
+  }
+  function hideErr(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+  function fmtNum(n) {
+    if (!isFinite(n)) return '—';
+    var a = Math.abs(n);
+    if (a !== 0 && (a < 0.001 || a >= 1e6)) {
+      return n.toExponential(4);
+    }
+    return Number(n.toPrecision(6)).toString();
+  }
+
+  // 平壁导热
+  function calcFlat() {
+    hideErr('err-flat');
+    document.getElementById('res-flat').classList.remove('show');
+    var A = getNum('flat-A');
+    var lam = getNum('flat-lam');
+    var dT = getNum('flat-dT');
+    var d = getNum('flat-d');
+    if ([A, lam, dT, d].some(isNaN)) { showErr('err-flat','请填写全部字段'); return; }
+    if (A <= 0 || lam <= 0 || d <= 0) { showErr('err-flat','面积、导热系数、壁厚须大于 0'); return; }
+    var Q = A * lam * dT / d;
+    document.getElementById('val-flat').textContent = 'Q = ' + fmtNum(Q) + ' W';
+    document.getElementById('det-flat').textContent =
+      '代入：' + fmtNum(A) + ' × ' + fmtNum(lam) + ' × ' + fmtNum(dT) + ' / ' + fmtNum(d) +
+      ' = ' + fmtNum(Q) + ' W';
+    document.getElementById('res-flat').classList.add('show');
+  }
+
+  // 圆筒壁导热
+  function calcCyl() {
+    hideErr('err-cyl');
+    document.getElementById('res-cyl').classList.remove('show');
+    var L = getNum('cyl-L');
+    var lam = getNum('cyl-lam');
+    var dT = getNum('cyl-dT');
+    var r1 = getNum('cyl-r1');
+    var r2 = getNum('cyl-r2');
+    if ([L, lam, dT, r1, r2].some(isNaN)) { showErr('err-cyl','请填写全部字段'); return; }
+    if (L <= 0 || lam <= 0 || r1 <= 0 || r2 <= 0) { showErr('err-cyl','长度、导热系数、半径须大于 0'); return; }
+    if (r2 <= r1) { showErr('err-cyl','外半径 r₂ 必须大于内半径 r₁'); return; }
+    var Q = 2 * Math.PI * L * lam * dT / Math.log(r2 / r1);
+    document.getElementById('val-cyl').textContent = 'Q = ' + fmtNum(Q) + ' W';
+    document.getElementById('det-cyl').textContent =
+      '代入：2π × ' + fmtNum(L) + ' × ' + fmtNum(lam) + ' × ' + fmtNum(dT) +
+      ' / ln(' + fmtNum(r2) + '/' + fmtNum(r1) + ') = ' + fmtNum(Q) + ' W';
+    document.getElementById('res-cyl').classList.add('show');
+  }
+
+  // 对流换热
+  function calcConv() {
+    hideErr('err-conv');
+    document.getElementById('res-conv').classList.remove('show');
+    var A = getNum('conv-A');
+    var h = getNum('conv-h');
+    var dT = getNum('conv-dT');
+    if ([A, h, dT].some(isNaN)) { showErr('err-conv','请填写全部字段'); return; }
+    if (A <= 0 || h <= 0) { showErr('err-conv','面积、换热系数须大于 0'); return; }
+    var Q = h * A * dT;
+    document.getElementById('val-conv').textContent = 'Q = ' + fmtNum(Q) + ' W';
+    document.getElementById('det-conv').textContent =
+      '代入：' + fmtNum(h) + ' × ' + fmtNum(A) + ' × ' + fmtNum(dT) + ' = ' + fmtNum(Q) + ' W';
+    document.getElementById('res-conv').classList.add('show');
+  }
+
+  // 辐射换热
+  function calcRad() {
+    hideErr('err-rad');
+    document.getElementById('res-rad').classList.remove('show');
+    var A = getNum('rad-A');
+    var eps = getNum('rad-eps');
+    var T1 = getNum('rad-T1');
+    var T2 = getNum('rad-T2');
+    if ([A, eps, T1, T2].some(isNaN)) { showErr('err-rad','请填写全部字段'); return; }
+    if (A <= 0) { showErr('err-rad','面积须大于 0'); return; }
+    if (eps < 0 || eps > 1) { showErr('err-rad','发射率 ε 应在 0~1 之间'); return; }
+    var SIGMA = 5.67e-8;
+    var TK1 = T1 + 273.15;
+    var TK2 = T2 + 273.15;
+    if (TK1 < 0 || TK2 < 0) { showErr('err-rad','温度不能低于 −273.15 °C'); return; }
+    var Q = eps * SIGMA * A * (Math.pow(TK1, 4) - Math.pow(TK2, 4));
+    document.getElementById('val-rad').textContent = 'Q = ' + fmtNum(Q) + ' W';
+    document.getElementById('det-rad').textContent =
+      'T₁=' + fmtNum(TK1) + ' K，T₂=' + fmtNum(TK2) + ' K；' +
+      fmtNum(eps) + ' × 5.67e-8 × ' + fmtNum(A) + ' × (' +
+      fmtNum(TK1) + '⁴ − ' + fmtNum(TK2) + '⁴) = ' + fmtNum(Q) + ' W';
+    document.getElementById('res-rad').classList.add('show');
+  }
+</script>
+</body>
+</html>

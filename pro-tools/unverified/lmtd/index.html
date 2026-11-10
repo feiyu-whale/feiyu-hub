@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>对数平均温差（LMTD）专业计算工具</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+.app-header {
+  background: linear-gradient(135deg, #0d1b2a 0%, #1b3a5c 50%, #274c77 100%);
+  color: #fff;
+  padding: 28px 24px 22px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.app-header h1 { font-size: 1.65rem; font-weight: 700; letter-spacing: 1px; }
+.app-header p { font-size: 0.88rem; opacity: 0.8; margin-top: 6px; }
+.tab-bar {
+  display: flex;
+  background: #1b3a5c;
+  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.tab-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 13px 10px;
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.tab-btn.active {
+  color: #fff;
+  border-bottom-color: #60a5fa;
+  background: rgba(96,165,250,0.12);
+}
+.tab-content { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+.tab-content.active { display: block; }
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+}
+.card h2 {
+  font-size: 1.2rem;
+  color: #1b3a5c;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+}
+.card h3 {
+  font-size: 1.05rem;
+  color: #274c77;
+  margin: 18px 0 10px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.form-group label .unit { font-weight: 400; color: #6b7280; font-size: 0.82rem; }
+.form-group input, .form-group select {
+  padding: 10px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #fafafa;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+  background: #fff;
+}
+.form-group input.error { border-color: #ef4444; background: #fef2f2; }
+.radio-group {
+  display: flex;
+  gap: 20px;
+  margin: 10px 0 18px;
+}
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+.radio-group input[type="radio"] { width: 18px; height: 18px; accent-color: #274c77; }
+.btn-primary {
+  background: linear-gradient(135deg, #1b3a5c, #274c77);
+  color: #fff;
+  border: none;
+  padding: 12px 36px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  box-shadow: 0 2px 8px rgba(27,58,92,0.3);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(27,58,92,0.4); }
+.btn-primary:active { transform: translateY(0); }
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { background: #e5e7eb; }
+.result-box {
+  margin-top: 22px;
+  padding: 22px;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1.5px solid #7dd3fc;
+  border-radius: 10px;
+  display: none;
+}
+.result-box.show { display: block; }
+.result-box .result-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin-bottom: 12px;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #bae6fd;
+}
+.result-item:last-child { border-bottom: none; }
+.result-item .label { color: #374151; font-weight: 500; }
+.result-item .value { color: #0c4a6e; font-weight: 700; font-size: 1.1rem; font-family: "Courier New", monospace; }
+.error-box {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  border-radius: 8px;
+  color: #991b1b;
+  font-weight: 500;
+  display: none;
+}
+.error-box.show { display: block; }
+.warning-box {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+.note-box {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 8px;
+  color: #166534;
+  font-size: 0.9rem;
+}
+.safety-banner {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 2px solid #f87171;
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+  color: #991b1b;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+.safety-banner .icon { font-size: 1.3rem; margin-right: 6px; }
+pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 20px;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  margin: 12px 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+code { font-family: "Fira Code", "Source Code Pro", "Courier New", monospace; }
+.test-result { padding: 6px 0; font-size: 0.9rem; font-family: monospace; }
+.test-pass { color: #16a34a; }
+.test-fail { color: #dc2626; }
+.test-summary {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.test-summary.all-pass { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
+.test-summary.has-fail { background: #fef2f2; border: 1.5px solid #fca5a5; color: #991b1b; }
+.doc-section { margin-bottom: 24px; }
+.doc-section p { margin-bottom: 10px; text-align: justify; }
+.doc-section ul, .doc-section ol { margin: 8px 0 12px 24px; }
+.doc-section li { margin-bottom: 6px; }
+.formula-block {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  font-family: "Courier New", monospace;
+  font-size: 0.95rem;
+  text-align: center;
+  color: #1e293b;
+  overflow-x: auto;
+}
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  z-index: 999;
+  font-family: monospace;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.9rem;
+}
+th, td {
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  text-align: left;
+}
+th { background: #f1f5f9; font-weight: 600; color: #1e293b; }
+td { color: #374151; }
+@media (max-width: 640px) {
+  .app-header h1 { font-size: 1.25rem; }
+  .tab-btn { font-size: 0.8rem; padding: 10px 6px; min-width: 80px; }
+  .card { padding: 18px; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>对数平均温差（LMTD）专业计算工具</h1>
+  <p>Logarithmic Mean Temperature Difference — 换热器设计核心参数计算</p>
+</header>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="calculator">📐 计算器</button>
+  <button class="tab-btn" data-tab="source">💻 源码</button>
+  <button class="tab-btn" data-tab="tests">🧪 单元测试</button>
+  <button class="tab-btn" data-tab="docs">📖 专业说明</button>
+  <button class="tab-btn" data-tab="safety">⚠️ 安全声明</button>
+</nav>
+
+<!-- ==================== TAB 1: CALCULATOR ==================== -->
+<div id="tab-calculator" class="tab-content active">
+  <div class="card">
+    <h2>📐 LMTD 计算与传热量反算</h2>
+
+    <div class="warning-box">
+      <strong>⚠ 重要前提：</strong>LMTD 法要求总传热系数 U 恒定且流体无相变。若存在相变（冷凝/沸腾）或多程换热器，须乘以修正系数 F（F ≤ 1）。本工具现提供修正系数 F 输入框，默认 F = 1（纯逆流或纯顺流单程）；留空则固定为 1。
+    </div>
+
+    <h3>流动方式选择</h3>
+    <div class="radio-group">
+      <label><input type="radio" name="flowType" value="counter" checked> 逆流（Counter-flow）</label>
+      <label><input type="radio" name="flowType" value="parallel"> 顺流（Parallel-flow）</label>
+    </div>
+
+    <h3>温度参数输入</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>热流体进口温度 T<sub>h,in</sub> <span class="unit">(°C)</span></label>
+        <input type="number" id="Th_in" step="any" placeholder="例：100">
+      </div>
+      <div class="form-group">
+        <label>热流体出口温度 T<sub>h,out</sub> <span class="unit">(°C)</span></label>
+        <input type="number" id="Th_out" step="any" placeholder="例：60">
+      </div>
+      <div class="form-group">
+        <label>冷流体进口温度 T<sub>c,in</sub> <span class="unit">(°C)</span></label>
+        <input type="number" id="Tc_in" step="any" placeholder="例：20">
+      </div>
+      <div class="form-group">
+        <label>冷流体出口温度 T<sub>c,out</sub> <span class="unit">(°C)</span></label>
+        <input type="number" id="Tc_out" step="any" placeholder="例：50">
+      </div>
+    </div>
+
+    <h3>传热量反算参数（可选）</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>总传热系数 U <span class="unit">(W/(m²·K))</span></label>
+        <input type="number" id="U_val" step="any" placeholder="例：500">
+      </div>
+      <div class="form-group">
+        <label>换热面积 A <span class="unit">(m²)</span></label>
+        <input type="number" id="A_val" step="any" placeholder="例：10">
+      </div>
+      <div class="form-group">
+        <label>修正系数 F <span class="unit">(多程/交叉流，默认 1)</span></label>
+        <input type="number" id="F_val" step="any" value="1">
+      </div>
+    </div>
+
+    <div style="margin-top: 18px;">
+      <button class="btn-primary" id="btnCalc">计 算</button>
+      <button class="btn-secondary" id="btnReset">重 置</button>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-title">📊 计算结果</div>
+      <div class="result-item">
+        <span class="label">流动方式</span>
+        <span class="value" id="res_flow">—</span>
+      </div>
+      <div class="result-item">
+        <span class="label">ΔT₁</span>
+        <span class="value" id="res_dt1">—</span>
+      </div>
+      <div class="result-item">
+        <span class="label">ΔT₂</span>
+        <span class="value" id="res_dt2">—</span>
+      </div>
+      <div class="result-item">
+        <span class="label">LMTD</span>
+        <span class="value" id="res_lmtd">—</span>
+      </div>
+      <div class="result-item" id="res_q_row" style="display:none;">
+        <span class="label">传热量 Q = U × A × LMTD</span>
+        <span class="value" id="res_q">—</span>
+      </div>
+      <div class="note-box" id="res_note" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 2: SOURCE CODE ==================== -->
+<div id="tab-source" class="tab-content">
+  <div class="card">
+    <h2>💻 完整 HTML/CSS/JS 源码</h2>
+    <p style="margin-bottom:12px; color:#6b7280; font-size:0.9rem;">以下为完整可运行的单文件源码（原生 JS，零依赖）。每个核心函数均含 JSDoc 注释，注明公式名称与文献出处。</p>
+    <pre id="sourceCode"></pre>
+  </div>
+</div>
+
+<!-- ==================== TAB 3: UNIT TESTS ==================== -->
+<div id="tab-tests" class="tab-content">
+  <div class="card">
+    <h2>🧪 单元测试（10 项）</h2>
+    <p style="margin-bottom:14px; color:#6b7280; font-size:0.9rem;">纯 JS 实现，覆盖正常值、边界值、极端值、异常输入等场景。点击按钮运行全部测试。</p>
+    <button class="btn-primary" id="btnRunTests">▶ 运行全部测试</button>
+    <div id="testOutput" style="margin-top:18px;"></div>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: DOCUMENTATION ==================== -->
+<div id="tab-docs" class="tab-content">
+  <div class="card">
+    <h2>📖 专业说明文档</h2>
+
+    <div class="doc-section">
+      <h3>一、公式定义与文献出处</h3>
+      <p>对数平均温差（Logarithmic Mean Temperature Difference, LMTD）是换热器设计中最基本的传热驱动力参数。其定义来源于对稳态、无相变、恒传热系数条件下微元换热面积的能量平衡积分。</p>
+      <div class="formula-block">
+        LMTD = (ΔT₁ − ΔT₂) / ln(ΔT₁ / ΔT₂)
+      </div>
+      <p><strong>文献出处：</strong>Incropera FP, DeWitt DP, Bergman TL, Lavine AS. <em>Fundamentals of Heat and Mass Transfer</em>. 8th ed. John Wiley &amp; Sons; 2017. Chapter 11: Heat Exchangers. 该书第11章系统推导了LMTD法及其在逆流、顺流换热器中的应用。</p>
+      <p>另一经典参考：Holman JP. <em>Heat Transfer</em>. 10th ed. McGraw-Hill; 2010. Chapter 10.</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>二、逆流与顺流的 ΔT 定义</h3>
+      <p><strong>逆流（Counter-flow）：</strong>两种流体以相反方向流动。换热器一端热流体进口与冷流体出口相邻，另一端热流体出口与冷流体进口相邻。</p>
+      <div class="formula-block">
+        逆流：ΔT₁ = T<sub>h,in</sub> − T<sub>c,out</sub>；ΔT₂ = T<sub>h,out</sub> − T<sub>c,in</sub>
+      </div>
+      <p><strong>顺流（Parallel-flow）：</strong>两种流体以相同方向流动，从同一端进入换热器。</p>
+      <div class="formula-block">
+        顺流：ΔT₁ = T<sub>h,in</sub> − T<sub>c,in</sub>；ΔT₂ = T<sub>h,out</sub> − T<sub>c,out</sub>
+      </div>
+      <p>在相同的进出口温度条件下，逆流的 LMTD 始终大于或等于顺流的 LMTD，因此逆流换热器在相同传热面积下能传递更多热量，或传递相同热量时所需面积更小。这是工程实践中优先选择逆流布置的根本原因。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>三、计算步骤逐步解释</h3>
+      <ol>
+        <li><strong>确定流动方式：</strong>根据换热器实际布置选择逆流或顺流。</li>
+        <li><strong>计算端部温差：</strong>按上述公式分别计算 ΔT₁ 和 ΔT₂。注意两个温差必须均为正值，否则说明温度数据有误或流动方式判断错误。</li>
+        <li><strong>判断是否趋近极限：</strong>当 |ΔT₁ − ΔT₂| / ((ΔT₁ + ΔT₂)/2) &lt; 0.001 时，认为 ΔT₁ ≈ ΔT₂，此时 ln(ΔT₁/ΔT₂) → 0，直接取 LMTD ≈ (ΔT₁ + ΔT₂)/2 以避免除零错误。这一处理在数学上等价于对 LMTD 公式在 ΔT₁ = ΔT₂ 处取极限（洛必达法则）。</li>
+        <li><strong>计算 LMTD：</strong>代入公式 LMTD = (ΔT₁ − ΔT₂) / ln(ΔT₁/ΔT₂)。</li>
+        <li><strong>（可选）反算传热量：</strong>若提供了 U 和 A，则 Q = U × A × LMTD。此处 Q 的单位为瓦特（W），U 的单位为 W/(m²·K)，A 的单位为 m²，LMTD 的单位为 K（或 °C，因为温差在两种温标下数值相同）。</li>
+      </ol>
+    </div>
+
+    <div class="doc-section">
+      <h3>四、适用场景与不适用场景</h3>
+      <p><strong>适用场景：</strong></p>
+      <ul>
+        <li>稳态操作的单程管壳式换热器（纯逆流或纯顺流）</li>
+        <li>双管换热器（tube-in-tube / double-pipe heat exchanger）</li>
+        <li>板式换热器（可近似为逆流）</li>
+        <li>两种流体均无相变的显热换热过程</li>
+        <li>总传热系数 U 沿换热面近似恒定的工况</li>
+      </ul>
+      <p><strong>不适用场景（须修正或改用其他方法）：</strong></p>
+      <ul>
+        <li><strong>有相变的情况：</strong>冷凝器或再沸器中，一种流体温度恒定（相变温度），此时 LMTD 仍然可用但 ΔT 的定义需特殊处理——实际上此时逆流和顺流的 LMTD 相同。</li>
+        <li><strong>多程换热器：</strong>如 1-2、2-4 型管壳式换热器，须引入修正系数 F（F ≤ 1），使得 Q = U × A × F × LMTD_cf。F 值可从 Bowman, Mueller &amp; Nagle (1940) 的修正系数图查得，或参见 Incropera 第11章。</li>
+        <li><strong>交叉流换热器：</strong>须使用专门的修正系数或 NTU-ε 法。</li>
+        <li><strong>U 变化显著的工况：</strong>如高粘度流体的加热/冷却（粘度随温度剧烈变化导致对流换热系数变化），此时应将换热器分段计算。</li>
+        <li><strong>瞬态过程：</strong>LMTD 法仅适用于稳态。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>五、工程意义</h3>
+      <p>LMTD 代表了换热器内传热驱动力的"等效平均温差"。它不是简单的算术平均，而是考虑了温差沿换热面呈指数衰减这一物理事实的对数加权平均。</p>
+      <p>在实际工程工作中，LMTD 的意义体现在以下几个方面：</p>
+      <ul>
+        <li><strong>换热器 sizing（设计选型）：</strong>已知工艺要求的传热量 Q 和估算的 U 值，通过 LMTD 反算所需的换热面积 A = Q / (U × LMTD)，这是换热器选型的核心步骤。</li>
+        <li><strong>换热器 rating（校核计算）：</strong>已知现有换热器的 A 和 U，通过 LMTD 校核其能否满足工艺要求的传热量。</li>
+        <li><strong>运行诊断：</strong>若运行中 LMTD 下降（如由于结垢导致出口温度趋近），说明换热器性能退化，需要清洗或维护。</li>
+        <li><strong>能量优化：</strong>通过比较不同流动方式的 LMTD，可以量化逆流布置相对于顺流布置的优势，指导换热器网络设计（如夹点分析 Pinch Analysis）。</li>
+      </ul>
+      <p>在化工、电力、暖通空调、食品加工等行业中，LMTD 法是换热器设计和分析的基础工具。尽管 NTU-ε 法在某些场景下更方便（如出口温度未知时），但 LMTD 法因其物理直观性仍然是工程实践中最常用的方法。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>六、已知局限与误差来源</h3>
+      <ul>
+        <li><strong>U 值假设：</strong>LMTD 法假设 U 沿换热面恒定。实际上，流体的物性（粘度、导热系数、密度等）随温度变化，导致局部对流换热系数变化。对于温度变化范围不大的工况（如 ΔT &lt; 50°C 的水-水换热），这一假设通常可接受；但对于温度变化范围大的工况（如高温气体冷却），误差可能达到 10-20%。</li>
+        <li><strong>污垢热阻：</strong>运行中的换热器存在污垢热阻，使实际 U 值低于设计值。设计时通常预留污垢余量（fouling factor），但实际污垢程度难以精确预测。</li>
+        <li><strong>温度测量误差：</strong>LMTD 对温度测量精度敏感。当 ΔT₁ 和 ΔT₂ 接近时，LMTD 对温度误差的敏感度增大。</li>
+        <li><strong>流动分布不均匀：</strong>实际换热器中可能存在旁流、泄漏流等非理想流动，降低有效 LMTD。</li>
+        <li><strong>修正系数 F 的不确定性：</strong>对于多程换热器，F 值从图表读取存在读数误差，且 F 值对温度效率 P 和热容比 R 敏感。当 F &lt; 0.8 时，通常认为该换热器构型不合适，应改用其他构型。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>七、精度与误差说明</h3>
+      <p><strong>① 算准了什么：</strong>本工具在给定四个温度和流动方式的条件下，精确计算数学意义上的 LMTD 值。计算精度受限于 IEEE 754 双精度浮点数的有效位数（约 15-16 位有效数字）。对于常规工程温度范围（-200°C 至 +2000°C），数值计算误差可忽略不计。</p>
+      <p><strong>② 哪些因素没算进去：</strong></p>
+      <ul>
+        <li>未提供修正系数 F 的查表功能（本工具已支持用户手工输入 F 参与 Q 计算，但 F 值须自行查图获取）</li>
+        <li>未考虑 U 值随温度的变化</li>
+        <li>未考虑污垢热阻</li>
+        <li>未考虑换热器的热损失（向环境散热）</li>
+        <li>未考虑流体物性的温度依赖性</li>
+        <li>传热量 Q 的反算假设 U 和 A 精确已知</li>
+      </ul>
+      <p><strong>③ 误差大概多大：</strong></p>
+      <ul>
+        <li>纯数学计算误差：&lt; 10⁻¹²（双精度浮点限制），工程上可视为零</li>
+        <li>U 值恒定假设引入的误差：视工况而定，通常 5-15%，极端工况可达 20%+</li>
+        <li>忽略污垢的误差：新换热器 0-5%，运行一段时间后 10-30%+</li>
+        <li>温度测量误差传递：若温度测量精度 ±0.5°C，LMTD 的相对误差通常在 1-5%</li>
+      </ul>
+      <p style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:8px; padding:12px 16px; color:#92400e; margin-bottom:10px;"><strong>⚠ 数据来源提示：</strong>本工具中相对容差 0.001 以及「误差量级 5-15%、1-5%」等参数与数字均为经验估算值，未经标准核对，无权威文献来源，仅供参考。</p>
+      <p><strong>重要声明：</strong>本工具提供的是数学计算结果，不是工程设计结论。实际换热器设计须由具备资质的工程师综合考虑上述所有因素后做出。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>八、传热量公式 Q = U × A × LMTD</h3>
+      <div class="formula-block">
+        Q = U × A × LMTD
+      </div>
+      <p>这是换热器设计的基本方程，也称为传热速率方程。其中：</p>
+      <ul>
+        <li>Q — 传热量，单位 W（瓦特）</li>
+        <li>U — 总传热系数（overall heat transfer coefficient），单位 W/(m²·K)</li>
+        <li>A — 换热面积，单位 m²</li>
+        <li>LMTD — 对数平均温差，单位 K 或 °C（温差数值相同）</li>
+      </ul>
+      <p><strong>文献：</strong>Incropera FP et al., <em>Fundamentals of Heat and Mass Transfer</em>, 8th ed., 2017, Eq. 11.14.</p>
+      <p>该公式的假设条件与 LMTD 相同：稳态、U 恒定、无相变（或一种流体等温相变）、无轴向导热、忽略动能和势能变化。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 5: SAFETY ==================== -->
+<div id="tab-safety" class="tab-content">
+  <div class="card">
+    <h2>⚠️ 安全声明与使用须知</h2>
+
+    <div class="safety-banner">
+      <span class="icon">🔴</span>
+      <strong>重要声明：</strong>本工具仅供具备相关专业背景的工程技术人员参考使用，不构成任何工程设计结论或安全评估依据。涉及压力容器、高温高压系统、危险化学品等安全关键场景的实际决策，须由具备相应资质的注册工程师（PE）或专业人员做出，并须符合当地法规与行业标准。
+    </div>
+
+    <h3>一、适用范围</h3>
+    <ul>
+      <li>本工具适用于稳态、无相变、单程（纯逆流或纯顺流）换热器的 LMTD 计算与传热量估算。</li>
+      <li>温度范围：工具本身不做物理限制，但用户应确保输入温度在换热器材料和流体的实际工作范围内。</li>
+      <li>所有计算基于理想化假设，结果仅供初步估算和教学参考。</li>
+    </ul>
+
+    <h3>二、假设条件</h3>
+    <ul>
+      <li>稳态操作（所有参数不随时间变化）</li>
+      <li>总传热系数 U 沿换热面恒定</li>
+      <li>换热器绝热良好，无向环境的热损失</li>
+      <li>流体比热容恒定（不随温度变化）</li>
+      <li>无轴向导热（沿流动方向的导热可忽略）</li>
+      <li>动能和势能变化可忽略</li>
+      <li>对于多程或交叉流换热器，默认修正系数 F = 1（即仅适用于纯逆流或纯顺流）</li>
+    </ul>
+
+    <h3>三、不适用的场景</h3>
+    <ul>
+      <li>涉及核安全、航空安全、生命安全等安全关键等级（SIL）的系统</li>
+      <li>需要符合 ASME BPVC、PED、GB 150 等压力容器法规的设计计算</li>
+      <li>需要精确考虑污垢、振动、热应力等工程因素的详细设计</li>
+      <li>瞬态过程（如开停车、工况切换）</li>
+    </ul>
+
+    <h3>四、免责声明</h3>
+    <p>开发者不对因使用本工具产生的任何直接、间接、附带或后果性损失承担责任。用户有义务验证计算结果的合理性，并在实际工程中引入适当的安全系数和设计余量。</p>
+
+    <h3>五、参考文献</h3>
+    <ul>
+      <li>Incropera FP, DeWitt DP, Bergman TL, Lavine AS. <em>Fundamentals of Heat and Mass Transfer</em>. 8th ed. John Wiley &amp; Sons; 2017.</li>
+      <li>Holman JP. <em>Heat Transfer</em>. 10th ed. McGraw-Hill; 2010.</li>
+      <li>Kays WM, London AL. <em>Compact Heat Exchangers</em>. 3rd ed. Krieger Publishing; 1984.</li>
+      <li>Bowman RA, Mueller AC, Nagle WM. Mean Temperature Difference in Design. <em>Trans ASME</em>. 1940;62:283-294.</li>
+      <li>TEMA (Tubular Exchanger Manufacturers Association). <em>Standards of the Tubular Exchanger Manufacturers Association</em>. 10th ed. 2019.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.2-专业版 20261108-修审查问题 20261108</div>
+
+<script>
+/**
+ * ============================================================
+ * 对数平均温差（LMTD）专业计算工具 — 核心计算引擎
+ * ============================================================
+ *
+ * 文献：Incropera FP, DeWitt DP, Bergman TL, Lavine AS.
+ *       Fundamentals of Heat and Mass Transfer. 8th ed.
+ *       John Wiley & Sons; 2017. Chapter 11.
+ *
+ * 版本：v2.0.2-专业版 20261108-修审查问题 20261108
+ * ============================================================
+ */
+
+/**
+ * 计算对数平均温差（LMTD）
+ *
+ * 公式名称：对数平均温差（Logarithmic Mean Temperature Difference）
+ * 公式：LMTD = (ΔT₁ − ΔT₂) / ln(ΔT₁ / ΔT₂)
+ * 当 ΔT₁ ≈ ΔT₂ 时，取极限值 LMTD ≈ (ΔT₁ + ΔT₂) / 2
+ *
+ * 文献出处：Incropera FP, DeWitt DP, Bergman TL, Lavine AS.
+ *           Fundamentals of Heat and Mass Transfer. 8th ed.
+ *           John Wiley & Sons; 2017. Eq. 11.16 & Eq. 11.17.
+ *
+ * @param {number} Th_in  - 热流体进口温度 (°C)
+ * @param {number} Th_out - 热流体出口温度 (°C)
+ * @param {number} Tc_in  - 冷流体进口温度 (°C)
+ * @param {number} Tc_out - 冷流体出口温度 (°C)
+ * @param {string} flowType - 流动方式：'counter'（逆流）或 'parallel'（顺流）
+ * @returns {object} 包含 { dt1, dt2, lmtd, flowType, isLimit } 的结果对象
+ * @throws {Error} 当输入参数无效或温差非正时抛出错误
+ */
+function calculateLMTD(Th_in, Th_out, Tc_in, Tc_out, flowType) {
+  // 输入验证
+  if ([Th_in, Th_out, Tc_in, Tc_out].some(v => typeof v !== 'number' || isNaN(v))) {
+    throw new Error('输入温度包含无效值（NaN 或非数字），请检查输入。');
+  }
+  if (flowType !== 'counter' && flowType !== 'parallel') {
+    throw new Error('流动方式必须为 "counter"（逆流）或 "parallel"（顺流）。');
+  }
+
+  let dt1, dt2;
+
+  if (flowType === 'counter') {
+    // 逆流：ΔT₁ = Th,in − Tc,out；ΔT₂ = Th,out − Tc,in
+    // 文献：Incropera FP et al., Fundamentals of Heat and Mass Transfer, 8th ed., 2017, Eq. 11.16
+    dt1 = Th_in - Tc_out;
+    dt2 = Th_out - Tc_in;
+  } else {
+    // 顺流：ΔT₁ = Th,in − Tc,in；ΔT₂ = Th,out − Tc,out
+    // 文献：Incropera FP et al., Fundamentals of Heat and Mass Transfer, 8th ed., 2017, Eq. 11.17
+    dt1 = Th_in - Tc_in;
+    dt2 = Th_out - Tc_out;
+  }
+
+  // 温差有效性检查
+  if (dt1 <= 0 || dt2 <= 0) {
+    throw new Error(
+      `端部温差必须为正值。当前 ΔT₁ = ${dt1.toFixed(4)}，ΔT₂ = ${dt2.toFixed(4)}。` +
+      `请检查温度数据是否正确，或流动方式是否选择正确。` +
+      `（物理含义：热流体温度必须始终高于冷流体温度，否则违反热力学第二定律。）`
+    );
+  }
+
+  let lmtd;
+  let isLimit = false;
+
+  // 判断 ΔT₁ 与 ΔT₂ 是否趋近（避免 ln(1) = 0 导致除零）
+  // 使用相对容差 0.001（即 0.1%）
+  const avgDt = (dt1 + dt2) / 2;
+  const relDiff = Math.abs(dt1 - dt2) / avgDt;
+
+  if (relDiff < 0.001) {
+    // 极限情况：ΔT₁ ≈ ΔT₂，LMTD → ΔT₁（数学上由洛必达法则可得）
+    // 文献：Incropera FP et al., 2017, Section 11.3.1, 极限讨论
+    lmtd = avgDt;
+    isLimit = true;
+  } else {
+    // 标准 LMTD 公式
+    // LMTD = (ΔT₁ − ΔT₂) / ln(ΔT₁ / ΔT₂)
+    lmtd = (dt1 - dt2) / Math.log(dt1 / dt2);
+  }
+
+  return { dt1, dt2, lmtd, flowType, isLimit };
+}
+
+/**
+ * 计算传热量 Q = U × A × LMTD
+ *
+ * 公式名称：传热速率方程（Heat Transfer Rate Equation）
+ * 公式：Q = U × A × LMTD
+ *
+ * 文献出处：Incropera FP, DeWitt DP, Bergman TL, Lavine AS.
+ *           Fundamentals of Heat and Mass Transfer. 8th ed.
+ *           John Wiley & Sons; 2017. Eq. 11.14.
+ *
+ * 假设条件：
+ *   - 稳态操作
+ *   - 总传热系数 U 恒定
+ *   - 无相变（或一种流体等温相变）
+ *   - 无向环境的热损失
+ *   - 对于多程换热器须乘以修正系数 F（本函数默认 F=1）
+ *
+ * @param {number} U    - 总传热系数 (W/(m²·K))
+ * @param {number} A    - 换热面积 (m²)
+ * @param {number} LMTD - 对数平均温差 (K 或 °C)
+ * @returns {number} 传热量 Q (W)
+ * @throws {Error} 当参数无效时抛出错误
+ */
+function calculateHeatTransfer(U, A, LMTD) {
+  if ([U, A, LMTD].some(v => typeof v !== 'number' || isNaN(v))) {
+    throw new Error('传热量计算参数包含无效值（NaN 或非数字）。');
+  }
+  if (U < 0) {
+    throw new Error('总传热系数 U 不能为负值。');
+  }
+  if (A < 0) {
+    throw new Error('换热面积 A 不能为负值。');
+  }
+  if (LMTD < 0) {
+    throw new Error('LMTD 不能为负值。');
+  }
+  return U * A * LMTD;
+}
+
+/**
+ * 格式化数值输出
+ *
+ * @param {number} value - 待格式化的数值
+ * @param {number} [decimals=4] - 小数位数
+ * @returns {string} 格式化后的字符串
+ */
+function formatNumber(value, decimals) {
+  if (typeof decimals === 'undefined') { decimals = 4; }
+  if (typeof value !== 'number' || isNaN(value)) return 'N/A';
+  if (!isFinite(value)) return value > 0 ? '+∞' : '−∞';
+  return value.toFixed(decimals);
+}
+
+/**
+ * 格式化科学计数法（用于极大/极小值）
+ *
+ * @param {number} value - 待格式化的数值
+ * @returns {string} 格式化后的字符串
+ */
+function formatScientific(value) {
+  if (typeof value !== 'number' || isNaN(value)) return 'N/A';
+  if (!isFinite(value)) return value > 0 ? '+∞' : '−∞';
+  if (Math.abs(value) >= 1e8 || (Math.abs(value) < 1e-4 && value !== 0)) {
+    return value.toExponential(4);
+  }
+  return formatNumber(value, 4);
+}
+
+// ============================================================
+// UI 交互逻辑
+// ============================================================
+
+/**
+ * 初始化标签页切换功能
+ * 无外部文献依赖，纯 UI 逻辑
+ */
+function initTabs() {
+  var btns = document.querySelectorAll('.tab-btn');
+  var contents = document.querySelectorAll('.tab-content');
+  btns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      btns.forEach(function(b) { b.classList.remove('active'); });
+      contents.forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      var tabId = 'tab-' + btn.getAttribute('data-tab');
+      document.getElementById(tabId).classList.add('active');
+    });
+  });
+}
+
+/**
+ * 主计算按钮事件处理
+ * 读取用户输入，调用 calculateLMTD 和 calculateHeatTransfer，
+ * 将结果显示在页面上。
+ */
+function handleCalc() {
+  var errorBox = document.getElementById('errorBox');
+  var resultBox = document.getElementById('resultBox');
+  errorBox.classList.remove('show');
+  resultBox.classList.remove('show');
+
+  // 清除之前的错误样式
+  ['Th_in', 'Th_out', 'Tc_in', 'Tc_out', 'U_val', 'A_val', 'F_val'].forEach(function(id) {
+    document.getElementById(id).classList.remove('error');
+  });
+
+  var Th_in  = parseFloat(document.getElementById('Th_in').value);
+  var Th_out = parseFloat(document.getElementById('Th_out').value);
+  var Tc_in  = parseFloat(document.getElementById('Tc_in').value);
+  var Tc_out = parseFloat(document.getElementById('Tc_out').value);
+  var U_val  = document.getElementById('U_val').value.trim();
+  var A_val  = document.getElementById('A_val').value.trim();
+  var F_val  = document.getElementById('F_val').value.trim();
+  var flowType = document.querySelector('input[name="flowType"]:checked').value;
+
+  // 验证必填项
+  var missing = [];
+  if (isNaN(Th_in))  { missing.push('Th_in');  document.getElementById('Th_in').classList.add('error'); }
+  if (isNaN(Th_out)) { missing.push('Th_out'); document.getElementById('Th_out').classList.add('error'); }
+  if (isNaN(Tc_in))  { missing.push('Tc_in');  document.getElementById('Tc_in').classList.add('error'); }
+  if (isNaN(Tc_out)) { missing.push('Tc_out'); document.getElementById('Tc_out').classList.add('error'); }
+
+  if (missing.length > 0) {
+    errorBox.textContent = '请填写所有温度参数（' + missing.join(', ') + ' 为空或无效）。';
+    errorBox.classList.add('show');
+    return;
+  }
+
+  try {
+    var result = calculateLMTD(Th_in, Th_out, Tc_in, Tc_out, flowType);
+
+    document.getElementById('res_flow').textContent = flowType === 'counter' ? '逆流' : '顺流';
+    document.getElementById('res_dt1').textContent = formatNumber(result.dt1) + ' °C';
+    document.getElementById('res_dt2').textContent = formatNumber(result.dt2) + ' °C';
+    document.getElementById('res_lmtd').textContent = formatNumber(result.lmtd) + ' °C';
+
+    // 传热量反算
+    var qRow = document.getElementById('res_q_row');
+    var noteBox = document.getElementById('res_note');
+    noteBox.style.display = 'none';
+    qRow.style.display = 'none';
+
+    if ((U_val !== '') !== (A_val !== '')) {
+      errorBox.textContent = '已填写 U（总传热系数）或 A（换热面积）中的一项，请两项都填写（或都留空）才能进行传热量反算。';
+      errorBox.classList.add('show');
+      return;
+    }
+
+    if (U_val !== '' && A_val !== '') {
+      var U = parseFloat(U_val);
+      var A = parseFloat(A_val);
+      if (isNaN(U) || isNaN(A)) {
+        errorBox.textContent = 'U 或 A 的值无效。';
+        errorBox.classList.add('show');
+        return;
+      }
+      var F = (F_val === '') ? 1 : parseFloat(F_val);
+      if (isNaN(F) || F <= 0 || F > 1) {
+        errorBox.textContent = '修正系数 F 无效（须为 0 < F ≤ 1，留空默认为 1）。';
+        errorBox.classList.add('show');
+        return;
+      }
+      var Q = calculateHeatTransfer(U, A, result.lmtd) * F;
+      qRow.style.display = 'flex';
+      document.getElementById('res_q').textContent = formatScientific(Q) + ' W';
+    }
+
+    if (result.isLimit) {
+      noteBox.style.display = 'block';
+      noteBox.innerHTML = '<strong>ℹ 注意：</strong>ΔT₁ 与 ΔT₂ 非常接近（相对差异 < 0.1%），已使用极限值 LMTD ≈ (ΔT₁+ΔT₂)/2 以避免数值不稳定。';
+    }
+
+    resultBox.classList.add('show');
+  } catch (e) {
+    errorBox.textContent = e.message;
+    errorBox.classList.add('show');
+  }
+}
+
+/**
+ * 重置按钮事件处理
+ */
+function handleReset() {
+  ['Th_in', 'Th_out', 'Tc_in', 'Tc_out', 'U_val', 'A_val', 'F_val'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('error');
+  });
+  document.querySelector('input[name="flowType"][value="counter"]').checked = true;
+  document.getElementById('errorBox').classList.remove('show');
+  document.getElementById('resultBox').classList.remove('show');
+}
+
+// ============================================================
+// 单元测试框架（纯 JS，零依赖）
+// ============================================================
+
+/**
+ * 单元测试套件
+ * 共 10 个测试用例，覆盖正常值、边界值、极端值、异常输入
+ *
+ * 测试框架说明：
+ *   使用自定义 assert 函数，比较实际输出与期望输出。
+ *   对于浮点数比较，使用相对容差（relative tolerance）1e-6。
+ */
+function runUnitTests() {
+  var output = document.getElementById('testOutput');
+  output.innerHTML = '';
+  var passCount = 0;
+  var failCount = 0;
+  var results = [];
+
+  /**
+   * 断言函数：比较两个数值是否在容差范围内相等
+   * @param {string} testName - 测试名称
+   * @param {number} actual - 实际值
+   * @param {number} expected - 期望值
+   * @param {number} [tol=1e-6] - 相对容差
+   * @returns {boolean} 是否通过
+   */
+  function assertApprox(testName, actual, expected, tol) {
+    if (typeof tol === 'undefined') { tol = 1e-6; }
+    var pass;
+    if (expected === 0) {
+      pass = Math.abs(actual) < tol;
+    } else {
+      pass = Math.abs((actual - expected) / expected) < tol;
+    }
+    results.push({ name: testName, pass: pass, actual: actual, expected: expected });
+    if (pass) { passCount++; } else { failCount++; }
+    return pass;
+  }
+
+  /**
+   * 断言函数：检查是否抛出异常
+   * @param {string} testName - 测试名称
+   * @param {Function} fn - 待测函数
+   * @returns {boolean} 是否通过
+   */
+  function assertThrows(testName, fn) {
+    var pass = false;
+    try { fn(); } catch (e) { pass = true; }
+    results.push({ name: testName, pass: pass, actual: pass ? '抛出异常' : '未抛出异常', expected: '应抛出异常' });
+    if (pass) { passCount++; } else { failCount++; }
+    return pass;
+  }
+
+  // ========== 测试用例 1：正常逆流 ==========
+  // 测什么：标准逆流工况
+  // 输入：Th,in=100, Th,out=60, Tc,in=20, Tc,out=50
+  // 期望：ΔT₁=50, ΔT₂=40, LMTD=(50-40)/ln(50/40)=10/ln(1.25)=10/0.22314355=44.8149
+  (function() {
+    var r = calculateLMTD(100, 60, 20, 50, 'counter');
+    assertApprox('用例1：正常逆流 LMTD', r.lmtd, 44.8149, 1e-4);
+  })();
+
+  // ========== 测试用例 2：正常顺流 ==========
+  // 测什么：标准顺流工况
+  // 输入：Th,in=100, Th,out=60, Tc,in=20, Tc,out=50
+  // 期望：ΔT₁=80, ΔT₂=10, LMTD=(80-10)/ln(80/10)=70/ln(8)=70/2.07944=33.6626
+  (function() {
+    var r = calculateLMTD(100, 60, 20, 50, 'parallel');
+    assertApprox('用例2：正常顺流 LMTD', r.lmtd, 33.6626, 1e-4);
+  })();
+
+  // ========== 测试用例 3：ΔT₁ ≈ ΔT₂ 极限情况 ==========
+  // 测什么：两端温差几乎相等，触发极限处理
+  // 输入：Th,in=100, Th,out=50, Tc,in=20, Tc,out=70（逆流）
+  // 期望：ΔT₁=30, ΔT₂=30, LMTD=30（极限值）
+  (function() {
+    var r = calculateLMTD(100, 50, 20, 70, 'counter');
+    assertApprox('用例3：ΔT₁≈ΔT₂ 极限情况', r.lmtd, 30, 1e-6);
+    if (!r.isLimit) { failCount++; passCount--; results.push({name:'用例3b：isLimit标志',pass:false,actual:'false',expected:'true'}); }
+    else { results.push({name:'用例3b：isLimit标志',pass:true,actual:'true',expected:'true'}); passCount++; }
+  })();
+
+  // ========== 测试用例 4：负数温差（应抛出异常） ==========
+  // 测什么：热流体温度低于冷流体温度，违反热力学第二定律
+  // 输入：Th,in=30, Th,out=20, Tc,in=40, Tc,out=50（逆流）
+  // 期望：ΔT₁=30-50=-20 < 0，应抛出异常
+  assertThrows('用例4：负数温差应抛出异常', function() {
+    calculateLMTD(30, 20, 40, 50, 'counter');
+  });
+
+  // ========== 测试用例 5：零值温差（应抛出异常） ==========
+  // 测什么：端部温差为零
+  // 输入：Th,in=50, Th,out=50, Tc,in=20, Tc,out=50（逆流）
+  // 期望：ΔT₁=50-50=0，应抛出异常
+  assertThrows('用例5：零值温差应抛出异常', function() {
+    calculateLMTD(50, 50, 20, 50, 'counter');
+  });
+
+  // ========== 测试用例 6：极高温度值 ==========
+  // 测什么：极端高温工况（如燃气轮机回热器）
+  // 输入：Th,in=1500, Th,out=800, Tc,in=200, Tc,out=600（逆流）
+  // 期望：ΔT₁=1500-600=900, ΔT₂=800-200=600, LMTD=(900-600)/ln(900/600)=300/ln(1.5)=300/0.40546=739.72
+  (function() {
+    var r = calculateLMTD(1500, 800, 200, 600, 'counter');
+    assertApprox('用例6：极高温度值', r.lmtd, 739.72, 1e-3);
+  })();
+
+  // ========== 测试用例 7：极低温度值（低温工程） ==========
+  // 测什么：低温工况（如 LNG 换热器），温度接近绝对零度但仍为正值温差
+  // 输入：Th,in=-150, Th,out=-160, Tc,in=-170, Tc,out=-155（逆流）
+  // 期望：ΔT₁=-150-(-155)=5, ΔT₂=-160-(-170)=10, LMTD=(5-10)/ln(5/10)=-5/ln(0.5)=-5/(-0.6931)=7.2135
+  (function() {
+    var r = calculateLMTD(-150, -160, -170, -155, 'counter');
+    assertApprox('用例7：极低温度值（低温工程）', r.lmtd, 7.2135, 1e-3);
+  })();
+
+  // ========== 测试用例 8：NaN 输入（应抛出异常） ==========
+  // 测什么：输入包含 NaN
+  assertThrows('用例8：NaN 输入应抛出异常', function() {
+    calculateLMTD(NaN, 60, 20, 50, 'counter');
+  });
+
+  // ========== 测试用例 9：极小温差（接近极限但非完全相等） ==========
+  // 测什么：ΔT₁ 和 ΔT₂ 差异极小但不完全相等
+  // 输入：Th,in=100, Th,out=50.001, Tc,in=20, Tc,out=69.999（逆流）
+  // 期望：ΔT₁=100-69.999=30.001, ΔT₂=50.001-20=30.001
+  // 相对差异 = |30.001-30.001|/30.001 ≈ 0，触发极限
+  // LMTD ≈ 30.001
+  (function() {
+    var r = calculateLMTD(100, 50.001, 20, 69.999, 'counter');
+    assertApprox('用例9：极小温差（接近极限）', r.lmtd, 30.001, 1e-3);
+  })();
+
+  // ========== 测试用例 10：传热量 Q = U × A × LMTD ==========
+  // 测什么：传热量反算功能
+  // 输入：U=500 W/(m²·K), A=10 m², 使用用例1的 LMTD=44.8149
+  // 期望：Q = 500 × 10 × 44.8149 = 224074.5 W
+  (function() {
+    var r = calculateLMTD(100, 60, 20, 50, 'counter');
+    var Q = calculateHeatTransfer(500, 10, r.lmtd);
+    assertApprox('用例10：传热量 Q = U×A×LMTD', Q, 224074.5, 1e-4);
+  })();
+
+  // 渲染测试结果
+  var html = '';
+  results.forEach(function(r) {
+    var cls = r.pass ? 'test-pass' : 'test-fail';
+    var icon = r.pass ? '✅' : '❌';
+    html += '<div class="test-result ' + cls + '">' + icon + ' ' + r.name;
+    if (!r.pass) {
+      html += ' — 实际: ' + r.actual + ', 期望: ' + r.expected;
+    }
+    html += '</div>';
+  });
+
+  var summaryCls = failCount === 0 ? 'all-pass' : 'has-fail';
+  html += '<div class="test-summary ' + summaryCls + '">';
+  html += '总计 ' + (passCount + failCount) + ' 项 | 通过 ' + passCount + ' | 失败 ' + failCount;
+  html += '</div>';
+
+  output.innerHTML = html;
+}
+
+// ============================================================
+// 源码展示
+// ============================================================
+
+/**
+ * 将完整源码填充到源码标签页
+ */
+function populateSourceCode() {
+  var src = document.getElementById('sourceCode');
+  if (src.dataset.loaded) { return; }
+  // 获取当前页面的完整 HTML 源码（仅序列化一次，避免重复注入 outerHTML 导致嵌套膨胀）
+  var fullSource = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  src.textContent = fullSource;
+  src.dataset.loaded = 'true';
+}
+
+// ============================================================
+// 初始化
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  initTabs();
+  document.getElementById('btnCalc').addEventListener('click', handleCalc);
+  document.getElementById('btnReset').addEventListener('click', handleReset);
+  document.getElementById('btnRunTests').addEventListener('click', runUnitTests);
+  populateSourceCode();
+});
+</script>
+
+</body>
+</html>

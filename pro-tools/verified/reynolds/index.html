@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雷诺数与流态判别 — 专业计算工具</title>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --accent: #e74c3c;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #2c3e50;
+  --border: #dce1e8;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --info: #3498db;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 15px;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  padding: 30px 20px;
+  text-align: center;
+  border-radius: 0 0 12px 12px;
+  margin-bottom: 24px;
+}
+header h1 { font-size: 1.8em; margin-bottom: 6px; }
+header p { opacity: 0.9; font-size: 0.95em; }
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 12px 24px;
+  border: none;
+  background: #dce1e8;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+}
+.tab-btn:hover:not(.active) { background: #c8ced6; }
+.tab-content {
+  display: none;
+  background: var(--card);
+  border-radius: 0 12px 12px 12px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+.tab-content.active { display: block; }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.form-group { display: flex; flex-direction: column; }
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: #555;
+}
+.form-group input, .form-group select {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--primary-light);
+}
+.btn-calc {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 14px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 10px;
+}
+.btn-calc:hover { background: var(--primary-light); }
+.result-panel {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 5px solid var(--info);
+  background: #f0f7ff;
+  display: none;
+}
+.result-panel.show { display: block; }
+.result-panel h3 { color: var(--primary); margin-bottom: 12px; }
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e8edf2;
+}
+.result-item:last-child { border-bottom: none; }
+.result-label { font-weight: 600; color: #555; }
+.result-value { font-weight: 700; color: var(--primary); }
+.regime-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.regime-laminar { background: #d5f5e3; color: #1e8449; }
+.regime-transitional { background: #fdebd0; color: #b7950b; }
+.regime-turbulent { background: #fadbd8; color: #c0392b; }
+.advice-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fef9e7;
+  border-radius: 8px;
+  border-left: 4px solid var(--warning);
+}
+.advice-box h4 { color: #b7950b; margin-bottom: 8px; }
+.warning-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fdedec;
+  border-radius: 8px;
+  border-left: 4px solid var(--danger);
+}
+.warning-box h4 { color: var(--danger); margin-bottom: 8px; }
+.error-msg {
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 10px;
+  display: none;
+}
+.error-msg.show { display: block; }
+.test-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+.test-table th, .test-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.test-table th { background: var(--primary); color: #fff; }
+.test-table tr:nth-child(even) { background: #f8f9fa; }
+.test-pass { color: var(--success); font-weight: 700; }
+.test-fail { color: var(--danger); font-weight: 700; }
+.doc-section { margin-bottom: 28px; }
+.doc-section h2 { color: var(--primary); border-bottom: 2px solid var(--primary-light); padding-bottom: 6px; margin-bottom: 14px; }
+.doc-section h3 { color: var(--primary-light); margin: 16px 0 8px; }
+.doc-section p, .doc-section li { margin-bottom: 8px; }
+.doc-section ul, .doc-section ol { padding-left: 24px; }
+.safety-banner {
+  background: linear-gradient(135deg, #fdedec, #fef9e7);
+  border: 2px solid var(--danger);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.safety-banner h3 { color: var(--danger); margin-bottom: 10px; }
+.safety-banner p { font-size: 14px; }
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: #999;
+  z-index: 999;
+}
+.formula-block {
+  background: #f8f9fa;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 12px 0;
+  font-family: "Cambria Math", "Times New Roman", serif;
+  font-size: 16px;
+  text-align: center;
+}
+.note-inline {
+  background: #eaf2f8;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--primary);
+}
+#test-output { margin-top: 16px; }
+.full-width { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .tabs { gap: 2px; }
+  .tab-btn { padding: 10px 14px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>雷诺数与流态判别计算工具</h1>
+  <p>Reynolds Number & Flow Regime Determination — Professional Calculator</p>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calc')">计算器</button>
+    <button class="tab-btn" onclick="switchTab('test')">单元测试</button>
+    <button class="tab-btn" onclick="switchTab('doc')">专业说明</button>
+    <button class="tab-btn" onclick="switchTab('safety')">安全声明</button>
+  </div>
+
+  <!-- Tab 1: Calculator -->
+  <div id="tab-calc" class="tab-content active">
+    <h2 style="color:var(--primary);margin-bottom:18px;">参数输入</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>几何类型</label>
+        <select id="geometry" onchange="updateGeometryHint()">
+          <option value="circular">圆管（特征长度 = 内径 D）</option>
+          <option value="flat_plate">平板（特征长度 = 板长 L）</option>
+          <option value="non_circular">非圆管（输入截面积与湿周长，自动计算当量直径）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>粘度输入方式</label>
+        <select id="visc_mode">
+          <option value="dynamic">动力粘度 μ (Pa·s)</option>
+          <option value="kinematic">运动粘度 ν (m²/s)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>流体密度 ρ (kg/m³)</label>
+        <input type="number" id="density" step="any" placeholder="如 998（20°C 水）">
+      </div>
+      <div class="form-group">
+        <label>流速 v (m/s)</label>
+        <input type="number" id="velocity" step="any" placeholder="如 1.5">
+      </div>
+      <div class="form-group" id="grp-length">
+        <label id="lbl-length">特征长度 / 圆管内径 D (m)</label>
+        <input type="number" id="char_length" step="any" placeholder="如 0.05">
+      </div>
+      <div class="form-group" id="grp-dynamic">
+        <label>动力粘度 μ (Pa·s)</label>
+        <input type="number" id="mu" step="any" placeholder="如 1.002e-3">
+      </div>
+      <div class="form-group" id="grp-kinematic" style="display:none;">
+        <label>运动粘度 ν (m²/s)</label>
+        <input type="number" id="nu" step="any" placeholder="如 1.004e-6">
+      </div>
+      <div class="form-group" id="grp-area" style="display:none;">
+        <label>流通截面积 A (m²)</label>
+        <input type="number" id="area" step="any" placeholder="如 0.005">
+      </div>
+      <div class="form-group" id="grp-perimeter" style="display:none;">
+        <label>湿周长 P (m)</label>
+        <input type="number" id="perimeter" step="any" placeholder="如 0.3">
+      </div>
+      <div class="form-group" id="grp-roughness">
+        <label>管壁绝对粗糙度 ε (m)（仅湍流摩擦系数用，可选）</label>
+        <input type="number" id="roughness" step="any" placeholder="如 1.5e-5（商用钢管）">
+      </div>
+    </div>
+    <button class="btn-calc" onclick="calculate()">计 算</button>
+    <div class="error-msg" id="error-msg"></div>
+    <div class="result-panel" id="result-panel">
+      <h3>计算结果</h3>
+      <div id="result-body"></div>
+      <div class="advice-box" id="advice-box"></div>
+      <div class="warning-box" id="warning-box"></div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Unit Tests -->
+  <div id="tab-test" class="tab-content">
+    <h2 style="color:var(--primary);margin-bottom:18px;">单元测试（10 项）</h2>
+    <p style="margin-bottom:12px;">点击下方按钮运行全部测试用例，覆盖正常值、边界值、极端值与异常输入。</p>
+    <button class="btn-calc" onclick="runAllTests()">运行全部测试</button>
+    <div id="test-output"></div>
+  </div>
+
+  <!-- Tab 3: Documentation -->
+  <div id="tab-doc" class="tab-content">
+    <div class="doc-section">
+      <h2>一、公式定义与文献出处</h2>
+      <h3>1.1 雷诺数定义</h3>
+      <div class="formula-block">Re = ρ · v · L / μ = v · L / ν</div>
+      <p>其中 ρ 为流体密度 (kg/m³)，v 为特征流速 (m/s)，L 为特征长度 (m)，μ 为动力粘度 (Pa·s)，ν = μ/ρ 为运动粘度 (m²/s)。</p>
+      <p><strong>文献出处：</strong>Reynolds O. "An experimental investigation of the circumstances which determine whether the motion of water shall be direct or sinuous, and of the laws of resistance in parallel channels." <em>Philosophical Transactions of the Royal Society of London</em>. 1883;174:935-968.</p>
+
+      <h3>1.2 流态判别（圆管）</h3>
+      <div class="formula-block">
+        Re &lt; 2300 → 层流 (Laminar)<br>
+        2300 ≤ Re ≤ 4000 → 过渡流 (Transitional)<br>
+        Re &gt; 4000 → 湍流 (Turbulent)
+      </div>
+      <p><strong>重要说明：</strong>2300 和 4000 是圆管在低扰动实验室条件下的经验分界值。实际工程中，入口扰动、管壁粗糙度、振动等因素可使转捩在更低或更高 Re 下发生。不同几何构型（平板边界层、外部绕流等）的临界 Re 完全不同。</p>
+
+      <h3>1.3 当量直径（非圆管）</h3>
+      <div class="formula-block">D_h = 4A / P</div>
+      <p>其中 A 为流通截面积，P 为湿周长（wetted perimeter）。当量直径法是对非圆截面管道的一种工程近似，对高宽比过大的狭缝截面精度下降。</p>
+
+      <h3>1.4 摩擦系数估算</h3>
+      <p><strong>层流（圆管）：</strong></p>
+      <div class="formula-block">f = 64 / Re（Darcy 摩擦系数）</div>
+      <p>此为 Hagen-Poiseuille 流动的精确解析解。</p>
+      <p><strong>湍流（光滑管 / 粗糙管）：</strong>采用 Haaland 显式公式（Colebrook-White 方程的显式近似）：</p>
+      <div class="formula-block">1/√f = −1.8 · log₁₀[(ε/D / 3.7)^1.11 + 6.9/Re]</div>
+      <p><strong>文献：</strong></p>
+      <ul>
+        <li>Hagen G. "Ueber die Bewegung des Wassers in engen zylindrischen Röhren." <em>Annalen der Physik</em>. 1839;24(3):423-442.（层流摩擦系数）</li>
+        <li>Blasius H. "Das Ähnlichkeitsgesetz bei Reibungsvorgängen in Flüssigkeiten." <em>Forschungsarbeiten auf dem Gebiete des Ingenieurwesens</em>. 1913;(131).（湍流光滑管 Blasius 公式，适用 Re &lt; 10⁵）</li>
+        <li>Colebrook CF, White CI. "Experiments with fluid friction in roughened pipes." <em>Proceedings of the Royal Society of London A</em>. 1937;161(906):367-381.</li>
+        <li>Haaland SE. "Simple and Explicit Formulas for the Friction Factor in Turbulent Flow." <em>Journal of Fluids Engineering</em>. 1983;105(1):89-90.</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>二、适用场景与不适用场景</h2>
+      <h3>2.1 适用场景</h3>
+      <ul>
+        <li>不可压缩牛顿流体在直管或通道中的内部流动</li>
+        <li>等温或近似等温条件（粘度变化不大）</li>
+        <li>充分发展段或入口段初步估算</li>
+        <li>常规工业管道（水、空气、油类等）</li>
+        <li>医学工程中血液在较大血管中的流动初步评估（需知血液为非牛顿流体，此处仅为近似）</li>
+      </ul>
+      <h3>2.2 不适用场景</h3>
+      <ul>
+        <li>可压缩流动（Ma &gt; 0.3 时需考虑压缩性修正）</li>
+        <li>非牛顿流体（血液在小血管中、泥浆、聚合物溶液等）——此时表观粘度随剪切率变化，Re 的定义需修正</li>
+        <li>多相流（气液两相、固液悬浮等）</li>
+        <li>强旋转流、强浮力驱动流（需额外无量纲数如 Rossby 数、Grashof 数）</li>
+        <li>微纳尺度流动（Knudsen 数 &gt; 0.01 时需滑移边界修正）</li>
+        <li>脉动流（如心血管中的脉动血流，需引入 Womersley 数）</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>三、计算步骤逐步解释</h2>
+      <ol>
+        <li><strong>确定几何类型与特征长度：</strong>圆管取内径 D；平板取沿流向板长 L；非圆管先由 D_h = 4A/P 计算当量直径。</li>
+        <li><strong>确定流体物性：</strong>输入密度 ρ 和粘度（动力粘度 μ 或运动粘度 ν，二者关系 ν = μ/ρ）。物性应取工作温度下的值。</li>
+        <li><strong>计算雷诺数：</strong>Re = ρvL/μ 或 Re = vL/ν。注意单位一致性（SI 制）。</li>
+        <li><strong>判别流态：</strong>对照圆管经验阈值 2300/4000 进行判别。若为非圆管或平板，阈值可能不同。</li>
+        <li><strong>估算摩擦系数：</strong>层流用 f = 64/Re；湍流用 Haaland 公式（需输入粗糙度 ε，若未输入则按光滑管 ε→0 处理）。</li>
+        <li><strong>输出工程建议：</strong>根据流态给出换热、阻力、混合方面的定性指导。</li>
+      </ol>
+    </div>
+
+    <div class="doc-section">
+      <h2>四、临床/工程意义</h2>
+      <h3>4.1 工程意义</h3>
+      <ul>
+        <li><strong>阻力与泵功：</strong>湍流摩擦系数远大于层流，同等流量下管路压降显著增加，泵送功率上升。设计时需据此选择泵型和管径。</li>
+        <li><strong>换热：</strong>湍流增强径向混合，对流换热系数远高于层流。换热器设计中通常追求湍流以强化传热。</li>
+        <li><strong>混合：</strong>湍流的涡旋扩散使混合效率大幅提升。化工反应器、水处理加药混合等依赖湍流。</li>
+        <li><strong>噪声与振动：</strong>湍流产生宽频压力脉动，是管路噪声和振动的主要来源。</li>
+        <li><strong>沉积与腐蚀：</strong>层流底部易沉积颗粒物；湍流壁面剪切力大，可减缓沉积但可能加速冲蚀。</li>
+      </ul>
+      <h3>4.2 临床/生物医学工程意义</h3>
+      <ul>
+        <li><strong>血管中的血流：</strong>正常主动脉中 Re 约 3000-6000（峰值收缩期），通常为湍流或过渡流。狭窄处 Re 更高，湍流可产生杂音（bruit）。</li>
+        <li><strong>体外循环与透析管路：</strong>管路设计需考虑流态对溶质清除和血栓形成的影响。</li>
+        <li><strong>呼吸气流：</strong>大气道中 Re 可达数千（湍流），小气道中 Re &lt; 1（层流），影响气道阻力分布和药物气溶胶沉积模式。</li>
+        <li><strong>注意：</strong>血液是非牛顿流体（剪切稀薄），在小血管（&lt; 300 μm）中不能简单用本工具计算。本工具仅适用于较大血管或体外管路的初步估算。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>五、已知局限与误差来源</h2>
+      <ul>
+        <li><strong>临界 Re 的不确定性：</strong>2300/4000 是特定实验条件下的经验值。实际管道入口条件、上游扰动、管壁粗糙度可使转捩 Re 在 1000-10000 范围内变动。</li>
+        <li><strong>当量直径近似：</strong>非圆管用 D_h 代替 L 是近似方法，对高宽比 &gt; 10 的狭缝或极不规则截面，误差可达 20% 以上。</li>
+        <li><strong>摩擦系数公式适用范围：</strong>Haaland 公式在 Colebrook-White 适用范围内（Re &gt; 4000，ε/D &lt; 0.05）精度约 ±2%。层流 f = 64/Re 仅适用于充分发展的圆管流动。</li>
+        <li><strong>物性参数误差：</strong>粘度对温度敏感（水在 20°C 与 80°C 的 μ 相差约 7 倍），若物性取值不准，Re 误差直接正比于物性误差。</li>
+        <li><strong>入口效应：</strong>本工具计算的是基于截面平均流速的 Re，未考虑入口段流动发展。入口段长度约 L_e ≈ 0.05·Re·D（层流）或 L_e ≈ 4.4·D^(1/6)·Re^(1/6)（湍流，近似）。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>六、精度与误差说明</h2>
+      <h3>① 算准了什么</h3>
+      <ul>
+        <li>给定输入参数后，Re 的数值计算在浮点精度范围内是准确的（双精度 ~15 位有效数字）。</li>
+        <li>层流摩擦系数 f = 64/Re 是解析精确解（圆管、充分发展、不可压缩牛顿流体）。</li>
+        <li>Haaland 公式对 Colebrook-White 隐式方程的近似偏差在 ±1-2% 以内（在 Colebrook-White 适用范围内）。</li>
+      </ul>
+      <h3>② 哪些因素没算进去</h3>
+      <ul>
+        <li>温度变化导致的物性变化（本工具假设等温）</li>
+        <li>管道弯曲、阀门、管件等局部阻力</li>
+        <li>入口段效应</li>
+        <li>非牛顿流体行为</li>
+        <li>可压缩性效应</li>
+        <li>脉动流效应</li>
+        <li>管壁粗糙度的空间不均匀性</li>
+      </ul>
+      <h3>③ 误差大概多大</h3>
+      <ul>
+        <li>Re 计算本身：取决于输入参数的精度，通常工程测量中 ρ 误差 &lt; 1%，v 误差 2-5%，μ 误差 3-10%（取决于温度控制），综合 Re 误差约 5-15%。</li>
+        <li>流态判别：在 Re 远离临界值时判别可靠；在 Re ≈ 2000-4500 范围内，流态判别本身具有不确定性，不应视为确定性结论。</li>
+        <li>摩擦系数：层流精确；湍流 Haaland 公式误差 ±2%（相对 Colebrook-White）；但 Colebrook-White 本身对粗糙度的经验拟合有 ±5-10% 的不确定性。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tab 4: Safety -->
+  <div id="tab-safety" class="tab-content">
+    <div class="safety-banner">
+      <h3>⚠️ 安全声明与使用限制</h3>
+      <p><strong>1. 本工具仅供具备相关专业背景的工程技术人员和科研人员参考使用，不构成任何工程设计审批依据或诊疗建议。</strong></p>
+      <p><strong>2. 涉及人体血流、呼吸气流等临床应用场景时，本工具的计算结果仅为数量级估算，实际临床决策须由具备资质的医师结合患者具体情况做出。</strong></p>
+      <p><strong>3. 工程设计中，本工具的输出不可替代详细 CFD 模拟、实验验证或注册工程师的审核签字。</strong></p>
+    </div>
+
+    <div class="doc-section">
+      <h2>适用范围与假设条件</h2>
+      <h3>本工具基于以下假设：</h3>
+      <ul>
+        <li>流体为不可压缩牛顿流体</li>
+        <li>流动为稳态（或准稳态）</li>
+        <li>等温条件（物性参数不随温度变化）</li>
+        <li>单相流（无相变、无多相）</li>
+        <li>管道为等截面直管（或局部近似）</li>
+        <li>特征流速取截面平均流速</li>
+        <li>所有输入参数使用 SI 国际单位制</li>
+      </ul>
+
+      <h3>超出上述假设时，用户须自行评估结果的适用性：</h3>
+      <ul>
+        <li>可压缩流动（气体高速流动，Ma &gt; 0.3）</li>
+        <li>非牛顿流体（血液在小血管、聚合物溶液、泥浆等）</li>
+        <li>多相流（气液、固液、气固）</li>
+        <li>强非等温条件（粘度随温度显著变化）</li>
+        <li>微纳尺度流动（需考虑滑移边界）</li>
+        <li>脉动流（需引入 Womersley 数等额外参数）</li>
+      </ul>
+
+      <h3>数据隐私声明</h3>
+      <p>本工具为纯前端计算，所有数据在用户浏览器本地处理，不上传任何服务器，不收集任何用户信息。</p>
+
+      <h3>免责条款</h3>
+      <p>开发者不对因使用本工具输出而导致的任何直接、间接、附带或后果性损失承担责任。用户有义务验证计算结果的合理性，并在关键决策中咨询相关领域专家。</p>
+    </div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.0-专业版 20261021</div>
+
+<script>
+/**
+ * ============================================================
+ * 雷诺数与流态判别 — 核心计算模块
+ * ============================================================
+ */
+
+/**
+ * 计算雷诺数
+ * 公式：Re = ρ·v·L / μ  或  Re = v·L / ν
+ * 文献：Reynolds O. Philos Trans R Soc Lond. 1883;174:935-968.
+ *
+ * @param {number} rho - 流体密度 (kg/m³)
+ * @param {number} v - 特征流速 (m/s)
+ * @param {number} L - 特征长度 (m)
+ * @param {number|null} mu - 动力粘度 (Pa·s)，与 nu 二选一
+ * @param {number|null} nu - 运动粘度 (m²/s)，与 mu 二选一
+ * @returns {{Re: number, valid: boolean, error: string|null}} 雷诺数及有效性标志
+ */
+function calcReynolds(rho, v, L, mu, nu) {
+  if ([rho, v, L].some(x => typeof x !== 'number' || isNaN(x))) {
+    return { Re: NaN, valid: false, error: '输入参数包含非数值或 NaN' };
+  }
+  if (rho <= 0) {
+    return { Re: NaN, valid: false, error: '密度 ρ 必须 > 0' };
+  }
+  if (v < 0) {
+    return { Re: NaN, valid: false, error: '流速 v 不应为负值（请取绝对值或检查方向定义）' };
+  }
+  if (L <= 0) {
+    return { Re: NaN, valid: false, error: '特征长度 L 必须 > 0' };
+  }
+
+  let Re;
+  if (mu !== null && mu !== undefined && !isNaN(mu)) {
+    if (mu <= 0) {
+      return { Re: NaN, valid: false, error: '动力粘度 μ 必须 > 0' };
+    }
+    Re = (rho * v * L) / mu;
+  } else if (nu !== null && nu !== undefined && !isNaN(nu)) {
+    if (nu <= 0) {
+      return { Re: NaN, valid: false, error: '运动粘度 ν 必须 > 0' };
+    }
+    Re = (v * L) / nu;
+  } else {
+    return { Re: NaN, valid: false, error: '必须提供动力粘度 μ 或运动粘度 ν 之一' };
+  }
+
+  if (!isFinite(Re)) {
+    return { Re: NaN, valid: false, error: '计算结果溢出（Re 超出有限数值范围）' };
+  }
+
+  return { Re: Re, valid: true, error: null };
+}
+
+/**
+ * 判别流态（圆管经验阈值）
+ * 阈值：Re < 2300 层流；2300 ≤ Re ≤ 4000 过渡流；Re > 4000 湍流
+ * 文献：Reynolds O. Philos Trans R Soc Lond. 1883;174:935-968.
+ * 注意：此阈值仅适用于圆管低扰动条件，不同工况下可能偏移。
+ *
+ * @param {number} Re - 雷诺数
+ * @returns {{regime: string, regimeCN: string, code: string}}
+ */
+function classifyRegime(Re) {
+  if (Re < 2300) {
+    return { regime: 'Laminar', regimeCN: '层流', code: 'laminar' };
+  } else if (Re <= 4000) {
+    return { regime: 'Transitional', regimeCN: '过渡流', code: 'transitional' };
+  } else {
+    return { regime: 'Turbulent', regimeCN: '湍流', code: 'turbulent' };
+  }
+}
+
+/**
+ * 计算 Darcy 摩擦系数
+ * 层流（圆管）：f = 64/Re
+ *   文献：Hagen G. Ann Phys. 1839;24(3):423-442.（精确解析解）
+ * 湍流：Haaland 显式公式
+ *   1/√f = -1.8·log₁₀[(ε/D/3.7)^1.11 + 6.9/Re]
+ *   文献：Haaland SE. J Fluids Eng. 1983;105(1):89-90.
+ *   此为 Colebrook-White 方程的显式近似
+ *   文献：Colebrook CF, White CI. Proc R Soc Lond A. 1937;161(906):367-381.
+ *
+ * @param {number} Re - 雷诺数
+ * @param {string} regimeCode - 流态代码 ('laminar'|'transitional'|'turbulent')
+ * @param {number} [epsilon=0] - 管壁绝对粗糙度 (m)，默认光滑管
+ * @param {number} [D=1] - 管道直径 (m)，用于 ε/D 计算
+ * @returns {{f: number|null, method: string, valid: boolean}}
+ */
+function calcFrictionFactor(Re, regimeCode, epsilon, D) {
+  epsilon = (epsilon !== undefined && epsilon !== null && !isNaN(epsilon) && epsilon >= 0) ? epsilon : 0;
+  D = (D !== undefined && D !== null && !isNaN(D) && D > 0) ? D : 1;
+
+  if (regimeCode === 'laminar') {
+    if (Re <= 0) return { f: null, method: 'N/A (Re ≤ 0)', valid: false };
+    return { f: 64 / Re, method: 'f = 64/Re（Hagen-Poiseuille 解析解）', valid: true };
+  }
+
+  if (regimeCode === 'transitional') {
+    // 过渡区摩擦系数无可靠通用公式，给出层流和湍流估算范围
+    var f_lam = 64 / Re;
+    var relRough = epsilon / D;
+    var logArg = Math.pow(relRough / 3.7, 1.11) + 6.9 / Re;
+    if (logArg <= 0) return { f: null, method: '过渡区 — 无法可靠估算', valid: false };
+    var invSqrtF = -1.8 * Math.log10(logArg);
+    if (invSqrtF <= 0) return { f: null, method: '过渡区 — 计算异常', valid: false };
+    var f_turb = 1 / (invSqrtF * invSqrtF);
+    return {
+      f: null,
+      method: '过渡区无可靠通用公式；层流估算 f=' + f_lam.toExponential(3) + '，湍流估算 f=' + f_turb.toExponential(3) + '，实际值介于二者之间',
+      valid: false
+    };
+  }
+
+  if (regimeCode === 'turbulent') {
+    if (Re <= 0) return { f: null, method: 'N/A', valid: false };
+    var relRough = epsilon / D;
+    var logArg = Math.pow(relRough / 3.7, 1.11) + 6.9 / Re;
+    if (logArg <= 0) return { f: null, method: 'Haaland 公式参数异常', valid: false };
+    var invSqrtF = -1.8 * Math.log10(logArg);
+    if (invSqrtF <= 0) return { f: null, method: 'Haaland 公式计算异常（log 值为正）', valid: false };
+    var f = 1 / (invSqrtF * invSqrtF);
+    var methodStr = 'Haaland 显式公式（ε/D=' + relRough.toExponential(3) + '）';
+    return { f: f, method: methodStr, valid: true };
+  }
+
+  return { f: null, method: '未知流态', valid: false };
+}
+
+/**
+ * 计算当量直径（非圆管）
+ * 公式：D_h = 4A / P
+ * 文献：标准流体力学教材，如 White FM. Fluid Mechanics. 8th ed. McGraw-Hill; 2016.
+ *
+ * @param {number} A - 流通截面积 (m²)
+ * @param {number} P - 湿周长 (m)
+ * @returns {{Dh: number, valid: boolean, error: string|null}}
+ */
+function calcHydraulicDiameter(A, P) {
+  if (typeof A !== 'number' || isNaN(A) || A <= 0) {
+    return { Dh: NaN, valid: false, error: '截面积 A 必须 > 0' };
+  }
+  if (typeof P !== 'number' || isNaN(P) || P <= 0) {
+    return { Dh: NaN, valid: false, error: '湿周长 P 必须 > 0' };
+  }
+  return { Dh: 4 * A / P, valid: true, error: null };
+}
+
+/**
+ * 生成工程建议文本
+ * 基于流态给出换热、阻力、混合方面的定性指导
+ *
+ * @param {string} regimeCode - 流态代码
+ * @param {number} Re - 雷诺数
+ * @returns {string} 工程建议 HTML 字符串
+ */
+function generateAdvice(regimeCode, Re) {
+  var html = '';
+  if (regimeCode === 'laminar') {
+    html = '<h4>📘 层流工程建议</h4>';
+    html += '<ul>';
+    html += '<li><strong>换热：</strong>层流径向混合弱，对流换热系数低。Nu 数在充分发展段为常数（圆管恒壁温 Nu=3.66，恒热流 Nu=4.36）。如需强化换热，可考虑增加湍流促进器、使用翅片管或减小管径。</li>';
+    html += '<li><strong>阻力：</strong>摩擦压降与流速成正比（ΔP ∝ v），泵送功率较低。管路设计中层流有利于降低能耗。</li>';
+    html += '<li><strong>混合：</strong>层流中混合仅靠分子扩散，效率极低。如需快速混合，应设法使 Re 超过临界值进入湍流，或使用静态混合器。</li>';
+    html += '<li><strong>应用提示：</strong>高粘度流体（如重油、蜂蜜）在常规管径和流速下通常为层流。微流控器件中流动几乎总是层流。</li>';
+    html += '</ul>';
+  } else if (regimeCode === 'transitional') {
+    html = '<h4>📙 过渡流工程建议</h4>';
+    html += '<ul>';
+    html += '<li><strong>不确定性：</strong>过渡区流态不稳定，可能在层流与湍流之间随机切换。摩擦系数和换热系数的预测不确定性较大。</li>';
+    html += '<li><strong>设计建议：</strong>工程设计中通常避免在过渡区运行。若无法避免，应按湍流条件设计以留有余量（保守设计）。</li>';
+    html += '<li><strong>敏感性：</strong>此区域对入口条件、管壁粗糙度、外部振动等非常敏感。微小的扰动变化可能导致流态突变。</li>';
+    html += '</ul>';
+  } else if (regimeCode === 'turbulent') {
+    html = '<h4>📕 湍流工程建议</h4>';
+    html += '<ul>';
+    html += '<li><strong>换热：</strong>湍流径向混合强烈，对流换热系数远高于层流（可高出一个数量级）。换热器设计中通常追求湍流以强化传热。</li>';
+    html += '<li><strong>阻力：</strong>摩擦压降约与流速的 1.75-2.0 次方成正比（ΔP ∝ v^n, n≈1.75~2），泵送功率显著高于层流。</li>';
+    html += '<li><strong>混合：</strong>湍流涡旋扩散使混合效率极高，适用于化学反应器、水处理加药等需要快速均匀混合的场景。</li>';
+    html += '<li><strong>噪声与振动：</strong>湍流产生宽频压力脉动，是管路噪声和振动的主要来源。对噪声敏感的环境需考虑减振降噪措施。</li>';
+    html += '<li><strong>冲蚀：</strong>湍流壁面剪切力大，含颗粒流体可能加速管壁冲蚀。弯头、三通等管件处尤为严重。</li>';
+    html += '</ul>';
+  }
+  return html;
+}
+
+/**
+ * 格式化科学计数法显示
+ * @param {number} val - 数值
+ * @param {number} [digits=4] - 有效数字位数
+ * @returns {string}
+ */
+function formatSci(val, digits) {
+  digits = digits || 4;
+  if (val === 0) return '0';
+  if (Math.abs(val) >= 1e6 || Math.abs(val) < 1e-3) {
+    return val.toExponential(digits - 1);
+  }
+  return val.toPrecision(digits);
+}
+
+/**
+ * 主计算函数 — 由 UI 调用
+ * 读取表单输入，执行完整计算流程，输出结果到页面
+ */
+function calculate() {
+  var errEl = document.getElementById('error-msg');
+  var resPanel = document.getElementById('result-panel');
+  var resBody = document.getElementById('result-body');
+  var adviceBox = document.getElementById('advice-box');
+  var warningBox = document.getElementById('warning-box');
+
+  errEl.className = 'error-msg';
+  resPanel.className = 'result-panel';
+  adviceBox.innerHTML = '';
+  warningBox.innerHTML = '';
+
+  // 读取输入
+  var geometry = document.getElementById('geometry').value;
+  var viscMode = document.getElementById('visc_mode').value;
+  var rho = parseFloat(document.getElementById('density').value);
+  var v = parseFloat(document.getElementById('velocity').value);
+  var mu = parseFloat(document.getElementById('mu').value);
+  var nu = parseFloat(document.getElementById('nu').value);
+  var roughness = parseFloat(document.getElementById('roughness').value);
+  var area = parseFloat(document.getElementById('area').value);
+  var perimeter = parseFloat(document.getElementById('perimeter').value);
+
+  var L;
+  var geomNote = '';
+
+  // 处理几何类型
+  if (geometry === 'non_circular') {
+    var dhResult = calcHydraulicDiameter(area, perimeter);
+    if (!dhResult.valid) {
+      errEl.textContent = '❌ ' + dhResult.error;
+      errEl.className = 'error-msg show';
+      return;
+    }
+    L = dhResult.Dh;
+    geomNote = '非圆管当量直径 D_h = 4A/P = 4×' + area + '/' + perimeter + ' = ' + formatSci(L) + ' m';
+  } else {
+    L = parseFloat(document.getElementById('char_length').value);
+    if (geometry === 'circular') {
+      geomNote = '圆管特征长度 = 内径 D = ' + formatSci(L) + ' m';
+    } else {
+      geomNote = '平板特征长度 = 板长 L = ' + formatSci(L) + ' m';
+    }
+  }
+
+  // 处理粘度
+  var muVal = null, nuVal = null;
+  if (viscMode === 'dynamic') {
+    muVal = mu;
+  } else {
+    nuVal = nu;
+  }
+
+  // 计算 Re
+  var reResult = calcReynolds(rho, v, L, muVal, nuVal);
+  if (!reResult.valid) {
+    errEl.textContent = '❌ ' + reResult.error;
+    errEl.className = 'error-msg show';
+    return;
+  }
+
+  var Re = reResult.Re;
+  var regime = classifyRegime(Re);
+
+  // 摩擦系数
+  var D_for_f = (geometry === 'circular') ? L : L; // 对于非圆管，用 Dh 近似
+  var ffResult = calcFrictionFactor(Re, regime.code, isNaN(roughness) ? 0 : roughness, D_for_f);
+
+  // 构建结果 HTML
+  var html = '';
+  html += '<div class="result-item"><span class="result-label">几何说明</span><span class="result-value" style="font-size:13px;">' + geomNote + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">雷诺数 Re</span><span class="result-value">' + formatSci(Re, 6) + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">流态判别</span><span class="result-value"><span class="regime-badge regime-' + regime.code + '">' + regime.regimeCN + ' (' + regime.regime + ')</span></span></div>';
+
+  if (ffResult.valid && ffResult.f !== null) {
+    html += '<div class="result-item"><span class="result-label">Darcy 摩擦系数 f</span><span class="result-value">' + formatSci(ffResult.f, 4) + '</span></div>';
+    html += '<div class="result-item"><span class="result-label">计算方法</span><span class="result-value" style="font-size:12px;">' + ffResult.method + '</span></div>';
+  } else {
+    html += '<div class="result-item"><span class="result-label">Darcy 摩擦系数 f</span><span class="result-value" style="font-size:12px;">' + ffResult.method + '</span></div>';
+  }
+
+  // Fanning 摩擦系数 = Darcy / 4
+  if (ffResult.valid && ffResult.f !== null) {
+    var fFanning = ffResult.f / 4;
+    html += '<div class="result-item"><span class="result-label">Fanning 摩擦系数 f_F</span><span class="result-value">' + formatSci(fFanning, 4) + ' （= f_Darcy / 4）</span></div>';
+  }
+
+  resBody.innerHTML = html;
+
+  // 工程建议
+  adviceBox.innerHTML = generateAdvice(regime.code, Re);
+
+  // 警告框
+  var warnHtml = '<h4>⚠️ 重要提示</h4><ul>';
+  warnHtml += '<li>2300/4000 是<strong>圆管在低扰动条件下的经验分界值</strong>，不同工况（入口扰动强度、管壁粗糙度、振动等）下转捩 Re 可能显著偏移。</li>';
+  if (geometry === 'non_circular') {
+    warnHtml += '<li>非圆管使用当量直径 D_h 是<strong>工程近似</strong>，对高宽比过大的截面精度下降（误差可达 20% 以上）。</li>';
+  }
+  if (geometry === 'flat_plate') {
+    warnHtml += '<li>平板边界层的临界 Re 约为 5×10⁵（与圆管完全不同），此处仅计算了基于板长的 Re，流态判别需参照平板边界层理论。</li>';
+  }
+  warnHtml += '<li>摩擦系数估算假设充分发展流动，未考虑入口效应、管件局部阻力等。</li>';
+  warnHtml += '</ul>';
+  warningBox.innerHTML = warnHtml;
+
+  resPanel.className = 'result-panel show';
+}
+
+/**
+ * UI 辅助：根据几何类型切换显示/隐藏输入框
+ */
+function updateGeometryHint() {
+  var geo = document.getElementById('geometry').value;
+  var lblLen = document.getElementById('lbl-length');
+  var grpArea = document.getElementById('grp-area');
+  var grpPerim = document.getElementById('grp-perimeter');
+  var grpLen = document.getElementById('grp-length');
+  var grpRough = document.getElementById('grp-roughness');
+
+  if (geo === 'circular') {
+    lblLen.textContent = '圆管内径 D (m)';
+    grpArea.style.display = 'none';
+    grpPerim.style.display = 'none';
+    grpLen.style.display = '';
+    grpRough.style.display = '';
+  } else if (geo === 'flat_plate') {
+    lblLen.textContent = '平板沿流向长度 L (m)';
+    grpArea.style.display = 'none';
+    grpPerim.style.display = 'none';
+    grpLen.style.display = '';
+    grpRough.style.display = 'none';
+  } else {
+    lblLen.textContent = '（由截面积和湿周长自动计算）';
+    grpArea.style.display = '';
+    grpPerim.style.display = '';
+    grpLen.style.display = 'none';
+    grpRough.style.display = '';
+  }
+}
+
+/**
+ * UI 辅助：粘度输入模式切换
+ */
+document.getElementById('visc_mode').addEventListener('change', function() {
+  var mode = this.value;
+  document.getElementById('grp-dynamic').style.display = (mode === 'dynamic') ? '' : 'none';
+  document.getElementById('grp-kinematic').style.display = (mode === 'kinematic') ? '' : 'none';
+});
+
+/**
+ * 标签页切换
+ * @param {string} tabId - 标签页 ID 后缀
+ */
+function switchTab(tabId) {
+  var contents = document.querySelectorAll('.tab-content');
+  var btns = document.querySelectorAll('.tab-btn');
+  contents.forEach(function(el) { el.className = 'tab-content'; });
+  btns.forEach(function(el) { el.className = 'tab-btn'; });
+  document.getElementById('tab-' + tabId).className = 'tab-content active';
+  event.target.className = 'tab-btn active';
+}
+
+/**
+ * ============================================================
+ * 单元测试模块（10 项）
+ * ============================================================
+ */
+
+/**
+ * 简易断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} message - 断言描述
+ * @returns {boolean}
+ */
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error('ASSERTION FAILED: ' + message);
+  }
+  return true;
+}
+
+/**
+ * 近似相等判断（相对误差）
+ * @param {number} a - 计算值
+ * @param {number} b - 期望值
+ * @param {number} tol - 容差（相对）
+ * @returns {boolean}
+ */
+function approxEqual(a, b, tol) {
+  if (b === 0) return Math.abs(a) < tol;
+  return Math.abs((a - b) / b) < tol;
+}
+
+/**
+ * 运行全部单元测试并输出结果
+ */
+function runAllTests() {
+  var output = document.getElementById('test-output');
+  var results = [];
+  var passCount = 0;
+  var failCount = 0;
+
+  var tests = [
+    {
+      name: '测试 1：正常层流（20°C 水，小管径低速）',
+      desc: 'ρ=998 kg/m³, v=0.1 m/s, D=0.01 m, μ=1.002e-3 Pa·s → Re≈996, 层流',
+      run: function() {
+        var r = calcReynolds(998, 0.1, 0.01, 1.002e-3, null);
+        assert(r.valid === true, '应返回有效');
+        assert(approxEqual(r.Re, 996.0, 0.01), 'Re 应约等于 996，实际=' + r.Re);
+        var regime = classifyRegime(r.Re);
+        assert(regime.code === 'laminar', '应为层流');
+        var ff = calcFrictionFactor(r.Re, regime.code, 0, 0.01);
+        assert(ff.valid === true, '摩擦系数应有效');
+        assert(approxEqual(ff.f, 64 / r.Re, 1e-10), 'f 应等于 64/Re');
+      }
+    },
+    {
+      name: '测试 2：正常湍流（20°C 水，较大管径高速）',
+      desc: 'ρ=998 kg/m³, v=2 m/s, D=0.05 m, μ=1.002e-3 Pa·s → Re≈99600, 湍流',
+      run: function() {
+        var r = calcReynolds(998, 2, 0.05, 1.002e-3, null);
+        assert(r.valid === true, '应返回有效');
+        assert(approxEqual(r.Re, 99600, 0.01), 'Re 应约等于 99600，实际=' + r.Re);
+        var regime = classifyRegime(r.Re);
+        assert(regime.code === 'turbulent', '应为湍流');
+        var ff = calcFrictionFactor(r.Re, regime.code, 1.5e-5, 0.05);
+        assert(ff.valid === true, '摩擦系数应有效');
+        assert(ff.f > 0 && ff.f < 0.1, '摩擦系数应在合理范围');
+      }
+    },
+    {
+      name: '测试 3：过渡流（Re ≈ 3000）',
+      desc: 'ρ=1000, v=0.6, L=0.01, μ=2e-3 → Re=300, 不对... 调整：ρ=1000, v=6, L=0.01, μ=2e-3 → Re=30000... 再调：ρ=1000, v=0.06, L=0.01, μ=2e-4 → Re=3000',
+      run: function() {
+        var r = calcReynolds(1000, 0.06, 0.01, 2e-4, null);
+        assert(r.valid === true, '应返回有效');
+        assert(approxEqual(r.Re, 3000, 0.001), 'Re 应等于 3000，实际=' + r.Re);
+        var regime = classifyRegime(r.Re);
+        assert(regime.code === 'transitional', '应为过渡流');
+      }
+    },
+    {
+      name: '测试 4：零流速（Re = 0）',
+      desc: 'v=0 → Re=0，应为层流',
+      run: function() {
+        var r = calcReynolds(1000, 0, 0.05, 1e-3, null);
+        assert(r.valid === true, '应返回有效');
+        assert(r.Re === 0, 'Re 应等于 0');
+        var regime = classifyRegime(0);
+        assert(regime.code === 'laminar', 'Re=0 应为层流');
+      }
+    },
+    {
+      name: '测试 5：负流速（应报错）',
+      desc: 'v=-1 → 应返回无效',
+      run: function() {
+        var r = calcReynolds(1000, -1, 0.05, 1e-3, null);
+        assert(r.valid === false, '负流速应返回无效');
+        assert(r.error !== null, '应有错误信息');
+      }
+    },
+    {
+      name: '测试 6：NaN 输入（应报错）',
+      desc: 'ρ=NaN → 应返回无效',
+      run: function() {
+        var r = calcReynolds(NaN, 1, 0.05, 1e-3, null);
+        assert(r.valid === false, 'NaN 输入应返回无效');
+        assert(r.error !== null, '应有错误信息');
+      }
+    },
+    {
+      name: '测试 7：极高雷诺数（Re ~ 1e12）',
+      desc: 'ρ=1000, v=100, L=10, μ=1e-6 → Re=1e12',
+      run: function() {
+        var r = calcReynolds(1000, 100, 10, 1e-6, null);
+        assert(r.valid === true, '应返回有效');
+        assert(approxEqual(r.Re, 1e12, 1e-10), 'Re 应等于 1e12');
+        var regime = classifyRegime(r.Re);
+        assert(regime.code === 'turbulent', '应为湍流');
+        var ff = calcFrictionFactor(r.Re, regime.code, 0, 10);
+        assert(ff.valid === true, '摩擦系数应有效');
+        assert(ff.f > 0, '摩擦系数应 > 0');
+      }
+    },
+    {
+      name: '测试 8：极低雷诺数（极高粘度，Re ~ 1e-4）',
+      desc: 'ρ=1000, v=0.001, L=0.01, μ=100 → Re=1e-4',
+      run: function() {
+        var r = calcReynolds(1000, 0.001, 0.01, 100, null);
+        assert(r.valid === true, '应返回有效');
+        assert(approxEqual(r.Re, 1e-4, 1e-10), 'Re 应等于 1e-4');
+        var regime = classifyRegime(r.Re);
+        assert(regime.code === 'laminar', '应为层流');
+        var ff = calcFrictionFactor(r.Re, regime.code, 0, 0.01);
+        assert(ff.valid === true, '摩擦系数应有效');
+        assert(approxEqual(ff.f, 64 / 1e-4, 1e-10), 'f 应等于 640000');
+      }
+    },
+    {
+      name: '测试 9：非圆管当量直径计算',
+      desc: '矩形管道 0.1m×0.05m, A=0.005 m², P=0.3 m → Dh=4×0.005/0.3≈0.06667 m',
+      run: function() {
+        var dh = calcHydraulicDiameter(0.005, 0.3);
+        assert(dh.valid === true, '当量直径应有效');
+        assert(approxEqual(dh.Dh, 0.06667, 0.001), 'Dh 应约等于 0.06667，实际=' + dh.Dh);
+        // 然后用此 Dh 计算 Re
+        var r = calcReynolds(1000, 1, dh.Dh, 1e-3, null);
+        assert(r.valid === true, 'Re 计算应有效');
+        assert(approxEqual(r.Re, 66667, 0.01), 'Re 应约等于 66667');
+        var regime = classifyRegime(r.Re);
+        assert(regime.code === 'turbulent', '应为湍流');
+      }
+    },
+    {
+      name: '测试 10：零粘度（应报错 — 除零保护）',
+      desc: 'μ=0 → 应返回无效',
+      run: function() {
+        var r = calcReynolds(1000, 1, 0.05, 0, null);
+        assert(r.valid === false, '零粘度应返回无效');
+        assert(r.error !== null, '应有错误信息');
+        // 同样测试运动粘度为零
+        var r2 = calcReynolds(1000, 1, 0.05, null, 0);
+        assert(r2.valid === false, '零运动粘度应返回无效');
+      }
+    }
+  ];
+
+  var html = '<table class="test-table"><thead><tr><th>#</th><th>测试名称</th><th>说明</th><th>结果</th></tr></thead><tbody>';
+
+  tests.forEach(function(test, idx) {
+    var passed = false;
+    var errorMsg = '';
+    try {
+      test.run();
+      passed = true;
+      passCount++;
+    } catch (e) {
+      failCount++;
+      errorMsg = e.message;
+    }
+    html += '<tr>';
+    html += '<td>' + (idx + 1) + '</td>';
+    html += '<td>' + test.name + '</td>';
+    html += '<td style="font-size:12px;">' + test.desc + '</td>';
+    html += '<td>' + (passed ? '<span class="test-pass">✓ PASS</span>' : '<span class="test-fail">✗ FAIL</span><br><span style="font-size:11px;color:#999;">' + errorMsg + '</span>') + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  html += '<p style="margin-top:12px;font-weight:600;">总计：' + tests.length + ' 项，通过 <span style="color:var(--success);">' + passCount + '</span> 项，失败 <span style="color:var(--danger);">' + failCount + '</span> 项</p>';
+
+  output.innerHTML = html;
+}
+
+// 初始化 UI 状态
+updateGeometryHint();
+</script>
+
+</body>
+</html>

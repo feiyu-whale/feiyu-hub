@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>标准直齿圆柱齿轮计算工具 · v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: #fff;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tabs button {
+    flex: 1;
+    padding: 14px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 15px;
+    color: #586069;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tabs button:hover { background: #f6f8fa; color: #0366d6; }
+  .tabs button.active {
+    color: #0366d6;
+    border-bottom-color: #0366d6;
+    font-weight: 600;
+  }
+  .container { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+  .panel { display: none; background: #fff; border-radius: 8px; padding: 28px 32px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 18px; margin-bottom: 14px; color: #24292e; border-left: 4px solid #0366d6; padding-left: 10px; }
+  .panel h3 { font-size: 15px; margin: 18px 0 10px; color: #24292e; }
+  .panel p { margin-bottom: 10px; font-size: 14px; }
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  code { font-family: "SF Mono", Consolas, Monaco, monospace; font-size: 12.5px; }
+  .inline-code {
+    background: #f1f3f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #c7254e;
+    font-size: 13px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13.5px;
+  }
+  table th, table td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  table th { background: #f6f8fa; font-weight: 600; }
+  table tr:nth-child(even) td { background: #fafbfc; }
+  .test-result {
+    margin-top: 16px;
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .test-pass { background: #dcffe4; border: 1px solid #34d058; color: #144620; }
+  .test-fail { background: #ffeef0; border: 1px solid #d73a49; color: #86181d; }
+  .run-btn {
+    background: #0366d6;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .run-btn:hover { background: #0256b9; }
+  .note {
+    background: #fffbdd;
+    border-left: 4px solid #f9c513;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13.5px;
+    border-radius: 0 4px 4px 0;
+  }
+  .warn {
+    background: #ffeef0;
+    border-left: 4px solid #d73a49;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 13.5px;
+    border-radius: 0 4px 4px 0;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  ul, ol { margin: 8px 0 12px 24px; font-size: 14px; }
+  li { margin-bottom: 4px; }
+  .formula {
+    background: #f6f8fa;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    margin: 8px 0;
+    border: 1px solid #e1e4e8;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>标准直齿圆柱齿轮计算工具</h1>
+  <p>依据 GB/T 1356-2001 / ISO 53:1998 · 标准基本齿条齿廓 · 压力角 α=20°</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="source">第一部分 · JS 源码</button>
+  <button class="tab-btn" data-tab="test">第二部分 · 单元测试</button>
+  <button class="tab-btn" data-tab="doc">第三部分 · 使用说明书</button>
+</div>
+
+<div class="container">
+
+  <!-- 第一部分：源码 -->
+  <div id="source" class="panel active">
+    <h2>JS 源码（纯函数实现，无外部依赖）</h2>
+    <p>以下代码可直接在浏览器控制台运行。所有函数均为纯函数，输入合法返回数值，输入非法抛出 <code class="inline-code">Error</code>。</p>
+<pre id="sourceCode">/**
+ * 标准直齿圆柱齿轮计算库
+ * 依据：GB/T 1356-2001《通用机械和重型机械用圆柱齿轮 标准基本齿条齿廓》
+ *       (等同采用 ISO 53:1998)
+ * 标准压力角 α = 20°，齿顶高系数 ha* = 1，顶隙系数 c* = 0.25
+ * 适用条件：标准齿轮（变位系数 x = 0），无侧隙啮合
+ */
+
+(function (global) {
+  'use strict';
+
+  // ==================== 常量 ====================
+  /** 标准压力角（度） */
+  const STD_PRESSURE_ANGLE_DEG = 20;
+  /** 标准压力角（弧度） */
+  const STD_PRESSURE_ANGLE_RAD = STD_PRESSURE_ANGLE_DEG * Math.PI / 180;
+  /** 标准齿顶高系数 ha* */
+  const STD_HA_STAR = 1;
+  /** 标准顶隙系数 c* */
+  const STD_C_STAR = 0.25;
+  /** 避免根切的最小齿数（α=20°，ha*=1）：z_min = 2*ha*/sin²α ≈ 17.097 */
+  const MIN_TEETH_NO_UNDERCUT = 17;
+  /** 模数下限（mm），参考 GB/T 1357 标准模数系列 */
+  const MODULE_MIN = 0.05;
+  /** 模数上限（mm），工程常用上限 */
+  const MODULE_MAX = 100;
+  /** 齿数下限 */
+  const TEETH_MIN = 1;
+  /** 齿数上限（工程实际限制，工具不做硬性限制，仅做合理性提示） */
+  const TEETH_SOFT_MAX = 10000;
+
+  // ==================== 内部工具 ====================
+  /**
+   * 校验数值是否为有限数
+   * @param {*} v - 待校验值
+   * @param {string} name - 参数名（用于错误信息）
+   * @throws {Error} 非有限数时抛出
+   */
+  function assertFinite(v, name) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      throw new Error(`参数 ${name} 必须为有限数值，当前值: ${v}`);
+    }
+  }
+
+  /**
+   * 校验齿数（必须为正整数）
+   * @param {*} z - 齿数
+   * @throws {Error} 非法齿数时抛出
+   */
+  function assertTeeth(z) {
+    assertFinite(z, 'z');
+    if (!Number.isInteger(z)) {
+      throw new Error(`齿数 z 必须为整数，当前值: ${z}`);
+    }
+    if (z < TEETH_MIN) {
+      throw new Error(`齿数 z 必须 >= ${TEETH_MIN}，当前值: ${z}`);
+    }
+  }
+
+  /**
+   * 校验模数（必须为正数且在合理范围）
+   * @param {*} m - 模数（mm）
+   * @throws {Error} 非法模数时抛出
+   */
+  function assertModule(m) {
+    assertFinite(m, 'm');
+    if (m <= 0) {
+      throw new Error(`模数 m 必须 > 0，当前值: ${m}`);
+    }
+    if (m < MODULE_MIN || m > MODULE_MAX) {
+      throw new Error(`模数 m 超出合理范围 [${MODULE_MIN}, ${MODULE_MAX}] mm，当前值: ${m}`);
+    }
+  }
+
+  // ==================== 核心计算函数 ====================
+
+  /**
+   * 计算分度圆直径
+   * 公式：d = m × z
+   *
+   * @param {number} m - 模数（mm），必须 > 0，推荐范围 [0.05, 100]
+   * @param {number} z - 齿数，必须为正整数，推荐 >= 17（避免根切）
+   * @returns {number} 分度圆直径 d（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcPitchDiameter(2, 20);   // => 40
+   * calcPitchDiameter(1.5, 30); // => 45
+   * calcPitchDiameter(4, 25);   // => 100
+   */
+  function calcPitchDiameter(m, z) {
+    assertModule(m);
+    assertTeeth(z);
+    return m * z;
+  }
+
+  /**
+   * 计算齿顶圆直径
+   * 公式：da = m × (z + 2 × ha*) = m × (z + 2)  （标准齿顶高系数 ha*=1）
+   *
+   * @param {number} m - 模数（mm），必须 > 0
+   * @param {number} z - 齿数，必须为正整数
+   * @returns {number} 齿顶圆直径 da（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcAddendumDiameter(2, 20); // => 44
+   * calcAddendumDiameter(1, 30); // => 32
+   */
+  function calcAddendumDiameter(m, z) {
+    assertModule(m);
+    assertTeeth(z);
+    return m * (z + 2 * STD_HA_STAR);
+  }
+
+  /**
+   * 计算齿根圆直径
+   * 公式：df = m × (z - 2 × ha* - 2 × c*) = m × (z - 2.5)
+   *        （ha*=1, c*=0.25）
+   *
+   * @param {number} m - 模数（mm），必须 > 0
+   * @param {number} z - 齿数，必须为正整数；注意 z < 3 时 df 为负（无物理意义）
+   * @returns {number} 齿根圆直径 df（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcDedendumDiameter(2, 20); // => 35
+   * calcDedendumDiameter(4, 25); // => 90
+   */
+  function calcDedendumDiameter(m, z) {
+    assertModule(m);
+    assertTeeth(z);
+    return m * (z - 2 * STD_HA_STAR - 2 * STD_C_STAR);
+  }
+
+  /**
+   * 计算标准中心距（两标准齿轮无侧隙啮合）
+   * 公式：a = (d1 + d2) / 2 = m × (z1 + z2) / 2
+   *
+   * @param {number} m  - 模数（mm），必须 > 0，两齿轮模数必须相同
+   * @param {number} z1 - 小齿轮齿数，正整数
+   * @param {number} z2 - 大齿轮齿数，正整数
+   * @returns {number} 标准中心距 a（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcCenterDistance(2, 20, 40); // => 60
+   * calcCenterDistance(3, 25, 75); // => 150
+   */
+  function calcCenterDistance(m, z1, z2) {
+    assertModule(m);
+    assertTeeth(z1);
+    assertTeeth(z2);
+    return m * (z1 + z2) / 2;
+  }
+
+  /**
+   * 计算齿顶高
+   * 公式：ha = ha* × m = m
+   *
+   * @param {number} m - 模数（mm）
+   * @returns {number} 齿顶高 ha（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcAddendumHeight(2); // => 2
+   */
+  function calcAddendumHeight(m) {
+    assertModule(m);
+    return STD_HA_STAR * m;
+  }
+
+  /**
+   * 计算齿根高
+   * 公式：hf = (ha* + c*) × m = 1.25 × m
+   *
+   * @param {number} m - 模数（mm）
+   * @returns {number} 齿根高 hf（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcDedendumHeight(4); // => 5
+   */
+  function calcDedendumHeight(m) {
+    assertModule(m);
+    return (STD_HA_STAR + STD_C_STAR) * m;
+  }
+
+  /**
+   * 计算全齿高
+   * 公式：h = ha + hf = (2 × ha* + c*) × m = 2.25 × m
+   *
+   * @param {number} m - 模数（mm）
+   * @returns {number} 全齿高 h（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcWholeHeight(2); // => 4.5
+   */
+  function calcWholeHeight(m) {
+    assertModule(m);
+    return (2 * STD_HA_STAR + STD_C_STAR) * m;
+  }
+
+  /**
+   * 计算基圆直径
+   * 公式：db = d × cos(α) = m × z × cos(20°)
+   *
+   * @param {number} m - 模数（mm）
+   * @param {number} z - 齿数，正整数
+   * @returns {number} 基圆直径 db（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcBaseDiameter(2, 20); // => 37.5877...
+   */
+  function calcBaseDiameter(m, z) {
+    assertModule(m);
+    assertTeeth(z);
+    return m * z * Math.cos(STD_PRESSURE_ANGLE_RAD);
+  }
+
+  /**
+   * 计算齿距（周节）
+   * 公式：p = π × m
+   *
+   * @param {number} m - 模数（mm）
+   * @returns {number} 齿距 p（mm）
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcCircularPitch(2); // => 6.2831...
+   */
+  function calcCircularPitch(m) {
+    assertModule(m);
+    return Math.PI * m;
+  }
+
+  /**
+   * 计算单个齿轮的全部基本参数
+   *
+   * @param {number} m - 模数（mm）
+   * @param {number} z - 齿数，正整数
+   * @returns {{ m:number, z:number, d:number, da:number, df:number, db:number,
+   *             ha:number, hf:number, h:number, p:number,
+   *             alpha:number, haStar:number, cStar:number,
+   *             hasUndercutRisk:boolean }} 计算结果对象
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcAllParameters(2, 20);
+   * // => { m:2, z:20, d:40, da:44, df:35, db:37.587..., ha:2, hf:2.5, ... }
+   */
+  function calcAllParameters(m, z) {
+    assertModule(m);
+    assertTeeth(z);
+    return {
+      m: m,
+      z: z,
+      d: calcPitchDiameter(m, z),
+      da: calcAddendumDiameter(m, z),
+      df: calcDedendumDiameter(m, z),
+      db: calcBaseDiameter(m, z),
+      ha: calcAddendumHeight(m),
+      hf: calcDedendumHeight(m),
+      h: calcWholeHeight(m),
+      p: calcCircularPitch(m),
+      alpha: STD_PRESSURE_ANGLE_DEG,
+      haStar: STD_HA_STAR,
+      cStar: STD_C_STAR,
+      hasUndercutRisk: z < MIN_TEETH_NO_UNDERCUT
+    };
+  }
+
+  /**
+   * 计算一对标准齿轮副的全部参数
+   *
+   * @param {number} m  - 模数（mm），两齿轮必须相同
+   * @param {number} z1 - 小齿轮齿数
+   * @param {number} z2 - 大齿轮齿数
+   * @returns {{ m:number, z1:number, z2:number,
+   *             d1:number, da1:number, df1:number, db1:number,
+   *             d2:number, da2:number, df2:number, db2:number,
+   *             a:number, i:number, ha:number, hf:number, h:number, p:number,
+   *             alpha:number, gear1HasUndercutRisk:boolean, gear2HasUndercutRisk:boolean }}
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * calcPairParameters(2, 20, 40);
+   * // => { m:2, z1:20, z2:40, a:60, i:2, d1:40, d2:80, ... }
+   */
+  function calcPairParameters(m, z1, z2) {
+    assertModule(m);
+    assertTeeth(z1);
+    assertTeeth(z2);
+    const g1 = calcAllParameters(m, z1);
+    const g2 = calcAllParameters(m, z2);
+    return {
+      m: m,
+      z1: z1,
+      z2: z2,
+      d1: g1.d, da1: g1.da, df1: g1.df, db1: g1.db,
+      d2: g2.d, da2: g2.da, df2: g2.df, db2: g2.db,
+      a: calcCenterDistance(m, z1, z2),
+      i: z2 / z1,
+      ha: g1.ha,
+      hf: g1.hf,
+      h: g1.h,
+      p: g1.p,
+      alpha: STD_PRESSURE_ANGLE_DEG,
+      gear1HasUndercutRisk: g1.hasUndercutRisk,
+      gear2HasUndercutRisk: g2.hasUndercutRisk
+    };
+  }
+
+  /**
+   * 判断给定齿数是否存在根切风险（标准齿轮 α=20°）
+   *
+   * @param {number} z - 齿数，正整数
+   * @returns {boolean} z < 17 时返回 true
+   * @throws {Error} 参数非法时抛出
+   *
+   * @example
+   * hasUndercutRisk(15); // => true
+   * hasUndercutRisk(20); // => false
+   */
+  function hasUndercutRisk(z) {
+    assertTeeth(z);
+    return z < MIN_TEETH_NO_UNDERCUT;
+  }
+
+  // ==================== 导出 ====================
+  const Gear = {
+    // 常量
+    STD_PRESSURE_ANGLE_DEG: STD_PRESSURE_ANGLE_DEG,
+    STD_HA_STAR: STD_HA_STAR,
+    STD_C_STAR: STD_C_STAR,
+    MIN_TEETH_NO_UNDERCUT: MIN_TEETH_NO_UNDERCUT,
+    MODULE_MIN: MODULE_MIN,
+    MODULE_MAX: MODULE_MAX,
+    // 核心函数
+    calcPitchDiameter: calcPitchDiameter,
+    calcAddendumDiameter: calcAddendumDiameter,
+    calcDedendumDiameter: calcDedendumDiameter,
+    calcCenterDistance: calcCenterDistance,
+    calcAddendumHeight: calcAddendumHeight,
+    calcDedendumHeight: calcDedendumHeight,
+    calcWholeHeight: calcWholeHeight,
+    calcBaseDiameter: calcBaseDiameter,
+    calcCircularPitch: calcCircularPitch,
+    calcAllParameters: calcAllParameters,
+    calcPairParameters: calcPairParameters,
+    hasUndercutRisk: hasUndercutRisk
+  };
+
+  // 兼容浏览器与 Node
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Gear;
+  } else {
+    global.Gear = Gear;
+  }
+})(typeof window !== 'undefined' ? window : this);</pre>
+  </div>
+
+  <!-- 第二部分：测试 -->
+  <div id="test" class="panel">
+    <h2>单元测试（纯 JS 实现，共 35 个用例）</h2>
+    <p>点击下方按钮运行测试，结果将显示在下方。覆盖正常值、边界值、异常输入、浮点精度等场景。</p>
+    <button class="run-btn" id="runTestBtn">▶ 运行全部测试</button>
+    <div id="testOutput" class="test-result" style="background:#f6f8fa;border:1px solid #e1e4e8;color:#24292e;">（尚未运行）</div>
+  </div>
+
+  <!-- 第三部分：说明书 -->
+  <div id="doc" class="panel">
+    <h2>使用说明书</h2>
+
+    <h3>一、工具简介</h3>
+    <p>本工具用于计算<strong>标准直齿圆柱齿轮</strong>（即变位系数 x=0、压力角 α=20°、齿顶高系数 ha*=1、顶隙系数 c*=0.25 的渐开线圆柱齿轮）的基本几何参数。输入模数 m 和齿数 z，即可得到分度圆直径、齿顶圆直径、齿根圆直径、基圆直径、齿顶高、齿根高、全齿高、齿距等关键尺寸；输入一对齿轮的模数和齿数，还可得到标准中心距和传动比。</p>
+    <p>该工具解决的核心问题是：在机械设计中，当工程师确定了模数和齿数后，快速、准确地得到齿轮副的全部基本几何尺寸，避免手算出错，为后续绘图、加工、校核提供数据基础。</p>
+
+    <h3>二、标准依据</h3>
+    <ul>
+      <li><strong>GB/T 1356-2001</strong>《通用机械和重型机械用圆柱齿轮 标准基本齿条齿廓》（等同采用 ISO 53:1998）——规定标准齿条齿廓的基本参数：α=20°、ha*=1、c*=0.25。</li>
+      <li><strong>GB/T 1357-2008</strong>《通用机械和重型机械用圆柱齿轮 模数》——规定标准模数系列（第一系列：0.05, 0.06, 0.08, 0.10, 0.12, 0.16, 0.20, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 25, 32, 40, 50）。</li>
+      <li><strong>GB/T 10095</strong> 系列——圆柱齿轮精度制（本工具不涉及精度等级计算）。</li>
+    </ul>
+    <div class="note">注：本工具仅实现标准齿轮（x=0）的基本几何计算。变位齿轮、斜齿轮、锥齿轮、蜗轮蜗杆等不在本工具范围内。</div>
+
+    <h3>三、参数详细说明</h3>
+    <table>
+      <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th><th>说明</th></tr>
+      <tr><td>m</td><td>模数</td><td>mm</td><td>(0, 100]，推荐 GB/T 1357 标准值</td><td>齿轮最基本的参数，决定齿的大小。必须为正数。超出 [0.05, 100] 工具会抛出异常。</td></tr>
+      <tr><td>z</td><td>齿数</td><td>—</td><td>正整数，≥1</td><td>必须为整数。标准齿轮 α=20° 时，z&lt;17 会出现根切，工具会返回 hasUndercutRisk=true 提示。</td></tr>
+      <tr><td>z1, z2</td><td>小/大齿轮齿数</td><td>—</td><td>正整数</td><td>用于齿轮副计算，两齿轮模数必须相同。</td></tr>
+      <tr><td>d</td><td>分度圆直径</td><td>mm</td><td>—</td><td>齿轮设计的基准圆，d = m·z。</td></tr>
+      <tr><td>da</td><td>齿顶圆直径</td><td>mm</td><td>—</td><td>齿顶所在的圆，da = m·(z+2)。</td></tr>
+      <tr><td>df</td><td>齿根圆直径</td><td>mm</td><td>—</td><td>齿槽底所在的圆，df = m·(z−2.5)。z&lt;3 时 df 为负，无物理意义。</td></tr>
+      <tr><td>db</td><td>基圆直径</td><td>mm</td><td>—</td><td>渐开线发生的圆，db = d·cos(20°)。</td></tr>
+      <tr><td>ha</td><td>齿顶高</td><td>mm</td><td>—</td><td>分度圆到齿顶圆的径向距离，ha = m。</td></tr>
+      <tr><td>hf</td><td>齿根高</td><td>mm</td><td>—</td><td>分度圆到齿根圆的径向距离，hf = 1.25m。</td></tr>
+      <tr><td>h</td><td>全齿高</td><td>mm</td><td>—</td><td>齿顶圆到齿根圆的径向距离，h = 2.25m。</td></tr>
+      <tr><td>p</td><td>齿距（周节）</td><td>mm</td><td>—</td><td>分度圆上相邻两齿同侧齿廓间的弧长，p = π·m。</td></tr>
+      <tr><td>a</td><td>标准中心距</td><td>mm</td><td>—</td><td>两标准齿轮无侧隙啮合时的中心距，a = m·(z1+z2)/2。</td></tr>
+      <tr><td>i</td><td>传动比</td><td>—</td><td>—</td><td>i = z2/z1。</td></tr>
+    </table>
+
+    <h3>四、核心公式</h3>
+    <div class="formula">d  = m × z</div>
+    <div class="formula">da = m × (z + 2)</div>
+    <div class="formula">df = m × (z − 2.5)</div>
+    <div class="formula">db = m × z × cos(20°)</div>
+    <div class="formula">ha = m ；hf = 1.25m ；h = 2.25m</div>
+    <div class="formula">p  = π × m</div>
+    <div class="formula">a  = m × (z1 + z2) / 2</div>
+
+    <h3>五、实际使用场景（5 个）</h3>
+
+    <h4>场景 1：普通减速器小齿轮设计</h4>
+    <p><strong>需求：</strong>某带式输送机减速器，输入轴转速 1440 r/min，输出轴 360 r/min，传动比 i=4，初步选定模数 m=2.5 mm，小齿轮齿数 z1=25。</p>
+    <p><strong>输入：</strong>m=2.5，z1=25，z2=100（i=4）</p>
+    <p><strong>调用：</strong><code class="inline-code">Gear.calcPairParameters(2.5, 25, 100)</code></p>
+    <p><strong>结果：</strong></p>
+    <ul>
+      <li>小齿轮：d1=62.5 mm，da1=67.5 mm，df1=56.25 mm</li>
+      <li>大齿轮：d2=250 mm，da2=255 mm，df2=243.75 mm</li>
+      <li>标准中心距 a = 156.25 mm</li>
+      <li>传动比 i = 4</li>
+      <li>两齿轮均无根切风险（z1=25 &gt; 17）</li>
+    </ul>
+
+    <h4>场景 2：仪器仪表微型齿轮</h4>
+    <p><strong>需求：</strong>某精密仪器中一对传动齿轮，空间受限，选用模数 m=0.5 mm，齿数 z1=20，z2=60。</p>
+    <p><strong>输入：</strong>m=0.5，z1=20，z2=60</p>
+    <p><strong>调用：</strong><code class="inline-code">Gear.calcPairParameters(0.5, 20, 60)</code></p>
+    <p><strong>结果：</strong></p>
+    <ul>
+      <li>小齿轮：d1=10 mm，da1=11 mm，df1=8.75 mm</li>
+      <li>大齿轮：d2=30 mm，da2=31 mm，df2=28.75 mm</li>
+      <li>标准中心距 a = 20 mm</li>
+      <li>传动比 i = 3</li>
+    </ul>
+
+    <h4>场景 3：重型机械大模数齿轮</h4>
+    <p><strong>需求：</strong>矿山破碎机传动，大模数齿轮，m=10 mm，z1=20，z2=80。</p>
+    <p><strong>输入：</strong>m=10，z1=20，z2=80</p>
+    <p><strong>调用：</strong><code class="inline-code">Gear.calcPairParameters(10, 20, 80)</code></p>
+    <p><strong>结果：</strong></p>
+    <ul>
+      <li>小齿轮：d1=200 mm，da1=220 mm，df1=175 mm</li>
+      <li>大齿轮：d2=800 mm，da2=820 mm，df2=775 mm</li>
+      <li>标准中心距 a = 500 mm</li>
+      <li>传动比 i = 4</li>
+    </ul>
+
+    <h4>场景 4：校验根切风险</h4>
+    <p><strong>需求：</strong>设计某传动，初选 m=2，z=14，需判断是否根切。</p>
+    <p><strong>输入：</strong>m=2，z=14</p>
+    <p><strong>调用：</strong><code class="inline-code">Gear.calcAllParameters(2, 14)</code></p>
+    <p><strong>结果：</strong>返回对象中 <code class="inline-code">hasUndercutRisk = true</code>，提示 z=14 &lt; 17，标准齿轮会发生根切。建议：① 增大齿数至 ≥17；② 采用正变位齿轮（本工具不支持，需查 GB/T 10095 或相关手册）；③ 改用其他压力角。</p>
+
+    <h4>场景 5：已知中心距反推齿数和</h4>
+    <p><strong>需求：</strong>某箱体中心距已确定为 a=120 mm，选用 m=3，求 z1+z2。</p>
+    <p><strong>计算：</strong>由 a = m·(z1+z2)/2 得 z1+z2 = 2a/m = 2×120/3 = 80。若取传动比 i=3，则 z1=20，z2=60。</p>
+    <p><strong>验证：</strong><code class="inline-code">Gear.calcCenterDistance(3, 20, 60)</code> 返回 120，符合。</p>
+
+    <h3>六、常见错误与排查</h3>
+    <table>
+      <tr><th>错误现象</th><th>可能原因</th><th>排查方法</th></tr>
+      <tr><td>抛出 "参数 m 必须为有限数值"</td><td>传入了 null / undefined / NaN / 字符串 / 对象</td><td>检查输入类型，确保 m 为 number 类型</td></tr>
+      <tr><td>抛出 "模数 m 必须 &gt; 0"</td><td>传入了 0 或负数</td><td>模数必须为正数</td></tr>
+      <tr><td>抛出 "模数 m 超出合理范围"</td><td>m &lt; 0.05 或 m &gt; 100</td><td>参考 GB/T 1357 标准模数系列</td></tr>
+      <tr><td>抛出 "齿数 z 必须为整数"</td><td>传入了小数如 20.5</td><td>齿数必须为整数</td></tr>
+      <tr><td>抛出 "齿数 z 必须 &gt;= 1"</td><td>传入了 0 或负数</td><td>齿数至少为 1</td></tr>
+      <tr><td>df 计算结果为负</td><td>z &lt; 3（如 z=1 或 z=2）</td><td>z&lt;3 时齿根圆直径公式给出负值，无物理意义。实际工程中 z 至少为 17（避免根切）</td></tr>
+      <tr><td>结果与手册略有差异</td><td>浮点精度问题</td><td>本工具使用 IEEE 754 双精度浮点，结果保留足够有效位。如需精确到 0.001 mm，可对结果做 toFixed(3) 处理</td></tr>
+      <tr><td>中心距与实际装配不符</td><td>实际装配可能采用变位或非标准中心距</td><td>本工具仅计算标准中心距。若实际中心距 ≠ 计算值，说明采用了变位齿轮，需另行计算</td></tr>
+    </table>
+
+    <h3>七、数据来源与标准依据</h3>
+    <ul>
+      <li>标准齿条齿廓参数（α=20°、ha*=1、c*=0.25）：GB/T 1356-2001 / ISO 53:1998</li>
+      <li>标准模数系列：GB/T 1357-2008</li>
+      <li>根切最小齿数 z_min = 2·ha*/sin²α = 2×1/sin²(20°) ≈ 17.097：机械原理教材通用结论</li>
+      <li>所有几何公式均为标准齿轮（x=0）下的解析式，来源见上述国标及《机械原理》《机械设计》教材</li>
+    </ul>
+    <div class="note">注：本工具未引入任何经验系数或修正值，所有结果均为理论解析值。实际加工还需考虑刀具参数、加工误差、热变形等因素，需查相关工艺手册。</div>
+
+    <h3>八、局限性说明（本工具不能做什么）</h3>
+    <ol>
+      <li><strong>不支持变位齿轮：</strong>所有公式基于变位系数 x=0。若实际采用正/负变位，本工具结果不适用。</li>
+      <li><strong>不支持斜齿轮：</strong>本工具仅适用于直齿圆柱齿轮。斜齿轮需引入螺旋角 β，法向模数 mn 与端面模数 mt 不同，需另行计算。</li>
+      <li><strong>不支持锥齿轮、蜗轮蜗杆、非圆齿轮：</strong>这些齿轮类型的几何计算完全不同。</li>
+      <li><strong>不计算强度：</strong>本工具仅输出几何尺寸，不计算齿面接触强度、齿根弯曲强度（需按 GB/T 3480 / ISO 6336 另行校核）。</li>
+      <li><strong>不计算精度等级：</strong>不输出公差、偏差（需按 GB/T 10095）。</li>
+      <li><strong>不计算重合度、滑动率、干涉：</strong>这些需更复杂的几何分析。</li>
+      <li><strong>不验证模数是否为 GB/T 1357 标准值：</strong>工具允许任意正数模数，但推荐优先采用标准模数系列。</li>
+      <li><strong>不处理非标压力角：</strong>本工具固定 α=20°。若采用 α=14.5°、α=25° 等，结果不适用。</li>
+      <li><strong>浮点精度限制：</strong>JavaScript 使用 IEEE 754 双精度浮点，极小/极大数值可能出现精度损失，但对常规工程计算（m∈[0.5, 50]，z∈[17, 500]）影响可忽略。</li>
+      <li><strong>不输出图形：</strong>本工具仅输出数值，不绘制齿轮轮廓。如需绘图，请结合 SVG/Canvas 另行实现。</li>
+    </ol>
+
+    <h3>九、API 速查</h3>
+    <table>
+      <tr><th>函数</th><th>参数</th><th>返回</th></tr>
+      <tr><td>Gear.calcPitchDiameter(m, z)</td><td>模数, 齿数</td><td>分度圆直径 d</td></tr>
+      <tr><td>Gear.calcAddendumDiameter(m, z)</td><td>模数, 齿数</td><td>齿顶圆直径 da</td></tr>
+      <tr><td>Gear.calcDedendumDiameter(m, z)</td><td>模数, 齿数</td><td>齿根圆直径 df</td></tr>
+      <tr><td>Gear.calcBaseDiameter(m, z)</td><td>模数, 齿数</td><td>基圆直径 db</td></tr>
+      <tr><td>Gear.calcAddendumHeight(m)</td><td>模数</td><td>齿顶高 ha</td></tr>
+      <tr><td>Gear.calcDedendumHeight(m)</td><td>模数</td><td>齿根高 hf</td></tr>
+      <tr><td>Gear.calcWholeHeight(m)</td><td>模数</td><td>全齿高 h</td></tr>
+      <tr><td>Gear.calcCircularPitch(m)</td><td>模数</td><td>齿距 p</td></tr>
+      <tr><td>Gear.calcCenterDistance(m, z1, z2)</td><td>模数, 齿数1, 齿数2</td><td>标准中心距 a</td></tr>
+      <tr><td>Gear.calcAllParameters(m, z)</td><td>模数, 齿数</td><td>单齿轮全部参数对象</td></tr>
+      <tr><td>Gear.calcPairParameters(m, z1, z2)</td><td>模数, 齿数1, 齿数2</td><td>齿轮副全部参数对象</td></tr>
+      <tr><td>Gear.hasUndercutRisk(z)</td><td>齿数</td><td>是否根切风险 (boolean)</td></tr>
+    </table>
+
+    <h3>十、版本与反馈</h3>
+    <p>当前版本：v2.0.0-完整版 20261021</p>
+    <p>如发现计算结果与标准不符，请优先核对输入参数是否符合 GB/T 1356 的前提条件（标准齿轮、α=20°、x=0）。本工具严格按国标公式实现，不对超出适用范围的输入负责。</p>
+  </div>
+
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============ 标签页切换 ============ */
+(function () {
+  const btns = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.panel');
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+})();
+
+/* ============ 第一部分：源码（已在 HTML 中展示） ============ */
+
+/* ============ 第二部分：单元测试 ============ */
+// 先把 Gear 库加载进来（与页面中展示的源码一致）
+(function (global) {
+  'use strict';
+  const STD_PRESSURE_ANGLE_DEG = 20;
+  const STD_PRESSURE_ANGLE_RAD = STD_PRESSURE_ANGLE_DEG * Math.PI / 180;
+  const STD_HA_STAR = 1;
+  const STD_C_STAR = 0.25;
+  const MIN_TEETH_NO_UNDERCUT = 17;
+  const MODULE_MIN = 0.05;
+  const MODULE_MAX = 100;
+  const TEETH_MIN = 1;
+
+  function assertFinite(v, name) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      throw new Error(`参数 ${name} 必须为有限数值，当前值: ${v}`);
+    }
+  }
+  function assertTeeth(z) {
+    assertFinite(z, 'z');
+    if (!Number.isInteger(z)) throw new Error(`齿数 z 必须为整数，当前值: ${z}`);
+    if (z < TEETH_MIN) throw new Error(`齿数 z 必须 >= ${TEETH_MIN}，当前值: ${z}`);
+  }
+  function assertModule(m) {
+    assertFinite(m, 'm');
+    if (m <= 0) throw new Error(`模数 m 必须 > 0，当前值: ${m}`);
+    if (m < MODULE_MIN || m > MODULE_MAX) throw new Error(`模数 m 超出合理范围 [${MODULE_MIN}, ${MODULE_MAX}] mm，当前值: ${m}`);
+  }
+
+  function calcPitchDiameter(m, z) { assertModule(m); assertTeeth(z); return m * z; }
+  function calcAddendumDiameter(m, z) { assertModule(m); assertTeeth(z); return m * (z + 2 * STD_HA_STAR); }
+  function calcDedendumDiameter(m, z) { assertModule(m); assertTeeth(z); return m * (z - 2 * STD_HA_STAR - 2 * STD_C_STAR); }
+  function calcCenterDistance(m, z1, z2) { assertModule(m); assertTeeth(z1); assertTeeth(z2); return m * (z1 + z2) / 2; }
+  function calcAddendumHeight(m) { assertModule(m); return STD_HA_STAR * m; }
+  function calcDedendumHeight(m) { assertModule(m); return (STD_HA_STAR + STD_C_STAR) * m; }
+  function calcWholeHeight(m) { assertModule(m); return (2 * STD_HA_STAR + STD_C_STAR) * m; }
+  function calcBaseDiameter(m, z) { assertModule(m); assertTeeth(z); return m * z * Math.cos(STD_PRESSURE_ANGLE_RAD); }
+  function calcCircularPitch(m) { assertModule(m); return Math.PI * m; }
+  function hasUndercutRisk(z) { assertTeeth(z); return z < MIN_TEETH_NO_UNDERCUT; }
+  function calcAllParameters(m, z) {
+    assertModule(m); assertTeeth(z);
+    return {
+      m: m, z: z,
+      d: calcPitchDiameter(m, z), da: calcAddendumDiameter(m, z),
+      df: calcDedendumDiameter(m, z), db: calcBaseDiameter(m, z),
+      ha: calcAddendumHeight(m), hf: calcDedendumHeight(m), h: calcWholeHeight(m),
+      p: calcCircularPitch(m), alpha: STD_PRESSURE_ANGLE_DEG,
+      haStar: STD_HA_STAR, cStar: STD_C_STAR,
+      hasUndercutRisk: z < MIN_TEETH_NO_UNDERCUT
+    };
+  }
+  function calcPairParameters(m, z1, z2) {
+    assertModule(m); assertTeeth(z1); assertTeeth(z2);
+    const g1 = calcAllParameters(m, z1);
+    const g2 = calcAllParameters(m, z2);
+    return {
+      m: m, z1: z1, z2: z2,
+      d1: g1.d, da1: g1.da, df1: g1.df, db1: g1.db,
+      d2: g2.d, da2: g2.da, df2: g2.df, db2: g2.db,
+      a: calcCenterDistance(m, z1, z2), i: z2 / z1,
+      ha: g1.ha, hf: g1.hf, h: g1.h, p: g1.p, alpha: STD_PRESSURE_ANGLE_DEG,
+      gear1HasUndercutRisk: g1.hasUndercutRisk, gear2HasUndercutRisk: g2.hasUndercutRisk
+    };
+  }
+
+  global.Gear = {
+    STD_PRESSURE_ANGLE_DEG, STD_HA_STAR, STD_C_STAR, MIN_TEETH_NO_UNDERCUT,
+    MODULE_MIN, MODULE_MAX,
+    calcPitchDiameter, calcAddendumDiameter, calcDedendumDiameter,
+    calcCenterDistance, calcAddendumHeight, calcDedendumHeight, calcWholeHeight,
+    calcBaseDiameter, calcCircularPitch, calcAllParameters, calcPairParameters,
+    hasUndercutRisk
+  };
+})(window);
+
+/* ============ 测试框架 ============ */
+const TestRunner = (function () {
+  const cases = [];
+  let passed = 0, failed = 0;
+  const log = [];
+
+  function approxEqual(a, b, eps) {
+    eps = eps || 1e-9;
+    return Math.abs(a - b) <= eps;
+  }
+
+  function add(name, fn) { cases.push({ name, fn }); }
+
+  function assertEqual(actual, expected, msg) {
+    if (actual !== expected) {
+      throw new Error(`${msg || '断言失败'}：期望 ${expected}，实际 ${actual}`);
+    }
+  }
+  function assertApprox(actual, expected, eps, msg) {
+    if (!approxEqual(actual, expected, eps)) {
+      throw new Error(`${msg || '断言失败'}：期望 ≈ ${expected}，实际 ${actual}（容差 ${eps}）`);
+    }
+  }
+  function assertThrows(fn, msg) {
+    let threw = false;
+    try { fn(); } catch (e) { threw = true; }
+    if (!threw) throw new Error(`${msg || '断言失败'}：期望抛出异常但未抛出`);
+  }
+  function assertTrue(v, msg) {
+    if (v !== true) throw new Error(`${msg || '断言失败'}：期望 true，实际 ${v}`);
+  }
+  function assertFalse(v, msg) {
+    if (v !== false) throw new Error(`${msg || '断言失败'}：期望 false，实际 ${v}`);
+  }
+
+  function run() {
+    passed = 0; failed = 0; log.length = 0;
+    cases.forEach((c, idx) => {
+      try {
+        c.fn({ assertEqual, assertApprox, assertThrows, assertTrue, assertFalse });
+        passed++;
+        log.push(`✓ #${idx + 1} ${c.name}`);
+      } catch (e) {
+        failed++;
+        log.push(`✗ #${idx + 1} ${c.name} —— ${e.message}`);
+      }
+    });
+    return { passed, failed, total: cases.length, log: log.join('\n') };
+  }
+
+  return { add, run };
+})();
+
+/* ============ 测试用例（35 个） ============ */
+
+// ---- 分度圆直径 calcPitchDiameter ----
+TestRunner.add('分度圆：m=2, z=20 → d=40', (t) => {
+  t.assertEqual(Gear.calcPitchDiameter(2, 20), 40);
+});
+TestRunner.add('分度圆：m=1, z=30 → d=30', (t) => {
+  t.assertEqual(Gear.calcPitchDiameter(1, 30), 30);
+});
+TestRunner.add('分度圆：m=4, z=25 → d=100', (t) => {
+  t.assertEqual(Gear.calcPitchDiameter(4, 25), 100);
+});
+TestRunner.add('分度圆：m=0.5, z=40 → d=20', (t) => {
+  t.assertEqual(Gear.calcPitchDiameter(0.5, 40), 20);
+});
+TestRunner.add('分度圆：m=10, z=50 → d=500', (t) => {
+  t.assertEqual(Gear.calcPitchDiameter(10, 50), 500);
+});
+TestRunner.add('分度圆：m=0 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(0, 20));
+});
+TestRunner.add('分度圆：m=-1 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(-1, 20));
+});
+TestRunner.add('分度圆：z=0 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(2, 0));
+});
+TestRunner.add('分度圆：z=-5 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(2, -5));
+});
+TestRunner.add('分度圆：m=null 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(null, 20));
+});
+TestRunner.add('分度圆：m=undefined 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(undefined, 20));
+});
+TestRunner.add('分度圆：m=NaN 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(NaN, 20));
+});
+TestRunner.add('分度圆：z=1.5（非整数）抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(2, 1.5));
+});
+TestRunner.add('分度圆：m=0.01（低于下限）抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(0.01, 20));
+});
+TestRunner.add('分度圆：m=200（超过上限）抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(200, 20));
+});
+TestRunner.add('分度圆：m=Infinity 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter(Infinity, 20));
+});
+TestRunner.add('分度圆：m="2"（字符串）抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcPitchDiameter("2", 20));
+});
+TestRunner.add('分度圆：浮点精度 m=0.1, z=3 → d≈0.3', (t) => {
+  t.assertApprox(Gear.calcPitchDiameter(0.1, 3), 0.3, 1e-12);
+});
+TestRunner.add('分度圆：浮点精度 m=0.3, z=3 → d≈0.9', (t) => {
+  t.assertApprox(Gear.calcPitchDiameter(0.3, 3), 0.9, 1e-12);
+});
+
+// ---- 齿顶圆直径 calcAddendumDiameter ----
+TestRunner.add('齿顶圆：m=2, z=20 → da=44', (t) => {
+  t.assertEqual(Gear.calcAddendumDiameter(2, 20), 44);
+});
+TestRunner.add('齿顶圆：m=1, z=30 → da=32', (t) => {
+  t.assertEqual(Gear.calcAddendumDiameter(1, 30), 32);
+});
+TestRunner.add('齿顶圆：m=4, z=25 → da=108', (t) => {
+  t.assertEqual(Gear.calcAddendumDiameter(4, 25), 108);
+});
+
+// ---- 齿根圆直径 calcDedendumDiameter ----
+TestRunner.add('齿根圆：m=2, z=20 → df=35', (t) => {
+  t.assertEqual(Gear.calcDedendumDiameter(2, 20), 35);
+});
+TestRunner.add('齿根圆：m=4, z=25 → df=90', (t) => {
+  t.assertEqual(Gear.calcDedendumDiameter(4, 25), 90);
+});
+TestRunner.add('齿根圆：m=1, z=30 → df=27.5', (t) => {
+  t.assertEqual(Gear.calcDedendumDiameter(1, 30), 27.5);
+});
+
+// ---- 标准中心距 calcCenterDistance ----
+TestRunner.add('中心距：m=2, z1=20, z2=40 → a=60', (t) => {
+  t.assertEqual(Gear.calcCenterDistance(2, 20, 40), 60);
+});
+TestRunner.add('中心距：m=3, z1=25, z2=75 → a=150', (t) => {
+  t.assertEqual(Gear.calcCenterDistance(3, 25, 75), 150);
+});
+TestRunner.add('中心距：m=0.5, z1=20, z2=60 → a=20', (t) => {
+  t.assertEqual(Gear.calcCenterDistance(0.5, 20, 60), 20);
+});
+TestRunner.add('中心距：z2=null 抛出异常', (t) => {
+  t.assertThrows(() => Gear.calcCenterDistance(2, 20, null));
+});
+
+// ---- 齿高相关 ----
+TestRunner.add('齿顶高：m=2 → ha=2', (t) => {
+  t.assertEqual(Gear.calcAddendumHeight(2), 2);
+});
+TestRunner.add('齿根高：m=4 → hf=5', (t) => {
+  t.assertEqual(Gear.calcDedendumHeight(4), 5);
+});
+TestRunner.add('全齿高：m=2 → h=4.5', (t) => {
+  t.assertEqual(Gear.calcWholeHeight(2), 4.5);
+});
+
+// ---- 基圆直径 ----
+TestRunner.add('基圆：m=2, z=20 → db≈37.5877', (t) => {
+  t.assertApprox(Gear.calcBaseDiameter(2, 20), 2 * 20 * Math.cos(20 * Math.PI / 180), 1e-9);
+});
+
+// ---- 齿距 ----
+TestRunner.add('齿距：m=2 → p≈6.2832', (t) => {
+  t.assertApprox(Gear.calcCircularPitch(2), 2 * Math.PI, 1e-9);
+});
+
+// ---- 根切判断 ----
+TestRunner.add('根切：z=15 → true', (t) => {
+  t.assertTrue(Gear.hasUndercutRisk(15));
+});
+TestRunner.add('根切：z=17 → false', (t) => {
+  t.assertFalse(Gear.hasUndercutRisk(17));
+});
+TestRunner.add('根切：z=20 → false', (t) => {
+  t.assertFalse(Gear.hasUndercutRisk(20));
+});
+
+// ---- 综合对象 ----
+TestRunner.add('calcAllParameters 返回完整对象', (t) => {
+  const r = Gear.calcAllParameters(2, 20);
+  t.assertEqual(r.d, 40);
+  t.assertEqual(r.da, 44);
+  t.assertEqual(r.df, 35);
+  t.assertEqual(r.ha, 2);
+  t.assertEqual(r.hf, 2.5);
+  t.assertEqual(r.h, 4.5);
+  t.assertEqual(r.alpha, 20);
+  t.assertFalse(r.hasUndercutRisk);
+});
+TestRunner.add('calcAllParameters z=14 提示根切风险', (t) => {
+  const r = Gear.calcAllParameters(2, 14);
+  t.assertTrue(r.hasUndercutRisk);
+});
+
+// ---- 齿轮副 ----
+TestRunner.add('calcPairParameters 完整齿轮副', (t) => {
+  const r = Gear.calcPairParameters(2, 20, 40);
+  t.assertEqual(r.a, 60);
+  t.assertEqual(r.i, 2);
+  t.assertEqual(r.d1, 40);
+  t.assertEqual(r.d2, 80);
+  t.assertFalse(r.gear1HasUndercutRisk);
+  t.assertFalse(r.gear2HasUndercutRisk);
+});
+
+/* ============ 运行按钮 ============ */
+document.getElementById('runTestBtn').addEventListener('click', function () {
+  const out = document.getElementById('testOutput');
+  const result = TestRunner.run();
+  out.textContent = result.log + '\n\n' +
+    '════════════════════════════════════\n' +
+    `通过 ${result.passed} / 共 ${result.total}` +
+    (result.failed > 0 ? ` （失败 ${result.failed}）` : '') + '\n' +
+    '════════════════════════════════════';
+  out.className = 'test-result ' + (result.failed === 0 ? 'test-pass' : 'test-fail');
+});
+</script>
+
+</body>
+</html>

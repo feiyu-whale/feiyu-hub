@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ＡＡ 全角半角</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:14px; font-family:inherit; resize:vertical; min-height:90px; line-height:1.6; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btn { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border:1px solid #7a5fc0;
+    border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn.g { background:#241a3a; border-color:#4a3d70; color:#c8b3ff; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>ＡＡ 全角 / 半角转换</h1>
+  <div class="sub">字母・数字・符号 全角 ⇄ 半角</div>
+
+  <div class="card">
+    <div class="lbl">输入</div>
+    <textarea id="in" placeholder="输入文本…"></textarea>
+    <div class="row">
+      <button class="btn" data-to="half">→ 转半角</button>
+      <button class="btn" data-to="full">→ 转全角</button>
+      <button class="btn g" data-to="clr">清空</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <textarea id="out" readonly></textarea>
+  </div>
+  <div class="ver">v1.0.0-全角半角 20261016</div>
+</div>
+<script>
+// 【fullhalf】全角/半角 字母数字符号互转。依赖：无（Unicode 映射）。输入：文本；输出：全/半角文本。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：Unicode 全角/半角对应关系（U+FF01–U+FF5E ↔ U+0021–U+007E，差 0xFEE0；全角空格 U+3000 ↔ 半角空格）。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  function toHalf(s){
+    var out = "";
+    for(var i=0;i<s.length;i++){
+      var c = s.charCodeAt(i);
+      if(c === 0x3000){ out += " "; }
+      else if(c >= 0xFF01 && c <= 0xFF5E){ out += String.fromCharCode(c - 0xFEE0); }
+      else { out += s[i]; }
+    }
+    return out;
+  }
+  function toFull(s){
+    var out = "";
+    for(var i=0;i<s.length;i++){
+      var c = s.charCodeAt(i);
+      if(c === 0x20){ out += "\u3000"; }
+      else if(c >= 0x21 && c <= 0x7E){ out += String.fromCharCode(c + 0xFEE0); }
+      else { out += s[i]; }
+    }
+    return out;
+  }
+
+  function run(to){
+    if(to === "clr"){ $("in").value=""; $("out").value=""; return; }
+    var s = $("in").value;
+    $("out").value = (to === "half") ? toHalf(s) : toFull(s);
+  }
+  document.querySelectorAll("[data-to]").forEach(function(b){
+    b.onclick = function(){ run(b.dataset.to); };
+  });
+})();
+</script>
+</body>
+</html>

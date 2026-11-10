@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光伏发电量估算工具 · v2.1.2-修审查问题 20261108</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e5799 0%, #2989d8 100%);
+    color: #fff;
+    padding: 28px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.9; margin-top: 6px; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e4e7ed;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 0;
+    background: transparent;
+    border: none;
+    font-size: 15px;
+    color: #606266;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: #1e5799; background: #f5f9ff; }
+  .tab-btn.active {
+    color: #1e5799;
+    border-bottom-color: #1e5799;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px 32px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .kw { color: #569cd6; }
+  .str { color: #ce9178; }
+  .cm { color: #6a9955; font-style: italic; }
+  .fn { color: #dcdcaa; }
+  .num { color: #b5cea8; }
+  .doc h2 {
+    font-size: 20px;
+    color: #1e5799;
+    margin: 28px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e4e7ed;
+  }
+  .doc h3 {
+    font-size: 16px;
+    color: #2c3e50;
+    margin: 20px 0 10px;
+  }
+  .doc p { margin: 10px 0; text-align: justify; }
+  .doc ul, .doc ol { margin: 10px 0 10px 24px; }
+  .doc li { margin: 6px 0; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #dcdfe6;
+    padding: 10px 12px;
+    text-align: left;
+  }
+  .doc th { background: #f5f7fa; font-weight: 600; }
+  .doc code {
+    background: #f0f2f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .warn-box {
+    background: #fff7e6;
+    border-left: 4px solid #fa8c16;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .info-box {
+    background: #e6f7ff;
+    border-left: 4px solid #1890ff;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .test-result {
+    background: #fff;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 16px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+  }
+  .test-pass { color: #52c41a; }
+  .test-fail { color: #f5222d; }
+  .test-summary {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .test-summary.all-pass { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+  .test-summary.has-fail { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+  .run-btn {
+    background: #1e5799;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .run-btn:hover { background: #174a83; }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #909399;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>光伏发电量估算工具</h1>
+
+<div style="background:#fff;border-radius:10px;padding:16px;margin:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+  <div style="font-size:15px;font-weight:600;color:#2c3e50;margin-bottom:12px;border-left:3px solid #f39c12;padding-left:8px;">🔢 即时计算</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">装机容量 P（kWp）</label>
+      <input type="number" id="pvP" value="10" min="0.001" step="0.001" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">年峰值日照时数 H（h）</label>
+      <input type="number" id="pvH" value="1200" min="0.001" step="0.001" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">系统效率 PR（0–1）</label>
+      <input type="number" id="pvPR" value="0.80" min="0" max="1" step="0.01" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+  </div>
+  <div id="pvResult" style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e3e9ef;border-radius:8px;font-size:14px;"></div>
+  <div style="font-size:11px;color:#95a5a6;margin-top:8px;">公式：E = P × H × PR（单位 kWh）。本工具不内置地区辐射数据，H 需自行查询权威数据源。</div>
+</div>
+
+<script>
+(function(){
+  function run(){
+    var box=document.getElementById('pvResult');
+    var P=parseFloat(document.getElementById('pvP').value);
+    var H=parseFloat(document.getElementById('pvH').value);
+    var PR=parseFloat(document.getElementById('pvPR').value);
+    if(!isFinite(P)||!isFinite(H)||!isFinite(PR)){ box.innerHTML='<span style="color:#e74c3c">请填写完整的三个参数</span>'; return; }
+    if(P<=0){ box.innerHTML='<span style="color:#e74c3c">装机容量必须大于 0</span>'; return; }
+    if(H<=0){ box.innerHTML='<span style="color:#e74c3c">峰值日照时数必须大于 0</span>'; return; }
+    if(PR<0||PR>1){ box.innerHTML='<span style="color:#e74c3c">系统效率 PR 需在 0–1 之间</span>'; return; }
+    var E=P*H*PR;
+    var s='';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">年发电量</span><b style="color:#f39c12;font-size:16px">'+E.toFixed(0)+' kWh</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">折合万度</span><b>'+(E/10000).toFixed(2)+' 万度</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">日均发电</span><b>'+(E/365).toFixed(1)+' kWh/天</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">误差区间（±10%，经验值）</span><b>'+(E*0.9).toFixed(0)+' – '+(E*1.1).toFixed(0)+' kWh</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:#666">等效利用小时</span><b>'+(H*PR).toFixed(0)+' h</b></div>';
+    box.innerHTML=s;
+  }
+  ['pvP','pvH','pvPR'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input',run);
+  });
+  run();
+})();
+</script>
+
+  <p>基于 IEC 61724-1 与 GB/T 50797-2012 的简化估算模型 · 提供误差范围而非绝对精确值</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="source">一、JS 源码</button>
+  <button class="tab-btn" data-tab="test">二、单元测试</button>
+  <button class="tab-btn" data-tab="doc">三、使用说明书</button>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="source">
+  <p style="margin-bottom:12px;color:#606266;font-size:14px;">
+    纯函数实现，无外部依赖，可直接在浏览器控制台运行。所有函数均含完整 JSDoc。
+  </p>
+<pre id="sourceCode"></pre>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div class="panel" id="test">
+  <p style="margin-bottom:12px;color:#606266;font-size:14px;">
+    共 39 个测试用例，覆盖正常值、边界值、异常输入、精度问题。点击按钮运行。
+  </p>
+  <button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+  <div class="test-result" id="testOutput">尚未运行。</div>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel doc" id="doc">
+
+<h2>一、工具用途</h2>
+<p>
+  本工具用于在<strong>规划阶段</strong>对并网光伏电站的年发电量进行快速估算。输入装机容量（kWp）、当地峰值日照时数（h/年）、系统效率（PR，无量纲），即可得到年发电量的<strong>估算值与误差范围</strong>。
+</p>
+<p>
+  适用对象：项目前期可行性研究、投资回报粗算、方案比选、教学演示。<strong>不适用于</strong>施工图设计、并网验收、电费结算等需要精确数据的场景。
+</p>
+
+<h2>二、核心公式</h2>
+<p>本工具采用的核心公式为：</p>
+<p style="text-align:center;font-size:18px;margin:16px 0;color:#1e5799;">
+  <strong>E = P × H × PR</strong>
+</p>
+<ul>
+  <li><code>E</code>：年发电量，单位 kWh（千瓦时，即"度"）</li>
+  <li><code>P</code>：装机容量，单位 kWp（峰值功率，STC 条件下）</li>
+  <li><code>H</code>：年峰值日照时数，单位 h（等价于年总辐射量 kWh/m²，因为 1 kW/m² × 1 h = 1 kWh/m²）</li>
+  <li><code>PR</code>：Performance Ratio，系统效率，取值 0–1</li>
+</ul>
+<p>
+  该公式是光伏行业通用的简化估算模型，在 IEC 61724-1:2017《Photovoltaic system performance monitoring – Guidelines for measurement, data exchange and analysis》以及国内 GB/T 50797-2012《光伏发电站设计规范》中均有对应表述（具体条款号需查标准原文）。
+</p>
+<div class="warn-box">
+  <strong>数据来源提示：</strong>本工具全部参数（PR 典型范围、衰减率、默认 H、误差区间等）均为经验值，<strong>未经标准原文核对，页面不提供条款号或文献出处</strong>。正式工程使用前请自行查阅现行标准与实测数据。
+</div>
+<p>
+</p>
+
+<h2>三、参数详解</h2>
+
+<h3>3.1 装机容量 P（kWp）</h3>
+<p>
+  指光伏组件在标准测试条件（STC：辐照度 1000 W/m²、电池温度 25°C、AM1.5 光谱）下的标称功率总和。例如一块 550 Wp 的组件 20 块，总装机容量为 11 kWp。
+</p>
+<p>
+  <strong>取值要求：</strong>必须为正数，单位 kWp。若以 Wp 输入需先除以 1000 转换。
+</p>
+
+<h3>3.2 峰值日照时数 H（h/年）</h3>
+<p>
+  定义：将当地全年实际接收到的太阳总辐射量（kWh/m²）等效为标准辐照度 1 kW/m² 下的小时数。例如某地年总辐射量为 1500 kWh/m²，则 H = 1500 h。
+</p>
+<p>
+  <strong>数据来源：</strong>
+</p>
+<ul>
+  <li>中国气象局太阳能资源数据（需申请）</li>
+  <li>NASA POWER 数据库（<code>power.larc.nasa.gov</code>，免费）</li>
+  <li>Meteonorm、PVGIS 等商业/开源工具</li>
+  <li>GB/T 31155-2014《太阳能资源等级 总辐射》中给出的中国各地资源区划可作为参考</li>
+</ul>
+<div class="warn-box">
+  <strong>注意：</strong>本工具<strong>不内置</strong>任何地区的辐射数据，避免数据过期或不适用于具体场址。用户需自行查询权威数据源。
+</div>
+
+<h3>3.3 系统效率 PR（Performance Ratio）</h3>
+<p>
+  PR 是光伏系统实际输出能量与理论最大输出能量之比，综合反映了所有损失。依据 IEC 61724-1:2017 定义：
+</p>
+<p style="text-align:center;font-size:16px;margin:12px 0;">
+  PR = Y<sub>f</sub> / Y<sub>r</sub> = (E<sub>actual</sub> / P) / (H)
+</p>
+<p>
+  <strong>典型取值范围：</strong>
+</p>
+<table>
+  <tr><th>系统类型</th><th>PR 参考范围</th><th>说明</th></tr>
+  <tr><td>大型地面电站（良好维护）</td><td>0.80 – 0.86</td><td>经验值，未核对标准，需查实测统计</td></tr>
+  <tr><td>工商业分布式</td><td>0.78 – 0.84</td><td>屋顶温度较高，PR 偏低</td></tr>
+  <tr><td>户用小型系统</td><td>0.75 – 0.82</td><td>设备档次与维护水平差异大</td></tr>
+</table>
+<p>
+  PR 的主要构成损失包括：组件温度损失、组件衰减、灰尘遮挡、逆变器转换损失、直流/交流线损、阴影遮挡、弱光损失、失配损失等。本工具提供 <code>calculatePerformanceRatio(lossFactors)</code> 函数，可由用户按分项损失累加得到 PR。
+</p>
+
+<h2>四、使用场景（5 例）</h2>
+
+<h3>场景 1：户用屋顶初步估算</h3>
+<p>
+  用户：华北某地居民，屋顶可装 10 kWp，想了解一年能发多少电。<br>
+  输入：P = 10 kWp，H = 1200 h（华北典型值，需查当地数据），PR = 0.80。<br>
+  输出：E = 10 × 1200 × 0.80 = 9600 kWh/年，考虑 ±10% 误差范围为 8640 – 10560 kWh/年。
+</p>
+
+<h3>场景 2：工商业项目方案比选</h3>
+<p>
+  用户：工厂屋顶 500 kWp，比较两种组件方案。<br>
+  方案 A：H = 1100 h，PR = 0.82 → E = 451,000 kWh<br>
+  方案 B：H = 1100 h，PR = 0.84 → E = 462,000 kWh<br>
+  结论：方案 B 年多发电约 1.1 万度，可据此评估组件溢价是否合理。
+</p>
+
+<h3>场景 3：投资回报粗算</h3>
+<p>
+  用户：1 MW 地面电站，当地 H = 1400 h，PR = 0.83，电价 0.35 元/kWh。<br>
+  E = 1000 × 1400 × 0.83 = 1,162,000 kWh ≈ 116.2 万度/年。<br>
+  年收入 ≈ 40.67 万元。可进一步结合投资成本估算回收期（需另算，本工具不含财务模型）。
+</p>
+
+<h3>场景 4：由分项损失推导 PR</h3>
+<p>
+  用户已知：温度损失 8%、衰减 2%、灰尘 3%、逆变器 3%、线损 2%、阴影 1%。<br>
+  调用 <code>calculatePerformanceRatio({temperature:0.08, degradation:0.02, soiling:0.03, inverter:0.03, wiring:0.02, shading:0.01})</code><br>
+  按连乘法 PR = (1−0.08)(1−0.02)(1−0.03)(1−0.03)(1−0.02)(1−0.01) ≈ 0.8230。再代入主公式计算发电量。
+</p>
+
+<h3>场景 5：敏感性分析</h3>
+<p>
+  用户想了解 PR 每变化 1% 对发电量的影响。<br>
+  固定 P = 100 kWp，H = 1300 h，PR 从 0.78 到 0.85 遍历，调用 <code>estimateRange</code> 得到每个点的 ±10% 区间，绘制曲线即可。
+</p>
+
+<h2>五、常见错误</h2>
+<ol>
+  <li><strong>单位混淆：</strong>把 Wp 当 kWp 输入（差 1000 倍），或把 MW 当 kW。务必先统一单位。</li>
+  <li><strong>把"日照小时数"当"峰值日照时数"：</strong>气象预报的"晴天 10 小时"是日照时数，不等于峰值日照时数。后者需由总辐射量换算。</li>
+  <li><strong>PR 取值过高：</strong>超过 0.90 的 PR 在现实中极为罕见，通常意味着输入有误或损失考虑不全。</li>
+  <li><strong>忽略温度损失：</strong>高温地区 PR 会显著下降，直接套用 0.85 会高估发电量。</li>
+  <li><strong>使用过期辐射数据：</strong>辐射数据应使用至少 10 年以上长期平均值，单年数据波动大。</li>
+  <li><strong>把估算当结算：</strong>本工具结果不能用于电费结算、补贴申报、合同承诺。</li>
+</ol>
+
+<h2>六、数据依据</h2>
+<ul>
+  <li><strong>IEC 61724-1:2017</strong>：光伏系统性能监测国际标准，定义了 PR、Y<sub>f</sub>、Y<sub>r</sub> 等核心指标。</li>
+  <li><strong>GB/T 50797-2012</strong>：《光伏发电站设计规范》，国内光伏电站设计的权威标准，包含发电量计算方法。</li>
+  <li><strong>GB/T 31155-2014</strong>：《太阳能资源等级 总辐射》，用于中国太阳能资源区划。</li>
+  <li><strong>NASA POWER</strong>：美国航空航天局提供的全球气象与辐射数据，免费公开。</li>
+</ul>
+<div class="info-box">
+  上述标准的具体条款号、PR 推荐值、辐射数据精度等细节，<strong>需查标准原文</strong>，本说明书不作转述以避免断章取义。
+</div>
+
+<h2>七、精度与误差说明（有限精准原则）</h2>
+<p>
+  <strong>核心声明：</strong>现实世界的光伏发电受无限多变量影响（分钟级辐照波动、组件个体差异、局部微气候、灰尘累积曲线、逆变器 MPPT 跟踪精度、电网限电……），本工具<strong>不承诺绝对精确</strong>，仅做到"方法准、输入项准、结果给误差范围"。
+</p>
+
+<h3>7.1 算准了什么</h3>
+<ul>
+  <li>算术计算本身：在 IEEE 754 双精度浮点范围内，<code>P × H × PR</code> 的数学结果是准确的。</li>
+  <li>输入校验：对非法输入（负数、NaN、越界 PR 等）能正确拒绝并报错。</li>
+  <li>单位换算与格式化：kWh / MWh / GWh 的换算逻辑无误。</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<ul>
+  <li>逐时辐照变化与温度耦合效应（需 PVsyst、SAM 等专业软件）</li>
+  <li>组件年衰减曲线（首年衰减与后续年衰减不同）</li>
+  <li>积雪、沙尘暴、鸟粪等偶发事件</li>
+  <li>电网限电、检修停机</li>
+  <li>双面组件背面增益、跟踪支架增益</li>
+  <li>具体场址的微地形、微气候</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<p>
+  在输入数据质量良好的前提下（辐射数据为 10 年以上月均值、PR 由实测或详细分项推导），<strong>年发电量估算的典型误差范围为 ±10% 至 ±15%</strong>。若辐射数据仅取单年或 PR 凭经验拍脑袋，误差可能扩大到 ±20% 甚至更大。
+</p>
+<p>
+  本工具默认提供 ±10% 的误差区间（可通过 <code>estimateRange</code> 的 tolerance 参数调整），<strong>用户应结合项目实际情况判断该区间是否合理</strong>。
+</p>
+
+<h2>八、局限性</h2>
+<ol>
+  <li><strong>仅适用于并网光伏系统</strong>：离网系统涉及蓄电池充放电效率、负载特性，本公式不适用。</li>
+  <li><strong>仅做年发电量估算</strong>：不提供逐月、逐日、逐时输出，无法分析自发自用比例、峰谷电价匹配。</li>
+  <li><strong>不含财务模型</strong>：不计算投资回收期、IRR、LCOE，需另行建模。</li>
+  <li><strong>不含设备选型</strong>：不推荐具体组件、逆变器型号。</li>
+  <li><strong>不含结构设计</strong>：不计算风载、雪载、支架强度。</li>
+  <li><strong>不含电气设计</strong>：不计算电缆截面、保护配置。</li>
+  <li><strong>不替代专业软件</strong>：对于大型电站或复杂场景，应使用 PVsyst、SAM、Meteonorm 等专业工具进行详细模拟。</li>
+</ol>
+
+<div class="warn-box" style="margin-top:24px;">
+  <strong>最终提醒：</strong>本工具为教学与前期估算用途。任何涉及合同签订、融资决策、并网申请的正式文件，必须由具备资质的设计单位依据现行国家标准出具，不可仅凭本工具结果。
+</div>
+
+</div>
+
+<div class="version">v2.1.2-修审查问题 20261108</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（纯函数实现，完整 JSDoc）
+ * ============================================================ */
+
+/**
+ * 校验光伏发电量估算的三项输入参数
+ *
+ * @param {number} capacity - 装机容量，单位 kWp，必须为正有限数
+ * @param {number} peakSunHours - 年峰值日照时数，单位 h，必须为正有限数
+ * @param {number} performanceRatio - 系统效率 PR，必须为 [0, 1] 区间内的数
+ * @returns {{valid: boolean, errors: string[]}} valid 为 true 表示全部通过；errors 列出所有不通过项
+ */
+function validateInputs(capacity, peakSunHours, performanceRatio) {
+  const errors = [];
+
+  if (typeof capacity !== 'number' || Number.isNaN(capacity)) {
+    errors.push('装机容量必须为数字');
+  } else if (!Number.isFinite(capacity)) {
+    errors.push('装机容量不能为无穷大');
+  } else if (capacity <= 0) {
+    errors.push('装机容量必须为正数');
+  }
+
+  if (typeof peakSunHours !== 'number' || Number.isNaN(peakSunHours)) {
+    errors.push('峰值日照时数必须为数字');
+  } else if (!Number.isFinite(peakSunHours)) {
+    errors.push('峰值日照时数不能为无穷大');
+  } else if (peakSunHours <= 0) {
+    errors.push('峰值日照时数必须为正数');
+  }
+
+  if (typeof performanceRatio !== 'number' || Number.isNaN(performanceRatio)) {
+    errors.push('系统效率必须为数字');
+  } else if (performanceRatio < 0 || performanceRatio > 1) {
+    errors.push('系统效率必须在 0 到 1 之间');
+  }
+
+  return { valid: errors.length === 0, errors: errors };
+}
+
+/**
+ * 计算光伏系统年发电量（核心公式 E = P × H × PR）
+ *
+ * 公式来源：IEC 61724-1:2017 与 GB/T 50797-2012 的简化形式。
+ * 输入非法时抛出 Error，不返回 NaN 或负数。
+ *
+ * @param {number} capacity - 装机容量，单位 kWp
+ * @param {number} peakSunHours - 年峰值日照时数，单位 h
+ * @param {number} performanceRatio - 系统效率 PR，取值 [0, 1]
+ * @returns {number} 年发电量，单位 kWh
+ * @throws {Error} 输入参数无效时抛出
+ */
+function calculateAnnualEnergy(capacity, peakSunHours, performanceRatio) {
+  const v = validateInputs(capacity, peakSunHours, performanceRatio);
+  if (!v.valid) {
+    throw new Error('输入参数无效：' + v.errors.join('；'));
+  }
+  return capacity * peakSunHours * performanceRatio;
+}
+
+/**
+ * 估算发电量的误差范围
+ *
+ * 由于现实变量无限，本函数不承诺绝对精确，仅按给定容差给出区间。
+ *
+ * @param {number} capacity - 装机容量 kWp
+ * @param {number} peakSunHours - 年峰值日照时数 h
+ * @param {number} performanceRatio - 系统效率 PR
+ * @param {number} [tolerance=0.1] - 容差比例，如 0.1 表示 ±10%
+ * @returns {{nominal: number, min: number, max: number, tolerance: number}}
+ */
+function estimateRange(capacity, peakSunHours, performanceRatio, tolerance) {
+  if (tolerance === undefined) tolerance = 0.1;
+  if (typeof tolerance !== 'number' || Number.isNaN(tolerance)) {
+    throw new Error('容差必须为数字');
+  }
+  if (tolerance < 0 || tolerance >= 1) {
+    throw new Error('容差必须在 [0, 1) 区间');
+  }
+  const nominal = calculateAnnualEnergy(capacity, peakSunHours, performanceRatio);
+  return {
+    nominal: nominal,
+    min: nominal * (1 - tolerance),
+    max: nominal * (1 + tolerance),
+    tolerance: tolerance
+  };
+}
+
+/**
+ * 将发电量（kWh）格式化为带单位的字符串
+ *
+ * 规则：
+ *   - >= 1e9 kWh  → 显示为 GWh
+ *   - >= 1e3 kWh  → 显示为 MWh
+ *   - 其他        → 显示为 kWh
+ *
+ * @param {number} kWh - 发电量，单位 kWh
+ * @returns {string} 格式化后的字符串，如 "1.23 MWh"
+ */
+function formatEnergy(kWh) {
+  if (typeof kWh !== 'number' || Number.isNaN(kWh)) return '无效数值';
+  if (!Number.isFinite(kWh)) return '无穷大';
+  if (kWh < 0) return '-' + formatEnergy(-kWh);
+  if (kWh >= 1e9) return (kWh / 1e9).toFixed(2) + ' GWh';
+  if (kWh >= 1e3) return (kWh / 1e3).toFixed(2) + ' MWh';
+  return kWh.toFixed(2) + ' kWh';
+}
+
+/**
+ * 由分项损失因子计算系统效率 PR
+ *
+ * PR = Π(1 - loss_i)，工程惯例为连乘而非线性相加，避免低估综合损失。
+ * 要求每项损失在 [0, 1) 区间，且总损失之和 < 1。
+ *
+ * @param {Object<string, number>} lossFactors - 损失因子字典，如 {temperature: 0.08, soiling: 0.03}
+ * @returns {number} 系统效率 PR，取值 (0, 1]
+ * @throws {Error} 损失因子非法或总和 >= 1 时抛出
+ */
+function calculatePerformanceRatio(lossFactors) {
+  if (lossFactors === null || typeof lossFactors !== 'object') {
+    throw new Error('损失因子必须为对象');
+  }
+  const keys = Object.keys(lossFactors);
+  if (keys.length === 0) {
+    throw new Error('损失因子不能为空');
+  }
+  let totalLoss = 0;
+  let pr = 1;
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    const v = lossFactors[k];
+    if (typeof v !== 'number' || Number.isNaN(v)) {
+      throw new Error('损失因子 ' + k + ' 必须为数字');
+    }
+    if (v < 0 || v >= 1) {
+      throw new Error('损失因子 ' + k + ' 必须在 [0, 1) 区间');
+    }
+    totalLoss += v;
+    pr *= (1 - v);
+  }
+  if (totalLoss >= 1) {
+    throw new Error('总损失不能大于等于 1，当前为 ' + totalLoss);
+  }
+  return pr;
+}
+
+/**
+ * 将日均峰值日照时数换算为年峰值日照时数
+ *
+ * @param {number} dailyHours - 日均峰值日照时数，单位 h/天
+ * @param {number} [days=365] - 一年天数，默认 365
+ * @returns {number} 年峰值日照时数，单位 h/年
+ * @throws {Error} 输入非法时抛出
+ */
+function convertDailyToAnnualPeakSunHours(dailyHours, days) {
+  if (days === undefined) days = 365;
+  if (typeof dailyHours !== 'number' || Number.isNaN(dailyHours)) {
+    throw new Error('日均峰值日照时数必须为数字');
+  }
+  if (dailyHours <= 0) {
+    throw new Error('日均峰值日照时数必须为正数');
+  }
+  if (typeof days !== 'number' || Number.isNaN(days) || days <= 0) {
+    throw new Error('天数必须为正数');
+  }
+  return dailyHours * days;
+}
+
+/**
+ * 计算考虑首年衰减后的首年发电量
+ *
+ * 光伏组件首年衰减通常高于后续年份（如单晶首年 2%，后续 0.55%/年）。
+ * 本函数将首年衰减作为额外损失从 PR 中扣除。
+ *
+ * @param {number} capacity - 装机容量 kWp
+ * @param {number} peakSunHours - 年峰值日照时数 h
+ * @param {number} performanceRatio - 系统效率 PR（不含首年衰减）
+ * @param {number} firstYearDegradation - 首年衰减比例，如 0.02 表示 2%
+ * @returns {number} 首年发电量 kWh
+ */
+function calculateFirstYearEnergy(capacity, peakSunHours, performanceRatio, firstYearDegradation) {
+  if (typeof firstYearDegradation !== 'number' || Number.isNaN(firstYearDegradation)) {
+    throw new Error('首年衰减必须为数字');
+  }
+  if (firstYearDegradation < 0 || firstYearDegradation >= 1) {
+    throw new Error('首年衰减必须在 [0, 1) 区间');
+  }
+  const baseEnergy = calculateAnnualEnergy(capacity, peakSunHours, performanceRatio);
+  return baseEnergy * (1 - firstYearDegradation);
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，自带 assert，至少 30 个）
+ * ============================================================ */
+
+const __tests__ = [];
+let __passed__ = 0;
+let __failed__ = 0;
+let __failDetails__ = [];
+
+/**
+ * 注册一个测试用例
+ * @param {string} name - 用例名
+ * @param {function} fn - 测试函数，抛出异常即视为失败
+ */
+function test(name, fn) {
+  __tests__.push({ name: name, fn: fn });
+}
+
+/**
+ * 断言相等（支持数字近似比较）
+ * @param {*} actual
+ * @param {*} expected
+ * @param {number} [epsilon=1e-9] - 浮点容差
+ */
+function assertEqual(actual, expected, epsilon) {
+  if (epsilon === undefined) epsilon = 1e-9;
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    if (Math.abs(actual - expected) > epsilon) {
+      throw new Error('期望 ' + expected + '，实际 ' + actual);
+    }
+  } else if (actual !== expected) {
+    throw new Error('期望 ' + JSON.stringify(expected) + '，实际 ' + JSON.stringify(actual));
+  }
+}
+
+/** 断言抛出异常 */
+function assertThrows(fn, msgContains) {
+  let thrown = false;
+  let errMsg = '';
+  try { fn(); } catch (e) { thrown = true; errMsg = e.message; }
+  if (!thrown) throw new Error('期望抛出异常但未抛出');
+  if (msgContains && errMsg.indexOf(msgContains) === -1) {
+    throw new Error('异常信息不包含 "' + msgContains + '"，实际为：' + errMsg);
+  }
+}
+
+/** 断言为真 */
+function assertTrue(v) { if (!v) throw new Error('期望为真，实际为 ' + v); }
+
+/** 断言为假 */
+function assertFalse(v) { if (v) throw new Error('期望为假，实际为 ' + v); }
+
+// ---------- calculateAnnualEnergy 正常值 ----------
+test('正常值：10kW × 1200h × 0.8 = 9600 kWh', function() {
+  assertEqual(calculateAnnualEnergy(10, 1200, 0.8), 9600);
+});
+test('正常值：5kW × 1000h × 0.75 = 3750 kWh', function() {
+  assertEqual(calculateAnnualEnergy(5, 1000, 0.75), 3750);
+});
+test('正常值：100kW × 1500h × 0.85 = 127500 kWh', function() {
+  assertEqual(calculateAnnualEnergy(100, 1500, 0.85), 127500);
+});
+test('正常值：1MW × 1400h × 0.83 = 1162000 kWh', function() {
+  assertEqual(calculateAnnualEnergy(1000, 1400, 0.83), 1162000);
+});
+test('正常值：小容量 0.1kW × 100h × 0.5 = 5 kWh', function() {
+  assertEqual(calculateAnnualEnergy(0.1, 100, 0.5), 5);
+});
+
+// ---------- calculateAnnualEnergy 边界值 ----------
+test('边界：PR = 1（理论最大）', function() {
+  assertEqual(calculateAnnualEnergy(10, 1000, 1), 10000);
+});
+test('边界：PR 极小 0.001', function() {
+  assertEqual(calculateAnnualEnergy(10, 1000, 0.001), 10, 1e-6);
+});
+test('边界：容量极小 0.001 kW', function() {
+  assertEqual(calculateAnnualEnergy(0.001, 1000, 0.8), 0.8, 1e-9);
+});
+test('边界：日照极小 0.001 h', function() {
+  assertEqual(calculateAnnualEnergy(10, 0.001, 0.8), 0.008, 1e-9);
+});
+test('边界：大容量 100000 kW', function() {
+  assertEqual(calculateAnnualEnergy(100000, 2000, 0.85), 170000000);
+});
+
+// ---------- calculateAnnualEnergy 异常输入 ----------
+test('异常：容量为负数', function() {
+  assertThrows(function() { calculateAnnualEnergy(-10, 1000, 0.8); }, '装机容量');
+});
+test('异常：容量为 0', function() {
+  assertThrows(function() { calculateAnnualEnergy(0, 1000, 0.8); }, '装机容量');
+});
+test('异常：日照为负数', function() {
+  assertThrows(function() { calculateAnnualEnergy(10, -100, 0.8); }, '峰值日照');
+});
+test('异常：PR < 0', function() {
+  assertThrows(function() { calculateAnnualEnergy(10, 1000, -0.1); }, '系统效率');
+});
+test('异常：PR > 1', function() {
+  assertThrows(function() { calculateAnnualEnergy(10, 1000, 1.1); }, '系统效率');
+});
+test('异常：容量为 NaN', function() {
+  assertThrows(function() { calculateAnnualEnergy(NaN, 1000, 0.8); });
+});
+test('异常：容量为字符串', function() {
+  assertThrows(function() { calculateAnnualEnergy('10', 1000, 0.8); });
+});
+test('异常：容量为 null', function() {
+  assertThrows(function() { calculateAnnualEnergy(null, 1000, 0.8); });
+});
+test('异常：容量为 undefined', function() {
+  assertThrows(function() { calculateAnnualEnergy(undefined, 1000, 0.8); });
+});
+test('异常：容量为 Infinity', function() {
+  assertThrows(function() { calculateAnnualEnergy(Infinity, 1000, 0.8); }, '无穷大');
+});
+
+// ---------- validateInputs ----------
+test('校验：全部有效', function() {
+  const r = validateInputs(10, 1200, 0.8);
+  assertTrue(r.valid);
+  assertEqual(r.errors.length, 0);
+});
+test('校验：容量无效', function() {
+  const r = validateInputs(-1, 1200, 0.8);
+  assertFalse(r.valid);
+  assertTrue(r.errors.length >= 1);
+});
+test('校验：PR 无效', function() {
+  const r = validateInputs(10, 1200, 1.5);
+  assertFalse(r.valid);
+});
+test('校验：多项无效', function() {
+  const r = validateInputs(-1, -100, 2);
+  assertFalse(r.valid);
+  assertTrue(r.errors.length >= 3);
+});
+
+// ---------- formatEnergy ----------
+test('格式化：kWh 级别', function() {
+  assertEqual(formatEnergy(500), '500.00 kWh');
+});
+test('格式化：MWh 级别', function() {
+  assertEqual(formatEnergy(5000), '5.00 MWh');
+});
+test('格式化：GWh 级别', function() {
+  assertEqual(formatEnergy(2e9), '2.00 GWh');
+});
+test('格式化：NaN', function() {
+  assertEqual(formatEnergy(NaN), '无效数值');
+});
+test('格式化：负数', function() {
+  assertEqual(formatEnergy(-5000), '-5.00 MWh');
+});
+
+// ---------- estimateRange ----------
+test('范围：默认 ±10%', function() {
+  const r = estimateRange(10, 1000, 0.8);
+  assertEqual(r.nominal, 8000);
+  assertEqual(r.min, 7200);
+  assertEqual(r.max, 8800);
+  assertEqual(r.tolerance, 0.1);
+});
+test('范围：自定义 ±5%', function() {
+  const r = estimateRange(10, 1000, 0.8, 0.05);
+  assertEqual(r.min, 7600);
+  assertEqual(r.max, 8400);
+});
+test('范围：0 容差', function() {
+  const r = estimateRange(10, 1000, 0.8, 0);
+  assertEqual(r.min, 8000);
+  assertEqual(r.max, 8000);
+});
+test('范围：容差非法', function() {
+  assertThrows(function() { estimateRange(10, 1000, 0.8, 1); });
+});
+
+// ---------- calculatePerformanceRatio ----------
+test('PR 计算：正常损失', function() {
+  const pr = calculatePerformanceRatio({
+    temperature: 0.08, degradation: 0.02, soiling: 0.03,
+    inverter: 0.03, wiring: 0.02, shading: 0.01
+  });
+  /* 修正：六项损失连乘 = 0.92×0.98×0.97×0.97×0.98×0.99 ≈ 0.8230
+     原期望 0.8857 对应约 11% 总损失，与所列 19% 损失不自洽 */
+  assertEqual(pr, 0.8230, 1e-4);
+});
+test('PR 计算：总损失 >= 1 抛错', function() {
+  assertThrows(function() {
+    calculatePerformanceRatio({ a: 0.5, b: 0.5, c: 0.1 });
+  }, '总损失');
+});
+test('PR 计算：单项越界', function() {
+  assertThrows(function() {
+    calculatePerformanceRatio({ a: 1.5 });
+  });
+});
+
+// ---------- convertDailyToAnnualPeakSunHours ----------
+test('日均转年：默认 365 天', function() {
+  assertEqual(convertDailyToAnnualPeakSunHours(4), 1460);
+});
+test('日均转年：自定义天数', function() {
+  assertEqual(convertDailyToAnnualPeakSunHours(4, 360), 1440);
+});
+
+// ---------- calculateFirstYearEnergy ----------
+test('首年发电量：含 2% 衰减', function() {
+  assertEqual(calculateFirstYearEnergy(10, 1000, 0.8, 0.02), 7840);
+});
+
+// ---------- 浮点精度 ----------
+test('精度：0.1 + 0.2 类问题不影响业务结果', function() {
+  // 10 * 0.1 * 3 在 JS 中可能不严格等于 3，但业务上应接近
+  const r = calculateAnnualEnergy(10, 1000, 1/3);
+  assertTrue(Math.abs(r - 10000/3) < 1e-6);
+});
+
+/** 运行全部测试并渲染结果 */
+function runAllTests() {
+  __passed__ = 0;
+  __failed__ = 0;
+  __failDetails__ = [];
+  const lines = [];
+  for (let i = 0; i < __tests__.length; i++) {
+    const t = __tests__[i];
+    try {
+      t.fn();
+      __passed__++;
+      lines.push('<div class="test-pass">✓ #' + (i+1) + ' ' + escapeHtml(t.name) + '</div>');
+    } catch (e) {
+      __failed__++;
+      __failDetails__.push({ idx: i+1, name: t.name, err: e.message });
+      lines.push('<div class="test-fail">✗ #' + (i+1) + ' ' + escapeHtml(t.name) + ' —— ' + escapeHtml(e.message) + '</div>');
+    }
+  }
+  const total = __tests__.length;
+  const summaryClass = __failed__ === 0 ? 'all-pass' : 'has-fail';
+  const summaryText = '通过 ' + __passed__ + ' / 共 ' + total +
+    (__failed__ > 0 ? '（失败 ' + __failed__ + '）' : ' ✓ 全部通过');
+  const out = document.getElementById('testOutput');
+  out.innerHTML = '<div class="test-summary ' + summaryClass + '">' + summaryText + '</div>' + lines.join('');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+(function() {
+  const btns = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.panel');
+  btns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const target = btn.getAttribute('data-tab');
+      btns.forEach(function(b) { b.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(target).classList.add('active');
+    });
+  });
+})();
+
+/* ============================================================
+ *  源码展示（带简易语法高亮）
+ * ============================================================ */
+(function() {
+  const src = `/**
+ * 校验光伏发电量估算的三项输入参数
+ * @param {number} capacity - 装机容量 kWp
+ * @param {number} peakSunHours - 年峰值日照时数 h
+ * @param {number} performanceRatio - 系统效率 PR [0,1]
+ * @returns {{valid:boolean, errors:string[]}}
+ */
+function validateInputs(capacity, peakSunHours, performanceRatio) {
+  const errors = [];
+  if (typeof capacity !== 'number' || Number.isNaN(capacity)) {
+    errors.push('装机容量必须为数字');
+  } else if (!Number.isFinite(capacity)) {
+    errors.push('装机容量不能为无穷大');
+  } else if (capacity <= 0) {
+    errors.push('装机容量必须为正数');
+  }
+  // ... 对 peakSunHours、performanceRatio 同理
+  return { valid: errors.length === 0, errors: errors };
+}
+
+/**
+ * 核心公式 E = P × H × PR
+ * @returns {number} 年发电量 kWh
+ */
+function calculateAnnualEnergy(capacity, peakSunHours, performanceRatio) {
+  const v = validateInputs(capacity, peakSunHours, performanceRatio);
+  if (!v.valid) throw new Error('输入参数无效：' + v.errors.join('；'));
+  return capacity * peakSunHours * performanceRatio;
+}
+
+/**
+ * 估算误差范围
+ * @param {number} tolerance - 容差比例，默认 0.1
+ */
+function estimateRange(capacity, peakSunHours, performanceRatio, tolerance) {
+  if (tolerance === undefined) tolerance = 0.1;
+  const nominal = calculateAnnualEnergy(capacity, peakSunHours, performanceRatio);
+  return {
+    nominal: nominal,
+    min: nominal * (1 - tolerance),
+    max: nominal * (1 + tolerance),
+    tolerance: tolerance
+  };
+}
+
+/**
+ * 格式化发电量（kWh / MWh / GWh 自动切换）
+ */
+function formatEnergy(kWh) {
+  if (typeof kWh !== 'number' || Number.isNaN(kWh)) return '无效数值';
+  if (kWh >= 1e9) return (kWh / 1e9).toFixed(2) + ' GWh';
+  if (kWh >= 1e3) return (kWh / 1e3).toFixed(2) + ' MWh';
+  return kWh.toFixed(2) + ' kWh';
+}
+
+/**
+ * 由分项损失计算 PR
+ * PR = Π(1 - loss_i)（连乘，工程惯例）
+ */
+function calculatePerformanceRatio(lossFactors) {
+  let totalLoss = 0;
+  let pr = 1;
+  for (const k in lossFactors) {
+    const v = lossFactors[k];
+    if (v < 0 || v >= 1) throw new Error('损失因子 ' + k + ' 越界');
+    totalLoss += v;
+    pr *= (1 - v);
+  }
+  if (totalLoss >= 1) throw new Error('总损失不能 >= 1');
+  return pr;
+}
+
+/** 日均峰值日照 → 年峰值日照 */
+function convertDailyToAnnualPeakSunHours(dailyHours, days) {
+  if (days === undefined) days = 365;
+  return dailyHours * days;
+}
+
+/** 首年发电量（含首年衰减） */
+function calculateFirstYearEnergy(capacity, peakSunHours, performanceRatio, firstYearDegradation) {
+  const base = calculateAnnualEnergy(capacity, peakSunHours, performanceRatio);
+  return base * (1 - firstYearDegradation);
+}`;
+
+  // 简易高亮
+  function highlight(code) {
+    // 先转义
+    code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // 注释
+    code = code.replace(/(\/\*\*[\s\S]*?\*\/|\/\/[^\n]*)/g, '<span class="cm">$1</span>');
+    // 字符串
+    code = code.replace(/('[^']*')/g, '<span class="str">$1</span>');
+    // 关键字
+    code = code.replace(/\b(function|const|let|var|if|else|for|return|throw|new|typeof|in|undefined|null|true|false)\b/g, '<span class="kw">$1</span>');
+    // 数字
+    code = code.replace(/(?![^<]*<\/span>)\b(\d+\.?\d*)\b(?!\s*<\/)/g, '<span class="num">$1</span>');
+    // 函数名
+    code = code.replace(/\b([a-zA-Z_]\w*)\s*\(/g, '<span class="fn">$1</span>(');
+    return code;
+  }
+  document.getElementById('sourceCode').innerHTML = highlight(src);
+})();
+</script>
+
+</body>
+</html>

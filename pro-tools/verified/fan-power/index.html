@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>风机功率计算工具 v2.1.2-修审查问题 20261108</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f0f2f5; color: #333; line-height: 1.7; }
+.header { background: linear-gradient(135deg, #1a3a5c, #2d6a9f); color: #fff; padding: 28px 40px; }
+.header h1 { font-size: 26px; font-weight: 700; }
+.header p { font-size: 14px; opacity: 0.85; margin-top: 6px; }
+.tabs { display: flex; background: #fff; border-bottom: 2px solid #e0e0e0; padding: 0 40px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.tab-btn { padding: 14px 28px; cursor: pointer; border: none; background: none; font-size: 15px; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab-btn:hover { color: #2d6a9f; }
+.tab-btn.active { color: #2d6a9f; border-bottom-color: #2d6a9f; }
+.tab-content { display: none; padding: 30px 40px; max-width: 1200px; margin: 0 auto; }
+.tab-content.active { display: block; }
+pre { background: #1e1e1e; color: #d4d4d4; padding: 24px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; }
+pre .comment { color: #6a9955; }
+pre .keyword { color: #569cd6; }
+pre .string { color: #ce9178; }
+pre .number { color: #b5cea8; }
+pre .func { color: #dcdcaa; }
+pre .type { color: #4ec9b0; }
+#test-output { background: #1e1e1e; color: #d4d4d4; padding: 24px; border-radius: 8px; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; font-size: 13px; line-height: 1.8; white-space: pre-wrap; max-height: 70vh; overflow-y: auto; }
+.pass { color: #4ec9b0; }
+.fail { color: #f44747; }
+.summary { color: #dcdcaa; font-weight: bold; font-size: 15px; }
+.manual h2 { font-size: 22px; color: #1a3a5c; margin: 30px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #2d6a9f; }
+.manual h3 { font-size: 17px; color: #2d6a9f; margin: 22px 0 12px; }
+.manual p, .manual li { font-size: 15px; margin-bottom: 10px; }
+.manual ul, .manual ol { padding-left: 24px; }
+.manual table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.manual th, .manual td { border: 1px solid #d0d0d0; padding: 10px 14px; text-align: left; }
+.manual th { background: #e8f0f8; font-weight: 600; }
+.manual .warn { background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+.manual .info { background: #e8f4fd; border-left: 4px solid #2d6a9f; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+.manual .danger { background: #fde8e8; border-left: 4px solid #dc3545; padding: 14px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+.version-tag { position: fixed; bottom: 12px; right: 18px; font-size: 11px; color: #999; z-index: 999; }
+.formula { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 12px 18px; border-radius: 6px; font-family: "Cascadia Code", monospace; margin: 10px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>风机功率计算工具</h1>
+  <p>轴功率计算 · 电机功率选型 · 风机相似定律换算 · 空气密度修正</p>
+</div>
+
+<div style="background:#fff;border-radius:10px;padding:16px;margin:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+  <div style="font-size:15px;font-weight:600;color:#2c3e50;margin-bottom:12px;border-left:3px solid #2980b9;padding-left:8px;">🔢 即时计算</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">风量 Q（m³/h）</label>
+      <input type="number" id="fanQ" value="10000" min="0" step="100" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">全压 p（Pa）</label>
+      <input type="number" id="fanP" value="800" min="0" step="10" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">风机效率 η（0–1）</label>
+      <input type="number" id="fanEta" value="0.75" min="0.1" max="1" step="0.01" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">储备系数 K</label>
+      <input type="number" id="fanK" value="1.15" min="1" step="0.05" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+    <div style="flex:1;min-width:130px;">
+      <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">传动效率 η_trans（0–1）</label>
+      <input type="number" id="fanEtaTrans" value="0.98" min="0.1" max="1" step="0.01" style="width:100%;padding:8px 10px;border:1px solid #d5dbe1;border-radius:6px;font-size:14px;">
+    </div>
+  </div>
+  <div id="fanResult" style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e3e9ef;border-radius:8px;font-size:14px;"></div>
+  <div style="font-size:11px;color:#95a5a6;margin-top:8px;">公式：轴功率 P = Q(m³/s) × p(Pa) ÷ 1000 ÷ η；电机功率 = K × P ÷ 传动效率</div>
+  <div style="font-size:11px;color:#c0392b;margin-top:6px;">⚠ 提示：本工具中储备系数 K（如 1.15）、传动效率参考值（直联 0.98、皮带 0.90~0.95）及马力换算系数 1.35962 均为工程经验值，未经标准条号核对，请以厂家数据为准。</div>
+</div>
+
+<script>
+(function(){
+  function run(){
+    var box=document.getElementById('fanResult');
+    var Q=parseFloat(document.getElementById('fanQ').value);
+    var p=parseFloat(document.getElementById('fanP').value);
+    var eta=parseFloat(document.getElementById('fanEta').value);
+    var K=parseFloat(document.getElementById('fanK').value);
+    var etaT=parseFloat(document.getElementById('fanEtaTrans').value);
+    if(!isFinite(Q)||!isFinite(p)||!isFinite(eta)||!isFinite(K)||!isFinite(etaT)){ box.innerHTML='<span style="color:#e74c3c">请填写完整的参数</span>'; return; }
+    if(Q<0){ box.innerHTML='<span style="color:#e74c3c">风量不能为负</span>'; return; }
+    if(p<0){ box.innerHTML='<span style="color:#e74c3c">全压不能为负</span>'; return; }
+    if(eta<=0||eta>1){ box.innerHTML='<span style="color:#e74c3c">效率需在 0–1 之间</span>'; return; }
+    if(K<1){ box.innerHTML='<span style="color:#e74c3c">储备系数 K 不应小于 1</span>'; return; }
+    if(etaT<=0||etaT>1){ box.innerHTML='<span style="color:#e74c3c">传动效率需在 0–1 之间</span>'; return; }
+    var Qs=Q/3600;
+    var Pshaft=(Qs*p)/(1000*eta);
+    var Pmotor=K*Pshaft/etaT;
+    var s='';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">风量（换算）</span><b>'+Qs.toFixed(4)+' m³/s</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">轴功率</span><b style="color:#2980b9;font-size:16px">'+Pshaft.toFixed(3)+' kW</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e3e9ef"><span style="color:#666">电机功率（K×P÷η_trans）</span><b style="color:#27ae60;font-size:16px">'+Pmotor.toFixed(3)+' kW</b></div>';
+    s+='<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:#666">折合马力</span><b>'+(Pmotor*1.35962).toFixed(2)+' PS</b></div>';
+    box.innerHTML=s;
+  }
+  ['fanQ','fanP','fanEta','fanK','fanEtaTrans'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input',run);
+  });
+  run();
+})();
+</script>
+
+  <p>轴功率计算 · 电机功率选型 · 风机相似定律换算 · 空气密度修正</p>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('source')">第一部分：JS 源码</button>
+  <button class="tab-btn" onclick="switchTab('test')">第二部分：单元测试</button>
+  <button class="tab-btn" onclick="switchTab('manual')">第三部分：使用说明书</button>
+</div>
+
+<div id="tab-source" class="tab-content active">
+  <pre id="source-code"></pre>
+</div>
+
+<div id="tab-test" class="tab-content">
+  <button onclick="runAllTests()" style="padding:10px 28px;background:#2d6a9f;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer;margin-bottom:16px;">▶ 运行全部测试</button>
+  <div id="test-output">点击按钮运行测试...</div>
+</div>
+
+<div id="tab-manual" class="tab-content">
+  <div class="manual" id="manual-content"></div>
+</div>
+
+<div class="version-tag">v2.1.2-修审查问题 20261108</div>
+
+<script id="core-script">
+// ============================================================
+// 第一部分：核心算法源码
+// ============================================================
+
+/**
+ * @module FanPowerCalculator
+ * @description 风机功率计算与相似定律工具库
+ * 参考标准：
+ *   - GB/T 1236-2017《工业通风机 用标准化风道进行性能试验》（ISO 5801:2007 IDT）
+ *   - GB/T 10178-2006《工业通风机 现场性能试验》（ISO 5802:2001 IDT）
+ *
+ * 有限精准声明：
+ *   本工具基于理想气体模型与经典风机相似定律，不承诺绝对精确。
+ *   计算结果仅供工程估算参考，实际选型须以风机厂家性能曲线和实测数据为准。
+ */
+
+/**
+ * 计算空气密度（理想气体模型，含湿度修正）
+ *
+ * 公式：ρ = (p_atm - p_vapor) / (R_d × T) + p_vapor / (R_v × T)
+ * 其中 p_vapor = phi × p_sat(T)
+ *
+ * @param {number} T - 空气温度，单位 ℃（摄氏度），有效范围 -40 ~ 80
+ * @param {number} p_atm - 当地大气压，单位 Pa（帕斯卡），典型值 101325
+ * @param {number} [phi=0] - 相对湿度，范围 0 ~ 1（0 表示干燥空气）
+ * @returns {number} 空气密度，单位 kg/m³
+ * @throws {Error} 参数超出物理合理范围时抛出异常
+ *
+ * @example
+ * calcAirDensity(20, 101325, 0.5); // ≈ 1.199 kg/m³
+ * calcAirDensity(20, 101325, 0);   // ≈ 1.204 kg/m³（干空气）
+ */
+function calcAirDensity(T, p_atm, phi) {
+  if (phi === undefined || phi === null) phi = 0;
+  if (typeof T !== 'number' || typeof p_atm !== 'number' || typeof phi !== 'number') {
+    throw new Error('calcAirDensity: 所有参数必须为数字');
+  }
+  if (T < -40 || T > 80) {
+    throw new Error('calcAirDensity: 温度 T 超出合理范围 [-40, 80] ℃');
+  }
+  if (p_atm <= 0) {
+    throw new Error('calcAirDensity: 大气压必须大于 0');
+  }
+  if (phi < 0 || phi > 1) {
+    throw new Error('calcAirDensity: 相对湿度 phi 必须在 [0, 1] 范围内');
+  }
+
+  var T_K = T + 273.15; // 转换为开尔文
+  var R_d = 287.05;     // 干空气气体常数 J/(kg·K)
+  var R_v = 461.5;      // 水蒸气气体常数 J/(kg·K)
+
+  // 饱和水蒸气压（Magnus 公式，适用于 -40~50℃ 范围，精度约 ±0.3%）
+  // 注意：超过 50℃ 时 Magnus 公式精度下降，此处仍使用但需知晓局限
+  var p_sat = 610.78 * Math.exp(17.2694 * T / (T + 238.3));
+
+  var p_vapor = phi * p_sat;
+  var p_dry = p_atm - p_vapor;
+
+  if (p_dry < 0) {
+    throw new Error('calcAirDensity: 水蒸气分压超过大气压，参数不合理');
+  }
+
+  var rho = p_dry / (R_d * T_K) + p_vapor / (R_v * T_K);
+  return rho;
+}
+
+/**
+ * 计算动压（速度压）
+ *
+ * 公式：p_v = 0.5 × ρ × v²
+ *
+ * @param {number} rho - 空气密度，单位 kg/m³，必须 > 0
+ * @param {number} v - 风速，单位 m/s，必须 >= 0
+ * @returns {number} 动压，单位 Pa
+ * @throws {Error} 参数非法时抛出异常
+ *
+ * @example
+ * calcVelocityPressure(1.2, 10); // = 60 Pa
+ */
+function calcVelocityPressure(rho, v) {
+  if (typeof rho !== 'number' || typeof v !== 'number') {
+    throw new Error('calcVelocityPressure: 参数必须为数字');
+  }
+  if (rho <= 0) {
+    throw new Error('calcVelocityPressure: 密度必须大于 0');
+  }
+  if (v < 0) {
+    throw new Error('calcVelocityPressure: 风速不能为负');
+  }
+  return 0.5 * rho * v * v;
+}
+
+/**
+ * 计算风机轴功率（ Shaft Power ）
+ *
+ * 公式：P_shaft = (Q × p) / (1000 × η)
+ *   其中 Q 单位为 m³/s，p 单位为 Pa，η 为风机效率（小数），P_shaft 单位为 kW
+ *
+ * 若 Q 以 m³/h 输入，内部自动转换：Q_m3s = Q_m3h / 3600
+ *
+ * @param {number} Q - 风量，单位 m³/s（当 useHour 为 true 时为 m³/h）
+ * @param {number} p - 风压（全压或静压，取决于需求），单位 Pa
+ * @param {number} eta - 风机效率，范围 (0, 1]，例如 0.75 表示 75%
+ * @param {boolean} [useHour=false] - 若为 true，Q 的单位为 m³/h
+ * @returns {number} 轴功率，单位 kW
+ * @throws {Error} 参数非法时抛出异常
+ *
+ * @example
+ * calcShaftPower(10, 500, 0.75);       // Q=10m³/s, p=500Pa, η=75% → ≈ 6.667 kW
+ * calcShaftPower(36000, 500, 0.75, true); // Q=36000m³/h → 同上
+ */
+function calcShaftPower(Q, p, eta, useHour) {
+  if (typeof Q !== 'number' || typeof p !== 'number' || typeof eta !== 'number') {
+    throw new Error('calcShaftPower: 参数必须为数字');
+  }
+  if (Q < 0) {
+    throw new Error('calcShaftPower: 风量不能为负');
+  }
+  if (eta <= 0 || eta > 1) {
+    throw new Error('calcShaftPower: 效率必须在 (0, 1] 范围内');
+  }
+
+  var Q_m3s = useHour ? Q / 3600 : Q;
+  if (Q_m3s < 0) {
+    throw new Error('calcShaftPower: 转换后的风量不能为负');
+  }
+
+  return (Q_m3s * p) / (1000 * eta);
+}
+
+/**
+ * 计算电机所需功率（Motor Power）
+ *
+ * 公式：P_motor = K × P_shaft / η_trans
+ *   K 为电机储备系数（安全系数），η_trans 为传动效率
+ *
+ * @param {number} P_shaft - 风机轴功率，单位 kW，必须 >= 0
+ * @param {number} [eta_trans=1] - 传动效率，范围 (0, 1]
+ *   - 直联（联轴器）：0.98 ~ 1.0
+ *   - 皮带传动：0.90 ~ 0.95
+ *   - 齿轮箱：需查厂家数据
+ * @param {number} [K=1.15] - 电机储备系数，通常 1.1 ~ 1.3
+ * @returns {number} 电机所需功率，单位 kW
+ * @throws {Error} 参数非法时抛出异常
+ *
+ * @example
+ * calcMotorPower(6.667, 0.98, 1.15); // ≈ 7.83 kW → 选 11 kW 标准电机
+ */
+function calcMotorPower(P_shaft, eta_trans, K) {
+  if (typeof P_shaft !== 'number') {
+    throw new Error('calcMotorPower: P_shaft 必须为数字');
+  }
+  if (P_shaft < 0) {
+    throw new Error('calcMotorPower: 轴功率不能为负');
+  }
+  if (eta_trans === undefined || eta_trans === null) eta_trans = 1;
+  if (K === undefined || K === null) K = 1.15;
+  if (typeof eta_trans !== 'number' || typeof K !== 'number') {
+    throw new Error('calcMotorPower: 参数必须为数字');
+  }
+  if (eta_trans <= 0 || eta_trans > 1) {
+    throw new Error('calcMotorPower: 传动效率必须在 (0, 1] 范围内');
+  }
+  if (K < 1) {
+    throw new Error('calcMotorPower: 储备系数 K 不应小于 1');
+  }
+  return (K * P_shaft) / eta_trans;
+}
+
+/**
+ * 风机相似定律 —— 风量换算
+ *
+ * 公式：Q₂ = Q₁ × (n₂/n₁) × (D₂/D₁)³
+ *
+ * @param {number} Q1 - 已知风量，单位任意（结果同单位）
+ * @param {number} n1 - 已知转速，单位 rpm（或任意一致单位）
+ * @param {number} n2 - 目标转速
+ * @param {number} D1 - 已知叶轮直径，单位任意（与 D2 一致即可）
+ * @param {number} D2 - 目标叶轮直径
+ * @returns {number} 换算后的风量 Q₂
+ * @throws {Error} 参数非法时抛出异常
+ *
+ * @example
+ * fanLaw_flow(10000, 1450, 960, 0.5, 0.5); // 同直径变速 → ≈ 6621 m³/h
+ */
+function fanLaw_flow(Q1, n1, n2, D1, D2) {
+  if ([Q1, n1, n2, D1, D2].some(function(v) { return typeof v !== 'number'; })) {
+    throw new Error('fanLaw_flow: 所有参数必须为数字');
+  }
+  if (n1 <= 0) throw new Error('fanLaw_flow: n1 必须大于 0');
+  if (D1 <= 0) throw new Error('fanLaw_flow: D1 必须大于 0');
+  if (n2 <= 0) throw new Error('fanLaw_flow: n2 必须大于 0');
+  if (D2 <= 0) throw new Error('fanLaw_flow: D2 必须大于 0');
+  if (Q1 < 0) throw new Error('fanLaw_flow: Q1 不能为负');
+
+  return Q1 * (n2 / n1) * Math.pow(D2 / D1, 3);
+}
+
+/**
+ * 风机相似定律 —— 风压换算
+ *
+ * 公式：p₂ = p₁ × (n₂/n₁)² × (D₂/D₁)² × (ρ₂/ρ₁)
+ *
+ * @param {number} p1 - 已知风压，单位 Pa
+ * @param {number} n1 - 已知转速
+ * @param {number} n2 - 目标转速
+ * @param {number} D1 - 已知叶轮直径
+ * @param {number} D2 - 目标叶轮直径
+ * @param {number} [rho1=1.2] - 已知工况空气密度 kg/m³
+ * @param {number} [rho2=1.2] - 目标工况空气密度 kg/m³
+ * @returns {number} 换算后的风压 p₂，单位同 p1
+ * @throws {Error} 参数非法时抛出异常
+ */
+function fanLaw_pressure(p1, n1, n2, D1, D2, rho1, rho2) {
+  if (rho1 === undefined || rho1 === null) rho1 = 1.2;
+  if (rho2 === undefined || rho2 === null) rho2 = 1.2;
+  if ([p1, n1, n2, D1, D2, rho1, rho2].some(function(v) { return typeof v !== 'number'; })) {
+    throw new Error('fanLaw_pressure: 所有参数必须为数字');
+  }
+  if (n1 <= 0) throw new Error('fanLaw_pressure: n1 必须大于 0');
+  if (D1 <= 0) throw new Error('fanLaw_pressure: D1 必须大于 0');
+  if (n2 <= 0) throw new Error('fanLaw_pressure: n2 必须大于 0');
+  if (D2 <= 0) throw new Error('fanLaw_pressure: D2 必须大于 0');
+  if (rho1 <= 0) throw new Error('fanLaw_pressure: rho1 必须大于 0');
+
+  return p1 * Math.pow(n2 / n1, 2) * Math.pow(D2 / D1, 2) * (rho2 / rho1);
+}
+
+/**
+ * 风机相似定律 —— 功率换算
+ *
+ * 公式：P₂ = P₁ × (n₂/n₁)³ × (D₂/D₁)⁵ × (ρ₂/ρ₁)
+ *
+ * @param {number} P1 - 已知功率，单位 kW
+ * @param {number} n1 - 已知转速
+ * @param {number} n2 - 目标转速
+ * @param {number} D1 - 已知叶轮直径
+ * @param {number} D2 - 目标叶轮直径
+ * @param {number} [rho1=1.2] - 已知工况空气密度 kg/m³
+ * @param {number} [rho2=1.2] - 目标工况空气密度 kg/m³
+ * @returns {number} 换算后的功率 P₂，单位同 P1
+ * @throws {Error} 参数非法时抛出异常
+ */
+function fanLaw_power(P1, n1, n2, D1, D2, rho1, rho2) {
+  if (rho1 === undefined || rho1 === null) rho1 = 1.2;
+  if (rho2 === undefined || rho2 === null) rho2 = 1.2;
+  if ([P1, n1, n2, D1, D2, rho1, rho2].some(function(v) { return typeof v !== 'number'; })) {
+    throw new Error('fanLaw_power: 所有参数必须为数字');
+  }
+  if (n1 <= 0) throw new Error('fanLaw_power: n1 必须大于 0');
+  if (D1 <= 0) throw new Error('fanLaw_power: D1 必须大于 0');
+  if (n2 <= 0) throw new Error('fanLaw_power: n2 必须大于 0');
+  if (D2 <= 0) throw new Error('fanLaw_power: D2 必须大于 0');
+  if (rho1 <= 0) throw new Error('fanLaw_power: rho1 必须大于 0');
+  if (P1 < 0) throw new Error('fanLaw_power: P1 不能为负');
+
+  return P1 * Math.pow(n2 / n1, 3) * Math.pow(D2 / D1, 5) * (rho2 / rho1);
+}
+
+/**
+ * 根据标准状态功率换算到实际工况功率
+ *
+ * 标准状态定义：ρ₀ = 1.2 kg/m³（GB/T 1236-2017 中标准空气密度参考值）
+ * 实际密度由 calcAirDensity 计算
+ *
+ * 公式：P_actual = P_std × (ρ_actual / ρ_std)
+ * 注意：此简化仅适用于同风机、同转速、仅密度变化的场景
+ *
+ * @param {number} P_std - 标准状态下的功率，单位 kW
+ * @param {number} rho_actual - 实际工况空气密度，单位 kg/m³
+ * @param {number} [rho_std=1.2] - 标准空气密度，默认 1.2 kg/m³
+ * @returns {number} 实际工况功率，单位 kW
+ * @throws {Error} 参数非法时抛出异常
+ */
+function convertPowerByDensity(P_std, rho_actual, rho_std) {
+  if (rho_std === undefined || rho_std === null) rho_std = 1.2;
+  if (typeof P_std !== 'number' || typeof rho_actual !== 'number' || typeof rho_std !== 'number') {
+    throw new Error('convertPowerByDensity: 参数必须为数字');
+  }
+  if (P_std < 0) throw new Error('convertPowerByDensity: 功率不能为负');
+  if (rho_actual <= 0) throw new Error('convertPowerByDensity: 实际密度必须大于 0');
+  if (rho_std <= 0) throw new Error('convertPowerByDensity: 标准密度必须大于 0');
+
+  return P_std * (rho_actual / rho_std);
+}
+
+/**
+ * 选择标准电机功率（向上取到标准电机功率等级）
+ *
+ * 标准电机功率等级参考 GB/T 4772 系列及 IEC 60072 系列：
+ * 0.06, 0.09, 0.12, 0.18, 0.25, 0.37, 0.55, 0.75, 1.1, 1.5, 2.2, 3, 4, 5.5,
+ * 7.5, 11, 15, 18.5, 22, 30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250, 315, 400, 500, 630, 800
+ *
+ * @param {number} P_required - 所需电机功率，单位 kW
+ * @returns {number} 不小于 P_required 的最小标准电机功率，单位 kW
+ * @throws {Error} 参数非法或超出标准范围时抛出异常
+ */
+function selectStandardMotor(P_required) {
+  if (typeof P_required !== 'number') {
+    throw new Error('selectStandardMotor: 参数必须为数字');
+  }
+  if (P_required < 0) {
+    throw new Error('selectStandardMotor: 功率不能为负');
+  }
+
+  var standardLevels = [
+    0.06, 0.09, 0.12, 0.18, 0.25, 0.37, 0.55, 0.75,
+    1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22,
+    30, 37, 45, 55, 75, 90, 110, 132, 160, 200, 250,
+    315, 400, 500, 630, 800
+  ];
+
+  for (var i = 0; i < standardLevels.length; i++) {
+    if (standardLevels[i] >= P_required - 1e-9) {
+      return standardLevels[i];
+    }
+  }
+  throw new Error('selectStandardMotor: 所需功率 ' + P_required + ' kW 超出标准电机范围（最大 800 kW）');
+}
+
+/**
+ * 计算风机全压效率
+ *
+ * 公式：η = (Q × p) / (1000 × P_shaft)
+ *   即效率 = 有效功率 / 轴功率
+ *
+ * @param {number} Q - 风量，单位 m³/s
+ * @param {number} p - 全压，单位 Pa
+ * @param {number} P_shaft - 轴功率，单位 kW
+ * @returns {number} 全压效率，范围 (0, 1]
+ * @throws {Error} 参数非法时抛出异常
+ */
+function calcFanEfficiency(Q, p, P_shaft) {
+  if (typeof Q !== 'number' || typeof p !== 'number' || typeof P_shaft !== 'number') {
+    throw new Error('calcFanEfficiency: 参数必须为数字');
+  }
+  if (Q <= 0) throw new Error('calcFanEfficiency: 风量必须大于 0');
+  if (P_shaft <= 0) throw new Error('calcFanEfficiency: 轴功率必须大于 0');
+
+  var eta = (Q * p) / (1000 * P_shaft);
+  if (eta <= 0 || eta > 1) {
+    throw new Error('calcFanEfficiency: 计算得到的效率 ' + eta.toFixed(4) + ' 不在合理范围 (0, 1]，请检查输入参数');
+  }
+  return eta;
+}
+
+/**
+ * 计算管道内风速
+ *
+ * 公式：v = Q / A
+ *   其中 A = π × (D/2)² 为圆形管道截面积
+ *
+ * @param {number} Q - 风量，单位 m³/s
+ * @param {number} D - 管道内径，单位 m
+ * @returns {number} 风速，单位 m/s
+ * @throws {Error} 参数非法时抛出异常
+ */
+function calcDuctVelocity(Q, D) {
+  if (typeof Q !== 'number' || typeof D !== 'number') {
+    throw new Error('calcDuctVelocity: 参数必须为数字');
+  }
+  if (Q < 0) throw new Error('calcDuctVelocity: 风量不能为负');
+  if (D <= 0) throw new Error('calcDuctVelocity: 管道直径必须大于 0');
+
+  var A = Math.PI * Math.pow(D / 2, 2);
+  return Q / A;
+}
+
+/**
+ * 计算圆形管道截面积
+ *
+ * @param {number} D - 管道内径，单位 m
+ * @returns {number} 截面积，单位 m²
+ * @throws {Error} 参数非法时抛出异常
+ */
+function calcCircularArea(D) {
+  if (typeof D !== 'number') {
+    throw new Error('calcCircularArea: 参数必须为数字');
+  }
+  if (D <= 0) throw new Error('calcCircularArea: 直径必须大于 0');
+  return Math.PI * Math.pow(D / 2, 2);
+}
+
+/**
+ * 计算矩形管道截面积
+ *
+ * @param {number} a - 管道一边长度，单位 m
+ * @param {number} b - 管道另一边长度，单位 m
+ * @returns {number} 截面积，单位 m²
+ * @throws {Error} 参数非法时抛出异常
+ */
+function calcRectArea(a, b) {
+  if (typeof a !== 'number' || typeof b !== 'number') {
+    throw new Error('calcRectArea: 参数必须为数字');
+  }
+  if (a <= 0 || b <= 0) throw new Error('calcRectArea: 边长必须大于 0');
+  return a * b;
+}
+
+// 导出到全局（浏览器环境）
+if (typeof window !== 'undefined') {
+  window.FanCalc = {
+    calcAirDensity: calcAirDensity,
+    calcVelocityPressure: calcVelocityPressure,
+    calcShaftPower: calcShaftPower,
+    calcMotorPower: calcMotorPower,
+    fanLaw_flow: fanLaw_flow,
+    fanLaw_pressure: fanLaw_pressure,
+    fanLaw_power: fanLaw_power,
+    convertPowerByDensity: convertPowerByDensity,
+    selectStandardMotor: selectStandardMotor,
+    calcFanEfficiency: calcFanEfficiency,
+    calcDuctVelocity: calcDuctVelocity,
+    calcCircularArea: calcCircularArea,
+    calcRectArea: calcRectArea
+  };
+}
+
+
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+var _testResults = [];
+var _testTotal = 0;
+var _testPassed = 0;
+
+/**
+ * 断言函数：判断值是否在容差范围内
+ * @param {string} name - 测试名称
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} [tolerance=1e-6] - 容差
+ */
+function assertApprox(name, actual, expected, tolerance) {
+  _testTotal++;
+  if (tolerance === undefined) tolerance = 1e-6;
+  var diff = Math.abs(actual - expected);
+  if (diff <= tolerance) {
+    _testPassed++;
+    _testResults.push({ pass: true, name: name, msg: '✓ ' + name + ' → ' + actual.toFixed(6) + ' ≈ ' + expected });
+  } else {
+    _testResults.push({ pass: false, name: name, msg: '✗ ' + name + ' → 得到 ' + actual + '，期望 ' + expected + '，差值 ' + diff });
+  }
+}
+
+/**
+ * 断言函数：判断是否抛出异常
+ * @param {string} name - 测试名称
+ * @param {Function} fn - 待测函数
+ */
+function assertThrows(name, fn) {
+  _testTotal++;
+  try {
+    fn();
+    _testResults.push({ pass: false, name: name, msg: '✗ ' + name + ' → 期望抛出异常但未抛出' });
+  } catch (e) {
+    _testPassed++;
+    _testResults.push({ pass: true, name: name, msg: '✓ ' + name + ' → 正确抛出异常: ' + e.message });
+  }
+}
+
+/**
+ * 断言函数：判断值是否严格相等
+ * @param {string} name - 测试名称
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ */
+function assertEqual(name, actual, expected) {
+  _testTotal++;
+  if (actual === expected) {
+    _testPassed++;
+    _testResults.push({ pass: true, name: name, msg: '✓ ' + name + ' → ' + actual + ' === ' + expected });
+  } else {
+    _testResults.push({ pass: false, name: name, msg: '✗ ' + name + ' → 得到 ' + actual + '，期望 ' + expected });
+  }
+}
+
+function runAllTests() {
+  _testResults = [];
+  _testTotal = 0;
+  _testPassed = 0;
+
+  // ========== calcAirDensity 测试 ==========
+
+  // T1: 标准状态干空气密度
+  assertApprox('T01: 标准干空气密度(20℃,101325Pa)', calcAirDensity(20, 101325, 0), 1.2041, 0.002);
+
+  // T2: 标准状态干空气密度 0℃
+  assertApprox('T02: 标准干空气密度(0℃,101325Pa)', calcAirDensity(0, 101325, 0), 1.2922, 0.003);
+
+  // T3: 高温空气密度
+  assertApprox('T03: 高温空气密度(80℃,101325Pa)', calcAirDensity(80, 101325, 0), 0.9996, 0.005);
+
+  // T4: 高海拔低气压
+  assertApprox('T04: 低气压密度(20℃,80000Pa)', calcAirDensity(20, 80000, 0), 0.9507, 0.005);
+
+  // T5: 含湿空气密度应略低于干空气
+  var rhoDry = calcAirDensity(25, 101325, 0);
+  var rhoWet = calcAirDensity(25, 101325, 0.8);
+  _testTotal++;
+  if (rhoWet < rhoDry) {
+    _testPassed++;
+    _testResults.push({ pass: true, name: 'T05: 湿空气密度低于干空气', msg: '✓ T05: 湿空气 ' + rhoWet.toFixed(4) + ' < 干空气 ' + rhoDry.toFixed(4) });
+  } else {
+    _testResults.push({ pass: false, name: 'T05: 湿空气密度低于干空气', msg: '✗ T05: 湿空气 ' + rhoWet.toFixed(4) + ' >= 干空气 ' + rhoDry.toFixed(4) });
+  }
+
+  // T6: 温度异常
+  assertThrows('T06: 温度过低(-50℃)', function() { calcAirDensity(-50, 101325, 0); });
+
+  // T7: 气压异常
+  assertThrows('T07: 气压为0', function() { calcAirDensity(20, 0, 0); });
+
+  // T8: 湿度超范围
+  assertThrows('T08: 湿度>1', function() { calcAirDensity(20, 101325, 1.5); });
+
+  // T9: 非数字参数
+  assertThrows('T09: 非数字参数', function() { calcAirDensity('abc', 101325, 0); });
+
+  // ========== calcVelocityPressure 测试 ==========
+
+  // T10: 正常动压
+  assertApprox('T10: 动压(ρ=1.2,v=10)', calcVelocityPressure(1.2, 10), 60, 1e-6);
+
+  // T11: 零风速
+  assertApprox('T11: 动压(v=0)', calcVelocityPressure(1.2, 0), 0, 1e-6);
+
+  // T12: 负风速异常
+  assertThrows('T12: 负风速', function() { calcVelocityPressure(1.2, -5); });
+
+  // T13: 零密度异常
+  assertThrows('T13: 零密度', function() { calcVelocityPressure(0, 10); });
+
+  // ========== calcShaftPower 测试 ==========
+
+  // T14: 正常轴功率
+  assertApprox('T14: 轴功率(Q=10m³/s,p=500Pa,η=0.75)', calcShaftPower(10, 500, 0.75), 6.6667, 0.001);
+
+  // T15: 使用 m³/h 单位
+  assertApprox('T15: 轴功率(Q=36000m³/h,p=500Pa,η=0.75)', calcShaftPower(36000, 500, 0.75, true), 6.6667, 0.001);
+
+  // T16: 零风量
+  assertApprox('T16: 轴功率(Q=0)', calcShaftPower(0, 500, 0.75), 0, 1e-6);
+
+  // T17: 效率为1
+  assertApprox('T17: 轴功率(η=1)', calcShaftPower(10, 1000, 1), 10, 1e-6);
+
+  // T18: 效率异常(>1)
+  assertThrows('T18: 效率>1', function() { calcShaftPower(10, 500, 1.5); });
+
+  // T19: 效率异常(=0)
+  assertThrows('T19: 效率=0', function() { calcShaftPower(10, 500, 0); });
+
+  // T20: 负风量异常
+  assertThrows('T20: 负风量', function() { calcShaftPower(-10, 500, 0.75); });
+
+  // T21: 小风量高精度
+  assertApprox('T21: 小风量精度(Q=0.001,p=100,η=0.5)', calcShaftPower(0.001, 100, 0.5), 0.0002, 1e-8);
+
+  // ========== calcMotorPower 测试 ==========
+
+  // T22: 正常电机功率
+  assertApprox('T22: 电机功率(P=6.667,η=0.98,K=1.15)', calcMotorPower(6.667, 0.98, 1.15), 7.828, 0.01);
+
+  // T23: 默认参数
+  assertApprox('T23: 电机功率(默认η=1,K=1.15)', calcMotorPower(10), 11.5, 1e-6);
+
+  // T24: 零轴功率
+  assertApprox('T24: 电机功率(P=0)', calcMotorPower(0, 1, 1.15), 0, 1e-6);
+
+  // T25: K<1 异常
+  assertThrows('T25: K<1', function() { calcMotorPower(10, 1, 0.9); });
+
+  // ========== fanLaw 测试 ==========
+
+  // T26: 风量定律 - 仅变速
+  assertApprox('T26: 风量定律(变速1450→960)', fanLaw_flow(10000, 1450, 960, 1, 1), 6620.69, 0.1);
+
+  // T27: 风量定律 - 仅变径
+  // Q ∝ n·D³；n 不变、D 从 0.4→0.5 时 Q = 1000×1×(1.25)³ = 1953.125
+  // 修正：原期望 2441.41 是按 D⁴ 算的，相似定律风量应为 D³
+  assertApprox('T27: 风量定律(变径D³比)', fanLaw_flow(1000, 1000, 1000, 0.4, 0.5), 1953.125, 0.5);
+
+  // T28: 风压定律 - 仅变速
+  assertApprox('T28: 风压定律(变速)', fanLaw_pressure(500, 1450, 960, 1, 1), 219.16, 0.1);
+
+  // T29: 功率定律 - 仅变速
+  assertApprox('T29: 功率定律(变速)', fanLaw_power(10, 1450, 960, 1, 1), 2.903, 0.01);
+
+  // T30: 功率定律 - 含密度修正
+  assertApprox('T30: 功率定律(含密度修正)', fanLaw_power(10, 1000, 1000, 1, 1, 1.2, 0.9), 7.5, 0.01);
+
+  // T31: 风量定律 n1=0 异常
+  assertThrows('T31: 风量定律n1=0', function() { fanLaw_flow(1000, 0, 960, 1, 1); });
+
+  // T32: 风压定律 D1=0 异常
+  assertThrows('T32: 风压定律D1=0', function() { fanLaw_pressure(500, 1450, 960, 0, 1); });
+
+  // ========== convertPowerByDensity 测试 ==========
+
+  // T33: 密度换算
+  assertApprox('T33: 密度换算功率', convertPowerByDensity(10, 0.9, 1.2), 7.5, 1e-6);
+
+  // T34: 密度相同
+  assertApprox('T34: 密度相同功率不变', convertPowerByDensity(10, 1.2, 1.2), 10, 1e-6);
+
+  // ========== selectStandardMotor 测试 ==========
+
+  // T35: 选 7.83kW → 11kW
+  assertEqual('T35: 选标准电机(7.83→11)', selectStandardMotor(7.83), 11);
+
+  // T36: 选 5.5kW → 5.5kW
+  assertEqual('T36: 选标准电机(5.5→5.5)', selectStandardMotor(5.5), 5.5);
+
+  // T37: 选 0.1kW → 0.12kW
+  assertEqual('T37: 选标准电机(0.1→0.12)', selectStandardMotor(0.1), 0.12);
+
+  // T38: 超出范围
+  assertThrows('T38: 选标准电机超范围', function() { selectStandardMotor(1000); });
+
+  // ========== calcFanEfficiency 测试 ==========
+
+  // T39: 正常效率
+  assertApprox('T39: 风机效率', calcFanEfficiency(10, 500, 6.667), 0.75, 0.001);
+
+  // T40: 效率不合理
+  assertThrows('T40: 效率>1异常', function() { calcFanEfficiency(10, 500, 1); });
+
+  // ========== calcDuctVelocity 测试 ==========
+
+  // T41: 正常风速
+  var area41 = Math.PI * Math.pow(0.5 / 2, 2);
+  assertApprox('T41: 管道风速(D=0.5m,Q=1m³/s)', calcDuctVelocity(1, 0.5), 1 / area41, 0.01);
+
+  // T42: 零直径异常
+  assertThrows('T42: 管道直径=0', function() { calcDuctVelocity(1, 0); });
+
+  // ========== 精度与边界测试 ==========
+
+  // T43: 极小值精度
+  assertApprox('T43: 极小风量精度', calcShaftPower(0.0001, 1, 0.5), 0.0000002, 1e-10);
+
+  // T44: 大数值
+  assertApprox('T44: 大数值轴功率', calcShaftPower(100, 10000, 0.8), 1250, 0.01);
+
+  // T45: 浮点精度 - 0.1+0.2 问题
+  var r45 = calcShaftPower(0.1 + 0.2, 1, 1);
+  assertApprox('T45: 浮点精度(0.1+0.2)', r45, 0.3 / 1000, 1e-10);
+
+  // 输出结果
+  var outputEl = document.getElementById('test-output');
+  var html = '';
+  for (var i = 0; i < _testResults.length; i++) {
+    var r = _testResults[i];
+    html += '<span class="' + (r.pass ? 'pass' : 'fail') + '">' + r.msg + '</span>\n';
+  }
+  html += '\n<span class="summary">═══════════════════════════════════════\n';
+  html += '通过 ' + _testPassed + ' / 共 ' + _testTotal + '\n';
+  if (_testPassed === _testTotal) {
+    html += '全部通过 ✓\n';
+  } else {
+    html += '失败 ' + (_testTotal - _testPassed) + ' 项 ✗\n';
+  }
+  html += '═══════════════════════════════════════</span>';
+  outputEl.innerHTML = html;
+}
+
+
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+
+var manualHTML = '<h2>一、工具概述</h2>'
++ '<p>本工具是一个基于 JavaScript 实现的风机功率计算与相似定律换算工具集，面向暖通空调（HVAC）工程师、风机选型人员、以及需要进行风机性能估算的技术人员。工具涵盖以下核心功能：</p>'
++ '<ol>'
++ '<li><strong>轴功率计算</strong>：根据风量、风压、风机效率计算风机轴功率</li>'
++ '<li><strong>电机功率选型</strong>：在轴功率基础上考虑传动效率和电机储备系数，计算所需电机功率，并自动匹配标准电机功率等级</li>'
++ '<li><strong>风机相似定律（风机定律）</strong>：当转速、叶轮直径、气体密度发生变化时，换算风量、风压、功率</li>'
++ '<li><strong>空气密度计算</strong>：根据温度、大气压、相对湿度计算实际空气密度</li>'
++ '<li><strong>辅助计算</strong>：动压计算、管道风速计算、管道截面积计算等</li>'
++ '</ol>'
++ '<div class="info"><strong>适用场景：</strong>初步选型估算、方案比选、现场工况换算、教学演示。<br><strong>不适用场景：</strong>不能替代风机厂家提供的性能曲线和实测数据，不能作为最终采购依据。</div>'
+
++ '<h2>二、参数详解</h2>'
++ '<h3>2.1 基本参数</h3>'
++ '<table>'
++ '<tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th></tr>'
++ '<tr><td>风量</td><td>Q</td><td>m³/s 或 m³/h</td><td>风机在单位时间内输送的气体体积。注意工况风量与标况风量的区别</td></tr>'
++ '<tr><td>风压</td><td>p</td><td>Pa</td><td>可以是全压或静压，取决于计算需求。全压 = 静压 + 动压</td></tr>'
++ '<tr><td>风机效率</td><td>η</td><td>—（小数）</td><td>风机将机械能转化为气体能量的效率，通常 0.5 ~ 0.9。输入时用小数值，如 75% 输入 0.75</td></tr>'
++ '<tr><td>轴功率</td><td>P_shaft</td><td>kW</td><td>风机叶轮实际需要的功率</td></tr>'
++ '<tr><td>传动效率</td><td>η_trans</td><td>—（小数）</td><td>电机到风机之间的传动效率。直联约 0.98~1.0，皮带传动约 0.90~0.95（经验值，固定参考范围，未经标准条号核对）</td></tr>'
++ '<tr><td>电机储备系数</td><td>K</td><td>—</td><td>考虑运行波动、管网阻力变化等不确定因素的安全余量，通常 1.1~1.3</td></tr>'
++ '<tr><td>转速</td><td>n</td><td>rpm</td><td>风机叶轮旋转速度</td></tr>'
++ '<tr><td>叶轮直径</td><td>D</td><td>m（或任意一致单位）</td><td>风机叶轮外径</td></tr>'
++ '<tr><td>空气密度</td><td>ρ</td><td>kg/m³</td><td>标准状态约 1.2 kg/m³，随温度、气压、湿度变化</td></tr>'
++ '<tr><td>温度</td><td>T</td><td>℃</td><td>气体温度</td></tr>'
++ '<tr><td>大气压</td><td>p_atm</td><td>Pa</td><td>当地大气压力，标准大气压 101325 Pa</td></tr>'
++ '<tr><td>相对湿度</td><td>φ</td><td>—（小数）</td><td>0~1，0 为干空气</td></tr>'
++ '</table>'
+
++ '<h3>2.2 传动效率参考值</h3>'
++ '<table>'
++ '<tr><th>传动方式</th><th>传动效率 η_trans</th><th>备注</th></tr>'
++ '<tr><td>电动机直联（联轴器）</td><td>0.98 ~ 1.00</td><td>效率最高</td></tr>'
++ '<tr><td>皮带传动（V 带）</td><td>0.90 ~ 0.95</td><td>需考虑皮带张紧状态</td></tr>'
++ '<tr><td>齿轮箱传动</td><td>需查厂家数据</td><td>不同型号差异较大</td></tr>'
++ '</table>'
++ '<div class="warn">注意：传动效率的具体数值应以传动装置厂家提供的数据为准，上表仅为工程经验参考范围。</div>'
+
++ '<h2>三、核心公式</h2>'
++ '<h3>3.1 轴功率公式</h3>'
++ '<div class="formula">P_shaft = (Q × p) / (1000 × η)</div>'
++ '<p>其中 Q 为 m³/s，p 为 Pa，η 为小数形式的效率，结果 P_shaft 为 kW。分母中的 1000 是将 W 转换为 kW。</p>'
++ '<p>当 Q 以 m³/h 为单位时：</p>'
++ '<div class="formula">P_shaft = (Q_m³/h × p) / (3600 × 1000 × η)</div>'
+
++ '<h3>3.2 电机功率公式</h3>'
++ '<div class="formula">P_motor = K × P_shaft / η_trans</div>'
++ '<p>K 为电机储备系数，η_trans 为传动效率。</p>'
+
++ '<h3>3.3 风机相似定律</h3>'
++ '<p>同一系列几何相似的风机（或同一风机在不同工况下），满足以下关系：</p>'
++ '<div class="formula">'
++ '风量：Q₂/Q₁ = (n₂/n₁) × (D₂/D₁)³<br>'
++ '风压：p₂/p₁ = (n₂/n₁)² × (D₂/D₁)² × (ρ₂/ρ₁)<br>'
++ '功率：P₂/P₁ = (n₂/n₁)³ × (D₂/D₁)⁵ × (ρ₂/ρ₁)'
++ '</div>'
++ '<p>注意：相似定律成立的前提是风机处于几何相似、运动相似、动力相似的工况点，即对应工况点的效率近似相等。实际应用中，当转速变化不超过 ±20%、直径变化不超过 ±10% 时，相似定律的精度较好。超出此范围时，效率会发生变化，相似定律的误差增大。</p>'
+
++ '<h3>3.4 空气密度公式</h3>'
++ '<div class="formula">'
++ 'ρ = (p_atm - p_v) / (R_d × T_K) + p_v / (R_v × T_K)<br>'
++ 'p_v = φ × p_sat(T)<br>'
++ 'p_sat = 610.78 × exp(17.2694 × T / (T + 238.3))  （Magnus 公式）'
++ '</div>'
++ '<p>其中 R_d = 287.05 J/(kg·K) 为干空气气体常数，R_v = 461.5 J/(kg·K) 为水蒸气气体常数，T_K = T + 273.15 为绝对温度。</p>'
+
++ '<h2>四、使用场景</h2>'
+
++ '<h3>场景 1：常规风机选型 —— 已知风量风压求电机功率</h3>'
++ '<p><strong>问题：</strong>某通风系统需要风量 20000 m³/h，系统阻力（全压）800 Pa，风机全压效率 78%，皮带传动，求所需电机功率。</p>'
++ '<p><strong>计算步骤：</strong></p>'
++ '<ol>'
++ '<li>轴功率：P_shaft = (20000/3600 × 800) / (1000 × 0.78) = 5.698 kW</li>'
++ '<li>电机功率：P_motor = 1.15 × 5.698 / 0.93 = 7.03 kW（取皮带传动效率 0.93）</li>'
++ '<li>选标准电机：selectStandardMotor(7.03) → 7.5 kW</li>'
++ '</ol>'
++ '<p><strong>结论：</strong>选用 7.5 kW 标准电机。</p>'
+
++ '<h3>场景 2：变频调速节能估算</h3>'
++ '<p><strong>问题：</strong>某风机额定转速 1450 rpm，额定风量 30000 m³/h，额定功率 22 kW。现因工艺调整，只需 70% 风量，用变频器降速运行，求新转速和功率。</p>'
++ '<p><strong>计算步骤：</strong></p>'
++ '<ol>'
++ '<li>新转速：由风量定律 Q₂/Q₁ = n₂/n₁（同直径同密度），n₂ = 1450 × 0.7 = 1015 rpm</li>'
++ '<li>新功率：由功率定律 P₂/P₁ = (n₂/n₁)³ = 0.7³ = 0.343，P₂ = 22 × 0.343 = 7.55 kW</li>'
++ '</ol>'
++ '<p><strong>结论：</strong>降速到 1015 rpm 后，功率从 22 kW 降到约 7.55 kW，节能约 66%。这就是变频调速在风机上节能效果显著的原因 —— 功率与转速的三次方成正比。</p>'
+
++ '<h3>场景 3：高海拔地区风机功率修正</h3>'
++ '<p><strong>问题：</strong>某风机在平原地区（海拔 0m，ρ=1.2 kg/m³）测试轴功率为 15 kW。现需安装到海拔 3000m 地区（大气压约 70000 Pa，温度 15℃），求实际轴功率。</p>'
++ '<p><strong>计算步骤：</strong></p>'
++ '<ol>'
++ '<li>计算高海拔空气密度：calcAirDensity(15, 70000, 0) ≈ 0.846 kg/m³</li>'
++ '<li>密度修正：P_actual = 15 × (0.846/1.2) = 10.58 kW</li>'
++ '</ol>'
++ '<p><strong>结论：</strong>高海拔地区空气稀薄，风机实际轴功率降低。但需注意：风量（体积流量）不变的情况下，质量流量减少，对需要一定质量流量的工艺过程（如燃烧供风）可能不满足要求。</p>'
+
++ '<h3>场景 4：风机叶轮切割（变径）估算</h3>'
++ '<p><strong>问题：</strong>某离心风机叶轮直径 D₁=600mm，在 1200 rpm 下运行，风量 15000 m³/h，全压 1200 Pa，轴功率 8 kW。现因系统阻力降低，需将叶轮切割到 D₂=550mm，估算新工况参数。</p>'
++ '<p><strong>计算步骤：</strong></p>'
++ '<ol>'
++ '<li>新风量：Q₂ = 15000 × (1200/1200) × (0.55/0.60)³ = 15000 × 0.7703 = 11554 m³/h</li>'
++ '<li>新风压：p₂ = 1200 × (0.55/0.60)² = 1200 × 0.8403 = 1008 Pa</li>'
++ '<li>新轴功率：P₂ = 8 × (0.55/0.60)⁵ = 8 × 0.6488 = 5.19 kW</li>'
++ '</ol>'
++ '<p><strong>结论：</strong>叶轮切割 50mm 后，风量降约 23%，风压降约 16%，功率降约 35%。叶轮切割是现场调整风机性能的常用手段，但切割量一般不超过原直径的 10%~15%，否则效率会明显下降。</p>'
+
++ '<h3>场景 5：高温烟气风机功率计算</h3>'
++ '<p><strong>问题：</strong>某锅炉引风机需处理 60℃ 的烟气，当地大气压 95000 Pa（湿度忽略），要求风量 50000 m³/h，系统全压 2500 Pa，风机效率 72%，直联传动。求轴功率和电机功率。</p>'
++ '<p><strong>计算步骤：</strong></p>'
++ '<ol>'
++ '<li>空气密度：calcAirDensity(60, 95000, 0) ≈ 1.060 kg/m³</li>'
++ '<li>轴功率：P_shaft = (50000/3600 × 2500) / (1000 × 0.72) = 48.23 kW</li>'
++ '<li>电机功率：P_motor = 1.15 × 48.23 / 0.98 = 56.70 kW（直联 η_trans=0.98）</li>'
++ '<li>选标准电机：selectStandardMotor(56.70) → 75 kW</li>'
++ '</ol>'
++ '<p><strong>结论：</strong>选用 75 kW 电机。注意：高温烟气的密度低于常温空气，如果风机性能曲线是在标准空气密度下给出的，需要进行密度修正后才能正确选型。</p>'
+
++ '<h3>场景 6：管道风速与动压校核</h3>'
++ '<p><strong>问题：</strong>某圆形风管直径 500mm，风量 5000 m³/h，空气密度 1.2 kg/m³，求管内风速和动压。</p>'
++ '<p><strong>计算步骤：</strong></p>'
++ '<ol>'
++ '<li>风量转换：Q = 5000/3600 = 1.389 m³/s</li>'
++ '<li>管道面积：A = π × (0.5/2)² = 0.1963 m²</li>'
++ '<li>风速：v = 1.389/0.1963 = 7.07 m/s</li>'
++ '<li>动压：p_v = 0.5 × 1.2 × 7.07² = 29.97 Pa</li>'
++ '</ol>'
+
++ '<h2>五、常见错误</h2>'
++ '<ol>'
++ '<li><strong>风量单位混淆：</strong>m³/h 与 m³/s 相差 3600 倍，这是最常见的错误。使用 calcShaftPower 时注意 useHour 参数。</li>'
++ '<li><strong>效率输入错误：</strong>效率应输入小数（如 0.75），而非百分数（如 75）。输入 75 会导致结果偏小 75 倍。</li>'
++ '<li><strong>全压与静压混淆：</strong>轴功率计算中，如果用全压效率，则对应全压；如果用静压效率，则对应静压。两者不可混用。</li>'
++ '<li><strong>忽略密度修正：</strong>风机样本上的性能参数通常基于标准空气密度（1.2 kg/m³）。当实际工况的温度、海拔与标准状态差异较大时，必须进行密度修正，否则选型偏大或偏小。</li>'
++ '<li><strong>相似定律滥用：</strong>相似定律仅在几何相似、对应工况点成立。转速变化过大（超过 ±20%）时，效率会偏移，直接用相似定律计算功率会有较大误差。</li>'
++ '<li><strong>储备系数取值不当：</strong>K 值过小可能导致电机过载，过大则浪费投资。应根据系统特性和运行工况合理选取。</li>'
++ '<li><strong>忽略管网特性变化：</strong>变频调速时，如果管网特性曲线不是纯阻力型（如含有静压分量），功率与转速的关系不再是严格的三次方关系。</li>'
++ '</ol>'
+
++ '<h2>六、数据依据与参考标准</h2>'
++ '<table>'
++ '<tr><th>标准编号</th><th>标准名称</th><th>相关内容</th></tr>'
++ '<tr><td>GB/T 1236-2017</td><td>工业通风机 用标准化风道进行性能试验</td><td>风机性能试验方法，标准状态定义（ISO 5801:2007 IDT）</td></tr>'
++ '<tr><td>GB/T 10178-2006</td><td>工业通风机 现场性能试验</td><td>现场测试方法（ISO 5802:2001 IDT）</td></tr>'
++ '<tr><td>GB 50736-2012</td><td>民用建筑供暖通风与空气调节设计规范</td><td>暖通空调系统设计参数</td></tr>'
++ '</table>'
++ '<p>风机相似定律的理论基础来自流体力学中的相似理论（Dimensional Analysis），具体推导可参考《泵与风机》（中国电力出版社）等教材。空气密度计算中的 Magnus 公式是工程常用的饱和水蒸气压近似公式，在 -40℃~50℃ 范围内精度约 ±0.3%，超出此范围精度下降。</p>'
++ '<div class="warn">标准电机功率等级参考了 GB/T 4772 系列及 IEC 60072 系列标准中的常用规格。实际选用时，应以电机厂家产品样本为准，不同厂家的标准规格可能略有差异。</div>'
+
++ '<h2>七、精度与误差说明</h2>'
++ '<div class="danger"><strong>有限精准声明：</strong>现实变量是无限的，本工具只做到「方法准、输入项准、结果给误差范围」，<strong>不承诺绝对精确</strong>。以下详细说明。</div>'
+
++ '<h3>7.1 算准了什么</h3>'
++ '<ol>'
++ '<li><strong>数学公式本身是准确的：</strong>轴功率公式 P = Qp/(1000η)、风机相似定律、理想气体状态方程等，在各自的适用范围内是严格成立的数学关系。给定精确的输入值，公式计算结果在数学上是精确的（受限于 IEEE 754 双精度浮点数的表示精度，约 15~16 位有效数字）。</li>'
++ '<li><strong>浮点运算精度：</strong>JavaScript 使用 IEEE 754 双精度浮点数，对于本工具涉及的数值范围（风量 0.001~100000 m³/h，风压 1~20000 Pa），浮点舍入误差通常远小于工程允许误差。</li>'
++ '</ol>'
+
++ '<h3>7.2 哪些因素没算进去</h3>'
++ '<ol>'
++ '<li><strong>风机效率的变化：</strong>本工具要求用户输入一个固定的效率值。但实际上，风机效率随风量、转速、管网阻力的变化而变化。相似定律假设效率不变，这在工况变化较大时不成立。</li>'
++ '<li><strong>气体可压缩性：</strong>当风机压升较大（通常全压超过 3000~5000 Pa）时，气体的可压缩性不可忽略，理想气体不可压缩假设会引入误差。本工具未做可压缩性修正。</li>'
++ '<li><strong>管网阻力特性的非线性：</strong>实际管网阻力不一定严格与风速的平方成正比（如存在层流段、局部阻力系数随流速变化等），这会影响变频调速的节能估算精度。</li>'
++ '<li><strong>机械损失的变化：</strong>轴承摩擦、密封泄漏等机械损失随转速变化，但相似定律中的功率换算未单独考虑这些因素。</li>'
++ '<li><strong>雷诺数效应：</strong>严格来说，风机性能与雷诺数有关。当转速或直径变化较大时，雷诺数变化会导致效率偏移。本工具未做雷诺数修正。</li>'
++ '<li><strong>Magnus 公式的局限：</strong>空气密度计算中使用的 Magnus 公式在温度超过 50℃ 时精度下降。对于高温烟气（如锅炉排烟 150~200℃），建议使用更精确的饱和水蒸气压公式（如 IAPWS-IF97 公式），或直接使用实际测量的密度值。</li>'
++ '<li><strong>叶轮切割的效率下降：</strong>叶轮切割后，风机内部流动状况改变，效率通常会下降 2%~5% 甚至更多。相似定律未考虑这一因素。</li>'
++ '</ol>'
+
++ '<h3>7.3 误差大概多大</h3>'
++ '<table>'
++ '<tr><th>计算项目</th><th>典型误差范围</th><th>说明</th></tr>'
++ '<tr><td>轴功率计算（输入参数准确时）</td><td>±1% 以内</td><td>纯数学计算，误差仅来自浮点精度</td></tr>'
++ '<tr><td>空气密度计算（-20~50℃）</td><td>±0.5%</td><td>Magnus 公式精度限制</td></tr>'
++ '<tr><td>空气密度计算（50~80℃）</td><td>±1~2%</td><td>Magnus 公式在高温段精度下降</td></tr>'
++ '<tr><td>相似定律换算（转速变化 ≤±20%）</td><td>±3~5%</td><td>效率近似不变的假设引入的误差</td></tr>'
++ '<tr><td>相似定律换算（转速变化 >±20%）</td><td>±5~15% 或更大</td><td>效率偏移显著，不宜直接使用</td></tr>'
++ '<tr><td>叶轮切割估算（切割量 ≤10%D）</td><td>±5~8%</td><td>效率下降未计入</td></tr>'
++ '<tr><td>变频节能估算（纯阻力管网）</td><td>±5~10%</td><td>忽略了机械损失变化和电机效率变化</td></tr>'
++ '<tr><td>电机功率选型</td><td>取决于输入精度</td><td>公式本身无误差，但效率、传动效率等输入参数的准确性直接影响结果</td></tr>'
++ '</table>'
+
++ '<div class="info"><strong>核心原则：</strong>本工具的计算结果应视为「工程估算值」，用于方案比选和初步设计。最终的风机选型和电机配置，必须以风机厂家提供的性能曲线、实测数据、以及详细的系统阻力计算为依据。对于关键工程，建议进行现场实测验证。</div>'
+
++ '<h2>八、局限性总结</h2>'
++ '<ol>'
++ '<li>本工具不包含风机性能曲线数据库，无法进行工况点的精确匹配。</li>'
++ '<li>本工具不处理多台风机的并联或串联运行特性。</li>'
++ '<li>本工具不计算管网阻力，用户需自行提供系统阻力数据。</li>'
++ '<li>本工具不处理非标准气体（如含尘气体、腐蚀性气体）的密度和性能修正。</li>'
++ '<li>本工具的相似定律仅适用于几何相似的风机，不同类型风机之间不可直接换算。</li>'
++ '<li>本工具不考虑海拔对电机散热的影响（高海拔地区电机可能需要降容使用）。</li>'
++ '<li>本工具不替代任何国家强制性标准的要求，工程设计须满足相关规范的强制性条文。</li>'
++ '</ol>'
+
++ '<h2>九、版本与更新</h2>'
++ '<p>当前版本：v2.1.2-修审查问题 20261108</p>'
++ '<p>本工具以纯 JavaScript 实现，不依赖任何外部库，可直接在浏览器中运行。所有核心函数均为纯函数，无副作用，便于集成到其他系统中。</p>';
+
+document.getElementById('manual-content').innerHTML = manualHTML;
+
+
+// ============================================================
+// 源码展示（语法高亮简化版）
+// ============================================================
+function displaySource() {
+  var sourceCode = '';
+  // 提取核心算法脚本（id="core-script"，而非即时计算 IIFE）
+  var fullScript = document.getElementById('core-script').textContent;
+  var endMarker = '// 导出到全局';
+  var endIdx = fullScript.indexOf(endMarker);
+  if (endIdx > 0) {
+    sourceCode = fullScript.substring(0, endIdx);
+  } else {
+    sourceCode = fullScript;
+  }
+  // 简单语法高亮
+  sourceCode = sourceCode
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/(\/\*\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>')
+    .replace(/(\/\/.*)/g, '<span class="comment">$1</span>')
+    .replace(/\b(function|var|return|if|throw|new|for|typeof|try|catch|undefined|null|true|false|this)\b/g, '<span class="keyword">$1</span>')
+    .replace(/\b(calcAirDensity|calcVelocityPressure|calcShaftPower|calcMotorPower|fanLaw_flow|fanLaw_pressure|fanLaw_power|convertPowerByDensity|selectStandardMotor|calcFanEfficiency|calcDuctVelocity|calcCircularArea|calcRectArea|Math|Error|window)\b/g, '<span class="func">$1</span>')
+    .replace(/\b(number|boolean|string|void)\b/g, '<span class="type">$1</span>')
+    .replace(/('([^'\\]|\\.)*')/g, '<span class="string">$1</span>');
+
+  document.getElementById('source-code').innerHTML = sourceCode;
+}
+
+// ============================================================
+// 标签页切换
+// ============================================================
+function switchTab(tabName) {
+  var tabs = document.querySelectorAll('.tab-content');
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+    btns[i].classList.remove('active');
+  }
+  document.getElementById('tab-' + tabName).classList.add('active');
+  var idx = tabName === 'source' ? 0 : (tabName === 'test' ? 1 : 2);
+  btns[idx].classList.add('active');
+}
+
+// 初始化
+displaySource();
+</script>
+</body>
+</html>

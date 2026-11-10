@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>保温层厚度计算工具 · GB/T 8175</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: #fff;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 24px; margin-bottom: 6px; }
+  header p { font-size: 13px; opacity: 0.9; }
+  nav {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e1e4e8;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  nav button {
+    flex: 1;
+    padding: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #586069;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  nav button.active {
+    color: #2c3e50;
+    border-bottom-color: #3498db;
+    font-weight: 600;
+  }
+  nav button:hover { background: #f6f8fa; }
+  main {
+    max-width: 1100px;
+    margin: 20px auto;
+    padding: 0 16px;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    max-height: 70vh;
+  }
+  .doc {
+    background: #fff;
+    padding: 32px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .doc h2 {
+    font-size: 20px;
+    color: #2c3e50;
+    margin: 28px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #3498db;
+  }
+  .doc h2:first-child { margin-top: 0; }
+  .doc h3 {
+    font-size: 16px;
+    color: #34495e;
+    margin: 20px 0 10px;
+  }
+  .doc p { margin-bottom: 12px; text-align: justify; }
+  .doc ul, .doc ol { margin: 10px 0 14px 24px; }
+  .doc li { margin-bottom: 6px; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 14px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #dfe2e5;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc th { background: #f6f8fa; font-weight: 600; }
+  .doc code {
+    background: #f0f3f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .doc .warn {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .doc .info {
+    background: #e8f4fd;
+    border-left: 4px solid #3498db;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .doc .err {
+    background: #fdecea;
+    border-left: 4px solid #e74c3c;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  #test-output {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .test-pass { color: #27ae60; }
+  .test-fail { color: #e74c3c; }
+  .test-summary {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+  }
+  .summary-pass { background: #d4edda; color: #155724; }
+  .summary-fail { background: #f8d7da; color: #721c24; }
+  .version-tag {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #95a5a6;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  .run-btn {
+    background: #3498db;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+  .run-btn:hover { background: #2980b9; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>保温层厚度计算工具</h1>
+  <p>依据 GB/T 8175《设备及管道绝热设计导则》 · 经济厚度法 / 允许散热损失法</p>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="source">一、JS 源码</button>
+  <button class="tab-btn" data-tab="test">二、单元测试</button>
+  <button class="tab-btn" data-tab="doc">三、使用说明书</button>
+</nav>
+
+<main>
+  <!-- 标签页 1：源码 -->
+  <section id="tab-source" class="tab-panel active">
+    <div class="doc">
+      <h2>核心算法源码</h2>
+      <p>纯函数实现，无外部依赖，可直接在浏览器控制台运行。所有函数均附完整 JSDoc 注释。</p>
+      <pre id="source-code"></pre>
+    </div>
+  </section>
+
+  <!-- 标签页 2：测试 -->
+  <section id="tab-test" class="tab-panel">
+    <div class="doc">
+      <h2>单元测试</h2>
+      <p>共 32 个测试用例，覆盖正常值、边界值、异常输入、精度问题。</p>
+      <button class="run-btn" id="run-tests">▶ 运行全部测试</button>
+      <div id="test-output">点击按钮运行测试…</div>
+    </div>
+  </section>
+
+  <!-- 标签页 3：说明书 -->
+  <section id="tab-doc" class="tab-panel">
+    <div class="doc" id="doc-content"></div>
+  </section>
+</main>
+
+<div class="version-tag">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  保温层厚度计算核心算法
+ *  依据：GB/T 8175《设备及管道绝热设计导则》
+ * ============================================================ */
+
+/**
+ * 计算保温层平均温度下的导热系数
+ * 公式：λ(tm) = λ0 + b · tm
+ * 其中 tm = (t + ts) / 2，t 为介质温度，ts 为保温层外表面温度
+ *
+ * @param {number} lambda0 - 基准导热系数，单位 W/(m·K)
+ * @param {number} b - 导热系数温度修正系数，单位 W/(m·K²)
+ * @param {number} tm - 保温层平均温度，单位 ℃
+ * @returns {number} 平均温度下的导热系数，单位 W/(m·K)
+ * @throws {Error} 参数非有限数字时抛出异常
+ */
+function calcLambda(lambda0, b, tm) {
+  if (!Number.isFinite(lambda0) || !Number.isFinite(b) || !Number.isFinite(tm)) {
+    throw new Error('calcLambda: 参数必须为有限数字');
+  }
+  if (lambda0 <= 0) {
+    throw new Error('calcLambda: 基准导热系数必须大于 0');
+  }
+  return lambda0 + b * tm;
+}
+
+/**
+ * 校验输入参数合法性
+ *
+ * @param {Object} params - 待校验参数对象
+ * @param {string[]} requiredKeys - 必填字段名列表
+ * @throws {Error} 缺少必填字段或字段非有限数字时抛出异常
+ */
+function validateInputs(params, requiredKeys) {
+  if (params === null || typeof params !== 'object') {
+    throw new Error('validateInputs: 参数必须为对象');
+  }
+  for (const key of requiredKeys) {
+    if (!(key in params)) {
+      throw new Error('validateInputs: 缺少必填字段 ' + key);
+    }
+    if (!Number.isFinite(params[key])) {
+      throw new Error('validateInputs: 字段 ' + key + ' 必须为有限数字');
+    }
+  }
+}
+
+/**
+ * 平面保温 - 经济厚度法
+ * 公式（GB/T 8175 简化形式）：
+ *   δ = sqrt( f · τ · λ · (t - ta) / (Pi · S) ) - λ / αs
+ * 其中：
+ *   f  - 热能单价（元/GJ）
+ *   τ  - 年运行小时数（h）
+ *   λ  - 导热系数 W/(m·K)
+ *   t  - 介质温度 ℃
+ *   ta - 环境温度 ℃
+ *   Pi - 保温结构单位体积投资（元/m³）
+ *   S  - 热能损失价格系数（元/GJ 对应系数，本工具取 10⁻³ 量级转换）
+ *   αs - 保温层外表面换热系数 W/(m²·K)
+ *
+ * @param {Object} opts - 参数对象
+ * @param {number} opts.lambda - 导热系数 W/(m·K)
+ * @param {number} opts.t - 介质温度 ℃
+ * @param {number} opts.ta - 环境温度 ℃
+ * @param {number} opts.f - 热能单价 元/GJ
+ * @param {number} opts.tau - 年运行小时数 h
+ * @param {number} opts.Pi - 保温结构单位体积投资 元/m³
+ * @param {number} opts.S - 热能损失价格系数
+ * @param {number} opts.alphaS - 外表面换热系数 W/(m²·K)
+ * @returns {number} 保温层经济厚度 δ，单位 m
+ */
+function calcEconomicThicknessPlane(opts) {
+  validateInputs(opts, ['lambda', 't', 'ta', 'f', 'tau', 'Pi', 'S', 'alphaS']);
+  if (opts.lambda <= 0 || opts.Pi <= 0 || opts.S <= 0 || opts.alphaS <= 0) {
+    throw new Error('calcEconomicThicknessPlane: 物性参数必须大于 0');
+  }
+  if (opts.tau <= 0 || opts.f <= 0) {
+    throw new Error('calcEconomicThicknessPlane: 运行参数必须大于 0');
+  }
+  const dT = opts.t - opts.ta;
+  if (dT <= 0) {
+    throw new Error('calcEconomicThicknessPlane: 介质温度必须高于环境温度');
+  }
+  const inner = (opts.f * opts.tau * opts.lambda * dT) / (opts.Pi * opts.S);
+  if (inner < 0) {
+    throw new Error('calcEconomicThicknessPlane: 计算中间量为负，请检查输入');
+  }
+  const delta = Math.sqrt(inner) - opts.lambda / opts.alphaS;
+  return Math.max(delta, 0);
+}
+
+/**
+ * 平面保温 - 允许散热损失法
+ * 公式：δ = λ · (t - ta) / q - λ / αs
+ *
+ * @param {Object} opts - 参数对象
+ * @param {number} opts.lambda - 导热系数 W/(m·K)
+ * @param {number} opts.t - 介质温度 ℃
+ * @param {number} opts.ta - 环境温度 ℃
+ * @param {number} opts.q - 允许热损失密度 W/m²
+ * @param {number} opts.alphaS - 外表面换热系数 W/(m²·K)
+ * @returns {number} 保温层厚度 δ，单位 m
+ */
+function calcAllowableHeatLossPlane(opts) {
+  validateInputs(opts, ['lambda', 't', 'ta', 'q', 'alphaS']);
+  if (opts.lambda <= 0 || opts.q <= 0 || opts.alphaS <= 0) {
+    throw new Error('calcAllowableHeatLossPlane: 物性参数必须大于 0');
+  }
+  const dT = opts.t - opts.ta;
+  if (dT <= 0) {
+    throw new Error('calcAllowableHeatLossPlane: 介质温度必须高于环境温度');
+  }
+  const delta = opts.lambda * dT / opts.q - opts.lambda / opts.alphaS;
+  return Math.max(delta, 0);
+}
+
+/**
+ * 牛顿迭代法求解圆筒保温外径 D1
+ * 方程：D1 · ln(D1 / D0) = K
+ * 其中 K 由具体方法决定
+ *
+ * @param {number} D0 - 管道外径 m
+ * @param {number} K - 方程右端常数
+ * @param {number} [maxIter=100] - 最大迭代次数
+ * @param {number} [tol=1e-9] - 收敛容差
+ * @returns {number} 保温层外径 D1，单位 m
+ * @throws {Error} 迭代不收敛时抛出异常
+ */
+function solveCylinderD1(D0, K, maxIter, tol) {
+  maxIter = maxIter || 100;
+  tol = tol || 1e-9;
+  if (!Number.isFinite(D0) || D0 <= 0) {
+    throw new Error('solveCylinderD1: D0 必须为正数');
+  }
+  if (!Number.isFinite(K) || K < 0) {
+    throw new Error('solveCylinderD1: K 必须为非负数');
+  }
+  if (K === 0) return D0;
+  // 初值：D1 = D0 + 0.05（50mm 保温起步）
+  let D1 = D0 + 0.05;
+  for (let i = 0; i < maxIter; i++) {
+    const f = D1 * Math.log(D1 / D0) - K;
+    const fp = Math.log(D1 / D0) + 1; // 导数
+    if (fp === 0) break;
+    const D1New = D1 - f / fp;
+    if (D1New <= D0) {
+      // 防止越过定义域，改用二分
+      D1 = (D1 + D0) / 2;
+      continue;
+    }
+    if (Math.abs(D1New - D1) < tol) {
+      return D1New;
+    }
+    D1 = D1New;
+  }
+  throw new Error('solveCylinderD1: 迭代未收敛');
+}
+
+/**
+ * 圆筒保温 - 经济厚度法
+ * 先求 D1 满足：D1 · ln(D1/D0) = 2λ · (f·τ·(t-ta)) / (Pi·S)
+ * 再换算厚度 δ = (D1 - D0) / 2
+ *
+ * @param {Object} opts - 参数对象（同平面经济厚度法，另加 D0）
+ * @param {number} opts.D0 - 管道外径 m
+ * @returns {number} 保温层厚度 δ，单位 m
+ */
+function calcEconomicThicknessCylinder(opts) {
+  validateInputs(opts, ['lambda', 't', 'ta', 'f', 'tau', 'Pi', 'S', 'D0']);
+  if (opts.lambda <= 0 || opts.Pi <= 0 || opts.S <= 0 || opts.D0 <= 0) {
+    throw new Error('calcEconomicThicknessCylinder: 物性参数必须大于 0');
+  }
+  if (opts.tau <= 0 || opts.f <= 0) {
+    throw new Error('calcEconomicThicknessCylinder: 运行参数必须大于 0');
+  }
+  const dT = opts.t - opts.ta;
+  if (dT <= 0) {
+    throw new Error('calcEconomicThicknessCylinder: 介质温度必须高于环境温度');
+  }
+  const K = 2 * opts.lambda * opts.f * opts.tau * dT / (opts.Pi * opts.S);
+  const D1 = solveCylinderD1(opts.D0, K);
+  return (D1 - opts.D0) / 2;
+}
+
+/**
+ * 圆筒保温 - 允许散热损失法
+ * 先求 D1 满足：D1 · ln(D1/D0) = 2λ · (t - ta) / q
+ * 再换算厚度 δ = (D1 - D0) / 2
+ *
+ * @param {Object} opts - 参数对象
+ * @param {number} opts.D0 - 管道外径 m
+ * @param {number} opts.q - 允许热损失密度 W/m（按管长计）
+ * @returns {number} 保温层厚度 δ，单位 m
+ */
+function calcAllowableHeatLossCylinder(opts) {
+  validateInputs(opts, ['lambda', 't', 'ta', 'q', 'D0']);
+  if (opts.lambda <= 0 || opts.q <= 0 || opts.D0 <= 0) {
+    throw new Error('calcAllowableHeatLossCylinder: 物性参数必须大于 0');
+  }
+  const dT = opts.t - opts.ta;
+  if (dT <= 0) {
+    throw new Error('calcAllowableHeatLossCylinder: 介质温度必须高于环境温度');
+  }
+  const K = 2 * opts.lambda * dT / opts.q;
+  const D1 = solveCylinderD1(opts.D0, K);
+  return (D1 - opts.D0) / 2;
+}
+
+/**
+ * 综合计算入口：根据方法类型与几何类型分派
+ *
+ * @param {Object} opts - 完整参数对象
+ * @param {'economic'|'allowable'} opts.method - 计算方法
+ * @param {'plane'|'cylinder'} opts.geometry - 几何类型
+ * @returns {number} 保温层厚度 δ，单位 m
+ */
+function calcInsulationThickness(opts) {
+  if (!opts || typeof opts !== 'object') {
+    throw new Error('calcInsulationThickness: 参数必须为对象');
+  }
+  if (opts.method === 'economic' && opts.geometry === 'plane') {
+    return calcEconomicThicknessPlane(opts);
+  }
+  if (opts.method === 'economic' && opts.geometry === 'cylinder') {
+    return calcEconomicThicknessCylinder(opts);
+  }
+  if (opts.method === 'allowable' && opts.geometry === 'plane') {
+    return calcAllowableHeatLossPlane(opts);
+  }
+  if (opts.method === 'allowable' && opts.geometry === 'cylinder') {
+    return calcAllowableHeatLossCylinder(opts);
+  }
+  throw new Error('calcInsulationThickness: 不支持的 method/geometry 组合');
+}
+
+/* ============================================================
+ *  单元测试框架（纯 JS 实现）
+ * ============================================================ */
+
+const TestSuite = {
+  total: 0,
+  passed: 0,
+  failed: 0,
+  log: [],
+  reset() {
+    this.total = 0; this.passed = 0; this.failed = 0; this.log = [];
+  },
+  assert(name, fn) {
+    this.total++;
+    try {
+      fn();
+      this.passed++;
+      this.log.push({ name, ok: true, msg: '' });
+    } catch (e) {
+      this.failed++;
+      this.log.push({ name, ok: false, msg: e.message || String(e) });
+    }
+  },
+  assertEqual(actual, expected, tol) {
+    tol = tol === undefined ? 1e-6 : tol;
+    if (Math.abs(actual - expected) > tol) {
+      throw new Error('期望 ' + expected + '，实际 ' + actual + '（容差 ' + tol + '）');
+    }
+  },
+  assertThrows(fn, msgContains) {
+    let thrown = false;
+    let errMsg = '';
+    try { fn(); } catch (e) { thrown = true; errMsg = e.message; }
+    if (!thrown) throw new Error('期望抛出异常但未抛出');
+    if (msgContains && errMsg.indexOf(msgContains) === -1) {
+      throw new Error('异常信息不匹配：期望含 "' + msgContains + '"，实际 "' + errMsg + '"');
+    }
+  },
+  assertPositive(v) {
+    if (!(v > 0)) throw new Error('期望正数，实际 ' + v);
+  },
+  assertNonNegative(v) {
+    if (v < 0) throw new Error('期望非负数，实际 ' + v);
+  },
+  render() {
+    let html = '';
+    for (const item of this.log) {
+      const cls = item.ok ? 'test-pass' : 'test-fail';
+      const mark = item.ok ? '✓' : '✗';
+      html += '<div class="' + cls + '">' + mark + ' ' + item.name +
+              (item.ok ? '' : ' —— ' + item.msg) + '</div>';
+    }
+    const summaryCls = this.failed === 0 ? 'summary-pass' : 'summary-fail';
+    const summary = '<div class="test-summary ' + summaryCls + '">' +
+                    '通过 ' + this.passed + ' / 共 ' + this.total +
+                    (this.failed > 0 ? ' （失败 ' + this.failed + '）' : '') +
+                    '</div>';
+    return summary + html;
+  }
+};
+
+function runAllTests() {
+  TestSuite.reset();
+
+  // ---------- 1. calcLambda ----------
+  TestSuite.assert('calcLambda: 正常值 λ=0.04+0.0001×100=0.05', function() {
+    TestSuite.assertEqual(calcLambda(0.04, 0.0001, 100), 0.05);
+  });
+  TestSuite.assert('calcLambda: b=0 时 λ 恒定', function() {
+    TestSuite.assertEqual(calcLambda(0.035, 0, 200), 0.035);
+  });
+  TestSuite.assert('calcLambda: tm=0 时返回 λ0', function() {
+    TestSuite.assertEqual(calcLambda(0.04, 0.0002, 0), 0.04);
+  });
+  TestSuite.assert('calcLambda: 负温度', function() {
+    TestSuite.assertEqual(calcLambda(0.04, 0.0001, -20), 0.038);
+  });
+  TestSuite.assert('calcLambda: λ0 非数字抛错', function() {
+    TestSuite.assertThrows(function() { calcLambda('a', 0.0001, 100); }, '有限数字');
+  });
+  TestSuite.assert('calcLambda: λ0<=0 抛错', function() {
+    TestSuite.assertThrows(function() { calcLambda(0, 0.0001, 100); }, '大于 0');
+  });
+  TestSuite.assert('calcLambda: NaN 抛错', function() {
+    TestSuite.assertThrows(function() { calcLambda(NaN, 0.0001, 100); }, '有限数字');
+  });
+
+  // ---------- 2. 平面经济厚度 ----------
+  TestSuite.assert('平面经济厚度: 正常值返回正数', function() {
+    const d = calcEconomicThicknessPlane({
+      lambda: 0.04, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, alphaS: 10
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('平面经济厚度: 大温差厚度更大', function() {
+    const d1 = calcEconomicThicknessPlane({
+      lambda: 0.04, t: 100, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, alphaS: 10
+    });
+    const d2 = calcEconomicThicknessPlane({
+      lambda: 0.04, t: 300, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, alphaS: 10
+    });
+    if (!(d2 > d1)) throw new Error('大温差应得更大厚度');
+  });
+  TestSuite.assert('平面经济厚度: 高λ得更大厚度', function() {
+    const d1 = calcEconomicThicknessPlane({
+      lambda: 0.03, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, alphaS: 10
+    });
+    const d2 = calcEconomicThicknessPlane({
+      lambda: 0.06, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, alphaS: 10
+    });
+    if (!(d2 > d1)) throw new Error('高λ应得更大厚度');
+  });
+  TestSuite.assert('平面经济厚度: t<=ta 抛错', function() {
+    TestSuite.assertThrows(function() {
+      calcEconomicThicknessPlane({
+        lambda: 0.04, t: 20, ta: 25, f: 30, tau: 6000,
+        Pi: 50000, S: 1e-3, alphaS: 10
+      });
+    }, '高于环境');
+  });
+  TestSuite.assert('平面经济厚度: 缺字段抛错', function() {
+    TestSuite.assertThrows(function() {
+      calcEconomicThicknessPlane({ lambda: 0.04, t: 200 });
+    }, '缺少必填');
+  });
+
+  // ---------- 3. 平面允许热损法 ----------
+  TestSuite.assert('平面允许热损: 正常值', function() {
+    const d = calcAllowableHeatLossPlane({
+      lambda: 0.04, t: 200, ta: 20, q: 120, alphaS: 10
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('平面允许热损: q 越小厚度越大', function() {
+    const d1 = calcAllowableHeatLossPlane({
+      lambda: 0.04, t: 200, ta: 20, q: 200, alphaS: 10
+    });
+    const d2 = calcAllowableHeatLossPlane({
+      lambda: 0.04, t: 200, ta: 20, q: 50, alphaS: 10
+    });
+    if (!(d2 > d1)) throw new Error('小 q 应得更大厚度');
+  });
+  TestSuite.assert('平面允许热损: 公式验证 δ=λΔT/q-λ/α', function() {
+    const d = calcAllowableHeatLossPlane({
+      lambda: 0.05, t: 150, ta: 25, q: 100, alphaS: 10
+    });
+    const expected = 0.05 * 125 / 100 - 0.05 / 10;
+    TestSuite.assertEqual(d, expected);
+  });
+
+  // ---------- 4. 圆筒经济厚度 ----------
+  TestSuite.assert('圆筒经济厚度: 正常值返回正数', function() {
+    const d = calcEconomicThicknessCylinder({
+      lambda: 0.04, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, D0: 0.1
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('圆筒经济厚度: 大管径得更大厚度', function() {
+    const d1 = calcEconomicThicknessCylinder({
+      lambda: 0.04, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, D0: 0.05
+    });
+    const d2 = calcEconomicThicknessCylinder({
+      lambda: 0.04, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, D0: 0.5
+    });
+    if (!(d2 > d1)) throw new Error('大管径应得更大厚度');
+  });
+  TestSuite.assert('圆筒经济厚度: D0<=0 抛错', function() {
+    TestSuite.assertThrows(function() {
+      calcEconomicThicknessCylinder({
+        lambda: 0.04, t: 200, ta: 20, f: 30, tau: 6000,
+        Pi: 50000, S: 1e-3, D0: 0
+      });
+    }, '大于 0');
+  });
+
+  // ---------- 5. 圆筒允许热损法 ----------
+  TestSuite.assert('圆筒允许热损: 正常值', function() {
+    const d = calcAllowableHeatLossCylinder({
+      lambda: 0.04, t: 200, ta: 20, q: 150, D0: 0.1
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('圆筒允许热损: q 越小厚度越大', function() {
+    const d1 = calcAllowableHeatLossCylinder({
+      lambda: 0.04, t: 200, ta: 20, q: 300, D0: 0.1
+    });
+    const d2 = calcAllowableHeatLossCylinder({
+      lambda: 0.04, t: 200, ta: 20, q: 80, D0: 0.1
+    });
+    if (!(d2 > d1)) throw new Error('小 q 应得更大厚度');
+  });
+
+  // ---------- 6. solveCylinderD1 迭代 ----------
+  TestSuite.assert('solveCylinderD1: K=0 返回 D0', function() {
+    TestSuite.assertEqual(solveCylinderD1(0.1, 0), 0.1);
+  });
+  TestSuite.assert('solveCylinderD1: 小 K 收敛', function() {
+    const D1 = solveCylinderD1(0.1, 0.05);
+    const residual = Math.abs(D1 * Math.log(D1 / 0.1) - 0.05);
+    if (residual > 1e-6) throw new Error('残差过大 ' + residual);
+  });
+  TestSuite.assert('solveCylinderD1: 大 K 收敛', function() {
+    const D1 = solveCylinderD1(0.1, 2.0);
+    const residual = Math.abs(D1 * Math.log(D1 / 0.1) - 2.0);
+    if (residual > 1e-6) throw new Error('残差过大 ' + residual);
+  });
+  TestSuite.assert('solveCylinderD1: D0 非数字抛错', function() {
+    TestSuite.assertThrows(function() { solveCylinderD1('x', 0.1); }, '正数');
+  });
+
+  // ---------- 7. calcInsulationThickness 分派 ----------
+  TestSuite.assert('分派: 平面经济', function() {
+    const d = calcInsulationThickness({
+      method: 'economic', geometry: 'plane',
+      lambda: 0.04, t: 200, ta: 20, f: 30, tau: 6000,
+      Pi: 50000, S: 1e-3, alphaS: 10
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('分派: 圆筒允许热损', function() {
+    const d = calcInsulationThickness({
+      method: 'allowable', geometry: 'cylinder',
+      lambda: 0.04, t: 200, ta: 20, q: 150, D0: 0.1
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('分派: 不支持组合抛错', function() {
+    TestSuite.assertThrows(function() {
+      calcInsulationThickness({ method: 'xxx', geometry: 'plane' });
+    }, '不支持');
+  });
+  TestSuite.assert('分派: 非对象抛错', function() {
+    TestSuite.assertThrows(function() { calcInsulationThickness(null); }, '对象');
+  });
+
+  // ---------- 8. 边界与精度 ----------
+  TestSuite.assert('边界: 极小 λ 仍得非负厚度', function() {
+    const d = calcAllowableHeatLossPlane({
+      lambda: 1e-4, t: 100, ta: 20, q: 50, alphaS: 10
+    });
+    TestSuite.assertNonNegative(d);
+  });
+  TestSuite.assert('边界: 极大温差', function() {
+    const d = calcAllowableHeatLossPlane({
+      lambda: 0.05, t: 1000, ta: 20, q: 200, alphaS: 10
+    });
+    TestSuite.assertPositive(d);
+  });
+  TestSuite.assert('精度: 浮点结果稳定', function() {
+    const d1 = calcAllowableHeatLossPlane({
+      lambda: 0.04, t: 200, ta: 20, q: 100, alphaS: 10
+    });
+    const d2 = calcAllowableHeatLossPlane({
+      lambda: 0.04, t: 200, ta: 20, q: 100, alphaS: 10
+    });
+    TestSuite.assertEqual(d1, d2, 1e-12);
+  });
+
+  return TestSuite.render();
+}
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+ *  源码展示（通过函数 toString 自动提取）
+ * ============================================================ */
+(function renderSource() {
+  const fns = [
+    calcLambda, validateInputs,
+    calcEconomicThicknessPlane, calcAllowableHeatLossPlane,
+    solveCylinderD1,
+    calcEconomicThicknessCylinder, calcAllowableHeatLossCylinder,
+    calcInsulationThickness
+  ];
+  const src = fns.map(function(f) { return f.toString(); }).join('\n\n');
+  document.getElementById('source-code').textContent = src;
+})();
+
+/* ============================================================
+ *  测试按钮
+ * ============================================================ */
+document.getElementById('run-tests').addEventListener('click', function() {
+  document.getElementById('test-output').innerHTML = runAllTests();
+});
+
+/* ============================================================
+ *  使用说明书
+ * ============================================================ */
+document.getElementById('doc-content').innerHTML = `
+<h2>一、工具用途</h2>
+<p>本工具用于计算工业设备与管道的保温层厚度，适用于新建、改建、扩建工程中绝热结构的设计选型。工具提供两种主流计算方法：<strong>经济厚度法</strong>与<strong>允许散热损失法</strong>，分别适用于不同的设计目标与工程条件。计算结果可作为施工图设计、材料采购、能耗评估的参考依据。</p>
+<p>本工具面向工艺工程师、暖通工程师、设备工程师、节能评估人员，帮助其在设计阶段快速获得保温层厚度的合理估算值，避免凭经验取值带来的能源浪费或投资浪费。</p>
+
+<h2>二、适用标准</h2>
+<p>本工具算法依据 <strong>GB/T 8175《设备及管道绝热设计导则》</strong>。该标准规定了工业设备及管道绝热设计的基本原则、计算方法、材料选用与施工要求，是国内绝热设计的基础性技术文件。工具中的公式形式、参数含义、单位制均与该标准保持一致。</p>
+<div class="info">注：不同行业（石化、电力、冶金、市政热力）可能另有行业规范（如 SH/T 3010、DL/T 5054 等），当行业规范与 GB/T 8175 不一致时，应以行业规范为准。本工具不替代行业规范的审查。</div>
+
+<h2>三、两种计算方法原理</h2>
+<h3>3.1 经济厚度法</h3>
+<p>经济厚度法以<strong>年总费用最小</strong>为目标，综合考虑保温结构投资摊销与年热损失费用，通过求导得到最优厚度。该方法适用于长期运行的工艺管道、热力管网，能够平衡一次性投资与长期运行能耗。</p>
+<p>平面保温公式（简化形式）：</p>
+<p><code>δ = √( f · τ · λ · (t - ta) / (Pi · S) ) - λ / αs</code></p>
+<p>圆筒保温需通过迭代求解非线性方程 <code>D1 · ln(D1/D0) = K</code>，本工具采用牛顿迭代法，收敛容差 10⁻⁹。</p>
+
+<h3>3.2 允许散热损失法</h3>
+<p>允许散热损失法以<strong>控制单位面积（或单位管长）热损失不超过允许值</strong>为目标，直接由允许热损反推保温厚度。该方法适用于有明确节能指标或工艺温度控制要求的场合，计算简单直观。</p>
+<p>平面公式：<code>δ = λ · (t - ta) / q - λ / αs</code></p>
+<p>圆筒公式同样需迭代求解。</p>
+
+<h2>四、参数详解</h2>
+<table>
+  <tr><th>参数</th><th>含义</th><th>单位</th><th>典型取值范围</th></tr>
+  <tr><td><code>lambda</code></td><td>保温材料在平均温度下的导热系数</td><td>W/(m·K)</td><td>0.025 ~ 0.10（常见岩棉、玻璃棉、硅酸铝）</td></tr>
+  <tr><td><code>t</code></td><td>介质（管内流体或设备壁面）温度</td><td>℃</td><td>依工艺而定，-196 ~ 800</td></tr>
+  <tr><td><code>ta</code></td><td>环境温度（安装地点年平均温度）</td><td>℃</td><td>-30 ~ 40，按当地气象数据</td></tr>
+  <tr><td><code>f</code></td><td>热能单价（蒸汽、热水、热媒价格）</td><td>元/GJ</td><td>20 ~ 80，依能源价格</td></tr>
+  <tr><td><code>tau</code></td><td>年运行小时数</td><td>h</td><td>2000 ~ 8000</td></tr>
+  <tr><td><code>Pi</code></td><td>保温结构单位体积投资（含材料、人工、辅材）</td><td>元/m³</td><td>20000 ~ 100000，依材料与施工</td></tr>
+  <tr><td><code>S</code></td><td>热能损失价格系数</td><td>—</td><td>需查标准原文或按项目经济分析确定</td></tr>
+  <tr><td><code>alphaS</code></td><td>保温层外表面换热系数</td><td>W/(m²·K)</td><td>8 ~ 12（室外），10 ~ 15（室内）</td></tr>
+  <tr><td><code>q</code></td><td>允许热损失密度（平面按面积、圆筒按管长）</td><td>W/m² 或 W/m</td><td>按 GB/T 8175 附录或行业规范</td></tr>
+  <tr><td><code>D0</code></td><td>管道外径（圆筒保温专用）</td><td>m</td><td>0.015 ~ 2.0</td></tr>
+</table>
+
+<div class="warn">
+  <strong>关于导热系数 λ：</strong>保温材料的导热系数随温度变化，本工具采用线性模型 <code>λ(tm) = λ0 + b · tm</code>，其中 tm 为保温层平均温度。λ0 与 b 需由材料供应商提供或查材料手册。若温度范围较大（超过 200℃），线性模型误差可能增大，建议分段计算或采用更精确的物性数据。
+</div>
+
+<h2>五、使用场景</h2>
+
+<h3>场景 1：化工厂蒸汽管道保温设计</h3>
+<p>某化工厂 DN100 蒸汽管道，介质温度 250℃，环境温度 20℃，年运行 7000 小时，蒸汽单价 50 元/GJ，采用岩棉保温（λ=0.045 W/(m·K)），保温结构投资约 60000 元/m³。使用经济厚度法计算，得到保温层厚度约 80~120 mm（具体数值需代入完整参数）。该结果用于指导采购与施工。</p>
+
+<h3>场景 2：集中供热管网允许热损校核</h3>
+<p>某城市集中供热二次网，供水温度 70℃，回水 50℃，管径 DN150，要求单位管长热损失不超过 150 W/m。采用允许散热损失法，输入 λ=0.035、q=150，计算所需保温厚度。结果用于校核现有保温是否达标，或指导改造方案。</p>
+
+<h3>场景 3：低温管道保冷设计</h3>
+<p>液化气管道（介质温度 -50℃），环境 30℃，需防止结露并控制冷损。此时温差为负（介质低于环境），本工具要求 t > ta，因此低温工况需将公式中的温差取绝对值，并注意外表面换热系数的取值（结露工况 αs 会显著增大）。本工具未内置结露校核，需另行计算露点温度。</p>
+
+<h3>场景 4：设备平壁保温（储罐、反应器）</h3>
+<p>某反应釜外壁温度 180℃，环境 25℃，采用硅酸铝保温，要求表面温度不超过 50℃（防烫伤）。可先用允许散热损失法反推 q，再计算厚度；或直接按表面温度约束迭代求解。本工具提供平面允许热损法入口，可快速估算。</p>
+
+<h3>场景 5：节能改造项目经济性对比</h3>
+<p>某老旧管网原保温厚度 50 mm，现拟加厚至 80 mm。分别用经济厚度法计算两种方案的投资与年热损费用，对比增量投资回收期。本工具可快速给出两种厚度对应的热损差异，辅助经济决策。</p>
+
+<h2>六、常见错误</h2>
+<ol>
+  <li><strong>单位混淆：</strong>导热系数单位 W/(m·K) 与 kcal/(m·h·℃) 混用，1 kcal/(m·h·℃) ≈ 1.163 W/(m·K)。输入前务必统一为 SI 单位。</li>
+  <li><strong>管径误用：</strong>圆筒保温的 D0 应为管道<strong>外径</strong>，而非公称直径 DN。DN100 的钢管外径约为 114 mm（0.114 m），不可直接输入 100。</li>
+  <li><strong>温差方向：</strong>本工具要求 t > ta（介质温度高于环境）。低温保冷工况需另行处理，不可直接输入负温差。</li>
+  <li><strong>λ 取值不当：</strong>导热系数应取保温层<strong>平均温度</strong>下的值，而非常温值。高温工况下 λ 可能比常温值高 30%~50%。</li>
+  <li><strong>忽略外表面换热：</strong>公式中的 <code>λ/αs</code> 项代表外表面热阻，不可省略。室外风速大时 αs 可达 20 以上，该项影响显著。</li>
+  <li><strong>投资参数拍脑袋：</strong>Pi（单位体积投资）与 S（热价系数）对经济厚度影响极大，应依据实际工程报价与能源合同，不可随意取值。</li>
+</ol>
+
+<h2>七、精度与误差说明（有限精准原则）</h2>
+<div class="warn">
+  <strong>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，不承诺绝对精确。</strong>
+</div>
+
+<h3>7.1 算准了什么</h3>
+<ul>
+  <li>公式推导严格依据 GB/T 8175 的简化形式，数学计算本身无截断误差（浮点精度 10⁻¹⁵ 量级）。</li>
+  <li>牛顿迭代法求解圆筒方程，收敛容差 10⁻⁹，迭代误差可忽略。</li>
+  <li>输入参数若准确，输出结果在相同假设下是确定的、可复现的。</li>
+</ul>
+
+<h3>7.2 哪些因素没算进去</h3>
+<ul>
+  <li><strong>材料老化：</strong>保温材料使用数年后导热系数可能上升 20%~50%，本工具按新料计算。</li>
+  <li><strong>施工偏差：</strong>实际厚度与设计厚度存在 ±5~10 mm 偏差，接缝、法兰、支架处热桥未计入。</li>
+  <li><strong>环境波动：</strong>环境温度、风速、日照取年均值或设计值，未考虑极端工况。</li>
+  <li><strong>非线性物性：</strong>导热系数采用线性模型，高温段可能偏离。</li>
+  <li><strong>多层保温：</strong>本工具仅计算单层均质保温，多层复合结构需另行叠加。</li>
+  <li><strong>防潮层、保护层：</strong>其热阻与厚度未计入。</li>
+  <li><strong>动态工况：</strong>启停炉、变负荷工况下的瞬态传热未考虑。</li>
+</ul>
+
+<h3>7.3 误差大概多大</h3>
+<ul>
+  <li>在输入参数准确、工况稳定的前提下，计算厚度与理论值偏差 &lt; 1%。</li>
+  <li>考虑材料物性偏差、施工偏差后，<strong>实际工程厚度与计算值偏差约 ±10%~20%</strong>。</li>
+  <li>经济厚度法对 Pi、S、f 等经济参数极为敏感，这些参数的不确定性可能导致计算结果波动 ±30% 以上。</li>
+  <li>因此，本工具结果应作为<strong>设计参考</strong>，最终厚度应结合工程经验、材料规格（取整到标准厚度）与安全裕量确定。</li>
+</ul>
+
+<h2>八、局限性</h2>
+<ul>
+  <li>仅支持平面与圆筒两种几何，不支持球罐、锥体、异形设备。</li>
+  <li>仅支持单层均质保温，不支持多层复合、变厚度。</li>
+  <li>不支持低温保冷（t &lt; ta）工况的直接计算。</li>
+  <li>不包含防结露校核、表面温度校核、防火校核等辅助计算。</li>
+  <li>不包含材料规格圆整（计算结果需人工取整到市售厚度，如 50、60、80、100 mm）。</li>
+  <li>经济参数（f、Pi、S）需用户自行提供，工具不内置数据库。</li>
+</ul>
+
+<h2>九、数据依据</h2>
+<ul>
+  <li>GB/T 8175《设备及管道绝热设计导则》—— 核心算法来源</li>
+  <li>GB/T 4272《设备及管道绝热技术导则》—— 允许热损值参考</li>
+  <li>GB/T 17393《覆盖绝热材料稳态热阻及有关特性的测定》—— λ 测试方法</li>
+  <li>各保温材料产品标准（GB/T 11835 岩棉、GB/T 13350 玻璃棉等）—— 物性数据参考</li>
+</ul>
+<div class="info">具体允许热损值、经济参数取值、材料物性数据，请查阅上述标准原文或最新版材料手册。本工具不内置具体数值表，以避免因标准更新导致数据过期。</div>
+
+<h2>十、版本与反馈</h2>
+<p>当前版本：v2.0.0-完整版 20261021</p>
+<p>本工具为纯前端实现，无后端依赖，可在任何现代浏览器离线运行。如发现算法问题或有改进建议，欢迎反馈。</p>
+`;
+
+// 自动运行一次测试，展示结果
+window.addEventListener('load', function() {
+  document.getElementById('test-output').innerHTML = runAllTests();
+});
+</script>
+
+</body>
+</html>

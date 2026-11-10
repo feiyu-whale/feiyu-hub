@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中文文本可读性分析</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f4f6f9;
+    color: #2c3e50;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 16px;
+    padding-bottom: 60px;
+  }
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 14px;
+    color: #1a5490;
+  }
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .hint {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    padding: 10px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    line-height: 1.6;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: #1a5490;
+    box-shadow: 0 0 0 2px rgba(26,84,144,0.15);
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  button {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: #1a5490;
+    color: #fff;
+  }
+  .btn-primary:active { background: #143d6b; }
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  .btn-secondary:active { background: #d1d5db; }
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .result-item {
+    background: #f0f4f8;
+    padding: 10px;
+    border-radius: 6px;
+  }
+  .result-item .label {
+    color: #6b7280;
+    font-size: 12px;
+  }
+  .result-item .value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1a5490;
+    margin-top: 3px;
+  }
+  .level-box {
+    background: linear-gradient(135deg, #1a5490, #3b82c4);
+    color: #fff;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .level-box .level {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 6px 0;
+  }
+  .level-box .desc {
+    font-size: 13px;
+    opacity: 0.92;
+  }
+  .formula {
+    background: #fff8e1;
+    border-left: 3px solid #f59e0b;
+    padding: 10px 12px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #78350f;
+    border-radius: 0 6px 6px 0;
+    line-height: 1.7;
+  }
+  .source {
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.8;
+  }
+  .source h3 {
+    font-size: 15px;
+    color: #1f2937;
+    margin-bottom: 8px;
+  }
+  .source p { margin-bottom: 4px; }
+  .warn {
+    margin-top: 8px;
+    color: #b45309;
+    font-size: 12px;
+  }
+  .version {
+    position: fixed;
+    right: 10px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #9ca3af;
+  }
+  .empty {
+    text-align: center;
+    color: #9ca3af;
+    padding: 24px 10px;
+    font-size: 14px;
+  }
+  @media (max-width: 420px) {
+    .result-item .value { font-size: 16px; }
+    .level-box .level { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📖 中文文本可读性分析</h1>
+
+  <div class="card">
+    <div class="hint">请输入或粘贴中文文本：</div>
+    <textarea id="input" placeholder="例如：春天来了，花儿开了。小鸟在枝头唱歌，孩子们在草地上奔跑。"></textarea>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="analyze()">🔍 开始分析</button>
+      <button class="btn-secondary" onclick="clearAll()">🗑️ 清空</button>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card source">
+    <h3>📚 数据来源与依据</h3>
+    <p>• <b>汉字识别</b>：Unicode CJK 统一汉字基本区（U+4E00–U+9FFF），覆盖绝大多数现代常用汉字。</p>
+    <p>• <b>句子切分</b>：以句末标点（。！？…）为界，符合现代汉语通行规范。</p>
+    <p>• <b>词汇丰富度（TTR）</b>：Type-Token Ratio，语言学通用指标，公式为「不同汉字数 ÷ 总汉字数」。</p>
+    <p>• <b>难度分级</b>：按平均句长分级，参考《现代汉语》（黄伯荣、廖序东主编，高等教育出版社）及汉语分级阅读通行经验指标。</p>
+    <p>• <b>常用字判定</b>：依据《通用规范汉字表》（2013 年，国务院发布），一级字表 3500 字、二级字表 3000 字、三级字表 1605 字。</p>
+    <p class="warn">⚠️ 常用字比例的精确计算需逐字对照《通用规范汉字表》原文，本工具仅给出公式与基于平均句长的难度分级，不编造具体表值。</p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-中文可读性 20261021</div>
+
+<script>
+function analyze() {
+  const text = document.getElementById('input').value;
+  const results = document.getElementById('results');
+
+  if (!text.trim()) {
+    results.innerHTML = '<div class="card empty">⚠️ 请先输入文本</div>';
+    return;
+  }
+
+  // 总字数（去除空白）
+  const totalChars = text.replace(/\s/g, '').length;
+
+  // 汉字数（CJK 基本区）
+  const hanziMatches = text.match(/[\u4e00-\u9fff]/g);
+  const hanziCount = hanziMatches ? hanziMatches.length : 0;
+
+  // 中文标点数
+  const punctMatches = text.match(/[，。！？；：""''【】（）《》、…—·～〈〉「」『』]/g);
+  const punctCount = punctMatches ? punctMatches.length : 0;
+
+  // 句数（按句末标点切分）
+  const sentences = text.split(/[。！？…]+/).filter(s => /[\u4e00-\u9fff]/.test(s));
+  const sentenceCount = sentences.length || (hanziCount > 0 ? 1 : 0);
+
+  // 平均句长（汉字数 / 句数）
+  const avgSentenceLen = sentenceCount > 0 ? (hanziCount / sentenceCount) : 0;
+
+  // 词汇丰富度 TTR
+  const uniqueChars = hanziMatches ? new Set(hanziMatches).size : 0;
+  const ttr = hanziCount > 0 ? (uniqueChars / hanziCount) : 0;
+
+  // 难度分级（按平均句长，通行经验指标）
+  let level, levelDesc;
+  if (hanziCount === 0) {
+    level = '—';
+    levelDesc = '未检测到有效汉字';
+  } else if (avgSentenceLen <= 10) {
+    level = '🌱 入门级';
+    levelDesc = '平均句长 ≤ 10 字，适合小学低年级';
+  } else if (avgSentenceLen <= 15) {
+    level = '🌿 初级';
+    levelDesc = '平均句长 10–15 字，适合小学高年级';
+  } else if (avgSentenceLen <= 20) {
+    level = '🌳 中级';
+    levelDesc = '平均句长 15–20 字，适合初中';
+  } else if (avgSentenceLen <= 25) {
+    level = '🏔️ 高级';
+    levelDesc = '平均句长 20–25 字，适合高中及以上';
+  } else {
+    level = '📜 专业级';
+    levelDesc = '平均句长 > 25 字，学术 / 专业文本';
+  }
+
+  results.innerHTML = `
+    <div class="card">
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="label">📊 总字数</div>
+          <div class="value">${totalChars}</div>
+        </div>
+        <div class="result-item">
+          <div class="label">🈶 汉字数</div>
+          <div class="value">${hanziCount}</div>
+        </div>
+        <div class="result-item">
+          <div class="label">🔣 标点数</div>
+          <div class="value">${punctCount}</div>
+        </div>
+        <div class="result-item">
+          <div class="label">📝 句数</div>
+          <div class="value">${sentenceCount}</div>
+        </div>
+        <div class="result-item">
+          <div class="label">📏 平均句长</div>
+          <div class="value">${avgSentenceLen.toFixed(1)} 字</div>
+        </div>
+        <div class="result-item">
+          <div class="label">🎯 词汇丰富度</div>
+          <div class="value">${(ttr * 100).toFixed(1)}%</div>
+        </div>
+      </div>
+
+      <div class="level-box">
+        <div style="font-size:13px; opacity:0.9;">📈 难度分级</div>
+        <div class="level">${level}</div>
+        <div class="desc">${levelDesc}</div>
+      </div>
+
+      <div class="formula">
+        <b>公式说明：</b><br>
+        词汇丰富度 TTR = 不同汉字数 ÷ 总汉字数<br>
+        平均句长 = 总汉字数 ÷ 句数<br>
+        常用字比例 = 一级常用字出现次数 ÷ 总汉字数<br>
+        <span style="color:#b45309;">（常用字比例需对照《通用规范汉字表》一级字表计算，本工具未内置字表）</span>
+      </div>
+    </div>
+  `;
+}
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('results').innerHTML = '';
+}
+</script>
+</body>
+</html>

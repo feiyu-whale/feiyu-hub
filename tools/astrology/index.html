@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🪐 本命星盘</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#08060f; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:660px; }
+  h1 { font-size:12px; color:#c9b7ff; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:#6b6a99; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:#120e1e; border:1px solid #2d2550; border-radius:12px; padding:12px 14px; margin-bottom:11px; }
+  input, select {
+    width:100%; background:#0a0714; border:1px solid #2d2550; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#e0d8ff; font-family:inherit; outline:none;
+  }
+  input:focus, select:focus { border-color:#7c6cd8; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .line > div.grow2 { flex:2; }
+  .lbl { font-size:11px; color:#6b6a99; margin-bottom:4px; display:block; }
+  button.go {
+    width:100%; padding:13px; font-size:11px; font-weight:700; color:#fff;
+    background:linear-gradient(160deg,#6a55c8,#3d2c88); border:1px solid #8577e0;
+    border-radius:11px; cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px;
+  }
+  button.go:active { transform:scale(.98); }
+  #result { margin-top:18px; }
+  canvas { width:100%; height:auto; display:block; border-radius:12px; background:#0a0714; border:1px solid #2d2550; }
+  .plist { margin-top:14px; display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .pitem { background:#120e1e; border:1px solid #2d2550; border-radius:9px; padding:8px 11px; font-size:13px; }
+  .pitem .pn { color:#c9b7ff; font-weight:700; }
+  .pitem .pp { color:#9b93d0; font-size:12px; margin-top:2px; }
+  .pitem .pr { color:#5f8fbf; font-size:11px; margin-top:1px; }
+  .pitem .rx { color:#ff8fa3; font-size:11px; }
+  .pitem .dg { color:#b8a86a; font-size:11px; margin-top:1px; }
+  .sect { color:#8f88c8; font-size:14px; margin:18px 0 8px; font-weight:700; }
+  .aspect-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:6px; }
+  .aitem { background:#120e1e; border:1px solid #2d2550; border-radius:8px; padding:6px 10px; font-size:12px; display:flex; align-items:center; gap:7px; }
+  .aitem .asym { font-size:15px; }
+  .aitem .abody { color:#c9b7ff; }
+  .aitem .atyp { color:#8f88c8; font-size:11px; margin-left:auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; font-size:11px; color:#6b6a99; }
+  .legend span { display:inline-flex; align-items:center; gap:4px; }
+  .lg-line { display:inline-block; width:16px; height:2px; border-radius:1px; }
+  .hint { text-align:center; color:#3f3a5c; font-size:11px; margin-top:14px; line-height:1.7; }
+  .ver { text-align:center; color:#2a2542; font-size:10px; margin-top:8px; }
+  .err { color:#ff8fa3; text-align:center; font-size:14px; padding:10px; }
+  /* 城市搜索下拉 */
+  .citydrop { position:absolute; left:0; right:0; top:100%; z-index:50; max-height:260px; overflow-y:auto;
+    background:#0f0b1c; border:1px solid #4a3f80; border-radius:9px; margin-top:2px; display:none; }
+  .citydrop.show { display:block; }
+  .citydrop .ci { padding:9px 12px; font-size:14px; color:#dbeafe; cursor:pointer; border-bottom:1px solid #1a1430; }
+  .citydrop .ci:last-child { border-bottom:none; }
+  .citydrop .ci:hover, .citydrop .ci.active { background:#241a44; }
+  .citydrop .ci .cp { color:#7a72a8; font-size:11px; margin-left:6px; }
+  .citydrop .cempty { padding:10px 12px; font-size:13px; color:#6b6a99; }
+  .citycur { text-align:center; font-size:12px; color:#7a72a8; margin-top:8px; }
+  .loading { text-align:center; color:#8f88c8; font-size:14px; padding:14px; }
+  .toggle { display:flex; gap:8px; margin-top:8px; }
+  .toggle label { flex:1; display:flex; align-items:center; gap:6px; font-size:12px; color:#9b93d0;
+    background:#0a0714; border:1px solid #2d2550; border-radius:9px; padding:8px 10px; cursor:pointer; }
+  .toggle input { width:auto; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🪐 本命星盘</h1>
+  <div class="sub">行星黄经 · 十二宫位 · 相位连线 · 尊贵<br>纯本地计算 · 不联网 · 数据不出本机</div>
+
+  <div class="card">
+    <div class="line">
+      <div class="grow2"><span class="lbl">出生日期</span><input type="date" id="date" value="1990-06-15"></div>
+      <div><span class="lbl">时间（当地）</span><input type="time" id="time" value="14:30"></div>
+    </div>
+    <div class="line">
+      <div><span class="lbl">时区（相对 UTC 小时）</span><input type="number" id="tz" value="8" step="0.5"></div>
+      <div><span class="lbl">宫位制</span>
+        <select id="houseSys">
+          <option value="placidus">Placidus（普拉西德）</option>
+          <option value="koch">Koch（科赫）</option>
+          <option value="whole-sign">Whole Sign（整宫）</option>
+          <option value="equal">Equal（等宫）</option>
+          <option value="regiomontanus">Regiomontanus</option>
+          <option value="campanus">Campanus</option>
+          <option value="porphyry">Porphyry</option>
+        </select>
+      </div>
+    </div>
+    <!-- 经纬度隐藏字段：由上方城市搜索填写，页面不显示手填框 -->
+    <input type="hidden" id="lat" value="39.90">
+    <input type="hidden" id="lng" value="116.41">
+    <div class="toggle">
+      <label><input type="checkbox" id="showAspect" checked> 相位连线</label>
+      <label><input type="checkbox" id="showMinor"> 次要相位</label>
+    </div>
+    <button class="go" id="calc">排盘</button>
+  </div>
+
+  <div class="sub" style="margin-bottom:0">📍 地点搜索（全国省市区县）：</div>
+  <div class="line" style="margin-top:8px; position:relative">
+    <div style="position:relative">
+      <input type="text" id="citySearch" placeholder="输入城市名，如：北京 / 南昌 / 进贤" autocomplete="off">
+      <div id="cityDrop" class="citydrop"></div>
+    </div>
+  </div>
+  <div class="citycur" id="cityCur"></div>
+
+  <div id="result"></div>
+
+  <div class="hint">🐳 黄经为地心视黄道经度 · 引擎 celestine（MIT，Swiss Ephemeris 算法）<br>本盘仅供天文学习与娱乐，不涉命理断语</div>
+  <div class="ver">v5-本命星盘(解读) 20261015</div>
+</div>
+
+<script type="module">
+import * as Celestine from './lib/celestine.js';
+
+const SIGN_GLYPH = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+const BODY_GLYPH = { Sun:'☉', Moon:'☽', Mercury:'☿', Venus:'♀', Mars:'♂', Jupiter:'♃', Saturn:'♄',
+  Uranus:'♅', Neptune:'♆', Pluto:'♇', Chiron:'⚷', Ceres:'⚳', Pallas:'⚴', Juno:'⚵', Vesta:'⚶',
+  'North Node':'☊', 'South Node':'☋', 'Mean Lilith':'⚸', 'Part of Fortune':'⊗', 'Part of Spirit':'⊕' };
+const BODY_CN = { Sun:'太阳', Moon:'月亮', Mercury:'水星', Venus:'金星', Mars:'火星', Jupiter:'木星',
+  Saturn:'土星', Uranus:'天王星', Neptune:'海王星', Pluto:'冥王星', Chiron:'凯龙',
+  Ceres:'谷神', Pallas:'智神', Juno:'婚神', Vesta:'灶神',
+  'North Node':'北交点', 'South Node':'南交点', 'Mean Lilith':'莉莉丝',
+  'Part of Fortune':'福点', 'Part of Spirit':'精神点' };
+const SIGN_CN = {Aries:'白羊',Taurus:'金牛',Gemini:'双子',Cancer:'巨蟹',Leo:'狮子',Virgo:'处女',
+  Libra:'天秤',Scorpio:'天蝎',Sagittarius:'射手',Capricorn:'摩羯',Aquarius:'水瓶',Pisces:'双鱼'};
+
+const MAIN = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+const EXTRA = ['Chiron','Ceres','Pallas','Juno','Vesta','North Node','South Node','Mean Lilith','Part of Fortune','Part of Spirit'];
+
+// 相位颜色 & 中文
+const ASPECT_STYLE = {
+  conjunction: { c:'#e0c060', cn:'合相', sym:'☌', minor:false },
+  opposition:  { c:'#ff6b8a', cn:'冲相', sym:'☍', minor:false },
+  trine:       { c:'#5fd0a0', cn:'拱相', sym:'△', minor:false },
+  square:      { c:'#ff8f5a', cn:'刑相', sym:'□', minor:false },
+  sextile:     { c:'#6fc8f0', cn:'六合', sym:'⚹', minor:false },
+  quincunx:    { c:'#9a8fd0', cn:'梅花', sym:'⚻', minor:true },
+  semisextile: { c:'#7a8fc0', cn:'半六合', sym:'⚺', minor:true },
+  semisquare:  { c:'#c08f7a', cn:'半刑', sym:'∠', minor:true },
+  sesquiquadrate:{ c:'#c07aa0', cn:'补八分', sym:'⚼', minor:true },
+  quintile:    { c:'#a0d070', cn:'五分', sym:'Q', minor:true },
+  biquintile:  { c:'#80b060', cn:'双五分', sym:'bQ', minor:true },
+  septile:     { c:'#b0a0d0', cn:'七分', sym:'S', minor:true },
+  novile:      { c:'#90c0d0', cn:'九分', sym:'N', minor:true },
+  decile:      { c:'#c0c080', cn:'十分', sym:'D', minor:true }
+};
+function aspectStyle(t){ return ASPECT_STYLE[t] || { c:'#6b6a99', cn:t, sym:'·', minor:true }; }
+
+// 尊贵中文
+const DIGNITY_CN = { Domicile:'庙', Exaltation:'旺', Detriment:'落', Fall:'陷', Peregrine:'游' };
+
+function toInput(){
+  const d = document.getElementById('date').value;
+  const t = document.getElementById('time').value;
+  const tz = parseFloat(document.getElementById('tz').value);
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lng = parseFloat(document.getElementById('lng').value);
+  if(!d || !t) return null;
+  const dp = d.split('-').map(Number), tp = t.split(':').map(Number);
+  return { year:dp[0], month:dp[1], day:dp[2], hour:tp[0], minute:tp[1], second:0,
+    date:d, time:t,
+    timezone: isNaN(tz)?0:tz, latitude: lat, longitude: lng,
+    houseSystem: document.getElementById('houseSys').value };
+}
+
+let LAST = null;
+
+function calc(){
+  const res = document.getElementById('result');
+  const inp = toInput();
+  if(!inp || isNaN(inp.latitude) || isNaN(inp.longitude)){ res.innerHTML='<div class="err">日期/经纬度不对</div>'; return; }
+  res.innerHTML = '<div class="loading">排盘中…</div>';
+  let chart;
+  try{ chart = Celestine.calculateChart(inp); }
+  catch(e){ res.innerHTML='<div class="err">计算失败：'+(e.message||e)+'</div>'; return; }
+  LAST = { chart, inp };
+  render();
+}
+
+function render(){
+  if(!LAST) return;
+  const { chart, inp } = LAST;
+  const showAspect = document.getElementById('showAspect').checked;
+  const showMinor = document.getElementById('showMinor').checked;
+
+  // 主星 + 附加天体
+  const mk = (p) => ({
+    name: p.name, cn: BODY_CN[p.name] || p.name, glyph: BODY_GLYPH[p.name] || '•',
+    lon: p.longitude, sign: SIGN_CN[p.signName] || p.signName, signIdx: p.sign,
+    within: p.degree + p.minute/60 + (p.second||0)/3600, formatted: p.formatted,
+    house: p.house, rx: p.isRetrograde, main: MAIN.indexOf(p.name)>=0,
+    dignity: (p.dignity && p.dignity.state && p.dignity.state!=='Peregrine') ? p.dignity.state : null
+  });
+
+  const planets = chart.planets.map(mk);
+  const extras = []
+    .concat((chart.nodes||[]).map(mk))
+    .concat((chart.lilith||[]).map(mk))
+    .concat((chart.lots||[]).map(mk));
+  const allBodies = planets.concat(extras);
+
+  const asc = { lon: chart.angles.ascendant.longitude, sign:SIGN_CN[chart.angles.ascendant.signName], within: chart.angles.ascendant.degree+chart.angles.ascendant.minute/60+(chart.angles.ascendant.second||0)/3600 };
+  const mc  = { lon: chart.angles.midheaven.longitude, sign:SIGN_CN[chart.angles.midheaven.signName], within: chart.angles.midheaven.degree+chart.angles.midheaven.minute/60+(chart.angles.midheaven.second||0)/3600 };
+
+  const cusps = chart.houses.cusps.map(c => c.longitude);
+  const sysName = chart.houses.systemName;
+
+  // 相位过滤
+  let aspects = (chart.aspects && chart.aspects.all) ? chart.aspects.all.slice() : [];
+  aspects = aspects.filter(a => {
+    const st = aspectStyle(a.type);
+    if(!showMinor && st.minor) return false;
+    // 只保留盘上画得出的天体
+    return true;
+  });
+  // 排序：主要相位优先
+  aspects.sort((a,b)=>{
+    const sa=aspectStyle(a.type), sb=aspectStyle(b.type);
+    if(sa.minor!==sb.minor) return sa.minor?1:-1;
+    return (b.strength||0)-(a.strength||0);
+  });
+
+  drawWheel(planets, extras, cusps, asc, mc, showAspect ? aspects : []);
+  renderLists(planets, extras, asc, mc, sysName, inp, aspects, showAspect);
+}
+
+function drawWheel(planets, extras, cusps, asc, mc, aspects){
+  const res = document.getElementById('result');
+  const cv = document.createElement('canvas');
+  const size = 620, dpr = Math.min(window.devicePixelRatio||1, 2);
+  cv.width = size*dpr; cv.height = size*dpr; cv.style.width='100%';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  const cx = size/2, cy = size/2, R = size/2 - 22;
+  const rOuter = R, rSign = R-36, rHouse = R-86, rInner = R-120;
+  const ascLon = asc.lon;
+  function ang(lon){ return (180 - (lon - ascLon)) * Math.PI/180; }
+  function pt(lon, r){ const a=ang(lon); return [cx+Math.cos(a)*r, cy-Math.sin(a)*r]; }
+  // 天体位置索引（黄经），供相位连线用
+  const POS = {};
+  planets.concat(extras).forEach(p=>{ if(POS[p.name]===undefined) POS[p.name]=p.lon; });
+
+  ctx.clearRect(0,0,size,size);
+
+  // 外圈（星座环）
+  ctx.beginPath(); ctx.arc(cx,cy,rOuter,0,Math.PI*2); ctx.strokeStyle='#3d3468'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,rSign,0,Math.PI*2); ctx.strokeStyle='#2d2550'; ctx.lineWidth=1; ctx.stroke();
+  // 宫位环
+  ctx.beginPath(); ctx.arc(cx,cy,rHouse,0,Math.PI*2); ctx.strokeStyle='#2d2550'; ctx.lineWidth=1; ctx.stroke();
+  // 内圈
+  ctx.beginPath(); ctx.arc(cx,cy,rInner,0,Math.PI*2); ctx.strokeStyle='#2a2248'; ctx.lineWidth=1; ctx.stroke();
+
+  // 星座扇区
+  for(let i=0;i<12;i++){
+    const a0 = ang(i*30);
+    ctx.beginPath();
+    ctx.moveTo(...pt(i*30, rSign)); ctx.lineTo(...pt(i*30, rOuter));
+    ctx.strokeStyle='#2a2248'; ctx.lineWidth=1; ctx.stroke();
+    // 星座符号 + 刻度
+    const [gx,gy] = pt(i*30+15, (rSign+rOuter)/2);
+    ctx.save(); ctx.translate(gx,gy);
+    ctx.fillStyle='#8a7fd0'; ctx.font='17px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(SIGN_GLYPH[i],0,0); ctx.restore();
+    // 每5度刻度
+    for(let d=0; d<30; d+=5){
+      const [x1,y1]=pt(i*30+d, rSign), [x2,y2]=pt(i*30+d, rSign-(d%10===0?7:4));
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle='#332a58'; ctx.lineWidth=1; ctx.stroke();
+    }
+  }
+
+  // 宫位线 + 宫号
+  for(let h=0;h<12;h++){
+    const isAngle = (h%3===0);
+    ctx.beginPath();
+    ctx.moveTo(...pt(cusps[h], rInner)); ctx.lineTo(...pt(cusps[h], rSign));
+    ctx.strokeStyle = isAngle?'#5a4a9a':'#282050'; ctx.lineWidth = isAngle?2:1; ctx.stroke();
+    // 宫号（两宫头中点）
+    const next = cusps[(h+1)%12];
+    let span = ((next - cusps[h]) + 360) % 360;
+    const [hx,hy] = pt(cusps[h] + span/2, rSign-14);
+    ctx.save(); ctx.translate(hx,hy);
+    ctx.fillStyle=isAngle?'#6a5aa8':'#443c68'; ctx.font=(isAngle?'bold ':'')+'11px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(h+1),0,0); ctx.restore();
+  }
+
+  // ASC / MC 轴线
+  [{lon:asc.lon,t:'ASC',c:'#8fe0c0'},{lon:mc.lon,t:'MC',c:'#c9b7ff'},{lon:(asc.lon+180)%360,t:'DSC',c:'#5a8f80'},{lon:(mc.lon+180)%360,t:'IC',c:'#8a7fc0'}].forEach(function(ax){
+    ctx.beginPath();
+    ctx.moveTo(...pt(ax.lon, rInner-10)); ctx.lineTo(...pt(ax.lon, rSign+10));
+    ctx.strokeStyle=ax.c; ctx.lineWidth=2; ctx.stroke();
+    const [lx,ly] = pt(ax.lon, rInner-20);
+    ctx.save(); ctx.translate(lx,ly);
+    ctx.fillStyle=ax.c; ctx.font='bold 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(ax.t,0,0); ctx.restore();
+  });
+
+  // 相位连线（画在内圈里）
+  if(aspects && aspects.length){
+    aspects.forEach(function(a){
+      const st = aspectStyle(a.type);
+      const p1 = POS[a.body1], p2 = POS[a.body2];
+      if(p1===undefined || p2===undefined) return;
+      const [x1,y1] = pt(p1, rInner-6);
+      const [x2,y2] = pt(p2, rInner-6);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle = st.c;
+      ctx.globalAlpha = st.minor ? 0.35 : 0.6;
+      ctx.lineWidth = st.minor ? 0.8 : 1.4;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  // 主星铺在 rSign 与 rHouse 之间
+  drawBodies(ctx, planets, rSign-24, rHouse, true);
+  // 附加天体铺在 rHouse 与 rInner 之间（更小）
+  drawBodies(ctx, extras, rHouse-16, rInner+6, false);
+
+  // 中心
+  ctx.save();
+  ctx.fillStyle='#2a2248'; ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('本命盘',cx,cy-6);
+  ctx.fillStyle='#4a4270'; ctx.font='9px sans-serif';
+  ctx.fillText('ASC·MC·DSC·IC',cx,cy+8);
+  ctx.restore();
+
+  res.innerHTML='';
+  res.appendChild(cv);
+
+  // 天体绘制（用本作用域内的 pt）
+  function drawBodies(ctx, bodies, rFar, rNear, big){
+    const r = (rFar + rNear)/2;
+    const placed = [];
+    bodies.forEach(function(p){
+      let off = 0;
+      placed.forEach(function(q){
+        if(Math.abs(((q.lon - p.lon + 540)%360)-180) < 6) off += big?16:12;
+      });
+      placed.push({lon:p.lon});
+      const [x,y] = pt(p.lon, r - off);
+      ctx.save(); ctx.translate(x,y);
+      ctx.fillStyle = p.rx ? '#ff9aa8' : (big?'#e8e0ff':'#a99fd8');
+      ctx.font = (big?17:12)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(p.glyph, 0, 0);
+      ctx.fillStyle='#7a72a8'; ctx.font=(big?9:8)+'px sans-serif';
+      ctx.fillText(p.within.toFixed(0)+'°', 0, big?13:10);
+      ctx.restore();
+    });
+  }
+}
+
+function renderLists(planets, extras, asc, mc, sysName, inp, aspects, showAspect){
+  const res = document.getElementById('result');
+  const div = document.createElement('div');
+  let html = '';
+
+  // 角度
+  html += '<div class="sect">轴点</div><div class="plist">';
+  html += '<div class="pitem"><span class="pn">上升 ASC</span><div class="pp">'+asc.sign+' '+asc.within.toFixed(2)+'°</div><div class="pr">黄经 '+asc.lon.toFixed(2)+'°</div></div>';
+  html += '<div class="pitem"><span class="pn">中天 MC</span><div class="pp">'+mc.sign+' '+mc.within.toFixed(2)+'°</div><div class="pr">黄经 '+mc.lon.toFixed(2)+'°</div></div>';
+  html += '</div>';
+
+  // 主星
+  html += '<div class="sect">十大行星</div><div class="plist">';
+  planets.forEach(function(p){
+    const rx = p.rx ? ' <span class="rx">℞逆行</span>' : '';
+    const dg = p.dignity ? ' <span class="dg">'+DIGNITY_CN[p.dignity]+'</span>' : '';
+    html += '<div class="pitem"><span class="pn">'+p.glyph+' '+p.cn+rx+dg+'</span><div class="pp">'+p.sign+' '+p.within.toFixed(2)+'° · 第'+p.house+'宫</div><div class="pr">黄经 '+p.lon.toFixed(2)+'°</div></div>';
+  });
+  html += '</div>';
+
+  // 附加天体
+  if(extras.length){
+    html += '<div class="sect">交点 · 莉莉丝 · 阿拉伯点</div><div class="plist">';
+    extras.forEach(function(p){
+      html += '<div class="pitem"><span class="pn">'+p.glyph+' '+p.cn+'</span><div class="pp">'+p.sign+' '+p.within.toFixed(2)+'° · 第'+p.house+'宫</div><div class="pr">黄经 '+p.lon.toFixed(2)+'°</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // 相位列表
+  if(showAspect && aspects.length){
+    html += '<div class="sect">相位（'+aspects.length+'）</div><div class="aspect-grid">';
+    aspects.forEach(function(a){
+      const st = aspectStyle(a.type);
+      const b1 = BODY_CN[a.body1]||a.body1, b2 = BODY_CN[a.body2]||a.body2;
+      html += '<div class="aitem"><span class="asym" style="color:'+st.c+'">'+st.sym+'</span><span class="abody">'+b1+' – '+b2+'</span><span class="atyp" style="color:'+st.c+'">'+st.cn+'</span></div>';
+    });
+    html += '</div>';
+    // 图例
+    html += '<div class="legend">';
+    [['conjunction','合'],['opposition','冲'],['trine','拱'],['square','刑'],['sextile','六合']].forEach(function(x){
+      const st = ASPECT_STYLE[x[0]];
+      html += '<span><span class="lg-line" style="background:'+st.c+'"></span>'+x[1]+'</span>';
+    });
+    html += '</div>';
+  } else if(showAspect){
+    html += '<div class="sect">相位</div><div class="loading">无相位（或请勾选）</div>';
+  }
+
+  // 宫位制说明
+  html += '<div class="sect">盘信息</div><div class="plist"><div class="pitem" style="grid-column:1/-1"><span class="pn">'+sysName+'</span><div class="pp">'+(inp.latitude.toFixed(2))+'° / '+(inp.longitude.toFixed(2))+'° · TZ+'+inp.timezone+'</div></div></div>';
+
+  // 解读
+  html += renderInterpretation(planets, asc, mc, aspects, showAspect, inp);
+
+  div.innerHTML = html;
+  res.appendChild(div);
+}
+
+// ==================== 解读模块 ====================
+// 天文层（科学）+ 占星层（传统，标明仅供娱乐）
+
+const SIGN_ELEMENT = { 白羊:'火',金牛:'土',双子:'风',巨蟹:'水',狮子:'火',处女:'土',
+  天秤:'风',天蝎:'水',射手:'火',摩羯:'土',水瓶:'风',双鱼:'水' };
+const ELEMENT_CN = { 火:'火象',土:'土象',风:'风象',水:'水象' };
+
+// 占星：星座性格关键词（传统说法）
+const SIGN_TRAIT = {
+  白羊:'直接、行动派、爱带头', 金牛:'稳重、恋物、有韧性', 双子:'好奇、善变、能说会道',
+  巨蟹:'顾家、敏感、念旧', 狮子:'张扬、爱面、有担当', 处女:'细心、务实、爱挑剔',
+  天秤:'讲和、重关系、爱平衡', 天蝎:'深沉、执着、有洞察', 射手:'乐观、爱自由、直来直去',
+  摩羯:'务实、自律、扛得住', 水瓶:'独立、理性、脑洞大', 双鱼:'多情、共感、爱做梦'
+};
+// 占星：行星代表啥
+const PLANET_MEAN = { 太阳:'核心自我与意志', 月亮:'情感需求与潜意识', 水星:'思维与表达', 金星:'爱与审美',
+  火星:'行动力与欲望', 木星:'扩张与运气', 土星:'责任与限制', 天王星:'变动与革新',
+  海王星:'梦幻与灵感', 冥王星:'蜕变与深层力量' };
+// 占星：宫位代表啥
+const HOUSE_MEAN = { 1:'自我与外在形象',2:'金钱与价值',3:'沟通与学习',4:'家庭与根基',5:'创造与恋爱',
+  6:'工作与健康',7:'合作与伴侣',8:'共有与转变',9:'远行与信仰',10:'事业与名声',
+  11:'社交与理想',12:'潜意识与隐秘' };
+// 占星：相位传统含义
+const ASPECT_MEAN = { conjunction:'能量融合、彼此强化', opposition:'两极拉扯、需找平衡',
+  trine:'顺畅和谐、天然助力', square:'摩擦冲突、逼人成长', sextile:'机会显现、配合得当',
+  quincunx:'别扭、需调整', semisextile:'轻微关联', semisquare:'小摩擦',
+  sesquiquadrate:'张力积蓄', quintile:'才华闪现', biquintile:'创作力',
+  septile:'宿命感', novile:'灵感', decile:'细致才能' };
+
+function renderInterpretation(planets, asc, mc, aspects, showAspect, inp){
+  const sun = planets.find(p=>p.name==='Sun');
+  const moon = planets.find(p=>p.name==='Moon');
+  const rising = asc;
+  let h = '';
+
+  // ---------- 天文解读 ----------
+  h += '<div class="sect">🌌 天文解读（科学）</div>';
+  h += '<div class="interp sci">';
+  h += '<p>这张盘计算的是：在 <b>' + inp.date + ' ' + inp.time + '</b>、坐标 <b>' + (inp.latitude.toFixed(2)) + '°, ' + (inp.longitude.toFixed(2)) + '°</b>（时区 UTC' + (inp.timezone>=0?'+':'') + inp.timezone + '）这一刻，从地球看去，各天体在天球上的位置。</p>';
+  h += '<ul>';
+  h += '<li><b>黄经</b>：天体沿黄道（地球绕日轨道在天上的投影）的经度位置，0°=春分点，一圈 360°。</li>';
+  if(sun) h += '<li><b>太阳</b> 位于黄经 ' + sun.lon.toFixed(2) + '°，即' + sun.sign + '座方向。太阳的位置决定了一年中季节，6 月约在双子、12 月约在人马（射手）。</li>';
+  if(moon) h += '<li><b>月亮</b> 位于黄经 ' + moon.lon.toFixed(2) + '°，月亮绕地一圈约 27.3 天，因此位置变化很快。</li>';
+  h += '<li><b>上升点（ASC）</b>：你出生那一刻，东方地平线与黄道的交点（黄经 ' + asc.lon.toFixed(2) + '°）。因为它由地球自转决定，所以每 4 分钟就变一个星座。</li>';
+  h += '<li><b>中天（MC）</b>：出生时子午线（正南方向）与黄道的交点（黄经 ' + mc.lon.toFixed(2) + '°），与所在地经度、时刻相关。</li>';
+  h += '<li><b>逆行（℞）</b>：并非行星真的倒着走，而是地球与它相对运动造成的视觉现象。</li>';
+  h += '</ul>';
+  h += '<p class="note">以上为天文学定义，可对照天文年历或星图软件核验。</p>';
+  h += '</div>';
+
+  // ---------- 占星解读 ----------
+  h += '<div class="sect">🔮 占星解读（传统·仅供娱乐）</div>';
+  h += '<div class="interp astro">';
+  h += '<p class="disclaim">⚠️ 以下为西方传统占星学说法，属文化娱乐范畴，非科学结论，请勿据此做重大决定。</p>';
+
+  // 三巨头
+  h += '<p><b>“三巨头”</b>（传统上最常说的三个方面）：</p><ul>';
+  if(sun) h += '<li><b>太阳 ' + sun.sign + '</b>（核心自我）：' + (SIGN_TRAIT[sun.sign]||'') + '。</li>';
+  if(moon) h += '<li><b>月亮 ' + moon.sign + '</b>（情感与内心）：' + (SIGN_TRAIT[moon.sign]||'') + '。</li>';
+  h += '<li><b>上升 ' + asc.sign + '</b>（给人的第一印象）：' + (SIGN_TRAIT[asc.sign]||'') + '。</li>';
+  h += '</ul>';
+
+  // 各行星落座落宫
+  h += '<p><b>各行星</b>（位置含义）：</p><ul>';
+  planets.forEach(function(p){
+    if(!PLANET_MEAN[p.name]) return;
+    const trait = SIGN_TRAIT[p.sign]||'';
+    const houseM = HOUSE_MEAN[p.house]||'';
+    h += '<li><b>' + p.cn + ' 在 ' + p.sign + ' · 第' + p.house + '宫</b>：' + PLANET_MEAN[p.name] + '，带 ' + p.sign + ' 的' + trait.replace(/、.*$/,'') + '色彩；落在「' + houseM + '」领域。</li>';
+  });
+  h += '</ul>';
+
+  // 主要相位
+  if(showAspect && aspects.length){
+    const major = aspects.filter(a=>!aspectStyle(a.type).minor).slice(0,8);
+    if(major.length){
+      h += '<p><b>主要相位</b>（天体间的角度关系）：</p><ul>';
+      major.forEach(function(a){
+        const b1=BODY_CN[a.body1]||a.body1, b2=BODY_CN[a.body2]||a.body2;
+        h += '<li><b>' + b1 + ' ' + (aspectStyle(a.type).sym) + ' ' + b2 + '</b>（' + aspectStyle(a.type).cn + '）：' + (ASPECT_MEAN[a.type]||'') + '。</li>';
+      });
+      h += '</ul>';
+    }
+  }
+
+  h += '<p class="note">占星是一门古老的象征体系，不同流派解读不一；请当文化消遣看。</p>';
+  h += '</div>';
+
+  return h;
+}
+
+document.getElementById('calc').addEventListener('click', calc);
+document.getElementById('showAspect').addEventListener('change', render);
+document.getElementById('showMinor').addEventListener('change', render);
+
+// ==== 城市搜索 ====
+let CITIES = [];
+const searchEl = document.getElementById('citySearch');
+const dropEl = document.getElementById('cityDrop');
+
+fetch('data/cities.json').then(r=>r.json()).then(list=>{
+  // 只保留有坐标的，预处理成 {name, label, lat, lng}
+  CITIES = list.filter(c=>c.lat && c.lng).map(c=>{
+    const name = c.area || c.city || c.province;
+    const isCity = !c.area;
+    const label = (isCity ? name : c.city + ' · ' + name) + (c.province && c.province!==name ? '（'+c.province+'）' : '');
+    return { name: name, city: c.city, area: c.area, province: c.province,
+      lat: parseFloat(c.lat), lng: parseFloat(c.lng), label: label };
+  });
+}).catch(()=>{});
+
+function doSearch(q){
+  q = q.trim();
+  if(!q){ dropEl.classList.remove('show'); dropEl.innerHTML=''; return; }
+  const res = CITIES.filter(c => (c.name && c.name.indexOf(q)>=0) || (c.city && c.city.indexOf(q)>=0) || (c.province && c.province.indexOf(q)>=0));
+  res.sort((a,b)=>{
+    // 完全匹配优先，其次市级优先
+    const ea=a.name===q?0:1, eb=b.name===q?0:1;
+    if(ea!==eb) return ea-eb;
+    const ca=a.area?1:0, cb=b.area?1:0;
+    if(ca!==cb) return ca-cb;
+    return (a.province||'').localeCompare(b.province||'');
+  });
+  const top = res.slice(0, 40);
+  if(!top.length){ dropEl.innerHTML='<div class="cempty">没找到这个地名</div>'; dropEl.classList.add('show'); return; }
+  dropEl.innerHTML = top.map((c,i)=>'<div class="ci" data-i="'+i+'">'+c.name+'<span class="cp">'+(c.area? c.city+' · '+c.province : c.province)+'</span></div>').join('');
+  dropEl.classList.add('show');
+  dropEl.querySelectorAll('.ci').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const c = top[parseInt(el.getAttribute('data-i'))];
+      document.getElementById('lat').value = c.lat.toFixed(4);
+      document.getElementById('lng').value = c.lng.toFixed(4);
+      // 时区：中国统一东八区（此地数据集均为中国，默认 +8）
+      document.getElementById('tz').value = '8';
+      searchEl.value = c.name;
+      document.getElementById('cityCur').textContent = '已选：' + c.label + ' · ' + c.lat.toFixed(3) + '°, ' + c.lng.toFixed(3) + '°';
+      dropEl.classList.remove('show');
+    });
+  });
+}
+searchEl.addEventListener('input', ()=>doSearch(searchEl.value));
+searchEl.addEventListener('focus', ()=>{ if(searchEl.value) doSearch(searchEl.value); });
+document.addEventListener('click', e=>{
+  if(!searchEl.contains(e.target) && !dropEl.contains(e.target)) dropEl.classList.remove('show');
+});
+
+calc();
+</script>
+</body>
+</html>

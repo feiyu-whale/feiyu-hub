@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>电缆载流量校正计算器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a1628;color:#c9d7e8;font:14px/1.55 system-ui,Arial,sans-serif;padding:12px 12px 40px}
+h1{font-size:17px;color:#4a9eff;margin-bottom:4px}
+h1 small{font-size:11px;color:#8fa8c8;font-weight:400;display:block;margin-top:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.tab{padding:6px 12px;background:#12233d;border:1px solid #1e3a5f;border-radius:6px;color:#8fa8c8;cursor:pointer;font-size:13px}
+.tab.on{background:#4a9eff;color:#06111f;border-color:#4a9eff;font-weight:700}
+.card{background:#0f1f36;border:1px solid #1e3a5f;border-radius:8px;padding:12px;margin-bottom:10px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.f{flex:1 1 145px;min-width:0}
+label{display:block;font-size:12px;color:#8fa8c8;margin-bottom:3px}
+input,select{width:100%;padding:7px;background:#0a1628;border:1px solid #24476f;border-radius:5px;color:#e6f0fb;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#4a9eff}
+button{padding:9px 18px;background:#4a9eff;color:#06111f;border:0;border-radius:6px;font-weight:700;cursor:pointer;font-size:14px}
+button:hover{background:#6cb2ff}
+.err{color:#ff6b6b;font-size:12px;margin-top:6px;min-height:15px}
+.big{font-size:27px;color:#4a9eff;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+td,th{border:1px solid #1e3a5f;padding:4px 6px;text-align:left}
+th{background:#12233d;color:#8fa8c8;font-weight:600}
+.n{color:#9ab;font-size:12px;margin-top:8px}
+.hide{display:none}
+pre{white-space:pre-wrap;word-break:break-word;font-size:11px;color:#9fd0ff;line-height:1.45}
+ul{margin-left:16px;font-size:12px;color:#a8bdd6}li{margin:3px 0}
+.ok{color:#3ddc84}.bad{color:#ff6b6b}
+.foot{position:fixed;right:8px;bottom:6px;font-size:11px;color:#4a7bb0;background:#0a1628cc;padding:1px 4px}
+</style></head>
+<body>
+<h1>电缆载流量校正计算器<small>GB/T 16895.15 / IEC 60364-5-52 · GB 50217-2018</small></h1>
+<div class="tabs">
+<div class="tab on" data-p="p1">计算工具</div>
+<div class="tab" data-p="p2">单元测试</div>
+<div class="tab" data-p="p3">JS 源码</div>
+<div class="tab" data-p="p4">使用说明</div>
+</div>
+
+<div id="p1">
+<div class="card">
+<div class="row">
+<div class="f"><label>导体材料</label><select id="mat"><option value="CU">铜</option><option value="AL">铝</option></select></div>
+<div class="f"><label>绝缘材料</label><select id="ins"><option value="PVC">PVC（70℃）</option><option value="XLPE">XLPE（90℃）</option></select></div>
+<div class="f"><label>敷设方式</label><select id="m"><option value="C">空气中明敷</option><option value="B2">穿管（管道）敷设</option><option value="D">直埋</option></select></div>
+<div class="f"><label>标称截面 mm²</label><select id="sz"></select></div>
+</div>
+<div class="row">
+<div class="f"><label>环境/土壤温度 ℃</label><input id="t" type="number" value="30" step="1"></div>
+<div class="f"><label>并列回路数</label><input id="g" type="number" value="1" step="1" min="1" max="6"></div>
+<div class="f"><label>土壤热阻系数 K·m/W（仅直埋）</label><input id="r" type="number" value="2.5" step="0.1"></div>
+</div>
+<button id="go">计算</button>
+<div class="err" id="err"></div>
+</div>
+<div class="card" id="out"><span class="n">请选择参数后点击「计算」。</span></div>
+</div>
+
+<div id="p2" class="hide"><div class="card">
+<button id="rt">运行全部测试</button>
+<div class="err" id="terr"></div>
+<div id="tout"></div>
+</div></div>
+
+<div id="p3" class="hide"><div class="card"><pre id="src"></pre></div></div>
+
+<div id="p4" class="hide"><div class="card">
+<ul>
+<li>基准载流量 It：GB/T 16895.15-2002（等同采用 IEC 60364-5-52）表 B.52.2～B.52.5 常用摘录，铜芯、3 根有载导体；空气中基准 30℃，土壤中基准 20℃。</li>
+<li>环境温度校正 kT：IEC 60364-5-52 表 B.52.14（空气中）／表 B.52.15（土壤中），中间温度线性插值，超范围按端点取值。</li>
+<li>土壤热阻校正 kS：IEC 60364-5-52 表 B.52.16，基准 2.5 K·m/W，适用范围 1.0～4.0。</li>
+<li>多回路校正 kG：IEC 60364-5-52 表 B.52.17（空气中成束）与 GB 50217-2018 附录 D（直埋／排管多回路）常用值。</li>
+<li>铝导体折算系数 0.78：本参数为行业经验值，未经标准核对。</li>
+<li>计算式：Iz = It × kT × kG × kS（空气中 kS = 1）。</li>
+<li>本工具为工程估算辅助，正式设计须核对原标准与厂家数据，并结合短路热稳定、电压损失、保护配合校验。</li>
+</ul>
+</div></div>
+
+<div class="foot">v1.0.0-cable-derating 20261108</div>
+
+<script>
+var SIZES=[1.5,2.5,4,6,10,16,25,35,50,70,95];
+var TBL={PVC:{B2:[15,20,27,34,46,62,80,99,118,149,179],C:[17.5,24,32,41,57,76,96,119,144,184,223],D:[18,24,31,39,52,67,86,103,122,151,179]},XLPE:{B2:[17.5,24,32,41,54,73,95,117,141,179,216],C:[20,27,37,47,65,87,114,141,174,221,269],D:[22,29,38,47,63,81,104,125,148,183,216]}};
+var AT={PVC:[[25,1.03],[30,1],[35,.94],[40,.87],[45,.79],[50,.71],[55,.61],[60,.5]],XLPE:[[25,1.02],[30,1],[35,.96],[40,.91],[45,.87],[50,.82],[55,.76],[60,.71],[65,.65],[70,.58],[75,.5],[80,.41]]};
+var GT={PVC:[[10,1.1],[15,1.05],[20,1],[25,.95],[30,.89],[35,.84],[40,.77],[45,.71],[50,.63],[55,.55],[60,.45]],XLPE:[[10,1.07],[15,1.04],[20,1],[25,.96],[30,.93],[35,.89],[40,.85],[45,.8],[50,.76],[55,.71],[60,.65],[65,.6],[70,.53],[75,.46],[80,.38]]};
+var GA=[[1,1],[2,.8],[3,.7],[4,.65],[5,.6],[6,.57]];
+var GD=[[1,1],[2,.85],[3,.75],[4,.7],[5,.65],[6,.6]];
+var SOIL=[[1,1.18],[1.5,1.1],[2,1.05],[2.5,1],[3,.96],[3.5,.92],[4,.89]];
+var ALF=0.78;
+function interp(tab,x){var n=tab.length;if(x<=tab[0][0])return tab[0][1];if(x>=tab[n-1][0])return tab[n-1][1];for(var i=1;i<n;i++){if(x<=tab[i][0]){var a=tab[i-1][0],va=tab[i-1][1],b=tab[i][0],vb=tab[i][1];return va+(vb-va)*(x-a)/(b-a);}}return tab[n-1][1];}
+function calc(o){var i=SIZES.indexOf(o.size);if(i<0)throw new Error("截面不在支持范围");var it=TBL[o.ins][o.method][i]*(o.mat==="AL"?ALF:1);var d=o.method==="D";var kt=interp(d?GT[o.ins]:AT[o.ins],o.temp);var kg=interp(d?GD:GA,o.circuits);var ks=d?interp(SOIL,o.rho):1;return {it:it,kt:kt,kg:kg,ks:ks,iz:it*kt*kg*ks};}
+
+var SZ=document.getElementById("sz");
+SIZES.forEach(function(s){var op=document.createElement("option");op.value=s;op.textContent=s;SZ.appendChild(op);});
+SZ.value=4;
+
+var tabs=document.querySelectorAll(".tab");
+for(var i=0;i<tabs.length;i++){tabs[i].onclick=function(){for(var j=0;j<tabs.length;j++){tabs[j].className="tab";document.getElementById(tabs[j].dataset.p).className="hide";}this.className="tab on";document.getElementById(this.dataset.p).className="";};}
+
+var out=document.getElementById("out"),err=document.getElementById("err");
+document.getElementById("go").onclick=function(){
+var size=parseFloat(SZ.value),t=parseFloat(document.getElementById("t").value),g=parseFloat(document.getElementById("g").value),r=parseFloat(document.getElementById("r").value);
+var mat=document.getElementById("mat").value,ins=document.getElementById("ins").value,me=document.getElementById("m").value;
+var e=[];
+if(isNaN(size))e.push("请选择标称截面");
+if(isNaN(t))e.push("温度必须填写");else if(t<-20||t>90)e.push("温度须在 -20～90 ℃ 之间");
+if(isNaN(g)||g%1!==0||g<1||g>6)e.push("并列回路数须为 1～6 的整数");
+if(me==="D"&&(isNaN(r)||r<1||r>4))e.push("土壤热阻系数须在 1.0～4.0 K·m/W");
+if(e.length){err.textContent="⚠ "+e.join("；");out.innerHTML='<span class="n">参数有误，未进行计算。</span>';return;}
+err.textContent="";
+var res=calc({size:size,mat:mat,ins:ins,method:me,temp:t,circuits:g,rho:r});
+var nm={C:"空气中明敷",B2:"穿管敷设",D:"直埋"}[me];
+out.innerHTML='<div class="big">Iz = '+res.iz.toFixed(1)+' A</div><div class="n">校正后允许持续载流量（'+nm+'，'+(mat==="CU"?"铜":"铝")+'芯 '+ins+'，'+size+' mm²）</div>'+
+'<table><tr><th>项目</th><th>数值</th><th>说明</th></tr>'+
+'<tr><td>基准载流量 It</td><td>'+res.it.toFixed(2)+' A</td><td>表 B.52.2～B.52.5 摘录'+(mat==="AL"?"（铜值×0.78 经验系数）":"")+'</td></tr>'+
+'<tr><td>温度校正 kT</td><td>'+res.kt.toFixed(3)+'</td><td>'+t+' ℃，基准 '+(me==="D"?20:30)+' ℃</td></tr>'+
+'<tr><td>回路校正 kG</td><td>'+res.kg.toFixed(3)+'</td><td>'+g+' 回路并列</td></tr>'+
+'<tr><td>土壤校正 kS</td><td>'+res.ks.toFixed(3)+'</td><td>'+(me==="D"?r+' K·m/W（基准 2.5）':'不适用（空气中）')+'</td></tr>'+
+'<tr><td>载流量 Iz</td><td>'+res.iz.toFixed(1)+' A</td><td>Iz = It × kT × kG × kS</td></tr></table>'+
+'<div class="n">计算式：'+res.it.toFixed(2)+' × '+res.kt.toFixed(3)+' × '+res.kg.toFixed(3)+' × '+res.ks.toFixed(3)+' = '+res.iz.toFixed(1)+' A</div>';
+};
+
+var TESTS=[
+["插值：空气中 PVC 30℃ = 1.00",function(){return interp(AT.PVC,30);},1],
+["插值：空气中 PVC 25℃ = 1.03",function(){return interp(AT.PVC,25);},1.03],
+["插值：空气中 XLPE 40℃ = 0.91",function(){return interp(AT.XLPE,40);},0.91],
+["插值：土壤热阻 2.5 = 1.00",function(){return interp(SOIL,2.5);},1],
+["多回路：空气中 3 回路 = 0.70",function(){return interp(GA,3);},0.7],
+["温度超上限按端点：PVC 100℃ = 0.50",function(){return interp(AT.PVC,100);},0.5],
+["2.5mm² 铜 PVC 明敷 30℃ 1回路 = 24A",function(){return calc({size:2.5,mat:"CU",ins:"PVC",method:"C",temp:30,circuits:1,rho:2.5}).iz;},24],
+["4mm² 铜 XLPE 明敷 30℃ = 37A",function(){return calc({size:4,mat:"CU",ins:"XLPE",method:"C",temp:30,circuits:1,rho:2.5}).iz;},37],
+["10mm² 铝 PVC 明敷 = 57×0.78",function(){return calc({size:10,mat:"AL",ins:"PVC",method:"C",temp:30,circuits:1,rho:2.5}).iz;},57*0.78],
+["6mm² 铜 XLPE 直埋 20℃ 2.5热阻 = 47A",function(){return calc({size:6,mat:"CU",ins:"XLPE",method:"D",temp:20,circuits:1,rho:2.5}).iz;},47],
+["35mm² 铜 XLPE 直埋 30℃ 3回路 3.0热阻",function(){return calc({size:35,mat:"CU",ins:"XLPE",method:"D",temp:30,circuits:3,rho:3}).iz;},125*0.93*0.75*0.96]
+];
+
+document.getElementById("rt").onclick=function(){
+var h='<table><tr><th>#</th><th>用例</th><th>期望</th><th>实际</th><th>结果</th></tr>',p=0;
+for(var i=0;i<TESTS.length;i++){
+var t=TESTS[i],v,e2;
+try{v=t[1]();}catch(ex){v=NaN;e2=ex.message;}
+var pass=!e2&&Math.abs(v-t[2])<0.01;if(pass)p++;
+h+='<tr><td>'+(i+1)+'</td><td>'+t[0]+'</td><td>'+t[2].toFixed(3)+'</td><td>'+(isNaN(v)?"错误":v.toFixed(3))+'</td><td class="'+(pass?"ok":"bad")+'">'+(pass?"通过":"失败")+'</td></tr>';
+}
+h+='</table><div class="n">共 '+TESTS.length+' 项，通过 '+p+' 项，失败 '+(TESTS.length-p)+' 项。</div>';
+document.getElementById("tout").innerHTML=h;
+document.getElementById("terr").textContent=(p===TESTS.length?"✓ 全部测试通过":"✗ 存在失败用例");
+};
+
+document.getElementById("src").textContent="/* 纯函数，可单独复制测试 */\n"+interp.toString()+"\n\n"+calc.toString()+"\n\n/* 数据表：TBL 基准载流量；AT/GT 温度校正；GA/GD 多回路校正；SOIL 土壤热阻校正；ALF 铝导体经验系数 */";
+</script>
+</body></html>

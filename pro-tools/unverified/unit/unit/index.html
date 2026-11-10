@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>法定计量单位换算工具</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+}
+h1 {
+  text-align: center;
+  font-size: 22px;
+  padding: 20px 0 8px;
+  color: #1a1a2e;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.category-tab {
+  padding: 8px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #555;
+  user-select: none;
+}
+.category-tab:hover {
+  border-color: #4a90d9;
+  color: #4a90d9;
+}
+.category-tab.active {
+  background: #4a90d9;
+  border-color: #4a90d9;
+  color: #fff;
+}
+.converter-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.field {
+  flex: 1;
+  min-width: 120px;
+}
+.field label {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.field select, .field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fafafa;
+  transition: border-color 0.2s;
+  appearance: auto;
+}
+.field select:focus, .field input:focus {
+  outline: none;
+  border-color: #4a90d9;
+  background: #fff;
+}
+.field input {
+  font-variant-numeric: tabular-nums;
+}
+.swap-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #e0e0e0;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+.swap-btn:hover {
+  border-color: #4a90d9;
+  background: #f0f7ff;
+}
+.result-box {
+  background: #f0f7ff;
+  border: 2px solid #d0e3f7;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  min-height: 56px;
+  word-break: break-all;
+}
+.result-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a5276;
+  font-variant-numeric: tabular-nums;
+}
+.result-formula {
+  font-size: 13px;
+  color: #666;
+  margin-top: 6px;
+}
+.formula-section {
+  margin-top: 8px;
+}
+.formula-section summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: #4a90d9;
+  font-weight: 500;
+  padding: 8px 0;
+  user-select: none;
+}
+.formula-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.formula-table th, .formula-table td {
+  border: 1px solid #e0e0e0;
+  padding: 6px 8px;
+  text-align: left;
+}
+.formula-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+.formula-table td {
+  font-variant-numeric: tabular-nums;
+}
+.source-section {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.8;
+}
+.source-section h3 {
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 8px;
+}
+.source-section ul {
+  padding-left: 20px;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 11px;
+  color: #aaa;
+  z-index: 100;
+}
+.note-box {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: #795548;
+  margin-top: 12px;
+}
+@media (max-width: 400px) {
+  .converter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .swap-btn {
+    align-self: center;
+    margin-bottom: 0;
+  }
+  .category-tab {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📐 法定计量单位换算</h1>
+  <p class="subtitle">依据 GB 3100 / GB 3101 国际单位制及其应用</p>
+
+  <div class="card">
+    <div class="category-tabs" id="categoryTabs"></div>
+
+    <div class="converter-row">
+      <div class="field">
+        <label>从</label>
+        <select id="fromUnit"></select>
+      </div>
+      <button class="swap-btn" id="swapBtn" title="交换单位">🔄</button>
+      <div class="field">
+        <label>到</label>
+        <select id="toUnit"></select>
+      </div>
+    </div>
+
+    <div class="converter-row">
+      <div class="field" style="flex:2">
+        <label>输入数值</label>
+        <input type="number" id="inputValue" placeholder="请输入数值" step="any" value="1">
+      </div>
+    </div>
+
+    <div class="result-box">
+      <div class="result-value" id="resultValue">—</div>
+      <div class="result-formula" id="resultFormula"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <details class="formula-section" id="formulaSection">
+      <summary>📋 查看当前分类换算系数表</summary>
+      <div id="formulaContent"></div>
+    </details>
+  </div>
+
+  <div class="card source-section">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li><strong>GB 3100-1993</strong>《国际单位制及其应用》——法定计量单位定义及 SI 词头</li>
+      <li><strong>GB 3101-1993</strong>《有关量、单位和符号的一般原则》</li>
+      <li><strong>GB 3102 系列</strong>——各物理量的量和单位</li>
+      <li>英寸/英尺/码/英里：1959 年国际码磅协议（International Yard and Pound Agreement），1 码 = 0.9144 米（精确值）</li>
+      <li>磅/盎司：同上协议，1 磅 = 0.45359237 千克（精确值）</li>
+      <li>标准大气压：1 atm = 101 325 Pa（CGPM 第 10 届会议定义，精确值）</li>
+      <li>毫米汞柱：1 mmHg = 13.5951 × 9.80665 × 10⁻³ × 10³ Pa = 133.322387415 Pa（按水银密度 13595.1 kg/m³、标准重力 9.80665 m/s² 计算，精确约定值）</li>
+      <li>磅力每平方英寸（psi）：1 psi = 0.45359237 × 9.80665 / 0.0254² Pa ≈ 6894.757293168 Pa</li>
+      <li>公制马力（PS）：1 PS = 75 kgf·m/s = 75 × 9.80665 W = 735.49875 W（精确值，GB 3102 采用）</li>
+      <li>亩：1 公顷 = 15 亩，即 1 亩 = 2000/3 m²（国家法定市制单位）</li>
+      <li>温度换算：K = ℃ + 273.15（第 10 届 CGPM 定义），℉ = ℃ × 9/5 + 32</li>
+      <li>bar：1 bar = 100 000 Pa（精确值）</li>
+    </ul>
+    <div class="note-box">
+      ⚠️ 本工具所有换算系数均基于上述标准的精确值或约定值，不使用近似值。如需查阅完整标准原文，请获取 GB 3100-1993 及 GB 3102 系列标准文本。
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-法定计量单位换算 20261021</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // 各分类的单位定义：{ key, name, toBase } 表示 1 unit = toBase × baseUnit
+  // 温度特殊处理
+  var categories = {
+    length: {
+      name: '📏 长度',
+      baseName: '米 (m)',
+      units: [
+        { key: 'mm', name: '毫米 (mm)', toBase: 0.001 },
+        { key: 'cm', name: '厘米 (cm)', toBase: 0.01 },
+        { key: 'm', name: '米 (m)', toBase: 1 },
+        { key: 'km', name: '千米 (km)', toBase: 1000 },
+        { key: 'in', name: '英寸 (in)', toBase: 0.0254 },
+        { key: 'ft', name: '英尺 (ft)', toBase: 0.3048 },
+        { key: 'yd', name: '码 (yd)', toBase: 0.9144 },
+        { key: 'mi', name: '英里 (mi)', toBase: 1609.344 }
+      ]
+    },
+    area: {
+      name: '📐 面积',
+      baseName: '平方米 (m²)',
+      units: [
+        { key: 'mm2', name: '平方毫米 (mm²)', toBase: 1e-6 },
+        { key: 'cm2', name: '平方厘米 (cm²)', toBase: 1e-4 },
+        { key: 'm2', name: '平方米 (m²)', toBase: 1 },
+        { key: 'km2', name: '平方千米 (km²)', toBase: 1e6 },
+        { key: 'ha', name: '公顷 (ha)', toBase: 10000 },
+        { key: 'mu', name: '亩', toBase: 2000 / 3 }
+      ]
+    },
+    volume: {
+      name: '🧪 体积',
+      baseName: '升 (L)',
+      units: [
+        { key: 'mL', name: '毫升 (mL)', toBase: 0.001 },
+        { key: 'L', name: '升 (L)', toBase: 1 },
+        { key: 'm3', name: '立方米 (m³)', toBase: 1000 }
+      ]
+    },
+    mass: {
+      name: '⚖️ 质量',
+      baseName: '千克 (kg)',
+      units: [
+        { key: 'mg', name: '毫克 (mg)', toBase: 1e-6 },
+        { key: 'g', name: '克 (g)', toBase: 0.001 },
+        { key: 'kg', name: '千克 (kg)', toBase: 1 },
+        { key: 't', name: '吨 (t)', toBase: 1000 },
+        { key: 'oz', name: '盎司 (oz)', toBase: 0.028349523125 },
+        { key: 'lb', name: '磅 (lb)', toBase: 0.45359237 }
+      ]
+    },
+    pressure: {
+      name: '🌡️ 压力',
+      baseName: '帕斯卡 (Pa)',
+      units: [
+        { key: 'Pa', name: '帕 (Pa)', toBase: 1 },
+        { key: 'kPa', name: '千帕 (kPa)', toBase: 1000 },
+        { key: 'MPa', name: '兆帕 (MPa)', toBase: 1e6 },
+        { key: 'bar', name: '巴 (bar)', toBase: 100000 },
+        { key: 'atm', name: '标准大气压 (atm)', toBase: 101325 },
+        { key: 'mmHg', name: '毫米汞柱 (mmHg)', toBase: 133.322387415 },
+        { key: 'psi', name: '磅力/平方英寸 (psi)', toBase: 6894.757293168361 }
+      ]
+    },
+    power: {
+      name: '⚡ 功率',
+      baseName: '瓦特 (W)',
+      units: [
+        { key: 'W', name: '瓦 (W)', toBase: 1 },
+        { key: 'kW', name: '千瓦 (kW)', toBase: 1000 },
+        { key: 'MW', name: '兆瓦 (MW)', toBase: 1e6 },
+        { key: 'PS', name: '公制马力 (PS)', toBase: 735.49875 }
+      ]
+    },
+    temperature: {
+      name: '🌡️ 温度',
+      baseName: '特殊公式换算',
+      units: [
+        { key: 'C', name: '摄氏度 (℃)' },
+        { key: 'F', name: '华氏度 (℉)' },
+        { key: 'K', name: '开尔文 (K)' }
+      ],
+      isTemperature: true
+    }
+  };
+
+  var currentCategory = 'length';
+
+  var categoryTabs = document.getElementById('categoryTabs');
+  var fromUnit = document.getElementById('fromUnit');
+  var toUnit = document.getElementById('toUnit');
+  var inputValue = document.getElementById('inputValue');
+  var resultValue = document.getElementById('resultValue');
+  var resultFormula = document.getElementById('resultFormula');
+  var swapBtn = document.getElementById('swapBtn');
+  var formulaContent = document.getElementById('formulaContent');
+
+  // 初始化分类标签
+  function initTabs() {
+    var keys = Object.keys(categories);
+    keys.forEach(function(key) {
+      var tab = document.createElement('div');
+      tab.className = 'category-tab' + (key === currentCategory ? ' active' : '');
+      tab.textContent = categories[key].name;
+      tab.dataset.key = key;
+      tab.addEventListener('click', function() {
+        currentCategory = key;
+        document.querySelectorAll('.category-tab').forEach(function(t) {
+          t.classList.remove('active');
+        });
+        tab.classList.add('active');
+        populateUnits();
+        convert();
+        updateFormulaTable();
+      });
+      categoryTabs.appendChild(tab);
+    });
+  }
+
+  // 填充单位下拉框
+  function populateUnits() {
+    var cat = categories[currentCategory];
+    fromUnit.innerHTML = '';
+    toUnit.innerHTML = '';
+    cat.units.forEach(function(u, i) {
+      var opt1 = document.createElement('option');
+      opt1.value = u.key;
+      opt1.textContent = u.name;
+      fromUnit.appendChild(opt1);
+
+      var opt2 = document.createElement('option');
+      opt2.value = u.key;
+      opt2.textContent = u.name;
+      toUnit.appendChild(opt2);
+    });
+    // 默认选不同单位
+    if (cat.units.length > 1) {
+      toUnit.selectedIndex = 1;
+    }
+  }
+
+  // 温度换算
+  function convertTemperature(value, from, to) {
+    // 先转为摄氏度
+    var celsius;
+    switch (from) {
+      case 'C': celsius = value; break;
+      case 'F': celsius = (value - 32) * 5 / 9; break;
+      case 'K': celsius = value - 273.15; break;
+    }
+    // 再从摄氏度转为目标
+    var result;
+    switch (to) {
+      case 'C': result = celsius; break;
+      case 'F': result = celsius * 9 / 5 + 32; break;
+      case 'K': result = celsius + 273.15; break;
+    }
+    return result;
+  }
+
+  function getTemperatureFormula(from, to) {
+    var formulas = {
+      'C_F': '℉ = ℃ × 9/5 + 32',
+      'C_K': 'K = ℃ + 273.15',
+      'F_C': '℃ = (℉ − 32) × 5/9',
+      'F_K': 'K = (℉ − 32) × 5/9 + 273.15',
+      'K_C': '℃ = K − 273.15',
+      'K_F': '℉ = (K − 273.15) × 9/5 + 32',
+      'C_C': '相同单位，无需换算',
+      'F_F': '相同单位，无需换算',
+      'K_K': '相同单位，无需换算'
+    };
+    return formulas[from + '_' + to] || '';
+  }
+
+  // 格式化数字
+  function formatNumber(num) {
+    if (num === 0) return '0';
+    if (!isFinite(num)) return '无穷大';
+    var abs = Math.abs(num);
+    if (abs >= 1e15 || (abs < 1e-10 && abs > 0)) {
+      return num.toExponential(10);
+    }
+    // 使用足够精度
+    var str = num.toPrecision(15);
+    // 去除末尾多余的0
+    if (str.indexOf('.') !== -1 && str.indexOf('e') === -1) {
+      str = str.replace(/0+$/, '').replace(/\.$/, '');
+    }
+    return str;
+  }
+
+  // 执行换算
+  function convert() {
+    var val = parseFloat(inputValue.value);
+    if (isNaN(val)) {
+      resultValue.textContent = '请输入有效数值';
+      resultFormula.textContent = '';
+      return;
+    }
+
+    var cat = categories[currentCategory];
+    var from = fromUnit.value;
+    var to = toUnit.value;
+
+    if (from === to) {
+      resultValue.textContent = formatNumber(val);
+      resultFormula.textContent = '相同单位，无需换算';
+      return;
+    }
+
+    var result;
+    var formulaText = '';
+
+    if (cat.isTemperature) {
+      result = convertTemperature(val, from, to);
+      formulaText = getTemperatureFormula(from, to);
+    } else {
+      var fromUnitObj = cat.units.find(function(u) { return u.key === from; });
+      var toUnitObj = cat.units.find(function(u) { return u.key === to; });
+      // value_in_base = val * fromUnitObj.toBase
+      // result = value_in_base / toUnitObj.toBase
+      var ratio = fromUnitObj.toBase / toUnitObj.toBase;
+      result = val * ratio;
+      formulaText = '1 ' + fromUnitObj.name.split(' (')[0] + ' = ' + formatNumber(ratio) + ' ' + toUnitObj.name.split(' (')[0];
+    }
+
+    var fromName = cat.units.find(function(u) { return u.key === from; }).name;
+    var toName = cat.units.find(function(u) { return u.key === to; }).name;
+
+    resultValue.textContent = formatNumber(result);
+    resultFormula.textContent = val + ' ' + fromName + ' = ' + formatNumber(result) + ' ' + toName +
+      (formulaText ? '\n换算关系：' + formulaText : '');
+  }
+
+  // 更新换算系数表
+  function updateFormulaTable() {
+    var cat = categories[currentCategory];
+    var html = '';
+
+    if (cat.isTemperature) {
+      html = '<table class="formula-table"><thead><tr><th>从</th><th>到</th><th>公式</th></tr></thead><tbody>';
+      html += '<tr><td>℃</td><td>℉</td><td>℉ = ℃ × 9/5 + 32</td></tr>';
+      html += '<tr><td>℃</td><td>K</td><td>K = ℃ + 273.15</td></tr>';
+      html += '<tr><td>℉</td><td>℃</td><td>℃ = (℉ − 32) × 5/9</td></tr>';
+      html += '<tr><td>℉</td><td>K</td><td>K = (℉ − 32) × 5/9 + 273.15</td></tr>';
+      html += '<tr><td>K</td><td>℃</td><td>℃ = K − 273.15</td></tr>';
+      html += '<tr><td>K</td><td>℉</td><td>℉ = (K − 273.15) × 9/5 + 32</td></tr>';
+      html += '</tbody></table>';
+    } else {
+      html = '<p style="font-size:13px;color:#666;margin-bottom:8px;">基准单位：' + cat.baseName + '</p>';
+      html = '<table class="formula-table"><thead><tr><th>单位</th><th>→ 基准单位系数</th><th>精确值</th></tr></thead><tbody>';
+      cat.units.forEach(function(u) {
+        var exactStr = '';
+        // 给出精确表达
+        switch (u.key) {
+          case 'mm': exactStr = '10⁻³'; break;
+          case 'cm': exactStr = '10⁻²'; break;
+          case 'm': exactStr = '1'; break;
+          case 'km': exactStr = '10³'; break;
+          case 'in': exactStr = '0.0254（精确）'; break;
+          case 'ft': exactStr = '0.3048（精确）'; break;
+          case 'yd': exactStr = '0.9144（精确）'; break;
+          case 'mi': exactStr = '1609.344（精确）'; break;
+          case 'mm2': exactStr = '10⁻⁶'; break;
+          case 'cm2': exactStr = '10⁻⁴'; break;
+          case 'm2': exactStr = '1'; break;
+          case 'km2': exactStr = '10⁶'; break;
+          case 'ha': exactStr = '10⁴'; break;
+          case 'mu': exactStr = '2000/3（精确）'; break;
+          case 'mL': exactStr = '10⁻³'; break;
+          case 'L': exactStr = '1'; break;
+          case 'm3': exactStr = '10³'; break;
+          case 'mg': exactStr = '10⁻⁶'; break;
+          case 'g': exactStr = '10⁻³'; break;
+          case 'kg': exactStr = '1'; break;
+          case 't': exactStr = '10³'; break;
+          case 'oz': exactStr = '0.45359237/16（精确）'; break;
+          case 'lb': exactStr = '0.45359237（精确）'; break;
+          case 'Pa': exactStr = '1'; break;
+          case 'kPa': exactStr = '10³'; break;
+          case 'MPa': exactStr = '10⁶'; break;
+          case 'bar': exactStr = '10⁵（精确）'; break;
+          case 'atm': exactStr = '101325（精确）'; break;
+          case 'mmHg': exactStr = '133.322387415（约定精确）'; break;
+          case 'psi': exactStr = '0.45359237×9.80665/0.0254²'; break;
+          case 'W': exactStr = '1'; break;
+          case 'kW': exactStr = '10³'; break;
+          case 'MW': exactStr = '10⁶'; break;
+          case 'PS': exactStr = '75×9.80665 = 735.49875（精确）'; break;
+          default: exactStr = formatNumber(u.toBase);
+        }
+        html += '<tr><td>' + u.name + '</td><td>' + formatNumber(u.toBase) + '</td><td>' + exactStr + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    }
+
+    formulaContent.innerHTML = html;
+  }
+
+  // 事件绑定
+  swapBtn.addEventListener('click', function() {
+    var temp = fromUnit.value;
+    fromUnit.value = toUnit.value;
+    toUnit.value = temp;
+    convert();
+  });
+
+  fromUnit.addEventListener('change', convert);
+  toUnit.addEventListener('change', convert);
+  inputValue.addEventListener('input', convert);
+
+  // 初始化
+  initTabs();
+  populateUnits();
+  updateFormulaTable();
+  convert();
+})();
+</script>
+</body>
+</html>

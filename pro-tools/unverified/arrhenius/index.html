@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿伦尼乌斯反应速率常数计算工具 v2.0.2-修审查问题 20261108</title>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --accent: #e74c3c;
+  --bg: #f4f6f9;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --border: #dce1e8;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --info: #3498db;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  padding: 30px 20px;
+  text-align: center;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 15px rgba(26,82,118,0.3);
+}
+header h1 { font-size: 1.8em; margin-bottom: 8px; }
+header p { opacity: 0.9; font-size: 0.95em; }
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 12px 24px;
+  border: 2px solid var(--border);
+  border-bottom: none;
+  background: #e8ecf1;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 600;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.2s;
+  color: var(--text);
+}
+.tab-btn:hover { background: #d5dbe5; }
+.tab-btn.active {
+  background: var(--card-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.tab-content {
+  display: none;
+  background: var(--card-bg);
+  border: 2px solid var(--primary);
+  border-radius: 0 8px 8px 8px;
+  padding: 30px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.tab-content.active { display: block; }
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--primary);
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  font-size: 1em;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--primary-light);
+}
+.form-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.form-row .form-group { flex: 1; min-width: 200px; }
+.btn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 10px;
+  margin-top: 8px;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-secondary { background: #95a5a6; color: #fff; }
+.btn-secondary:hover { background: #7f8c8d; }
+.btn-test { background: var(--success); color: #fff; }
+.btn-test:hover { background: #219a52; }
+.result-box {
+  margin-top: 20px;
+  padding: 20px;
+  background: #eaf2f8;
+  border-left: 4px solid var(--primary);
+  border-radius: 0 8px 8px 0;
+}
+.result-box h3 { color: var(--primary); margin-bottom: 10px; }
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.result-item:last-child { border-bottom: none; }
+.result-label { font-weight: 600; }
+.result-value { color: var(--primary); font-family: "Courier New", monospace; font-weight: 700; }
+.warning-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fef9e7;
+  border-left: 4px solid var(--warning);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.92em;
+}
+.warning-box strong { color: var(--warning); }
+.danger-box {
+  margin: 20px 0;
+  padding: 18px;
+  background: #fdedec;
+  border: 2px solid var(--danger);
+  border-radius: 8px;
+  font-size: 0.95em;
+}
+.danger-box strong { color: var(--danger); }
+.info-box {
+  margin: 16px 0;
+  padding: 16px;
+  background: #eaf2f8;
+  border-left: 4px solid var(--info);
+  border-radius: 0 8px 8px 0;
+}
+.test-result {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  font-family: "Courier New", monospace;
+  font-size: 0.88em;
+  white-space: pre-wrap;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.test-pass { background: #eafaf1; border: 1px solid var(--success); }
+.test-fail { background: #fdedec; border: 1px solid var(--danger); }
+.doc-section { margin-bottom: 28px; }
+.doc-section h2 {
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+.doc-section h3 {
+  color: var(--primary-light);
+  margin: 16px 0 10px;
+}
+.doc-section p { margin-bottom: 10px; text-align: justify; }
+.doc-section ul, .doc-section ol { margin: 10px 0 10px 24px; }
+.doc-section li { margin-bottom: 6px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.92em;
+}
+table th, table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+table th { background: #eaf2f8; font-weight: 600; color: var(--primary); }
+table tr:nth-child(even) { background: #f8f9fb; }
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.mode-btn {
+  padding: 10px 20px;
+  border: 2px solid var(--primary);
+  background: #fff;
+  color: var(--primary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.mode-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+.compare-table { margin-top: 16px; }
+.version-tag {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.72em;
+  color: #999;
+  z-index: 999;
+}
+.safety-banner {
+  background: linear-gradient(135deg, #fdedec, #fef9e7);
+  border: 2px solid var(--danger);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.safety-banner p {
+  font-weight: 700;
+  color: var(--danger);
+  font-size: 0.95em;
+}
+.result-value { word-break: break-all; }
+@media (max-width: 600px) {
+  .container { padding: 10px; }
+  table { display: block; overflow-x: auto; }
+  .result-item { flex-wrap: wrap; }
+}
+.formula-display {
+  background: #2c3e50;
+  color: #ecf0f1;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-family: "Courier New", monospace;
+  font-size: 1.05em;
+  margin: 12px 0;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>⚗️ 阿伦尼乌斯反应速率常数计算工具</h1>
+    <p>Arrhenius Rate Constant Calculator — 正向计算 / 双温度反推 / 半衰期 / 温度对比</p>
+  </header>
+
+  <div class="safety-banner">
+    <p>⚠️ 安全声明：本工具仅供具备资质的专业人员参考使用，不构成任何诊疗建议或工程决策依据。实际决策须由具备相应资质的专业人员做出。物理/化学计算结果受模型假设限制，使用者须自行验证适用性。</p>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('calc', this)">📐 计算工具</button>
+    <button class="tab-btn" onclick="switchTab('test', this)">🧪 单元测试</button>
+    <button class="tab-btn" onclick="switchTab('doc', this)">📖 专业说明</button>
+    <button class="tab-btn" onclick="switchTab('safety', this)">🛡️ 安全声明</button>
+  </div>
+
+  <!-- 第一部分：计算工具 -->
+  <div id="tab-calc" class="tab-content active">
+    <div class="mode-switch">
+      <button class="mode-btn active" id="mode-forward" onclick="switchMode('forward')">正向计算模式</button>
+      <button class="mode-btn" id="mode-inverse" onclick="switchMode('inverse')">双温度反推模式</button>
+    </div>
+
+    <!-- 正向计算 -->
+    <div id="panel-forward">
+      <div class="formula-display">k = A × exp(−E<sub>a</sub> / (R·T))</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>指前因子 A (s⁻¹ 或对应单位)</label>
+          <input type="number" id="fwd-A" step="any" placeholder="例：1.5e10">
+        </div>
+        <div class="form-group">
+          <label>活化能 Ea (J/mol)</label>
+          <input type="number" id="fwd-Ea" step="any" placeholder="例：75000">
+        </div>
+        <div class="form-group">
+          <label>温度 T (K)</label>
+          <input type="number" id="fwd-T" step="any" placeholder="例：298.15">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>反应级数（用于半衰期计算）</label>
+        <select id="fwd-order">
+          <option value="1">一级反应</option>
+          <option value="2">二级反应</option>
+          <option value="0">零级反应</option>
+        </select>
+      </div>
+      <div class="form-group" id="init-conc-group" style="display:none;">
+        <label>初始浓度 [A]₀ (mol/L)（二级/零级需要）</label>
+        <input type="number" id="fwd-C0" step="any" placeholder="例：0.1">
+      </div>
+      <button class="btn btn-primary" onclick="calcForward()">计算 k 值</button>
+      <button class="btn btn-secondary" onclick="clearForward()">清空</button>
+      <div id="fwd-result"></div>
+    </div>
+
+    <!-- 双温度反推 -->
+    <div id="panel-inverse" style="display:none;">
+      <div class="formula-display">ln(k₂/k₁) = −E<sub>a</sub>/R × (1/T₂ − 1/T₁)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>k₁ (T₁ 下的速率常数)</label>
+          <input type="number" id="inv-k1" step="any" placeholder="例：2.5e-4">
+        </div>
+        <div class="form-group">
+          <label>T₁ (K)</label>
+          <input type="number" id="inv-T1" step="any" placeholder="例：298.15">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>k₂ (T₂ 下的速率常数)</label>
+          <input type="number" id="inv-k2" step="any" placeholder="例：6.8e-3">
+        </div>
+        <div class="form-group">
+          <label>T₂ (K)</label>
+          <input type="number" id="inv-T2" step="any" placeholder="例：310.15">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="calcInverse()">反推 Ea 和 A</button>
+      <button class="btn btn-secondary" onclick="clearInverse()">清空</button>
+      <div id="inv-result"></div>
+    </div>
+  </div>
+
+  <!-- 第二部分：单元测试 -->
+  <div id="tab-test" class="tab-content">
+    <h2 style="color:var(--primary);margin-bottom:16px;">单元测试（10 个用例）</h2>
+    <p style="margin-bottom:16px;">覆盖：正常值、负数、零值、极高值、极低值、NaN、单位边界、双温度反推等场景。</p>
+    <button class="btn btn-test" onclick="runAllTests()">▶ 运行全部测试</button>
+    <div id="test-output"></div>
+  </div>
+
+  <!-- 第三部分：专业说明文档 -->
+  <div id="tab-doc" class="tab-content">
+    <div class="doc-section">
+      <h2>一、公式概述与文献出处</h2>
+      <p>阿伦尼乌斯方程（Arrhenius equation）由瑞典化学家 Svante Arrhenius 于 1889 年提出，是化学动力学中描述温度对反应速率常数影响的最基本经验公式。其原始文献为：</p>
+      <p style="padding-left:20px;font-style:italic;">Arrhenius S. Über die Reaktionsgeschwindigkeit bei der Inversion von Rohrzucker durch Säuren. <em>Z Phys Chem</em>. 1889;4:226-248.</p>
+      <p>该方程的数学表达式为：</p>
+      <div class="formula-display">k = A · exp(−Ea / (R · T))</div>
+      <p>其中各符号含义如下：</p>
+      <table>
+        <tr><th>符号</th><th>含义</th><th>单位</th><th>说明</th></tr>
+        <tr><td>k</td><td>反应速率常数</td><td>取决于反应级数</td><td>一级反应为 s⁻¹，二级为 L/(mol·s)</td></tr>
+        <tr><td>A</td><td>指前因子（pre-exponential factor）</td><td>与 k 相同</td><td>也称频率因子，反映单位时间内有效碰撞的频率上限</td></tr>
+        <tr><td>Ea</td><td>活化能（activation energy）</td><td>J/mol</td><td>反应物分子达到过渡态所需的最小能量</td></tr>
+        <tr><td>R</td><td>理想气体常数</td><td>8.314 J/(mol·K)</td><td>CODATA 2018 推荐值</td></tr>
+        <tr><td>T</td><td>热力学温度</td><td>K</td><td>必须为绝对温度，不可使用摄氏度直接代入</td></tr>
+      </table>
+    </div>
+
+    <div class="doc-section">
+      <h2>二、适用场景与不适用场景</h2>
+      <h3>2.1 适用场景</h3>
+      <ul>
+        <li><strong>基元反应（elementary reactions）</strong>：阿伦尼乌斯方程最初即为基元反应而推导，此时 Ea 具有明确的物理意义——即反应物到过渡态的势垒高度。</li>
+        <li><strong>多数总包反应（overall reactions）</strong>：在有限温度范围内（通常 ±50~100 K），许多复杂反应的表观速率常数也近似遵循阿伦尼乌斯关系，此时 Ea 为表观活化能。</li>
+        <li><strong>药物稳定性预测</strong>：在药物化学和制药工程中，加速稳定性试验（accelerated stability testing）广泛使用阿伦尼乌斯方程外推常温下的降解速率。ICH Q1A(R2) 指南中推荐了该方法。</li>
+        <li><strong>食品科学</strong>：食品保质期预测中常用阿伦尼乌斯模型描述温度对腐败反应速率的影响。</li>
+        <li><strong>材料科学</strong>：聚合物老化、金属腐蚀等过程的速率与温度关系常可用阿伦尼乌斯方程拟合。</li>
+        <li><strong>生物化学</strong>：酶促反应在有限温度范围内（通常在酶变性温度以下）的速率变化可用此方程描述。</li>
+      </ul>
+      <h3>2.2 不适用场景</h3>
+      <ul>
+        <li><strong>扩散控制反应（diffusion-controlled reactions）</strong>：当反应速率受限于反应物分子的扩散速度而非化学活化过程时，温度依赖关系偏离阿伦尼乌斯行为。扩散系数的温度依赖通常遵循 Stokes-Einstein 关系，其表观"活化能"远低于化学活化能。</li>
+        <li><strong>隧道效应显著的低温反应</strong>：在极低温度下（如星际化学中的某些反应），量子隧穿效应使反应速率不再遵循经典的阿伦尼乌斯温度依赖。</li>
+        <li><strong>复杂多步机理中温度范围过大时</strong>：若温度范围跨越了反应机理的改变点（如从动力学控制转为扩散控制），则单一阿伦尼乌斯拟合将失效，Arrhenius 图（ln k vs 1/T）会出现折线。</li>
+        <li><strong>酶变性温度以上</strong>：酶促反应在高温下酶蛋白变性失活，速率急剧下降，此时 Arrhenius 图出现明显转折。</li>
+        <li><strong>爆炸反应和链式反应</strong>：存在链分支和链终止的竞争，表观速率与温度的关系可能极为复杂。</li>
+        <li><strong>负活化能反应</strong>：某些自由基复合反应等表现出负活化能，虽然数学上阿伦尼乌斯方程仍可给出结果，但物理意义需要特别解释。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>三、计算步骤逐步解释</h2>
+      <h3>3.1 正向计算模式</h3>
+      <ol>
+        <li><strong>输入参数验证</strong>：检查 A > 0（指前因子必须为正数）、Ea 为有限实数（可以为零或负值，但需物理上合理）、T > 0 K（绝对温度必须为正）。若任一条件不满足，返回错误信息。</li>
+        <li><strong>计算指数项</strong>：计算 −Ea/(R·T)。当 Ea = 0 时，指数项为 0，k = A，表示无活化能垒的反应。</li>
+        <li><strong>计算 k 值</strong>：k = A × exp(−Ea/(R·T))。注意当 Ea/(R·T) 极大时（如 Ea > 10⁶ J/mol 且 T 较小），指数项趋近于零，k 可能下溢为 0。</li>
+        <li><strong>计算半衰期</strong>：
+          <ul>
+            <li>一级反应：t₁/₂ = ln(2)/k</li>
+            <li>二级反应：t₁/₂ = 1/(k·[A]₀)</li>
+            <li>零级反应：t₁/₂ = [A]₀/(2k)</li>
+          </ul>
+        </li>
+        <li><strong>温度对比</strong>：自动计算 ±10 K 和 ±20 K 温度下的 k 值，展示温度敏感性。</li>
+      </ol>
+      <h3>3.2 双温度反推模式</h3>
+      <ol>
+        <li><strong>输入验证</strong>：k₁ > 0, k₂ > 0, T₁ > 0, T₂ > 0, T₁ ≠ T₂。</li>
+        <li><strong>计算 Ea</strong>：由 ln(k₂/k₁) = −(Ea/R)·(1/T₂ − 1/T₁)，解得 Ea = −R·ln(k₂/k₁)/(1/T₂ − 1/T₁)。</li>
+        <li><strong>计算 A</strong>：将 Ea 代回原方程，A = k₁/exp(−Ea/(R·T₁)) = k₁·exp(Ea/(R·T₁))。</li>
+        <li><strong>验证</strong>：用得到的 Ea 和 A 计算 T₂ 下的 k 值，确认与输入的 k₂ 一致（数值精度范围内）。</li>
+      </ol>
+    </div>
+
+    <div class="doc-section">
+      <h2>四、临床/工程意义</h2>
+      <h3>4.1 药物稳定性与有效期预测</h3>
+      <p>在制药工业中，阿伦尼乌斯方程是加速稳定性试验的理论基础。通过在较高温度（如 40°C、60°C）下测定药物降解速率常数，外推至室温（25°C）或冷藏温度（5°C），从而预测药物的有效期（shelf life）。ICH Q1A(R2) 指南规定了长期试验和加速试验的条件。本工具可帮助研究人员快速完成从加速数据到常温预测的计算。</p>
+      <p>需要注意的是，外推温度范围不宜过大（通常建议不超过 20-30°C），否则降解机理可能发生变化，导致预测失效。</p>
+      <h3>4.2 化学反应工程</h3>
+      <p>在化工过程设计中，反应速率常数的温度依赖性是反应器设计和优化的核心参数。通过阿伦尼乌斯方程，工程师可以：确定最佳反应温度窗口、评估温度波动对产率的影响、设计换热系统以维持恒温条件。</p>
+      <h3>4.3 食品与化妆品保质期</h3>
+      <p>食品科学中，阿伦尼乌斯模型用于预测不同储存温度下食品的变质速率。化妆品行业同样使用加速老化试验来评估产品在储存条件下的稳定性。</p>
+      <h3>4.4 环境科学</h3>
+      <p>污染物的环境降解速率（如水解、光解的暗反应部分）通常具有温度依赖性，阿伦尼乌斯方程可用于评估不同气候条件下的环境归趋。</p>
+    </div>
+
+    <div class="doc-section">
+      <h2>五、已知局限与误差来源</h2>
+      <ul>
+        <li><strong>经验公式的固有局限</strong>：阿伦尼乌斯方程本质上是经验公式。虽然过渡态理论（Eyring 方程）为其提供了理论支撑，但严格来说，指前因子 A 本身可能具有微弱的温度依赖性（A ∝ T^n，n 通常为 0.5~1），在宽温度范围内可能引入偏差。</li>
+        <li><strong>活化能的温度依赖性</strong>：严格来说，Ea 可能随温度变化。在窄温度范围内这一变化可忽略，但在宽温度范围（>200 K）内可能导致 Arrhenius 图的非线性。</li>
+        <li><strong>实验数据误差</strong>：双温度反推模式中，k 值的测量误差会被放大。特别是当 T₁ 和 T₂ 接近时，1/T₂ − 1/T₁ 很小，分母接近零会导致 Ea 的计算结果极不稳定。</li>
+        <li><strong>数值精度限制</strong>：JavaScript 使用 IEEE 754 双精度浮点数（约 15-17 位有效数字）。当 Ea/(R·T) 极大（>700）时，exp 函数将下溢为 0；当 Ea/(R·T) 极小（<−700）时，exp 函数将溢出为 Infinity。</li>
+        <li><strong>机理变化的忽略</strong>：本工具假设在整个温度范围内反应机理不变。若实际存在机理转变，计算结果将不具有物理意义。</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2>六、精度与误差说明</h2>
+      <h3>① 算准了什么</h3>
+      <p>本工具在给定输入参数（A、Ea、T）完全准确且阿伦尼乌斯方程严格适用的前提下，计算结果在 IEEE 754 双精度浮点数的精度范围内（相对误差约 10⁻¹⁵ 量级）是准确的。即：数学运算本身是精确的。</p>
+      <h3>② 哪些因素没算进去</h3>
+      <ul>
+        <li>指前因子 A 的温度依赖性（T^n 修正项）</li>
+        <li>活化能 Ea 随温度的变化</li>
+        <li>压力对液相反应速率的影响</li>
+        <li>溶剂效应对活化能和指前因子的影响</li>
+        <li>催化剂失活或中毒导致的速率变化</li>
+        <li>传质限制（外扩散、内扩散）对表观速率的影响</li>
+        <li>反应机理随温度变化的可能性</li>
+      </ul>
+      <h3>③ 误差大概多大</h3>
+      <table>
+        <tr><th>场景</th><th>典型误差范围</th><th>说明</th></tr>
+        <tr><td>窄温度范围（±20 K）内的基元反应</td><td>&lt; 5%</td><td>阿伦尼乌斯方程高度适用</td></tr>
+        <tr><td>宽温度范围（±100 K）的总包反应</td><td>5%~30%</td><td>A 的温度依赖性和 Ea 的温度依赖性开始显现</td></tr>
+        <tr><td>扩散控制反应</td><td>可达数量级偏差</td><td>模型本身不适用</td></tr>
+        <tr><td>双温度反推（T₁、T₂ 接近）</td><td>误差可被放大数十倍</td><td>分母 1/T₂−1/T₁ 接近零导致数值不稳定</td></tr>
+        <tr><td>浮点溢出/下溢边界</td><td>结果无效</td><td>|Ea/(RT)| > ~709 时 exp 函数溢出或下溢</td></tr>
+      </table>
+    </div>
+
+    <div class="doc-section">
+      <h2>七、参考文献</h2>
+      <ol>
+        <li>Arrhenius S. Über die Reaktionsgeschwindigkeit bei der Inversion von Rohrzucker durch Säuren. <em>Z Phys Chem</em>. 1889;4:226-248.</li>
+        <li>Laidler KJ. The development of the Arrhenius equation. <em>J Chem Educ</em>. 1984;61(6):494-498.</li>
+        <li>Atkins P, de Paula J. <em>Atkins' Physical Chemistry</em>. 11th ed. Oxford University Press; 2018. Chapter 21: Reaction Dynamics.</li>
+        <li>ICH Harmonised Tripartite Guideline. Stability Testing of New Drug Substances and Products Q1A(R2). 2003.</li>
+        <li>Eyring H. The activated complex in chemical reactions. <em>J Chem Phys</em>. 1935;3:107-115.</li>
+        <li>CODATA 2018 recommended values of fundamental physical constants. NIST Reference on Constants, Units, and Uncertainty.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 第四部分：安全声明 -->
+  <div id="tab-safety" class="tab-content">
+    <div class="danger-box">
+      <h3 style="color:var(--danger);margin-bottom:12px;">⚠️ 重要安全声明</h3>
+      <p><strong>1. 专业使用限制：</strong>本工具仅供具备化学、药学、化工或相关领域专业资质的专业人员参考使用。非专业人员不应依赖本工具的计算结果做出任何决策。</p>
+    </div>
+    <div class="danger-box">
+      <p><strong>2. 非诊疗建议：</strong>本工具仅供专业人员参考，不构成诊疗建议。涉及药品稳定性、给药方案等医疗相关决策时，实际决策须由具备资质的医师或药师做出。</p>
+    </div>
+    <div class="warning-box">
+      <p><strong>3. 物理/化学适用范围声明：</strong></p>
+      <ul style="margin-top:8px;">
+        <li>本工具基于阿伦尼乌斯方程，该方程为经验公式，适用于基元反应和多数总包反应在有限温度范围内的近似描述。</li>
+        <li>假设条件：反应机理在计算温度范围内不变；指前因子和活化能在计算温度范围内近似为常数；体系处于热力学平衡或准稳态。</li>
+        <li>对于扩散控制反应、量子隧穿效应显著的反应、存在机理转变的反应、酶变性温度以上的酶促反应等情形，本工具的计算结果可能不具有物理意义。</li>
+        <li>双温度反推模式要求两个温度点足够远离（建议 ΔT > 10 K），否则结果数值不稳定。</li>
+      </ul>
+    </div>
+    <div class="warning-box">
+      <p><strong>4. 数据验证责任：</strong>使用者有责任验证输入参数的准确性和计算结果的合理性。本工具不对因输入错误、模型误用或结果误读导致的任何损失承担责任。</p>
+    </div>
+    <div class="warning-box">
+      <p><strong>5. 精度声明：</strong>本工具的计算精度受限于 IEEE 754 双精度浮点数表示（约 15-17 位有效数字）。在极端参数条件下（极高活化能、极低温度等），可能出现数值溢出或下溢，此时结果无效。请勿将本工具的计算结果视为"精确计算"或"绝对准确"。</p>
+    </div>
+    <div class="info-box">
+      <p><strong>6. 版本与更新：</strong>本工具版本 v2.0.2-修审查问题 20261108。公式和常数基于当前公认的物理化学知识。如有新的科学发现或标准更新，本工具可能需要修订。</p>
+    </div>
+  </div>
+</div>
+
+<div class="version-tag">v2.0.2-修审查问题 20261108</div>
+
+<script>
+/**
+ * 理想气体常数 R = 8.31446 J/(mol·K)
+ * CODATA 2018 推荐值为 8.314462618，此处取 8.31446（偏差 < 0.001%）
+ * @constant {number}
+ */
+const R = 8.31446;
+
+/**
+ * 自然对数的底 e 的精度相关常量
+ * exp(709) ≈ 8.2e307，接近 Number.MAX_VALUE
+ * @constant {number}
+ */
+const EXP_OVERFLOW_LIMIT = 709;
+
+/**
+ * 标签页切换
+ * @param {string} tabId - 目标标签页 ID（不含 'tab-' 前缀）
+ * @param {HTMLElement} [btn] - 触发切换的按钮（显式传入，不依赖隐式全局 event）
+ * @returns {void}
+ */
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  var target = document.getElementById('tab-' + tabId);
+  if (target) target.classList.add('active');
+  if (btn && btn.classList) {
+    btn.classList.add('active');
+  }
+}
+
+/**
+ * 计算模式切换（正向/反推）
+ * @param {string} mode - 'forward' 或 'inverse'
+ * @returns {void}
+ */
+function switchMode(mode) {
+  document.getElementById('panel-forward').style.display = mode === 'forward' ? 'block' : 'none';
+  document.getElementById('panel-inverse').style.display = mode === 'inverse' ? 'block' : 'none';
+  document.getElementById('mode-forward').classList.toggle('active', mode === 'forward');
+  document.getElementById('mode-inverse').classList.toggle('active', mode === 'inverse');
+}
+
+/**
+ * 监听反应级数变化，控制初始浓度输入框的显示
+ */
+document.getElementById('fwd-order').addEventListener('change', function() {
+  var order = parseInt(this.value);
+  document.getElementById('init-conc-group').style.display = (order === 0 || order === 2) ? 'block' : 'none';
+});
+
+/**
+ * 验证输入参数的有效性
+ * @param {number} value - 待验证的数值
+ * @param {string} name - 参数名称（用于错误提示）
+ * @param {boolean} mustBePositive - 是否必须为正数
+ * @returns {{valid: boolean, error: string}} 验证结果
+ */
+function validateInput(value, name, mustBePositive) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return { valid: false, error: name + ' 不能为空或 NaN' };
+  }
+  if (!isFinite(value)) {
+    return { valid: false, error: name + ' 不能为 Infinity 或 -Infinity' };
+  }
+  if (mustBePositive && value <= 0) {
+    return { valid: false, error: name + ' 必须为正数（当前值：' + value + '）' };
+  }
+  return { valid: true, error: '' };
+}
+
+/**
+ * 计算阿伦尼乌斯反应速率常数（正向模式）
+ *
+ * 公式名称：阿伦尼乌斯方程（Arrhenius equation）
+ * 文献出处：Arrhenius S. Z Phys Chem. 1889;4:226-248.
+ *
+ * @param {number} A - 指前因子（pre-exponential factor），单位与 k 一致，必须 > 0
+ * @param {number} Ea - 活化能（activation energy），单位 J/mol，可为零或正值
+ * @param {number} T - 热力学温度，单位 K，必须 > 0
+ * @returns {{success: boolean, k: number|null, error: string}} 计算结果
+ */
+function calcArrheniusK(A, Ea, T) {
+  var vA = validateInput(A, '指前因子 A', true);
+  if (!vA.valid) return { success: false, k: null, error: vA.error };
+
+  var vEa = validateInput(Ea, '活化能 Ea', false);
+  if (!vEa.valid) return { success: false, k: null, error: vEa.error };
+
+  var vT = validateInput(T, '温度 T', true);
+  if (!vT.valid) return { success: false, k: null, error: vT.error };
+
+  var exponent = -Ea / (R * T);
+
+  if (exponent < -EXP_OVERFLOW_LIMIT) {
+    return { success: true, k: 0, error: '警告：指数项 ' + exponent.toExponential(3) + ' 过小，exp 下溢为 0。k 值极低，可能无实际意义。' };
+  }
+  if (exponent > EXP_OVERFLOW_LIMIT) {
+    return { success: false, k: null, error: '指数项 ' + exponent.toExponential(3) + ' 过大，exp 溢出。请检查 Ea 和 T 的单位和数值。' };
+  }
+
+  var k = A * Math.exp(exponent);
+  return { success: true, k: k, error: '' };
+}
+
+/**
+ * 计算一级反应的半衰期
+ *
+ * 公式名称：一级反应半衰期公式
+ * 文献出处：Atkins P, de Paula J. Atkins' Physical Chemistry. 11th ed. Oxford University Press; 2018.
+ *
+ * @param {number} k - 反应速率常数 (s⁻¹)，必须 > 0
+ * @returns {{success: boolean, halfLife: number|null, error: string}}
+ */
+function calcHalfLifeFirstOrder(k) {
+  var v = validateInput(k, '速率常数 k', true);
+  if (!v.valid) return { success: false, halfLife: null, error: v.error };
+  return { success: true, halfLife: Math.LN2 / k, error: '' };
+}
+
+/**
+ * 计算二级反应的半衰期
+ *
+ * 公式名称：二级反应半衰期公式
+ * 文献出处：Atkins P, de Paula J. Atkins' Physical Chemistry. 11th ed. Oxford University Press; 2018.
+ *
+ * @param {number} k - 反应速率常数 (L/(mol·s))，必须 > 0
+ * @param {number} C0 - 初始浓度 (mol/L)，必须 > 0
+ * @returns {{success: boolean, halfLife: number|null, error: string}}
+ */
+function calcHalfLifeSecondOrder(k, C0) {
+  var vk = validateInput(k, '速率常数 k', true);
+  if (!vk.valid) return { success: false, halfLife: null, error: vk.error };
+  var vc = validateInput(C0, '初始浓度 C₀', true);
+  if (!vc.valid) return { success: false, halfLife: null, error: vc.error };
+  return { success: true, halfLife: 1 / (k * C0), error: '' };
+}
+
+/**
+ * 计算零级反应的半衰期
+ *
+ * 公式名称：零级反应半衰期公式
+ * 文献出处：Atkins P, de Paula J. Atkins' Physical Chemistry. 11th ed. Oxford University Press; 2018.
+ *
+ * @param {number} k - 反应速率常数 (mol/(L·s))，必须 > 0
+ * @param {number} C0 - 初始浓度 (mol/L)，必须 > 0
+ * @returns {{success: boolean, halfLife: number|null, error: string}}
+ */
+function calcHalfLifeZeroOrder(k, C0) {
+  var vk = validateInput(k, '速率常数 k', true);
+  if (!vk.valid) return { success: false, halfLife: null, error: vk.error };
+  var vc = validateInput(C0, '初始浓度 C₀', true);
+  if (!vc.valid) return { success: false, halfLife: null, error: vc.error };
+  return { success: true, halfLife: C0 / (2 * k), error: '' };
+}
+
+/**
+ * 双温度反推活化能和指前因子
+ *
+ * 公式名称：阿伦尼乌斯方程双温度形式（Two-temperature Arrhenius equation）
+ * 推导：由 ln(k₂/k₁) = −(Ea/R)·(1/T₂ − 1/T₁) 解出 Ea，再代回求 A
+ * 文献出处：Arrhenius S. Z Phys Chem. 1889;4:226-248.; Laidler KJ. J Chem Educ. 1984;61(6):494.
+ *
+ * @param {number} k1 - T₁ 下的速率常数，必须 > 0
+ * @param {number} T1 - 温度 1 (K)，必须 > 0
+ * @param {number} k2 - T₂ 下的速率常数，必须 > 0
+ * @param {number} T2 - 温度 2 (K)，必须 > 0
+ * @returns {{success: boolean, Ea: number|null, A: number|null, error: string}}
+ */
+function calcInverseArrhenius(k1, T1, k2, T2) {
+  var vk1 = validateInput(k1, 'k₁', true);
+  if (!vk1.valid) return { success: false, Ea: null, A: null, error: vk1.error };
+  var vT1 = validateInput(T1, 'T₁', true);
+  if (!vT1.valid) return { success: false, Ea: null, A: null, error: vT1.error };
+  var vk2 = validateInput(k2, 'k₂', true);
+  if (!vk2.valid) return { success: false, Ea: null, A: null, error: vk2.error };
+  var vT2 = validateInput(T2, 'T₂', true);
+  if (!vT2.valid) return { success: false, Ea: null, A: null, error: vT2.error };
+
+  if (Math.abs(T1 - T2) < 1e-10) {
+    return { success: false, Ea: null, A: null, error: 'T₁ 和 T₂ 不能相同（当前差值 < 1e-10 K）' };
+  }
+
+  var invT1 = 1 / T1;
+  var invT2 = 1 / T2;
+  var deltaInvT = invT2 - invT1;
+
+  if (Math.abs(deltaInvT) < 1e-15) {
+    return { success: false, Ea: null, A: null, error: '1/T₂ − 1/T₁ 接近零，数值不稳定。请确保 T₁ 和 T₂ 有足够差异（建议 ΔT > 10 K）。' };
+  }
+
+  var lnRatio = Math.log(k2 / k1);
+  var Ea = -R * lnRatio / deltaInvT;
+
+  var exponent = -Ea / (R * T1);
+  if (Ea / (R * T1) > EXP_OVERFLOW_LIMIT) {
+    return { success: false, Ea: Ea, A: null, error: '反推的 A 值计算中 exp 溢出（Ea/(R·T₁) > 709）。Ea = ' + Ea.toExponential(4) + ' J/mol，请检查输入数据合理性。' };
+  }
+  if (exponent > EXP_OVERFLOW_LIMIT) {
+    return { success: false, Ea: Ea, A: null, error: '反推的 A 值计算中 exp 溢出。Ea = ' + Ea.toExponential(4) + ' J/mol，请检查输入数据合理性。' };
+  }
+
+  var A = k1 * Math.exp(Ea / (R * T1));
+
+  return { success: true, Ea: Ea, A: A, error: '' };
+}
+
+/**
+ * 格式化数值输出
+ * @param {number} val - 待格式化的数值
+ * @param {number} [sigFigs=6] - 有效数字位数
+ * @returns {string} 格式化后的字符串
+ */
+function formatNum(val, sigFigs) {
+  sigFigs = sigFigs || 6;
+  if (val === 0) return '0';
+  if (!isFinite(val)) return val > 0 ? 'Infinity' : '-Infinity';
+  if (isNaN(val)) return 'NaN';
+  var absVal = Math.abs(val);
+  if (absVal >= 1e-3 && absVal < 1e7) {
+    return val.toPrecision(sigFigs);
+  }
+  return val.toExponential(sigFigs - 1);
+}
+
+/**
+ * 格式化时间（秒 → 合适单位）
+ * @param {number} seconds - 时间（秒）
+ * @returns {string} 格式化后的时间字符串
+ */
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) return formatNum(seconds) + ' s';
+  if (seconds === 0) return '—（t₁/₂ = 0 无物理意义，请检查输入）';
+  if (seconds < 1e-6) return formatNum(seconds * 1e9) + ' ns';
+  if (seconds < 1e-3) return formatNum(seconds * 1e6) + ' μs';
+  if (seconds < 1) return formatNum(seconds * 1e3) + ' ms';
+  if (seconds < 60) return formatNum(seconds) + ' s';
+  if (seconds < 3600) return formatNum(seconds / 60) + ' min';
+  if (seconds < 86400) return formatNum(seconds / 3600) + ' h';
+  if (seconds < 86400 * 365) return formatNum(seconds / 86400) + ' d';
+  return formatNum(seconds / (86400 * 365)) + ' yr';
+}
+
+/**
+ * 正向计算按钮处理函数
+ * @returns {void}
+ */
+function calcForward() {
+  var A = parseFloat(document.getElementById('fwd-A').value);
+  var Ea = parseFloat(document.getElementById('fwd-Ea').value);
+  var T = parseFloat(document.getElementById('fwd-T').value);
+  var order = parseInt(document.getElementById('fwd-order').value);
+  var C0 = parseFloat(document.getElementById('fwd-C0').value);
+
+  var result = calcArrheniusK(A, Ea, T);
+  var html = '';
+
+  if (!result.success) {
+    html = '<div class="danger-box"><strong>计算错误：</strong>' + result.error + '</div>';
+    document.getElementById('fwd-result').innerHTML = html;
+    return;
+  }
+
+  var k = result.k;
+  html += '<div class="result-box">';
+  html += '<h3>计算结果</h3>';
+  html += '<div class="result-item"><span class="result-label">速率常数 k</span><span class="result-value">' + formatNum(k) + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">指数项 −Ea/(RT)</span><span class="result-value">' + formatNum(-Ea / (R * T)) + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">exp(−Ea/(RT))</span><span class="result-value">' + formatNum(Math.exp(-Ea / (R * T))) + '</span></div>';
+
+  // 半衰期
+  if (k > 0) {
+    var hlResult;
+    var orderName;
+    if (order === 1) {
+      hlResult = calcHalfLifeFirstOrder(k);
+      orderName = '一级反应';
+    } else if (order === 2) {
+      hlResult = calcHalfLifeSecondOrder(k, C0);
+      orderName = '二级反应';
+    } else {
+      hlResult = calcHalfLifeZeroOrder(k, C0);
+      orderName = '零级反应';
+    }
+    if (hlResult.success) {
+      html += '<div class="result-item"><span class="result-label">半衰期 t₁/₂（' + orderName + '）</span><span class="result-value">' + formatTime(hlResult.halfLife) + '</span></div>';
+    } else {
+      html += '<div class="danger-box"><strong>半衰期计算错误：</strong>' + hlResult.error + '</div>';
+    }
+  }
+
+  html += '</div>';
+
+  // 温度对比
+  if (k > 0 && isFinite(k)) {
+    html += '<div class="result-box" style="margin-top:16px;">';
+    html += '<h3>不同温度下的 k 值对比</h3>';
+    html += '<table class="compare-table"><tr><th>温度 (K)</th><th>温度 (°C)</th><th>k 值</th><th>k/k(T)</th></tr>';
+    var temps = [T - 20, T - 10, T, T + 10, T + 20];
+    for (var i = 0; i < temps.length; i++) {
+      var tComp = temps[i];
+      if (tComp <= 0) continue;
+      var resComp = calcArrheniusK(A, Ea, tComp);
+      if (resComp.success && resComp.k > 0) {
+        var ratio = resComp.k / k;
+        var highlight = (tComp === T) ? ' style="background:#d5f5e3;font-weight:700;"' : '';
+        html += '<tr' + highlight + '><td>' + formatNum(tComp, 5) + '</td><td>' + formatNum(tComp - 273.15, 5) + '</td><td>' + formatNum(resComp.k) + '</td><td>' + formatNum(ratio, 4) + '</td></tr>';
+      }
+    }
+    html += '</table></div>';
+  }
+
+  if (result.error) {
+    html += '<div class="warning-box"><strong>' + result.error + '</strong></div>';
+  }
+
+  html += '<div class="warning-box"><strong>适用性提醒：</strong>阿伦尼乌斯方程适用于基元反应和多数总反应；存在扩散控制或复杂机理时可能偏离。请确认您的反应体系符合方程假设条件。</div>';
+
+  document.getElementById('fwd-result').innerHTML = html;
+}
+
+/**
+ * 清空正向计算表单和结果
+ * @returns {void}
+ */
+function clearForward() {
+  document.getElementById('fwd-A').value = '';
+  document.getElementById('fwd-Ea').value = '';
+  document.getElementById('fwd-T').value = '';
+  document.getElementById('fwd-C0').value = '';
+  document.getElementById('fwd-result').innerHTML = '';
+}
+
+/**
+ * 双温度反推按钮处理函数
+ * @returns {void}
+ */
+function calcInverse() {
+  var k1 = parseFloat(document.getElementById('inv-k1').value);
+  var T1 = parseFloat(document.getElementById('inv-T1').value);
+  var k2 = parseFloat(document.getElementById('inv-k2').value);
+  var T2 = parseFloat(document.getElementById('inv-T2').value);
+
+  var result = calcInverseArrhenius(k1, T1, k2, T2);
+  var html = '';
+
+  if (!result.success) {
+    html = '<div class="danger-box"><strong>计算错误：</strong>' + result.error + '</div>';
+    document.getElementById('inv-result').innerHTML = html;
+    return;
+  }
+
+  var Ea = result.Ea;
+  var A = result.A;
+
+  // 负活化能物理合理性提示：多数基元反应 Ea>0；表观负 Ea 仅见于少数复杂机理
+  if (isFinite(Ea) && Ea < 0) {
+    html += '<div class="danger-box"><strong>物理合理性警告：</strong>反推得到 <b>Ea = ' + formatNum(Ea) + ' J/mol（负值）</b>。' +
+      '在阿伦尼乌斯框架下，表观负活化能意味着速率随温度升高而下降，仅见于极少数复杂机理（如某些带平衡前置步骤的催化反应、链式反应的负温度系数区间）。' +
+      '对常规反应，负的 Ea 通常说明：① 温度与速率的对应关系输入有误（T₁/T₂ 或 k₁/k₂ 位置颠倒）；② 测量数据跨越了机理转变点，不适合用单条阿伦尼乌斯直线拟合。</div>';
+  }
+
+  html += '<div class="result-box">';
+  html += '<h3>反推结果</h3>';
+  html += '<div class="result-item"><span class="result-label">活化能 Ea</span><span class="result-value">' + formatNum(Ea) + ' J/mol (' + formatNum(Ea / 1000) + ' kJ/mol)</span></div>';
+  html += '<div class="result-item"><span class="result-label">指前因子 A</span><span class="result-value">' + formatNum(A) + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">ln(k₂/k₁)</span><span class="result-value">' + formatNum(Math.log(k2 / k1)) + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">1/T₂ − 1/T₁</span><span class="result-value">' + formatNum(1 / T2 - 1 / T1) + ' K⁻¹</span></div>';
+
+  // 验证
+  var verifyK2 = calcArrheniusK(A, Ea, T2);
+  if (verifyK2.success) {
+    var relErr = Math.abs((verifyK2.k - k2) / k2);
+    html += '<div class="result-item"><span class="result-label">验证：用 Ea、A 计算 k(T₂)</span><span class="result-value">' + formatNum(verifyK2.k) + '（相对误差：' + formatNum(relErr, 3) + '）</span></div>';
+  }
+
+  html += '</div>';
+
+  // 用反推的 Ea 和 A 做温度对比
+  if (A > 0 && isFinite(A) && isFinite(Ea)) {
+    html += '<div class="result-box" style="margin-top:16px;">';
+    html += '<h3>反推参数下的温度-k 关系</h3>';
+    html += '<table class="compare-table"><tr><th>温度 (K)</th><th>温度 (°C)</th><th>k 值</th></tr>';
+    var tMin = Math.min(T1, T2);
+    var tMax = Math.max(T1, T2);
+    var tRange = tMax - tMin;
+    var temps = [];
+    for (var dt = -tRange; dt <= tRange * 2; dt += tRange / 4) {
+      var tVal = tMin + dt;
+      if (tVal > 0) temps.push(tVal);
+    }
+    temps.sort(function(a, b) { return a - b; });
+    // 去重
+    var uniqueTemps = [temps[0]];
+    for (var j = 1; j < temps.length; j++) {
+      if (Math.abs(temps[j] - uniqueTemps[uniqueTemps.length - 1]) > 0.01) {
+        uniqueTemps.push(temps[j]);
+      }
+    }
+    for (var m = 0; m < uniqueTemps.length; m++) {
+      var tC = uniqueTemps[m];
+      var resC = calcArrheniusK(A, Ea, tC);
+      if (resC.success && resC.k > 0) {
+        var isInputT = (Math.abs(tC - T1) < 0.01 || Math.abs(tC - T2) < 0.01);
+        var style = isInputT ? ' style="background:#d5f5e3;font-weight:700;"' : '';
+        html += '<tr' + style + '><td>' + formatNum(tC, 5) + '</td><td>' + formatNum(tC - 273.15, 5) + '</td><td>' + formatNum(resC.k) + '</td></tr>';
+      }
+    }
+    html += '</table></div>';
+  }
+
+  if (result.error) {
+    html += '<div class="warning-box"><strong>' + result.error + '</strong></div>';
+  }
+
+  html += '<div class="warning-box"><strong>适用性提醒：</strong>阿伦尼乌斯方程适用于基元反应和多数总反应；存在扩散控制或复杂机理时可能偏离。双温度反推要求 T₁ 和 T₂ 有足够差异（建议 ΔT > 10 K），否则结果数值不稳定。仅凭两个数据点无法判断 Arrhenius 关系是否成立，建议至少使用 3 个以上温度点验证线性。</div>';
+
+  document.getElementById('inv-result').innerHTML = html;
+}
+
+/**
+ * 清空反推表单和结果
+ * @returns {void}
+ */
+function clearInverse() {
+  document.getElementById('inv-k1').value = '';
+  document.getElementById('inv-T1').value = '';
+  document.getElementById('inv-k2').value = '';
+  document.getElementById('inv-T2').value = '';
+  document.getElementById('inv-result').innerHTML = '';
+}
+
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+/**
+ * 简单断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} message - 断言描述
+ * @returns {{pass: boolean, message: string}}
+ */
+function assert(condition, message) {
+  return { pass: !!condition, message: message };
+}
+
+/**
+ * 近似相等断言（考虑浮点精度）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差（相对误差）
+ * @param {string} message - 断言描述
+ * @returns {{pass: boolean, message: string}}
+ */
+function assertApprox(actual, expected, tolerance, message) {
+  if (expected === 0) {
+    return { pass: Math.abs(actual) < tolerance, message: message + ' (actual=' + actual + ', expected≈0, tol=' + tolerance + ')' };
+  }
+  var relErr = Math.abs((actual - expected) / expected);
+  return { pass: relErr < tolerance, message: message + ' (actual=' + formatNum(actual) + ', expected=' + formatNum(expected) + ', relErr=' + relErr.toExponential(2) + ')' };
+}
+
+/**
+ * 运行全部单元测试
+ * 共 10 个测试用例，覆盖：正常值、负数、零值、极高值、极低值、NaN、单位边界、双温度反推等
+ * @returns {void}
+ */
+function runAllTests() {
+  var results = [];
+  var allPass = true;
+
+  /**
+   * 测试用例 1：正常值计算
+   * 测什么：标准阿伦尼乌斯正向计算
+   * 输入：A=1e10 s⁻¹, Ea=75000 J/mol, T=298.15 K
+   * 期望：k ≈ 1e10 × exp(-75000/(8.314×298.15)) = 1e10 × exp(-30.254) ≈ 1e10 × 7.185e-14 ≈ 7.185e-4
+   */
+  (function() {
+    var res = calcArrheniusK(1e10, 75000, 298.15);
+    var expected = 1e10 * Math.exp(-75000 / (R * 298.15));
+    var a = assertApprox(res.k, expected, 1e-10, 'Test1 正常值');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 2：Ea = 0（无活化能垒）
+   * 测什么：当 Ea=0 时，k 应等于 A
+   * 输入：A=5e6, Ea=0, T=300
+   * 期望：k = 5e6
+   */
+  (function() {
+    var res = calcArrheniusK(5e6, 0, 300);
+    var a = assertApprox(res.k, 5e6, 1e-14, 'Test2 Ea=0');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 3：A 为负数（无效输入）
+   * 测什么：指前因子为负时应返回错误
+   * 输入：A=-1e5, Ea=50000, T=300
+   * 期望：success=false
+   */
+  (function() {
+    var res = calcArrheniusK(-1e5, 50000, 300);
+    var a = assert(res.success === false, 'Test3 A为负数应报错');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 4：T = 0（绝对零度边界）
+   * 测什么：温度为零时应返回错误（除零保护）
+   * 输入：A=1e8, Ea=50000, T=0
+   * 期望：success=false
+   */
+  (function() {
+    var res = calcArrheniusK(1e8, 50000, 0);
+    var a = assert(res.success === false, 'Test4 T=0应报错');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 5：极高活化能（exp 下溢）
+   * 测什么：Ea 极大时，exp(-Ea/(RT)) 下溢为 0
+   * 输入：A=1e15, Ea=5e6 J/mol, T=200 K → Ea/(RT) = 5e6/(8.314×200) ≈ 3007 → exp(-3007) ≈ 0
+   * 期望：k = 0（下溢），success=true 但有警告
+   */
+  (function() {
+    var res = calcArrheniusK(1e15, 5e6, 200);
+    var a = assert(res.success === true && res.k === 0, 'Test5 极高Ea下溢为0');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 6：极低温度（接近绝对零度但 > 0）
+   * 测什么：T 极小但为正时，Ea/(RT) 极大
+   * 输入：A=1e10, Ea=50000, T=0.001 K → Ea/(RT) = 50000/(8.314×0.001) ≈ 6.014e6 → 下溢
+   * 期望：k = 0
+   */
+  (function() {
+    var res = calcArrheniusK(1e10, 50000, 0.001);
+    var a = assert(res.success === true && res.k === 0, 'Test6 极低温度下溢');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 7：NaN 输入
+   * 测什么：输入 NaN 时应返回错误
+   * 输入：A=NaN, Ea=50000, T=300
+   * 期望：success=false
+   */
+  (function() {
+    var res = calcArrheniusK(NaN, 50000, 300);
+    var a = assert(res.success === false, 'Test7 NaN输入应报错');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 8：双温度反推 — 正常情况
+   * 测什么：已知两组 (k, T)，反推 Ea 和 A，验证一致性
+   * 构造：取 Ea=80000 J/mol, A=2e12, T1=300, T2=320
+   *   k1 = 2e12 × exp(-80000/(8.314×300))
+   *   k2 = 2e12 × exp(-80000/(8.314×320))
+   *   反推应得到 Ea≈80000, A≈2e12
+   */
+  (function() {
+    var trueEa = 80000;
+    var trueA = 2e12;
+    var T1 = 300, T2 = 320;
+    var k1 = trueA * Math.exp(-trueEa / (R * T1));
+    var k2 = trueA * Math.exp(-trueEa / (R * T2));
+    var res = calcInverseArrhenius(k1, T1, k2, T2);
+    var aEa = assertApprox(res.Ea, trueEa, 1e-8, 'Test8 反推Ea');
+    var aA = assertApprox(res.A, trueA, 1e-8, 'Test8 反推A');
+    results.push(aEa);
+    results.push(aA);
+    if (!aEa.pass || !aA.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 9：双温度反推 — T₁ = T₂（应报错）
+   * 测什么：两个温度相同时应返回错误
+   * 输入：k1=1e-3, T1=300, k2=2e-3, T2=300
+   * 期望：success=false
+   */
+  (function() {
+    var res = calcInverseArrhenius(1e-3, 300, 2e-3, 300);
+    var a = assert(res.success === false, 'Test9 T1=T2应报错');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  /**
+   * 测试用例 10：极高温度（Ea/(RT) 极小，k 接近 A）
+   * 测什么：T 极大时，exp(-Ea/(RT)) → 1，k → A
+   * 输入：A=3.5e8, Ea=10000, T=1e6 K → Ea/(RT) = 10000/(8.314×1e6) ≈ 0.001203 → exp(-0.001203) ≈ 0.99880
+   * 期望：k ≈ 3.5e8 × 0.99880 ≈ 3.4958e8
+   */
+  (function() {
+    var res = calcArrheniusK(3.5e8, 10000, 1e6);
+    var expected = 3.5e8 * Math.exp(-10000 / (R * 1e6));
+    var a = assertApprox(res.k, expected, 1e-10, 'Test10 极高温度k≈A');
+    results.push(a);
+    if (!a.pass) allPass = false;
+  })();
+
+  // 输出结果
+  var outputDiv = document.getElementById('test-output');
+  var html = '<div class="test-result ' + (allPass ? 'test-pass' : 'test-fail') + '">';
+  html += '═══════════════════════════════════════\n';
+  html += '  阿伦尼乌斯计算工具 — 单元测试报告\n';
+  html += '═══════════════════════════════════════\n\n';
+
+  var passCount = 0;
+  var failCount = 0;
+  for (var i = 0; i < results.length; i++) {
+    var status = results[i].pass ? '✅ PASS' : '❌ FAIL';
+    if (results[i].pass) passCount++; else failCount++;
+    html += status + ' | ' + results[i].message + '\n';
+  }
+
+  html += '\n───────────────────────────────────────\n';
+  html += '总计: ' + results.length + ' 个断言 | 通过: ' + passCount + ' | 失败: ' + failCount + '\n';
+  html += '═══════════════════════════════════════\n';
+  html += allPass ? '\n🎉 全部测试通过！\n' : '\n⚠️ 存在失败用例，请检查！\n';
+  html += '</div>';
+
+  outputDiv.innerHTML = html;
+}
+</script>
+</body>
+</html>

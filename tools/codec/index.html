@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔤 编码解码</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:radial-gradient(120% 80% at 50% 0%, #14283a 0%, #0a1622 60%, #060a10 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe; padding:6px 6px 12px;
+    user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#6b8fb3; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #22384c; border-radius:20px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#5b7a99; font-size:12px; margin-bottom:16px; }
+  .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .tabs button { padding:10px 4px; font-size:14px; font-weight:600; color:#8fb3cf; background:#111a24;
+    border:1px solid #24384c; border-radius:10px; cursor:pointer; font-family:inherit; }
+  .tabs button.on { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border-color:#4d8fc9; }
+  .card { background:#0e1a26; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#6b8fb3; margin-bottom:7px; letter-spacing:1px; }
+  textarea { width:100%; background:#060a10; border:1px solid #24384c; border-radius:9px; padding:11px 12px;
+    color:#eaf4ff; font-size:14px; font-family:inherit; resize:vertical; min-height:70px; line-height:1.6; }
+  textarea:focus { outline:none; border-color:#4d8fc9; }
+  .row { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button.act { background:linear-gradient(160deg,#2e6ea8,#1b4670); color:#fff; border:1px solid #4d8fc9;
+    border-radius:9px; padding:10px 15px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  button.act:active { transform:scale(.97); }
+  button.g { background:#132638; border-color:#2e5f8e; color:#9fe0ff; }
+  .out { margin-top:10px; color:#8fe0c0; font-size:13.5px; word-break:break-all; line-height:1.7; padding:10px;
+    background:#060a10; border-radius:9px; min-height:40px; }
+  .err { color:#e08; }
+  .ver { text-align:center; color:#22383c; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回工具区</a>
+  <h1>🔤 编码解码</h1>
+  <div class="sub">纯前端 · 不上传任何数据</div>
+
+  <div class="tabs" id="tabs">
+    <button data-m="b64" class="on">Base64</button>
+    <button data-m="url">URL 编码</button>
+    <button data-m="jwt">JWT 解码</button>
+  </div>
+
+  <div class="card">
+    <div class="lbl" id="inLbl">输入</div>
+    <textarea id="in" placeholder="粘贴内容…"></textarea>
+    <div class="row" id="ops">
+      <button class="act" data-op="enc">编码</button>
+      <button class="act g" data-op="dec">解码</button>
+      <button class="act g" data-op="clr">清空</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <div class="out" id="out"></div>
+    <div class="sub" id="emptyHint" style="margin:10px 0 0;text-align:left">结果将显示在这里</div>
+  </div>
+  <div class="ver">v1.0.0-编码解码 20261016</div>
+</div>
+<script>
+(function(){
+'use strict';
+  // 依据：Base64 (RFC 4648) / URL 百分号编码 (RFC 3986) / JWT (RFC 7519) 标准。
+  const $ = id => document.getElementById(id);
+  let mode = "b64";
+
+  function b64enc(s){ return btoa(unescape(encodeURIComponent(s))); }
+  function b64dec(s){ return decodeURIComponent(escape(atob(s))); }
+
+  function run(op){
+    const v = $("in").value;
+    $("out").className = "out";
+    if(op === "clr"){ $("in").value=""; $("out").textContent=""; $("emptyHint").style.display="block"; return; }
+    $("emptyHint").style.display = "none";
+    try {
+      if(mode === "b64"){
+        $("out").textContent = op==="enc" ? b64enc(v) : b64dec(v.trim());
+      } else if(mode === "url"){
+        $("out").textContent = op==="enc" ? encodeURIComponent(v) : decodeURIComponent(v.trim());
+      } else if(mode === "jwt"){
+        decodeJwt();
+      }
+    } catch(e){ $("out").className="out err"; $("out").textContent = "❌ " + e.message; }
+  }
+
+  function decodeJwt(){
+    const parts = $("in").value.trim().split(".");
+    if(parts.length < 2){ throw new Error("不是合法 JWT（需至少 header.payload 两段）"); }
+    const dec = seg => {
+      let s = seg.replace(/-/g,"+").replace(/_/g,"/");
+      while(s.length % 4) s += "=";
+      return JSON.parse(decodeURIComponent(escape(atob(s))));
+    };
+    const head = dec(parts[0]);
+    const pay = dec(parts[1]);
+    let html = "<div style='color:#9fe0ff'>Header</div><pre style='white-space:pre-wrap;color:#eaf4ff'>"+
+      JSON.stringify(head,null,2)+"</pre>";
+    html += "<div style='color:#9fe0ff;margin-top:8px'>Payload</div><pre style='white-space:pre-wrap;color:#eaf4ff'>"+
+      JSON.stringify(pay,null,2)+"</pre>";
+    if(pay.exp) html += "<div style='margin-top:8px'>⏰ exp：<b>"+new Date(pay.exp*1000).toLocaleString("zh-CN",{hour12:false})+"</b></div>";
+    if(pay.iat) html += "<div>🕐 iat：<b>"+new Date(pay.iat*1000).toLocaleString("zh-CN",{hour12:false})+"</b></div>";
+    if(parts.length === 3) html += "<div style='color:#6b8fb3;margin-top:8px;font-size:12px'>签名段：存在（不校验，仅解码）</div>";
+    $("out").innerHTML = html;
+  }
+
+  $("tabs").addEventListener("click", e => {
+    const b = e.target.closest("button"); if(!b) return;
+    mode = b.dataset.m;
+    [...$("tabs").children].forEach(x => x.classList.toggle("on", x === b));
+    $("ops").style.display = mode === "jwt" ? "none" : "flex";
+    const ph = {b64:"如 hello 世界 → aGVsbG8g5LiW55WM", url:"如 a b/中文 → a%20b%2F%E4%B8%AD%E6%96%87", jwt:"粘贴 JWT（三段以 . 分隔）"};
+    $("in").placeholder = ph[mode];
+    $("out").textContent = "";
+    $("emptyHint").style.display = "block";
+  });
+  $("ops").addEventListener("click", e => { const b=e.target.closest("button"); if(b) run(b.dataset.op); });
+  $("in").addEventListener("input", () => { if(mode==="jwt") run("jwt"); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wells 评分（深静脉血栓）· wells-dvt</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0a1628;color:#cfe3ff;font:14px/1.55 system-ui,-apple-system,"Microsoft YaHei",sans-serif;padding-bottom:46px}
+header{padding:12px 14px;background:#0d1e36;border-bottom:2px solid #4a9eff}
+h1{margin:0 0 3px;font-size:17px;color:#4a9eff}
+header p{margin:0;font-size:12px;color:#7fa6cc}
+nav{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px}
+nav button{flex:1 1 68px;padding:7px 5px;background:#122a45;color:#9cc2e8;border:1px solid #1d3f66;border-radius:6px;font-size:13px;cursor:pointer}
+nav button.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+.tab{display:none;padding:0 10px}
+.tab.on{display:block}
+.card{background:#0f2138;border:1px solid #1d3f66;border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.card h2{margin:0 0 8px;font-size:14px;color:#4a9eff}
+.it{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid #16304f;cursor:pointer}
+.it input{width:16px;height:16px;flex:none;accent-color:#4a9eff}
+.it span{flex:1}
+.it b{color:#4a9eff;font-size:12px;flex:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}
+label.f{display:block;font-size:12px;color:#7fa6cc}
+input[type=number],select{width:100%;padding:6px;background:#0a1a2e;color:#dbeaff;border:1px solid #1d3f66;border-radius:5px;font:inherit;font-size:13px}
+button.go{width:100%;padding:10px;margin-top:10px;background:#4a9eff;color:#04101f;border:0;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer}
+.big{font-size:22px;color:#4a9eff;font-weight:700;margin:0 0 4px}
+.err{color:#ff7a7a}.ok{color:#54d98c}.ng{color:#ff7a7a}
+.tag{display:inline-block;background:#16345a;border-radius:4px;padding:1px 8px;color:#a9d2ff;font-weight:700}
+.small{font-size:12px;color:#7fa6cc}
+pre{background:#08121f;border:1px solid #1d3f66;border-radius:6px;padding:10px;overflow:auto;font-size:11.5px;line-height:1.5;color:#9ecbff;max-height:62vh}
+ul{margin:6px 0;padding-left:20px}
+#ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#6e97c2;background:#0d1e36;border:1px solid #17375e;padding:2px 7px;border-radius:5px}
+</style>
+</head>
+<body>
+<header><h1>Wells 评分（深静脉血栓 DVT）</h1><p>10 项评分 · 两级/三级分层 · D-二聚体联合判读 · 仅供专业医务人员参考</p></header>
+<nav>
+<button class="on" data-t="c">计算工具</button>
+<button data-t="s">JS 源码</button>
+<button data-t="t">单元测试</button>
+<button data-t="u">使用说明</button>
+</nav>
+<section class="tab on" id="tc">
+<div class="card"><h2>临床特征（勾选符合项）</h2><div id="items"></div></div>
+<div class="card"><h2>参数设置</h2>
+<div class="grid">
+<label class="f">分层模式<select id="mode"><option value="3">三级（低/中/高）</option><option value="2">两级（不可能/可能）</option></select></label>
+<label class="f">年龄（岁，&gt;50 可校正）<input type="number" id="age" min="18" max="120" step="1" placeholder="如 68"></label>
+<label class="f">D-二聚体（可空）<input type="number" id="dd" min="0" step="0.01" placeholder="如 0.42"></label>
+<label class="f">D-二聚体单位<select id="unit"><option value="1">mg/L FEU</option><option value="0.001">µg/L FEU</option><option value="0.001">ng/mL FEU</option></select></label>
+</div>
+<label class="it" style="border:0;margin-top:6px"><input type="checkbox" id="adj"><span>启用年龄校正阈值（年龄×10 µg/L FEU）</span></label>
+<button class="go" id="go">计算评分</button></div>
+<div class="card" id="out"><p class="small">勾选条目后点击「计算评分」。</p></div>
+</section>
+<section class="tab" id="ts"><div class="card"><h2>JS 源码（纯函数，可复制测试）</h2><pre id="srcbox"></pre></div></section>
+<section class="tab" id="tt"><div class="card"><h2>单元测试（12 条）</h2><button class="go" id="bt">运行全部测试</button><div id="tres"></div></div></section>
+<section class="tab" id="tu"><div class="card"><h2>使用说明与出处</h2>
+<ul>
+<li>10 个条目：前 9 项各 +1 分，第 10 项「其他诊断可能性 ≤ DVT」计 −2 分，总分范围 −2 ~ 9。</li>
+<li>三级分层（Wells 2000）：≤0 低度、1–2 中度、≥3 高度。</li>
+<li>两级分层（Wells 2006）：≤1 DVT 不太可能、≥2 DVT 可能。</li>
+<li>D-二聚体：≤50 岁阈值 0.50 mg/L FEU；&gt;50 岁可用年龄校正阈值（年龄×10 µg/L FEU）。高度可能性者直接行影像学检查，D-二聚体不可单独排除。</li>
+<li><b>与改良 Wells PE 评分区分</b>：PE 版为 7 项（临床 DVT 体征 3 分、其他诊断可能性 3 分、心率&gt;100 1.5 分、制动/手术 1.5 分、既往 DVT/PE 1.5 分、咯血 1 分、肿瘤 1 分），满分 12.5 分，分层为 ≤4 / &gt;4；两表条目与分值不同，不可混用。</li>
+<li>出处：Wells PS, et al. Lancet 1997;350:1795-1798；Arch Intern Med 2000;160:749-756（三级）；Ann Intern Med 2006;144:165-171（两级）；年龄校正：Douma RA, et al. JAMA 2014;311:1117-1124。</li>
+<li>本工具为辅助决策参考，不替代临床判断与影像学诊断。</li>
+</ul></div></section>
+<div id="ver">v1.0.0-wells-dvt 20261108</div>
+<script id="js">
+const ITEMS=[["活动性肿瘤（治疗中或6个月内）",1],["瘫痪、轻瘫或近期下肢石膏固定",1],["卧床>3天或4周内大手术",1],["沿深静脉走行局部压痛",1],["整个下肢肿胀",1],["小腿肿胀超对侧>3cm",1],["患肢凹陷性水肿",1],["非曲张性侧支浅静脉",1],["既往DVT病史",1],["其他诊断可能性≤DVT",-2]];
+function score(f){let s=0;for(let i=0;i<ITEMS.length;i++)if(f[i])s+=ITEMS[i][1];return s}
+function risk(s,m){return m==='2'?(s>=2?'可能':'不可能'):(s>=3?'高度':s>=1?'中度':'低度')}
+function cutoff(a,adj){return (adj&&a>50)?a/100:0.5}
+function interp(s,m,dd,c){const d=dd===null?'':(dd<c?'低于阈值':'不低于阈值');
+if(m==='2'){if(s<=1)return dd===null?'DVT 不太可能：建议查 D-二聚体，阴性可基本排除':'DVT 不太可能，D-二聚体'+d+(dd<c?'：结合临床可排除 DVT':'：需行下肢静脉超声');return 'DVT 可能：'+(dd===null?'建议直接行下肢静脉超声':'D-二聚体'+d+'，仍以影像学结果为准')}
+if(s>=3)return '高度可能性：直接行下肢静脉超声（D-二聚体不可单独排除）';
+return dd===null?'低/中度可能性：建议查 D-二聚体，阴性可排除 DVT':(dd<c?'D-二聚体低于阈值：结合临床可排除 DVT':'D-二聚体不低于阈值：行下肢静脉超声')}
+const T=[
+["全不选 = 0 分",score(Array(10).fill(false)),0],
+["仅第10项（−2）= −2 分",score([...Array(9).fill(false),true]),-2],
+["9 项临床全选 = 9 分",score([...Array(9).fill(true),false]),9],
+["10 项全选 = 7 分",score(Array(10).fill(true)),7],
+["三级 0 分 → 低度",risk(0,'3'),'低度'],
+["三级 2 分 → 中度",risk(2,'3'),'中度'],
+["三级 3 分 → 高度",risk(3,'3'),'高度'],
+["两级 1 分 → 不可能",risk(1,'2'),'不可能'],
+["两级 2 分 → 可能",risk(2,'2'),'可能'],
+["年龄70+校正 → 0.7",cutoff(70,true),0.7],
+["年龄40+校正 → 0.5",cutoff(40,true),0.5],
+["年龄70未校正 → 0.5",cutoff(70,false),0.5]];
+const $=id=>document.getElementById(id);
+$('items').innerHTML=ITEMS.map((t,i)=>'<label class="it"><input type="checkbox" id="i'+i+'"><span>'+t[0]+'</span><b>'+(t[1]>0?'+1':'−2')+'</b></label>').join('');
+function run(){
+const f=ITEMS.map((_,i)=>$('i'+i).checked),m=$('mode').value;
+const aS=$('age').value.trim(),dS=$('dd').value.trim(),u=+$('unit').value,adj=$('adj').checked;
+const errs=[];let a=null,dd=null;
+if(adj){if(aS==='')errs.push('已启用年龄校正，请填写年龄');else{a=+aS;if(!isFinite(a)||a<18||a>120)errs.push('年龄须为 18~120 岁的数字')}}
+if(dS!==''){if(!/^\d+(\.\d+)?$/.test(dS))errs.push('D-二聚体须为非负数字（如 0.42）');else{dd=+dS*u;if(dd>50)errs.push('D-二聚体换算后超过 50 mg/L FEU，请检查单位')}}
+if(errs.length){$('out').innerHTML='<p class="err">⚠ '+errs.join('；')+'</p>';return}
+const c=cutoff(a,adj),s=score(f),r=risk(s,m),cnt=f.filter(Boolean).length;
+let h='<h2>结果</h2><p class="big">Wells 总分 S = '+s+' 分</p>';
+h+='<p>风险分层（'+(m==='2'?'两级':'三级')+'）：<span class="tag">'+r+'</span></p>';
+h+='<p class="small">中间量：勾选 '+cnt+' 项；D-二聚体 '+(dd===null?'未提供':dd.toFixed(2)+' mg/L FEU')+'；阈值 '+c.toFixed(2)+' mg/L FEU'+(adj&&a>50?'（年龄校正）':'（固定）')+'</p>';
+h+='<p><b>建议：</b>'+interp(s,m,dd,c)+'</p>';
+h+='<p class="small">公式：S = Σ 各条目分值（前 9 项各 +1，第 10 项 −2）；三级 ≤0 低 / 1–2 中 / ≥3 高；两级 ≤1 不可能 / ≥2 可能；年龄校正阈值 = 年龄×10 µg/L FEU（= 年龄/100 mg/L）。</p>';
+h+='<p class="small">出处：Wells PS, et al. Lancet 1997;350:1795-8；Arch Intern Med 2000;160:749-56（三级）；Ann Intern Med 2006;144:165-71（两级）；Douma RA, et al. JAMA 2014;311:1117-24（年龄校正）。</p>';
+$('out').innerHTML=h}
+$('go').onclick=run;
+document.querySelectorAll('nav button').forEach(b=>{b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='t'+b.dataset.t))}});
+$('bt').onclick=()=>{let h='',p=0;T.forEach(t=>{const ok=JSON.stringify(t[1])===JSON.stringify(t[2]);if(ok)p++;h+='<li class="'+(ok?'ok':'ng')+'">'+(ok?'✔':'✘')+' '+t[0]+' — 实际 '+t[1]+' / 期望 '+t[2]+'</li>'});$('tres').innerHTML='<p><b>通过 '+p+' / '+T.length+'</b></p><ul>'+h+'</ul>'};
+$('srcbox').textContent=$('js').textContent;
+</script>
+</body>
+</html>

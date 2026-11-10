@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐟 多源并发查询台</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{min-height:100%;background:linear-gradient(160deg,#0a1628 0%,#123 60%,#0a1f33 100%)}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#dbeafe;padding:10px 8px 16px}
+  .wrap{max-width:760px;margin:0 auto}
+  .back{text-decoration:none;color:#6b8fb3;font-size:11px;padding:3px 9px;
+    border:1px solid #22384c;border-radius:12px;display:inline-block;margin-bottom:8px}
+  h1{font-size:17px;color:#8fd0ff;text-align:center;font-weight:700;letter-spacing:1px}
+  .sub{text-align:center;color:#5b7a99;font-size:11px;margin:5px 0 12px;line-height:1.6}
+  .warn{background:#2a1508;border:1px solid #ff9a40;border-radius:8px;padding:8px 10px;
+    margin-bottom:12px;font-size:11px;line-height:1.6;color:#ffd0a0}
+  .warn b{color:#ffb060}
+  .card{background:linear-gradient(160deg,#112c3a,#0a1e28);border:1px solid #2e5f6e;
+    border-radius:11px;padding:12px 11px;margin-bottom:10px}
+  .card h2{font-size:13px;color:#7fd4e8;margin-bottom:8px;font-weight:700}
+  .row{display:flex;gap:6px;margin-bottom:8px}
+  input{flex:1;background:#0b1a20;border:1px solid #2a5563;border-radius:6px;
+    color:#c0dde6;font-size:12px;padding:8px 10px;outline:none}
+  input:focus{border-color:#4d9ab5}
+  button{background:#1a4a5e;border:1px solid #2e7f96;border-radius:6px;color:#9fe6f8;
+    font-size:12px;padding:8px 16px;cursor:pointer;font-weight:600;white-space:nowrap}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .tabs{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+  .tab{flex:1 1 auto;min-width:70px;text-align:center;padding:7px 4px;font-size:11px;
+    background:#0b1a20;border:1px solid #2a5563;border-radius:6px;color:#79a8bd;cursor:pointer}
+  .tab.on{background:#14404f;border-color:#3d92ab;color:#9fe6f8;font-weight:600}
+  .summary{font-size:11px;color:#8fb8cc;margin-bottom:8px;line-height:1.7}
+  .summary b{color:#9fe6b8}
+  .src{background:#0b1a20;border:1px solid #22384c;border-radius:7px;
+    padding:8px 10px;margin-bottom:6px;font-size:11px;line-height:1.7}
+  .src.ok{border-left:3px solid #3ba55d}
+  .src.fail{border-left:3px solid #c2503a;opacity:.75}
+  .src-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+  .src-n{color:#8fd0ff;font-weight:600;font-size:12px}
+  .src-t{font-size:10px;color:#5b8494;white-space:nowrap}
+  .src-t.fast{color:#9fe6b8}
+  .src-t.slow{color:#ffbe7a}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:11px}
+  .kv .k{color:#6b8fb3;white-space:nowrap}
+  .kv .v{color:#c0dde6;word-break:break-all}
+  .src.fail .kv .v{color:#e08a7a}
+  .empty{font-size:11px;color:#5a7a85;text-align:center;padding:18px 8px;line-height:1.8}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid #2a5563;
+    border-top-color:#9fe6f8;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .foot{text-align:center;color:#2c4a55;font-size:10px;margin-top:14px;line-height:1.7}
+  .ver{text-align:center;color:#2c4a55;font-size:9px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← 回大厅</a>
+  <h1>🐟 多源并发查询台</h1>
+  <div class="sub">同一个问题，同时问多个数据源 · 谁快谁慢一目了然</div>
+
+  <div class="warn">
+    ⚠️ <b>技术演示，可能有 bug</b>：这个页面纯粹用来验证「多源并发 + 结果归一化 + 降级容错」这套写法，
+    <b>不是正经工具，数据别当真</b>。接口是第三方公开服务，随时可能挂、可能改、可能不准。
+  </div>
+
+  <div class="card">
+    <h2>选一个查询</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="row">
+      <input id="q" placeholder="输入 IP / 城市 / 币种代码…" autocomplete="off">
+      <button id="go">查询</button>
+    </div>
+    <div class="summary" id="sum">——</div>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="foot">🐳 大肥鱼出品 · 纯前端零依赖<br>学到的是思路：并发聚合 · 归一化 · 降级容错</div>
+  <div class="ver">v1.0.0-多源并发查询台 20261101</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ========== 工具：超时 fetch ==========
+  function fetchT(url, opt, ms){
+    var ctl = new AbortController();
+    var t = setTimeout(function(){ ctl.abort(); }, ms || 8000);
+    var o = Object.assign({}, opt || {}, { signal: ctl.signal, mode:'cors', cache:'no-store' });
+    return fetch(url, o).then(function(r){
+      clearTimeout(t);
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }, function(e){
+      clearTimeout(t);
+      throw e;
+    });
+  }
+
+  // ========== 工具：并发 + 限速 + 单源超时保底 ==========
+  // 核心思路（借鉴来的）：allSettled 保证任何一个源挂了都不拖垮整体
+  function runAll(tasks, opts){
+    opts = opts || {};
+    var limit = opts.limit || 5;
+    var timeout = opts.timeout || 9000;
+    var results = new Array(tasks.length);
+    var idx = 0, running = 0, done = 0, finish = null;
+
+    return new Promise(function(resolve){
+      finish = resolve;
+      if(!tasks.length) return resolve([]);
+
+      function next(){
+        while(running < limit && idx < tasks.length){
+          start(idx++);
+        }
+      }
+
+      function start(i){
+        running++;
+        var t0 = performance.now();
+        var settled = false;
+
+        var timer = setTimeout(function(){
+          if(settled) return;
+          settled = true;
+          results[i] = { ok:false, ms:timeout, err:'超时未返回', name:tasks[i].name };
+          done++; running--;
+          ensureFinish(); next();
+        }, timeout);
+
+        Promise.resolve()
+          .then(tasks[i].fn)
+          .then(function(data){
+            if(settled) return;
+            settled = true; clearTimeout(timer);
+            results[i] = { ok:true, ms:Math.round(performance.now()-t0),
+                           data:data, name:tasks[i].name };
+            done++; running--; ensureFinish(); next();
+          }, function(e){
+            if(settled) return;
+            settled = true; clearTimeout(timer);
+            results[i] = { ok:false, ms:Math.round(performance.now()-t0),
+                           err:(e && e.name === 'AbortError') ? '请求被中断' : String(e && e.message || e),
+                           name:tasks[i].name };
+            done++; running--; ensureFinish(); next();
+          });
+      }
+
+      function ensureFinish(){
+        if(done >= tasks.length) finish(results);
+      }
+
+      next();
+    });
+  }
+
+  // ========== 工具：HTML 转义（防注入，一律走这里） ==========
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ========== 工具：数值安全取 ==========
+  function pick(o, path, dft){
+    var p = path.split('.'), cur = o;
+    for(var i=0;i<p.length;i++){
+      if(cur == null || typeof cur !== 'object') return dft;
+      cur = cur[p[i]];
+    }
+    return cur == null ? dft : cur;
+  }
+
+  // ========== 三类查询定义 ==========
+  // 每类 = 多个「源」，每个源统一返回 { rows: [[k,v],...], 合并优先级字段 }
+  var KINDS = {
+    ip: {
+      label:'IP 归属',
+      ph:'例如 8.8.8.8',
+      dft:'8.8.8.8',
+      sources:[
+        {
+          name:'ipwho.is',
+          // 归一化：不同源字段名完全不一样，这里统一成同一套 key
+          norm:function(d){
+            return [
+              ['国家', (d.country||'?') + ' ' + (d.flag && d.flag.emoji ? d.flag.emoji : '')],
+              ['地区', [d.region, d.city].filter(Boolean).join(' / ') || '—'],
+              ['ISP',  pick(d,'connection.isp','—')],
+              ['ASN',  pick(d,'connection.asn','—')],
+              ['时区', pick(d,'timezone.id','—')],
+              ['坐标', (d.latitude!=null ? d.latitude : '?') + ', ' + (d.longitude!=null ? d.longitude : '?')]
+            ];
+          },
+          run:function(v){ return fetchT('https://ipwho.is/' + encodeURIComponent(v)); }
+        },
+      ]
+    },
+
+    weather: {
+      label:'天气',
+      ph:'城市名，例如 杭州 / Tokyo',
+      dft:'杭州',
+      sources:[
+        {
+          name:'open-meteo（先查坐标再查天气）',
+          norm:function(d){
+            var c = d.current || {};
+            return [
+              ['温度', c.temperature_2m != null ? c.temperature_2m + ' °C' : '—'],
+              ['体感', c.apparent_temperature != null ? c.apparent_temperature + ' °C' : '—'],
+              ['湿度', c.relative_humidity_2m != null ? c.relative_humidity_2m + ' %' : '—'],
+              ['风速', c.wind_speed_10m != null ? c.wind_speed_10m + ' km/h' : '—'],
+              ['地点', (d._place || '—')]
+            ];
+          },
+          // 两段式：地理编码 → 天气，正好演示「串联请求」
+          run:function(v){
+            return fetchT('https://geocoding-api.open-meteo.com/v1/search?count=1&language=zh&name='
+                          + encodeURIComponent(v))
+              .then(function(g){
+                var r = g && g.results && g.results[0];
+                if(!r) throw new Error('找不到这个地名');
+                var u = 'https://api.open-meteo.com/v1/forecast?latitude=' + r.latitude +
+                        '&longitude=' + r.longitude +
+                        '&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m';
+                return fetchT(u).then(function(w){
+                  w._place = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
+                  return w;
+                });
+              });
+          }
+        },
+        {
+          name:'wttr.in',
+          norm:function(d){
+            var c = d.current_condition && d.current_condition[0] || {};
+            var area = d.nearest_area && d.nearest_area[0] || {};
+            var nm = pick(area,'areaName.0.value','—');
+            var co = pick(area,'country.0.value','');
+            return [
+              ['温度', (c.temp_C || '?') + ' °C'],
+              ['体感', (c.FeelsLikeC || '?') + ' °C'],
+              ['湿度', (c.humidity || '?') + ' %'],
+              ['风速', (c.windspeedKmph || '?') + ' km/h'],
+              ['地点', nm + (co ? ', ' + co : '')]
+            ];
+          },
+          run:function(v){ return fetchT('https://wttr.in/' + encodeURIComponent(v) + '?format=j1'); }
+        }
+      ]
+    },
+
+    rate: {
+      label:'汇率',
+      ph:'基准币种，例如 CNY / USD',
+      dft:'CNY',
+      sources:[
+        {
+          name:'open.er-api.com',
+          norm:function(d){
+            var r = d.rates || {};
+            return [['USD','—']];
+          },
+          run:function(v){ return fetchT('https://open.er-api.com/v6/latest/' + encodeURIComponent(v.toUpperCase())); }
+        },
+        {
+          name:'exchangerate-api.com',
+          norm:function(d){
+            return [['（数据源返回）','—']];
+          },
+          run:function(v){ return fetchT('https://api.exchangerate-api.com/v4/latest/' + encodeURIComponent(v.toUpperCase())); }
+        },
+      ]
+    }
+  };
+
+  // 汇率需要特殊归一化：拿几个常用币种做对比
+  var RATE_WATCH = ['USD','EUR','JPY','GBP','HKD','KRW'];
+
+  // ========== 状态 ==========
+  var curKind = 'ip';
+  var tabsEl = document.getElementById('tabs');
+  var qEl    = document.getElementById('q');
+  var goEl   = document.getElementById('go');
+  var sumEl  = document.getElementById('sum');
+  var outEl  = document.getElementById('out');
+  var busy   = false;
+
+  // ========== 渲染 tabs ==========
+  Object.keys(KINDS).forEach(function(k){
+    var d = document.createElement('div');
+    d.className = 'tab' + (k === curKind ? ' on' : '');
+    d.textContent = KINDS[k].label;
+    d.dataset.k = k;
+    d.onclick = function(){
+      if(busy) return;
+      curKind = k;
+      Array.prototype.forEach.call(tabsEl.children, function(c){
+        c.classList.toggle('on', c.dataset.k === k);
+      });
+      qEl.placeholder = KINDS[k].ph;
+      qEl.value = KINDS[k].dft || '';
+      sumEl.textContent = '——';
+      outEl.innerHTML = '';
+    };
+    tabsEl.appendChild(d);
+  });
+  qEl.placeholder = KINDS[curKind].ph;
+  qEl.value = KINDS[curKind].dft || '';
+
+  // ========== 渲染结果 ==========
+  function renderResults(results){
+    var okCount = results.filter(function(r){ return r && r.ok; }).length;
+    var times = results.filter(function(r){ return r && r.ok; }).map(function(r){ return r.ms; });
+
+    var sum = '共 <b>' + results.length + '</b> 个源，成功 <b>' + okCount + '</b> 个';
+    if(times.length){
+      sum += ' · 最快 <b>' + Math.min.apply(null, times) + ' ms</b>'
+           + ' · 最慢 <b>' + Math.max.apply(null, times) + ' ms</b>';
+    }
+    sumEl.innerHTML = sum;
+
+    // 按耗时排序，快的在上（谁快谁慢一目了然）
+    var sorted = results.slice().sort(function(a,b){
+      if(a.ok !== b.ok) return a.ok ? -1 : 1;
+      return (a.ms||0) - (b.ms||0);
+    });
+
+    var html = '';
+    sorted.forEach(function(r){
+      if(!r) return;
+      var cls = r.ok ? 'ok' : 'fail';
+      var tcls = !r.ok ? '' : (r.ms < 800 ? 'fast' : (r.ms > 2500 ? 'slow' : ''));
+      html += '<div class="src ' + cls + '">';
+      html +=   '<div class="src-h">';
+      html +=     '<span class="src-n">' + (r.ok ? '✅ ' : '❌ ') + esc(r.name) + '</span>';
+      html +=     '<span class="src-t ' + tcls + '">' + esc(r.ms) + ' ms</span>';
+      html +=   '</div>';
+      if(r.ok){
+        var rows = r.data || [];
+        if(!rows.length){
+          html += '<div class="kv"><span class="k">—</span><span class="v">（无可用字段）</span></div>';
+        } else {
+          html += '<div class="kv">';
+          rows.forEach(function(row){
+            html += '<span class="k">' + esc(row[0]) + '</span>'
+                 +  '<span class="v">' + esc(row[1]) + '</span>';
+          });
+          html += '</div>';
+        }
+      } else {
+        html += '<div class="kv"><span class="k">原因</span><span class="v">' + esc(r.err) + '</span></div>';
+      }
+      html += '</div>';
+    });
+
+    outEl.innerHTML = html;
+  }
+
+  // ========== 执行查询 ==========
+  function doQuery(){
+    if(busy) return;
+    var v = (qEl.value || '').trim();
+    if(!v){
+      sumEl.textContent = '先输一个值吧';
+      return;
+    }
+
+    var kind = KINDS[curKind];
+
+    busy = true;
+    goEl.disabled = true;
+    goEl.textContent = '查询中';
+    sumEl.innerHTML = '<span class="spin"></span> 正在同时问 ' + kind.sources.length + ' 个源…';
+    outEl.innerHTML = '';
+
+    // 把每个「源」包成 task：网络请求 + 归一化
+    var tasks = kind.sources.map(function(src){
+      return {
+        name: src.name,
+        fn: function(){
+          return src.run(v).then(function(raw){
+            // 汇率特殊处理
+            if(curKind === 'rate'){
+              var rates = raw && raw.rates;
+              if(!rates) throw new Error('返回里没有 rates 字段');
+              var base = (raw.base_code || raw.base || v).toUpperCase();
+              var rows = [['基准', base]];
+              RATE_WATCH.forEach(function(c){
+                if(c === base) return;
+                if(rates[c] != null) rows.push([c, '1 ' + base + ' = ' + rates[c] + ' ' + c]);
+              });
+              return rows;
+            }
+            // 通用：走各源自己的归一化
+            return src.norm(raw);
+          });
+        }
+      };
+    });
+
+    runAll(tasks, { limit:4, timeout:9000 }).then(function(results){
+      // 把 norm 结果统一塞进 rows
+      renderResults(results);
+      busy = false;
+      goEl.disabled = false;
+      goEl.textContent = '查询';
+    }, function(){
+      sumEl.textContent = '出错了';
+      busy = false;
+      goEl.disabled = false;
+      goEl.textContent = '查询';
+    });
+  }
+
+  goEl.onclick = doQuery;
+  qEl.onkeydown = function(e){
+    if(e.key === 'Enter') doQuery();
+  };
+
+  // 初始状态
+  outEl.innerHTML = '<div class="empty">选一个类型，输个值，点「查询」<br>'
+                  + '每个源会同时开跑，谁挂了都不影响别人</div>';
+})();
+</script>
+</body>
+</html>

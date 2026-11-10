@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🔍 质数·数论</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0b0f14; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#dbeafe;
+    padding:6px 6px 12px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; color:#9fe0ff; text-align:center; margin-bottom:16px; }
+  .card { background:#111a24; border:1px solid #24384c; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; color:#8fb3cf; margin-bottom:10px; font-weight:600; }
+  .inrow { display:flex; gap:8px; }
+  input[type=text] {
+    flex:1; min-width:0; background:#060a10; border:1px solid #24384c; border-radius:9px;
+    padding:11px 12px; font-size:11px; color:#9fe0ff; font-family:ui-monospace,Menlo,monospace; outline:none;
+  }
+  input:focus { border-color:#4d8fc9; }
+  button.go { padding:11px 18px; font-size:15px; font-weight:700; background:linear-gradient(160deg,#2e6ea8,#1b4670);
+    color:#fff; border:1px solid #4d8fc9; border-radius:9px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  button.go:active { transform:scale(.96); }
+  .res { margin-top:12px; font-size:15px; line-height:1.9; color:#bfe3ff; }
+  .res .hl { color:#7dffb0; font-weight:700; }
+  .res .no { color:#ff8fa3; }
+  .res .mono { font-family:ui-monospace,Menlo,monospace; color:#ffd479; word-break:break-all; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .hint { text-align:center; color:#3f5a75; font-size:11px; margin-top:14px; line-height:1.7; }
+  .ver { text-align:center; color:#2b3f52; font-size:10px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🔍 质数 · 数论</h1>
+
+  <div class="card">
+    <h3>① 质数判定 · 因数分解</h3>
+    <div class="inrow"><input type="text" id="n1" placeholder="输入一个整数（如 360）" inputmode="numeric" maxlength="15"><button class="go" id="go1">分析</button></div>
+    <div class="res" id="r1"></div>
+  </div>
+
+  <div class="card">
+    <h3>② 最大公约数 (GCD) · 最小公倍数 (LCM)</h3>
+    <div class="two" style="margin-bottom:10px;">
+      <input type="text" id="a" placeholder="数 A" inputmode="numeric" maxlength="15">
+      <input type="text" id="b" placeholder="数 B" inputmode="numeric" maxlength="15">
+    </div>
+    <button class="go" id="go2" style="width:100%">计算 GCD / LCM</button>
+    <div class="res" id="r2"></div>
+  </div>
+
+  <div class="card">
+    <h3>③ 区间内质数</h3>
+    <div class="inrow">
+      <input type="text" id="lo" placeholder="从" inputmode="numeric" maxlength="9" style="max-width:90px">
+      <input type="text" id="hi" placeholder="到" inputmode="numeric" maxlength="9" style="max-width:110px">
+      <button class="go" id="go3">列质数</button>
+    </div>
+    <div class="res" id="r3"></div>
+  </div>
+
+  <div class="hint">纯本地计算 · 支持大整数（上限防卡死）🐳</div>
+  <div class="ver">v1.0.0-数论 20261015</div>
+</div>
+<script>
+(function(){
+  'use strict';
+  // 依据：初等数论（试除法质数判定、整数分解、欧几里得 GCD）。
+  var LIMIT=100000000000; // 上限 1e11，防卡死
+
+  function big(s){ s=(s||'').trim().replace(/[,\s]/g,''); if(s.length>15) s=s.slice(0,15); return s; }
+  function isInt(s){ return /^-?\d+$/.test(s); }
+
+  function isPrime(n){
+    if(n<2) return false;
+    if(n%2===0) return n===2;
+    if(n%3===0) return n===3;
+    for(var i=5;i*i<=n;i+=6){ if(n%i===0||n%(i+2)===0) return false; }
+    return true;
+  }
+  function factorize(n){
+    var f=[], d=2;
+    while(n>1){
+      if(n%d===0){ var c=0; while(n%d===0){ n/=d; c++; } f.push([d,c]); }
+      d++; if(d*d>n){ if(n>1){ f.push([n,1]); } break; }
+    }
+    return f;
+  }
+  function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ var t=b; b=a%b; a=t; } return a; }
+
+  // ①
+  document.getElementById('go1').onclick=function(){
+    var s=big(document.getElementById('n1').value);
+    var r=document.getElementById('r1');
+    if(!isInt(s)){ r.innerHTML='<span class="no">请输入整数</span>'; return; }
+    var n=Number(s);
+    if(n<0){ r.innerHTML='<span class="no">请输入非负整数</span>'; return; }
+    if(n>LIMIT){ r.innerHTML='<span class="no">数字太大（上限 1 万亿）</span>'; return; }
+    if(n===0||n===1){ r.innerHTML='n = '+n+'：既不是质数也不是合数'; return; }
+    if(isPrime(n)){ r.innerHTML='<span class="hl">'+n+' 是质数 ✓</span>'; return; }
+    var f=factorize(n);
+    var exp=f.map(function(p){ return p[1]>1 ? p[0]+'<sup>'+p[1]+'</sup>' : p[0]; }).join(' × ');
+    var cnt=f.reduce(function(a,p){ return a+p[1]; },0);
+    r.innerHTML='<span class="no">'+n+' 不是质数</span><br>分解：<span class="mono">'+exp+'</span><br>约数个数：<span class="hl">'+f.reduce(function(a,p){return a*(p[1]+1);},1)+'</span>　质因数量：'+cnt;
+  };
+
+  // ②
+  document.getElementById('go2').onclick=function(){
+    var sa=big(document.getElementById('a').value), sb=big(document.getElementById('b').value);
+    var r=document.getElementById('r2');
+    if(!isInt(sa)||!isInt(sb)){ r.innerHTML='<span class="no">请输入两个整数</span>'; return; }
+    var a=Number(sa), b=Number(sb);
+    if(a>LIMIT||b>LIMIT){ r.innerHTML='<span class="no">数字太大</span>'; return; }
+    if(a===0&&b===0){ r.innerHTML='<span class="no">两数不能都为 0</span>'; return; }
+    var g=gcd(a,b);
+    var l=(a===0||b===0)?0:Math.abs(a*b)/g;
+    r.innerHTML='GCD = <span class="hl">'+g+'</span><br>LCM = <span class="hl">'+l+'</span>';
+  };
+
+  // ③
+  document.getElementById('go3').onclick=function(){
+    var lo=big(document.getElementById('lo').value), hi=big(document.getElementById('hi').value);
+    var r=document.getElementById('r3');
+    if(!isInt(lo)||!isInt(hi)){ r.innerHTML='<span class="no">请输入区间</span>'; return; }
+    var a=Number(lo), b=Number(hi);
+    if(a<2) a=2;
+    if(b>2000000){ r.innerHTML='<span class="no">区间太大（上限 200 万）</span>'; return; }
+    if(a>b){ r.innerHTML='<span class="no">起始不能大于结束</span>'; return; }
+    var arr=[];
+    for(var i=a;i<=b;i++){ if(isPrime(i)) arr.push(i); }
+    if(arr.length===0){ r.innerHTML='该区间没有质数'; return; }
+    r.innerHTML='共 <span class="hl">'+arr.length+'</span> 个：<br><span style="font-family:ui-monospace,monospace;color:#ffd479;font-size:13px;">'+arr.slice(0,200).join(', ')+(arr.length>200?' …':'')+'</span>';
+  };
+})();
+</script>
+</body>
+</html>

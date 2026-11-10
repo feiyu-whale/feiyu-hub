@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>混凝土配合比计算工具 v2.0.2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","Segoe UI",sans-serif;background:#f5f7fa;color:#333;line-height:1.6;min-height:100vh}
+header{background:linear-gradient(135deg,#1a5276,#2980b9);color:#fff;padding:24px 32px;text-align:center}
+header h1{font-size:24px;margin-bottom:4px}
+header p{font-size:13px;opacity:.85}
+nav{display:flex;background:#fff;border-bottom:2px solid #e0e0e0;padding:0 16px;overflow-x:auto}
+.tab-btn{padding:12px 20px;border:none;background:none;cursor:pointer;font-size:14px;color:#666;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+.tab-btn:hover{color:#2980b9;background:#f0f7ff}
+.tab-btn.active{color:#2980b9;border-bottom-color:#2980b9;font-weight:600}
+main{max-width:1100px;margin:24px auto;padding:0 16px}
+.tab-panel{display:none;background:#fff;border-radius:8px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab-panel.active{display:block}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:20px}
+.form-group{display:flex;flex-direction:column}
+.form-group label{font-size:13px;font-weight:600;color:#555;margin-bottom:4px}
+.form-group select,.form-group input{padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:14px}
+.form-group select:focus,.form-group input:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(41,128,185,.15)}
+.btn-calc{padding:10px 32px;background:#2980b9;color:#fff;border:none;border-radius:4px;font-size:15px;cursor:pointer;transition:background .2s}
+.btn-calc:hover{background:#1a6da0}
+.result-box{margin-top:20px;border:1px solid #d5dbdb;border-radius:6px;overflow:hidden}
+.result-box h3{background:#eaf2f8;padding:10px 16px;font-size:15px;color:#1a5276}
+.result-table{width:100%;border-collapse:collapse}
+.result-table th,.result-table td{padding:10px 16px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
+.result-table th{background:#f9f9f9;width:40%;color:#555}
+.result-table td{font-weight:600;color:#2c3e50}
+.result-table tr:last-child th,.result-table tr:last-child td{border-bottom:none}
+.error-msg{color:#c0392b;background:#fdf0ef;border:1px solid #f5c6cb;padding:10px 16px;border-radius:4px;margin-top:12px;font-size:14px}
+.warn-msg{color:#856404;background:#fff9e6;border:1px solid #ffeeba;padding:10px 16px;border-radius:4px;margin-top:12px;font-size:13px}
+pre{background:#1e1e1e;color:#d4d4d4;padding:20px;border-radius:6px;overflow-x:auto;font-size:13px;line-height:1.5;max-height:75vh;overflow-y:auto}
+pre code{font-family:"Cascadia Code","Fira Code","Consolas",monospace}
+#test-results{background:#fafafa;color:#333;border:1px solid #ddd;padding:20px;border-radius:6px;font-size:13px;line-height:1.7;max-height:75vh;overflow-y:auto;white-space:pre-wrap;font-family:"Consolas","Microsoft YaHei",monospace}
+.test-pass{color:#27ae60}
+.test-fail{color:#c0392b}
+.test-summary{font-size:16px;font-weight:700;margin-top:12px;padding-top:12px;border-top:2px solid #333}
+.docs-content{font-size:14.5px;line-height:1.85;color:#444}
+.docs-content h2{font-size:20px;color:#1a5276;margin:28px 0 12px;padding-bottom:6px;border-bottom:2px solid #eaf2f8}
+.docs-content h3{font-size:16px;color:#2c3e50;margin:20px 0 8px}
+.docs-content p{margin-bottom:10px}
+.docs-content ul,.docs-content ol{margin:8px 0 12px 24px}
+.docs-content li{margin-bottom:4px}
+.docs-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+.docs-content th,.docs-content td{border:1px solid #ccc;padding:6px 10px;text-align:center}
+.docs-content th{background:#eaf2f8}
+.docs-content code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:13px}
+.docs-content .note{background:#fff9e6;border-left:4px solid #f39c12;padding:10px 14px;margin:12px 0;font-size:13px}
+.docs-content .scenario{background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:14px 18px;margin:12px 0}
+.docs-content .scenario h4{color:#2980b9;margin-bottom:6px}
+.version-tag{position:fixed;bottom:8px;right:12px;font-size:11px;color:#999;z-index:999}
+</style>
+</head>
+<body>
+<header>
+<h1>混凝土配合比计算工具</h1>
+<p>依据 JGJ 55-2011《普通混凝土配合比设计规程》计算初步配合比</p>
+</header>
+<nav>
+<button class="tab-btn active" data-tab="calculator">配合比计算器</button>
+<button class="tab-btn" data-tab="source">JS 源码</button>
+<button class="tab-btn" data-tab="tests">单元测试</button>
+<button class="tab-btn" data-tab="docs">使用说明书</button>
+</nav>
+<main>
+<!-- ========== 计算器 ========== -->
+<section id="tab-calculator" class="tab-panel active">
+<div class="form-grid">
+<div class="form-group">
+<label>强度等级</label>
+<select id="inp-grade">
+<option value="C15">C15</option><option value="C20">C20</option>
+<option value="C25">C25</option><option value="C30" selected>C30</option>
+<option value="C35">C35</option><option value="C40">C40</option>
+<option value="C45">C45</option><option value="C50">C50</option>
+<option value="C55">C55</option><option value="C60">C60</option>
+</select>
+</div>
+<div class="form-group">
+<label>坍落度范围 (mm)</label>
+<select id="inp-slump">
+<option value="10-30">10 ~ 30</option>
+<option value="35-50" selected>35 ~ 50</option>
+<option value="55-70">55 ~ 70</option>
+<option value="75-90">75 ~ 90</option>
+</select>
+</div>
+<div class="form-group">
+<label>粗骨料类型</label>
+<select id="inp-agg-type">
+<option value="crushed" selected>碎石</option>
+<option value="pebble">卵石</option>
+</select>
+</div>
+<div class="form-group">
+<label>粗骨料最大粒径 (mm)</label>
+<select id="inp-agg-size">
+<option value="10">10</option>
+<option value="16">16</option>
+<option value="20" selected>20</option>
+<option value="25">25</option>
+<option value="31.5">31.5</option>
+<option value="40">40</option>
+</select>
+</div>
+<div class="form-group">
+<label>水泥强度等级</label>
+<select id="inp-cement">
+<option value="32.5">32.5</option>
+<option value="42.5" selected>42.5</option>
+<option value="52.5">52.5</option>
+</select>
+</div>
+<div class="form-group">
+<label>水泥富余系数 γc</label>
+<input type="number" id="inp-gamma" value="1.13" step="0.01" min="1.0" max="1.3">
+</div>
+<div class="form-group">
+<label>混凝土假定容重 (kg/m³)</label>
+<input type="number" id="inp-density" value="2400" step="10" min="2200" max="2600">
+</div>
+</div>
+<button class="btn-calc" id="btn-calc">计 算</button>
+<div class="warn-msg">数据来源提示：本工具的用水量表、砂率表为规程范围中值的近似经验值，未经标准原文逐项核对；γc 默认值 1.13 亦为经验取值。使用前请对照 JGJ 55-2011 原文自行核实。</div>
+<div id="result-area"></div>
+</section>
+
+<!-- ========== 源码 ========== -->
+<section id="tab-source" class="tab-panel">
+<p style="margin-bottom:12px;font-size:13px;color:#888">以下为核心算法源码，含完整 JSDoc 注释。无外部依赖，可直接在浏览器运行。</p>
+<pre><code id="source-display"></code></pre>
+</section>
+
+<!-- ========== 测试 ========== -->
+<section id="tab-tests" class="tab-panel">
+<p style="margin-bottom:12px;font-size:13px;color:#888">页面加载时自动运行全部单元测试，结果如下：</p>
+<div id="test-results"></div>
+</section>
+
+<!-- ========== 说明书 ========== -->
+<section id="tab-docs" class="tab-panel">
+<div class="docs-content">
+<h2>一、工具简介</h2>
+<p>本工具用于按照 <strong>JGJ 55-2011《普通混凝土配合比设计规程》</strong>计算混凝土的<strong>初步配合比</strong>。输入设计强度等级、坍落度范围、粗骨料类型及最大粒径、水泥强度等级等参数后，工具将自动计算出水胶比（W/B）、每立方米混凝土用水量、水泥用量、砂率以及砂和石的用量。</p>
+<p>所谓"初步配合比"是指根据规程公式和查表得出的理论计算值。在实际工程中，初步配合比还需经过<strong>试配、调整、强度复核</strong>等步骤才能确定为施工配合比。本工具仅完成第一步——理论计算，不能替代试验室试配工作。</p>
+<p>本工具适用于塑性混凝土（坍落度 10~90mm）、强度等级 C15~C60 的普通混凝土。不适用于干硬性混凝土、流动性混凝土（坍落度 &gt;90mm）、自密实混凝土、轻骨料混凝土、重混凝土等特殊品种。</p>
+
+<h2>二、参数详细说明</h2>
+<h3>2.1 混凝土强度等级</h3>
+<p><strong>取值范围：</strong>C15、C20、C25、C30、C35、C40、C45、C50、C55、C60。</p>
+<p><strong>含义：</strong>混凝土立方体抗压强度标准值 fcu,k（单位 MPa），即按标准方法制作养护的 150mm 立方体试件，在 28d 龄期用标准试验方法测得的具有 95% 保证率的抗压强度值。例如 C30 表示 fcu,k = 30 MPa。</p>
+<p><strong>说明：</strong>强度等级决定了混凝土配制强度 fcu,o 的计算。配制强度公式为 fcu,o = fcu,k + 1.645σ，其中 1.645 为 95% 保证率对应的概率度系数。</p>
+
+<h3>2.2 标准差 σ</h3>
+<p><strong>取值规则（依据 JGJ 55-2011 表 4.1.1）：</strong></p>
+<table>
+<tr><th>混凝土强度等级</th><th>σ 值 (MPa)</th></tr>
+<tr><td>≤ C20（即 C15、C20）</td><td>4.0</td></tr>
+<tr><td>C25 ~ C45</td><td>5.0</td></tr>
+<tr><td>C50 ~ C60</td><td>6.0</td></tr>
+</table>
+<p class="note">注意：JGJ 55-2011 原文中 σ 的取值分档为"C20以下""C25~C45""C50~C55"三档。对于 C60，规程指出当无统计资料时可参照 C55 取值，本工具取 σ=6.0。如有实际统计资料，应按统计值取用。</p>
+
+<h3>2.3 坍落度范围</h3>
+<p><strong>取值范围：</strong>10~30mm、35~50mm、55~70mm、75~90mm。</p>
+<p><strong>含义：</strong>坍落度是衡量混凝土拌合物流动性的指标。不同施工部位和浇筑方式对坍落度有不同要求。例如：基础垫层常用 10~30mm，梁板柱常用 35~50mm 或 55~70mm，泵送混凝土可能需要 75~90mm 或更大。</p>
+<p><strong>用途：</strong>坍落度范围用于查表确定每立方米混凝土的用水量（依据 JGJ 55-2011 表 5.1.2）。</p>
+
+<h3>2.4 粗骨料类型</h3>
+<p><strong>取值：</strong>碎石、卵石。</p>
+<p><strong>含义：</strong>碎石为人工破碎岩石制成，表面粗糙、棱角多，与水泥浆粘结力好，但拌合物流动性较差；卵石为天然河卵石，表面光滑，拌合物流动性好但粘结力稍差。</p>
+<p><strong>影响：</strong>粗骨料类型影响三个关键参数：①水胶比公式中的回归系数 αa 和 αb（碎石：0.53/0.20，卵石：0.49/0.13）；②用水量查表值；③砂率查表值。</p>
+
+<h3>2.5 粗骨料最大粒径</h3>
+<p><strong>取值范围：</strong>10mm、16mm、20mm、25mm、31.5mm、40mm。</p>
+<p><strong>含义：</strong>粗骨料公称粒径的上限。最大粒径越大，骨料总表面积越小，所需水泥浆量越少，可节约水泥；但过大则会影响混凝土的均匀性和结构截面适应性。</p>
+<p><strong>用途：</strong>用于查表确定用水量和砂率。</p>
+<p class="note">注意：碎石和卵石可用的最大粒径范围略有不同。碎石的用水量表和砂率表中没有 10mm 这一档；卵石的表中各档均有。选择时需匹配骨料类型。</p>
+
+<h3>2.6 水泥强度等级</h3>
+<p><strong>取值：</strong>32.5、42.5、52.5。</p>
+<p><strong>含义：</strong>水泥 28d 抗压强度标准值 fce,k（单位 MPa）。例如 42.5 级水泥的 fce,k = 42.5 MPa。</p>
+<p><strong>说明：</strong>选择水泥等级时应与混凝土设计强度匹配。一般原则：水泥强度等级宜为混凝土强度等级的 1.5~2.0 倍。用低等级水泥配高强度混凝土会导致水泥用量过大、水化热高；用高等级水泥配低强度混凝土则水泥用量过少、工作性差。</p>
+
+<h3>2.7 水泥富余系数 γc</h3>
+<p><strong>默认值：</strong>1.13。</p>
+<p><strong>含义：</strong>水泥实际强度通常高于其强度等级标准值。富余系数 fce = γc × fce,k。JGJ 55-2011 建议 γc 可按实际统计资料确定，缺乏资料时可取 1.1~1.15。本工具默认取 1.13（中间值）。</p>
+
+<h3>2.8 混凝土假定容重</h3>
+<p><strong>默认值：</strong>2400 kg/m³。</p>
+<p><strong>含义：</strong>质量法计算骨料用量时假定的每立方米混凝土拌合物质量。JGJ 55-2011 建议可在 2350~2450 kg/m³ 范围内取值。本值对砂石用量的计算结果有直接影响。</p>
+
+<h2>三、计算公式说明</h2>
+<h3>3.1 配制强度</h3>
+<p><code>fcu,o = fcu,k + 1.645σ</code></p>
+<p>其中 1.645 为保证率 95% 对应的概率度系数。</p>
+
+<h3>3.2 水胶比</h3>
+<p><code>W/B = αa · fb / (fcu,o + αa · αb · fb)</code></p>
+<p>其中 fb = γc × fce,k（无矿物掺合料时的简化公式），αa、αb 为回归系数。</p>
+
+<h3>3.3 用水量</h3>
+<p>根据坍落度范围、粗骨料最大粒径和类型，查 JGJ 55-2011 表 5.1.2 确定。</p>
+
+<h3>3.4 水泥用量</h3>
+<p><code>mc = mw / (W/B)</code></p>
+
+<h3>3.5 砂率</h3>
+<p>根据水胶比、粗骨料最大粒径和类型，查 JGJ 55-2011 表 5.4.2 确定。规程给出的是范围值，本工具取范围中值，并在水胶比介于表中两档之间时进行线性插值。</p>
+
+<h3>3.6 砂石用量（质量法）</h3>
+<p><code>ms + mg = mcp - mc - mw</code></p>
+<p><code>ms = (ms + mg) × βs</code></p>
+<p><code>mg = (ms + mg) × (1 - βs)</code></p>
+<p>其中 mcp 为混凝土假定容重，βs 为砂率。</p>
+
+<h2>四、实际使用场景</h2>
+
+<div class="scenario">
+<h4>场景一：C30 多层框架结构梁板</h4>
+<p><strong>工程背景：</strong>某 6 层框架住宅楼，梁板混凝土设计强度 C30，采用泵送施工，要求坍落度 35~50mm。当地有优质碎石供应，最大粒径 20mm。使用 42.5 级普通硅酸盐水泥。</p>
+<p><strong>输入参数：</strong>强度等级 C30 | 坍落度 35~50mm | 碎石 | 最大粒径 20mm | 水泥 42.5 | γc=1.13 | 容重 2400</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+<li>σ = 5.0 MPa（C25~C45 档）</li>
+<li>fcu,o = 30 + 1.645 × 5.0 = 38.23 MPa</li>
+<li>fb = 1.13 × 42.5 = 48.03 MPa</li>
+<li>W/B = 0.53 × 48.03 / (38.23 + 0.53 × 0.20 × 48.03) = 25.45 / 43.32 ≈ 0.59</li>
+<li>用水量 = 195 kg/m³（查表：碎石、35~50mm、20mm）</li>
+<li>水泥用量 = 195 / 0.59 ≈ 332 kg/m³</li>
+<li>砂率 ≈ 40%（插值）</li>
+<li>砂用量 ≈ 750 kg/m³，石用量 ≈ 1123 kg/m³</li>
+</ul>
+</div>
+
+<div class="scenario">
+<h4>场景二：C25 条形基础垫层</h4>
+<p><strong>工程背景：</strong>某低层建筑条形基础，垫层混凝土 C25，非泵送、人工浇筑，坍落度要求 10~30mm。当地河卵石资源丰富，最大粒径 40mm。使用 32.5 级水泥。</p>
+<p><strong>输入参数：</strong>强度等级 C25 | 坍落度 10~30mm | 卵石 | 最大粒径 40mm | 水泥 32.5 | γc=1.13 | 容重 2400</p>
+<p><strong>计算结果：</strong></p>
+<ul>
+<li>σ = 5.0 MPa</li>
+<li>fcu,o = 25 + 1.645 × 5.0 = 33.23 MPa</li>
+<li>fb = 1.13 × 32.5 = 36.73 MPa</li>
+<li>W/B = 0.49 × 36.73 / (33.23 + 0.49 × 0.13 × 36.73) ≈ 0.51</li>
+<li>用水量 = 140 kg/m³（查表：卵石、10~30mm、40mm，与代码 WATER_TABLE 一致）</li>
+<li>水泥用量 = 140 / 0.51 ≈ 275 kg/m³</li>
+<li>砂率 ≈ 28%</li>
+<li>砂用量 ≈ 556 kg/m³，石用量 ≈ 1429 kg/m³</li>
+</ul>
+</div>
+
+<div class="scenario">
+<h4>场景三：C40 高层建筑框架柱</h4>
+<p><strong>工程背景：</strong>某 18 层高层住宅框架柱，设计强度 C40，泵送浇筑，坍落度 55~70mm。采用碎石，最大粒径 25mm。使用 42.5 级水泥。</p>
+<p><strong>输入参数：</strong>强度等级 C40 | 坍落度 55~70mm | 碎石 | 最大粒径 25mm | 水泥 42.5 | γc=1.13 | 容重 2400</p>
+<p><strong>计算结果：</strong></p>
+<ul>
+<li>σ = 5.0 MPa</li>
+<li>fcu,o = 40 + 1.645 × 5.0 = 48.23 MPa</li>
+<li>fb = 48.03 MPa</li>
+<li>W/B = 0.53 × 48.03 / (48.23 + 0.53 × 0.20 × 48.03) ≈ 0.48</li>
+<li>用水量 = 190 kg/m³（查表：碎石、55~70mm、25mm）</li>
+<li>水泥用量 = 190 / 0.48 ≈ 398 kg/m³</li>
+<li>砂率 ≈ 34%</li>
+<li>砂用量 ≈ 614 kg/m³，石用量 ≈ 1198 kg/m³</li>
+</ul>
+</div>
+
+<div class="scenario">
+<h4>场景四：C50 预应力混凝土梁</h4>
+<p><strong>工程背景：</strong>某桥梁预制预应力 T 梁，设计强度 C50，坍落度 75~90mm。采用优质碎石，最大粒径 20mm。使用 52.5 级硅酸盐水泥。</p>
+<p><strong>输入参数：</strong>强度等级 C50 | 坍落度 75~90mm | 碎石 | 最大粒径 20mm | 水泥 52.5 | γc=1.13 | 容重 2400</p>
+<p><strong>计算结果：</strong></p>
+<ul>
+<li>σ = 6.0 MPa（C50~C60 档）</li>
+<li>fcu,o = 50 + 1.645 × 6.0 = 59.87 MPa</li>
+<li>fb = 1.13 × 52.5 = 59.33 MPa</li>
+<li>W/B = 0.53 × 59.33 / (59.87 + 0.53 × 0.20 × 59.33) ≈ 0.48</li>
+<li>用水量 = 215 kg/m³（查表：碎石、75~90mm、20mm）</li>
+<li>水泥用量 = 215 / 0.48 ≈ 452 kg/m³</li>
+<li>砂率 ≈ 35%</li>
+<li>砂用量 ≈ 603 kg/m³，石用量 ≈ 1130 kg/m³</li>
+</ul>
+</div>
+
+<div class="scenario">
+<h4>场景五：C15 地面垫层</h4>
+<p><strong>工程背景：</strong>某厂房地面垫层，设计强度 C15，人工摊铺，坍落度 10~30mm。采用卵石，最大粒径 31.5mm。使用 32.5 级水泥。</p>
+<p><strong>输入参数：</strong>强度等级 C15 | 坍落度 10~30mm | 卵石 | 最大粒径 31.5mm | 水泥 32.5 | γc=1.13 | 容重 2400</p>
+<p><strong>计算结果：</strong></p>
+<ul>
+<li>σ = 4.0 MPa</li>
+<li>fcu,o = 15 + 1.645 × 4.0 = 21.58 MPa</li>
+<li>fb = 1.13 × 32.5 = 36.73 MPa</li>
+<li>W/B = 0.49 × 36.73 / (21.58 + 0.49 × 0.13 × 36.73) ≈ 0.75</li>
+<li>用水量 = 145 kg/m³（查表：卵石、10~30mm、31.5mm，与代码 WATER_TABLE 一致）</li>
+<li>水泥用量 = 145 / 0.75 ≈ 193 kg/m³</li>
+<li>砂率 ≈ 39%（W/B 超出 0.70，截断到 0.70 后查表，卵石 31.5mm 为 39%，与代码一致）</li>
+<li>砂用量 ≈ 804 kg/m³，石用量 ≈ 1258 kg/m³</li>
+</ul>
+<p class="note">注意：此场景水胶比高达 0.75，超出砂率查表范围（0.40~0.70）。实际工程中 C15 垫层的水胶比可能偏高，需关注耐久性要求。规程对最大水胶比有耐久性限值规定，本工具未做校核。</p>
+</div>
+
+<h2>五、常见错误与排查</h2>
+<h3>5.1 计算结果中水泥用量异常偏低</h3>
+<p><strong>可能原因：</strong>①水泥强度等级选得过高（如 C20 混凝土选了 52.5 水泥），导致 fb 过大、水胶比过小、水泥用量反而偏少。②用水量查表值偏小。建议检查水泥等级与混凝土强度的匹配性。</p>
+
+<h3>5.2 水胶比超出砂率查表范围（&lt;0.40 或 &gt;0.70）</h3>
+<p><strong>处理方式：</strong>本工具会将水胶比截断到 [0.40, 0.70] 范围内进行砂率插值，并在结果中给出警告。若水胶比 &gt;0.70，说明混凝土强度偏低或水泥用量偏少，需关注耐久性；若 &lt;0.40，说明水泥用量很大，可能需要使用减水剂。</p>
+
+<h3>5.3 选择了碎石但最大粒径选了 10mm</h3>
+<p><strong>说明：</strong>JGJ 55-2011 用水量表中碎石一档没有 10mm 粒径。本工具会提示错误。碎石的可用粒径为 16、20、25、31.5、40mm。</p>
+
+<h3>5.4 计算结果与试验室试配结果差异较大</h3>
+<p><strong>说明：</strong>本工具计算的是初步配合比，未考虑以下因素：①骨料的实际含水率；②外加剂（减水剂等）的影响；③矿物掺合料（粉煤灰、矿粉等）的影响；④实际原材料的性能波动。初步配合比必须经过试验室试配调整后才能用于施工。</p>
+
+<h2>六、数据来源与标准依据</h2>
+<ul>
+<li><strong>JGJ 55-2011</strong>《普通混凝土配合比设计规程》——本工具的核心依据。其中：
+  <ul>
+  <li>第 4.1.1 条及表 4.1.1：混凝土配制强度公式及标准差 σ 取值</li>
+  <li>第 5.3.2 条：水胶比计算公式及回归系数 αa、αb</li>
+  <li>第 5.1.2 条及表 5.1.2：塑性混凝土用水量查表</li>
+  <li>第 5.4.2 条及表 5.4.2：混凝土砂率查表</li>
+  </ul>
+</li>
+<li><strong>GB 175-2007</strong>《通用硅酸盐水泥》——水泥强度等级的定义</li>
+<li><strong>GB/T 14685-2011</strong>《建设用卵石、碎石》——粗骨料粒径规格</li>
+</ul>
+<p class="note">重要声明：本工具中的用水量表和砂率表数据取自 JGJ 55-2011 相关表格。砂率取的是规程表格中范围值的中值。使用者应以规程原文为准进行核实。如有出入，以标准原文为最终依据。</p>
+
+<h2>七、局限性说明</h2>
+<p>本工具存在以下局限性，使用者应充分了解：</p>
+<ol>
+<li><strong>仅计算初步配合比：</strong>本工具输出的结果仅为理论计算值，不能直接作为施工配合比使用。正式施工前必须经过试验室试配、调整和强度验证。</li>
+<li><strong>不考虑外加剂：</strong>本工具未考虑减水剂、引气剂等外加剂对用水量和配合比的影响。实际工程中使用外加剂时，用水量会显著降低，需另行计算。</li>
+<li><strong>不考虑矿物掺合料：</strong>本工具假设不使用粉煤灰、矿渣粉等矿物掺合料（即 fb = γc × fce,k）。若使用掺合料，fb 的计算需要引入掺合料影响系数 γf、γs，本工具未实现此功能。</li>
+<li><strong>仅适用于塑性混凝土：</strong>坍落度范围限于 10~90mm。对于大流动性混凝土（坍落度 &gt;90mm）、自密实混凝土、干硬性混凝土等不适用。</li>
+<li><strong>砂率取中值：</strong>规程给出的是砂率范围，本工具取中值。实际砂率需根据骨料级配、粒形等因素在试配中调整。</li>
+<li><strong>未做耐久性校核：</strong>规程对混凝土的最大水胶比、最小水泥用量等有耐久性限值要求（见 JGJ 55-2011 第 3.0.4 条等），本工具未进行此类校核。使用者应自行核查。</li>
+<li><strong>假定容重为固定值：</strong>质量法计算中使用的混凝土假定容重（默认 2400 kg/m³）为经验值，实际容重因原材料不同会有差异。</li>
+<li><strong>数据精度：</strong>用水量表和砂率表的数据应使用者自行对照 JGJ 55-2011 原文核实。本工具不保证查表数据与标准原文完全一致。</li>
+</ol>
+</div>
+</section>
+</main>
+
+<footer class="version-tag">v2.0.2-修审查问题 20261108</footer>
+
+<!-- ==================== 核心源码（存储为文本，运行时 eval） ==================== -->
+<script type="text/plain" id="core-source">
+/**
+ * 标准差 σ 取值表（依据 JGJ 55-2011 表 4.1.1）
+ * @type {Object<string, number>}
+ */
+var SIGMA_TABLE = {
+  low: 4.0,   // <= C20
+  mid: 5.0,   // C25 ~ C45
+  high: 6.0   // C50 ~ C60
+};
+
+/**
+ * 回归系数（依据 JGJ 55-2011 第 5.3.2 条）
+ * @type {Object<string, {alphaA: number, alphaB: number}>}
+ */
+var COEFFICIENTS = {
+  crushed: { alphaA: 0.53, alphaB: 0.20 },
+  pebble:  { alphaA: 0.49, alphaB: 0.13 }
+};
+
+/**
+ * 塑性混凝土用水量表 (kg/m³)
+ * 依据 JGJ 55-2011 表 5.1.2
+ * 结构：{ 骨料类型: { 坍落度范围: { 最大粒径: 用水量 } } }
+ * @type {Object}
+ */
+var WATER_TABLE = {
+  crushed: {
+    '10-30':  { 16: 200, 20: 185, 25: 170, 31.5: 160, 40: 155 },
+    '35-50':  { 16: 210, 20: 195, 25: 180, 31.5: 170, 40: 165 },
+    '55-70':  { 16: 220, 20: 205, 25: 190, 31.5: 180, 40: 175 },
+    '75-90':  { 16: 230, 20: 215, 25: 200, 31.5: 190, 40: 185 }
+  },
+  pebble: {
+    '10-30':  { 10: 190, 16: 175, 20: 160, 25: 150, 31.5: 145, 40: 140 },
+    '35-50':  { 10: 200, 16: 185, 20: 170, 25: 160, 31.5: 155, 40: 150 },
+    '55-70':  { 10: 210, 16: 195, 20: 180, 25: 170, 31.5: 165, 40: 160 },
+    '75-90':  { 10: 215, 16: 200, 20: 185, 25: 175, 31.5: 170, 40: 165 }
+  }
+};
+
+/**
+ * 混凝土砂率表 (%)
+ * 依据 JGJ 55-2011 表 5.4.2，取规程范围值的中值
+ * 结构：{ 骨料类型: { sizes: [...], wbValues: [...], ratios: [[...], ...] } }
+ * ratios[i][j] 对应 wbValues[i] 和 sizes[j]
+ * 注意：此数据为范围中值的近似，需查标准原文核实
+ * @type {Object}
+ */
+var SAND_RATIO_TABLE = {
+  crushed: {
+    sizes: [16, 20, 25, 31.5, 40],
+    wbValues: [0.40, 0.50, 0.60, 0.70],
+    ratios: [
+      [33, 31, 30, 28, 27],
+      [38, 36, 35, 33, 32],
+      [43, 41, 40, 38, 37],
+      [48, 46, 45, 43, 42]
+    ]
+  },
+  pebble: {
+    sizes: [10, 16, 20, 25, 31.5, 40],
+    wbValues: [0.40, 0.50, 0.60, 0.70],
+    ratios: [
+      [29, 28, 27, 25, 24, 22],
+      [35, 33, 32, 31, 29, 28],
+      [40, 38, 37, 36, 34, 33],
+      [45, 43, 42, 41, 39, 38]
+    ]
+  }
+};
+
+/**
+ * 根据混凝土强度等级获取标准差 σ 值
+ * 依据 JGJ 55-2011 表 4.1.1
+ *
+ * @param {string} grade - 混凝土强度等级，格式为 'C' + 数字，如 'C30'
+ * @returns {number} 标准差 σ 值（MPa）
+ * @throws {Error} 当 grade 不是字符串、格式不正确或超出 C15~C60 范围时抛出
+ * @example
+ * getSigma('C15'); // => 4.0
+ * getSigma('C30'); // => 5.0
+ * getSigma('C50'); // => 6.0
+ */
+function getSigma(grade) {
+  if (typeof grade !== 'string' || grade === '') {
+    throw new Error('强度等级必须为非空字符串，收到: ' + String(grade));
+  }
+  var match = grade.match(/^C(\d+)$/);
+  if (!match) {
+    throw new Error('强度等级格式不正确，应为 C15~C60，收到: ' + grade);
+  }
+  var strength = parseInt(match[1], 10);
+  if (strength < 15 || strength > 60) {
+    throw new Error('强度等级超出范围 C15~C60，收到: ' + grade);
+  }
+  if (strength <= 20) return SIGMA_TABLE.low;
+  if (strength <= 45) return SIGMA_TABLE.mid;
+  return SIGMA_TABLE.high;
+}
+
+/**
+ * 计算混凝土配制强度 fcu,o
+ * 公式：fcu,o = fcu,k + 1.645 × σ
+ *
+ * @param {number} fcuK - 混凝土立方体抗压强度标准值（MPa），即强度等级数值
+ * @param {number} sigma - 标准差（MPa）
+ * @returns {number} 混凝土配制强度 fcu,o（MPa）
+ * @throws {Error} 当参数不是有限数字时抛出
+ * @example
+ * calcFcuo(30, 5.0); // => 38.225
+ * calcFcuo(50, 6.0); // => 59.87
+ */
+function calcFcuo(fcuK, sigma) {
+  if (typeof fcuK !== 'number' || !isFinite(fcuK)) {
+    throw new Error('fcuK 必须为有限数字，收到: ' + String(fcuK));
+  }
+  if (typeof sigma !== 'number' || !isFinite(sigma)) {
+    throw new Error('sigma 必须为有限数字，收到: ' + String(sigma));
+  }
+  if (sigma < 0) {
+    throw new Error('sigma 不能为负数，收到: ' + sigma);
+  }
+  return fcuK + 1.645 * sigma;
+}
+
+/**
+ * 计算胶凝材料 28d 胶砂抗压强度值 fb
+ * 简化公式（无矿物掺合料）：fb = γc × fce,k
+ *
+ * @param {number} cementGrade - 水泥强度等级值 fce,k（MPa），如 42.5
+ * @param {number} [gammaC=1.13] - 水泥强度等级值的富余系数
+ * @returns {number} fb 值（MPa）
+ * @throws {Error} 当参数不是有限数字或为负数时抛出
+ * @example
+ * calcFb(42.5); // => 48.025
+ * calcFb(52.5, 1.1); // => 57.75
+ */
+function calcFb(cementGrade, gammaC) {
+  if (typeof gammaC === 'undefined') gammaC = 1.13;
+  if (typeof cementGrade !== 'number' || !isFinite(cementGrade)) {
+    throw new Error('cementGrade 必须为有限数字，收到: ' + String(cementGrade));
+  }
+  if (typeof gammaC !== 'number' || !isFinite(gammaC)) {
+    throw new Error('gammaC 必须为有限数字，收到: ' + String(gammaC));
+  }
+  if (cementGrade <= 0) {
+    throw new Error('cementGrade 必须为正数，收到: ' + cementGrade);
+  }
+  if (gammaC <= 0) {
+    throw new Error('gammaC 必须为正数，收到: ' + gammaC);
+  }
+  return gammaC * cementGrade;
+}
+
+/**
+ * 计算水胶比 W/B
+ * 公式：W/B = αa × fb / (fcu,o + αa × αb × fb)
+ * 依据 JGJ 55-2011 第 5.3.2 条
+ *
+ * @param {number} fcuo - 混凝土配制强度（MPa）
+ * @param {number} fb - 胶凝材料 28d 胶砂抗压强度值（MPa）
+ * @param {string} aggregateType - 粗骨料类型，'crushed'（碎石）或 'pebble'（卵石）
+ * @returns {number} 水胶比 W/B（无量纲）
+ * @throws {Error} 当参数无效或骨料类型不识别时抛出
+ * @example
+ * calcWaterBinderRatio(38.225, 48.025, 'crushed'); // => ~0.588
+ * calcWaterBinderRatio(38.225, 48.025, 'pebble');  // => ~0.570
+ */
+function calcWaterBinderRatio(fcuo, fb, aggregateType) {
+  if (typeof fcuo !== 'number' || !isFinite(fcuo)) {
+    throw new Error('fcuo 必须为有限数字，收到: ' + String(fcuo));
+  }
+  if (typeof fb !== 'number' || !isFinite(fb)) {
+    throw new Error('fb 必须为有限数字，收到: ' + String(fb));
+  }
+  if (fb <= 0) {
+    throw new Error('fb 必须为正数，收到: ' + fb);
+  }
+  if (aggregateType !== 'crushed' && aggregateType !== 'pebble') {
+    throw new Error('骨料类型必须为 crushed 或 pebble，收到: ' + String(aggregateType));
+  }
+  var coeff = COEFFICIENTS[aggregateType];
+  var alphaA = coeff.alphaA;
+  var alphaB = coeff.alphaB;
+  var denominator = fcuo + alphaA * alphaB * fb;
+  if (denominator === 0) {
+    throw new Error('水胶比计算分母为零，fcuo=' + fcuo + ', fb=' + fb);
+  }
+  return alphaA * fb / denominator;
+}
+
+/**
+ * 根据坍落度范围、粗骨料最大粒径和类型查表获取用水量
+ * 依据 JGJ 55-2011 表 5.1.2
+ *
+ * @param {string} slumpRange - 坍落度范围，如 '10-30'、'35-50'、'55-70'、'75-90'
+ * @param {number} maxAggSize - 粗骨料最大粒径（mm），如 20
+ * @param {string} aggregateType - 粗骨料类型，'crushed' 或 'pebble'
+ * @returns {number} 每立方米混凝土用水量（kg/m³）
+ * @throws {Error} 当参数不在查表范围内时抛出
+ * @example
+ * getWaterConsumption('35-50', 20, 'crushed'); // => 195
+ * getWaterConsumption('10-30', 40, 'pebble');  // => 140
+ */
+function getWaterConsumption(slumpRange, maxAggSize, aggregateType) {
+  if (typeof slumpRange !== 'string' || slumpRange === '') {
+    throw new Error('slumpRange 必须为非空字符串，收到: ' + String(slumpRange));
+  }
+  if (typeof maxAggSize !== 'number' || !isFinite(maxAggSize)) {
+    throw new Error('maxAggSize 必须为有限数字，收到: ' + String(maxAggSize));
+  }
+  if (aggregateType !== 'crushed' && aggregateType !== 'pebble') {
+    throw new Error('骨料类型必须为 crushed 或 pebble，收到: ' + String(aggregateType));
+  }
+  var table = WATER_TABLE[aggregateType];
+  if (!table) {
+    throw new Error('未找到骨料类型 ' + aggregateType + ' 的用水量表');
+  }
+  var slumpData = table[slumpRange];
+  if (!slumpData) {
+    throw new Error('未找到坍落度范围 ' + slumpRange + ' 的用水量数据，可选值: 10-30, 35-50, 55-70, 75-90');
+  }
+  var water = slumpData[maxAggSize];
+  if (typeof water === 'undefined') {
+    var available = Object.keys(slumpData).join(', ');
+    throw new Error('骨料类型 ' + aggregateType + ' 在坍落度 ' + slumpRange + ' 下不支持粒径 ' + maxAggSize + 'mm，可选粒径: ' + available);
+  }
+  return water;
+}
+
+/**
+ * 计算每立方米混凝土水泥用量
+ * 公式：mc = mw / (W/B)
+ *
+ * @param {number} waterAmount - 每立方米用水量（kg/m³）
+ * @param {number} wbRatio - 水胶比（无量纲）
+ * @returns {number} 每立方米水泥用量（kg/m³）
+ * @throws {Error} 当参数无效或水胶比为零时抛出
+ * @example
+ * getCementAmount(195, 0.55); // => ~354.55
+ */
+function getCementAmount(waterAmount, wbRatio) {
+  if (typeof waterAmount !== 'number' || !isFinite(waterAmount)) {
+    throw new Error('waterAmount 必须为有限数字，收到: ' + String(waterAmount));
+  }
+  if (typeof wbRatio !== 'number' || !isFinite(wbRatio)) {
+    throw new Error('wbRatio 必须为有限数字，收到: ' + String(wbRatio));
+  }
+  if (waterAmount < 0) {
+    throw new Error('waterAmount 不能为负数，收到: ' + waterAmount);
+  }
+  if (wbRatio <= 0) {
+    throw new Error('wbRatio 必须为正数，收到: ' + wbRatio);
+  }
+  return waterAmount / wbRatio;
+}
+
+/**
+ * 根据水胶比、粗骨料最大粒径和类型查表获取砂率
+ * 依据 JGJ 55-2011 表 5.4.2，取范围中值并线性插值
+ *
+ * @param {number} wbRatio - 水胶比（无量纲）
+ * @param {number} maxAggSize - 粗骨料最大粒径（mm）
+ * @param {string} aggregateType - 粗骨料类型，'crushed' 或 'pebble'
+ * @returns {{value: number, clamped: boolean}} 砂率（%）及是否被截断的标记
+ * @throws {Error} 当参数不在查表范围内时抛出
+ * @example
+ * getSandRatio(0.50, 20, 'crushed'); // => { value: 36, clamped: false }
+ */
+function getSandRatio(wbRatio, maxAggSize, aggregateType) {
+  if (typeof wbRatio !== 'number' || !isFinite(wbRatio)) {
+    throw new Error('wbRatio 必须为有限数字，收到: ' + String(wbRatio));
+  }
+  if (typeof maxAggSize !== 'number' || !isFinite(maxAggSize)) {
+    throw new Error('maxAggSize 必须为有限数字，收到: ' + String(maxAggSize));
+  }
+  if (aggregateType !== 'crushed' && aggregateType !== 'pebble') {
+    throw new Error('骨料类型必须为 crushed 或 pebble，收到: ' + String(aggregateType));
+  }
+  var table = SAND_RATIO_TABLE[aggregateType];
+  if (!table) {
+    throw new Error('未找到骨料类型 ' + aggregateType + ' 的砂率表');
+  }
+
+  // 查找粒径索引
+  var sizeIdx = table.sizes.indexOf(maxAggSize);
+  if (sizeIdx === -1) {
+    throw new Error('骨料类型 ' + aggregateType + ' 的砂率表不支持粒径 ' + maxAggSize + 'mm，可选: ' + table.sizes.join(', '));
+  }
+
+  // 截断 W/B 到查表范围
+  var clamped = false;
+  var wb = wbRatio;
+  var wbMin = table.wbValues[0];
+  var wbMax = table.wbValues[table.wbValues.length - 1];
+  if (wb < wbMin) { wb = wbMin; clamped = true; }
+  if (wb > wbMax) { wb = wbMax; clamped = true; }
+
+  // 查找 W/B 所在区间并线性插值
+  var wbValues = table.wbValues;
+  var ratios = table.ratios;
+  var result;
+
+  if (wb <= wbValues[0]) {
+    result = ratios[0][sizeIdx];
+  } else if (wb >= wbValues[wbValues.length - 1]) {
+    result = ratios[wbValues.length - 1][sizeIdx];
+  } else {
+    for (var i = 0; i < wbValues.length - 1; i++) {
+      if (wb >= wbValues[i] && wb <= wbValues[i + 1]) {
+        var t = (wb - wbValues[i]) / (wbValues[i + 1] - wbValues[i]);
+        result = ratios[i][sizeIdx] + t * (ratios[i + 1][sizeIdx] - ratios[i][sizeIdx]);
+        break;
+      }
+    }
+  }
+
+  return { value: result, clamped: clamped };
+}
+
+/**
+ * 用质量法计算砂和石的每立方米用量
+ * 公式：ms + mg = mcp - mc - mw; ms = (ms+mg) × βs; mg = (ms+mg) × (1-βs)
+ *
+ * @param {number} cementAmount - 每立方米水泥用量（kg/m³）
+ * @param {number} waterAmount - 每立方米用水量（kg/m³）
+ * @param {number} sandRatioPercent - 砂率（%），如 36 表示 36%
+ * @param {number} [assumedDensity=2400] - 混凝土假定容重（kg/m³）
+ * @returns {{sand: number, gravel: number}} 砂用量和石用量（kg/m³）
+ * @throws {Error} 当参数无效或骨料总量为负时抛出
+ * @example
+ * calcAggregateAmounts(350, 190, 36, 2400);
+ * // => { sand: ~749.04, gravel: ~1310.96 }
+ */
+function calcAggregateAmounts(cementAmount, waterAmount, sandRatioPercent, assumedDensity) {
+  if (typeof assumedDensity === 'undefined') assumedDensity = 2400;
+  if (typeof cementAmount !== 'number' || !isFinite(cementAmount)) {
+    throw new Error('cementAmount 必须为有限数字');
+  }
+  if (typeof waterAmount !== 'number' || !isFinite(waterAmount)) {
+    throw new Error('waterAmount 必须为有限数字');
+  }
+  if (typeof sandRatioPercent !== 'number' || !isFinite(sandRatioPercent)) {
+    throw new Error('sandRatioPercent 必须为有限数字');
+  }
+  if (sandRatioPercent < 0 || sandRatioPercent > 100) {
+    throw new Error('sandRatioPercent 必须在 0~100 之间，收到: ' + sandRatioPercent);
+  }
+  if (typeof assumedDensity !== 'number' || !isFinite(assumedDensity)) {
+    throw new Error('assumedDensity 必须为有限数字');
+  }
+  var aggregateTotal = assumedDensity - cementAmount - waterAmount;
+  if (aggregateTotal < 0) {
+    throw new Error('骨料总量为负值（' + aggregateTotal.toFixed(1) + '），请检查假定容重是否过小或水泥/用水量是否过大');
+  }
+  var betaS = sandRatioPercent / 100;
+  return {
+    sand: aggregateTotal * betaS,
+    gravel: aggregateTotal * (1 - betaS)
+  };
+}
+
+/**
+ * 计算混凝土初步配合比（主函数）
+ * 整合所有子函数，根据输入参数计算完整的初步配合比
+ *
+ * @param {Object} params - 输入参数对象
+ * @param {string} params.grade - 混凝土强度等级，如 'C30'
+ * @param {string} params.slumpRange - 坍落度范围，如 '35-50'
+ * @param {string} params.aggregateType - 粗骨料类型，'crushed' 或 'pebble'
+ * @param {number} params.maxAggSize - 粗骨料最大粒径（mm）
+ * @param {number} params.cementGrade - 水泥强度等级值（MPa），如 42.5
+ * @param {number} [params.gammaC=1.13] - 水泥富余系数
+ * @param {number} [params.assumedDensity=2400] - 混凝土假定容重（kg/m³）
+ * @returns {Object} 配合比计算结果
+ * @returns {number} returns.sigma - 标准差（MPa）
+ * @returns {number} returns.fcuo - 配制强度（MPa）
+ * @returns {number} returns.fb - 胶凝材料强度值（MPa）
+ * @returns {number} returns.wbRatio - 水胶比
+ * @returns {number} returns.waterAmount - 用水量（kg/m³）
+ * @returns {number} returns.cementAmount - 水泥用量（kg/m³）
+ * @returns {number} returns.sandRatio - 砂率（%）
+ * @returns {number} returns.sandAmount - 砂用量（kg/m³）
+ * @returns {number} returns.gravelAmount - 石用量（kg/m³）
+ * @returns {boolean} returns.sandRatioClamped - 砂率查表时 W/B 是否被截断
+ * @throws {Error} 当任何参数无效时抛出
+ * @example
+ * calculateMixRatio({
+ *   grade: 'C30', slumpRange: '35-50', aggregateType: 'crushed',
+ *   maxAggSize: 20, cementGrade: 42.5
+ * });
+ * // => { sigma: 5, fcuo: 38.225, fb: 48.025, wbRatio: ~0.588, ... }
+ */
+function calculateMixRatio(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('params 必须为对象');
+  }
+  var grade = params.grade;
+  var slumpRange = params.slumpRange;
+  var aggregateType = params.aggregateType;
+  var maxAggSize = params.maxAggSize;
+  var cementGrade = params.cementGrade;
+  var gammaC = typeof params.gammaC !== 'undefined' ? params.gammaC : 1.13;
+  var assumedDensity = typeof params.assumedDensity !== 'undefined' ? params.assumedDensity : 2400;
+
+  // 1. 标准差
+  var sigma = getSigma(grade);
+
+  // 2. 配制强度
+  var fcuK = parseInt(grade.match(/^C(\d+)$/)[1], 10);
+  var fcuo = calcFcuo(fcuK, sigma);
+
+  // 3. 胶凝材料强度
+  var fb = calcFb(cementGrade, gammaC);
+
+  // 4. 水胶比
+  var wbRatio = calcWaterBinderRatio(fcuo, fb, aggregateType);
+
+  // 5. 用水量
+  var waterAmount = getWaterConsumption(slumpRange, maxAggSize, aggregateType);
+
+  // 6. 水泥用量
+  var cementAmount = getCementAmount(waterAmount, wbRatio);
+
+  // 7. 砂率
+  var sandResult = getSandRatio(wbRatio, maxAggSize, aggregateType);
+  var sandRatio = sandResult.value;
+
+  // 8. 砂石用量
+  var agg = calcAggregateAmounts(cementAmount, waterAmount, sandRatio, assumedDensity);
+
+  return {
+    sigma: sigma,
+    fcuo: fcuo,
+    fb: fb,
+    wbRatio: wbRatio,
+    waterAmount: waterAmount,
+    cementAmount: cementAmount,
+    sandRatio: sandRatio,
+    sandAmount: agg.sand,
+    gravelAmount: agg.gravel,
+    sandRatioClamped: sandResult.clamped
+  };
+}
+</script>
+
+<!-- ==================== 主脚本 ==================== -->
+<script>
+(function() {
+  'use strict';
+
+  // ===== 1. 执行核心源码 =====
+  // 修正：本 IIFE 处于 'use strict'，直接 eval 会创建独立作用域，
+  // 核心函数（getSigma 等）不会暴露到外层 → 后续全部报“is not defined”。
+  // 改用间接 eval（(0, eval)）在全局作用域执行。
+  var coreSource = document.getElementById('core-source').textContent;
+  try {
+    (0, eval)(coreSource);
+  } catch(e) {
+    console.error('核心源码执行失败:', e);
+  }
+
+  // ===== 2. 显示源码 =====
+  document.getElementById('source-display').textContent = coreSource;
+
+  // ===== 3. 测试框架 =====
+  var testPassed = 0;
+  var testTotal = 0;
+  var testLog = [];
+
+  function assertClose(actual, expected, tolerance, msg) {
+    testTotal++;
+    if (typeof actual === 'number' && typeof expected === 'number' && Math.abs(actual - expected) <= tolerance) {
+      testPassed++;
+      testLog.push('<span class="test-pass">✓</span> ' + msg);
+    } else {
+      testLog.push('<span class="test-fail">✗</span> ' + msg + ' （期望 ' + expected + '，实际 ' + actual + '，容差 ' + tolerance + '）');
+    }
+  }
+
+  function assertStrictEqual(actual, expected, msg) {
+    testTotal++;
+    if (actual === expected) {
+      testPassed++;
+      testLog.push('<span class="test-pass">✓</span> ' + msg);
+    } else {
+      testLog.push('<span class="test-fail">✗</span> ' + msg + ' （期望 ' + JSON.stringify(expected) + '，实际 ' + JSON.stringify(actual) + '）');
+    }
+  }
+
+  function assertThrows(fn, msg) {
+    testTotal++;
+    try {
+      fn();
+      testLog.push('<span class="test-fail">✗</span> ' + msg + ' （期望抛出异常但未抛出）');
+    } catch(e) {
+      testPassed++;
+      testLog.push('<span class="test-pass">✓</span> ' + msg);
+    }
+  }
+
+  // ===== 4. 测试用例 =====
+
+  // --- getSigma ---
+  assertStrictEqual(getSigma('C15'), 4.0, 'getSigma: C15 → σ=4.0');
+  assertStrictEqual(getSigma('C20'), 4.0, 'getSigma: C20 → σ=4.0');
+  assertStrictEqual(getSigma('C25'), 5.0, 'getSigma: C25 → σ=5.0');
+  assertStrictEqual(getSigma('C30'), 5.0, 'getSigma: C30 → σ=5.0');
+  assertStrictEqual(getSigma('C45'), 5.0, 'getSigma: C45 → σ=5.0');
+  assertStrictEqual(getSigma('C50'), 6.0, 'getSigma: C50 → σ=6.0');
+  assertStrictEqual(getSigma('C55'), 6.0, 'getSigma: C55 → σ=6.0');
+  assertStrictEqual(getSigma('C60'), 6.0, 'getSigma: C60 → σ=6.0');
+  assertThrows(function(){ getSigma(null); }, 'getSigma: null 应抛出异常');
+  assertThrows(function(){ getSigma(undefined); }, 'getSigma: undefined 应抛出异常');
+  assertThrows(function(){ getSigma(''); }, 'getSigma: 空字符串应抛出异常');
+  assertThrows(function(){ getSigma('C10'); }, 'getSigma: C10 超范围应抛出异常');
+  assertThrows(function(){ getSigma('C70'); }, 'getSigma: C70 超范围应抛出异常');
+  assertThrows(function(){ getSigma('D30'); }, 'getSigma: 格式错误 D30 应抛出异常');
+  assertThrows(function(){ getSigma('C30.5'); }, 'getSigma: 格式错误 C30.5 应抛出异常');
+  assertThrows(function(){ getSigma(30); }, 'getSigma: 数字类型应抛出异常');
+
+  // --- calcFcuo ---
+  assertClose(calcFcuo(30, 5.0), 38.225, 0.001, 'calcFcuo: fcuK=30, σ=5.0 → 38.225');
+  assertClose(calcFcuo(15, 4.0), 21.58, 0.001, 'calcFcuo: fcuK=15, σ=4.0 → 21.58');
+  assertClose(calcFcuo(50, 6.0), 59.87, 0.001, 'calcFcuo: fcuK=50, σ=6.0 → 59.87');
+  assertClose(calcFcuo(25, 5.0), 33.225, 0.001, 'calcFcuo: fcuK=25, σ=5.0 → 33.225');
+  assertClose(calcFcuo(0, 5.0), 8.225, 0.001, 'calcFcuo: fcuK=0, σ=5.0 → 8.225（边界值）');
+  assertClose(calcFcuo(60, 6.0), 69.87, 0.001, 'calcFcuo: fcuK=60, σ=6.0 → 69.87（最大值）');
+  assertClose(calcFcuo(30, 0), 30, 0.001, 'calcFcuo: σ=0 → fcuo=fcuK');
+  assertThrows(function(){ calcFcuo(NaN, 5.0); }, 'calcFcuo: fcuK=NaN 应抛出异常');
+  assertThrows(function(){ calcFcuo(30, -1); }, 'calcFcuo: σ 为负数应抛出异常');
+  assertThrows(function(){ calcFcuo(null, 5.0); }, 'calcFcuo: fcuK=null 应抛出异常');
+
+  // --- calcFb ---
+  assertClose(calcFb(42.5, 1.13), 48.025, 0.001, 'calcFb: 42.5×1.13 → 48.025');
+  assertClose(calcFb(32.5, 1.13), 36.725, 0.001, 'calcFb: 32.5×1.13 → 36.725');
+  assertClose(calcFb(52.5, 1.1), 57.75, 0.001, 'calcFb: 52.5×1.1 → 57.75');
+  assertClose(calcFb(42.5), 48.025, 0.001, 'calcFb: 默认 γc=1.13 → 48.025');
+  assertThrows(function(){ calcFb(0, 1.13); }, 'calcFb: cementGrade=0 应抛出异常');
+  assertThrows(function(){ calcFb(-10, 1.13); }, 'calcFb: cementGrade 为负应抛出异常');
+  assertThrows(function(){ calcFb(NaN); }, 'calcFb: NaN 应抛出异常');
+
+  // --- calcWaterBinderRatio ---
+  // 碎石 C30: fcuo=38.225, fb=48.025
+  // W/B = 0.53*48.025 / (38.225 + 0.53*0.20*48.025) = 25.45325 / 43.31565 ≈ 0.5876
+  assertClose(calcWaterBinderRatio(38.225, 48.025, 'crushed'), 0.5876, 0.001, 'calcW/B: 碎石 C30 → ≈0.588');
+  // 卵石 C30: W/B = 0.49*48.025 / (38.225 + 0.49*0.13*48.025) = 23.53225 / 41.28419 ≈ 0.5700
+  assertClose(calcWaterBinderRatio(38.225, 48.025, 'pebble'), 0.5700, 0.001, 'calcW/B: 卵石 C30 → ≈0.570');
+  // 高强度 C50: fcuo=59.87, fb=59.325
+  // W/B = 0.53*59.325 / (59.87 + 0.53*0.20*59.325) = 31.44225 / 66.15845 ≈ 0.4753
+  assertClose(calcWaterBinderRatio(59.87, 59.325, 'crushed'), 0.4753, 0.001, 'calcW/B: 碎石 C50 → ≈0.475');
+  assertThrows(function(){ calcWaterBinderRatio(38.225, 48.025, 'invalid'); }, 'calcW/B: 无效骨料类型应抛出异常');
+  assertThrows(function(){ calcWaterBinderRatio(38.225, 0, 'crushed'); }, 'calcW/B: fb=0 应抛出异常');
+  assertThrows(function(){ calcWaterBinderRatio(38.225, -10, 'crushed'); }, 'calcW/B: fb 为负应抛出异常');
+  assertThrows(function(){ calcWaterBinderRatio(NaN, 48.025, 'crushed'); }, 'calcW/B: fcuo=NaN 应抛出异常');
+
+  // --- getWaterConsumption ---
+  assertStrictEqual(getWaterConsumption('35-50', 20, 'crushed'), 195, 'getWater: 碎石 35-50 20mm → 195');
+  assertStrictEqual(getWaterConsumption('10-30', 40, 'pebble'), 140, 'getWater: 卵石 10-30 40mm → 140');
+  assertStrictEqual(getWaterConsumption('75-90', 16, 'crushed'), 230, 'getWater: 碎石 75-90 16mm → 230');
+  assertStrictEqual(getWaterConsumption('55-70', 25, 'crushed'), 190, 'getWater: 碎石 55-70 25mm → 190');
+  assertStrictEqual(getWaterConsumption('10-30', 10, 'pebble'), 190, 'getWater: 卵石 10-30 10mm → 190');
+  /* 修正：查 WATER_TABLE，卵石 35-50 坍落度 31.5mm = 155（原期望 160 取错列，160 对应 25mm） */
+  assertStrictEqual(getWaterConsumption('35-50', 31.5, 'pebble'), 155, 'getWater: 卵石 35-50 31.5mm → 155');
+  assertThrows(function(){ getWaterConsumption('invalid', 20, 'crushed'); }, 'getWater: 无效坍落度应抛出异常');
+  assertThrows(function(){ getWaterConsumption('35-50', 15, 'crushed'); }, 'getWater: 碎石不支持 15mm 应抛出异常');
+  assertThrows(function(){ getWaterConsumption('35-50', 20, 'gravel'); }, 'getWater: 无效骨料类型应抛出异常');
+  assertThrows(function(){ getWaterConsumption('', 20, 'crushed'); }, 'getWater: 空字符串应抛出异常');
+  assertThrows(function(){ getWaterConsumption(null, 20, 'crushed'); }, 'getWater: null 应抛出异常');
+
+  // --- getCementAmount ---
+  assertClose(getCementAmount(195, 0.55), 354.545, 0.1, 'getCement: 195/0.55 → ≈354.5');
+  assertClose(getCementAmount(200, 0.50), 400, 0.1, 'getCement: 200/0.50 → 400');
+  assertClose(getCementAmount(150, 0.60), 250, 0.1, 'getCement: 150/0.60 → 250');
+  assertThrows(function(){ getCementAmount(195, 0); }, 'getCement: W/B=0 应抛出异常');
+  assertThrows(function(){ getCementAmount(-10, 0.5); }, 'getCement: 负用水量应抛出异常');
+  assertThrows(function(){ getCementAmount(195, -0.5); }, 'getCement: 负 W/B 应抛出异常');
+  assertThrows(function(){ getCementAmount(NaN, 0.5); }, 'getCement: NaN 用水量应抛出异常');
+
+  // --- getSandRatio ---
+  var sr1 = getSandRatio(0.50, 20, 'crushed');
+  assertClose(sr1.value, 36, 0.01, 'getSandRatio: W/B=0.50, 碎石 20mm → 36%');
+  assertStrictEqual(sr1.clamped, false, 'getSandRatio: W/B=0.50 不应被截断');
+
+  var sr2 = getSandRatio(0.40, 40, 'pebble');
+  assertClose(sr2.value, 22, 0.01, 'getSandRatio: W/B=0.40, 卵石 40mm → 22%');
+
+  // 插值测试：W/B=0.45, 碎石 20mm → 应在 31 和 36 之间插值 → 33.5
+  var sr3 = getSandRatio(0.45, 20, 'crushed');
+  assertClose(sr3.value, 33.5, 0.1, 'getSandRatio: W/B=0.45 插值, 碎石 20mm → 33.5%');
+
+  // 截断测试：W/B=0.80 应截断到 0.70
+  var sr4 = getSandRatio(0.80, 20, 'crushed');
+  assertClose(sr4.value, 46, 0.01, 'getSandRatio: W/B=0.80 截断到 0.70, 碎石 20mm → 46%');
+  assertStrictEqual(sr4.clamped, true, 'getSandRatio: W/B=0.80 应标记为截断');
+
+  // 截断测试：W/B=0.30 应截断到 0.40
+  var sr5 = getSandRatio(0.30, 20, 'crushed');
+  assertClose(sr5.value, 31, 0.01, 'getSandRatio: W/B=0.30 截断到 0.40, 碎石 20mm → 31%');
+  assertStrictEqual(sr5.clamped, true, 'getSandRatio: W/B=0.30 应标记为截断');
+
+  assertThrows(function(){ getSandRatio(0.50, 15, 'crushed'); }, 'getSandRatio: 碎石不支持 15mm 应抛出异常');
+  assertThrows(function(){ getSandRatio(0.50, 20, 'invalid'); }, 'getSandRatio: 无效骨料类型应抛出异常');
+  assertThrows(function(){ getSandRatio(NaN, 20, 'crushed'); }, 'getSandRatio: NaN W/B 应抛出异常');
+
+  // --- calcAggregateAmounts ---
+  var agg1 = calcAggregateAmounts(350, 190, 36, 2400);
+  // aggregateTotal = 2400 - 350 - 190 = 1860
+  // sand = 1860 * 0.36 = 669.6
+  // gravel = 1860 * 0.64 = 1190.4
+  assertClose(agg1.sand, 669.6, 0.1, 'calcAgg: 350+190+36%+2400 → 砂=669.6');
+  assertClose(agg1.gravel, 1190.4, 0.1, 'calcAgg: 350+190+36%+2400 → 石=1190.4');
+
+  var agg2 = calcAggregateAmounts(300, 180, 0, 2400);
+  assertClose(agg2.sand, 0, 0.1, 'calcAgg: 砂率=0 → 砂=0');
+  assertClose(agg2.gravel, 1920, 0.1, 'calcAgg: 砂率=0 → 石=1920');
+
+  var agg3 = calcAggregateAmounts(300, 180, 100, 2400);
+  assertClose(agg3.sand, 1920, 0.1, 'calcAgg: 砂率=100 → 砂=1920');
+  assertClose(agg3.gravel, 0, 0.1, 'calcAgg: 砂率=100 → 石=0');
+
+  assertThrows(function(){ calcAggregateAmounts(1500, 1500, 30, 2400); }, 'calcAgg: 骨料总量为负应抛出异常');
+  assertThrows(function(){ calcAggregateAmounts(300, 180, -5, 2400); }, 'calcAgg: 砂率为负应抛出异常');
+  assertThrows(function(){ calcAggregateAmounts(300, 180, 110, 2400); }, 'calcAgg: 砂率>100 应抛出异常');
+
+  // --- calculateMixRatio 集成测试 ---
+  var r1 = calculateMixRatio({
+    grade: 'C30', slumpRange: '35-50', aggregateType: 'crushed',
+    maxAggSize: 20, cementGrade: 42.5
+  });
+  assertClose(r1.sigma, 5.0, 0.001, '集成 C30: σ=5.0');
+  assertClose(r1.fcuo, 38.225, 0.001, '集成 C30: fcuo=38.225');
+  assertClose(r1.fb, 48.025, 0.001, '集成 C30: fb=48.025');
+  assertClose(r1.wbRatio, 0.5876, 0.005, '集成 C30: W/B≈0.588');
+  assertStrictEqual(r1.waterAmount, 195, '集成 C30: 用水量=195');
+  assertClose(r1.cementAmount, 195/0.5876, 1, '集成 C30: 水泥用量≈332');
+
+  var r2 = calculateMixRatio({
+    grade: 'C25', slumpRange: '10-30', aggregateType: 'pebble',
+    maxAggSize: 40, cementGrade: 32.5
+  });
+  assertClose(r2.sigma, 5.0, 0.001, '集成 C25 卵石: σ=5.0');
+  assertClose(r2.fcuo, 33.225, 0.001, '集成 C25 卵石: fcuo=33.225');
+  /* 修正：查 WATER_TABLE，卵石 10-30 坍落度 40mm = 140（原期望 150 与说明书场景一不一致，150 对应 25mm） */
+  assertStrictEqual(r2.waterAmount, 140, '集成 C25 卵石: 用水量=140');
+
+  var r3 = calculateMixRatio({
+    grade: 'C50', slumpRange: '75-90', aggregateType: 'crushed',
+    maxAggSize: 20, cementGrade: 52.5
+  });
+  assertClose(r3.sigma, 6.0, 0.001, '集成 C50: σ=6.0');
+  assertClose(r3.fcuo, 59.87, 0.001, '集成 C50: fcuo=59.87');
+  assertStrictEqual(r3.waterAmount, 215, '集成 C50: 用水量=215');
+
+  assertThrows(function(){ calculateMixRatio(null); }, '集成: null 参数应抛出异常');
+  assertThrows(function(){ calculateMixRatio({}); }, '集成: 空对象应抛出异常');
+  assertThrows(function(){
+    calculateMixRatio({ grade: 'C10', slumpRange: '35-50', aggregateType: 'crushed',
+      maxAggSize: 20, cementGrade: 42.5 });
+  }, '集成: C10 超范围应抛出异常');
+
+  assertThrows(function(){
+    calculateMixRatio({ grade: 'C30', slumpRange: '35-50', aggregateType: 'invalid',
+      maxAggSize: 20, cementGrade: 42.5 });
+  }, '集成: 无效骨料类型应抛出异常');
+
+  // ===== 5. 渲染测试结果 =====
+  var box = document.getElementById('test-results');
+  if (box) {
+    var summary = '<div style="margin-bottom:12px;font-weight:600;">测试结果：'
+      + testPassed + ' / ' + testTotal + ' 通过'
+      + (testPassed === testTotal ? ' ✅ 全部通过' : ' ⚠️ 有失败项')
+      + '</div>';
+    box.innerHTML = summary + testLog.join('<br>');
+  }
+  console.log('[自测] ' + testPassed + '/' + testTotal + ' 通过');
+
+  // ===== 6. 计算按钮事件绑定与输入校验 =====
+  function showCalcError(msg) {
+    document.getElementById('result-area').innerHTML = '<div class="error-msg">' + msg + '</div>';
+  }
+  document.getElementById('btn-calc').addEventListener('click', function() {
+    var gammaVal = document.getElementById('inp-gamma').value;
+    var densityVal = document.getElementById('inp-density').value;
+    var gamma = parseFloat(gammaVal);
+    var density = parseFloat(densityVal);
+    if (gammaVal === '' || isNaN(gamma) || gamma <= 0) {
+      showCalcError('请输入有效的水泥富余系数 γc（正数）');
+      return;
+    }
+    if (densityVal === '' || isNaN(density) || density <= 0) {
+      showCalcError('请输入有效的混凝土假定容重（正数，kg/m³）');
+      return;
+    }
+    var params = {
+      grade: document.getElementById('inp-grade').value,
+      slumpRange: document.getElementById('inp-slump').value,
+      aggregateType: document.getElementById('inp-agg-type').value,
+      maxAggSize: parseFloat(document.getElementById('inp-agg-size').value),
+      cementGrade: parseFloat(document.getElementById('inp-cement').value),
+      gammaC: gamma,
+      assumedDensity: density
+    };
+    try {
+      var r = calculateMixRatio(params);
+      var clampWarn = r.sandRatioClamped ? '<div class="warn-msg">水胶比超出砂率查表范围 0.40~0.70，砂率已按边界值截断。</div>' : '';
+      document.getElementById('result-area').innerHTML =
+        '<div class="result-box"><h3>计算结果（初步配合比）</h3><table class="result-table">' +
+        '<tr><th>标准差 σ</th><td>' + r.sigma.toFixed(1) + ' MPa</td></tr>' +
+        '<tr><th>配制强度 fcu,o</th><td>' + r.fcuo.toFixed(2) + ' MPa</td></tr>' +
+        '<tr><th>胶凝材料强度 fb</th><td>' + r.fb.toFixed(2) + ' MPa</td></tr>' +
+        '<tr><th>水胶比 W/B</th><td>' + r.wbRatio.toFixed(3) + '</td></tr>' +
+        '<tr><th>用水量</th><td>' + r.waterAmount + ' kg/m³</td></tr>' +
+        '<tr><th>水泥用量</th><td>' + r.cementAmount.toFixed(0) + ' kg/m³</td></tr>' +
+        '<tr><th>砂率</th><td>' + r.sandRatio.toFixed(1) + ' %</td></tr>' +
+        '<tr><th>砂用量</th><td>' + r.sandAmount.toFixed(0) + ' kg/m³</td></tr>' +
+        '<tr><th>石用量</th><td>' + r.gravelAmount.toFixed(0) + ' kg/m³</td></tr>' +
+        '</table></div>' + clampWarn;
+    } catch(e) {
+      showCalcError(e.message);
+    }
+  });
+
+  // 碎石在用水量/砂率表中无 10mm 档：切换骨料类型时禁用 10mm 选项，避免只能靠运行时报错
+  var aggTypeSel = document.getElementById('inp-agg-type');
+  var size10Opt = document.querySelector('#inp-agg-size option[value="10"]');
+  function syncSize10() { size10Opt.disabled = (aggTypeSel.value === 'crushed'); }
+  aggTypeSel.addEventListener('change', syncSize10);
+  syncSize10();
+})();
+</script>
+</body>
+</html>

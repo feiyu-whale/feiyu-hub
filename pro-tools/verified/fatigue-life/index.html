@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>疲劳寿命估算计算器</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#0a1628;color:#cfe0f5;font:13px/1.55 system-ui,"Microsoft YaHei",sans-serif}header{padding:14px 16px 10px;border-bottom:1px solid #1d3557}h1{margin:0;font-size:17px;color:#4a9eff}.sub{font-size:11px;color:#7b95b8;margin-top:2px}.tabs{display:flex;gap:4px;padding:8px 12px 0;flex-wrap:wrap}.tab{padding:6px 12px;background:#112441;color:#8fb3d9;border:1px solid #1d3557;border-radius:6px 6px 0 0;cursor:pointer;font-size:12px}.tab.on{background:#173a63;color:#fff;border-color:#4a9eff}.pane{display:none;padding:12px}.pane.on{display:block}.card{background:#0f1f38;border:1px solid #1d3557;border-radius:8px;padding:10px 12px;margin-bottom:10px}.card h3{margin:0 0 8px;font-size:13px;color:#4a9eff}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}label{display:block;font-size:11px;color:#7b95b8;margin-bottom:3px}input,select,textarea{width:100%;background:#0a1628;border:1px solid #24405f;color:#dbe9fa;border-radius:5px;padding:5px 7px;font:12px inherit}textarea{min-height:72px;font-family:monospace}button{background:#4a9eff;color:#04182f;border:0;border-radius:5px;padding:7px 16px;font-weight:700;cursor:pointer;font-size:12px}button:hover{background:#6cb2ff}.msg{color:#ff8a8a;font-size:12px;min-height:16px;margin-top:6px}.res{font-family:monospace;font-size:11.5px;white-space:pre-wrap;word-break:break-word;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #24405f;padding:3px 5px;text-align:right}th{background:#122a48;color:#8fb3d9}.big{font-size:15px;color:#4a9eff;font-weight:700}.pass{color:#5fd48a}.fail{color:#ff8a8a}footer{position:fixed;right:8px;bottom:6px;font-size:10px;color:#48627f;background:#0a1628cc;padding:2px 6px;border-radius:4px}pre{margin:0;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:68vh;overflow:auto;color:#9fc2e8}</style></head>
+<body>
+<header><h1>疲劳寿命估算计算器</h1><div class="sub">S-N 曲线法 · Basquin 方程 · Miner 线性累积损伤 · 应力集中 / 尺寸 / 表面 / 可靠度 / 温度修正</div></header>
+<div class="tabs"><div class="tab on" data-p="p1">计算工具</div><div class="tab" data-p="p2">JS 源码</div><div class="tab" data-p="p3">单元测试</div><div class="tab" data-p="p4">使用说明</div></div>
+
+<div class="pane on" id="p1">
+<div class="card"><h3>输入参数</h3><div class="grid">
+<div><label>材料（对称弯曲疲劳极限）</label><select id="mat"><option value="s45">45钢(正火) σ₋₁=250MPa</option><option value="q235">Q235碳素结构钢 σ₋₁=170MPa</option><option value="cr40">40Cr(调质) σ₋₁=420MPa</option><option value="al2">2A12铝合金 σ₋₁=130MPa</option><option value="al6">6061-T6铝合金 σ₋₁=100MPa</option><option value="cu2">T2纯铜 σ₋₁=70MPa</option></select></div>
+<div><label>工作温度 T (℃，-60~600)</label><input id="T" type="number" value="20" step="1"></div>
+<div><label>零件直径 d (mm，1~500)</label><input id="d" type="number" value="30" step="1"></div>
+<div><label>有效应力集中系数 Kσ (1~5)</label><input id="ks" type="number" value="1.5" step="0.05"></div>
+<div><label>表面加工</label><select id="surf"><option>抛光</option><option>磨削</option><option selected>精车</option><option>粗车</option><option>锻造</option><option>腐蚀介质</option></select></div>
+<div><label>目标可靠度</label><select id="rel"><option value="50">50%</option><option value="90" selected>90%</option><option value="95">95%</option><option value="99">99%</option><option value="99.9">99.9%</option></select></div>
+</div>
+<div style="margin-top:8px"><label>载荷谱（每行：应力幅 σa(MPa), 循环次数 n，可多级）</label><textarea id="loads">180,5000
+130,50000
+115,200000</textarea></div>
+<button onclick="render()">开始计算</button><div class="msg" id="msg"></div></div>
+<div id="out"></div>
+</div>
+
+<div class="pane" id="p2"><div class="card"><h3>JS 源码（本页内联脚本全文）</h3><pre id="src"></pre></div></div>
+
+<div class="pane" id="p3"><div class="card"><h3>单元测试</h3><button onclick="runTests()">运行全部测试</button><div id="tout" style="margin-top:8px;font-size:12px"></div></div></div>
+
+<div class="pane" id="p4"><div class="card"><h3>使用说明与数据出处</h3><div class="res">一、计算模型
+1) 零件修正疲劳极限：
+   σ₋₁ₑ = σ₋₁ · kT · ε · β · KR / Kσ
+2) Basquin / S-N 方程（N₀ = 1×10⁷ 次为基准点）：
+   σa = σ₋₁ₑ · (N/N₀)^(-1/m)  ⇒  N = N₀ · (σ₋₁ₑ/σa)^m  (σa &gt; σ₋₁ₑ)
+   当 σa ≤ σ₋₁ₑ 判为无限寿命，该级损伤记 0。
+3) Miner 线性累积损伤：D = Σ nᵢ/Nᵢ，D ≥ 1 判为疲劳破坏。
+
+二、系数取值与出处
+· 材料 σ₋₁ 与 S-N 指数 m：成大先《机械设计手册》（化学工业出版社，第5版）轴与零件疲劳强度设计章节的推荐均值（钢 m≈9，铝合金 m≈10，铜 m≈12）。各牌号为手册典型值，实际批次差异可达 ±15%。
+· 尺寸系数 ε(d) 与表面加工系数 β：同上手册"疲劳强度设计"篇 εσ-d 曲线与加工方法 β 表的折线插值，属工程估算值，未逐条核对标准。
+· 可靠度系数 KR：基于疲劳强度正态分散性的工程取值（参考 Shigley's Mechanical Engineering Design 可靠度修正系数表），50%→1.000、90%→0.897、95%→0.868、99%→0.814、99.9%→0.753。
+· 温度折减系数 kT：高温疲劳强度下降趋势的工程经验折线（钢/铝/铜分别取表），**本参数为行业经验值，未经标准核对**，超过 500℃（铝 250℃）结果仅供趋势参考。
+· Miner 法则：Miner M.A., "Cumulative Damage in Fatigue", J. Appl. Mech., 1945, A159–A164。
+· Basquin 方程：Basquin O.H., Proc. ASTM, 1910。
+
+三、输入约束与校验
+温度 -60~600℃、直径 1~500mm、Kσ 1~5、载荷谱应力幅 &gt; 0、循环次数 ≥ 0；非法输入以中文提示代替 NaN。
+
+四、使用建议
+· 本工具用于方案阶段的寿命量级估算，不替代疲劳试验（如旋转弯曲/轴向力控制疲劳试验）与规范规定的详细评定。
+· 应力集中系数应取有效值 Kσ（含缺口敏感度 q），疲劳缺口系数 Kf 与 Kt 的换算需另行处理。</div></div></div>
+
+<footer>v1.0.0-fatigue-life 20261108</footer>
+<script>
+var SRC=document.currentScript.textContent;
+var N0=1e7;
+var MAT={q235:{n:'Q235碳素结构钢',s1:170,m:9,g:'钢'},s45:{n:'45钢(正火)',s1:250,m:9,g:'钢'},cr40:{n:'40Cr(调质)',s1:420,m:9,g:'钢'},al2:{n:'2A12铝合金',s1:130,m:10,g:'铝'},al6:{n:'6061-T6铝合金',s1:100,m:10,g:'铝'},cu2:{n:'T2纯铜',s1:70,m:12,g:'铜'}};
+var BETA={'抛光':1,'磨削':0.9,'精车':0.85,'粗车':0.75,'锻造':0.6,'腐蚀介质':0.4};
+var KR={50:1,90:0.897,95:0.868,99:0.814,99.9:0.753};
+var DIM=[[10,1],[20,0.93],[30,0.88],[50,0.82],[100,0.75],[200,0.68]];
+/* 温度折减表：常温~100℃ 不折减（平台段），100℃ 以上才按经验折线下降。
+   修正：原表从 0℃ 就直接线性下降，导致 20℃ 常温也被打 0.995 折，
+   “基准件”（20℃/抛光/50%可靠度）算不出干净的 σ₋₁，与工程习惯不符。 */
+var TF={'钢':[[0,1],[100,1],[200,0.95],[400,0.85],[500,0.75],[600,0.6]],'铝':[[0,1],[100,1],[150,0.85],[250,0.6],[350,0.4]],'铜':[[0,1],[100,1],[200,0.7],[400,0.5]]};
+function lerp(x,t){if(x<=t[0][0])return t[0][1];for(var i=1;i<t.length;i++){if(x<=t[i][0]){var p=t[i-1],q=t[i];return p[1]+(q[1]-p[1])*(x-p[0])/(q[0]-p[0]);}}return t[t.length-1][1];}
+function dimF(d){return d<10?1:lerp(d,DIM);}
+function tempF(g,T){return lerp(Math.max(T,0),TF[g]);}
+function calc(o){
+ var M=MAT[o.mat];if(!M)throw new Error('未知材料代码');
+ var be=BETA[o.surf];if(be===undefined)throw new Error('未知表面加工方式');
+ var kr=KR[o.rel];if(kr===undefined)throw new Error('未知可靠度等级');
+ var kt=tempF(M.g,o.T),ep=dimF(o.d);
+ var s1e=M.s1*kt*ep*be*kr/o.ks;
+ var rows=o.loads.map(function(l){
+  var s=l[0],n=l[1],NN=Infinity,D=0;
+  if(s>s1e)NN=N0*Math.pow(s1e/s,M.m);
+  if(NN!==Infinity)D=n/NN;
+  return {s:s,n:n,N:NN,D:D};
+ });
+ var D=rows.reduce(function(a,r){return a+r.D;},0);
+ return {s1:M.s1,kt:kt,ep:ep,be:be,kr:kr,ks:o.ks,s1e:s1e,rows:rows,D:D,m:M.m,mat:M};
+}
+function parseLoads(s){
+ var arr=[];
+ s.split(/[\n;]+/).forEach(function(line){
+  line=line.trim();if(!line)return;
+  var p=line.split(/[,，\s]+/).filter(function(x){return x!=='';});
+  if(p.length<2)throw new Error('载荷谱格式错误（需"应力幅,循环次数"）：'+line);
+  var a=parseFloat(p[0]),b=parseFloat(p[1]);
+  if(!isFinite(a)||!isFinite(b))throw new Error('载荷谱含非数字内容：'+line);
+  if(a<=0)throw new Error('应力幅必须大于 0 MPa：'+line);
+  if(b<0)throw new Error('循环次数不能为负：'+line);
+  arr.push([a,b]);
+ });
+ if(!arr.length)throw new Error('请至少输入一级载荷谱');
+ return arr;
+}
+function num(id,min,max,name){
+ var v=parseFloat(document.getElementById(id).value);
+ if(!isFinite(v))throw new Error(name+'不能为空，且须为数字');
+ if(v<min||v>max)throw new Error(name+'须在 '+min+' ~ '+max+' 之间');
+ return v;
+}
+function render(){
+ var msg=document.getElementById('msg'),out=document.getElementById('out');
+ try{
+  var o={mat:document.getElementById('mat').value,T:num('T',-60,600,'工作温度'),
+   d:num('d',1,500,'零件直径'),ks:num('ks',1,5,'有效应力集中系数'),
+   surf:document.getElementById('surf').value,rel:parseFloat(document.getElementById('rel').value),
+   loads:parseLoads(document.getElementById('loads').value)};
+  var r=calc(o);msg.textContent='';
+  var h='<div class="card"><h3>主要结果</h3><div class="big">修正疲劳极限 σ₋₁ₑ = '+r.s1e.toFixed(1)+' MPa</div>';
+  h+='<div class="res">材料 σ₋₁ = '+r.s1+' MPa；基准寿命 N₀ = 1×10⁷ 次（S-N 曲线拐点）</div>';
+  h+='<div style="overflow-x:auto"><table><tr><th>#</th><th>σa (MPa)</th><th>N (次)</th><th>n (次)</th><th>Dᵢ</th></tr>';
+  r.rows.forEach(function(x,i){h+='<tr><td>'+(i+1)+'</td><td>'+x.s+'</td><td>'+(x.N===Infinity?'∞ 无限':Math.round(x.N))+'</td><td>'+x.n+'</td><td>'+x.D.toFixed(6)+'</td></tr>';});
+  h+='</table></div><div class="res">Miner 累积损伤 D = Σnᵢ/Nᵢ = <b>'+r.D.toFixed(6)+'</b> → '+(r.D>=1?'<span class="fail">D ≥ 1，预计发生疲劳破坏</span>':'<span class="pass">D &lt; 1，未达破坏，剩余损伤裕度 '+(1-r.D).toFixed(4)+'</span>')+'</div></div>';
+  h+='<div class="card"><h3>中间量</h3><div style="overflow-x:auto"><table><tr><th>项目</th><th>符号</th><th>取值</th></tr>'+
+   '<tr><td>材料</td><td>-</td><td>'+r.mat.n+'</td></tr>'+
+   '<tr><td>材料疲劳极限</td><td>σ₋₁</td><td>'+r.s1+' MPa</td></tr>'+
+   '<tr><td>S-N 曲线指数</td><td>m</td><td>'+r.m+'</td></tr>'+
+   '<tr><td>温度折减系数</td><td>kT</td><td>'+r.kt.toFixed(3)+'</td></tr>'+
+   '<tr><td>尺寸系数</td><td>ε</td><td>'+r.ep.toFixed(3)+'</td></tr>'+
+   '<tr><td>表面加工系数</td><td>β</td><td>'+r.be.toFixed(3)+'</td></tr>'+
+   '<tr><td>可靠度系数</td><td>KR</td><td>'+r.kr.toFixed(3)+'</td></tr>'+
+   '<tr><td>有效应力集中系数</td><td>Kσ</td><td>'+r.ks+'</td></tr></table></div></div>';
+  h+='<div class="card"><h3>公式说明</h3><div class="res">σ₋₁ₑ = σ₋₁ · kT · ε · β · KR / Kσ\nN = N₀ · (σ₋₁ₑ / σa)^m   （σa &gt; σ₋₁ₑ，N₀ = 1×10⁷ 次）\nσa ≤ σ₋₁ₑ 时按无限寿命计，该级损伤 Dᵢ = 0\nBasquin 形式：σa = σ₋₁ₑ · (N/N₀)^(-1/m)\nMiner 法则：D = Σ nᵢ/Nᵢ，D ≥ 1 判为疲劳破坏</div></div>';
+  out.innerHTML=h;
+ }catch(e){msg.textContent='⚠ '+e.message;out.innerHTML='';}
+}
+var TESTS=[
+ ['材料表 Q235 疲劳极限 = 170 MPa',function(){return MAT.q235.s1===170;}],
+ ['尺寸系数 ε(d=20mm) = 0.93',function(){return Math.abs(dimF(20)-0.93)<1e-9;}],
+ ['尺寸系数 ε(d=100mm) = 0.75',function(){return Math.abs(dimF(100)-0.75)<1e-9;}],
+ ['温度系数 钢 400℃ = 0.85',function(){return Math.abs(tempF('钢',400)-0.85)<1e-9;}],
+ ['可靠度 99% → KR = 0.814',function(){return KR[99]===0.814;}],
+ ['基准件 45钢 σ₋₁ₑ = 250 MPa',function(){var r=calc({mat:'s45',T:20,d:10,surf:'抛光',rel:50,ks:1,loads:[[100,1]]});return Math.abs(r.s1e-250)<1e-9;}],
+ ['45钢 σa=500 且 σ₋₁ₑ=250 → N = 19531.25 次',function(){var r=calc({mat:'s45',T:20,d:10,surf:'抛光',rel:50,ks:1,loads:[[500,1]]});return Math.abs(r.rows[0].N-19531.25)<1e-3;}],
+ ['Kσ=2 使 σ₋₁ₑ 减半 = 125 MPa',function(){var r=calc({mat:'s45',T:20,d:10,surf:'抛光',rel:50,ks:2,loads:[[100,1]]});return Math.abs(r.s1e-125)<1e-9;}],
+ ['Miner 损伤 n=10000/19531.25 = 0.512',function(){var r=calc({mat:'s45',T:20,d:10,surf:'抛光',rel:50,ks:1,loads:[[500,10000]]});return Math.abs(r.D-10000/19531.25)<1e-6;}],
+ ['σa ≤ σ₋₁ₑ → 无限寿命，D = 0',function(){var r=calc({mat:'s45',T:20,d:10,surf:'抛光',rel:50,ks:1,loads:[[200,1e5]]});return r.D===0&&r.rows[0].N===Infinity;}],
+ ['粗车 β=0.75 → σ₋₁ₑ = 187.5 MPa',function(){var r=calc({mat:'s45',T:20,d:10,surf:'粗车',rel:50,ks:1,loads:[[100,1]]});return Math.abs(r.s1e-187.5)<1e-9;}],
+ ['可靠度 99% → σ₋₁ₑ = 203.5 MPa',function(){var r=calc({mat:'s45',T:20,d:10,surf:'抛光',rel:99,ks:1,loads:[[100,1]]});return Math.abs(r.s1e-250*0.814)<1e-9;}]
+];
+function runTests(){
+ var h='',p=0;
+ TESTS.forEach(function(t,i){
+  var ok=false,er='';
+  try{ok=!!t[1]();}catch(e){er=' — '+e.message;}
+  if(ok)p++;
+  h+='<div class="'+(ok?'pass':'fail')+'">'+(ok?'✔':'✘')+' '+(i+1)+'. '+t[0]+er+'</div>';
+ });
+ document.getElementById('tout').innerHTML='<div class="big">通过 '+p+' / '+TESTS.length+'</div>'+h;
+}
+document.querySelectorAll('.tab').forEach(function(t){t.onclick=function(){
+ document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===t);});
+ document.querySelectorAll('.pane').forEach(function(x){x.classList.toggle('on',x.id===t.dataset.p);});
+};});
+document.getElementById('src').textContent=SRC;
+</script>
+</body></html>

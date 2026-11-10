@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>我的 · 云巢电竞</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .me-card { margin:12px; background:linear-gradient(135deg,#1e3a5f,#312e81);
+             border-radius:12px; padding:16px; text-align:center; }
+  .me-card .ava { font-size:44px; }
+  .me-card h3 { font-size:15px; margin:6px 0 3px; }
+  .me-card p { font-size:11.5px; color:#a5b4fc; }
+  .menu { margin:0 12px; }
+  .menu-item { display:flex; justify-content:space-between; align-items:center;
+               background:var(--card); border:1px solid var(--line);
+               border-radius:9px; padding:12px; margin-bottom:7px; font-size:12.5px;
+               cursor:pointer; }
+  .menu-item .v { color:var(--dim); font-size:11.5px; }
+</style>
+</head>
+<body data-tab="me">
+
+<div class="topbar">
+  <a href="index.html" style="font-size:16px">←</a>
+  <div class="logo">我的</div>
+  <div style="flex:1"></div>
+  <div class="wallet" id="wallet">🍚 <b>—</b></div>
+</div>
+
+<div class="rolebar" id="rolebar"></div>
+<div class="me-card" id="meCard"></div>
+<div class="menu" id="menu"></div>
+
+<div class="version" id="ver"></div>
+<div class="tabbar" id="tabbar"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const S = YCApp.init();
+document.getElementById('ver').textContent = YC.VERSION;
+
+let card, items;
+
+if (S.role === 'boss') {
+  const done = S.orders.filter(o => o.status === YCStatus.DONE).length;
+  const spent = S.orders.filter(o => o.status !== YCStatus.CANCELLED).reduce((a, o) => a + o.price, 0);
+  card = `<div class="ava">👤</div><h3>演示老板</h3>
+          <p>累计下单 ${S.orders.length} · 完成 ${done} · 累计消耗 ${spent} 白饭</p>`;
+  items = [
+    { n: '🍚 钱包余额', v: YCUtil.money(S.baofan) },
+    { n: '📋 我的订单', v: S.orders.length + ' 单', href: 'orders.html' },
+    { n: '🚨 我的举报', v: S.reports.length + ' 条', href: 'report.html' },
+    { n: '🎁 我的活动', v: S.firstOrderUsed ? '首单已用' : '首单立减可用' },
+    { n: 'ℹ️ 关于本系统', v: '演示版' }
+  ];
+} else if (S.role === 'worker') {
+  const me = YC.WORKERS.find(w => w.id === S.workerId);
+  const myOrders = S.orders.filter(o => o.workerId === S.workerId);
+  const myDone = myOrders.filter(o => o.status === YCStatus.DONE).length;
+  card = `<div class="ava">${me.avatar}</div><h3>${me.name}</h3>
+          <p>信用 ${YCUtil.creditOf(S, S.workerId)} · 本机接单 ${myOrders.length} · 完成 ${myDone}</p>`;
+  items = [
+    { n: '⭐ 信用分', v: YCUtil.creditOf(S, S.workerId) + ' / ' + me.score },
+    { n: '📈 好评率', v: me.goodRate + '%' },
+    { n: '💰 押金（虚拟）', v: me.deposit + ' 白饭' },
+    { n: '🎮 接单台', v: '去接单', href: 'worker.html' },
+    { n: '📋 我的订单', v: myOrders.length + ' 单', href: 'orders.html' },
+    { n: 'ℹ️ 关于本系统', v: '演示版' }
+  ];
+} else {
+  const pending = S.reports.filter(r => r.state === 'pending').length;
+  card = `<div class="ava">🛡️</div><h3>演示管理员</h3>
+          <p>待审举报 ${pending} 条 · 打手 ${YC.WORKERS.length} 位</p>`;
+  items = [
+    { n: '🛡️ 管理后台', v: '去审核', href: 'admin.html' },
+    { n: '📋 全部订单', v: S.orders.length + ' 单', href: 'orders.html' },
+    { n: '🐟 规则表', v: YC.RULES.length + ' 条' },
+    { n: 'ℹ️ 关于本系统', v: '演示版' }
+  ];
+}
+
+document.getElementById('meCard').innerHTML = card;
+
+document.getElementById('menu').innerHTML = items.map(m => `
+  <div class="menu-item" ${m.href ? `data-h="${m.href}"` : ''}>
+    <span>${m.n}</span><span class="v">${m.v}</span>
+  </div>`).join('') + `
+  <div class="menu-item" id="resetBtn" style="margin-top:16px;border-color:#7f1d1d">
+    <span style="color:#fca5a5">🗑️ 重置演示数据</span>
+    <span class="v">清空全部订单</span>
+  </div>`;
+
+document.querySelectorAll('.menu-item[data-h]').forEach(el => {
+  el.onclick = () => location.href = el.dataset.h;
+});
+
+document.getElementById('resetBtn').onclick = () => {
+  YCApp.modal('重置演示数据', `
+    <p style="font-size:12.5px;color:#7d93ad;line-height:1.75">
+      将清空全部订单、举报、评价与信用扣分，白饭恢复初始 ${YC.INIT_BAOFAN}。<br>
+      此操作只影响浏览器本地数据，不可撤销。
+    </p>`, [
+    { t: '确认重置', cls: 'btn-danger', fn: () => { YCStore.reset(); location.reload(); } },
+    { t: '取消', cls: 'btn-ghost' }
+  ]);
+};
+
+YCApp.renderTabbar('me');
+</script>
+</body>
+</html>

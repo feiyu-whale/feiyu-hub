@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>焊缝强度计算工具</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 20px;
+  text-align: center;
+  padding: 16px 0 8px;
+  color: #16213e;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8e8e8;
+  color: #16213e;
+}
+.form-group {
+  margin-bottom: 12px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #333;
+}
+.form-group .hint {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+.form-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.form-row .form-group {
+  flex: 1;
+}
+input[type="number"], select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background: #fafafa;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: #4361ee;
+  background: #fff;
+}
+select {
+  cursor: pointer;
+}
+.btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #4361ee;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+.btn:hover {
+  background: #3a56d4;
+}
+.btn:active {
+  background: #2f49b0;
+}
+.result-box {
+  display: none;
+  margin-top: 12px;
+}
+.result-box.show {
+  display: block;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e8e8e8;
+  font-size: 13px;
+}
+.result-item:last-child {
+  border-bottom: none;
+}
+.result-label {
+  color: #555;
+}
+.result-value {
+  font-weight: 700;
+  color: #1a1a2e;
+  text-align: right;
+}
+.result-pass {
+  background: #d4edda;
+  border: 1.5px solid #28a745;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #155724;
+  margin-top: 12px;
+}
+.result-fail {
+  background: #f8d7da;
+  border: 1.5px solid #dc3545;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #721c24;
+  margin-top: 12px;
+}
+.formula-section {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.formula-section .formula {
+  background: #f8f9fa;
+  border-left: 3px solid #4361ee;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 0 6px 6px 0;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.note {
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  padding: 8px 12px;
+  margin: 10px 0;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #664d03;
+}
+.source-section {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #555;
+}
+.source-section ol {
+  padding-left: 20px;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #aaa;
+  z-index: 999;
+}
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid #4361ee;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: #4361ee;
+  border: none;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: #4361ee;
+  color: #fff;
+}
+.tab-btn:not(:last-child) {
+  border-right: 1px solid #4361ee;
+}
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+.util-ratio {
+  font-size: 13px;
+  text-align: center;
+  margin-top: 6px;
+  color: #555;
+}
+.util-bar {
+  height: 8px;
+  background: #e8e8e8;
+  border-radius: 4px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.util-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+@media (max-width: 640px) {
+  body {
+    padding: 8px;
+    padding-bottom: 50px;
+    font-size: 13px;
+  }
+  .card {
+    padding: 12px;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔩 焊缝强度计算</h1>
+  <p class="subtitle">依据 GB 50017《钢结构设计标准》</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('single')">📐 单项验算</button>
+    <button class="tab-btn" onclick="switchTab('combined')">📊 组合验算</button>
+  </div>
+
+  <!-- 单项验算 -->
+  <div id="tab-single" class="tab-content active">
+    <div class="card">
+      <div class="card-title">📝 输入参数</div>
+      <div class="form-group">
+        <label>焊缝类型</label>
+        <select id="s-weldType" onchange="onWeldTypeChange()">
+          <option value="front">正面角焊缝（力⊥焊缝方向）</option>
+          <option value="side">侧面角焊缝（力∥焊缝方向）</option>
+        </select>
+      </div>
+      <div class="form-group" id="s-loadType-group">
+        <label>荷载类型</label>
+        <select id="s-loadType">
+          <option value="static">静力荷载 / 间接动力荷载（βf=1.22）</option>
+          <option value="dynamic">直接承受动力荷载（βf=1.0）</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>焊脚尺寸 hf（mm）</label>
+          <input type="number" id="s-hf" value="8" min="3" max="30" step="1">
+        </div>
+        <div class="form-group">
+          <label>焊缝实际长度 l（mm）</label>
+          <input type="number" id="s-length" value="200" min="10" step="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>轴向力 N（kN）</label>
+        <input type="number" id="s-force" value="100" min="0" step="0.1">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>钢材牌号</label>
+          <select id="s-steel" onchange="onSteelChange('s')">
+            <option value="160">Q235（ffw=160 N/mm²）</option>
+            <option value="200">Q345（ffw=200 N/mm²）</option>
+            <option value="200b">Q390（ffw=200 N/mm²）</option>
+            <option value="210">Q420（ffw=210 N/mm²）</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" onclick="calcSingle()">🧮 计算</button>
+      <div class="result-box" id="s-result"></div>
+    </div>
+  </div>
+
+  <!-- 组合验算 -->
+  <div id="tab-combined" class="tab-content">
+    <div class="card">
+      <div class="card-title">📝 输入参数</div>
+      <div class="form-group">
+        <label>荷载类型（影响正面角焊缝 βf）</label>
+        <select id="c-loadType">
+          <option value="static">静力荷载 / 间接动力荷载（βf=1.22）</option>
+          <option value="dynamic">直接承受动力荷载（βf=1.0）</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>焊脚尺寸 hf（mm）</label>
+          <input type="number" id="c-hf" value="8" min="3" max="30" step="1">
+        </div>
+        <div class="form-group">
+          <label>焊缝实际长度 l（mm）</label>
+          <input type="number" id="c-length" value="200" min="10" step="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>垂直于焊缝的力 N⊥（kN）</label>
+          <input type="number" id="c-fn" value="80" min="0" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>平行于焊缝的力 N∥（kN）</label>
+          <input type="number" id="c-ft" value="60" min="0" step="0.1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>钢材牌号</label>
+        <select id="c-steel" onchange="onSteelChange('c')">
+          <option value="160">Q235（ffw=160 N/mm²）</option>
+          <option value="200">Q345（ffw=200 N/mm²）</option>
+          <option value="200b">Q390（ffw=200 N/mm²）</option>
+          <option value="210">Q420（ffw=210 N/mm²）</option>
+        </select>
+      </div>
+      <button class="btn" onclick="calcCombined()">🧮 计算</button>
+      <div class="result-box" id="c-result"></div>
+    </div>
+  </div>
+
+  <!-- 公式说明 -->
+  <div class="card">
+    <div class="card-title">📖 公式说明</div>
+    <div class="formula-section">
+      <p><strong>1. 基本参数</strong></p>
+      <div class="formula">有效厚度：he = 0.7 × hf
+有效长度：lw = l − 2 × hf（扣除起弧、灭弧缺陷）</div>
+
+      <p><strong>2. 正面角焊缝</strong>（力垂直于焊缝长度方向）</p>
+      <div class="formula">σf = N / (he × lw) = N / (0.7 × hf × lw)
+验算条件：σf ≤ βf × ffw</div>
+      <p style="font-size:13px;color:#555;">其中 βf 为正面角焊缝强度增大系数：<br>
+      · 承受静力荷载或间接动力荷载：βf = 1.22<br>
+      · 直接承受动力荷载：βf = 1.0</p>
+
+      <p><strong>3. 侧面角焊缝</strong>（力平行于焊缝长度方向）</p>
+      <div class="formula">τf = N / (he × lw) = N / (0.7 × hf × lw)
+验算条件：τf ≤ ffw</div>
+
+      <p><strong>4. 组合受力验算</strong></p>
+      <div class="formula">√((σf / βf)² + τf²) ≤ ffw</div>
+      <p style="font-size:13px;color:#555;">其中 σf 为垂直于焊缝长度方向的正应力，τf 为平行于焊缝长度方向的剪应力。</p>
+
+      <div class="note">
+        ⚠️ 注意：lw 不应小于 8hf 且不应小于 40mm；hf 应满足最小及最大焊脚尺寸要求（详见 GB 50017 第 11.3.5 条）。本工具不自动校验构造要求，请自行核查。
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据来源 -->
+  <div class="card">
+    <div class="card-title">📚 数据来源</div>
+    <div class="source-section">
+      <ol>
+        <li><strong>GB 50017-2017</strong>《钢结构设计标准》—— 第 11 章"连接"，第 11.2 节"焊缝连接"。角焊缝强度计算公式（第 11.2.2 条）、正面角焊缝强度增大系数 βf 取值、角焊缝设计强度 ffw 取值（第 4.4.5 条 表 4.4.5）均依据该标准。</li>
+        <li><strong>有效厚度 he = 0.7hf</strong>：适用于直角角焊缝（等焊脚），依据 GB 50017-2017 第 11.2.1 条。</li>
+        <li><strong>有效长度 lw = l − 2hf</strong>：每条焊缝扣除起弧和灭弧各 hf 长度的缺陷段，依据 GB 50017-2017 第 11.2.3 条。</li>
+        <li><strong>ffw 取值</strong>：Q235 配 E43 型焊条 → ffw = 160 N/mm²；Q345 配 E50 型焊条 → ffw = 200 N/mm²；Q390 配 E55 型焊条 → ffw = 200 N/mm²；Q420 配 E55 型焊条 → ffw = 210 N/mm²。具体数值以 GB 50017-2017 表 4.4.5 为准。</li>
+        <li><strong>βf 取值</strong>：正面角焊缝在静力或间接动力荷载下 βf = 1.22，直接动力荷载下 βf = 1.0，依据 GB 50017-2017 第 11.2.2 条。</li>
+      </ol>
+      <div class="note" style="margin-top:10px;">
+        ⚠️ 本工具仅提供强度验算计算，不涵盖构造要求（最小/最大焊脚尺寸、最小/最大焊缝长度等）的自动校核。设计时请同时满足 GB 50017-2017 第 11.3 节的构造规定。具体表值请以标准原文为准。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-焊缝强度计算 20261021</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(btn, i) {
+    btn.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-content').forEach(function(c) {
+    c.classList.remove('active');
+  });
+  if (tab === 'single') {
+    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    document.getElementById('tab-single').classList.add('active');
+  } else {
+    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.getElementById('tab-combined').classList.add('active');
+  }
+}
+
+function onWeldTypeChange() {
+  var v = document.getElementById('s-weldType').value;
+  var g = document.getElementById('s-loadType-group');
+  if (v === 'side') {
+    g.style.display = 'none';
+  } else {
+    g.style.display = 'block';
+  }
+}
+
+function getFfw(selectId) {
+  var v = document.getElementById(selectId).value;
+  if (v === '160') return 160;
+  if (v === '200') return 200;
+  if (v === '200b') return 200;
+  if (v === '210') return 210;
+  return 160;
+}
+
+function getBetaF(selectId, weldType) {
+  if (weldType === 'side') return 1.0;
+  var v = document.getElementById(selectId).value;
+  if (v === 'static') return 1.22;
+  return 1.0;
+}
+
+function getUtilColor(ratio) {
+  if (ratio <= 0.6) return '#28a745';
+  if (ratio <= 0.85) return '#ffc107';
+  if (ratio <= 1.0) return '#fd7e14';
+  return '#dc3545';
+}
+
+function calcSingle() {
+  var weldType = document.getElementById('s-weldType').value;
+  var hf = parseFloat(document.getElementById('s-hf').value);
+  var l = parseFloat(document.getElementById('s-length').value);
+  var N = parseFloat(document.getElementById('s-force').value);
+  var ffw = getFfw('s-steel');
+  var betaF = getBetaF('s-loadType', weldType);
+
+  if (isNaN(hf) || isNaN(l) || isNaN(N) || hf <= 0 || l <= 0) {
+    alert('请输入有效的数值！');
+    return;
+  }
+
+  var he = 0.7 * hf;
+  var lw = l - 2 * hf;
+
+  if (lw <= 0) {
+    var box = document.getElementById('s-result');
+    box.className = 'result-box show';
+    box.innerHTML = '<div class="result-fail">❌ 有效长度 lw = ' + lw.toFixed(1) + ' mm ≤ 0，焊缝实际长度不足！需满足 l > 2hf = ' + (2*hf).toFixed(1) + ' mm</div>';
+    return;
+  }
+
+  var stress = (N * 1000) / (he * lw);
+  var allowStress;
+  var stressName;
+
+  if (weldType === 'front') {
+    allowStress = betaF * ffw;
+    stressName = 'σf';
+  } else {
+    allowStress = ffw;
+    stressName = 'τf';
+  }
+
+  var ratio = stress / allowStress;
+  var pass = ratio <= 1.0;
+  var color = getUtilColor(ratio);
+
+  var html = '';
+  html += '<div class="result-item"><span class="result-label">有效厚度 he</span><span class="result-value">' + he.toFixed(2) + ' mm</span></div>';
+  html += '<div class="result-item"><span class="result-label">有效长度 lw</span><span class="result-value">' + lw.toFixed(1) + ' mm</span></div>';
+  html += '<div class="result-item"><span class="result-label">有效面积 he×lw</span><span class="result-value">' + (he * lw).toFixed(1) + ' mm²</span></div>';
+
+  if (weldType === 'front') {
+    html += '<div class="result-item"><span class="result-label">βf（强度增大系数）</span><span class="result-value">' + betaF.toFixed(2) + '</span></div>';
+    html += '<div class="result-item"><span class="result-label">计算应力 ' + stressName + '</span><span class="result-value">' + stress.toFixed(2) + ' N/mm²</span></div>';
+    html += '<div class="result-item"><span class="result-label">允许应力 βf×ffw</span><span class="result-value">' + allowStress.toFixed(2) + ' N/mm²</span></div>';
+  } else {
+    html += '<div class="result-item"><span class="result-label">计算应力 ' + stressName + '</span><span class="result-value">' + stress.toFixed(2) + ' N/mm²</span></div>';
+    html += '<div class="result-item"><span class="result-label">允许应力 ffw</span><span class="result-value">' + allowStress.toFixed(2) + ' N/mm²</span></div>';
+  }
+
+  html += '<div class="util-ratio">应力比（利用率）：' + (ratio * 100).toFixed(1) + '%</div>';
+  html += '<div class="util-bar"><div class="util-bar-fill" style="width:' + Math.min(ratio * 100, 100).toFixed(1) + '%;background:' + color + '"></div></div>';
+
+  if (pass) {
+    html += '<div class="result-pass">✅ 满足要求！' + stressName + ' = ' + stress.toFixed(2) + ' N/mm² ≤ ' + allowStress.toFixed(2) + ' N/mm²</div>';
+  } else {
+    html += '<div class="result-fail">❌ 不满足要求！' + stressName + ' = ' + stress.toFixed(2) + ' N/mm² > ' + allowStress.toFixed(2) + ' N/mm²</div>';
+  }
+
+  var box = document.getElementById('s-result');
+  box.className = 'result-box show';
+  box.innerHTML = html;
+}
+
+function calcCombined() {
+  var hf = parseFloat(document.getElementById('c-hf').value);
+  var l = parseFloat(document.getElementById('c-length').value);
+  var fn = parseFloat(document.getElementById('c-fn').value);
+  var ft = parseFloat(document.getElementById('c-ft').value);
+  var ffw = getFfw('c-steel');
+  var betaF = getBetaF('c-loadType', 'front');
+
+  if (isNaN(hf) || isNaN(l) || isNaN(fn) || isNaN(ft) || hf <= 0 || l <= 0) {
+    alert('请输入有效的数值！');
+    return;
+  }
+
+  var he = 0.7 * hf;
+  var lw = l - 2 * hf;
+
+  if (lw <= 0) {
+    var box = document.getElementById('c-result');
+    box.className = 'result-box show';
+    box.innerHTML = '<div class="result-fail">❌ 有效长度 lw = ' + lw.toFixed(1) + ' mm ≤ 0，焊缝实际长度不足！需满足 l > 2hf = ' + (2*hf).toFixed(1) + ' mm</div>';
+    return;
+  }
+
+  var sigmaF = (fn * 1000) / (he * lw);
+  var tauF = (ft * 1000) / (he * lw);
+  var combined = Math.sqrt(Math.pow(sigmaF / betaF, 2) + Math.pow(tauF, 2));
+  var ratio = combined / ffw;
+  var pass = ratio <= 1.0;
+  var color = getUtilColor(ratio);
+
+  var html = '';
+  html += '<div class="result-item"><span class="result-label">有效厚度 he</span><span class="result-value">' + he.toFixed(2) + ' mm</span></div>';
+  html += '<div class="result-item"><span class="result-label">有效长度 lw</span><span class="result-value">' + lw.toFixed(1) + ' mm</span></div>';
+  html += '<div class="result-item"><span class="result-label">有效面积 he×lw</span><span class="result-value">' + (he * lw).toFixed(1) + ' mm²</span></div>';
+  html += '<div class="result-item"><span class="result-label">βf（正面增大系数）</span><span class="result-value">' + betaF.toFixed(2) + '</span></div>';
+  html += '<div class="result-item"><span class="result-label">正应力 σf（⊥焊缝）</span><span class="result-value">' + sigmaF.toFixed(2) + ' N/mm²</span></div>';
+  html += '<div class="result-item"><span class="result-label">剪应力 τf（∥焊缝）</span><span class="result-value">' + tauF.toFixed(2) + ' N/mm²</span></div>';
+  html += '<div class="result-item"><span class="result-label">组合应力 √((σf/βf)²+τf²)</span><span class="result-value">' + combined.toFixed(2) + ' N/mm²</span></div>';
+  html += '<div class="result-item"><span class="result-label">允许应力 ffw</span><span class="result-value">' + ffw.toFixed(2) + ' N/mm²</span></div>';
+
+  html += '<div class="util-ratio">应力比（利用率）：' + (ratio * 100).toFixed(1) + '%</div>';
+  html += '<div class="util-bar"><div class="util-bar-fill" style="width:' + Math.min(ratio * 100, 100).toFixed(1) + '%;background:' + color + '"></div></div>';
+
+  if (pass) {
+    html += '<div class="result-pass">✅ 满足要求！组合应力 ' + combined.toFixed(2) + ' N/mm² ≤ ffw = ' + ffw.toFixed(2) + ' N/mm²</div>';
+  } else {
+    html += '<div class="result-fail">❌ 不满足要求！组合应力 ' + combined.toFixed(2) + ' N/mm² > ffw = ' + ffw.toFixed(2) + ' N/mm²</div>';
+  }
+
+  var box = document.getElementById('c-result');
+  box.className = 'result-box show';
+  box.innerHTML = html;
+}
+
+onWeldTypeChange();
+</script>
+</body>
+</html>

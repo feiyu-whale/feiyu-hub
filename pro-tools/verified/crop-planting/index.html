@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>作物播种时间与株距计算器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #2c5282;
+    margin-bottom: 10px;
+    font-size: 24px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #718096;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  .warning {
+    background: #fff5e6;
+    border-left: 4px solid #ed8936;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #744210;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #718096;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    color: #2c5282;
+    border-bottom-color: #2c5282;
+    font-weight: 600;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  label {
+    font-size: 13px;
+    color: #4a5568;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  input, select {
+    padding: 8px 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: #4299e1;
+  }
+  .hint {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 2px;
+  }
+  .btn {
+    background: #2c5282;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #2b4c8c; }
+  .btn-secondary { background: #718096; }
+  .btn-secondary:hover { background: #4a5568; }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .result {
+    background: #f0fff4;
+    border-left: 4px solid #48bb78;
+    padding: 16px;
+    margin-top: 16px;
+    border-radius: 4px;
+  }
+  .result h3 {
+    color: #22543d;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #c6f6d5;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-label { color: #4a5568; }
+  .result-value { color: #22543d; font-weight: 600; }
+  .crop-info {
+    background: #ebf8ff;
+    border-left: 4px solid #4299e1;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .crop-info dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+  .crop-info dt {
+    font-weight: 600;
+    color: #2c5282;
+  }
+  .crop-info dd {
+    color: #2d3748;
+  }
+  .test-summary {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .test-pass { color: #22543d; font-weight: 600; }
+  .test-fail { color: #c53030; font-weight: 600; }
+  .test-list {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .test-item {
+    padding: 4px 8px;
+    border-left: 3px solid transparent;
+    margin-bottom: 2px;
+  }
+  .test-item.pass { border-left-color: #48bb78; background: #f0fff4; }
+  .test-item.fail { border-left-color: #f56565; background: #fff5f5; }
+  .doc-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .doc-content h2 {
+    color: #2c5282;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .doc-content h3 {
+    color: #2d3748;
+    margin: 16px 0 8px;
+  }
+  .doc-content p {
+    margin-bottom: 10px;
+    text-align: justify;
+  }
+  .doc-content ul, .doc-content ol {
+    margin: 10px 0 10px 24px;
+  }
+  .doc-content li { margin-bottom: 4px; }
+  .doc-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .doc-content th, .doc-content td {
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+    text-align: left;
+  }
+  .doc-content th {
+    background: #f7fafc;
+    font-weight: 600;
+    color: #2d3748;
+  }
+  .doc-content code {
+    background: #edf2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #c53030;
+  }
+  .doc-content blockquote {
+    border-left: 4px solid #cbd5e0;
+    padding: 8px 16px;
+    margin: 12px 0;
+    background: #f7fafc;
+    color: #4a5568;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #a0aec0;
+    background: rgba(255,255,255,0.8);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  @media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+    h1 { font-size: 20px; }
+    .doc-content { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>作物播种时间与株距计算器</h1>
+  <p class="subtitle">常见农作物播种期、行株距与用种量参考工具</p>
+
+  <div class="warning">
+    <strong>重要提示：</strong>本工具给出的播种期、行株距、用种量等数据为<strong>全国通行参考范围</strong>，
+    基于《中国农业百科全书》与农业农村部主推技术的公开数据整理。<strong>具体播种时间、密度、用种量请以当地农业农村部门或农技推广机构的指导为准</strong>，
+    不同地区、年份、品种、土壤条件差异较大，本工具不作精确到县一级的播期推荐，也不替代田间试验与本地化示范。
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tool">🌾 工具</button>
+    <button class="tab-btn" data-tab="test">🧪 测试</button>
+    <button class="tab-btn" data-tab="doc">📖 说明书</button>
+  </div>
+
+  <div id="tool" class="tab-content active">
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="crop">选择作物</label>
+          <select id="crop"></select>
+        </div>
+        <div class="form-group">
+          <label for="area">播种面积（亩）</label>
+          <input type="number" id="area" min="0" step="0.01" placeholder="例如：10">
+          <span class="hint">1 公顷 = 15 亩</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="rowSpacing">行距（cm）</label>
+          <input type="number" id="rowSpacing" min="0" step="0.1" placeholder="自动填充推荐值">
+        </div>
+        <div class="form-group">
+          <label for="plantSpacing">株距（cm）</label>
+          <input type="number" id="plantSpacing" min="0" step="0.01" placeholder="自动填充推荐值">
+          <span class="hint" id="plantSpacingHint"></span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="emergenceRate">预计出苗率（0-1，可留空）</label>
+          <input type="number" id="emergenceRate" min="0.01" max="1" step="0.01" placeholder="默认使用作物推荐值">
+          <span class="hint">种子发芽率 × 田间成苗率，一般 0.7-0.9</span>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <div class="btn-row">
+            <button class="btn" id="calcBtn">计算用种量</button>
+            <button class="btn btn-secondary" id="resetBtn">重置</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="cropInfo" class="crop-info" style="display:none;"></div>
+    <div id="result" class="result" style="display:none;"></div>
+  </div>
+
+  <div id="test" class="tab-content">
+    <div class="test-summary" id="testSummary"></div>
+    <div class="test-list" id="testList"></div>
+  </div>
+
+  <div id="doc" class="tab-content">
+    <div class="doc-content" id="docContent"></div>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（纯函数实现，无外部依赖）
+ * ============================================================ */
+
+/**
+ * 作物数据库
+ * 数据来源：《中国农业百科全书·农作物卷》《中国农业百科全书·蔬菜卷》、
+ * 农业农村部主推技术、GB 4404.1-2008 / GB 4404.2-2010 / GB 4404.3-1999 / GB 4404.4-1999。
+ * 所有数值均为通行范围，非精确到县一级的本地化数据。
+ * @constant {Object.<string, Object>}
+ */
+const CROPS = {
+  'winter_wheat': {
+    name: '冬小麦',
+    category: '禾谷类·条播',
+    solarTerms: '秋分至立冬',
+    solarTermsNote: '黄淮海地区以10月上中旬为最佳播期；长江中下游10月下旬-11月上旬',
+    months: '9月下旬-11月上旬',
+    rowSpacing: { min: 15, max: 25, default: 20, unit: 'cm' },
+    plantSpacing: { min: 0.2, max: 0.5, default: 0.25, unit: 'cm', note: '条播作物，此为按基本苗折算的等效株距' },
+    depth: { min: 3, max: 5, unit: 'cm' },
+    targetDensity: { min: 150000, max: 250000, default: 200000, unit: '株/亩', note: '黄淮海冬小麦基本苗通行范围' },
+    thousandGrainWeight: { min: 35, max: 50, default: 42, unit: 'g' },
+    emergenceRate: { default: 0.75 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.1-2008'
+  },
+  'spring_wheat': {
+    name: '春小麦',
+    category: '禾谷类·条播',
+    solarTerms: '雨水至谷雨',
+    solarTermsNote: '东北3月下旬-4月中旬；西北2月下旬-3月中旬',
+    months: '2月下旬-4月中旬',
+    rowSpacing: { min: 15, max: 20, default: 17, unit: 'cm' },
+    plantSpacing: { min: 0.15, max: 0.3, default: 0.2, unit: 'cm', note: '等效株距' },
+    depth: { min: 3, max: 5, unit: 'cm' },
+    targetDensity: { min: 300000, max: 450000, default: 375000, unit: '株/亩' },
+    thousandGrainWeight: { min: 30, max: 45, default: 38, unit: 'g' },
+    emergenceRate: { default: 0.75 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.1-2008'
+  },
+  'early_rice': {
+    name: '早稻',
+    category: '禾谷类·移栽/直播',
+    solarTerms: '惊蛰至清明',
+    solarTermsNote: '华南2月下旬-3月中旬；长江中下游3月中旬-4月上旬',
+    months: '2月下旬-4月上旬',
+    rowSpacing: { min: 25, max: 30, default: 25, unit: 'cm' },
+    plantSpacing: { min: 13, max: 17, default: 15, unit: 'cm' },
+    depth: { min: 1, max: 2, unit: 'cm', note: '移栽秧苗入土深度' },
+    targetDensity: { min: 15000, max: 20000, default: 17000, unit: '穴/亩', note: '每穴2-3苗' },
+    thousandGrainWeight: { min: 22, max: 28, default: 25, unit: 'g' },
+    emergenceRate: { default: 0.85 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》'
+  },
+  'middle_rice': {
+    name: '中稻',
+    category: '禾谷类·移栽/直播',
+    solarTerms: '谷雨至小满',
+    solarTermsNote: '长江流域4月中旬-5月中旬；西南海拔较高地区略晚',
+    months: '4月中旬-5月中旬',
+    rowSpacing: { min: 25, max: 30, default: 27, unit: 'cm' },
+    plantSpacing: { min: 15, max: 20, default: 17, unit: 'cm' },
+    depth: { min: 1, max: 2, unit: 'cm', note: '移栽秧苗入土深度' },
+    targetDensity: { min: 15000, max: 20000, default: 17000, unit: '穴/亩' },
+    thousandGrainWeight: { min: 24, max: 30, default: 27, unit: 'g' },
+    emergenceRate: { default: 0.85 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》'
+  },
+  'late_rice': {
+    name: '晚稻',
+    category: '禾谷类·移栽/直播',
+    solarTerms: '小暑至大暑',
+    solarTermsNote: '长江中下游6月下旬-7月中旬；华南7月上中旬',
+    months: '6月下旬-7月中旬',
+    rowSpacing: { min: 25, max: 30, default: 25, unit: 'cm' },
+    plantSpacing: { min: 13, max: 17, default: 15, unit: 'cm' },
+    depth: { min: 1, max: 2, unit: 'cm', note: '移栽秧苗入土深度' },
+    targetDensity: { min: 18000, max: 22000, default: 20000, unit: '穴/亩' },
+    thousandGrainWeight: { min: 22, max: 28, default: 25, unit: 'g' },
+    emergenceRate: { default: 0.85 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》'
+  },
+  'spring_maize': {
+    name: '春玉米',
+    category: '禾谷类·穴播',
+    solarTerms: '谷雨至立夏',
+    solarTermsNote: '东北4月下旬-5月中旬；华北4月中下旬',
+    months: '4月下旬-5月中旬',
+    rowSpacing: { min: 55, max: 65, default: 60, unit: 'cm' },
+    plantSpacing: { min: 25, max: 35, default: 30, unit: 'cm' },
+    depth: { min: 3, max: 5, unit: 'cm' },
+    targetDensity: { min: 3500, max: 4500, default: 4000, unit: '株/亩' },
+    thousandGrainWeight: { min: 250, max: 400, default: 320, unit: 'g' },
+    emergenceRate: { default: 0.9 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.1-2008'
+  },
+  'summer_maize': {
+    name: '夏玉米',
+    category: '禾谷类·穴播',
+    solarTerms: '芒种至夏至',
+    solarTermsNote: '黄淮海6月上旬-6月下旬，多为麦茬直播',
+    months: '6月上旬-6月下旬',
+    rowSpacing: { min: 55, max: 65, default: 60, unit: 'cm' },
+    plantSpacing: { min: 25, max: 30, default: 27, unit: 'cm' },
+    depth: { min: 3, max: 5, unit: 'cm' },
+    targetDensity: { min: 4000, max: 5000, default: 4500, unit: '株/亩' },
+    thousandGrainWeight: { min: 250, max: 380, default: 310, unit: 'g' },
+    emergenceRate: { default: 0.9 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.1-2008'
+  },
+  'soybean': {
+    name: '大豆',
+    category: '豆类·穴播/条播',
+    solarTerms: '立夏至芒种',
+    solarTermsNote: '东北5月中下旬；黄淮海5月下旬-6月中旬',
+    months: '5月上旬-6月中旬',
+    rowSpacing: { min: 45, max: 70, default: 55, unit: 'cm', note: '垄作55-70cm，平作45cm' },
+    plantSpacing: { min: 10, max: 15, default: 12, unit: 'cm' },
+    depth: { min: 3, max: 5, unit: 'cm' },
+    targetDensity: { min: 12000, max: 20000, default: 16000, unit: '株/亩' },
+    thousandGrainWeight: { min: 120, max: 250, default: 180, unit: 'g' },
+    emergenceRate: { default: 0.85 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.2-2010'
+  },
+  'cotton': {
+    name: '棉花',
+    category: '纤维类·穴播',
+    solarTerms: '清明至谷雨',
+    solarTermsNote: '黄河流域4月中旬-5月上旬；长江流域4月上中旬；新疆4月中下旬',
+    months: '4月中旬-5月上旬',
+    rowSpacing: { min: 80, max: 100, default: 90, unit: 'cm' },
+    plantSpacing: { min: 20, max: 30, default: 25, unit: 'cm' },
+    depth: { min: 2, max: 3, unit: 'cm' },
+    targetDensity: { min: 3000, max: 5000, default: 4000, unit: '株/亩', note: '新疆高密度栽培可达12000-15000株/亩，需另行调整' },
+    thousandGrainWeight: { min: 90, max: 120, default: 105, unit: 'g' },
+    emergenceRate: { default: 0.85 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.3-1999'
+  },
+  'rapeseed': {
+    name: '油菜',
+    category: '油料类·条播/移栽',
+    solarTerms: '白露至霜降',
+    solarTermsNote: '长江流域9月下旬-10月下旬；西北春油菜区4-5月（本工具暂按冬油菜给出）',
+    months: '9月中旬-10月下旬',
+    rowSpacing: { min: 20, max: 30, default: 25, unit: 'cm' },
+    plantSpacing: { min: 15, max: 20, default: 17, unit: 'cm', note: '移栽密度；直播密度更高' },
+    depth: { min: 2, max: 3, unit: 'cm' },
+    targetDensity: { min: 10000, max: 15000, default: 12000, unit: '株/亩', note: '移栽；直播2-3万株/亩' },
+    thousandGrainWeight: { min: 3, max: 4.5, default: 3.8, unit: 'g' },
+    emergenceRate: { default: 0.8 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》；GB 4404.4-1999'
+  },
+  'potato': {
+    name: '马铃薯',
+    category: '薯类·块茎播种',
+    solarTerms: '雨水至清明',
+    solarTermsNote: '南方冬作区1-2月；中原2-3月；东北、西北4月下旬-5月上旬',
+    months: '1月中旬-5月上旬（地域差异极大）',
+    rowSpacing: { min: 60, max: 70, default: 65, unit: 'cm' },
+    plantSpacing: { min: 25, max: 30, default: 27, unit: 'cm' },
+    depth: { min: 8, max: 12, unit: 'cm' },
+    targetDensity: { min: 4500, max: 5500, default: 5000, unit: '穴/亩' },
+    seedWeightPerMu: { min: 125, max: 150, default: 135, unit: 'kg', note: '种薯用量，按重量计' },
+    emergenceRate: { default: 0.9 },
+    seedMode: 'tuber',
+    references: '《中国农业百科全书·蔬菜卷》'
+  },
+  'peanut': {
+    name: '花生',
+    category: '油料类·穴播',
+    solarTerms: '谷雨至立夏',
+    solarTermsNote: '黄淮海4月下旬-5月中旬；南方3月下旬-4月中旬',
+    months: '3月下旬-5月中旬',
+    rowSpacing: { min: 40, max: 50, default: 45, unit: 'cm' },
+    plantSpacing: { min: 15, max: 20, default: 17, unit: 'cm' },
+    depth: { min: 3, max: 5, unit: 'cm' },
+    targetDensity: { min: 8000, max: 11000, default: 9500, unit: '穴/亩', note: '每穴2粒' },
+    thousandGrainWeight: { min: 100, max: 200, default: 150, unit: 'g', note: '籽仁千粒重' },
+    emergenceRate: { default: 0.85 },
+    seedMode: 'grain',
+    references: '《中国农业百科全书·农作物卷》'
+  }
+};
+
+/**
+ * 1 亩对应的平方厘米数
+ * 1 亩 = 666.67 m² = 6666700 cm²
+ * @constant {number}
+ */
+const MU_TO_CM2 = 6666700;
+
+/**
+ * 根据行距和株距计算每亩理论株（穴）数
+ *
+ * 公式：每亩株数 = 6666700 / (行距cm × 株距cm)
+ *
+ * @param {number} rowSpacingCm - 行距，单位厘米，必须大于 0
+ * @param {number} plantSpacingCm - 株距，单位厘米，必须大于 0
+ * @returns {number} 每亩理论株数（保留 2 位小数）
+ * @throws {TypeError} 参数非数字或为 NaN 时抛出
+ * @throws {Error} 参数非正数或非有限数时抛出
+ * @example
+ * calcPlantsPerMu(60, 30);   // 3703.7  - 玉米 60cm×30cm
+ * calcPlantsPerMu(20, 0.25); // 1333340 - 小麦条播等效
+ */
+function calcPlantsPerMu(rowSpacingCm, plantSpacingCm) {
+  if (typeof rowSpacingCm !== 'number' || typeof plantSpacingCm !== 'number') {
+    throw new TypeError('行距和株距必须为数字');
+  }
+  if (Number.isNaN(rowSpacingCm) || Number.isNaN(plantSpacingCm)) {
+    throw new TypeError('行距和株距不能为 NaN');
+  }
+  if (!Number.isFinite(rowSpacingCm) || !Number.isFinite(plantSpacingCm)) {
+    throw new Error('行距和株距必须为有限数');
+  }
+  if (rowSpacingCm <= 0 || plantSpacingCm <= 0) {
+    throw new Error('行距和株距必须大于 0');
+  }
+  return Number((MU_TO_CM2 / (rowSpacingCm * plantSpacingCm)).toFixed(2));
+}
+
+/**
+ * 根据目标株数、千粒重和出苗率计算每亩种子重量
+ *
+ * 公式：每亩种子重量(g) = (目标株数 / 出苗率) × 千粒重(g) / 1000
+ *
+ * @param {number} targetPlantsPerMu - 目标株数/亩，必须大于 0
+ * @param {number} thousandGrainWeightG - 千粒重，单位克，必须大于 0
+ * @param {number} emergenceRate - 出苗率，取值范围 (0, 1]
+ * @returns {number} 每亩种子重量，单位克（保留 2 位小数）
+ * @throws {TypeError} 参数非数字或为 NaN 时抛出
+ * @throws {Error} 参数超出范围时抛出
+ * @example
+ * calcSeedWeightPerMu(4000, 320, 0.9); // 1422.22 g
+ */
+function calcSeedWeightPerMu(targetPlantsPerMu, thousandGrainWeightG, emergenceRate) {
+  if (typeof targetPlantsPerMu !== 'number' ||
+      typeof thousandGrainWeightG !== 'number' ||
+      typeof emergenceRate !== 'number') {
+    throw new TypeError('所有参数必须为数字');
+  }
+  if (Number.isNaN(targetPlantsPerMu) ||
+      Number.isNaN(thousandGrainWeightG) ||
+      Number.isNaN(emergenceRate)) {
+    throw new TypeError('参数不能为 NaN');
+  }
+  if (targetPlantsPerMu <= 0) {
+    throw new Error('目标株数必须大于 0');
+  }
+  if (thousandGrainWeightG <= 0) {
+    throw new Error('千粒重必须大于 0');
+  }
+  if (emergenceRate <= 0 || emergenceRate > 1) {
+    throw new Error('出苗率必须在 (0, 1] 范围内');
+  }
+  const seedsNeeded = targetPlantsPerMu / emergenceRate;
+  const weightG = seedsNeeded * thousandGrainWeightG / 1000;
+  return Number(weightG.toFixed(2));
+}
+
+/**
+ * 根据面积和每亩用种量计算总用种量
+ *
+ * @param {number} areaMu - 面积，单位亩，必须 ≥ 0
+ * @param {number} seedWeightPerMu - 每亩用种量，单位与返回值一致
+ * @returns {number} 总用种量（保留 2 位小数）
+ * @throws {TypeError} 参数非数字或为 NaN 时抛出
+ * @throws {Error} 参数为负数时抛出
+ * @example
+ * calcTotalSeed(10, 1500); // 15000
+ */
+function calcTotalSeed(areaMu, seedWeightPerMu) {
+  if (typeof areaMu !== 'number' || typeof seedWeightPerMu !== 'number') {
+    throw new TypeError('参数必须为数字');
+  }
+  if (Number.isNaN(areaMu) || Number.isNaN(seedWeightPerMu)) {
+    throw new TypeError('参数不能为 NaN');
+  }
+  if (areaMu < 0) {
+    throw new Error('面积不能为负数');
+  }
+  if (seedWeightPerMu < 0) {
+    throw new Error('每亩用种量不能为负数');
+  }
+  return Number((areaMu * seedWeightPerMu).toFixed(2));
+}
+
+/**
+ * 获取作物数据
+ *
+ * @param {string} cropKey - 作物键名，必须为 CROPS 中存在的键
+ * @returns {Object} 作物数据对象
+ * @throws {TypeError} 参数非字符串时抛出
+ * @throws {Error} 作物不存在时抛出
+ * @example
+ * getCropData('winter_wheat'); // { name: '冬小麦', ... }
+ */
+function getCropData(cropKey) {
+  if (typeof cropKey !== 'string') {
+    throw new TypeError('作物键名必须为字符串');
+  }
+  if (!cropKey || !Object.prototype.hasOwnProperty.call(CROPS, cropKey)) {
+    throw new Error('未找到作物数据：' + String(cropKey));
+  }
+  return CROPS[cropKey];
+}
+
+/**
+ * 验证输入参数
+ *
+ * @param {Object} input - 输入对象
+ * @param {string} input.cropKey - 作物键名
+ * @param {number} input.areaMu - 面积（亩），≥ 0
+ * @param {number} input.rowSpacingCm - 行距（cm），> 0
+ * @param {number} input.plantSpacingCm - 株距（cm），> 0
+ * @param {number} [input.emergenceRate] - 出苗率（可选），(0, 1]
+ * @returns {Object} 验证后的输入对象
+ * @throws {Error} 参数无效时抛出
+ * @example
+ * validateInput({ cropKey: 'winter_wheat', areaMu: 10, rowSpacingCm: 20, plantSpacingCm: 0.25 });
+ */
+function validateInput(input) {
+  if (!input || typeof input !== 'object') {
+    throw new Error('输入必须为对象');
+  }
+  if (typeof input.cropKey !== 'string' || !input.cropKey) {
+    throw new Error('作物键名不能为空');
+  }
+  if (!Object.prototype.hasOwnProperty.call(CROPS, input.cropKey)) {
+    throw new Error('未找到作物：' + input.cropKey);
+  }
+  if (typeof input.areaMu !== 'number' || Number.isNaN(input.areaMu)) {
+    throw new Error('面积必须为有效数字');
+  }
+  if (input.areaMu < 0) {
+    throw new Error('面积不能为负数');
+  }
+  if (typeof input.rowSpacingCm !== 'number' || Number.isNaN(input.rowSpacingCm)) {
+    throw new Error('行距必须为有效数字');
+  }
+  if (input.rowSpacingCm <= 0) {
+    throw new Error('行距必须大于 0');
+  }
+  if (typeof input.plantSpacingCm !== 'number' || Number.isNaN(input.plantSpacingCm)) {
+    throw new Error('株距必须为有效数字');
+  }
+  if (input.plantSpacingCm <= 0) {
+    throw new Error('株距必须大于 0');
+  }
+  if (input.emergenceRate !== undefined && input.emergenceRate !== null && input.emergenceRate !== '') {
+    if (typeof input.emergenceRate !== 'number' || Number.isNaN(input.emergenceRate)) {
+      throw new Error('出苗率必须为有效数字');
+    }
+    if (input.emergenceRate <= 0 || input.emergenceRate > 1) {
+      throw new Error('出苗率必须在 (0, 1] 范围内');
+    }
+  }
+  return input;
+}
+
+/**
+ * 计算作物播种参数（主入口）
+ *
+ * @param {Object} input - 输入参数
+ * @param {string} input.cropKey - 作物键名
+ * @param {number} input.areaMu - 面积（亩）
+ * @param {number} input.rowSpacingCm - 行距（cm）
+ * @param {number} input.plantSpacingCm - 株距（cm）
+ * @param {number} [input.emergenceRate] - 出苗率（可选）
+ * @returns {Object} 计算结果
+ * @returns {Object} returns.crop - 作物数据
+ * @returns {number} returns.plantsPerMu - 理论株数/亩
+ * @returns {number} returns.seedWeightPerMu - 每亩用种量
+ * @returns {string} returns.seedUnit - 用种量单位（g 或 kg）
+ * @returns {number} returns.totalSeed - 总用种量
+ * @returns {number} returns.areaMu - 面积
+ * @throws {Error} 输入无效时抛出
+ * @example
+ * calculate({ cropKey: 'spring_maize', areaMu: 10, rowSpacingCm: 60, plantSpacingCm: 30 });
+ */
+function calculate(input) {
+  const validated = validateInput(input);
+  const crop = getCropData(validated.cropKey);
+
+  const plantsPerMu = calcPlantsPerMu(validated.rowSpacingCm, validated.plantSpacingCm);
+
+  let seedWeightPerMu;
+  let seedUnit;
+
+  if (crop.seedMode === 'tuber') {
+    seedWeightPerMu = crop.seedWeightPerMu.default;
+    seedUnit = 'kg';
+  } else {
+    const emergenceRate = (validated.emergenceRate !== undefined &&
+                           validated.emergenceRate !== null &&
+                           validated.emergenceRate !== '')
+                          ? validated.emergenceRate
+                          : crop.emergenceRate.default;
+    seedWeightPerMu = calcSeedWeightPerMu(
+      crop.targetDensity.default,
+      crop.thousandGrainWeight.default,
+      emergenceRate
+    );
+    seedUnit = 'g';
+  }
+
+  const totalSeed = calcTotalSeed(validated.areaMu, seedWeightPerMu);
+
+  return {
+    crop: crop,
+    plantsPerMu: plantsPerMu,
+    seedWeightPerMu: seedWeightPerMu,
+    seedUnit: seedUnit,
+    totalSeed: totalSeed,
+    areaMu: validated.areaMu
+  };
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS，自写 assert，不依赖 Jest/Mocha）
+ * ============================================================ */
+
+const testResults = [];
+
+/**
+ * 通用断言
+ * @param {boolean} condition - 断言条件
+ * @param {string} [message] - 失败信息
+ * @throws {Error} 条件为 false 时抛出
+ */
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message || '断言失败');
+  }
+}
+
+/**
+ * 严格相等断言
+ * @param {*} actual - 实际值
+ * @param {*} expected - 期望值
+ * @param {string} [message] - 失败信息
+ */
+function assertEqual(actual, expected, message) {
+  if (actual !== expected) {
+    throw new Error((message || '断言失败') + '：期望 ' + expected + '，实际 ' + actual);
+  }
+}
+
+/**
+ * 近似相等断言
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @param {string} [message] - 失败信息
+ */
+function assertApprox(actual, expected, tolerance, message) {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error((message || '断言失败') + '：期望约 ' + expected + '，实际 ' + actual);
+  }
+}
+
+/**
+ * 断言函数抛出异常
+ * @param {Function} fn - 待测函数
+ * @param {string} [message] - 失败信息
+ */
+function assertThrows(fn, message) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (!threw) {
+    throw new Error(message || '期望抛出异常但未抛出');
+  }
+}
+
+/**
+ * 运行单个测试用例
+ * @param {string} name - 测试名称
+ * @param {Function} fn - 测试函数
+ */
+function runTest(name, fn) {
+  try {
+    fn();
+    testResults.push({ name: name, pass: true });
+  } catch (e) {
+    testResults.push({ name: name, pass: false, error: e.message });
+  }
+}
+
+// ---- calcPlantsPerMu 测试 ----
+runTest('calcPlantsPerMu: 玉米 60×30', () => {
+  assertApprox(calcPlantsPerMu(60, 30), 3703.7, 0.1);
+});
+runTest('calcPlantsPerMu: 大豆 55×12', () => {
+  assertApprox(calcPlantsPerMu(55, 12), 10101.01, 0.1);
+});
+runTest('calcPlantsPerMu: 棉花 90×25', () => {
+  assertApprox(calcPlantsPerMu(90, 25), 2962.96, 0.1);
+});
+runTest('calcPlantsPerMu: 极小值 1×1', () => {
+  assertEqual(calcPlantsPerMu(1, 1), 6666700);
+});
+runTest('calcPlantsPerMu: 较大值 200×200', () => {
+  assertApprox(calcPlantsPerMu(200, 200), 166.67, 0.1);
+});
+runTest('calcPlantsPerMu: 行距=0 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(0, 30));
+});
+runTest('calcPlantsPerMu: 株距=0 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(60, 0));
+});
+runTest('calcPlantsPerMu: 行距<0 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(-10, 30));
+});
+runTest('calcPlantsPerMu: 株距<0 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(60, -5));
+});
+runTest('calcPlantsPerMu: 行距=NaN 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(NaN, 30));
+});
+runTest('calcPlantsPerMu: 株距=undefined 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(60, undefined));
+});
+runTest('calcPlantsPerMu: 行距=字符串 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu('60', 30));
+});
+runTest('calcPlantsPerMu: 行距=Infinity 抛出异常', () => {
+  assertThrows(() => calcPlantsPerMu(Infinity, 30));
+});
+
+// ---- calcSeedWeightPerMu 测试 ----
+runTest('calcSeedWeightPerMu: 玉米 4000株 320g 0.9', () => {
+  assertApprox(calcSeedWeightPerMu(4000, 320, 0.9), 1422.22, 0.1);
+});
+runTest('calcSeedWeightPerMu: 小麦 200000株 42g 0.75', () => {
+  assertApprox(calcSeedWeightPerMu(200000, 42, 0.75), 11200, 0.1);
+});
+runTest('calcSeedWeightPerMu: 出苗率=1', () => {
+  assertApprox(calcSeedWeightPerMu(1000, 100, 1), 100, 0.1);
+});
+runTest('calcSeedWeightPerMu: 出苗率=0.01', () => {
+  assertApprox(calcSeedWeightPerMu(1000, 100, 0.01), 10000, 0.1);
+});
+runTest('calcSeedWeightPerMu: 千粒重=0.1', () => {
+  assertApprox(calcSeedWeightPerMu(1000, 0.1, 1), 0.1, 0.01);
+});
+runTest('calcSeedWeightPerMu: 目标株数=0 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(0, 100, 0.9));
+});
+runTest('calcSeedWeightPerMu: 目标株数<0 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(-100, 100, 0.9));
+});
+runTest('calcSeedWeightPerMu: 千粒重=0 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(1000, 0, 0.9));
+});
+runTest('calcSeedWeightPerMu: 出苗率=0 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(1000, 100, 0));
+});
+runTest('calcSeedWeightPerMu: 出苗率>1 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(1000, 100, 1.5));
+});
+runTest('calcSeedWeightPerMu: 出苗率=NaN 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(1000, 100, NaN));
+});
+runTest('calcSeedWeightPerMu: 千粒重=字符串 抛出异常', () => {
+  assertThrows(() => calcSeedWeightPerMu(1000, '100', 0.9));
+});
+
+// ---- calcTotalSeed 测试 ----
+runTest('calcTotalSeed: 10亩×5000g', () => {
+  assertEqual(calcTotalSeed(10, 5000), 50000);
+});
+runTest('calcTotalSeed: 0亩', () => {
+  assertEqual(calcTotalSeed(0, 5000), 0);
+});
+runTest('calcTotalSeed: 极大面积', () => {
+  assertEqual(calcTotalSeed(1000000, 100), 100000000);
+});
+runTest('calcTotalSeed: 负数面积 抛出异常', () => {
+  assertThrows(() => calcTotalSeed(-10, 5000));
+});
+runTest('calcTotalSeed: NaN面积 抛出异常', () => {
+  assertThrows(() => calcTotalSeed(NaN, 5000));
+});
+runTest('calcTotalSeed: 字符串面积 抛出异常', () => {
+  assertThrows(() => calcTotalSeed('10', 5000));
+});
+
+// ---- getCropData 测试 ----
+runTest('getCropData: 冬小麦', () => {
+  const data = getCropData('winter_wheat');
+  assertEqual(data.name, '冬小麦');
+});
+runTest('getCropData: null 抛出异常', () => {
+  assertThrows(() => getCropData(null));
+});
+runTest('getCropData: 不存在作物 抛出异常', () => {
+  assertThrows(() => getCropData('unknown_crop'));
+});
+runTest('getCropData: 空字符串 抛出异常', () => {
+  assertThrows(() => getCropData(''));
+});
+
+// ---- validateInput 测试 ----
+runTest('validateInput: 正常输入', () => {
+  const result = validateInput({
+    cropKey: 'winter_wheat', areaMu: 10, rowSpacingCm: 20, plantSpacingCm: 0.25
+  });
+  assertEqual(result.cropKey, 'winter_wheat');
+});
+runTest('validateInput: 面积=null 抛出异常', () => {
+  assertThrows(() => validateInput({
+    cropKey: 'winter_wheat', areaMu: null, rowSpacingCm: 20, plantSpacingCm: 0.25
+  }));
+});
+runTest('validateInput: 行距=字符串 抛出异常', () => {
+  assertThrows(() => validateInput({
+    cropKey: 'winter_wheat', areaMu: 10, rowSpacingCm: '20', plantSpacingCm: 0.25
+  }));
+});
+runTest('validateInput: 株距=NaN 抛出异常', () => {
+  assertThrows(() => validateInput({
+    cropKey: 'winter_wheat', areaMu: 10, rowSpacingCm: 20, plantSpacingCm: NaN
+  }));
+});
+runTest('validateInput: 出苗率=1.5 抛出异常', () => {
+  assertThrows(() => validateInput({
+    cropKey: 'winter_wheat', areaMu: 10, rowSpacingCm: 20, plantSpacingCm: 0.25, emergenceRate: 1.5
+  }));
+});
+runTest('validateInput: 空对象 抛出异常', () => {
+  assertThrows(() => validateInput({}));
+});
+runTest('validateInput: null 抛出异常', () => {
+  assertThrows(() => validateInput(null));
+});
+
+// ---- 综合场景测试 ----
+runTest('综合场景: 冬小麦 10 亩', () => {
+  const result = calculate({
+    cropKey: 'winter_wheat', areaMu: 10, rowSpacingCm: 20, plantSpacingCm: 0.25
+  });
+  assertApprox(result.plantsPerMu, 1333340, 1);
+  assert(result.totalSeed > 0);
+});
+runTest('综合场景: 春玉米 5 亩', () => {
+  const result = calculate({
+    cropKey: 'spring_maize', areaMu: 5, rowSpacingCm: 60, plantSpacingCm: 30
+  });
+  assertApprox(result.plantsPerMu, 3703.7, 0.1);
+  assert(result.totalSeed > 0);
+});
+runTest('综合场景: 大豆 20 亩', () => {
+  const result = calculate({
+    cropKey: 'soybean', areaMu: 20, rowSpacingCm: 55, plantSpacingCm: 12
+  });
+  assertApprox(result.plantsPerMu, 10101.01, 0.1);
+  assert(result.totalSeed > 0);
+});
+runTest('综合场景: 棉花 8 亩', () => {
+  const result = calculate({
+    cropKey: 'cotton', areaMu: 8, rowSpacingCm: 90, plantSpacingCm: 25
+  });
+  assertApprox(result.plantsPerMu, 2962.96, 0.1);
+  assert(result.totalSeed > 0);
+});
+runTest('综合场景: 马铃薯 15 亩', () => {
+  const result = calculate({
+    cropKey: 'potato', areaMu: 15, rowSpacingCm: 65, plantSpacingCm: 27
+  });
+  assertEqual(result.seedUnit, 'kg');
+  assertApprox(result.totalSeed, 15 * 135, 0.1);
+});
+runTest('综合场景: 自定义出苗率', () => {
+  const result = calculate({
+    cropKey: 'spring_maize', areaMu: 10, rowSpacingCm: 60, plantSpacingCm: 30, emergenceRate: 0.8
+  });
+  assert(result.totalSeed > 0);
+});
+runTest('综合场景: 面积=0', () => {
+  const result = calculate({
+    cropKey: 'spring_maize', areaMu: 0, rowSpacingCm: 60, plantSpacingCm: 30
+  });
+  assertEqual(result.totalSeed, 0);
+});
+runTest('综合场景: 无效作物 抛出异常', () => {
+  assertThrows(() => calculate({
+    cropKey: 'invalid', areaMu: 10, rowSpacingCm: 60, plantSpacingCm: 30
+  }));
+});
+runTest('综合场景: 负数面积 抛出异常', () => {
+  assertThrows(() => calculate({
+    cropKey: 'spring_maize', areaMu: -10, rowSpacingCm: 60, plantSpacingCm: 30
+  }));
+});
+
+// ---- 精度测试 ----
+runTest('精度测试: 小数计算', () => {
+  assertEqual(calcTotalSeed(1.5, 1234.56), 1851.84);
+});
+runTest('精度测试: 油菜千粒重', () => {
+  const weight = calcSeedWeightPerMu(12000, 3.8, 0.8);
+  assertApprox(weight, 57, 0.1);
+});
+runTest('精度测试: 大数值', () => {
+  const weight = calcSeedWeightPerMu(1000000, 1000, 0.5);
+  assertEqual(weight, 2000000);
+});
+
+/* ============================================================
+ * 第三部分：使用说明书（渲染到 #docContent）
+ * ============================================================ */
+const DOC_HTML = `
+<h2>一、工具简介</h2>
+<p>
+  「作物播种时间与株距计算器」是一款面向基层农技人员、种植大户和家庭农场的轻量级参考工具。
+  它整合了 12 类常见农作物（小麦、水稻、玉米、大豆、棉花、油菜、马铃薯、花生的不同茬口）的
+  播种节气、公历月份、行距、株距、播种深度、目标密度、千粒重等通行参数，并提供基于
+  「行距 × 株距 → 每亩株数 → 每亩用种量 → 总用种量」的链式计算，帮助用户在备种、备耕阶段
+  快速估算所需种子数量，避免因估算偏差导致的种子浪费或短缺。
+</p>
+
+<h2>二、解决什么问题</h2>
+<ul>
+  <li><strong>播期查询</strong>：快速查看某种作物在全国通行范围内的适宜播种节气与公历月份，避免误播。</li>
+  <li><strong>密度估算</strong>：根据行距、株距反推每亩理论株（穴）数，辅助制定种植密度方案。</li>
+  <li><strong>用种量计算</strong>：结合千粒重与出苗率，估算每亩与整块地的种子需求量（按重量计）。</li>
+  <li><strong>方案对比</strong>：调整行株距或出苗率，观察用种量变化，辅助选择种植模式。</li>
+</ul>
+
+<h2>三、参数详解</h2>
+<h3>3.1 作物（cropKey）</h3>
+<p>
+  工具内置 12 种作物/茬口组合，每种作物均给出全国通行范围的数据，而非精确到县一级的本地化数据。
+  作物键名与对应名称如下：
+</p>
+<table>
+  <tr><th>键名</th><th>作物名称</th><th>类别</th></tr>
+  <tr><td>winter_wheat</td><td>冬小麦</td><td>禾谷类·条播</td></tr>
+  <tr><td>spring_wheat</td><td>春小麦</td><td>禾谷类·条播</td></tr>
+  <tr><td>early_rice</td><td>早稻</td><td>禾谷类·移栽/直播</td></tr>
+  <tr><td>middle_rice</td><td>中稻</td><td>禾谷类·移栽/直播</td></tr>
+  <tr><td>late_rice</td><td>晚稻</td><td>禾谷类·移栽/直播</td></tr>
+  <tr><td>spring_maize</td><td>春玉米</td><td>禾谷类·穴播</td></tr>
+  <tr><td>summer_maize</td><td>夏玉米</td><td>禾谷类·穴播</td></tr>
+  <tr><td>soybean</td><td>大豆</td><td>豆类·穴播/条播</td></tr>
+  <tr><td>cotton</td><td>棉花</td><td>纤维类·穴播</td></tr>
+  <tr><td>rapeseed</td><td>油菜</td><td>油料类·条播/移栽</td></tr>
+  <tr><td>potato</td><td>马铃薯</td><td>薯类·块茎播种</td></tr>
+  <tr><td>peanut</td><td>花生</td><td>油料类·穴播</td></tr>
+</table>
+
+<h3>3.2 播种面积（areaMu）</h3>
+<p>
+  单位：亩。1 公顷 = 15 亩，1 亩 ≈ 666.67 m²。取值范围：≥ 0。
+  当输入 0 时，总用种量返回 0；不允许输入负数。
+</p>
+
+<h3>3.3 行距（rowSpacingCm）</h3>
+<p>
+  单位：厘米（cm）。指相邻两行中心线之间的距离。不同作物差异较大：
+  小麦 15-25 cm，玉米 55-65 cm，棉花 80-100 cm。必须大于 0。
+</p>
+
+<h3>3.4 株距（plantSpacingCm）</h3>
+<p>
+  单位：厘米（cm）。指同一行内相邻两株（穴）中心之间的距离。
+  对于条播作物（如小麦），工具给出的是按基本苗折算的「等效株距」，
+  例如冬小麦基本苗 20 万/亩、行距 20 cm 时，等效株距约 0.25 cm。
+  必须大于 0。
+</p>
+
+<h3>3.5 预计出苗率（emergenceRate）</h3>
+<p>
+  取值范围：(0, 1]。出苗率 = 种子发芽率 × 田间成苗率，综合反映种子质量与田间条件。
+  一般大田作物在 0.7-0.9 之间。若留空，则使用作物默认值。
+</p>
+
+<h3>3.6 千粒重（thousandGrainWeight）</h3>
+<p>
+  单位：克（g）。指 1000 粒自然干燥种子的重量，是估算用种量的关键参数。
+  不同作物差异极大：油菜约 3-4.5 g，小麦约 35-50 g，玉米约 250-400 g。
+  工具内置的是通行范围，具体品种需查种子标签或品种审定数据。
+</p>
+
+<h2>四、完整使用场景</h2>
+
+<h3>场景 1：华北平原冬小麦备种</h3>
+<p><strong>背景</strong>：河北某种植大户计划种植冬小麦 50 亩，采用 20 cm 行距机播。</p>
+<p><strong>输入</strong>：</p>
+<ul>
+  <li>作物：冬小麦</li>
+  <li>面积：50 亩</li>
+  <li>行距：20 cm</li>
+  <li>株距：0.25 cm（等效株距，对应基本苗约 20 万/亩）</li>
+  <li>出苗率：留空（使用默认 0.75）</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+  <li>每亩理论株数 = 6666700 / (20 × 0.25) = 1333340 株/亩</li>
+  <li>每亩需播种粒数 = 200000 / 0.75 ≈ 266667 粒（按目标密度 20 万/亩）</li>
+  <li>每亩种子重量 = 266667 × 42 / 1000 ≈ 11200 g = 11.2 kg</li>
+  <li>总用种量 = 50 × 11.2 = 560 kg</li>
+</ol>
+<p><strong>结果</strong>：约需种子 560 kg。实际采购建议在此基础上增加 5%-10% 的余量。</p>
+
+<h3>场景 2：东北春玉米备种</h3>
+<p><strong>背景</strong>：黑龙江某家庭农场计划种植春玉米 120 亩，采用 60 cm 行距、30 cm 株距精量播种。</p>
+<p><strong>输入</strong>：</p>
+<ul>
+  <li>作物：春玉米</li>
+  <li>面积：120 亩</li>
+  <li>行距：60 cm</li>
+  <li>株距：30 cm</li>
+  <li>出苗率：0.9</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+  <li>每亩理论株数 = 6666700 / (60 × 30) ≈ 3703.7 株/亩</li>
+  <li>每亩需播种粒数 = 4000 / 0.9 ≈ 4444 粒</li>
+  <li>每亩种子重量 = 4444 × 320 / 1000 ≈ 1422.22 g</li>
+  <li>总用种量 = 120 × 1422.22 ≈ 170666.67 g ≈ 170.67 kg</li>
+</ol>
+<p><strong>结果</strong>：约需种子 170.67 kg。若使用包衣种子，按袋装规格采购即可。</p>
+
+<h3>场景 3：长江流域油菜移栽</h3>
+<p><strong>背景</strong>：湖南某合作社计划移栽油菜 30 亩，行距 25 cm，株距 17 cm。</p>
+<p><strong>输入</strong>：</p>
+<ul>
+  <li>作物：油菜</li>
+  <li>面积：30 亩</li>
+  <li>行距：25 cm</li>
+  <li>株距：17 cm</li>
+  <li>出苗率：留空（默认 0.8）</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+  <li>每亩理论穴数 = 6666700 / (25 × 17) ≈ 15686 穴/亩</li>
+  <li>每亩需播种粒数 = 12000 / 0.8 = 15000 粒</li>
+  <li>每亩种子重量 = 15000 × 3.8 / 1000 = 57 g</li>
+  <li>总用种量 = 30 × 57 = 1710 g ≈ 1.71 kg</li>
+</ol>
+<p><strong>结果</strong>：约需种子 1.71 kg。油菜种子细小，实际育苗需考虑苗床损耗，建议多备 20%。</p>
+
+<h3>场景 4：新疆棉花高密度栽培</h3>
+<p><strong>背景</strong>：新疆某团场计划种植棉花 200 亩，采用 90 cm 行距、25 cm 株距。</p>
+<p><strong>输入</strong>：</p>
+<ul>
+  <li>作物：棉花</li>
+  <li>面积：200 亩</li>
+  <li>行距：90 cm</li>
+  <li>株距：25 cm</li>
+  <li>出苗率：0.85</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+  <li>每亩理论株数 = 6666700 / (90 × 25) ≈ 2962.96 株/亩</li>
+  <li>每亩需播种粒数 = 4000 / 0.85 ≈ 4705.88 粒</li>
+  <li>每亩种子重量 = 4705.88 × 105 / 1000 ≈ 494.12 g</li>
+  <li>总用种量 = 200 × 494.12 ≈ 98823.53 g ≈ 98.82 kg</li>
+</ol>
+<p><strong>结果</strong>：约需种子 98.82 kg。<strong>注意</strong>：新疆高密度栽培模式目标密度可达 12000-15000 株/亩，
+本工具默认值 4000 株/亩不适用于该模式，需用户自行调整目标密度参数或咨询当地农技部门。</p>
+
+<h3>场景 5：中原地区马铃薯备种</h3>
+<p><strong>背景</strong>：河南某农场计划种植马铃薯 40 亩，行距 65 cm，株距 27 cm。</p>
+<p><strong>输入</strong>：</p>
+<ul>
+  <li>作物：马铃薯</li>
+  <li>面积：40 亩</li>
+  <li>行距：65 cm</li>
+  <li>株距：27 cm</li>
+</ul>
+<p><strong>计算过程</strong>：</p>
+<ol>
+  <li>每亩理论穴数 = 6666700 / (65 × 27) ≈ 3798.12 穴/亩</li>
+  <li>马铃薯按种薯重量计，每亩默认用种量 135 kg</li>
+  <li>总用种量 = 40 × 135 = 5400 kg</li>
+</ol>
+<p><strong>结果</strong>：约需种薯 5400 kg（5.4 吨）。马铃薯用种按重量计，不按千粒重估算。</p>
+
+<h2>五、常见错误与排查</h2>
+<table>
+  <tr><th>错误现象</th><th>可能原因</th><th>排查方法</th></tr>
+  <tr>
+    <td>提示「行距和株距必须大于 0」</td>
+    <td>行距或株距输入为 0 或负数</td>
+    <td>检查输入框，确保为正数</td>
+  </tr>
+  <tr>
+    <td>提示「出苗率必须在 (0, 1] 范围内」</td>
+    <td>出苗率输入 > 1 或 ≤ 0</td>
+    <td>出苗率应为 0-1 之间的小数，如 0.85 表示 85%</td>
+  </tr>
+  <tr>
+    <td>计算结果明显偏大或偏小</td>
+    <td>行株距单位错误（如把 mm 当 cm）</td>
+    <td>确认行株距单位为厘米（cm）</td>
+  </tr>
+  <tr>
+    <td>小麦用种量异常</td>
+    <td>未使用等效株距</td>
+    <td>小麦为条播作物，需按基本苗折算等效株距（约 0.2-0.5 cm）</td>
+  </tr>
+  <tr>
+    <td>马铃薯用种量单位不对</td>
+    <td>混淆了种薯与实生籽</td>
+    <td>马铃薯生产上用种薯（块茎）繁殖，按重量计，不按千粒重</td>
+  </tr>
+  <tr>
+    <td>结果与实际差异大</td>
+    <td>未考虑本地化差异</td>
+    <td>本工具给的是全国通行范围，具体以当地农技部门指导为准</td>
+  </tr>
+</table>
+
+<h2>六、数据来源与标准依据</h2>
+<p>本工具数据主要来源于以下公开资料，所有数值均为通行范围，非精确到县一级的本地化数据：</p>
+<ol>
+  <li>《中国农业百科全书·农作物卷》，中国农业出版社。</li>
+  <li>《中国农业百科全书·蔬菜卷》，中国农业出版社（马铃薯部分）。</li>
+  <li>农业农村部历年发布的《主推技术》与《主导品种》。</li>
+  <li>国家标准（种子质量要求）：
+    <ul>
+      <li>GB 4404.1-2008《粮食作物种子 第1部分：禾谷类》</li>
+      <li>GB 4404.2-2010《豆类种子》</li>
+      <li>GB 4404.3-1999《棉花种子》</li>
+      <li>GB 4404.4-1999《油料作物种子》</li>
+      <li>GB/T 3543.1~3543.7-1995《农作物种子检验规程》</li>
+    </ul>
+  </li>
+</ol>
+<blockquote>
+  <strong>说明</strong>：部分作物的千粒重、目标密度等参数在不同品种、不同生态区差异较大，
+  本工具给出的是通行范围的中位值或常见值，具体品种需查品种审定公告或种子标签。
+  对于拿不准的精确数值，建议查标准原文或咨询当地农技部门。
+</blockquote>
+
+<h2>七、局限性说明</h2>
+<ul>
+  <li><strong>地域差异</strong>：我国幅员辽阔，同一作物在不同省份、不同海拔、不同气候带的适宜播期可相差 1 个月以上。本工具给出的是全国通行范围，<strong>不能替代当地农技部门的播期预报</strong>。</li>
+  <li><strong>品种差异</strong>：同一作物不同品种的千粒重、分蘖力、株型差异较大，本工具使用通行范围的中位值，可能与具体品种不符。</li>
+  <li><strong>栽培模式差异</strong>：如新疆棉花高密度栽培、东北玉米大垄双行等特殊模式，本工具默认参数不适用，需用户自行调整。</li>
+  <li><strong>出苗率估算</strong>：出苗率受种子质量、整地质量、墒情、气温、病虫害等多因素影响，本工具默认值仅供参考。</li>
+  <li><strong>马铃薯特殊性</strong>：马铃薯生产上用种薯（块茎）繁殖，用种量按重量计，不按千粒重估算。本工具对马铃薯采用固定每亩用种量，未考虑种薯切块大小、芽眼数等因素。</li>
+  <li><strong>水稻移栽</strong>：水稻移栽的用种量还与育秧方式（水育秧、旱育秧、机插秧盘）密切相关，本工具仅按穴数估算，未区分育秧方式。</li>
+  <li><strong>不替代田间试验</strong>：本工具为参考估算工具，不能替代品种试验、密度试验、播期试验等田间验证。</li>
+  <li><strong>数据时效性</strong>：作物主推技术、品种推荐会随年份调整，本工具数据基于公开资料整理，不保证与最新年度推荐完全一致。</li>
+</ul>
+
+<h2>八、算法说明</h2>
+<p>核心计算公式如下：</p>
+<ol>
+  <li><strong>每亩理论株（穴）数</strong> = 6666700 / (行距cm × 株距cm)</li>
+  <li><strong>每亩需播种粒数</strong> = 目标密度 / 出苗率</li>
+  <li><strong>每亩种子重量(g)</strong> = 每亩需播种粒数 × 千粒重(g) / 1000</li>
+  <li><strong>总用种量</strong> = 每亩种子重量 × 面积（亩）</li>
+</ol>
+<p>
+  其中 6666700 是 1 亩对应的平方厘米数（1 亩 = 666.67 m² = 6666700 cm²）。
+  所有中间结果保留 2 位小数，最终结果保留 2 位小数。
+</p>
+
+<h2>九、版本与反馈</h2>
+<p>当前版本：v2.0.0-完整版 20261021</p>
+<p>
+  本工具为开源参考工具，欢迎农技人员、种植户反馈使用中发现的问题。
+  如发现数据与本地实际差异较大，请以当地农业农村部门发布的最新技术意见为准。
+</p>
+`;
+
+/* ============================================================
+ * 页面交互
+ * ============================================================ */
+
+// 渲染说明书
+document.getElementById('docContent').innerHTML = DOC_HTML;
+
+// 初始化作物下拉
+const cropSelect = document.getElementById('crop');
+Object.keys(CROPS).forEach(key => {
+  const option = document.createElement('option');
+  option.value = key;
+  option.textContent = CROPS[key].name;
+  cropSelect.appendChild(option);
+});
+
+// 更新作物信息
+function updateCropInfo() {
+  const crop = CROPS[cropSelect.value];
+  document.getElementById('rowSpacing').value = crop.rowSpacing.default;
+  document.getElementById('plantSpacing').value = crop.plantSpacing.default;
+  document.getElementById('plantSpacing').placeholder = '推荐 ' + crop.plantSpacing.default;
+  document.getElementById('plantSpacingHint').textContent = crop.plantSpacing.note || '';
+  document.getElementById('emergenceRate').placeholder = '默认 ' + crop.emergenceRate.default;
+
+  const infoDiv = document.getElementById('cropInfo');
+  infoDiv.style.display = 'block';
+  infoDiv.innerHTML = '<dl>' +
+    '<dt>作物类别</dt><dd>' + crop.category + '</dd>' +
+    '<dt>适宜播种节气</dt><dd>' + crop.solarTerms + '</dd>' +
+    '<dt>节气说明</dt><dd>' + crop.solarTermsNote + '</dd>' +
+    '<dt>公历月份</dt><dd>' + crop.months + '</dd>' +
+    '<dt>行距范围</dt><dd>' + crop.rowSpacing.min + '-' + crop.rowSpacing.max + ' ' + crop.rowSpacing.unit + '</dd>' +
+    '<dt>株距范围</dt><dd>' + crop.plantSpacing.min + '-' + crop.plantSpacing.max + ' ' + crop.plantSpacing.unit + (crop.plantSpacing.note ? '（' + crop.plantSpacing.note + '）' : '') + '</dd>' +
+    '<dt>播种深度</dt><dd>' + crop.depth.min + '-' + crop.depth.max + ' ' + crop.depth.unit + '</dd>' +
+    '<dt>目标密度</dt><dd>' + crop.targetDensity.min.toLocaleString() + '-' + crop.targetDensity.max.toLocaleString() + ' ' + crop.targetDensity.unit + (crop.targetDensity.note ? '（' + crop.targetDensity.note + '）' : '') + '</dd>' +
+    (crop.thousandGrainWeight ? '<dt>千粒重</dt><dd>' + crop.thousandGrainWeight.min + '-' + crop.thousandGrainWeight.max + ' ' + crop.thousandGrainWeight.unit + '</dd>' : '') +
+    (crop.seedWeightPerMu ? '<dt>每亩用种量</dt><dd>' + crop.seedWeightPerMu.min + '-' + crop.seedWeightPerMu.max + ' ' + crop.seedWeightPerMu.unit + '（' + crop.seedWeightPerMu.note + '）</dd>' : '') +
+    '<dt>参考来源</dt><dd>' + crop.references + '</dd>' +
+    '</dl>';
+}
+
+cropSelect.addEventListener('change', updateCropInfo);
+updateCropInfo();
+
+// 计算按钮
+document.getElementById('calcBtn').addEventListener('click', () => {
+  const cropKey = cropSelect.value;
+  const areaMu = parseFloat(document.getElementById('area').value);
+  const rowSpacingCm = parseFloat(document.getElementById('rowSpacing').value);
+  const plantSpacingCm = parseFloat(document.getElementById('plantSpacing').value);
+  const emergenceRateStr = document.getElementById('emergenceRate').value.trim();
+  const emergenceRate = emergenceRateStr ? parseFloat(emergenceRateStr) : undefined;
+
+  try {
+    const result = calculate({
+      cropKey: cropKey,
+      areaMu: areaMu,
+      rowSpacingCm: rowSpacingCm,
+      plantSpacingCm: plantSpacingCm,
+      emergenceRate: emergenceRate
+    });
+
+    const resultDiv = document.getElementById('result');
+    resultDiv.style.display = 'block';
+
+    let html = '<h3>计算结果</h3>';
+    html += '<div class="result-item"><span class="result-label">作物</span><span class="result-value">' + result.crop.name + '</span></div>';
+    html += '<div class="result-item"><span class="result-label">播种面积</span><span class="result-value">' + result.areaMu + ' 亩</span></div>';
+    html += '<div class="result-item"><span class="result-label">理论株（穴）数/亩</span><span class="result-value">' + result.plantsPerMu.toLocaleString() + '</span></div>';
+    html += '<div class="result-item"><span class="result-label">每亩用种量</span><span class="result-value">' + result.seedWeightPerMu.toLocaleString() + ' ' + result.seedUnit + '</span></div>';
+    html += '<div class="result-item"><span class="result-label">总用种量</span><span class="result-value">' + result.totalSeed.toLocaleString() + ' ' + result.seedUnit + '</span></div>';
+
+    if (result.seedUnit === 'g' && result.totalSeed > 1000) {
+      html += '<div class="result-item"><span class="result-label">折合</span><span class="result-value">' + (result.totalSeed / 1000).toFixed(2) + ' kg</span></div>';
+    }
+
+    html += '<div style="margin-top:10px;font-size:12px;color:#744210;">' +
+      '<strong>提示：</strong>本结果为理论计算值，实际用种量需考虑种子质量、整地质量、气候条件等因素，' +
+      '建议在此基础上增加 5%-15% 的余量。<strong>具体以当地农技部门指导为准</strong>。' +
+      '</div>';
+
+    resultDiv.innerHTML = html;
+  } catch (e) {
+    alert('计算错误：' + e.message);
+  }
+});
+
+// 重置按钮
+document.getElementById('resetBtn').addEventListener('click', () => {
+  document.getElementById('area').value = '';
+  document.getElementById('emergenceRate').value = '';
+  document.getElementById('result').style.display = 'none';
+  updateCropInfo();
+});
+
+// 标签切换
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 渲染测试结果
+function renderTests() {
+  const summary = document.getElementById('testSummary');
+  const list = document.getElementById('testList');
+
+  const passed = testResults.filter(r => r.pass).length;
+  const total = testResults.length;
+
+  summary.innerHTML =
+    '<h3>单元测试结果</h3>' +
+    '<p>通过 <span class="test-pass">' + passed + '</span> / 共 <strong>' + total + '</strong> 个测试</p>' +
+    '<p>通过率：' + (passed / total * 100).toFixed(1) + '%</p>';
+
+  list.innerHTML = testResults.map(r =>
+    '<div class="test-item ' + (r.pass ? 'pass' : 'fail') + '">' +
+    (r.pass ? '✓' : '✗') + ' ' + r.name + (r.error ? ' - ' + r.error : '') +
+    '</div>'
+  ).join('');
+
+  console.log('通过 ' + passed + ' / 共 ' + total);
+}
+
+renderTests();
+</script>
+</body>
+</html>

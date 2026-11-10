@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管道流量流速计算工具</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f4f8;
+  color: #1a202c;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 20px;
+  text-align: center;
+  margin-bottom: 6px;
+  color: #2d3748;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #718096;
+  margin-bottom: 16px;
+}
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #2b6cb0;
+  border-left: 3px solid #2b6cb0;
+  padding-left: 8px;
+}
+.form-group {
+  margin-bottom: 12px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #4a5568;
+}
+.form-group .hint {
+  font-size: 12px;
+  color: #a0aec0;
+  font-weight: 400;
+}
+input[type="number"], select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #2d3748;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input[type="number"]:focus, select:focus {
+  border-color: #2b6cb0;
+  box-shadow: 0 0 0 2px rgba(43,108,176,0.15);
+}
+input:disabled {
+  background: #edf2f7;
+  color: #a0aec0;
+}
+.row {
+  display: flex;
+  gap: 10px;
+}
+.row > .form-group {
+  flex: 1;
+}
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.radio-group label:has(input:checked) {
+  background: #ebf4ff;
+  border-color: #2b6cb0;
+  color: #2b6cb0;
+  font-weight: 600;
+}
+.radio-group input[type="radio"] {
+  accent-color: #2b6cb0;
+}
+.btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #2b6cb0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn:hover { background: #2c5282; }
+.btn:active { background: #1a365d; }
+.result-box {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 10px;
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2e8f0;
+  font-size: 14px;
+}
+.result-item:last-child { border-bottom: none; }
+.result-label { color: #4a5568; }
+.result-value {
+  font-weight: 700;
+  color: #2b6cb0;
+  font-size: 15px;
+  text-align: right;
+  word-break: break-all;
+}
+.result-note {
+  font-size: 12px;
+  color: #a0aec0;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.flow-regime {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.flow-laminar { background: #c6f6d5; color: #276749; }
+.flow-transition { background: #fefcbf; color: #975a16; }
+.flow-turbulent { background: #fed7d7; color: #9b2c2c; }
+.source-section {
+  font-size: 13px;
+  color: #4a5568;
+  line-height: 1.8;
+}
+.source-section ul {
+  padding-left: 18px;
+  margin-top: 6px;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #a0aec0;
+  z-index: 999;
+}
+.error-msg {
+  color: #e53e3e;
+  font-size: 13px;
+  margin-top: 8px;
+  display: none;
+}
+.formula-box {
+  background: #fffff0;
+  border: 1px solid #ecc94b;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #744210;
+  margin-top: 8px;
+  line-height: 1.7;
+}
+.formula-box code {
+  font-family: "Courier New", monospace;
+  background: rgba(0,0,0,0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+@media (max-width: 640px) {
+  body { padding: 8px; font-size: 13px; }
+  .card { padding: 12px; }
+  .row { flex-direction: column; gap: 0; }
+  h1 { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔧 管道流量流速计算</h1>
+  <p class="subtitle">Q = v·A &nbsp;|&nbsp; A = πd²/4 &nbsp;|&nbsp; Re = vd/ν</p>
+
+  <!-- 已知条件选择 -->
+  <div class="card">
+    <div class="card-title">📐 已知条件选择</div>
+    <p style="font-size:13px;color:#718096;margin-bottom:10px;">选择已知的两个参数，自动计算第三个：</p>
+    <div class="radio-group">
+      <label><input type="radio" name="known" value="d_v" checked> 管径 d + 流速 v → 求流量 Q</label>
+      <label><input type="radio" name="known" value="d_Q"> 管径 d + 流量 Q → 求流速 v</label>
+      <label><input type="radio" name="known" value="v_Q"> 流速 v + 流量 Q → 求管径 d</label>
+    </div>
+  </div>
+
+  <!-- 参数输入 -->
+  <div class="card">
+    <div class="card-title">📝 参数输入</div>
+    <div class="row">
+      <div class="form-group">
+        <label>管内径 d <span class="hint">(mm)</span></label>
+        <input type="number" id="inp_d" step="any" min="0" placeholder="如：100">
+      </div>
+      <div class="form-group">
+        <label>流速 v <span class="hint">(m/s)</span></label>
+        <input type="number" id="inp_v" step="any" min="0" placeholder="如：1.5">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>体积流量 Q <span class="hint">(m³/h)</span></label>
+      <input type="number" id="inp_Q" step="any" min="0" placeholder="如：42.4">
+    </div>
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0;">
+    <div class="row">
+      <div class="form-group">
+        <label>水温 T <span class="hint">(℃)</span></label>
+        <input type="number" id="inp_T" step="any" min="0" max="100" value="20" placeholder="0~100">
+      </div>
+      <div class="form-group">
+        <label>管道长度 L <span class="hint">(m)</span></label>
+        <input type="number" id="inp_L" step="any" min="0" value="100" placeholder="如：100">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>管壁绝对粗糙度 ε <span class="hint">(mm)</span>
+        <span class="hint">（新钢管≈0.05，铸铁管≈0.25，塑料管≈0.01）</span>
+      </label>
+      <input type="number" id="inp_eps" step="any" min="0" value="0.05" placeholder="如：0.05">
+    </div>
+    <div class="formula-box">
+      <strong>公式说明：</strong><br>
+      流量公式：<code>Q = v × A</code>，<code>A = πd²/4</code><br>
+      雷诺数：<code>Re = v·d / ν</code><br>
+      层流(Re&lt;2000)：<code>λ = 64/Re</code><br>
+      湍流(Re≥4000)：Colebrook公式 <code>1/√λ = -2lg[ε/(3.7d) + 2.51/(Re·√λ)]</code><br>
+      沿程水头损失：<code>h<sub>f</sub> = λ·(L/d)·v²/(2g)</code>，g = 9.81 m/s²
+    </div>
+  </div>
+
+  <!-- 计算按钮 -->
+  <button class="btn" id="btnCalc" onclick="calculate()">⚡ 开始计算</button>
+  <div class="error-msg" id="errMsg"></div>
+
+  <!-- 计算结果 -->
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="card-title">📊 计算结果</div>
+    <div class="result-box">
+      <div class="result-item">
+        <span class="result-label">管内径 d</span>
+        <span class="result-value" id="res_d">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">截面积 A</span>
+        <span class="result-value" id="res_A">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">流速 v</span>
+        <span class="result-value" id="res_v">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">体积流量 Q</span>
+        <span class="result-value" id="res_Q">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">水温 T</span>
+        <span class="result-value" id="res_T">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">运动粘度 ν</span>
+        <span class="result-value" id="res_nu">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">雷诺数 Re</span>
+        <span class="result-value" id="res_Re">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">流态</span>
+        <span class="result-value" id="res_regime">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">沿程阻力系数 λ</span>
+        <span class="result-value" id="res_lambda">—</span>
+      </div>
+      <div class="result-item">
+        <span class="result-label">沿程水头损失 h<sub>f</sub></span>
+        <span class="result-value" id="res_hf">—</span>
+      </div>
+      <div class="result-note" id="res_note"></div>
+    </div>
+  </div>
+
+  <!-- 水的运动粘度参考表 -->
+  <div class="card">
+    <div class="card-title">🌡️ 水的运动粘度参考表</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#edf2f7;">
+            <th style="padding:6px 8px;text-align:left;border:1px solid #e2e8f0;">温度 (℃)</th>
+            <th style="padding:6px 8px;text-align:right;border:1px solid #e2e8f0;">ν (×10⁻⁶ m²/s)</th>
+            <th style="padding:6px 8px;text-align:left;border:1px solid #e2e8f0;">温度 (℃)</th>
+            <th style="padding:6px 8px;text-align:right;border:1px solid #e2e8f0;">ν (×10⁻⁶ m²/s)</th>
+          </tr>
+        </thead>
+        <tbody id="viscTable"></tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:#a0aec0;margin-top:6px;">* 表中数据为标准大气压下纯水的运动粘度，工具内通过线性插值获取任意温度对应值。</p>
+  </div>
+
+  <!-- 数据来源 -->
+  <div class="card">
+    <div class="card-title">📚 数据来源</div>
+    <div class="source-section">
+      <ul>
+        <li><strong>流量公式</strong> Q = v·A，A = πd²/4：连续性方程，见《工程流体力学》（闻德荪 主编，高等教育出版社）。</li>
+        <li><strong>雷诺数</strong> Re = vd/ν： Osborne Reynolds 经典定义，临界值 Re<sub>cr</sub>≈2000（层流）、Re≥4000（湍流），过渡区 2000~4000。</li>
+        <li><strong>层流沿程阻力系数</strong> λ = 64/Re：圆管层流 Hagen-Poiseuille 流动理论解。</li>
+        <li><strong>湍流沿程阻力系数</strong>：Colebrook-White 公式（1939），<br>
+          1/√λ = -2·lg[ε/(3.7d) + 2.51/(Re·√λ)]，<br>
+          参见 C.F. Colebrook, "Turbulent flow in pipes, with particular reference to the transition region between the smooth and rough pipe laws", Journal of the ICE, 1939。</li>
+        <li><strong>沿程水头损失</strong> h<sub>f</sub> = λ·(L/d)·v²/(2g)：Darcy-Weisbach 公式。</li>
+        <li><strong>水的运动粘度</strong>：数据取自《工程流体力学》教材附录及 CRC Handbook of Chemistry and Physics 中水的物性表（1 atm）。</li>
+        <li><strong>重力加速度</strong> g = 9.81 m/s²（标准值）。</li>
+        <li><strong>管壁粗糙度参考值</strong>：新钢管 ε≈0.045~0.05mm，旧钢管≈0.1~0.2mm，铸铁管≈0.25mm，塑料/玻璃管≈0.001~0.01mm，参见《给水排水设计手册》。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="version">v1.0.0-管道流量流速计算 20261021</div>
+
+<script>
+// 水的运动粘度表 (温度℃ → ν ×10⁻⁶ m²/s)
+// 数据来源：工程流体力学教材附录 / CRC Handbook
+var viscTable = [
+  [0, 17.92],
+  [5, 15.19],
+  [10, 13.06],
+  [15, 11.39],
+  [20, 10.07],
+  [25, 8.94],
+  [30, 8.03],
+  [35, 7.27],
+  [40, 6.61],
+  [45, 6.05],
+  [50, 5.56],
+  [55, 5.13],
+  [60, 4.75],
+  [65, 4.42],
+  [70, 4.13],
+  [75, 3.87],
+  [80, 3.65],
+  [85, 3.44],
+  [90, 3.26],
+  [95, 3.10],
+  [100, 2.95]
+];
+
+// 填充粘度参考表
+(function() {
+  var tbody = document.getElementById('viscTable');
+  var html = '';
+  for (var i = 0; i < viscTable.length; i += 2) {
+    html += '<tr>';
+    html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;">' + viscTable[i][0] + '</td>';
+    html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">' + viscTable[i][1].toFixed(2) + '</td>';
+    if (i + 1 < viscTable.length) {
+      html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;">' + viscTable[i+1][0] + '</td>';
+      html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:right;">' + viscTable[i+1][1].toFixed(2) + '</td>';
+    } else {
+      html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;"></td>';
+      html += '<td style="padding:4px 8px;border:1px solid #e2e8f0;"></td>';
+    }
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+})();
+
+// 线性插值获取运动粘度
+function getViscosity(T) {
+  if (T <= viscTable[0][0]) return viscTable[0][1] * 1e-6;
+  if (T >= viscTable[viscTable.length-1][0]) return viscTable[viscTable.length-1][1] * 1e-6;
+  for (var i = 0; i < viscTable.length - 1; i++) {
+    if (T >= viscTable[i][0] && T <= viscTable[i+1][0]) {
+      var frac = (T - viscTable[i][0]) / (viscTable[i+1][0] - viscTable[i][0]);
+      return (viscTable[i][1] + frac * (viscTable[i+1][1] - viscTable[i][1])) * 1e-6;
+    }
+  }
+  return null;
+}
+
+// Colebrook方程迭代求解 λ
+function solveColebrook(Re, eps, d) {
+  // 初始猜测用 Swamee-Jain 显式公式
+  var eps_d = eps / d;
+  var term = eps_d / 3.7 + 5.74 / Math.pow(Re, 0.9);
+  var lambda = 0.25 / Math.pow(Math.log10(term), 2);
+  
+  // Colebrook 迭代
+  for (var i = 0; i < 100; i++) {
+    var sqrtL = Math.sqrt(lambda);
+    var rhs = -2.0 * Math.log10(eps_d / 3.7 + 2.51 / (Re * sqrtL));
+    var lambdaNew = 1.0 / (rhs * rhs);
+    if (Math.abs(lambdaNew - lambda) < 1e-10) {
+      lambda = lambdaNew;
+      break;
+    }
+    lambda = lambdaNew;
+  }
+  return lambda;
+}
+
+// 根据已知条件更新输入框的禁用状态
+function updateInputStates() {
+  var known = document.querySelector('input[name="known"]:checked').value;
+  var inpD = document.getElementById('inp_d');
+  var inpV = document.getElementById('inp_v');
+  var inpQ = document.getElementById('inp_Q');
+  
+  inpD.disabled = false;
+  inpV.disabled = false;
+  inpQ.disabled = false;
+  
+  if (known === 'd_v') {
+    inpQ.disabled = true;
+    inpQ.value = '';
+    inpQ.placeholder = '自动计算';
+  } else if (known === 'd_Q') {
+    inpV.disabled = true;
+    inpV.value = '';
+    inpV.placeholder = '自动计算';
+  } else if (known === 'v_Q') {
+    inpD.disabled = true;
+    inpD.value = '';
+    inpD.placeholder = '自动计算';
+  }
+}
+
+// 监听已知条件切换
+var radios = document.querySelectorAll('input[name="known"]');
+for (var i = 0; i < radios.length; i++) {
+  radios[i].addEventListener('change', updateInputStates);
+}
+updateInputStates();
+
+function showError(msg) {
+  var el = document.getElementById('errMsg');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+  document.getElementById('resultCard').style.display = 'none';
+}
+
+function hideError() {
+  document.getElementById('errMsg').style.display = 'none';
+}
+
+function fmt(val, digits) {
+  if (digits === undefined) digits = 4;
+  if (Math.abs(val) >= 1e6 || (Math.abs(val) < 0.001 && val !== 0)) {
+    return val.toExponential(digits);
+  }
+  return parseFloat(val.toFixed(digits)).toString();
+}
+
+function calculate() {
+  hideError();
+  
+  var known = document.querySelector('input[name="known"]:checked').value;
+  var d_mm = parseFloat(document.getElementById('inp_d').value);
+  var v_ms = parseFloat(document.getElementById('inp_v').value);
+  var Q_m3h = parseFloat(document.getElementById('inp_Q').value);
+  var T = parseFloat(document.getElementById('inp_T').value);
+  var L = parseFloat(document.getElementById('inp_L').value);
+  var eps_mm = parseFloat(document.getElementById('inp_eps').value);
+  
+  // 验证公共参数
+  if (isNaN(T) || T < 0 || T > 100) {
+    showError('水温需在 0~100℃ 之间');
+    return;
+  }
+  if (isNaN(L) || L <= 0) {
+    showError('管道长度 L 需大于 0');
+    return;
+  }
+  if (isNaN(eps_mm) || eps_mm < 0) {
+    showError('粗糙度 ε 不能为负');
+    return;
+  }
+  
+  var d, v, Q;
+  // d: m, v: m/s, Q: m³/s (内部计算用 m³/s)
+  
+  if (known === 'd_v') {
+    if (isNaN(d_mm) || d_mm <= 0) { showError('请输入有效的管内径 d'); return; }
+    if (isNaN(v_ms) || v_ms <= 0) { showError('请输入有效的流速 v'); return; }
+    d = d_mm / 1000;
+    v = v_ms;
+    var A = Math.PI * d * d / 4;
+    Q = v * A; // m³/s
+  } else if (known === 'd_Q') {
+    if (isNaN(d_mm) || d_mm <= 0) { showError('请输入有效的管内径 d'); return; }
+    if (isNaN(Q_m3h) || Q_m3h <= 0) { showError('请输入有效的流量 Q'); return; }
+    d = d_mm / 1000;
+    Q = Q_m3h / 3600; // m³/h → m³/s
+    var A = Math.PI * d * d / 4;
+    v = Q / A;
+  } else if (known === 'v_Q') {
+    if (isNaN(v_ms) || v_ms <= 0) { showError('请输入有效的流速 v'); return; }
+    if (isNaN(Q_m3h) || Q_m3h <= 0) { showError('请输入有效的流量 Q'); return; }
+    Q = Q_m3h / 3600;
+    v = v_ms;
+    var A = Q / v;
+    d = Math.sqrt(4 * A / Math.PI);
+  }
+  
+  // 运动粘度
+  var nu = getViscosity(T);
+  if (nu === null) { showError('无法获取该温度下的运动粘度'); return; }
+  
+  // 雷诺数
+  var Re = v * d / nu;
+  
+  // 沿程阻力系数
+  var lambda, regime, regimeClass, regimeNote;
+  var eps_m = eps_mm / 1000;
+  
+  if (Re < 2000) {
+    lambda = 64 / Re;
+    regime = '层流';
+    regimeClass = 'flow-laminar';
+    regimeNote = 'λ = 64/Re（Hagen-Poiseuille 理论解）';
+  } else if (Re >= 4000) {
+    lambda = solveColebrook(Re, eps_m, d);
+    regime = '湍流';
+    regimeClass = 'flow-turbulent';
+    regimeNote = 'λ 由 Colebrook-White 公式迭代求解';
+  } else {
+    // 过渡区，按层流公式计算（保守估计），并提示
+    lambda = 64 / Re;
+    regime = '过渡区';
+    regimeClass = 'flow-transition';
+    regimeNote = '⚠️ 过渡区(2000≤Re<4000)流态不稳定，此处按层流公式估算，实际值需查 Moody 图或实验确定';
+  }
+  
+  // 沿程水头损失
+  var g = 9.81;
+  var hf = lambda * (L / d) * (v * v) / (2 * g);
+  
+  // 显示结果
+  var A_display = Math.PI * d * d / 4;
+  
+  document.getElementById('res_d').textContent = fmt(d * 1000, 2) + ' mm';
+  document.getElementById('res_A').textContent = fmt(A_display, 6) + ' m²';
+  document.getElementById('res_v').textContent = fmt(v, 4) + ' m/s';
+  document.getElementById('res_Q').textContent = fmt(Q * 3600, 4) + ' m³/h （' + fmt(Q, 6) + ' m³/s）';
+  document.getElementById('res_T').textContent = T + ' ℃';
+  document.getElementById('res_nu').textContent = fmt(nu * 1e6, 3) + ' ×10⁻⁶ m²/s';
+  document.getElementById('res_Re').textContent = fmt(Re, 1);
+  document.getElementById('res_regime').innerHTML = '<span class="flow-regime ' + regimeClass + '">' + regime + '</span>';
+  document.getElementById('res_lambda').textContent = fmt(lambda, 6);
+  document.getElementById('res_hf').textContent = fmt(hf, 4) + ' m';
+  document.getElementById('res_note').textContent = regimeNote;
+  
+  document.getElementById('resultCard').style.display = 'block';
+  
+  // 滚动到结果
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>

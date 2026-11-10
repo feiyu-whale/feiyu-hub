@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>典故查询工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    background: #f5f5f0;
+    color: #2c2c2c;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #8b0000, #c0392b);
+    color: #fff;
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 28px; letter-spacing: 4px; }
+  header p { margin-top: 8px; font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #8b0000;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 15px;
+    color: #555;
+    transition: all 0.2s;
+    border-right: 1px solid #eee;
+  }
+  .tab:last-child { border-right: none; }
+  .tab.active {
+    background: #8b0000;
+    color: #fff;
+    font-weight: bold;
+  }
+  .tab:hover:not(.active) { background: #f0e0d0; }
+  .panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .search-box {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  .search-box input {
+    width: 70%;
+    padding: 10px 14px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  .search-box select {
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  .search-box button {
+    padding: 10px 20px;
+    background: #8b0000;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .search-box button:hover { background: #a00; }
+  .result-card {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border-left: 4px solid #8b0000;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .result-card h3 {
+    color: #8b0000;
+    font-size: 22px;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+  .meta {
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 12px;
+  }
+  .meta span { margin-right: 16px; }
+  .section-title {
+    font-weight: bold;
+    color: #555;
+    margin: 10px 0 6px;
+    font-size: 14px;
+  }
+  .section-content {
+    background: #faf6ef;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  .original {
+    font-family: "KaiTi", "STKaiti", serif;
+    font-size: 15px;
+    color: #4a2c0a;
+    line-height: 1.9;
+  }
+  .empty {
+    text-align: center;
+    color: #999;
+    padding: 40px;
+    font-size: 15px;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    font-family: "Consolas", "Monaco", monospace;
+  }
+  .test-summary {
+    background: #fff;
+    padding: 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 15px;
+  }
+  .test-pass { color: #27ae60; font-weight: bold; }
+  .test-fail { color: #c0392b; font-weight: bold; }
+  .test-log {
+    background: #fff;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    max-height: 500px;
+    overflow-y: auto;
+    line-height: 1.8;
+  }
+  .log-pass { color: #27ae60; }
+  .log-fail { color: #c0392b; }
+  .manual h2 {
+    color: #8b0000;
+    margin: 24px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #ddd;
+  }
+  .manual h3 {
+    color: #555;
+    margin: 16px 0 8px;
+  }
+  .manual p { margin-bottom: 10px; text-indent: 2em; }
+  .manual ul, .manual ol { margin: 8px 0 12px 2em; }
+  .manual li { margin-bottom: 6px; }
+  .manual table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .manual th, .manual td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .manual th { background: #f0e0d0; }
+  .manual code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #999;
+    background: rgba(255,255,255,0.8);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>典 故 查 询</h1>
+  <p>溯源古籍 · 释义引申 · 真实可考</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="tool">工具</div>
+  <div class="tab" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="manual">使用说明书</div>
+</div>
+
+<!-- 工具面板 -->
+<div class="panel active" id="panel-tool">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="输入典故名称或关键词，如：高山流水、卧薪、史记">
+    <select id="searchMode">
+      <option value="name">按名称</option>
+      <option value="keyword">关键词搜索</option>
+      <option value="source">按出处</option>
+      <option value="era">按时代</option>
+    </select>
+    <button onclick="doSearch()">查询</button>
+    <button onclick="showAll()" style="background:#555;">查看全部</button>
+  </div>
+  <div id="resultArea">
+    <div class="empty">请输入典故名称或选择查询方式</div>
+  </div>
+</div>
+
+<!-- 源码面板 -->
+<div class="panel" id="panel-source">
+  <h2 style="color:#8b0000;margin-bottom:12px;">核心 JS 源码（纯函数，无外部依赖）</h2>
+  <pre id="sourceCode"></pre>
+</div>
+
+<!-- 测试面板 -->
+<div class="panel" id="panel-test">
+  <h2 style="color:#8b0000;margin-bottom:12px;">单元测试（纯 JS 实现，≥30 用例）</h2>
+  <div class="test-summary" id="testSummary">正在运行测试…</div>
+  <div class="test-log" id="testLog"></div>
+</div>
+
+<!-- 说明书面板 -->
+<div class="panel" id="panel-manual">
+  <div class="manual" id="manualContent"></div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码
+ * 典故查询工具 - 核心算法（纯函数实现）
+ * ============================================================ */
+
+/**
+ * 典故数据库（内置真实可考典故，出处均为真实古籍）
+ * 数据来源：《史记》《战国策》《吕氏春秋》《列子》《韩非子》《山海经》《淮南子》《晋书》《西京杂记》《列女传》等
+ * 注：原文据通行版本，个别字词据中华书局点校本
+ */
+const ALLUSION_DB = [
+  {
+    name: "高山流水",
+    pinyin: "gāo shān liú shuǐ",
+    era: "先秦",
+    source: "《列子·汤问》",
+    author: "列御寇（传）",
+    original: "伯牙善鼓琴，钟子期善听。伯牙鼓琴，志在高山。钟子期曰：'善哉，峨峨兮若泰山！'志在流水，钟子期曰：'善哉，洋洋兮若江河！'",
+    meaning: "比喻知音难遇或乐曲高妙。",
+    extended: "后用以比喻知己、知音，或形容音乐作品意境高远、格调清雅。",
+    related: ["伯牙绝弦", "知音"]
+  },
+  {
+    name: "刻舟求剑",
+    pinyin: "kè zhōu qiú jiàn",
+    era: "先秦",
+    source: "《吕氏春秋·察今》",
+    author: "吕不韦（主编）",
+    original: "楚人有涉江者，其剑自舟中坠于水，遽契其舟曰：'是吾剑之所从坠。'舟止，从其所契者入水求之。舟已行矣，而剑不行，求剑若此，不亦惑乎？",
+    meaning: "比喻拘泥成法，不知变通。",
+    extended: "讽刺那些不顾事物发展变化、死守教条的人。",
+    related: ["守株待兔", "缘木求鱼"]
+  },
+  {
+    name: "卧薪尝胆",
+    pinyin: "wò xīn cháng dǎn",
+    era: "西汉（典出春秋）",
+    source: "《史记·越王勾践世家》",
+    author: "司马迁",
+    original: "吴既赦越，越王勾践反国，乃苦身焦思，置胆于坐，坐卧即仰胆，饮食亦尝胆也。曰：'女忘会稽之耻邪？'",
+    meaning: "形容人刻苦自励，发愤图强。",
+    extended: "后多用以形容人忍辱负重、立志复仇或成就大业。",
+    related: ["破釜沉舟", "发愤图强"]
+  },
+  {
+    name: "破釜沉舟",
+    pinyin: "pò fǔ chén zhōu",
+    era: "西汉（典出秦末）",
+    source: "《史记·项羽本纪》",
+    author: "司马迁",
+    original: "项羽乃悉引兵渡河，皆沉船，破釜甑，烧庐舍，持三日粮，以示士卒必死，无一还心。",
+    meaning: "比喻下定决心，不顾一切地干到底。",
+    extended: "形容决一死战的决心，不留退路。",
+    related: ["背水一战", "义无反顾"]
+  },
+  {
+    name: "纸上谈兵",
+    pinyin: "zhǐ shàng tán bīng",
+    era: "西汉（典出战国）",
+    source: "《史记·廉颇蔺相如列传》",
+    author: "司马迁",
+    original: "赵括自少时学兵法，言兵事，以天下莫能当……括军败，数十万之众遂降秦，秦悉坑之。",
+    meaning: "比喻空谈理论，不能解决实际问题。",
+    extended: "讽刺只会空谈、缺乏实践经验的人。典出赵括长平之败。",
+    related: ["坐而论道", "华而不实"]
+  },
+  {
+    name: "画蛇添足",
+    pinyin: "huà shé tiān zú",
+    era: "先秦",
+    source: "《战国策·齐策二》",
+    author: "刘向（编）",
+    original: "楚有祠者，赐其舍人卮酒。舍人相谓曰：'数人饮之不足，一人饮之有余。请画地为蛇，先成者饮酒。'一人蛇先成，引酒且饮之，乃左手持卮，右手画蛇曰：'吾能为之足。'未成，一人之蛇成，夺其卮曰：'蛇固无足，子安能为之足？'",
+    meaning: "比喻做多余的事，反而不恰当。",
+    extended: "讽刺多此一举、弄巧成拙的行为。",
+    related: ["多此一举", "弄巧成拙"]
+  },
+  {
+    name: "守株待兔",
+    pinyin: "shǒu zhū dài tù",
+    era: "先秦",
+    source: "《韩非子·五蠹》",
+    author: "韩非",
+    original: "宋人有耕者，田中有株，兔走触株，折颈而死，因释其耒而守株，冀复得兔。兔不可复得，而身为宋国笑。",
+    meaning: "比喻拘泥成例，不知变通；也比喻妄想不劳而获。",
+    extended: "讽刺心存侥幸、坐等其成的人。",
+    related: ["刻舟求剑", "坐享其成"]
+  },
+  {
+    name: "掩耳盗铃",
+    pinyin: "yǎn ěr dào líng",
+    era: "先秦",
+    source: "《吕氏春秋·自知》",
+    author: "吕不韦（主编）",
+    original: "范氏之亡也，百姓有得钟者，欲负而走，则钟大不可负。以椎毁之，钟况然有音。恐人闻之而夺己也，遽掩其耳。",
+    meaning: "比喻自己欺骗自己，明明掩盖不住的事偏要想法子掩盖。",
+    extended: "讽刺自欺欺人的愚蠢行为。",
+    related: ["自欺欺人", "掩目捕雀"]
+  },
+  {
+    name: "亡羊补牢",
+    pinyin: "wáng yáng bǔ láo",
+    era: "先秦",
+    source: "《战国策·楚策四》",
+    author: "刘向（编）",
+    original: "见兔而顾犬，未为迟也；亡羊而补牢，未为迟也。",
+    meaning: "比喻出了问题以后想办法补救，可以防止继续受损失。",
+    extended: "强调及时改正错误、弥补过失的重要性。",
+    related: ["见兔顾犬", "迷途知返"]
+  },
+  {
+    name: "愚公移山",
+    pinyin: "yú gōng yí shān",
+    era: "先秦",
+    source: "《列子·汤问》",
+    author: "列御寇（传）",
+    original: "太行、王屋二山，方七百里，高万仞……北山愚公者，年且九十，面山而居。惩山北之塞，出入之迂也，聚室而谋曰：'吾与汝毕力平险，指通豫南，达于汉阴，可乎？'",
+    meaning: "比喻坚持不懈地改造自然和坚定不移地进行斗争。",
+    extended: "赞扬不畏艰难、持之以恒的精神。",
+    related: ["精卫填海", "持之以恒"]
+  },
+  {
+    name: "精卫填海",
+    pinyin: "jīng wèi tián hǎi",
+    era: "先秦",
+    source: "《山海经·北山经》",
+    author: "佚名",
+    original: "又北二百里，曰发鸠之山……有鸟焉，其状如乌，文首，白喙，赤足，名曰'精卫'，其鸣自詨。是炎帝之少女，名曰女娃。女娃游于东海，溺而不返，故为精卫，常衔西山之木石，以堙于东海。",
+    meaning: "比喻意志坚决，不畏艰难。",
+    extended: "后多用以形容不畏艰难、矢志不渝的奋斗精神。",
+    related: ["愚公移山", "矢志不渝"]
+  },
+  {
+    name: "夸父逐日",
+    pinyin: "kuā fù zhú rì",
+    era: "先秦",
+    source: "《山海经·海外北经》",
+    author: "佚名",
+    original: "夸父与日逐走，入日。渴欲得饮，饮于河渭，河渭不足，北饮大泽。未至，道渴而死。弃其杖，化为邓林。",
+    meaning: "比喻人有大志，也比喻不自量力。",
+    extended: "既可赞颂追求光明的壮志，也可讽刺不自量力。",
+    related: ["精卫填海", "自不量力"]
+  },
+  {
+    name: "女娲补天",
+    pinyin: "nǚ wā bǔ tiān",
+    era: "西汉（典出上古）",
+    source: "《淮南子·览冥训》",
+    author: "刘安（主编）",
+    original: "往古之时，四极废，九州裂，天不兼覆，地不周载……于是女娲炼五色石以补苍天，断鳌足以立四极。",
+    meaning: "形容改造天地的雄伟气魄和大无畏的斗争精神。",
+    extended: "后用以比喻挽回事局、弥补重大缺陷。",
+    related: ["开天辟地", "力挽狂澜"]
+  },
+  {
+    name: "后羿射日",
+    pinyin: "hòu yì shè rì",
+    era: "西汉（典出上古）",
+    source: "《淮南子·本经训》",
+    author: "刘安（主编）",
+    original: "逮至尧之时，十日并出，焦禾稼，杀草木，而民无所食……尧乃使羿……上射十日而下杀猰貐。",
+    meaning: "形容英雄射落多余太阳、为民除害的壮举。",
+    extended: "后用以比喻为民除害、建立奇功。",
+    related: ["女娲补天", "为民除害"]
+  },
+  {
+    name: "大禹治水",
+    pinyin: "dà yǔ zhì shuǐ",
+    era: "西汉（典出上古）",
+    source: "《史记·夏本纪》",
+    author: "司马迁",
+    original: "禹乃遂与益、后稷奉帝命，命诸侯百姓兴人徒以傅土，行山表木，定高山大川。禹伤先人父鲧功之不成受诛，乃劳身焦思，居外十三年，过家门不敢入。",
+    meaning: "比喻不畏艰难、公而忘私的奋斗精神。",
+    extended: "赞扬治理水患、为民造福的功绩，亦用以形容坚韧不拔。",
+    related: ["三过家门而不入", "公而忘私"]
+  },
+  {
+    name: "孟母三迁",
+    pinyin: "mèng mǔ sān qiān",
+    era: "西汉（典出战国）",
+    source: "汉·刘向《列女传·母仪传》",
+    author: "刘向",
+    original: "孟子之少也，嬉游于墓间之间，踊跃筑埋。孟母曰：'此非吾所以居处子。'乃去，舍市傍……复徙舍学宫之傍。",
+    meaning: "比喻为教育好子女，重视环境的选择。",
+    extended: "强调环境对人成长的重要影响。",
+    related: ["近朱者赤", "择邻而处"]
+  },
+  {
+    name: "悬梁刺股",
+    pinyin: "xuán liáng cì gǔ",
+    era: "汉晋（典出战国、东汉）",
+    source: "《战国策·秦策一》（苏秦刺股）；《太平御览》卷三百六十三引《汉书》（孙敬悬梁）",
+    author: "刘向（编）等",
+    original: "（苏秦）读书欲睡，引锥自刺其股，血流至足。（孙敬）晨夕不休，及至眠睡疲寝，以绳系头，悬屋梁。",
+    meaning: "形容刻苦学习。",
+    extended: "用以赞扬发奋苦读的精神。",
+    related: ["凿壁偷光", "囊萤映雪"]
+  },
+  {
+    name: "凿壁偷光",
+    pinyin: "záo bì tōu guāng",
+    era: "东晋（典出西汉）",
+    source: "晋·葛洪《西京杂记》卷二",
+    author: "葛洪（传）",
+    original: "匡衡字稚圭，勤学而无烛，邻舍有烛而不逮。衡乃穿壁引其光，以书映光而读之。",
+    meaning: "形容家贫而读书刻苦。",
+    extended: "赞扬在艰苦条件下仍坚持学习的精神。",
+    related: ["囊萤映雪", "悬梁刺股"]
+  },
+  {
+    name: "闻鸡起舞",
+    pinyin: "wén jī qǐ wǔ",
+    era: "唐（典出东晋）",
+    source: "《晋书·祖逖传》",
+    author: "房玄龄等",
+    original: "（祖逖）与司空刘琨俱为司州主簿，情好绸缪，共被同床。中夜闻荒鸡鸣，蹴琨觉曰：'此非恶声也。'因起舞。",
+    meaning: "比喻有志之士及时奋发。",
+    extended: "形容志士仁人胸怀大志、奋发图强。",
+    related: ["发愤图强", "自强不息"]
+  },
+  {
+    name: "负荆请罪",
+    pinyin: "fù jīng qǐng zuì",
+    era: "西汉（典出战国）",
+    source: "《史记·廉颇蔺相如列传》",
+    author: "司马迁",
+    original: "廉颇闻之，肉袒负荆，因宾客至蔺相如门谢罪，曰：'鄙贱之人，不知将军宽之至此也。'",
+    meaning: "表示主动向人认错道歉，自请严厉责罚。",
+    extended: "形容诚恳认错、勇于改过。",
+    related: ["完璧归赵", "将相和"]
+  },
+  {
+    name: "完璧归赵",
+    pinyin: "wán bì guī zhào",
+    era: "西汉（典出战国）",
+    source: "《史记·廉颇蔺相如列传》",
+    author: "司马迁",
+    original: "城入赵而璧留秦；城不入，臣请完璧归赵。",
+    meaning: "比喻把原物完好地归还本人。",
+    extended: "形容物品完好无损地归还原主。",
+    related: ["负荆请罪", "价值连城"]
+  },
+  {
+    name: "背水一战",
+    pinyin: "bèi shuǐ yī zhàn",
+    era: "西汉",
+    source: "《史记·淮阴侯列传》",
+    author: "司马迁",
+    original: "信乃使万人先行，出，背水陈。赵军望见而大笑……韩信、张耳已入水上军，军皆殊死战，不可败。",
+    meaning: "比喻在艰难情况下决一死战。",
+    extended: "形容处于绝境时拼死一搏。",
+    related: ["破釜沉舟", "置之死地而后生"]
+  },
+  {
+    name: "指鹿为马",
+    pinyin: "zhǐ lù wéi mǎ",
+    era: "西汉",
+    source: "《史记·秦始皇本纪》",
+    author: "司马迁",
+    original: "赵高欲为乱，恐群臣不听，乃先设验，持鹿献于二世，曰：'马也。'二世笑曰：'丞相误邪？谓鹿为马。'问左右，左右或默，或言马以阿顺赵高。",
+    meaning: "比喻故意颠倒黑白，混淆是非。",
+    extended: "形容权臣专横、颠倒是非。",
+    related: ["颠倒黑白", "混淆是非"]
+  },
+  {
+    name: "四面楚歌",
+    pinyin: "sì miàn chǔ gē",
+    era: "西汉",
+    source: "《史记·项羽本纪》",
+    author: "司马迁",
+    original: "项王军壁垓下，兵少食尽，汉军及诸侯兵围之数重。夜闻汉军四面皆楚歌，项王乃大惊曰：'汉皆已得楚乎？是何楚人之多也！'",
+    meaning: "比喻陷入四面受敌、孤立无援的困境。",
+    extended: "形容处境艰难、四面受敌。",
+    related: ["十面埋伏", "孤立无援"]
+  },
+  {
+    name: "草木皆兵",
+    pinyin: "cǎo mù jiē bīng",
+    era: "唐（典出东晋）",
+    source: "《晋书·苻坚载记》",
+    author: "房玄龄等",
+    original: "坚与苻融登城而望王师，见部阵齐整，将士精锐；又北望八公山上草木，皆类人形，顾谓融曰：'此亦勍敌也，何谓少乎？'",
+    meaning: "形容人在惊慌时疑神疑鬼。",
+    extended: "比喻极度惊恐、疑神疑鬼的心理状态。",
+    related: ["风声鹤唳", "杯弓蛇影"]
+  },
+  {
+    name: "风声鹤唳",
+    pinyin: "fēng shēng hè lì",
+    era: "唐（典出东晋）",
+    source: "《晋书·谢玄传》",
+    author: "房玄龄等",
+    original: "余众弃甲宵遁，闻风声鹤唳，皆以为王师已至，草行露宿，重以饥冻，死者十七八。",
+    meaning: "形容惊慌失措，或自相惊扰。",
+    extended: "与'草木皆兵'常连用，形容失败者极度恐慌。",
+    related: ["草木皆兵", "杯弓蛇影"]
+  },
+  {
+    name: "杯弓蛇影",
+    pinyin: "bēi gōng shé yǐng",
+    era: "唐（典出东汉）",
+    source: "唐·房玄龄等《晋书·乐广传》（典出汉·应劭《风俗通义·怪神》）",
+    author: "乐广（事主）",
+    original: "尝有亲客，久阔不复来，广问其故，答曰：'前在坐，蒙赐酒，方欲饮，见杯中有蛇，意甚恶之，既饮而疾。'于时河南听事壁上有角弓，漆画作蛇，广意杯中蛇即角影也。",
+    meaning: "比喻因疑神疑鬼而引起恐惧。",
+    extended: "讽刺多疑、自扰的心理。",
+    related: ["草木皆兵", "疑神疑鬼"]
+  },
+  {
+    name: "胸有成竹",
+    pinyin: "xiōng yǒu chéng zhú",
+    era: "北宋",
+    source: "宋·苏轼《文与可画筼筜谷偃竹记》",
+    author: "苏轼",
+    original: "故画竹必先得成竹于胸中，执笔熟视，乃见其所欲画者，急起从之，振笔直遂，以追其所见，如兔起鹘落，少纵则逝矣。",
+    meaning: "比喻做事之前已经有通盘的考虑。",
+    extended: "形容处理事情胸中有数、从容不迫。",
+    related: ["心中有数", "成竹在胸"]
+  },
+  {
+    name: "班门弄斧",
+    pinyin: "bān mén nòng fǔ",
+    era: "明",
+    source: "明·梅之焕《题李白墓》",
+    author: "梅之焕",
+    original: "采石江边一堆土，李白之名高千古。来来往往一首诗，鲁班门前弄大斧。",
+    meaning: "比喻在行家面前卖弄本领，不自量力。",
+    extended: "多用作自谦之词，也用以讽刺不自量力者。",
+    related: ["布鼓雷门", "贻笑大方"]
+  },
+  {
+    name: "东施效颦",
+    pinyin: "dōng shī xiào pín",
+    era: "先秦",
+    source: "《庄子·天运》",
+    author: "庄周",
+    original: "西施病心而颦其里，其里之丑人见而美之，归亦捧心而颦其里。其里之富人见之，坚闭门而不出；贫人见之，挈妻子而去之走。",
+    meaning: "比喻盲目模仿，效果极坏。",
+    extended: "讽刺不根据自身条件、生搬硬套的行为。",
+    related: ["邯郸学步", "照猫画虎"]
+  },
+  {
+    name: "邯郸学步",
+    pinyin: "hán dān xué bù",
+    era: "先秦",
+    source: "《庄子·秋水》",
+    author: "庄周",
+    original: "子往呼！且子独不闻夫寿陵余子之学行于邯郸与？未得国能，又失其故行矣，直匍匐而归耳。",
+    meaning: "比喻模仿别人不成，反而丧失了自己原有的技能。",
+    extended: "讽刺盲目模仿、失去自我的行为。",
+    related: ["东施效颦", "数典忘祖"]
+  }
+];
+
+/**
+ * 按名称精确查询典故
+ * @param {string} name - 典故名称（如"高山流水"）
+ * @returns {Object|null} 匹配的典故对象，未找到返回 null
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * queryAllusion("高山流水");
+ * // => { name: "高山流水", source: "《列子·汤问》", ... }
+ * @example
+ * queryAllusion("不存在的典故");
+ * // => null
+ */
+function queryAllusion(name) {
+  if (typeof name !== "string") {
+    throw new TypeError("queryAllusion: 参数 name 必须为字符串");
+  }
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const found = ALLUSION_DB.find(item => item.name === trimmed);
+  return found ? Object.assign({}, found) : null;
+}
+
+/**
+ * 按关键词模糊搜索典故（匹配名称、释义、引申义、出处、原文）
+ * @param {string} keyword - 搜索关键词
+ * @returns {Array<Object>} 匹配的典故数组，无匹配返回空数组
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * searchAllusions("史记");
+ * // => 返回所有出处含"史记"的典故
+ * @example
+ * searchAllusions("");
+ * // => []
+ */
+function searchAllusions(keyword) {
+  if (typeof keyword !== "string") {
+    throw new TypeError("searchAllusions: 参数 keyword 必须为字符串");
+  }
+  const kw = keyword.trim();
+  if (!kw) return [];
+  return ALLUSION_DB.filter(item =>
+    item.name.includes(kw) ||
+    item.meaning.includes(kw) ||
+    item.extended.includes(kw) ||
+    item.source.includes(kw) ||
+    item.original.includes(kw) ||
+    item.era.includes(kw) ||
+    (item.related && item.related.some(r => r.includes(kw)))
+  ).map(item => Object.assign({}, item));
+}
+
+/**
+ * 按出处古籍查询典故
+ * @param {string} source - 古籍名称（如"史记"、"列子"）
+ * @returns {Array<Object>} 匹配的典故数组
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * getAllusionsBySource("史记");
+ * // => 返回所有出自《史记》的典故
+ */
+function getAllusionsBySource(source) {
+  if (typeof source !== "string") {
+    throw new TypeError("getAllusionsBySource: 参数 source 必须为字符串");
+  }
+  const s = source.trim();
+  if (!s) return [];
+  return ALLUSION_DB.filter(item => item.source.includes(s))
+    .map(item => Object.assign({}, item));
+}
+
+/**
+ * 按时代查询典故
+ * @param {string} era - 时代名称（如"先秦"、"西汉"、"北宋"）
+ * @returns {Array<Object>} 匹配的典故数组
+ * @throws {TypeError} 参数非字符串时抛出
+ * @example
+ * getAllusionsByEra("先秦");
+ * // => 返回所有先秦时代的典故
+ */
+function getAllusionsByEra(era) {
+  if (typeof era !== "string") {
+    throw new TypeError("getAllusionsByEra: 参数 era 必须为字符串");
+  }
+  const e = era.trim();
+  if (!e) return [];
+  return ALLUSION_DB.filter(item => item.era.includes(e))
+    .map(item => Object.assign({}, item));
+}
+
+/**
+ * 获取全部典故列表
+ * @returns {Array<Object>} 全部典故数组的副本
+ * @example
+ * getAllAllusions().length;
+ * // => 30（当前数据库典故总数）
+ */
+function getAllAllusions() {
+  return ALLUSION_DB.map(item => Object.assign({}, item));
+}
+
+/**
+ * 获取典故总数
+ * @returns {number} 典故数量
+ * @example
+ * getAllusionCount();
+ * // => 30
+ */
+function getAllusionCount() {
+  return ALLUSION_DB.length;
+}
+
+/**
+ * 随机获取指定数量的典故
+ * @param {number} count - 要获取的数量
+ * @returns {Array<Object>} 随机典故数组
+ * @throws {TypeError} 参数非数字时抛出
+ * @throws {RangeError} 数量超出范围时抛出
+ * @example
+ * getRandomAllusions(3);
+ * // => 返回 3 个随机典故
+ */
+function getRandomAllusions(count) {
+  if (typeof count !== "number" || Number.isNaN(count)) {
+    throw new TypeError("getRandomAllusions: 参数 count 必须为数字");
+  }
+  if (!Number.isInteger(count)) {
+    throw new RangeError("getRandomAllusions: count 必须为整数");
+  }
+  if (count < 0) {
+    throw new RangeError("getRandomAllusions: count 不能为负数");
+  }
+  if (count > ALLUSION_DB.length) {
+    throw new RangeError("getRandomAllusions: count 超出典故总数");
+  }
+  const shuffled = ALLUSION_DB.slice().sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count).map(item => Object.assign({}, item));
+}
+
+/**
+ * 获取所有不重复的时代列表
+ * @returns {Array<string>} 时代名称数组
+ * @example
+ * getAllEras();
+ * // => ["先秦", "西汉（典出春秋）", ...]
+ */
+function getAllEras() {
+  return Array.from(new Set(ALLUSION_DB.map(item => item.era)));
+}
+
+/**
+ * 获取所有不重复的出处古籍列表
+ * @returns {Array<string>} 古籍名称数组
+ * @example
+ * getAllSources();
+ * // => ["《列子·汤问》", "《吕氏春秋·察今》", ...]
+ */
+function getAllSources() {
+  return Array.from(new Set(ALLUSION_DB.map(item => item.source)));
+}
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS 实现，≥30 用例）
+ * ============================================================ */
+
+let testPassed = 0;
+let testTotal = 0;
+const testLogs = [];
+
+/**
+ * 断言函数
+ * @param {string} desc - 测试描述
+ * @param {any} actual - 实际值
+ * @param {any} expected - 期望值
+ */
+function assert(desc, actual, expected) {
+  testTotal++;
+  let pass = false;
+  if (typeof expected === "function") {
+    pass = expected(actual);
+  } else {
+    pass = JSON.stringify(actual) === JSON.stringify(expected);
+  }
+  if (pass) {
+    testPassed++;
+    testLogs.push({ pass: true, desc });
+  } else {
+    testLogs.push({
+      pass: false,
+      desc,
+      actual: JSON.stringify(actual),
+      expected: JSON.stringify(expected)
+    });
+  }
+}
+
+/**
+ * 断言抛出异常
+ * @param {string} desc - 测试描述
+ * @param {Function} fn - 被测函数
+ * @param {Function} errorChecker - 检查错误的函数
+ */
+function assertThrows(desc, fn, errorChecker) {
+  testTotal++;
+  try {
+    fn();
+    testLogs.push({ pass: false, desc, actual: "未抛出异常", expected: "应抛出异常" });
+  } catch (e) {
+    if (errorChecker(e)) {
+      testPassed++;
+      testLogs.push({ pass: true, desc });
+    } else {
+      testLogs.push({ pass: false, desc, actual: e.message, expected: "符合检查器的异常" });
+    }
+  }
+}
+
+// ============ 测试用例开始 ============
+
+// 1-3. queryAllusion 正常值
+assert("queryAllusion: 查询'高山流水'返回正确对象",
+  queryAllusion("高山流水") !== null && queryAllusion("高山流水").name === "高山流水",
+  true);
+assert("queryAllusion: 查询'刻舟求剑'返回正确对象",
+  queryAllusion("刻舟求剑").source === "《吕氏春秋·察今》",
+  true);
+assert("queryAllusion: 查询'卧薪尝胆'返回正确对象",
+  queryAllusion("卧薪尝胆").author === "司马迁",
+  true);
+
+// 4. queryAllusion 不存在
+assert("queryAllusion: 查询不存在的典故返回 null",
+  queryAllusion("不存在的典故"),
+  null);
+
+// 5-7. queryAllusion 边界值
+assert("queryAllusion: 空字符串返回 null",
+  queryAllusion(""),
+  null);
+assert("queryAllusion: 纯空格返回 null",
+  queryAllusion("   "),
+  null);
+assert("queryAllusion: 带前后空格能正确查询",
+  queryAllusion("  高山流水  ").name,
+  "高山流水");
+
+// 8-10. queryAllusion 异常输入
+assertThrows("queryAllusion: null 抛出 TypeError",
+  () => queryAllusion(null),
+  e => e instanceof TypeError);
+assertThrows("queryAllusion: undefined 抛出 TypeError",
+  () => queryAllusion(undefined),
+  e => e instanceof TypeError);
+assertThrows("queryAllusion: 数字 抛出 TypeError",
+  () => queryAllusion(123),
+  e => e instanceof TypeError);
+
+// 11-13. searchAllusions 正常值
+assert("searchAllusions: 关键词'史记'返回多个结果",
+  searchAllusions("史记").length >= 5,
+  true);
+assert("searchAllusions: 关键词'司马迁'返回多个结果",
+  searchAllusions("司马迁").length >= 5,
+  true);
+assert("searchAllusions: 关键词'比喻'返回多个结果",
+  searchAllusions("比喻").length >= 10,
+  true);
+
+// 14. searchAllusions 空字符串
+assert("searchAllusions: 空字符串返回空数组",
+  searchAllusions(""),
+  []);
+
+// 15. searchAllusions 无匹配
+assert("searchAllusions: 无匹配关键词返回空数组",
+  searchAllusions("ZZZZZZZ不存在"),
+  []);
+
+// 16-17. searchAllusions 异常
+assertThrows("searchAllusions: null 抛出 TypeError",
+  () => searchAllusions(null),
+  e => e instanceof TypeError);
+assertThrows("searchAllusions: 数字 抛出 TypeError",
+  () => searchAllusions(456),
+  e => e instanceof TypeError);
+
+// 18-19. getAllusionsBySource 正常值
+assert("getAllusionsBySource: '史记'返回多个结果",
+  getAllusionsBySource("史记").length >= 5,
+  true);
+assert("getAllusionsBySource: '列子'返回多个结果",
+  getAllusionsBySource("列子").length >= 2,
+  true);
+
+// 20. getAllusionsBySource 空字符串
+assert("getAllusionsBySource: 空字符串返回空数组",
+  getAllusionsBySource(""),
+  []);
+
+// 21. getAllusionsBySource 异常
+assertThrows("getAllusionsBySource: undefined 抛出 TypeError",
+  () => getAllusionsBySource(undefined),
+  e => e instanceof TypeError);
+
+// 22-23. getAllusionsByEra 正常值
+assert("getAllusionsByEra: '先秦'返回多个结果",
+  getAllusionsByEra("先秦").length >= 8,
+  true);
+assert("getAllusionsByEra: '北宋'返回至少1个结果",
+  getAllusionsByEra("北宋").length >= 1,
+  true);
+
+// 24. getAllusionsByEra 空字符串
+assert("getAllusionsByEra: 空字符串返回空数组",
+  getAllusionsByEra(""),
+  []);
+
+// 25. getAllAllusions 返回副本
+const all1 = getAllAllusions();
+const all2 = getAllAllusions();
+assert("getAllAllusions: 返回副本（非同一引用）",
+  all1 !== all2 && all1.length === all2.length,
+  true);
+
+// 26. getAllusionCount 数量
+assert("getAllusionCount: 返回正确数量",
+  getAllusionCount(),
+  ALLUSION_DB.length);
+
+// 27-29. getRandomAllusions 正常值
+assert("getRandomAllusions: 获取 1 个",
+  getRandomAllusions(1).length,
+  1);
+assert("getRandomAllusions: 获取 5 个",
+  getRandomAllusions(5).length,
+  5);
+assert("getRandomAllusions: 获取 0 个返回空数组",
+  getRandomAllusions(0),
+  []);
+
+// 30-32. getRandomAllusions 异常
+assertThrows("getRandomAllusions: 负数抛出 RangeError",
+  () => getRandomAllusions(-1),
+  e => e instanceof RangeError);
+assertThrows("getRandomAllusions: 超出总数抛出 RangeError",
+  () => getRandomAllusions(9999),
+  e => e instanceof RangeError);
+assertThrows("getRandomAllusions: 非整数抛出 RangeError",
+  () => getRandomAllusions(1.5),
+  e => e instanceof RangeError);
+assertThrows("getRandomAllusions: NaN 抛出 TypeError",
+  () => getRandomAllusions(NaN),
+  e => e instanceof TypeError);
+assertThrows("getRandomAllusions: 字符串抛出 TypeError",
+  () => getRandomAllusions("3"),
+  e => e instanceof TypeError);
+
+// 33-34. getAllEras / getAllSources
+assert("getAllEras: 返回非空数组",
+  Array.isArray(getAllEras()) && getAllEras().length > 0,
+  true);
+assert("getAllSources: 返回非空数组",
+  Array.isArray(getAllSources()) && getAllSources().length > 0,
+  true);
+
+// 35. 数据完整性：每个典故都有必要字段
+const allItems = getAllAllusions();
+const allValid = allItems.every(item =>
+  item.name && item.source && item.original && item.meaning && item.extended && item.era
+);
+assert("数据完整性: 所有典故都有必要字段",
+  allValid,
+  true);
+
+// 36. 返回对象是副本（修改不影响原数据）
+const item = queryAllusion("高山流水");
+const originalName = item.name;
+item.name = "被修改";
+assert("返回对象是副本: 修改不影响原数据",
+  queryAllusion("高山流水").name === originalName,
+  true);
+
+// 37. 搜索关键词在原文中
+const searchResult = searchAllusions("伯牙");
+assert("searchAllusions: 搜索'伯牙'能匹配到高山流水",
+  searchResult.some(r => r.name === "高山流水"),
+  true);
+
+// 38. 出处查询精确性
+const lieziResult = getAllusionsBySource("列子");
+assert("getAllusionsBySource: '列子'结果都包含列子",
+  lieziResult.every(r => r.source.includes("列子")),
+  true);
+
+// 39. 时代查询精确性
+const xianqinResult = getAllusionsByEra("先秦");
+assert("getAllusionsByEra: '先秦'结果都包含先秦",
+  xianqinResult.every(r => r.era.includes("先秦")),
+  true);
+
+// 40. 边界：最大随机数
+assert("getRandomAllusions: 获取全部数量",
+  getRandomAllusions(ALLUSION_DB.length).length,
+  ALLUSION_DB.length);
+
+// ============ 测试用例结束 ============
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+
+const MANUAL_HTML = `
+<h2>一、工具简介</h2>
+<p>「典故查询」是一款面向学生、教师、文学爱好者、编辑及中文研究者的轻量级典故检索工具。它收录了 30 余条源自先秦至明清的真实典故，每条典故均标注了可查证的古籍出处、原文、释义与引申义，旨在帮助用户快速了解典故的来源与用法，避免在写作、教学、研究中误用或杜撰典故。</p>
+<p>本工具解决的核心问题包括：（1）典故出处难查——许多典故流传广泛但出处模糊，本工具提供确切古籍来源；（2）原文难找——用户无需翻阅古籍即可看到原文段落；（3）释义与引申义区分——明确区分"本义"与"后世引申义"，避免混淆；（4）离线可用——纯前端实现，无需联网，数据内置。</p>
+
+<h2>二、核心函数与参数说明</h2>
+<h3>1. queryAllusion(name)</h3>
+<p>按名称精确查询单个典故。</p>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>name</td><td>string</td><td>任意字符串</td><td>典故名称，如"高山流水"。前后空格会被自动去除。</td></tr>
+</table>
+<p><strong>返回值：</strong>匹配的典故对象（包含 name、pinyin、era、source、author、original、meaning、extended、related 字段），未找到返回 null。</p>
+<p><strong>异常：</strong>参数非字符串时抛出 TypeError。</p>
+
+<h3>2. searchAllusions(keyword)</h3>
+<p>按关键词模糊搜索，匹配范围包括名称、释义、引申义、出处、原文、时代、相关典故。</p>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>keyword</td><td>string</td><td>任意字符串</td><td>搜索关键词，支持中文、书名号等。</td></tr>
+</table>
+<p><strong>返回值：</strong>匹配的典故对象数组，无匹配返回空数组 []。</p>
+
+<h3>3. getAllusionsBySource(source)</h3>
+<p>按出处古籍查询典故。</p>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>source</td><td>string</td><td>任意字符串</td><td>古籍名称，如"史记"、"列子"、"战国策"等，不必带书名号。</td></tr>
+</table>
+<p><strong>返回值：</strong>匹配的典故对象数组。</p>
+
+<h3>4. getAllusionsByEra(era)</h3>
+<p>按时代查询典故。</p>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>era</td><td>string</td><td>任意字符串</td><td>时代名称，如"先秦"、"西汉"、"北宋"、"明"等。</td></tr>
+</table>
+<p><strong>返回值：</strong>匹配的典故对象数组。</p>
+
+<h3>5. getAllAllusions()</h3>
+<p>获取全部典故列表的副本。无参数，返回数组。</p>
+
+<h3>6. getAllusionCount()</h3>
+<p>获取典故总数。无参数，返回 number。</p>
+
+<h3>7. getRandomAllusions(count)</h3>
+<p>随机获取指定数量的典故。</p>
+<table>
+  <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+  <tr><td>count</td><td>number</td><td>0 ≤ count ≤ 典故总数</td><td>要获取的典故数量，必须为非负整数。</td></tr>
+</table>
+<p><strong>异常：</strong>非数字抛出 TypeError；非整数、负数、超出总数抛出 RangeError。</p>
+
+<h3>8. getAllEras() / getAllSources()</h3>
+<p>分别获取所有不重复的时代列表与出处古籍列表。无参数，返回字符串数组。</p>
+
+<h2>三、实际使用场景</h2>
+
+<h3>场景 1：学生查典故出处（写作引用）</h3>
+<p><strong>输入：</strong>queryAllusion("卧薪尝胆")</p>
+<p><strong>结果：</strong>返回完整对象，其中 source 为"《史记·越王勾践世家》"，author 为"司马迁"，original 字段给出原文段落。学生可在作文中准确引用："典出《史记·越王勾践世家》，司马迁载：'吴既赦越，越王勾践反国，乃苦身焦思，置胆于坐……'"</p>
+
+<h3>场景 2：教师备课——按时代整理典故</h3>
+<p><strong>输入：</strong>getAllusionsByEra("先秦")</p>
+<p><strong>结果：</strong>返回先秦时代的所有典故（如"高山流水"、"刻舟求剑"、"守株待兔"、"画蛇添足"等），教师可据此设计"先秦寓言典故"专题课。</p>
+
+<h3>场景 3：编辑核查典故真实性</h3>
+<p><strong>输入：</strong>queryAllusion("胸有成竹")</p>
+<p><strong>结果：</strong>返回 source 为"宋·苏轼《文与可画筼筜谷偃竹记》"，author 为"苏轼"。编辑可据此核查稿件中"胸有成竹"的出处标注是否正确，避免误标为《庄子》或其他古籍。</p>
+
+<h3>场景 4：研究者按古籍整理典故</h3>
+<p><strong>输入：</strong>getAllusionsBySource("史记")</p>
+<p><strong>结果：</strong>返回所有出自《史记》的典故，包括"卧薪尝胆"、"破釜沉舟"、"纸上谈兵"、"负荆请罪"、"完璧归赵"、"背水一战"、"指鹿为马"、"四面楚歌"、"大禹治水"等。研究者可据此分析《史记》对后世成语典故的贡献。</p>
+
+<h3>场景 5：随机学习——每日一典</h3>
+<p><strong>输入：</strong>getRandomAllusions(1)</p>
+<p><strong>结果：</strong>返回 1 个随机典故，可用于"每日一典"小程序、公众号推送、课堂热身等场景。</p>
+
+<h3>场景 6：关键词联想——写作素材</h3>
+<p><strong>输入：</strong>searchAllusions("决心")</p>
+<p><strong>结果：</strong>返回释义或引申义中包含"决心"的典故，如"破釜沉舟"（"比喻下定决心"）、"背水一战"等，帮助写作者快速找到合适的典故素材。</p>
+
+<h2>四、常见错误与排查</h2>
+<ul>
+  <li><strong>错误：TypeError: queryAllusion: 参数 name 必须为字符串</strong><br>
+      原因：传入了 null、undefined、数字等非字符串类型。<br>
+      解决：确保传入字符串，如 queryAllusion("高山流水") 而非 queryAllusion(高山流水)。</li>
+  <li><strong>错误：查询返回 null</strong><br>
+      原因：典故名称不在数据库中，或存在错别字。<br>
+      解决：使用 searchAllusions 进行模糊搜索，或查看 getAllAllusions() 获取完整列表。</li>
+  <li><strong>错误：RangeError: count 超出典故总数</strong><br>
+      原因：getRandomAllusions 传入的 count 大于当前典故总数。<br>
+      解决：使用 getAllusionCount() 获取总数后再调用。</li>
+  <li><strong>错误：搜索结果不符合预期</strong><br>
+      原因：关键词过于具体或存在繁简差异（本工具仅支持简体中文）。<br>
+      解决：尝试更短的关键词，如搜"司马"而非"司马迁"。</li>
+  <li><strong>错误：修改返回对象后原数据被污染</strong><br>
+      说明：本工具所有返回对象均为副本，修改不会影响原数据库。如仍有问题，请检查是否误用了全局变量。</li>
+</ul>
+
+<h2>五、数据来源与标准依据</h2>
+<p>本工具的典故数据均来源于真实可考的古籍，主要依据以下版本：</p>
+<ul>
+  <li>《史记》：据中华书局 1959 年版点校本（GB/T 21053-2007《古籍整理出版规范》相关标准参考）</li>
+  <li>《战国策》：据上海古籍出版社 1978 年版</li>
+  <li>《吕氏春秋》：据中华书局《诸子集成》本</li>
+  <li>《列子》：据杨伯峻《列子集释》中华书局 1979 年版</li>
+  <li>《韩非子》：据陈奇猷《韩非子新校注》上海古籍出版社 2000 年版</li>
+  <li>《山海经》：据袁珂《山海经校注》上海古籍出版社 1980 年版</li>
+  <li>《淮南子》：据刘文典《淮南鸿烈集解》中华书局 1989 年版</li>
+  <li>《晋书》：据中华书局 1974 年版点校本</li>
+  <li>《庄子》：据郭庆藩《庄子集释》中华书局 1961 年版</li>
+  <li>《西京杂记》：据《笔记小说大观》本</li>
+  <li>《列女传》：据《四部丛刊》本</li>
+</ul>
+<p>相关国家标准：</p>
+<ul>
+  <li>GB/T 21053-2007《古籍整理出版规范》</li>
+  <li>GB/T 15834-2011《标点符号用法》（原文标点参考）</li>
+  <li>GB 13000-2010《信息技术 通用多八位编码字符集》（字符编码参考）</li>
+</ul>
+<p><strong>重要声明：</strong>本工具所引原文据通行版本，个别字词在不同版本中可能存在异文。如需学术引用，请以中华书局、上海古籍出版社等权威出版社的点校本为准，或查阅国家图书馆"中华经典古籍库"等权威数据库。本工具不替代学术考证。</p>
+
+<h2>六、局限性说明</h2>
+<p>本工具存在以下局限，请用户知悉：</p>
+<ol>
+  <li><strong>收录数量有限：</strong>当前仅收录 30 余条常见典故，远未涵盖汉语典故全貌（《汉语典故词典》收录逾万条）。如需更全面检索，请查阅专业辞书。</li>
+  <li><strong>不支持繁体字与异体字：</strong>数据库仅使用简体中文，输入繁体（如"臥薪嘗膽"）或异体字无法匹配。</li>
+  <li><strong>不支持拼音检索：</strong>虽然每条典故标注了拼音，但暂不支持按拼音搜索。</li>
+  <li><strong>原文非学术校勘本：</strong>所引原文据通行版本，未做详细校勘，不同版本间可能存在异文。学术引用请以权威点校本为准。</li>
+  <li><strong>无网络更新：</strong>数据内置于前端，无法在线更新。如需扩充，须修改源码中的 ALLUSION_DB 数组。</li>
+  <li><strong>无典故辨析功能：</strong>对于易混典故（如"破釜沉舟"与"背水一战"）的细微差别，本工具仅提供各自释义，不做对比辨析。</li>
+  <li><strong>无典故用例：</strong>未提供典故在后世文学作品中的使用例句（如诗词、小说中的引用）。</li>
+  <li><strong>无多语言支持：</strong>仅支持中文，无英文、日文等翻译。</li>
+  <li><strong>无典故图像、音频：</strong>纯文本工具，无配图、朗读等多媒体功能。</li>
+  <li><strong>出处断代以"成书时代"为准：</strong>部分典故事件发生时代与成书时代不同（如"卧薪尝胆"事件在春秋，但出处《史记》成书于西汉），本工具以出处成书时代为主，部分在 era 字段中注明"典出XX"。</li>
+</ol>
+<p>如需更专业、更全面的典故检索，建议参考以下资源：</p>
+<ul>
+  <li>《汉语典故词典》（商务印书馆）</li>
+  <li>《中国典故大辞典》（上海辞书出版社）</li>
+  <li>《成语大词典》（商务印书馆）</li>
+  <li>国家图书馆"中华经典古籍库"（在线数据库）</li>
+  <li>"汉典"网站（zdic.net）</li>
+</ul>
+`;
+
+/* ============================================================
+ * UI 交互逻辑
+ * ============================================================ */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 渲染典故卡片
+function renderCard(item) {
+  return `
+    <div class="result-card">
+      <h3>${item.name}</h3>
+      <div class="meta">
+        <span>【拼音】${item.pinyin || ''}</span>
+        <span>【时代】${item.era}</span>
+        <span>【作者】${item.author || '佚名'}</span>
+      </div>
+      <div class="section-title">出处</div>
+      <div class="section-content">${item.source}</div>
+      <div class="section-title">原文</div>
+      <div class="section-content original">${item.original}</div>
+      <div class="section-title">释义</div>
+      <div class="section-content">${item.meaning}</div>
+      <div class="section-title">引申义</div>
+      <div class="section-content">${item.extended}</div>
+      ${item.related && item.related.length ? `<div class="section-title">相关典故</div><div class="section-content">${item.related.join('、')}</div>` : ''}
+    </div>
+  `;
+}
+
+// 查询
+function doSearch() {
+  const input = document.getElementById('searchInput').value;
+  const mode = document.getElementById('searchMode').value;
+  const area = document.getElementById('resultArea');
+  let results = [];
+
+  try {
+    if (mode === 'name') {
+      const r = queryAllusion(input);
+      if (r) results = [r];
+    } else if (mode === 'keyword') {
+      results = searchAllusions(input);
+    } else if (mode === 'source') {
+      results = getAllusionsBySource(input);
+    } else if (mode === 'era') {
+      results = getAllusionsByEra(input);
+    }
+  } catch (e) {
+    area.innerHTML = `<div class="empty" style="color:#c00;">查询出错：${e.message}</div>`;
+    return;
+  }
+
+  if (results.length === 0) {
+    area.innerHTML = `<div class="empty">未找到匹配的典故，请检查输入或尝试其他查询方式。</div>`;
+  } else {
+    area.innerHTML = `<div style="margin-bottom:12px;color:#666;">共找到 ${results.length} 条结果</div>` +
+      results.map(renderCard).join('');
+  }
+}
+
+function showAll() {
+  const area = document.getElementById('resultArea');
+  const all = getAllAllusions();
+  area.innerHTML = `<div style="margin-bottom:12px;color:#666;">共 ${all.length} 条典故</div>` +
+    all.map(renderCard).join('');
+}
+
+// 回车查询
+document.getElementById('searchInput').addEventListener('keypress', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// 渲染源码
+document.getElementById('sourceCode').textContent = `/* ============================================================
+ * 典故查询工具 - 核心 JS 源码
+ * 纯函数实现，无外部依赖，可直接在浏览器运行
+ * ============================================================ */
+
+/**
+ * 典故数据库（内置真实可考典故）
+ * 数据来源：《史记》《战国策》《吕氏春秋》《列子》《韩非子》《山海经》《淮南子》《晋书》《西京杂记》《列女传》等
+ */
+const ALLUSION_DB = [ /* 共 ${ALLUSION_DB.length} 条，结构见下 */
+  {
+    name: "高山流水",
+    pinyin: "gāo shān liú shuǐ",
+    era: "先秦",
+    source: "《列子·汤问》",
+    author: "列御寇（传）",
+    original: "伯牙善鼓琴，钟子期善听……",
+    meaning: "比喻知音难遇或乐曲高妙。",
+    extended: "后用以比喻知己、知音……",
+    related: ["伯牙绝弦", "知音"]
+  },
+  // ... 共 ${ALLUSION_DB.length} 条
+];
+
+/**
+ * 按名称精确查询典故
+ * @param {string} name - 典故名称
+ * @returns {Object|null} 匹配的典故对象，未找到返回 null
+ * @throws {TypeError} 参数非字符串时抛出
+ */
+function queryAllusion(name) {
+  if (typeof name !== "string") {
+    throw new TypeError("queryAllusion: 参数 name 必须为字符串");
+  }
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const found = ALLUSION_DB.find(item => item.name === trimmed);
+  return found ? Object.assign({}, found) : null;
+}
+
+/**
+ * 按关键词模糊搜索典故
+ * @param {string} keyword - 搜索关键词
+ * @returns {Array<Object>} 匹配的典故数组
+ * @throws {TypeError} 参数非字符串时抛出
+ */
+function searchAllusions(keyword) {
+  if (typeof keyword !== "string") {
+    throw new TypeError("searchAllusions: 参数 keyword 必须为字符串");
+  }
+  const kw = keyword.trim();
+  if (!kw) return [];
+  return ALLUSION_DB.filter(item =>
+    item.name.includes(kw) ||
+    item.meaning.includes(kw) ||
+    item.extended.includes(kw) ||
+    item.source.includes(kw) ||
+    item.original.includes(kw) ||
+    item.era.includes(kw) ||
+    (item.related && item.related.some(r => r.includes(kw)))
+  ).map(item => Object.assign({}, item));
+}
+
+/**
+ * 按出处古籍查询典故
+ * @param {string} source - 古籍名称
+ * @returns {Array<Object>} 匹配的典故数组
+ * @throws {TypeError} 参数非字符串时抛出
+ */
+function getAllusionsBySource(source) {
+  if (typeof source !== "string") {
+    throw new TypeError("getAllusionsBySource: 参数 source 必须为字符串");
+  }
+  const s = source.trim();
+  if (!s) return [];
+  return ALLUSION_DB.filter(item => item.source.includes(s))
+    .map(item => Object.assign({}, item));
+}
+
+/**
+ * 按时代查询典故
+ * @param {string} era - 时代名称
+ * @returns {Array<Object>} 匹配的典故数组
+ * @throws {TypeError} 参数非字符串时抛出
+ */
+function getAllusionsByEra(era) {
+  if (typeof era !== "string") {
+    throw new TypeError("getAllusionsByEra: 参数 era 必须为字符串");
+  }
+  const e = era.trim();
+  if (!e) return [];
+  return ALLUSION_DB.filter(item => item.era.includes(e))
+    .map(item => Object.assign({}, item));
+}
+
+/**
+ * 获取全部典故列表
+ * @returns {Array<Object>} 全部典故数组的副本
+ */
+function getAllAllusions() {
+  return ALLUSION_DB.map(item => Object.assign({}, item));
+}
+
+/**
+ * 获取典故总数
+ * @returns {number} 典故数量
+ */
+function getAllusionCount() {
+  return ALLUSION_DB.length;
+}
+
+/**
+ * 随机获取指定数量的典故
+ * @param {number} count - 要获取的数量
+ * @returns {Array<Object>} 随机典故数组
+ * @throws {TypeError} 参数非数字时抛出
+ * @throws {RangeError} 数量超出范围时抛出
+ */
+function getRandomAllusions(count) {
+  if (typeof count !== "number" || Number.isNaN(count)) {
+    throw new TypeError("getRandomAllusions: 参数 count 必须为数字");
+  }
+  if (!Number.isInteger(count)) {
+    throw new RangeError("getRandomAllusions: count 必须为整数");
+  }
+  if (count < 0) {
+    throw new RangeError("getRandomAllusions: count 不能为负数");
+  }
+  if (count > ALLUSION_DB.length) {
+    throw new RangeError("getRandomAllusions: count 超出典故总数");
+  }
+  const shuffled = ALLUSION_DB.slice().sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count).map(item => Object.assign({}, item));
+}
+
+/**
+ * 获取所有不重复的时代列表
+ * @returns {Array<string>} 时代名称数组
+ */
+function getAllEras() {
+  return Array.from(new Set(ALLUSION_DB.map(item => item.era)));
+}
+
+/**
+ * 获取所有不重复的出处古籍列表
+ * @returns {Array<string>} 古籍名称数组
+ */
+function getAllSources() {
+  return Array.from(new Set(ALLUSION_DB.map(item => item.source)));
+}`;
+
+// 渲染说明书
+document.getElementById('manualContent').innerHTML = MANUAL_HTML;
+
+// 运行测试并渲染结果
+(function runTests() {
+  const summary = document.getElementById('testSummary');
+  const log = document.getElementById('testLog');
+  summary.innerHTML = `测试完成：<span class="test-pass">通过 ${testPassed}</span> / 共 ${testTotal} 个用例` +
+    (testPassed === testTotal ? ' ✅ 全部通过' : ` <span class="test-fail">失败 ${testTotal - testPassed}</span>`);
+
+  log.innerHTML = testLogs.map((t, i) => {
+    if (t.pass) {
+      return `<div class="log-pass">✓ [${i+1}] ${t.desc}</div>`;
+    } else {
+      return `<div class="log-fail">✗ [${i+1}] ${t.desc}<br>  实际：${t.actual}<br>  期望：${typeof t.expected === 'string' ? t.expected : JSON.stringify(t.expected)}</div>`;
+    }
+  }).join('');
+})();
+</script>
+
+</body>
+</html>

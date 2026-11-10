@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>六十甲子表工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 20px; background: #f5f5f7; color: #1d1d1f;
+    padding-bottom: 60px;
+  }
+  h1 { margin: 0 0 10px; font-size: 24px; }
+  .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+  .tabs {
+    display: flex; border-bottom: 1px solid #d2d2d7; margin-bottom: 20px;
+  }
+  .tab {
+    padding: 10px 20px; cursor: pointer; background: #e8e8ed;
+    border: 1px solid #d2d2d7; border-bottom: none; margin-right: 4px;
+    border-radius: 6px 6px 0 0; font-size: 14px;
+  }
+  .tab.active { background: #fff; font-weight: 600; }
+  .panel { display: none; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e; color: #d4d4d4; padding: 16px;
+    border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5;
+    max-height: 70vh;
+  }
+  .run-btn {
+    background: #0071e3; color: #fff; border: none; padding: 10px 20px;
+    border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 12px;
+  }
+  .run-btn:hover { background: #0077ed; }
+  #testResult {
+    background: #f5f5f7; padding: 16px; border-radius: 6px;
+    font-family: Menlo, Consolas, monospace; font-size: 13px;
+    white-space: pre-wrap; max-height: 60vh; overflow-y: auto;
+  }
+  .pass { color: #1b873f; }
+  .fail { color: #cf222e; }
+  .summary { font-weight: bold; font-size: 15px; margin-top: 10px; }
+  .doc h2 { border-bottom: 1px solid #d2d2d7; padding-bottom: 6px; margin-top: 28px; }
+  .doc h3 { margin-top: 20px; }
+  .doc table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+  .doc th, .doc td { border: 1px solid #d2d2d7; padding: 8px; text-align: left; }
+  .doc th { background: #f5f5f7; }
+  .doc code { background: #f0f0f3; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  .version {
+    position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #999;
+    font-family: Menlo, monospace;
+  }
+</style>
+</head>
+<body>
+
+<h1>六十甲子表工具</h1>
+<div class="subtitle">纯前端实现 · 完整六十甲子 · 纳音五行 · 生肖 · 公历对照</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">JS 源码</div>
+  <div class="tab" data-tab="test">单元测试</div>
+  <div class="tab" data-tab="doc">使用说明书</div>
+</div>
+
+<div class="panel active" id="panel-source">
+  <pre id="sourceCode"></pre>
+</div>
+
+<div class="panel" id="panel-test">
+  <button class="run-btn" onclick="runAllTests()">▶ 运行全部测试</button>
+  <div id="testResult">点击按钮运行测试…</div>
+</div>
+
+<div class="panel doc" id="panel-doc">
+  <div id="docContent"></div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script id="mainScript">
+/* ============================================================
+ *  六十甲子表工具 · 核心算法
+ *  依据：通行六十甲子纳音表（传统历法）
+ * ============================================================ */
+
+/**
+ * 天干序列（索引 0-9）
+ * @type {string[]}
+ */
+const TIAN_GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+
+/**
+ * 地支序列（索引 0-11）
+ * @type {string[]}
+ */
+const DI_ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+/**
+ * 生肖序列（与地支一一对应）
+ * @type {string[]}
+ */
+const SHENG_XIAO = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+
+/**
+ * 纳音五行表（30 组，每组对应两个干支）
+ * 顺序：甲子乙丑、丙寅丁卯、戊辰己巳……壬戌癸亥
+ * @type {string[]}
+ */
+const NA_YIN = [
+  '海中金','炉中火','大林木','路旁土','剑锋金','山头火',
+  '涧下水','城头土','白蜡金','杨柳木','泉中水','屋上土',
+  '霹雳火','松柏木','长流水','沙中金','山下火','平地木',
+  '壁上土','金箔金','覆灯火','天河水','大驿土','钗钏金',
+  '桑柘木','大溪水','沙中土','天上火','石榴木','大海水'
+];
+
+/**
+ * 校验年份是否为有效整数
+ * @param {*} year - 待校验值
+ * @returns {number} 校验通过的整数年份
+ * @throws {TypeError} 非数字类型
+ * @throws {RangeError} 超出安全整数范围或非整数
+ */
+function validateYear(year) {
+  if (year === null || year === undefined) {
+    throw new TypeError('年份不能为 null 或 undefined');
+  }
+  if (typeof year === 'string') {
+    if (year.trim() === '') throw new TypeError('年份不能为空字符串');
+    year = Number(year);
+  }
+  if (typeof year !== 'number' || Number.isNaN(year)) {
+    throw new TypeError('年份必须是数字，收到: ' + year);
+  }
+  if (!Number.isInteger(year)) {
+    throw new RangeError('年份必须是整数，收到: ' + year);
+  }
+  if (!Number.isSafeInteger(year)) {
+    throw new RangeError('年份超出安全整数范围');
+  }
+  return year;
+}
+
+/**
+ * 校验六十甲子序号
+ * @param {*} index - 序号（1-60）
+ * @returns {number} 校验通过的序号
+ * @throws {TypeError} 非法类型
+ * @throws {RangeError} 超出 1-60 范围
+ */
+function validateIndex(index) {
+  if (index === null || index === undefined) {
+    throw new TypeError('序号不能为 null 或 undefined');
+  }
+  if (typeof index === 'string') {
+    if (index.trim() === '') throw new TypeError('序号不能为空字符串');
+    index = Number(index);
+  }
+  if (typeof index !== 'number' || Number.isNaN(index)) {
+    throw new TypeError('序号必须是数字');
+  }
+  if (!Number.isInteger(index)) {
+    throw new RangeError('序号必须是整数');
+  }
+  if (index < 1 || index > 60) {
+    throw new RangeError('序号必须在 1-60 之间，收到: ' + index);
+  }
+  return index;
+}
+
+/**
+ * 根据公历年份计算该年的干支（以立春为界，本函数按"农历年近似=公历年"处理，立春前需另行校正）
+ *
+ * 算法：以公元 4 年为甲子年（历史推算基准），则
+ *   天干索引 = (year - 4) mod 10
+ *   地支索引 = (year - 4) mod 12
+ *   甲子序号 = (year - 4) mod 60 + 1
+ *
+ * @param {number|string} year - 公历年份（整数）
+ * @returns {{year:number, ganZhi:string, gan:string, zhi:string, index:number, naYin:string, zodiac:string}}
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 非整数
+ * @example
+ * getGanZhiByYear(1984);
+ * // => { year:1984, ganZhi:'甲子', gan:'甲', zhi:'子', index:1, naYin:'海中金', zodiac:'鼠' }
+ * @example
+ * getGanZhiByYear(2024);
+ * // => { year:2024, ganZhi:'甲辰', ..., naYin:'覆灯火', zodiac:'龙' }
+ */
+function getGanZhiByYear(year) {
+  year = validateYear(year);
+  // 处理负数年份（公元前）：使用数学取模保证非负
+  const mod = ((year - 4) % 60 + 60) % 60;
+  const index = mod + 1;
+  const ganIdx = ((year - 4) % 10 + 10) % 10;
+  const zhiIdx = ((year - 4) % 12 + 12) % 12;
+  const naYinIdx = Math.floor(mod / 2);
+  return {
+    year: year,
+    ganZhi: TIAN_GAN[ganIdx] + DI_ZHI[zhiIdx],
+    gan: TIAN_GAN[ganIdx],
+    zhi: DI_ZHI[zhiIdx],
+    index: index,
+    naYin: NA_YIN[naYinIdx],
+    zodiac: SHENG_XIAO[zhiIdx]
+  };
+}
+
+/**
+ * 根据六十甲子序号（1-60）获取完整信息
+ * @param {number|string} index - 序号，1 为甲子，60 为癸亥
+ * @returns {{index:number, ganZhi:string, gan:string, zhi:string, naYin:string, zodiac:string}}
+ * @throws {TypeError} 非法类型
+ * @throws {RangeError} 超出 1-60
+ * @example
+ * getGanZhiByIndex(1);
+ * // => { index:1, ganZhi:'甲子', gan:'甲', zhi:'子', naYin:'海中金', zodiac:'鼠' }
+ * @example
+ * getGanZhiByIndex(60);
+ * // => { index:60, ganZhi:'癸亥', ..., naYin:'大海水', zodiac:'猪' }
+ */
+function getGanZhiByIndex(index) {
+  index = validateIndex(index);
+  const mod = index - 1;
+  const ganIdx = mod % 10;
+  const zhiIdx = mod % 12;
+  const naYinIdx = Math.floor(mod / 2);
+  return {
+    index: index,
+    ganZhi: TIAN_GAN[ganIdx] + DI_ZHI[zhiIdx],
+    gan: TIAN_GAN[ganIdx],
+    zhi: DI_ZHI[zhiIdx],
+    naYin: NA_YIN[naYinIdx],
+    zodiac: SHENG_XIAO[zhiIdx]
+  };
+}
+
+/**
+ * 根据干支名称反查近百年内对应的公历年份列表
+ * @param {string} ganZhi - 干支名称，如 '甲子'、'癸亥'
+ * @param {number} [baseYear=2024] - 基准年份，返回该年前后约 60 年范围内的匹配
+ * @returns {number[]} 公历年份数组（升序）
+ * @throws {TypeError} 参数类型错误
+ * @throws {Error} 干支名称不合法
+ * @example
+ * getYearByGanZhi('甲子', 2024);
+ * // => [1984, 2044]
+ * @example
+ * getYearByGanZhi('甲辰', 2024);
+ * // => [1964, 2024]
+ */
+function getYearByGanZhi(ganZhi, baseYear) {
+  if (ganZhi === null || ganZhi === undefined) {
+    throw new TypeError('干支不能为 null 或 undefined');
+  }
+  if (typeof ganZhi !== 'string' || ganZhi.length !== 2) {
+    throw new TypeError('干支必须是两个汉字的字符串');
+  }
+  const gan = ganZhi[0];
+  const zhi = ganZhi[1];
+  const ganIdx = TIAN_GAN.indexOf(gan);
+  const zhiIdx = DI_ZHI.indexOf(zhi);
+  if (ganIdx === -1 || zhiIdx === -1) {
+    throw new Error('非法干支名称: ' + ganZhi);
+  }
+  // 天干地支奇偶必须相同（阳干配阳支、阴干配阴支）
+  if (ganIdx % 2 !== zhiIdx % 2) {
+    throw new Error('非法干支组合（阴阳不配）: ' + ganZhi);
+  }
+  baseYear = baseYear === undefined ? 2024 : validateYear(baseYear);
+  // 解同余方程：year ≡ ganIdx+4 (mod 10), year ≡ zhiIdx+4 (mod 12)
+  // 等价于 year ≡ target (mod 60)
+  let target = -1;
+  for (let y = 0; y < 60; y++) {
+    if (((y - 4) % 10 + 10) % 10 === ganIdx && ((y - 4) % 12 + 12) % 12 === zhiIdx) {
+      target = y;
+      break;
+    }
+  }
+  const results = [];
+  const start = baseYear - 60;
+  const end = baseYear + 60;
+  for (let y = start; y <= end; y++) {
+    if (((y - 4) % 60 + 60) % 60 === target) {
+      results.push(y);
+    }
+  }
+  return results;
+}
+
+/**
+ * 根据干支获取纳音五行
+ * @param {string} ganZhi - 干支名称
+ * @returns {string} 纳音五行名称
+ * @throws {TypeError} 参数类型错误
+ * @throws {Error} 干支不合法
+ * @example
+ * getNaYin('甲子'); // => '海中金'
+ * @example
+ * getNaYin('癸亥'); // => '大海水'
+ */
+function getNaYin(ganZhi) {
+  if (ganZhi === null || ganZhi === undefined) {
+    throw new TypeError('干支不能为 null 或 undefined');
+  }
+  if (typeof ganZhi !== 'string' || ganZhi.length !== 2) {
+    throw new TypeError('干支必须是两个汉字的字符串');
+  }
+  const ganIdx = TIAN_GAN.indexOf(ganZhi[0]);
+  const zhiIdx = DI_ZHI.indexOf(ganZhi[1]);
+  if (ganIdx === -1 || zhiIdx === -1) {
+    throw new Error('非法干支名称: ' + ganZhi);
+  }
+  if (ganIdx % 2 !== zhiIdx % 2) {
+    throw new Error('非法干支组合: ' + ganZhi);
+  }
+  // 计算该干支在 60 甲子中的序号 mod 60
+  let mod = -1;
+  for (let i = 0; i < 60; i++) {
+    if (i % 10 === ganIdx && i % 12 === zhiIdx) { mod = i; break; }
+  }
+  return NA_YIN[Math.floor(mod / 2)];
+}
+
+/**
+ * 根据公历年份获取生肖（简化规则：以公历年近似，未考虑立春分界）
+ * @param {number|string} year - 公历年份
+ * @returns {string} 生肖名称
+ * @throws {TypeError} 参数类型错误
+ * @throws {RangeError} 非整数
+ * @example
+ * getZodiac(2024); // => '龙'
+ * @example
+ * getZodiac(2023); // => '兔'
+ */
+function getZodiac(year) {
+  year = validateYear(year);
+  const zhiIdx = ((year - 4) % 12 + 12) % 12;
+  return SHENG_XIAO[zhiIdx];
+}
+
+/**
+ * 生成完整的六十甲子表
+ * @returns {Array<{index:number, ganZhi:string, gan:string, zhi:string, naYin:string, zodiac:string}>}
+ * @example
+ * const table = getJiaZiTable();
+ * // table.length === 60
+ * // table[0].ganZhi === '甲子'
+ * // table[59].ganZhi === '癸亥'
+ */
+function getJiaZiTable() {
+  const result = [];
+  for (let i = 1; i <= 60; i++) {
+    result.push(getGanZhiByIndex(i));
+  }
+  return result;
+}
+
+/**
+ * 查询某干支在近百年内对应的公历年份（默认以当前年份为基准）
+ * @param {string} ganZhi - 干支名称
+ * @param {number} [centerYear] - 中心年份，默认当前年
+ * @param {number} [range=100] - 前后各多少年
+ * @returns {number[]} 年份数组
+ * @throws {TypeError} 参数错误
+ * @throws {Error} 干支非法
+ * @example
+ * getRecentYears('甲子', 2024, 100);
+ * // => [1984, 2044]
+ */
+function getRecentYears(ganZhi, centerYear, range) {
+  if (ganZhi === null || ganZhi === undefined) {
+    throw new TypeError('干支不能为 null 或 undefined');
+  }
+  if (typeof ganZhi !== 'string' || ganZhi.length !== 2) {
+    throw new TypeError('干支必须是两个汉字的字符串');
+  }
+  const ganIdx = TIAN_GAN.indexOf(ganZhi[0]);
+  const zhiIdx = DI_ZHI.indexOf(ganZhi[1]);
+  if (ganIdx === -1 || zhiIdx === -1) throw new Error('非法干支: ' + ganZhi);
+  if (ganIdx % 2 !== zhiIdx % 2) throw new Error('非法干支组合: ' + ganZhi);
+
+  centerYear = centerYear === undefined ? new Date().getFullYear() : validateYear(centerYear);
+  range = range === undefined ? 100 : validateYear(range);
+  if (range < 0) throw new RangeError('范围不能为负');
+
+  let target = -1;
+  for (let y = 0; y < 60; y++) {
+    if (((y - 4) % 10 + 10) % 10 === ganIdx && ((y - 4) % 12 + 12) % 12 === zhiIdx) {
+      target = y; break;
+    }
+  }
+  const results = [];
+  for (let y = centerYear - range; y <= centerYear + range; y++) {
+    if (((y - 4) % 60 + 60) % 60 === target) results.push(y);
+  }
+  return results;
+}
+</script>
+
+<script>
+/* ============================================================
+ *  单元测试（纯 JS，自实现 assert）
+ * ============================================================ */
+let _pass = 0, _fail = 0, _log = [];
+
+function assertEqual(actual, expected, msg) {
+  const a = JSON.stringify(actual);
+  const e = JSON.stringify(expected);
+  if (a === e) {
+    _pass++;
+    _log.push('<span class="pass">✓ PASS</span> ' + msg);
+  } else {
+    _fail++;
+    _log.push('<span class="fail">✗ FAIL</span> ' + msg +
+      ' | 期望: ' + e + ' | 实际: ' + a);
+  }
+}
+
+function assertThrows(fn, errType, msg) {
+  try {
+    fn();
+    _fail++;
+    _log.push('<span class="fail">✗ FAIL</span> ' + msg + ' | 期望抛出异常但未抛出');
+  } catch (e) {
+    if (errType && !(e instanceof errType)) {
+      _fail++;
+      _log.push('<span class="fail">✗ FAIL</span> ' + msg + ' | 期望 ' + errType.name + '，实际 ' + e.constructor.name);
+    } else {
+      _pass++;
+      _log.push('<span class="pass">✓ PASS</span> ' + msg + ' (抛出: ' + e.message + ')');
+    }
+  }
+}
+
+function runAllTests() {
+  _pass = 0; _fail = 0; _log = [];
+
+  /* ---------- getGanZhiByYear 正常值 ---------- */
+  // 1. 1984 甲子年
+  assertEqual(getGanZhiByYear(1984).ganZhi, '甲子', 'getGanZhiByYear(1984) → 甲子');
+  assertEqual(getGanZhiByYear(1984).index, 1, 'getGanZhiByYear(1984).index → 1');
+  assertEqual(getGanZhiByYear(1984).naYin, '海中金', 'getGanZhiByYear(1984).naYin → 海中金');
+  assertEqual(getGanZhiByYear(1984).zodiac, '鼠', 'getGanZhiByYear(1984).zodiac → 鼠');
+
+  // 2. 2024 甲辰年
+  assertEqual(getGanZhiByYear(2024).ganZhi, '甲辰', 'getGanZhiByYear(2024) → 甲辰');
+  assertEqual(getGanZhiByYear(2024).naYin, '覆灯火', 'getGanZhiByYear(2024).naYin → 覆灯火');
+  assertEqual(getGanZhiByYear(2024).zodiac, '龙', 'getGanZhiByYear(2024).zodiac → 龙');
+
+  // 3. 2023 癸卯年
+  assertEqual(getGanZhiByYear(2023).ganZhi, '癸卯', 'getGanZhiByYear(2023) → 癸卯');
+  assertEqual(getGanZhiByYear(2023).naYin, '金箔金', 'getGanZhiByYear(2023).naYin → 金箔金');
+
+  // 4. 1911 辛亥年
+  assertEqual(getGanZhiByYear(1911).ganZhi, '辛亥', 'getGanZhiByYear(1911) → 辛亥');
+  assertEqual(getGanZhiByYear(1911).naYin, '钗钏金', 'getGanZhiByYear(1911).naYin → 钗钏金');
+
+  // 5. 字符串数字
+  assertEqual(getGanZhiByYear('1984').ganZhi, '甲子', 'getGanZhiByYear("1984") → 甲子');
+
+  /* ---------- getGanZhiByYear 边界值 ---------- */
+  // 6. 公元 4 年（甲子基准）
+  assertEqual(getGanZhiByYear(4).ganZhi, '甲子', 'getGanZhiByYear(4) → 甲子');
+  // 7. 公元 3 年（癸亥）
+  assertEqual(getGanZhiByYear(3).ganZhi, '癸亥', 'getGanZhiByYear(3) → 癸亥');
+  // 8. 公元 1 年（辛酉）
+  assertEqual(getGanZhiByYear(1).ganZhi, '辛酉', 'getGanZhiByYear(1) → 辛酉');
+  // 9. 公元 0 年（不存在，但算法可算）
+  assertEqual(getGanZhiByYear(0).ganZhi, '庚申', 'getGanZhiByYear(0) → 庚申');
+  // 10. 负数年份
+  assertEqual(getGanZhiByYear(-1).ganZhi, '己未', 'getGanZhiByYear(-1) → 己未');
+  // 11. 2044 甲子
+  assertEqual(getGanZhiByYear(2044).ganZhi, '甲子', 'getGanZhiByYear(2044) → 甲子');
+
+  /* ---------- getGanZhiByYear 异常输入 ---------- */
+  // 12. null
+  assertThrows(() => getGanZhiByYear(null), TypeError, 'getGanZhiByYear(null) 抛 TypeError');
+  // 13. undefined
+  assertThrows(() => getGanZhiByYear(undefined), TypeError, 'getGanZhiByYear(undefined) 抛 TypeError');
+  // 14. NaN
+  assertThrows(() => getGanZhiByYear(NaN), TypeError, 'getGanZhiByYear(NaN) 抛 TypeError');
+  // 15. 空字符串
+  assertThrows(() => getGanZhiByYear(''), TypeError, 'getGanZhiByYear("") 抛 TypeError');
+  // 16. 浮点数
+  assertThrows(() => getGanZhiByYear(1984.5), RangeError, 'getGanZhiByYear(1984.5) 抛 RangeError');
+  // 17. 布尔
+  assertThrows(() => getGanZhiByYear(true), TypeError, 'getGanZhiByYear(true) 抛 TypeError');
+
+  /* ---------- getGanZhiByIndex ---------- */
+  // 18. 序号 1
+  assertEqual(getGanZhiByIndex(1).ganZhi, '甲子', 'getGanZhiByIndex(1) → 甲子');
+  // 19. 序号 30
+  assertEqual(getGanZhiByIndex(30).ganZhi, '癸巳', 'getGanZhiByIndex(30) → 癸巳');
+  // 20. 序号 60
+  assertEqual(getGanZhiByIndex(60).ganZhi, '癸亥', 'getGanZhiByIndex(60) → 癸亥');
+  // 21. 序号 60 纳音
+  assertEqual(getGanZhiByIndex(60).naYin, '大海水', 'getGanZhiByIndex(60).naYin → 大海水');
+  // 22. 序号 0 越界
+  assertThrows(() => getGanZhiByIndex(0), RangeError, 'getGanZhiByIndex(0) 抛 RangeError');
+  // 23. 序号 61 越界
+  assertThrows(() => getGanZhiByIndex(61), RangeError, 'getGanZhiByIndex(61) 抛 RangeError');
+  // 24. 负数序号
+  assertThrows(() => getGanZhiByIndex(-5), RangeError, 'getGanZhiByIndex(-5) 抛 RangeError');
+  // 25. null
+  assertThrows(() => getGanZhiByIndex(null), TypeError, 'getGanZhiByIndex(null) 抛 TypeError');
+
+  /* ---------- getYearByGanZhi ---------- */
+  // 26. 甲子
+  const y1 = getYearByGanZhi('甲子', 2024);
+  assertEqual(y1.includes(1984) && y1.includes(2044), true, 'getYearByGanZhi("甲子",2024) 包含 1984 和 2044');
+  // 27. 甲辰
+  const y2 = getYearByGanZhi('甲辰', 2024);
+  assertEqual(y2.includes(2024) && y2.includes(1964), true, 'getYearByGanZhi("甲辰",2024) 包含 1964 和 2024');
+  // 28. 癸亥
+  const y3 = getYearByGanZhi('癸亥', 2024);
+  assertEqual(y3.includes(1983) && y3.includes(2043), true, 'getYearByGanZhi("癸亥",2024) 包含 1983 和 2043');
+  // 29. 非法干支
+  assertThrows(() => getYearByGanZhi('甲丑', 2024), Error, 'getYearByGanZhi("甲丑") 阴阳不配抛错');
+  // 30. 空字符串
+  assertThrows(() => getYearByGanZhi('', 2024), TypeError, 'getYearByGanZhi("") 抛 TypeError');
+  // 31. null
+  assertThrows(() => getYearByGanZhi(null, 2024), TypeError, 'getYearByGanZhi(null) 抛 TypeError');
+  // 32. 非汉字
+  assertThrows(() => getYearByGanZhi('AB', 2024), Error, 'getYearByGanZhi("AB") 抛错');
+
+  /* ---------- getNaYin ---------- */
+  // 33. 甲子
+  assertEqual(getNaYin('甲子'), '海中金', 'getNaYin("甲子") → 海中金');
+  // 34. 乙丑（同组）
+  assertEqual(getNaYin('乙丑'), '海中金', 'getNaYin("乙丑") → 海中金');
+  // 35. 癸亥
+  assertEqual(getNaYin('癸亥'), '大海水', 'getNaYin("癸亥") → 大海水');
+  // 36. 壬戌
+  assertEqual(getNaYin('壬戌'), '大海水', 'getNaYin("壬戌") → 大海水');
+  // 37. 非法
+  assertThrows(() => getNaYin('甲丑'), Error, 'getNaYin("甲丑") 抛错');
+  // 38. null
+  assertThrows(() => getNaYin(null), TypeError, 'getNaYin(null) 抛 TypeError');
+
+  /* ---------- getZodiac ---------- */
+  // 39. 2024 龙
+  assertEqual(getZodiac(2024), '龙', 'getZodiac(2024) → 龙');
+  // 40. 2023 兔
+  assertEqual(getZodiac(2023), '兔', 'getZodiac(2023) → 兔');
+  // 41. 2020 鼠
+  assertEqual(getZodiac(2020), '鼠', 'getZodiac(2020) → 鼠');
+  // 42. 1984 鼠
+  assertEqual(getZodiac(1984), '鼠', 'getZodiac(1984) → 鼠');
+  // 43. 浮点
+  assertThrows(() => getZodiac(2024.5), RangeError, 'getZodiac(2024.5) 抛 RangeError');
+
+  /* ---------- getJiaZiTable ---------- */
+  // 44. 表长度
+  assertEqual(getJiaZiTable().length, 60, 'getJiaZiTable().length === 60');
+  // 45. 首项
+  assertEqual(getJiaZiTable()[0].ganZhi, '甲子', '表首项 → 甲子');
+  // 46. 末项
+  assertEqual(getJiaZiTable()[59].ganZhi, '癸亥', '表末项 → 癸亥');
+
+  /* ---------- getRecentYears ---------- */
+  // 47. 甲子近百年
+  const r1 = getRecentYears('甲子', 2024, 100);
+  assertEqual(r1.includes(1984) && r1.includes(2044), true, 'getRecentYears("甲子",2024,100) 含 1984/2044');
+  // 48. 范围 0
+  const r2 = getRecentYears('甲子', 1984, 0);
+  assertEqual(r2, [1984], 'getRecentYears("甲子",1984,0) → [1984]');
+  // 49. 负范围
+  assertThrows(() => getRecentYears('甲子', 2024, -10), RangeError, 'getRecentYears 负范围抛错');
+
+  /* ---------- 精度/浮点相关 ---------- */
+  // 50. 大整数年份
+  assertEqual(getGanZhiByYear(10004).ganZhi, '甲子', 'getGanZhiByYear(10004) → 甲子（大整数）');
+  // 51. 公元前大数
+  assertEqual(getGanZhiByYear(-1000).ganZhi, '辛酉', 'getGanZhiByYear(-1000) → 辛酉');
+
+  /* ---------- 输出汇总 ---------- */
+  const total = _pass + _fail;
+  const summary = '\n\n<span class="summary">通过 ' + _pass + ' / 共 ' + total +
+    (_fail > 0 ? ' （失败 ' + _fail + '）' : ' ✓ 全部通过') + '</span>';
+  document.getElementById('testResult').innerHTML = _log.join('\n') + summary;
+}
+</script>
+
+<script>
+/* ============================================================
+ *  使用说明书
+ * ============================================================ */
+const DOC_HTML = `
+<h2>一、工具简介</h2>
+<p>本工具是一个纯前端（零依赖）实现的「六十甲子表」查询工具，提供以下能力：</p>
+<ul>
+  <li>由公历年份 → 查该年干支、纳音五行、生肖</li>
+  <li>由六十甲子序号（1-60）→ 查对应干支信息</li>
+  <li>由干支名称 → 反查近百年内对应的公历年份</li>
+  <li>生成完整六十甲子表（含纳音、生肖）</li>
+</ul>
+<p>适用场景：传统历法学习、民俗研究、命理排盘辅助、文化类应用开发等。</p>
+
+<h2>二、核心概念</h2>
+<h3>2.1 干支</h3>
+<p>天干 10 个：甲、乙、丙、丁、戊、己、庚、辛、壬、癸。<br>
+地支 12 个：子、丑、寅、卯、辰、巳、午、未、申、酉、戌、亥。<br>
+天干地支按「阳干配阳支、阴干配阴支」两两相配，共得 60 组，称为「六十甲子」，循环使用。</p>
+
+<h3>2.2 纳音五行</h3>
+<p>六十甲子两两一组，共 30 组，每组配一个纳音，如「甲子乙丑海中金」「丙寅丁卯炉中火」等。纳音是传统命理中用于细化五行属性的一种方法。</p>
+
+<h3>2.3 生肖</h3>
+<p>12 地支各对应一种动物：子鼠、丑牛、寅虎、卯兔、辰龙、巳蛇、午马、未羊、申猴、酉鸡、戌狗、亥猪。</p>
+
+<h2>三、函数 API 详解</h2>
+
+<h3>3.1 <code>getGanZhiByYear(year)</code></h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td>year</td><td>number | string</td><td>公历年份，整数。字符串会被自动转换。</td></tr>
+</table>
+<p><b>返回值：</b>对象 <code>{year, ganZhi, gan, zhi, index, naYin, zodiac}</code></p>
+<p><b>抛出：</b><code>TypeError</code>（类型错误）、<code>RangeError</code>（非整数）</p>
+<p><b>示例：</b><code>getGanZhiByYear(2024)</code> → <code>{year:2024, ganZhi:'甲辰', naYin:'覆灯火', zodiac:'龙', ...}</code></p>
+
+<h3>3.2 <code>getGanZhiByIndex(index)</code></h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td>index</td><td>number | string</td><td>六十甲子序号，1-60。1=甲子，60=癸亥。</td></tr>
+</table>
+<p><b>返回值：</b>对象 <code>{index, ganZhi, gan, zhi, naYin, zodiac}</code></p>
+
+<h3>3.3 <code>getYearByGanZhi(ganZhi, baseYear)</code></h3>
+<table>
+  <tr><th>参数</th><th>类型</th><th>说明</th></tr>
+  <tr><td>ganZhi</td><td>string</td><td>干支名称，如 '甲子'、'癸亥'。必须为两个汉字。</td></tr>
+  <tr><td>baseYear</td><td>number</td><td>基准年份，默认 2024。返回该年前后约 60 年范围内的匹配年份。</td></tr>
+</table>
+<p><b>返回值：</b>年份数组（升序）</p>
+
+<h3>3.4 <code>getNaYin(ganZhi)</code></h3>
+<p>输入干支名称，返回纳音五行。</p>
+
+<h3>3.5 <code>getZodiac(year)</code></h3>
+<p>输入公历年份，返回生肖。</p>
+
+<h3>3.6 <code>getJiaZiTable()</code></h3>
+<p>返回完整 60 项数组，每项含 <code>index/ganZhi/gan/zhi/naYin/zodiac</code>。</p>
+
+<h3>3.7 <code>getRecentYears(ganZhi, centerYear, range)</code></h3>
+<p>以 centerYear 为中心，前后各 range 年内查找匹配干支的公历年份。</p>
+
+<h2>四、实际使用场景</h2>
+
+<h3>场景 1：查询自己出生年的干支</h3>
+<p><b>输入：</b><code>getGanZhiByYear(1990)</code></p>
+<p><b>结果：</b><code>{ganZhi:'庚午', naYin:'路旁土', zodiac:'马', index:7}</code></p>
+<p>含义：1990 年是庚午年，纳音路旁土，生肖属马。</p>
+
+<h3>场景 2：查找「甲子年」在近百年内出现的公历年份</h3>
+<p><b>输入：</b><code>getRecentYears('甲子', 2024, 100)</code></p>
+<p><b>结果：</b><code>[1984, 2044]</code></p>
+<p>含义：以 2024 为中心前后 100 年内，甲子年出现在 1984 和 2044。</p>
+
+<h3>场景 3：生成完整六十甲子表用于展示</h3>
+<p><b>输入：</b><code>const table = getJiaZiTable();</code></p>
+<p><b>结果：</b>长度 60 的数组，<code>table[0].ganZhi === '甲子'</code>，<code>table[59].ganZhi === '癸亥'</code>，每项含纳音与生肖。</p>
+
+<h3>场景 4：已知干支反查纳音</h3>
+<p><b>输入：</b><code>getNaYin('壬戌')</code></p>
+<p><b>结果：</b><code>'大海水'</code></p>
+
+<h3>场景 5：批量转换一组年份</h3>
+<p><b>输入：</b></p>
+<pre style="background:#f5f5f7;color:#1d1d1f;padding:8px;border-radius:4px;">
+[1980,1990,2000,2010,2020].map(y => {
+  const r = getGanZhiByYear(y);
+  return y + '年: ' + r.ganZhi + ' (' + r.zodiac + ', ' + r.naYin + ')';
+});
+</pre>
+<p><b>结果：</b></p>
+<ul>
+  <li>1980年: 庚申 (猴, 石榴木)</li>
+  <li>1990年: 庚午 (马, 路旁土)</li>
+  <li>2000年: 庚辰 (龙, 白蜡金)</li>
+  <li>2010年: 庚寅 (虎, 松柏木)</li>
+  <li>2020年: 庚子 (鼠, 壁上土)</li>
+</ul>
+
+<h2>五、常见错误与排查</h2>
+<table>
+  <tr><th>错误信息</th><th>原因</th><th>解决</th></tr>
+  <tr><td>年份必须是整数</td><td>传入浮点数如 1984.5</td><td>使用 Math.round 或 Math.floor 取整</td></tr>
+  <tr><td>年份不能为 null 或 undefined</td><td>未传参或变量未初始化</td><td>检查调用前变量是否赋值</td></tr>
+  <tr><td>序号必须在 1-60 之间</td><td>传入 0 或 61 等越界值</td><td>确保序号在 1-60 范围内</td></tr>
+  <tr><td>非法干支组合（阴阳不配）</td><td>传入如「甲丑」这种不存在组合</td><td>检查干支是否真实存在于 60 甲子</td></tr>
+  <tr><td>干支必须是两个汉字的字符串</td><td>传入长度不为 2 的字符串</td><td>确保传入如「甲子」这样的双字串</td></tr>
+</table>
+
+<h2>六、数据来源与标准依据</h2>
+<p>本工具数据基于传统历法中的通行六十甲子表与纳音表，属于传统文化常识性内容。</p>
+<ul>
+  <li>干支纪年规则：以公元 4 年为甲子年（历史推算基准），天干 10 年一循环，地支 12 年一循环，60 年一甲子。</li>
+  <li>纳音表：采用通行版本（《三命通会》等古籍所载），30 组纳音与 60 干支的对应关系为传统定式。</li>
+  <li>农历编算相关国家标准：<code>GB/T 33661-2016《农历的编算和颁行》</code>（由中国科学院紫金山天文台负责编算）。</li>
+  <li>干支与纳音本身并无单独的国家标准，本工具数据以通行版本为准，如需用于正式出版物或严肃学术场景，<b>需查标准原文或权威历书（如紫金山天文台编《天文年历》）核对</b>。</li>
+</ul>
+
+<h2>七、局限性说明（重要）</h2>
+<ol>
+  <li><b>未考虑立春分界：</b>传统干支纪年以「立春」为岁首，而非公历 1 月 1 日。本工具按「公历年 ≈ 农历年」的简化规则处理，在每年立春（约 2 月 4 日前后）之前出生的，严格来说应属上一年干支。<b>如需精确到日，需另行接入节气计算模块。</b></li>
+  <li><b>不支持农历日期输入：</b>本工具只接受公历年份，不支持「农历某年某月」输入。</li>
+  <li><b>不支持时辰：</b>八字（四柱）需要年、月、日、时四组干支，本工具仅提供年柱。</li>
+  <li><b>不适用公元前精确历法：</b>虽然算法可处理负数年份，但公元前历法存在多种推算体系，结果仅供参考。</li>
+  <li><b>纳音流派差异：</b>极少数古籍对个别干支的纳音有不同记载，本工具采用最通行版本。</li>
+  <li><b>不做命理判断：</b>本工具仅提供数据查询，不输出任何命理、吉凶、运势等判断。</li>
+  <li><b>精度限制：</b>年份必须在 JavaScript 安全整数范围（±9×10¹⁵）内。</li>
+</ol>
+
+<h2>八、版本信息</h2>
+<p>当前版本：<b>v2.0.0-完整版 20261021</b></p>
+<p>实现语言：纯 JavaScript（ES6+），无任何外部依赖。</p>
+<p>运行环境：现代浏览器（Chrome / Firefox / Safari / Edge）。</p>
+`;
+
+document.getElementById('docContent').innerHTML = DOC_HTML;
+
+/* ============================================================
+ *  源码展示（把 mainScript 的内容格式化显示）
+ * ============================================================ */
+document.getElementById('sourceCode').textContent =
+  document.getElementById('mainScript').textContent;
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>

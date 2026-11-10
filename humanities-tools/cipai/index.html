@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📜 词牌名大全</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:640px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:16px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:14px; }
+  input[type=text] { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px;
+    color:#e8e0f0; font-size:15px; font-family:inherit; margin-bottom:10px; }
+  input:focus { outline:none; border-color:#7a5fc0; }
+  .filters { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .filters button { padding:7px 13px; font-size:12.5px; color:#9a8fc0; background:#181228;
+    border:1px solid #3a3050; border-radius:8px; cursor:pointer; font-family:inherit; }
+  .filters button.on { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border-color:#7a5fc0; }
+  .count { font-size:11px; color:#6a5f90; margin-bottom:8px; text-align:center; }
+  .list { display:flex; flex-direction:column; gap:7px; }
+  .item { background:#1c1530; border:1px solid #3a3050; border-radius:11px; padding:12px 14px; cursor:pointer;
+    transition:.15s; }
+  .item:active { background:#241a3a; transform:scale(.985); }
+  .item .row1 { display:flex; align-items:baseline; gap:8px; }
+  .item .nm { font-size:16px; color:#d8c8ff; font-weight:600; }
+  .item .cc { font-size:11px; color:#7a6fa0; background:#241a3a; border-radius:5px; padding:2px 7px; }
+  .item .cat { font-size:10px; color:#8a7fb0; border:1px solid #4a3d70; border-radius:5px; padding:1px 6px; }
+  .item .al { font-size:11.5px; color:#8a7fb0; margin-top:5px; }
+  .item .rh { font-size:11px; color:#6a8fa0; margin-top:4px; }
+
+  /* 详情 */
+  .detail { display:none; }
+  .detail.show { display:block; }
+  .dhead { background:linear-gradient(160deg,#2a2040,#1c1530); border:1px solid #5a4a9a;
+    border-radius:12px; padding:14px; margin-bottom:12px; }
+  .dhead h2 { font-size:19px; color:#d8c8ff; margin-bottom:8px; }
+  .dmeta { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .dmeta span { font-size:11px; color:#a898d0; background:#241a3a; border:1px solid #4a3d70;
+    border-radius:6px; padding:3px 8px; }
+  .dalias { font-size:12px; color:#8a7fb0; line-height:1.7; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:11px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  .tone { font-size:15px; line-height:2.4; color:#c8b3ff; letter-spacing:1px; }
+  .tone .ping { color:#7fd4ff; }
+  .tone .ze { color:#ff9f9f; }
+  .tone .mid { color:#a898d0; }
+  .tone .rh { color:#ffd479; text-decoration:underline; }
+  .note { font-size:13px; line-height:1.9; color:#b8a8d8; }
+  .example { font-size:13px; line-height:1.9; color:#a898d0; font-style:italic; }
+  .legend { font-size:11px; color:#6a5f90; margin-top:10px; line-height:1.8; }
+  .legend b { font-weight:600; }
+  .back2 { display:inline-block; font-size:12.5px; color:#9a8fc0; background:#181228; border:1px solid #3a3050;
+    border-radius:8px; padding:8px 16px; cursor:pointer; font-family:inherit; margin-bottom:12px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+
+  <!-- 列表页 -->
+  <div id="listPage">
+    <h1>📜 词牌名大全</h1>
+    <div class="sub">查词牌 · 看格律 · 平仄韵脚一目了然</div>
+
+    <input type="text" id="q" placeholder="搜词牌名或别名，如：蝶恋花 / 鹊踏枝">
+
+    <div class="filters" id="filters">
+      <button data-c="all" class="on">全部</button>
+      <button data-c="小令">小令</button>
+      <button data-c="中调">中调</button>
+      <button data-c="长调">长调</button>
+    </div>
+
+    <div class="count" id="count"></div>
+    <div class="list" id="list"></div>
+  </div>
+
+  <!-- 详情页 -->
+  <div class="detail" id="detailPage">
+    <div class="back2" onclick="closeDetail()">← 返回列表</div>
+    <div id="detailBody"></div>
+  </div>
+
+  <div class="ver">v1.1.0-补至52词牌 20261027</div>
+</div>
+
+<script src="data/cipai.js"></script>
+<script>
+(() => {
+'use strict';
+
+const DATA = window.CIPAI_DATA;
+const list = DATA.list;
+const elList = document.getElementById('list');
+const elCount = document.getElementById('count');
+const elQ = document.getElementById('q');
+const elFilters = document.getElementById('filters');
+
+let curCat = 'all';
+let curQuery = '';
+
+function match(item, q) {
+  if (!q) return true;
+  const t = q.trim();
+  if (!t) return true;
+  if (item.name.includes(t)) return true;
+  if (item.alias && item.alias.some(a => a.includes(t))) return true;
+  if (item.example && item.example.includes(t)) return true;
+  return false;
+}
+
+function render() {
+  const out = list.filter(it =>
+    (curCat === 'all' || it.cat === curCat) && match(it, curQuery)
+  );
+
+  elCount.textContent = '共 ' + out.length + ' 个词牌';
+
+  if (!out.length) {
+    elList.innerHTML = '<div class="count" style="padding:20px">没找到。换个词试试？</div>';
+    return;
+  }
+
+  elList.innerHTML = out.map((it, i) => {
+    const alias = (it.alias || []).filter(a => a !== '无').join(' / ');
+    return '<div class="item" data-i="' + list.indexOf(it) + '">' +
+      '<div class="row1">' +
+        '<span class="nm">' + it.name + '</span>' +
+        '<span class="cc">' + it.count + '字</span>' +
+        '<span class="cat">' + it.cat + '</span>' +
+      '</div>' +
+      (alias ? '<div class="al">别名：' + alias + '</div>' : '') +
+      '<div class="rh">' + it.rhyme + '</div>' +
+    '</div>';
+  }).join('');
+
+  elList.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('click', () => openDetail(+el.dataset.i));
+  });
+}
+
+// 平仄高亮：平→蓝，仄→红，中→紫，韵→金色
+function toneHtml(lines) {
+  return lines.map(line => {
+    let s = '';
+    for (const ch of line) {
+      if (ch === '平') s += '<span class="ping">平</span>';
+      else if (ch === '仄') s += '<span class="ze">仄</span>';
+      else if (ch === '中') s += '<span class="mid">中</span>';
+      else if (ch === '韵') s += '<span class="rh">韵</span>';
+      else s += ch;
+    }
+    return s;
+  }).join('<br>');
+}
+
+function openDetail(i) {
+  const it = list[i];
+  const alias = (it.alias || []).filter(a => a !== '无').join(' / ');
+
+  document.getElementById('detailBody').innerHTML =
+    '<div class="dhead">' +
+      '<h2>' + it.name + '</h2>' +
+      '<div class="dmeta">' +
+        '<span>' + it.count + ' 字</span>' +
+        '<span>' + it.cat + '</span>' +
+      '</div>' +
+      (alias ? '<div class="dalias">别名：' + alias + '</div>' : '') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="lbl">格律（平仄谱）</div>' +
+      '<div class="tone">' + toneHtml(it.tone) + '</div>' +
+      '<div class="legend">' +
+        '<b style="color:#7fd4ff">平</b> = 平声　' +
+        '<b style="color:#ff9f9f">仄</b> = 仄声　' +
+        '<b style="color:#a898d0">中</b> = 可平可仄　' +
+        '<b style="color:#ffd479">韵</b> = 韵脚' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="lbl">韵脚要求</div>' +
+      '<div class="note">' + it.rhyme + '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="lbl">词牌说明</div>' +
+      '<div class="note">' + it.note + '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="lbl">例词</div>' +
+      '<div class="example">' + it.example + '</div>' +
+    '</div>';
+
+  document.getElementById('listPage').style.display = 'none';
+  document.getElementById('detailPage').classList.add('show');
+  window.scrollTo(0, 0);
+}
+
+function closeDetail() {
+  document.getElementById('detailPage').classList.remove('show');
+  document.getElementById('listPage').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+elQ.addEventListener('input', e => {
+  curQuery = e.target.value;
+  render();
+});
+
+elFilters.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  elFilters.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  curCat = btn.dataset.c;
+  render();
+});
+
+render();
+})();
+</script>
+</body>
+</html>

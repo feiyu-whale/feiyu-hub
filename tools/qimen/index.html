@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🧭 奇门遁甲</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#060a10; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#d8e8f0;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:600px; }
+  h1 { font-size:12px; text-align:center; color:#7fb8e0; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#5a7a99; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#0e1a26,#08111a); border:1px solid #24455c;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#6fa8d0; margin-bottom:10px; border-left:3px solid #6fa8d0; padding-left:8px; }
+  input, select { width:100%; background:#060e16; border:1px solid #24455c; border-radius:9px;
+    padding:10px 12px; font-size:15px; color:#cfe4f5; outline:none; font-family:inherit; }
+  input:focus, select:focus { border-color:#4a90c0; }
+  .line { display:flex; gap:8px; margin-bottom:9px; }
+  .line > div { flex:1; }
+  .lbl { font-size:11px; color:#5a7a99; margin-bottom:4px; display:block; }
+  button.go { width:100%; padding:13px; font-size:11px; font-weight:700; color:#031018;
+    background:linear-gradient(160deg,#7fb8e0,#3a7098); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:1px; margin-top:4px; }
+  button.go:active { transform:scale(.98); }
+  /* 九宫盘：洛书布局 */
+  .qplate { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
+  .qcell { background:#0a141e; border:1px solid #24455c; border-radius:9px; padding:7px 6px; min-height:104px;
+    position:relative; font-size:11px; line-height:1.5; }
+  .qcell .pg { color:#4a6a85; font-size:10px; position:absolute; top:6px; right:7px; }
+  .qcell .deity { color:#d0a8e0; font-size:11px; }
+  .qcell .star { color:#7fd6c0; font-size:11px; }
+  .qcell .gate { color:#e0b060; font-size:12px; font-weight:700; }
+  .qcell .stem { color:#8fb3cf; font-size:11px; }
+  .qcell .zhi { color:#a080c0; font-size:10px; }
+  .qcell .flag { display:inline-block; font-size:9px; padding:0 4px; border-radius:3px; margin-left:2px; }
+  .qcell .flag.zf { background:#2a5a8a; color:#fff; }
+  .qcell .flag.zs { background:#8a5a2a; color:#fff; }
+  .qcell .vh { color:#e08080; font-size:10px; }
+  .qcell.center { background:#0f2030; }
+  .info-row { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; border-bottom:1px dashed #1a3044; }
+  .info-row:last-child { border-bottom:none; }
+  .info-row .k { color:#6fa8d0; } .info-row .v { color:#cfe4f5; text-align:right; }
+  .sect { color:#6fa8d0; font-size:14px; font-weight:700; margin:14px 0 8px; }
+  .interp { background:#0a141e; border:1px solid #24455c; border-radius:10px; padding:12px 14px;
+    font-size:13px; line-height:1.8; color:#b8d0e0; }
+  .interp b { color:#8fb3cf; }
+  .interp ul { margin:0 0 8px; padding-left:18px; }
+  .interp li { margin-bottom:5px; color:#a8c0d0; }
+  .interp .disclaim { color:#ffb3c1; background:#2a0f1a; border:1px solid #5a2a3a; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-bottom:8px; }
+  .interp .note { color:#5a7a99; font-size:11px; margin-top:6px; }
+  .hint { text-align:center; color:#3a5a70; font-size:11px; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:#2a4558; font-size:10px; margin-top:8px; }
+  .err { color:#ff8fa3; text-align:center; font-size:14px; padding:10px; }
+  .palaces-legend { font-size:10px; color:#4a6a85; text-align:center; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🧭 奇 门 遁 甲</h1>
+  <div class="sub">时家奇门 · 九宫八门九星八神 · 三奇六仪<br>纯本地计算 · 引擎 3meta（MIT）</div>
+
+  <div class="card">
+    <div class="line">
+      <div><span class="lbl">日期</span><input type="date" id="date"></div>
+      <div><span class="lbl">时间（当地）</span><input type="time" id="time" value="12:00"></div>
+    </div>
+    <div class="line">
+      <div><span class="lbl">时区</span><input type="number" id="tz" value="8" step="0.5"></div>
+      <div><span class="lbl">年界（流派）</span>
+        <select id="yearDivide"><option value="exact">以立春（精确）</option><option value="normal">以正月初一</option></select>
+      </div>
+    </div>
+    <button class="go" id="calc">排 盘</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">奇门遁甲由 3meta（MIT）计算 · 传统文化参考 🐳<br>属传统术数，非科学结论，仅供娱乐参考</div>
+  <div class="ver">v1.1.0-加交节提示 20261105</div>
+</div>
+
+<script src="lib/3meta.js"></script>
+<script>
+(function(){
+  'use strict';
+  var Q = (window.ThreeMeta&&window.ThreeMeta.QimenChart) || (typeof ThreeMeta!=='undefined'&&ThreeMeta.QimenChart) || (window['3meta']&&window['3meta'].QimenChart);
+  if(!Q){ document.getElementById('result').innerHTML='<div class="err">引擎加载失败</div>'; return; }
+
+  // 洛书九宫方位 → 3x3 网格位置
+  // 传统：巽4 离9 坤2 / 震3 中5 兑7 / 艮8 坎1 乾6
+  var LUOSHU = [4,9,2, 3,5,7, 8,1,6];
+
+  // 2024-2028 八个主要节气的交节时刻（北京时间，精确到分）
+  // 只用于「交节时段提示」，不参与排盘计算。数据源：天文年历交节时刻表。
+  // 注：只收录立春/春分/立夏/夏至/立秋/秋分/立冬/冬至 八个主要节令，够覆盖绝大多数误报场景。
+  var JIEQI_TABLE = [
+    ['2024-02-04 16:27','立春'],['2024-03-20 11:06','春分'],['2024-05-05 08:10','立夏'],['2024-06-21 04:51','夏至'],
+    ['2024-08-07 08:09','立秋'],['2024-09-22 20:44','秋分'],['2024-11-07 06:20','立冬'],['2024-12-21 17:21','冬至'],
+    ['2025-02-03 22:10','立春'],['2025-03-20 17:01','春分'],['2025-05-05 13:57','立夏'],['2025-06-21 10:42','夏至'],
+    ['2025-08-07 13:52','立秋'],['2025-09-23 02:19','秋分'],['2025-11-07 12:04','立冬'],['2025-12-21 23:03','冬至'],
+    ['2026-02-04 04:02','立春'],['2026-03-20 22:46','春分'],['2026-05-05 19:48','立夏'],['2026-06-21 16:24','夏至'],
+    ['2026-08-07 19:42','立秋'],['2026-09-23 08:05','秋分'],['2026-11-07 17:52','立冬'],['2026-12-22 04:50','冬至'],
+    ['2027-02-04 09:46','立春'],['2027-03-21 04:25','春分'],['2027-05-06 01:25','立夏'],['2027-06-21 22:11','夏至'],
+    ['2027-08-08 01:26','立秋'],['2027-09-23 14:02','秋分'],['2027-11-07 23:39','立冬'],['2027-12-22 10:42','冬至'],
+    ['2028-02-04 15:31','立春'],['2028-03-20 10:17','春分'],['2028-05-05 07:12','立夏'],['2028-06-21 04:02','夏至'],
+    ['2028-08-07 07:09','立秋'],['2028-09-22 19:45','秋分'],['2028-11-07 05:27','立冬'],['2028-12-21 16:20','冬至']
+  ];
+
+  // 判断所选时间是否落在交节前后 WINDOW 分钟内；是则返回 {term, minutes, at}
+  function checkJieQiEdge(d, t){
+    var WINDOW = 30;
+    var target = new Date(d+'T'+t+':00');
+    if(isNaN(target.getTime())) return null;
+    for(var i=0;i<JIEQI_TABLE.length;i++){
+      var at = new Date(JIEQI_TABLE[i][0].replace(' ','T')+':00');
+      var diffMin = Math.abs(target.getTime()-at.getTime())/60000;
+      if(diffMin <= WINDOW){
+        return { term: JIEQI_TABLE[i][1], minutes: Math.round(diffMin), at: JIEQI_TABLE[i][0] };
+      }
+    }
+    return null;
+  }
+
+  function calc(){
+    var res=document.getElementById('result');
+    var d=document.getElementById('date').value;
+    var t=document.getElementById('time').value;
+    if(!d||!t){ res.innerHTML='<div class="err">日期时间要填</div>'; return; }
+    var tz=parseFloat(document.getElementById('tz').value)||0;
+    var yd=document.getElementById('yearDivide').value;
+    // 当地时 → 该引擎要的字符串（按本地时间给，引擎按所填时间排）
+    var dt=d+' '+t+':00';
+    var chart;
+    try{
+      chart=Q.byDatetime(dt, { yearDivide: yd });
+    }catch(e){ res.innerHTML='<div class="err">排盘失败：'+(e.message||e)+'</div>'; return; }
+
+    var ti=chart.timeInfo||{};
+    var h='';
+
+    // ⚠️ 立春交接时段提示（2026-11-05 加）
+    // 已知缺陷：本页所用 3meta 引擎在交节瞬间，年柱/月柱/定局三者判断精度不一致
+    // （年柱按立春精确切，节气与定局按天取整），可能导致「甲辰年+乙丑月」这类不存在的组合。
+    // 影响面：仅限每年立春前后约半小时内起盘。未修引擎前，先给出明确提示，避免用户误信。
+    var jqWarn = checkJieQiEdge(d, t);
+    if(jqWarn){
+      h+='<div class="card warn" style="border-color:#8a5a2a;background:#2a1f14">';
+      h+='<h3 style="color:#f0b46a">⚠️ 交节时段提示</h3>';
+      h+='<p style="color:#f0c48a;line-height:1.7;margin:0 0 6px">所选时间落在 <b>'+jqWarn.term+'</b> 交节前后 <b>'+jqWarn.minutes+' 分钟</b> 内（交节时刻约 '+jqWarn.at+'）。</p>';
+      h+='<p style="color:#c8a878;line-height:1.7;margin:0;font-size:12px">这个时段起出的盘<b>可能不准</b>：年柱、月柱、节气、局数在交节瞬间的判定可能不同步，出现「年柱已换、月柱未换」这类不一致。若要精确排盘，建议避开交节前后半小时，或核对后手工修正。</p>';
+      h+='</div>';
+    }
+
+    // 基本信息
+    h+='<div class="card"><h3>基本信息</h3>';
+    h+='<div class="info-row"><span class="k">公历</span><span class="v">'+dt+'</span></div>';
+    h+='<div class="info-row"><span class="k">农历</span><span class="v">'+(ti.lunarDate||'—')+'</span></div>';
+    var fp=chart.fourPillars||{};
+    if(fp.year) h+='<div class="info-row"><span class="k">干支</span><span class="v">'+fp.year.stem+fp.year.branch+'年 '+fp.month.stem+fp.month.branch+'月 '+fp.day.stem+fp.day.branch+'日 '+fp.hour.stem+fp.hour.branch+'时</span></div>';
+    h+='<div class="info-row"><span class="k">局</span><span class="v">'+(chart.ju?chart.ju.type+' '+chart.ju.number+' 局':'—')+' · '+(chart.yuan||'')+'</span></div>';
+    h+='<div class="info-row"><span class="k">节气 / 旬首</span><span class="v">'+(ti.solarTerm||'—')+' / '+(ti.xunShou||'—')+'</span></div>';
+    h+='<div class="info-row"><span class="k">值符 / 值使</span><span class="v">'+(chart.zhiFu?chart.zhiFu.star+'('+chart.zhiFu.heavenlyStem+')':'—')+' / '+(chart.zhiShi?chart.zhiShi.gate:'—')+'</span></div>';
+    h+='<div class="info-row"><span class="k">空亡 / 驿马</span><span class="v">'+((ti.voidness||[]).join('')||'—')+' / '+(chart.postHorse?chart.postHorse.branch:'—')+'</span></div>';
+    h+='</div>';
+
+    // 九宫盘
+    h+='<div class="card"><h3>奇门九宫盘</h3><div class="qplate">';
+    var byPos={};
+    (chart.palaces||[]).forEach(function(p){ byPos[p.position]=p; });
+    // 洛书格子顺序：用 position 找对应宫
+    // 引擎 position：1坎 2坤 3震 4巽 5中 6乾 7兑 8艮 9离
+    for(var i=0;i<9;i++){
+      var wantPos = LUOSHU[i];
+      var p = byPos[wantPos];
+      if(!p){ h+='<div class="qcell"></div>'; continue; }
+      var isCenter = (wantPos===5);
+      h+='<div class="qcell'+(isCenter?' center':'')+'">';
+      h+='<span class="pg">'+p.trigram+'宫</span>';
+      h+='<div class="deity">'+(p.deity&&p.deity!=='无神'?p.deity:'')+'</div>';
+      h+='<div class="star">'+(p.star||'')+(p.isZhiFu?'<span class="flag zf">值符</span>':'')+'</div>';
+      h+='<div class="gate">'+(p.gate&&p.gate!=='无门'?p.gate:'')+(p.isZhiShi?'<span class="flag zs">值使</span>':'')+'</div>';
+      h+='<div class="stem">天'+ (p.heavenlyStem||'')+' / 地'+(p.earthlyStem||'')+'</div>';
+      if(p.earthBranch) h+='<div class="zhi">'+p.earthBranch+'</div>';
+      var voidB = (p.voidness&&p.voidness.voidInPalace&&p.voidness.voidInPalace.length)?p.voidness.voidInPalace.join(''):'';
+      if(voidB) h+='<div class="vh">空 '+voidB+'</div>';
+      // 2026-10-16 优化奇门吉凶展示：读库格局(status.gate旺衰/吉格/凶格)，替换手写定性
+      // ⚠️ 只改本页展示逻辑，不要去动底层 3meta 库！
+      var gStatus = (p.status&&p.status.gate)?p.status.gate:'';
+      if(gStatus) h+='<div class="vh">门'+gStatus+'</div>';
+      var aP = (p.auspiciousPatterns||[]).map(function(x){return x.name||x.description||x;}).filter(Boolean);
+      var iP = (p.inauspiciousPatterns||[]).map(function(x){return x.name||x.description||x;}).filter(Boolean);
+      if(aP.length) h+='<div class="vh" style="color:#7dd3a0">吉格 '+aP.join('、')+'</div>';
+      if(iP.length) h+='<div class="vh" style="color:#e09a9a">凶格 '+iP.join('、')+'</div>';
+      h+='</div>';
+    }
+    h+='</div><div class="palaces-legend">洛书九宫方位 · 天盘/地盘天干 · 门/星/神 · 门旺衰/吉凶格局（取自 3meta 引擎）</div></div>';
+
+    // 解读
+    h+='<div class="sect">📖 解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 奇门遁甲为传统术数，以下为传统说法，非科学结论，仅供娱乐参考。</div>';
+    h+='<p>本次排盘为 <b>'+(chart.ju?chart.ju.type+' '+chart.ju.number+' 局':'奇门局')+'</b>（'+(chart.yuan||'')+'）。</p>';
+    h+='<ul>';
+    h+='<li><b>九宫</b>：以洛书方位布盘，中宫为核心；每宫含门、星、神与天地盘天干。</li>';
+    h+='<li><b>八门</b>（休/生/伤/杜/景/死/惊/开）：代表人事吉凶——开、休、生为三吉门，死、惊、伤为凶门。</li>';
+    h+='<li><b>九星</b>（天蓬…天英、天禽）：代表天时与人事态势。</li>';
+    h+='<li><b>八神</b>（值符、腾蛇、太阴、六合、白虎、玄武、九地、九天）：代表神秘力量与背景。</li>';
+    var s='<li><b>值符 / 值使</b>：值符'+(chart.zhiFu?chart.zhiFu.star:'—')+'、值使'+(chart.zhiShi?chart.zhiShi.gate:'—')+'——为全盘枢要，传统上主事之核心。</li>';
+    h+=s;
+    h+='<li><b>三奇六仪</b>：天盘天干为六仪三奇（戊己庚辛壬癸 + 乙丙丁），随时间流转布列各宫。</li>';
+    h+='<li><b>空亡 / 驿马</b>：空亡主事虚、力弱，驿马主动、变动。</li>';
+    h+='</ul>';
+    // ===== 白话解读（看得懂版）=====
+    var JIMEN={'开':'开门·主通达、开创、官运——三吉门之首','休':'休门·主休息、修养、婚恋——三吉之一','生':'生门·主生机、财帛、健康——三吉之一','伤':'伤门·主损伤、竞争、争斗——凶门','杜':'杜门·主阻塞、隐遁、保密——中平','景':'景门·主文书、名誉、信息——中平','死':'死门·主终结、晦气、丧事——凶门','惊':'惊门·主惊恐、口舌、虚惊——凶门'};
+    var JIXING={'天蓬':'天蓬·主盗贼、水险','天任':'天任·主稳固、田土','天冲':'天冲·主勇猛、行动','天辅':'天辅·主文教、辅佐','天英':'天英·主炫耀、火明','天芮':'天芮·主疾病、师徒','天柱':'天柱·主口舌、破坏','天心':'天心·主谋略、医薬','天禽':'天禽·主中正、统领'};
+    var JISHEN={'值符':'值符·贵人、核心主导','腾蛇':'腾蛇·虚惊、缠扰','太阴':'太阴·暗助、庇护','六合':'六合·合作、婚姻','白虎':'白虎·刚猛、伤病','玄武':'玄武·暗昧、盗失','九地':'九地·稳固、遁藏','九天':'九天·高远、扬名'};
+    function jp(m,t){return m[t]||t;}
+    h += '<div class="sect" style="margin-top:14px">💡 白话解读</div><div class="interp">';
+    h += '<p><b>一句话：</b>这是一盘 <b>'+(chart.ju?chart.ju.type+chart.ju.number+'局':'奇门局')+'</b>（'+(chart.yuan||'')+'）——奇门把天时（星）、地利（宫）、人和（门）、背景（神）摆在一张九宫盘上看。';
+    var zfP=null,zsP=null; (chart.palaces||[]).forEach(function(p){ if(p.isZhiFu)zfP=p; if(p.isZhiShi)zsP=p; });
+    h += '本次<b>值符</b>'+(zfP?('落在'+zfP.trigram+'宫，星为'+zfP.star):(chart.zhiFu?chart.zhiFu.star:''))+'、<b>值使</b>'+(zsP?('落在'+zsP.trigram+'宫，门为'+zsP.gate):(chart.zhiShi?chart.zhiShi.gate:''))+'——值符/值使是全盘的关键，看事情就看它俩。</p>';
+    h += '<ul>';
+    if(zfP) h += '<li><b>值符（事情核心）· '+zfP.trigram+'宫：</b>配星「'+jp(JIXING,zfP.star)+'」，配神「'+jp(JISHEN,zfP.deity)+'」——传统主此事的"核心性质"与"背后背景"。</li>';
+    if(zsP) h += '<li><b>值使（事情走向）· '+zsP.trigram+'宫：</b>配门「'+jp(JIMEN,zsP.gate)+'」'+(zsP.heavenlyStem?'，天干' + zsP.heavenlyStem:'')+'——门看人事吉凶，吉门主顺、凶门主阻。</li>';
+    h += '<li><b>怎么用这盘：</b>看你想问的事——问事业看开门（在哪个宫、吉不吉）、问财看生门、问婚姻看休门；再结合值符值使的位置判断"事能不能成"。</li>';
+    h += '<li><b>空亡 / 驿马：</b>'+(chart.postHorse?'驿马在「'+(chart.postHorse.branch||chart.postHorse)+'」——主事情有变动、走动、换地方；':'')+'空亡处主事虚、使不上力。</li>';
+    h += '</ul>';
+    h += '<p style="font-size:12px;color:#8898b0">※ 白话解读为"看懂版"提示，帮你看明白盘面；奇门流派极多（拆补/置润/茅山等起局法不一），深断请咨询专业人士。仅供参考娱乐。</p>';
+    h+='</div>';
+
+    res.innerHTML=h;
+  }
+
+  document.getElementById('calc').addEventListener('click',calc);
+  var now=new Date(), pad=function(n){return String(n).padStart(2,'0');};
+  document.getElementById('date').value=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  calc();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>热管传热能力计算器</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;padding:14px 12px 36px;background:#0a1628;color:#cfe3ff;font:14px/1.55 system-ui,"Microsoft YaHei",sans-serif}
+h1{margin:0 0 10px;font-size:17px;color:#4a9eff}
+h3{margin:0 0 8px;font-size:14px;color:#4a9eff;font-weight:600}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tab{background:#12233c;color:#9dc3ee;border:1px solid #1e3a5f;padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px}
+.tab.on{background:#4a9eff;color:#04101f;border-color:#4a9eff;font-weight:700}
+.pane{display:none}.pane.on{display:block}
+.card{background:#102138;border:1px solid #1e3a5f;border-radius:10px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:10px}
+label{display:block;font-size:12px;color:#8fb4da;margin-bottom:3px}
+input,select{width:100%;background:#0a1628;border:1px solid #23446b;color:#e6f0ff;border-radius:6px;padding:7px;font-size:13px}
+input:focus,select:focus{outline:0;border-color:#4a9eff}
+button.act{background:#4a9eff;color:#04101f;border:0;border-radius:8px;padding:9px 22px;font-weight:700;cursor:pointer;font-size:14px;margin-top:4px}
+.err{color:#ff7a7a;font-size:12.5px;min-height:18px;margin:6px 0}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td,th{border-bottom:1px solid #1e3a5f;padding:5px 3px;text-align:left;vertical-align:top}
+th{color:#8fb4da;font-weight:500}
+.big{font-size:24px;color:#4a9eff;font-weight:700}
+.ok{color:#4ad991}.bad{color:#ff7a7a}
+.nt{font-size:11.5px;color:#7f9bbd;line-height:1.65;margin:8px 0 0}
+pre{background:#071122;padding:10px;border-radius:8px;overflow:auto;font-size:11px;color:#9dc3ee;max-height:320px;white-space:pre-wrap;word-break:break-word;margin:0}
+.ver{position:fixed;right:8px;bottom:6px;font-size:11px;color:#3f628c;background:#0a1628;padding:2px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>热管传热能力计算器 · Qmax</h1>
+<div class="tabs"><button class="tab on" id="t1">计算工具</button><button class="tab" id="t2">测试 / 源码 / 说明</button></div>
+
+<div class="pane on" id="p1">
+<div class="card">
+<div class="grid">
+<div><label>工质</label><select id="fl">
+<option value="water">水 H₂O（20~250℃）</option>
+<option value="ammonia">氨 NH₃（-20~60℃）</option>
+<option value="acetone">丙酮（20~100℃）</option>
+<option value="methanol">甲醇（20~100℃）</option>
+<option value="ethanol">乙醇（20~100℃）</option>
+</select></div>
+<div><label>工作温度 T（℃）</label><input id="T" value="100"></div>
+<div><label>有效长度 L_eff（m）</label><input id="L" value="0.5"></div>
+<div><label>蒸汽腔直径 d_v（mm）</label><input id="dv" value="10"></div>
+<div><label>倾角 φ（°，正=逆重力）</label><input id="phi" value="0"></div>
+<div><label>吸液芯类型</label><select id="wk">
+<option value="groove">沟槽 ε=0.60</option>
+<option value="mesh">丝网 ε=0.70</option>
+<option value="sinter">烧结 ε=0.50</option>
+</select></div>
+<div><label>孔径/丝径 d_p（mm）</label><input id="dp" value="0.2"></div>
+<div><label>吸液芯厚度 t_w（mm）</label><input id="tw" value="1.0"></div>
+<div><label>管壳材料</label><select id="mt">
+<option value="copper">铜 398 W/(m·K)</option>
+<option value="aluminum">铝 237</option>
+<option value="stainless">不锈钢 16</option>
+<option value="nickel">镍 90</option>
+</select></div>
+</div>
+<div class="err" id="er"></div>
+<button class="act" id="go">计算 Qmax</button>
+</div>
+<div class="card" id="out"><p class="nt">填写参数后点击「计算 Qmax」，得到毛细限/声速限/携带限/沸腾限及最小值。结果为工程估算值。</p></div>
+</div>
+
+<div class="pane" id="p2">
+<div class="card"><h3>单元测试</h3>
+<button class="act" id="trun">运行全部测试</button>
+<div id="tsum" style="margin:8px 0;font-size:13px"></div>
+<table><thead><tr><th style="width:26px">#</th><th>用例</th><th style="width:70px">结果</th></tr></thead><tbody id="tr"></tbody></table></div>
+<div class="card"><h3>JS 源码</h3><pre id="src"></pre></div>
+<div class="card"><h3>使用说明与出处</h3>
+<p class="nt">1. 输入工质、温度、有效长度（蒸发段至冷凝段中点距离）、蒸汽腔直径、倾角、吸液芯参数与管壳材料后点击计算。φ=0 水平；φ&gt;0 蒸发段高于冷凝段（逆重力）；φ&lt;0 为重力辅助。</p>
+<p class="nt">2. 物性来源：各工质饱和态 p_sat、ρ_l、ρ_v、σ、h_fg、μ_l 取自 NIST REFPROP 与庄骏、张红《热管技术及其工程应用》（化学工业出版社，2000）附表，按温度线性插值；超出区间取端点，仅供趋势参考。</p>
+<p class="nt">3. 公式依据 Cotter 毛细限理论：Q_cap=(2σ/r_c−ρ_l·g·L·sinφ)·ρ_l·h_fg·K·A_w/(μ_l·L)；Q_son=ρ_v·h_fg·A_v·√(γ·R_s·T)；Q_ent=h_fg·A_v·√(σ·ρ_v/d_v)（Weber 数取 1）；Q_bo=8π·k_eff·L·T_v·σ/[r_n·h_fg·ρ_v·ln(r_i/r_v)]，核化半径 r_n=0.254 μm 为 Chi 推荐值。文献：S.W. Chi, Heat Pipe Theory and Practice, McGraw-Hill, 1976。</p>
+<p class="nt">4. 渗透率：沟槽 K=r_c²/8；丝网 K=d²ε³/[122(1−ε)²]；烧结 K=d²ε³/[150(1−ε)²]（Kozeny–Carman）。等效导热 k_eff=k_l·k_s/[k_l(1−ε)+k_s·ε]（串联下限）。</p>
+<p class="nt">5. 本工具全部系数为文献/手册值，未经任何国家标准核对；临界工况须以试验数据修正后采用。</p>
+</div>
+</div>
+<div class="ver">v1.0.0-heat-pipe 20261108</div>
+
+<script>
+const $=i=>document.getElementById(i);
+const D={
+water:[18.02,1.33,0.60,[20,100,150,200,250],[2.34,101.3,476,1554,3976],[998,958,917,865,800],[0.0173,0.598,2.55,7.86,19.9],[0.0728,0.0589,0.0486,0.0377,0.0261],[2454,2257,2114,1940,1716],[1e-3,2.82e-4,1.86e-4,1.36e-4,1.07e-4]],
+ammonia:[17.03,1.30,0.50,[-20,0,20,40,60],[190,429,857,1554,2607],[665,638,610,579,545],[1.5,3.3,6.4,11.4,19.5],[0.0265,0.0230,0.0195,0.0159,0.0122],[1330,1263,1190,1110,1020],[2.4e-4,1.9e-4,1.5e-4,1.2e-4,9.5e-5]],
+acetone:[58.08,1.12,0.16,[20,40,60,80,100],[24.6,56.4,116,216,373],[790,774,757,739,720],[0.60,1.31,2.62,4.87,8.5],[0.0235,0.0213,0.0190,0.0167,0.0144],[535,511,487,462,435],[3.2e-4,2.7e-4,2.3e-4,1.9e-4,1.6e-4]],
+methanol:[32.04,1.20,0.20,[20,40,60,80,100],[12.9,35.0,83.9,181,353],[792,774,756,737,716],[0.175,0.45,1.0,2.1,4.0],[0.0226,0.0206,0.0186,0.0166,0.0145],[1180,1150,1118,1085,1050],[5.9e-4,4.9e-4,4.1e-4,3.4e-4,2.9e-4]],
+ethanol:[46.07,1.13,0.17,[20,40,60,80,100],[5.8,17.9,47.0,108,225],[789,772,754,735,715],[0.11,0.31,0.76,1.63,3.1],[0.0224,0.0205,0.0185,0.0165,0.0145],[910,890,870,845,815],[1.2e-3,9.5e-4,7.5e-4,6.0e-4,4.8e-4]]};
+const MAT={copper:398,aluminum:237,stainless:16,nickel:90};
+const RN=2.54e-7,G=9.80665;
+
+function itp(x,xs,ys){
+ if(x<=xs[0])return ys[0];
+ const n=xs.length-1;
+ if(x>=xs[n])return ys[n];
+ for(let i=0;i<n;i++){if(x<=xs[i+1])return ys[i]+(ys[i+1]-ys[i])*(x-xs[i])/(xs[i+1]-xs[i]);}
+ return ys[n];
+}
+
+function calc(o){
+ const d=D[o.fluid];if(!d)throw new Error('未知工质');
+ const xs=d[3],kl=d[2];
+ const P=itp(o.T,xs,d[4])*1000,rl=itp(o.T,xs,d[5]),rv=itp(o.T,xs,d[6]),
+  s=itp(o.T,xs,d[7]),h=itp(o.T,xs,d[8]),u=itp(o.T,xs,d[9]);
+ const dv=o.dv/1000,dp=o.dp/1000,tw=o.tw/1000;
+ const eps=o.wick==='groove'?0.6:o.wick==='mesh'?0.7:0.5;
+ const rc=dp/2;
+ const K=o.wick==='groove'?rc*rc/8:dp*dp*eps*eps*eps/((o.wick==='mesh'?122:150)*(1-eps)*(1-eps));
+ const Av=Math.PI*dv*dv/4,Aw=Math.PI*((dv+2*tw)*(dv+2*tw)-dv*dv)/4;
+ const Tv=o.T+273.15;
+ const dPc=2*s/rc,dPg=rl*G*o.L*Math.sin(o.phi*Math.PI/180);
+ const Qcap=dPc>dPg?(dPc-dPg)*rl*h*K*Aw/(u*o.L):0;
+ const Qson=Av*rv*h*Math.sqrt(d[1]*(8314/d[0])*Tv);
+ const Qent=Av*h*Math.sqrt(s*rv/dv);
+ const ks=MAT[o.mat]||398,ke=kl*ks/(kl*(1-eps)+ks*eps);
+ const Qbo=8*Math.PI*ke*o.L*Tv*s/(RN*h*rv*Math.log((dv+2*tw)/dv));
+ const a=[['毛细限',Qcap],['声速限',Qson],['携带限',Qent],['沸腾限',Qbo]];
+ let m=a[0];for(const x of a){if(x[1]<m[1])m=x;}
+ return{P,rl,rv,s,h,u,K,rc,Av,Aw,ke,Qcap,Qson,Qent,Qbo,Qmin:m[1],lim:m[0]};
+}
+
+function num(id,lo,hi,nm){
+ const v=parseFloat($(id).value);
+ if(!isFinite(v))throw new Error(nm+'不能为空或非数值');
+ if(v<lo||v>hi)throw new Error(nm+'应在 '+lo+' ~ '+hi+' 之间');
+ return v;
+}
+function fmt(v){return v>=1e4?v.toExponential(3):(v>=100?v.toFixed(1):v.toFixed(2));}
+
+function run(){
+ try{
+  const f=$('fl').value,xs=D[f][3];
+  const T=num('T',xs[0],xs[xs.length-1],'工作温度(℃)');
+  const L=num('L',0.05,5,'有效长度(m)');
+  const dv=num('dv',2,60,'蒸汽腔直径(mm)');
+  const phi=num('phi',-90,90,'倾角(°)');
+  const dp=num('dp',0.02,3,'孔径/丝径(mm)');
+  const tw=num('tw',0.1,5,'吸液芯厚度(mm)');
+  $('er').textContent='';
+  const r=calc({fluid:f,T,L,dv,phi,wick:$('wk').value,dp,tw,mat:$('mt').value});
+  $('out').innerHTML=
+   '<div style="font-size:13px;color:#8fb4da">最大传热能力 Q<sub>max</sub></div>'+
+   '<div><span class="big">'+fmt(r.Qmin)+'</span> <span style="font-size:14px">W</span> <span class="ok" style="font-size:13px">受限类型：'+r.lim+'</span></div>'+
+   '<table style="margin-top:10px"><thead><tr><th>极限</th><th>数值</th></tr></thead><tbody>'+
+   '<tr><td>毛细限 Q_cap</td><td>'+fmt(r.Qcap)+' W</td></tr>'+
+   '<tr><td>声速限 Q_son</td><td>'+fmt(r.Qson)+' W</td></tr>'+
+   '<tr><td>携带限 Q_ent</td><td>'+fmt(r.Qent)+' W</td></tr>'+
+   '<tr><td>沸腾限 Q_bo</td><td>'+fmt(r.Qbo)+' W</td></tr></tbody></table>'+
+   '<table style="margin-top:8px"><thead><tr><th>中间量</th><th>数值</th></tr></thead><tbody>'+
+   '<tr><td>饱和压力 p_sat</td><td>'+(r.P/1000).toFixed(2)+' kPa</td></tr>'+
+   '<tr><td>汽化潜热 h_fg</td><td>'+r.h.toFixed(0)+' J/kg</td></tr>'+
+   '<tr><td>表面张力 σ</td><td>'+(r.s*1e3).toFixed(2)+' mN/m</td></tr>'+
+   '<tr><td>液相密度 ρ_l</td><td>'+r.rl.toFixed(1)+' kg/m³</td></tr>'+
+   '<tr><td>蒸汽密度 ρ_v</td><td>'+r.rv.toPrecision(3)+' kg/m³</td></tr>'+
+   '<tr><td>液相粘度 μ_l</td><td>'+r.u.toExponential(2)+' Pa·s</td></tr>'+
+   '<tr><td>毛细半径 r_c</td><td>'+(r.rc*1e6).toFixed(1)+' μm</td></tr>'+
+   '<tr><td>渗透率 K</td><td>'+r.K.toExponential(2)+' m²</td></tr>'+
+   '<tr><td>蒸汽腔面积 A_v</td><td>'+(r.Av*1e6).toFixed(1)+' mm²</td></tr>'+
+   '<tr><td>吸液芯截面 A_w</td><td>'+(r.Aw*1e6).toFixed(1)+' mm²</td></tr>'+
+   '<tr><td>等效导热 k_eff</td><td>'+r.ke.toFixed(2)+' W/(m·K)</td></tr></tbody></table>'+
+   '<p class="nt">Q_cap=(2σ/r_c−ρ_l·g·L·sinφ)·ρ_l·h_fg·K·A_w/(μ_l·L)；Q_son=ρ_v·h_fg·A_v·√(γ·R_s·T)；Q_ent=h_fg·A_v·√(σ·ρ_v/d_v)；Q_bo=8π·k_eff·L·T_v·σ/[r_n·h_fg·ρ_v·ln(r_i/r_v)]。依据 Cotter 理论，见 Chi《Heat Pipe Theory and Practice》1976；物性见庄骏《热管技术及其工程应用》2000。工程估算，未经标准核对。</p>';
+ }catch(e){
+  $('er').textContent=e.message;
+  $('out').innerHTML='<p class="bad">输入有误，未产生结果（已阻断 NaN）。</p>';
+ }
+}
+
+const A=o=>Object.assign({fluid:'water',T:100,L:0.5,dv:10,phi:0,wick:'groove',dp:0.2,tw:1,mat:'copper'},o);
+const TESTS=[
+['水100℃毛细限>0',()=>A({}).Qcap>0],
+['Qmin等于四限最小值',()=>{const r=A({});return Math.abs(r.Qmin-Math.min(r.Qcap,r.Qson,r.Qent,r.Qbo))<1e-9;}],
+['逆重力90°毛细限下降',()=>A({phi:90}).Qcap<A({phi:0}).Qcap],
+['重力辅助−90°毛细限上升',()=>A({phi:-90}).Qcap>A({phi:0}).Qcap],
+['升温使饱和压力升高',()=>A({T:150}).P>A({T:100}).P],
+['声速限正比于 d_v²',()=>Math.abs(A({dv:20}).Qson/A({dv:10}).Qson-4)<0.01],
+['水平时毛细限反比于 L',()=>Math.abs(A({L:1}).Qcap/A({L:0.5}).Qcap-0.5)<0.01],
+['丝网孔径减小则渗透率减小',()=>A({wick:'mesh',dp:0.05}).K<A({wick:'mesh',dp:0.2}).K],
+['沸腾限为正',()=>A({}).Qbo>0],
+['超范围温度夹取不产生NaN',()=>isFinite(A({T:900}).Qmin)],
+['氨20℃声速限为正',()=>A({fluid:'ammonia',T:20}).Qson>0],
+['四种极限均有限且为正',()=>{const r=A({});return[r.Qcap,r.Qson,r.Qent,r.Qbo].every(v=>isFinite(v)&&v>0);}]
+];
+
+function runTests(){
+ let h='',p=0;
+ TESTS.forEach((t,i)=>{
+  let ok=false,msg='';
+  try{ok=t[1]===true||t[1]()===true;}catch(e){msg=e.message;}
+  if(ok)p++;
+  h+='<tr><td>'+(i+1)+'</td><td>'+t[0]+'</td><td class="'+(ok?'ok':'bad')+'">'+(ok?'通过':'失败')+(msg?' '+msg:'')+'</td></tr>';
+ });
+ $('tr').innerHTML=h;
+ $('tsum').innerHTML='<span class="'+(p===TESTS.length?'ok':'bad')+'">'+p+' / '+TESTS.length+' 用例通过</span>';
+}
+
+$('go').onclick=run;
+$('trun').onclick=runTests;
+const tb=[$('t1'),$('t2')],pn=[$('p1'),$('p2')];
+tb.forEach((b,i)=>b.onclick=()=>{tb.forEach((x,j)=>{x.classList.toggle('on',i===j);pn[j].classList.toggle('on',i===j);});});
+$('src').textContent=document.querySelector('script').textContent;
+run();
+</script>
+</body>
+</html>

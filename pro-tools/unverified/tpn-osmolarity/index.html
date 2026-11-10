@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>肠外营养渗透压估算工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#1a5276;--primary-light:#2980b9;--accent:#e74c3c;--success:#27ae60;--warning:#f39c12;--bg:#f4f6f9;--card:#fff;--text:#2c3e50;--border:#dce1e8;--radius:8px;--shadow:0 2px 12px rgba(0,0,0,.08)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:15px}
+header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:28px 24px 20px;text-align:center}
+header h1{font-size:1.6em;font-weight:700;letter-spacing:.5px}
+header .subtitle{font-size:.85em;opacity:.85;margin-top:4px}
+header .disclaimer-bar{background:rgba(231,76,60,.92);color:#fff;padding:8px 16px;margin-top:14px;border-radius:var(--radius);font-size:.82em;font-weight:600;max-width:860px;margin-left:auto;margin-right:auto}
+.tabs{display:flex;justify-content:center;gap:4px;background:#fff;border-bottom:2px solid var(--border);padding:0 12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tab{padding:12px 22px;border:none;background:none;cursor:pointer;font-size:.92em;font-weight:600;color:#7f8c8d;border-bottom:3px solid transparent;transition:all .2s}
+.tab:hover{color:var(--primary)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+main{max-width:920px;margin:24px auto;padding:0 16px}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px}
+.card h2{font-size:1.15em;color:var(--primary);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+.card h3{font-size:1em;color:var(--primary-light);margin:16px 0 10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:.82em;font-weight:600;color:#555}
+.form-group .unit{font-size:.75em;color:#999;font-weight:400}
+.form-group input,.form-group select{padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:.95em;transition:border-color .2s}
+.form-group input:focus{outline:none;border-color:var(--primary-light)}
+.form-group input.error{border-color:var(--accent);background:#fdf0ef}
+.section-divider{grid-column:1/-1;border-top:1.5px dashed var(--border);margin:8px 0}
+.btn-calc{display:block;width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;border:none;border-radius:var(--radius);font-size:1.05em;font-weight:700;cursor:pointer;margin-top:18px;transition:opacity .2s}
+.btn-calc:hover{opacity:.9}
+.btn-calc:active{transform:scale(.99)}
+.result-box{margin-top:20px;padding:20px;border-radius:var(--radius);border:2px solid var(--border);background:#f8fafc}
+.result-box.warn{border-color:var(--accent);background:#fdf0ef}
+.result-box.safe{border-color:var(--success);background:#eafaf1}
+.result-main{font-size:1.8em;font-weight:800;text-align:center;margin:8px 0}
+.result-main.warn{color:var(--accent)}
+.result-main.safe{color:var(--success)}
+.result-detail{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;font-size:.88em}
+.result-detail dt{font-weight:600;color:#666}
+.result-detail dd{text-align:right;font-weight:700}
+.result-verdict{text-align:center;margin-top:14px;padding:10px;border-radius:6px;font-weight:700;font-size:.95em}
+.result-verdict.warn{background:#fde8e8;color:var(--accent)}
+.result-verdict.safe{background:#d5f5e3;color:#1e8449}
+.component-breakdown{margin-top:14px;font-size:.85em}
+.component-breakdown table{width:100%;border-collapse:collapse}
+.component-breakdown th,.component-breakdown td{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+.component-breakdown th{background:#f0f3f7;font-weight:600;font-size:.82em;color:#666}
+.component-breakdown td:last-child{text-align:right;font-weight:600}
+.test-results{font-family:"Cascadia Code","Fira Code",monospace;font-size:.82em;line-height:1.8}
+.test-pass{color:var(--success);font-weight:700}
+.test-fail{color:var(--accent);font-weight:700}
+.test-item{padding:8px 12px;margin:4px 0;border-radius:6px;background:#f8f9fa;border-left:4px solid var(--border)}
+.test-item.pass{border-left-color:var(--success)}
+.test-item.fail{border-left-color:var(--accent)}
+.test-summary{padding:14px;border-radius:var(--radius);font-weight:700;text-align:center;margin-bottom:16px;font-size:1em}
+.test-summary.all-pass{background:#d5f5e3;color:#1e8449}
+.test-summary.has-fail{background:#fde8e8;color:var(--accent)}
+.doc-section{margin-bottom:24px}
+.doc-section h3{color:var(--primary);font-size:1.05em;margin-bottom:8px}
+.doc-section p,.doc-section li{font-size:.92em;margin-bottom:6px}
+.doc-section ul{padding-left:20px}
+.safety-box{background:#fdf0ef;border:2px solid var(--accent);border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.safety-box h2{color:var(--accent)}
+.safety-box p{font-size:.92em;margin-bottom:10px}
+.safety-box .icon{font-size:1.4em;margin-right:6px}
+.safety-list{list-style:none;padding:0}
+.safety-list li{padding:8px 0;border-bottom:1px solid #f0d0cc;font-size:.9em}
+.safety-list li:last-child{border-bottom:none}
+footer{text-align:center;padding:20px;font-size:.75em;color:#aaa}
+.version{position:fixed;bottom:8px;right:12px;font-size:.7em;color:#bbb;z-index:50}
+.note-box{background:#fef9e7;border:1px solid #f9e79f;border-radius:6px;padding:12px 16px;margin:12px 0;font-size:.85em}
+.note-box strong{color:#b7950b}
+.ref-list{font-size:.82em;color:#666;margin-top:12px}
+.ref-list li{margin-bottom:4px}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}.result-detail{grid-template-columns:1fr}.tabs{flex-wrap:wrap}.tab{flex:1;text-align:center;padding:10px 8px;font-size:.82em}}
+</style>
+</head>
+<body>
+
+<header>
+<h1>肠外营养渗透压估算工具</h1>
+<p class="subtitle">Parenteral Nutrition Osmolarity Estimation Tool</p>
+<div class="disclaimer-bar">⚕ 本工具仅供医疗卫生专业人员参考，不构成诊疗建议。渗透压为估算值，实际须实验室测定。配方须由营养支持小组制定。</div>
+</header>
+
+<nav class="tabs">
+<button class="tab active" data-tab="calculator">计算工具</button>
+<button class="tab" data-tab="tests">单元测试</button>
+<button class="tab" data-tab="docs">专业说明</button>
+<button class="tab" data-tab="safety">安全声明</button>
+</nav>
+
+<main>
+<!-- ==================== TAB 1: CALCULATOR ==================== -->
+<section id="calculator" class="tab-content active">
+<div class="card">
+<h2>配方输入</h2>
+<div class="form-grid">
+<div class="form-group">
+<label>氨基酸浓度 <span class="unit">(%, 如 8.5 表示 8.5%)</span></label>
+<input type="number" id="aaConc" step="0.1" min="0" placeholder="如 8.5">
+</div>
+<div class="form-group">
+<label>氨基酸溶液体积 <span class="unit">(mL)</span></label>
+<input type="number" id="aaVol" step="1" min="0" placeholder="如 500">
+</div>
+
+<div class="form-group">
+<label>葡萄糖浓度 <span class="unit">(%, 如 50 表示 50%)</span></label>
+<input type="number" id="gluConc" step="0.1" min="0" placeholder="如 50">
+</div>
+<div class="form-group">
+<label>葡萄糖溶液体积 <span class="unit">(mL)</span></label>
+<input type="number" id="gluVol" step="1" min="0" placeholder="如 250">
+</div>
+
+<div class="form-group">
+<label>脂肪乳浓度 <span class="unit">(%, 如 20 表示 20%)</span></label>
+<input type="number" id="fatConc" step="0.1" min="0" placeholder="如 20">
+</div>
+<div class="form-group">
+<label>脂肪乳体积 <span class="unit">(mL)</span></label>
+<input type="number" id="fatVol" step="1" min="0" placeholder="如 250">
+</div>
+<div class="form-group">
+<label>脂肪乳渗透压系数 <span class="unit">(mOsm/g, 范围 1.5–2.0)</span></label>
+<input type="number" id="fatFactor" step="0.05" min="1.0" max="3.0" value="1.75" placeholder="1.75">
+</div>
+<div class="form-group">
+<label>电解质添加剂体积 <span class="unit">(mL, 可选)</span></label>
+<input type="number" id="addVol" step="1" min="0" value="0" placeholder="0">
+</div>
+
+<div class="section-divider"></div>
+
+<div class="form-group">
+<label>钠 Na⁺ <span class="unit">(mmol)</span></label>
+<input type="number" id="naMmol" step="0.1" min="0" value="0">
+</div>
+<div class="form-group">
+<label>钾 K⁺ <span class="unit">(mmol)</span></label>
+<input type="number" id="kMmol" step="0.1" min="0" value="0">
+</div>
+<div class="form-group">
+<label>钙 Ca²⁺ <span class="unit">(mmol)</span></label>
+<input type="number" id="caMmol" step="0.1" min="0" value="0">
+</div>
+<div class="form-group">
+<label>镁 Mg²⁺ <span class="unit">(mmol)</span></label>
+<input type="number" id="mgMmol" step="0.1" min="0" value="0">
+</div>
+<div class="form-group">
+<label>磷酸根 PO₄³⁻ <span class="unit">(mmol)</span></label>
+<input type="number" id="po4Mmol" step="0.1" min="0" value="0">
+</div>
+</div>
+
+<button class="btn-calc" id="btnCalc">计 算 渗 透 压</button>
+
+<div id="resultArea" style="display:none">
+<div class="result-box" id="resultBox">
+<p style="text-align:center;font-size:.85em;color:#888">估算总渗透压</p>
+<div class="result-main" id="resultOsm">— mOsm/L</div>
+<div class="result-verdict" id="resultVerdict"></div>
+<dl class="result-detail">
+<dt>总渗透粒子量</dt><dd id="resTotalOsm">— mOsm</dd>
+<dt>混合液总体积</dt><dd id="resTotalVol">— mL</dd>
+<dt>外周静脉安全阈值</dt><dd>900 mOsm/L</dd>
+<dt>安全余量</dt><dd id="resMargin">—</dd>
+</dl>
+<div class="component-breakdown">
+<h3>各组分渗透压贡献明细</h3>
+<table>
+<thead><tr><th>组分</th><th>质量/量</th><th>系数</th><th>渗透压贡献 (mOsm)</th></tr></thead>
+<tbody id="breakdownBody"></tbody>
+</table>
+</div>
+</div>
+<div class="note-box">
+<strong>⚠ 重要提示：</strong>本结果为理论估算值。实际渗透压受温度、pH、溶质相互作用等因素影响，须以实验室渗透压计实测值为准。不同厂家产品的标示渗透压可能存在差异。配方须由营养支持小组（NST）根据患者具体情况制定。
+</div>
+</div>
+</div>
+</section>
+
+<!-- ==================== TAB 2: UNIT TESTS ==================== -->
+<section id="tests" class="tab-content">
+<div class="card">
+<h2>单元测试（10 项）</h2>
+<div id="testSummary" class="test-summary"></div>
+<div id="testResults" class="test-results"></div>
+</div>
+</section>
+
+<!-- ==================== TAB 3: DOCUMENTATION ==================== -->
+<section id="docs" class="tab-content">
+<div class="card">
+<h2>专业说明文档</h2>
+
+<div class="doc-section">
+<h3>一、工具概述</h3>
+<p>本工具用于估算肠外营养（Parenteral Nutrition, PN）混合液的总渗透压，以辅助临床判断该配方可否经外周静脉输注。根据 ASPEN 指南及经典文献，外周静脉输注液体的渗透压不宜超过 900 mOsm/L，超过此阈值应改用中心静脉途径，以避免血栓性静脉炎和血管内膜损伤。</p>
+<p>本工具接受氨基酸溶液、葡萄糖溶液、脂肪乳剂及电解质的浓度与体积作为输入，基于各溶质的渗透压贡献系数进行加和计算，输出混合液总渗透压估算值。</p>
+</div>
+
+<div class="doc-section">
+<h3>二、公式原理与文献依据</h3>
+<p><strong>核心公式：加和法估算总渗透压</strong></p>
+<p>总渗透压（mOsm/L）= 各组分渗透粒子总量（mOsm）÷ 混合液总体积（L）</p>
+<p>各组分渗透粒子量计算如下：</p>
+<ul>
+<li><strong>氨基酸</strong>：质量(g) × 10 mOsm/g。氨基酸为小分子溶质，其渗透压贡献与质量近似成正比。不同复方氨基酸制剂的渗透压因组成不同而有差异，10 mOsm/g 为文献报道的平均近似值。实际产品标示渗透压在 800–1200 mOsm/L 范围内（对应 8%–12% 浓度）。</li>
+<li><strong>葡萄糖（右旋糖）</strong>：质量(g) × 5.04 mOsm/g。此系数由右旋糖一水合物（C₆H₁₂O₆·H₂O，分子量 198.17）计算得出：1000 ÷ 198.17 ≈ 5.046 mOsm/g。验证：5% 葡萄糖 = 50 g/L × 5.04 ≈ 252 mOsm/L，与文献值一致。</li>
+<li><strong>脂肪乳剂</strong>：质量(g) × 1.75 mOsm/g（可调范围 1.5–2.0）。脂肪乳为水包油乳剂，其渗透压主要来源于乳化剂（卵磷脂）、等张剂（甘油）等小分子成分，而非甘油三酯大分子液滴。20% 脂肪乳实测渗透压约 260–300 mOsm/L。</li>
+<li><strong>电解质</strong>：Na⁺、K⁺ 各按 2 mOsm/mmol 计算。此系数基于 NaCl、KCl 等单价盐完全解离为 2 个粒子（如 NaCl → Na⁺ + Cl⁻ = 2 mOsm/mmol）。Ca²⁺、Mg²⁺、PO₄³⁻ 亦按 2 mOsm/mmol 近似计算（实际取决于盐型，详见局限说明）。</li>
+</ul>
+<p><strong>文献出处：</strong></p>
+<ul class="ref-list">
+<li>Mirtallo J, Canada T, Johnson D, et al. Safe practices for parenteral nutrition. JPEN. 2004;28(6):S39-S70.</li>
+<li>ASPEN Board of Directors and the Clinical Guidelines Task Force. Guidelines for the use of parenteral and enteral nutrition in adult and pediatric patients. JPEN. 2002;26(1 Suppl):1SA-138SA.</li>
+<li>Klein S, Kinney J, Jeejeebhoy K, et al. Nutrition support in clinical practice: review of published data and recommendations for future research directions. JPEN. 1997;21(3):133-156.（渗透压与静脉耐受性相关数据）</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>三、计算步骤详解</h3>
+<p><strong>步骤 1：计算各组分溶质质量</strong></p>
+<p>浓度(%) 表示每 100 mL 溶液中所含溶质的克数。因此：</p>
+<p>溶质质量(g) = 浓度(%) × 体积(mL) ÷ 100</p>
+<p>例如：8.5% 氨基酸 500 mL → 8.5 × 500 ÷ 100 = 42.5 g</p>
+
+<p><strong>步骤 2：计算各组分渗透粒子量</strong></p>
+<p>渗透粒子量(mOsm) = 溶质质量(g) × 渗透压系数(mOsm/g)</p>
+<p>电解质则按：渗透粒子量(mOsm) = 物质的量(mmol) × 2 mOsm/mmol</p>
+
+<p><strong>步骤 3：求总渗透粒子量</strong></p>
+<p>总 mOsm = 氨基酸 mOsm + 葡萄糖 mOsm + 脂肪乳 mOsm + 电解质 mOsm</p>
+
+<p><strong>步骤 4：计算混合液总体积</strong></p>
+<p>总体积(mL) = 氨基酸体积 + 葡萄糖体积 + 脂肪乳体积 + 电解质添加剂体积</p>
+
+<p><strong>步骤 5：计算总渗透压</strong></p>
+<p>总渗透压(mOsm/L) = 总 mOsm ÷ (总体积 mL ÷ 1000)</p>
+
+<p><strong>步骤 6：与阈值比较</strong></p>
+<p>若总渗透压 ≤ 900 mOsm/L → 可考虑外周静脉输注</p>
+<p>若总渗透压 > 900 mOsm/L → 须经中心静脉输注</p>
+</div>
+
+<div class="doc-section">
+<h3>四、适用场景</h3>
+<ul>
+<li>临床营养支持团队（NST）在配制全合一（All-in-One, AIO）混合液前，快速估算渗透压以初步判断输注途径。</li>
+<li>药师在审核肠外营养处方时，作为处方合理性评估的辅助工具。</li>
+<li>教学培训中帮助学员理解各组分对渗透压的贡献比例。</li>
+<li>在无法立即获得实测渗透压数据时，提供初步参考。</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>五、不适用场景</h3>
+<ul>
+<li>不能替代实验室渗透压计（冰点降低法或蒸气压法）的实测结果。</li>
+<li>不适用于含特殊溶质（如甘露醇、山梨醇、造影剂等）的配方。</li>
+<li>不适用于非水溶剂或极端 pH 条件下的溶液。</li>
+<li>不适用于已发生沉淀、破乳或化学降解的混合液。</li>
+<li>不能用于精确计算体内实际血浆渗透压（体内还受代谢、分布容积等因素影响）。</li>
+<li>对于极高浓度（如 70% 葡萄糖）或极小体积的极端配方，估算偏差可能增大。</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>六、临床与工程意义</h3>
+<p><strong>临床意义：</strong>渗透压是决定肠外营养液能否经外周静脉安全输注的关键参数之一。高渗液体（>900 mOsm/L）直接接触外周静脉内膜可导致内皮细胞脱水、损伤，激活凝血 cascade，增加血栓性静脉炎风险。长期输注高渗液还可导致血管硬化和闭塞。因此，准确估算渗透压对于选择安全的输注途径（外周 vs. 中心静脉）至关重要。</p>
+<p><strong>工程意义：</strong>在制药工业和医院制剂室配制肠外营养液时，渗透压是产品质量控制的重要指标。本工具可帮助配制人员在配方设计阶段预判渗透压范围，优化配方组成，确保产品符合药典和指南要求。</p>
+<p><strong>实际工作含义：</strong>当计算结果接近 900 mOsm/L 阈值时（如 800–1000 mOsm/L 区间），建议：① 以实测值为准做出最终判断；② 考虑降低葡萄糖浓度或增加稀释体积；③ 若必须经外周输注，应缩短输注时间并密切监测穿刺部位。</p>
+</div>
+
+<div class="doc-section">
+<h3>七、已知局限与误差来源</h3>
+<ul>
+<li><strong>渗透压系数的近似性：</strong>氨基酸的 10 mOsm/g 为平均值，不同制剂（如含不同氨基酸组成、附加电解质或抗氧化剂的制剂）实际渗透压可有 ±15% 偏差。</li>
+<li><strong>溶质间相互作用：</strong>混合液中各溶质之间存在离子相互作用、络合反应等，可能导致实际渗透压偏离各组分简单加和值。尤其在含高浓度钙、磷的配方中，Ca-HPO₄ 络合物的形成会降低有效粒子数。</li>
+<li><strong>脂肪乳的特殊性：</strong>脂肪乳的渗透压主要来自乳化剂和等张剂，而非甘油三酯本身。不同品牌、不同浓度的脂肪乳渗透压差异较大，使用统一系数（1.75 mOsm/g）可能引入误差。</li>
+<li><strong>电解质盐型未区分：</strong>本工具对所有电解质统一使用 2 mOsm/mmol，但 CaCl₂（→3 粒子）与 Ca-葡萄糖酸钙（→3 粒子）的实际贡献可能不同于 MgSO₄（→2 粒子）。在电解质添加量较大时，此近似可能引入偏差。</li>
+<li><strong>温度效应：</strong>渗透压受温度影响（冰点降低法在 0°C 附近测定），本工具未进行温度校正。</li>
+<li><strong>体积加和假设：</strong>本工具假设混合后总体积等于各组分体积之和。实际上，溶液混合时可能存在微小的体积收缩或膨胀（通常 <2%），但在临床精度要求下可忽略。</li>
+</ul>
+</div>
+
+<div class="doc-section">
+<h3>八、精度与误差说明</h3>
+<p><strong>① 算准了什么：</strong>本工具准确实现了各组分渗透粒子量的加和计算，数学运算本身无误差。在输入参数（浓度、体积、电解质量）准确且各组分渗透压系数已知的理想条件下，计算结果可反映配方渗透压的合理估算范围。</p>
+<p><strong>② 哪些因素没算进去：</strong>未计入溶质间离子相互作用与络合效应；未区分电解质的不同盐型；未考虑温度对渗透压的影响；未计入微量添加剂（维生素、微量元素）的渗透压贡献（通常极小，可忽略）；未考虑脂肪乳破乳或稳定性变化对渗透压的影响。</p>
+<p><strong>③ 误差大概多大：</strong>综合以上因素，本工具的估算值与实测值之间的偏差预计在 ±10%–20% 范围内。对于渗透压在 600–1200 mOsm/L 范围内的常规肠外营养配方，绝对误差约 ±60–240 mOsm/L。当估算值远离 900 mOsm/L 阈值时（如 <600 或 >1500），判断结论的可靠性较高；当估算值在 800–1000 mOsm/L 区间时，须以实测值为准。</p>
+<p><strong>禁止声明：</strong>本工具不提供"精确计算"或"绝对准确"的结果。所有输出均为基于简化模型的理论估算值。</p>
+</div>
+</div>
+</section>
+
+<!-- ==================== TAB 4: SAFETY ==================== -->
+<section id="safety" class="tab-content">
+<div class="safety-box">
+<h2>⚕ 医疗安全声明</h2>
+<p><strong>本工具仅供具备资质的医疗卫生专业人员参考，不构成任何诊疗建议。</strong></p>
+<p>实际临床决策须由具备执业资质的医师根据患者具体情况、实验室检查结果和临床判断综合做出。</p>
+<ul class="safety-list">
+<li>⚠ <strong>渗透压为估算值</strong>：本工具基于文献报道的平均渗透压系数进行理论计算，实际渗透压须以实验室渗透压计（冰点降低法）实测值为准。</li>
+<li>⚠ <strong>配方制定权归属</strong>：肠外营养配方须由营养支持小组（Nutrition Support Team, NST）或具备相应资质的医师/药师制定，本工具不可替代专业判断。</li>
+<li>⚠ <strong>个体化原则</strong>：每位患者的代谢状态、血管条件、肝肾功能、电解质平衡等均不同，同一配方在不同患者中的安全性和适用性可能不同。</li>
+<li>⚠ <strong>输注途径决策</strong>：900 mOsm/L 为外周静脉输注的参考阈值，实际决策还须考虑输注时间、血管条件、患者耐受性等因素。部分指南建议更保守的阈值（如 800 mOsm/L）。</li>
+<li>⚠ <strong>配伍禁忌</strong>：本工具不评估各组分之间的物理化学配伍性（如钙-磷沉淀风险）。配伍安全性须另行评估。</li>
+<li>⚠ <strong>产品差异</strong>：不同厂家、不同批号的肠外营养产品其标示渗透压可能存在差异，请以产品说明书为准。</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>物理/化学适用范围与假设条件</h2>
+<ul class="safety-list">
+<li><strong>适用范围：</strong>本工具适用于常温（20–25°C）下水性肠外营养混合液的渗透压估算。适用于常规浓度的氨基酸（3%–15%）、葡萄糖（5%–70%）、脂肪乳（10%–30%）制剂。</li>
+<li><strong>假设条件 1——理想溶液行为：</strong>本工具假设各溶质在溶液中表现为理想溶质，渗透压系数为常数。实际高浓度溶液中溶质间相互作用可能导致偏差。</li>
+<li><strong>假设条件 2——完全解离：</strong>电解质按完全解离计算（如 NaCl → Na⁺ + Cl⁻）。在高浓度或含有机溶剂的溶液中，解离度可能降低。</li>
+<li><strong>假设条件 3——体积加和性：</strong>假设混合后总体积等于各组分体积之和。实际混合可能存在微小体积变化（通常 <2%）。</li>
+<li><strong>假设条件 4——脂肪乳渗透压系数恒定：</strong>假设脂肪乳的渗透压与其脂肪含量成正比。实际脂肪乳渗透压主要由乳化剂和等张剂决定，与脂肪含量的关系并非严格线性。</li>
+<li><strong>不适用条件：</strong>含非标准溶质（如甘露醇、造影剂、乙醇等）的配方；极端 pH（<4 或 >9）的溶液；已发生物理化学不稳定（沉淀、破乳、变色）的混合液；非水性或半固态制剂。</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>参考文献</h2>
+<ol class="ref-list" style="padding-left:20px">
+<li>Mirtallo J, Canada T, Johnson D, et al. Safe practices for parenteral nutrition. <em>JPEN</em>. 2004;28(6):S39-S70.</li>
+<li>ASPEN Board of Directors and the Clinical Guidelines Task Force. Guidelines for the use of parenteral and enteral nutrition in adult and pediatric patients. <em>JPEN</em>. 2002;26(1 Suppl):1SA-138SA.</li>
+<li>Klein S, Kinney J, Jeejeebhoy K, et al. Nutrition support in clinical practice. <em>JPEN</em>. 1997;21(3):133-156.</li>
+<li>Driscoll DF. Stability and compatibility assessment techniques for total parenteral nutrition admixtures. <em>Am J Health-Syst Pharm</em>. 1995;52:623-634.</li>
+<li>Allwood MC. The stability of intravenous nutrition formulations. <em>Clin Nutr</em>. 1988;7(Suppl):50-54.（需查原始文献确认具体数据）</li>
+<li>中国药典 2020 年版四部通则 0631 渗透压摩尔浓度测定法。</li>
+</ol>
+</div>
+</section>
+</main>
+
+<footer>
+<p>肠外营养渗透压估算工具 · 仅供专业参考 · 不构成诊疗建议</p>
+</footer>
+<div class="version">v2.0.0-专业版 20261021</div>
+
+<script>
+/**
+ * ============================================================
+ * 肠外营养渗透压估算工具 - 核心计算引擎
+ * ============================================================
+ * 
+ * 公式：总渗透压(mOsm/L) = Σ(各组分渗透粒子量) / 混合液总体积(L)
+ * 
+ * 各组分渗透粒子量：
+ *   氨基酸: 质量(g) × 10 mOsm/g
+ *   葡萄糖: 质量(g) × 5.04 mOsm/g (右旋糖一水合物 MW=198.17)
+ *   脂肪乳: 质量(g) × fatFactor mOsm/g (默认 1.75, 范围 1.5-2.0)
+ *   电解质: mmol × 2 mOsm/mmol (Na⁺, K⁺, Ca²⁺, Mg²⁺, PO₄³⁻)
+ * 
+ * 文献出处：
+ *   Mirtallo J, Canada T, Johnson D, et al. Safe practices for parenteral nutrition.
+ *   JPEN. 2004;28(6):S39-S70.
+ *   ASPEN Guidelines. JPEN. 2002;26(1 Suppl):1SA-138SA.
+ * 
+ * 阈值依据：
+ *   外周静脉安全阈值 900 mOsm/L 来源于 ASPEN 指南及多项临床研究。
+ *   Klein S, et al. JPEN. 1997;21(3):133-156.
+ * 
+ * @version 2.0.0
+ */
+
+/**
+ * 渗透压计算常量
+ * @constant {number} OSM_FACTOR_AA - 氨基酸渗透压系数 (mOsm/g)
+ * @constant {number} OSM_FACTOR_GLU - 葡萄糖(右旋糖一水合物)渗透压系数 (mOsm/g)
+ *   计算: 1000 / 198.17 ≈ 5.046, 取 5.04 以匹配 5%葡萄糖≈252 mOsm/L
+ * @constant {number} OSM_FACTOR_FAT_DEFAULT - 脂肪乳默认渗透压系数 (mOsm/g)
+ * @constant {number} OSM_FACTOR_ELECTROLYTE - 电解质渗透压系数 (mOsm/mmol)
+ * @constant {number} PERIPHERAL_THRESHOLD - 外周静脉安全阈值 (mOsm/L)
+ */
+const OSM_FACTOR_AA = 10;
+const OSM_FACTOR_GLU = 5.04;
+const OSM_FACTOR_FAT_DEFAULT = 1.75;
+const OSM_FACTOR_ELECTROLYTE = 2;
+const PERIPHERAL_THRESHOLD = 900;
+
+/**
+ * 验证输入值是否为有效非负有限数
+ * 
+ * 公式名称：输入有效性验证（非特定公式，为数据质量控制步骤）
+ * 文献出处：ASPEN Safe Practices (Mirtallo et al., JPEN 2004;28(6):S39-S70) 
+ *           强调处方参数审核的重要性
+ * 
+ * @param {number} value - 待验证的数值
+ * @param {string} fieldName - 字段名称（用于错误提示）
+ * @returns {{valid: boolean, error: string}} 验证结果
+ */
+function validateInput(value, fieldName) {
+    if (value === null || value === undefined || value === '') {
+        return { valid: false, error: fieldName + '：未输入值' };
+    }
+    var num = Number(value);
+    if (isNaN(num)) {
+        return { valid: false, error: fieldName + '：输入值非数字 (NaN)' };
+    }
+    if (!isFinite(num)) {
+        return { valid: false, error: fieldName + '：输入值为无穷大' };
+    }
+    if (num < 0) {
+        return { valid: false, error: fieldName + '：输入值不能为负数' };
+    }
+    return { valid: true, error: '' };
+}
+
+/**
+ * 计算肠外营养混合液总渗透压
+ * 
+ * 公式名称：渗透压加和估算法（Osmolarity Additive Estimation Method）
+ * 文献出处：
+ *   Mirtallo J, Canada T, Johnson D, et al. Safe practices for parenteral nutrition.
+ *   JPEN. 2004;28(6):S39-S70.
+ *   ASPEN Board of Directors. Guidelines for PN/EN. JPEN. 2002;26(1 Suppl):1SA-138SA.
+ * 
+ * 假设条件：
+ *   1. 各溶质在溶液中表现为理想溶质，渗透压系数为常数
+ *   2. 电解质完全解离
+ *   3. 混合后总体积等于各组分体积之和（体积加和性）
+ *   4. 溶质间无显著相互作用（忽略离子络合等效应）
+ * 
+ * 失效边界：
+ *   - 极高浓度（>70% 葡萄糖）时非理想行为增大
+ *   - 含钙-磷高浓度时可能形成沉淀，实际渗透压降低
+ *   - 脂肪乳破乳时渗透压模型失效
+ *   - 总体积为 0 时无法计算（除零错误）
+ * 
+ * @param {Object} inputs - 输入参数对象
+ * @param {number} inputs.aaConc - 氨基酸浓度 (%)
+ * @param {number} inputs.aaVol - 氨基酸溶液体积 (mL)
+ * @param {number} inputs.gluConc - 葡萄糖浓度 (%)
+ * @param {number} inputs.gluVol - 葡萄糖溶液体积 (mL)
+ * @param {number} inputs.fatConc - 脂肪乳浓度 (%)
+ * @param {number} inputs.fatVol - 脂肪乳体积 (mL)
+ * @param {number} [inputs.fatFactor=1.75] - 脂肪乳渗透压系数 (mOsm/g)
+ * @param {number} [inputs.naMmol=0] - 钠离子量 (mmol)
+ * @param {number} [inputs.kMmol=0] - 钾离子量 (mmol)
+ * @param {number} [inputs.caMmol=0] - 钙离子量 (mmol)
+ * @param {number} [inputs.mgMmol=0] - 镁离子量 (mmol)
+ * @param {number} [inputs.po4Mmol=0] - 磷酸根量 (mmol)
+ * @param {number} [inputs.addVol=0] - 电解质添加剂体积 (mL)
+ * @returns {Object} 计算结果
+ * @returns {boolean} returns.success - 计算是否成功
+ * @returns {string} [returns.error] - 错误信息（失败时）
+ * @returns {number} [returns.totalOsmoles] - 总渗透粒子量 (mOsm)
+ * @returns {number} [returns.totalVolume] - 总体积 (mL)
+ * @returns {number} [returns.osmolarity] - 总渗透压 (mOsm/L)
+ * @returns {boolean} [returns.exceedsThreshold] - 是否超过外周静脉阈值
+ * @returns {Object} [returns.components] - 各组分渗透压贡献明细
+ */
+function calculateOsmolarity(inputs) {
+    // 参数默认值
+    var aaConc = Number(inputs.aaConc) || 0;
+    var aaVol = Number(inputs.aaVol) || 0;
+    var gluConc = Number(inputs.gluConc) || 0;
+    var gluVol = Number(inputs.gluVol) || 0;
+    var fatConc = Number(inputs.fatConc) || 0;
+    var fatVol = Number(inputs.fatVol) || 0;
+    var fatFactor = (inputs.fatFactor !== undefined && inputs.fatFactor !== null && inputs.fatFactor !== '') 
+                    ? Number(inputs.fatFactor) : OSM_FACTOR_FAT_DEFAULT;
+    var naMmol = Number(inputs.naMmol) || 0;
+    var kMmol = Number(inputs.kMmol) || 0;
+    var caMmol = Number(inputs.caMmol) || 0;
+    var mgMmol = Number(inputs.mgMmol) || 0;
+    var po4Mmol = Number(inputs.po4Mmol) || 0;
+    var addVol = Number(inputs.addVol) || 0;
+
+    // 输入验证
+    var validations = [
+        validateInput(inputs.aaConc, '氨基酸浓度'),
+        validateInput(inputs.aaVol, '氨基酸体积'),
+        validateInput(inputs.gluConc, '葡萄糖浓度'),
+        validateInput(inputs.gluVol, '葡萄糖体积'),
+        validateInput(inputs.fatConc, '脂肪乳浓度'),
+        validateInput(inputs.fatVol, '脂肪乳体积'),
+        validateInput(inputs.naMmol, '钠(Na⁺)'),
+        validateInput(inputs.kMmol, '钾(K⁺)'),
+        validateInput(inputs.caMmol, '钙(Ca²⁺)'),
+        validateInput(inputs.mgMmol, '镁(Mg²⁺)'),
+        validateInput(inputs.po4Mmol, '磷酸根(PO₄³⁻)'),
+        validateInput(inputs.addVol, '添加剂体积')
+    ];
+
+    // 检查 fatFactor 有效性（如果提供了的话）
+    if (inputs.fatFactor !== undefined && inputs.fatFactor !== null && inputs.fatFactor !== '') {
+        var ffVal = Number(inputs.fatFactor);
+        if (isNaN(ffVal) || !isFinite(ffVal)) {
+            return { success: false, error: '脂肪乳渗透压系数：输入值无效 (NaN 或无穷大)' };
+        }
+        if (ffVal < 0) {
+            return { success: false, error: '脂肪乳渗透压系数：不能为负数' };
+        }
+    }
+
+    for (var i = 0; i < validations.length; i++) {
+        if (!validations[i].valid) {
+            return { success: false, error: validations[i].error };
+        }
+    }
+
+    // 计算各组分溶质质量 (g)
+    // 浓度(%) = g/100mL, 所以 质量 = 浓度 × 体积 / 100
+    var aaMass = aaConc * aaVol / 100;
+    var gluMass = gluConc * gluVol / 100;
+    var fatMass = fatConc * fatVol / 100;
+
+    // 计算各组分渗透粒子量 (mOsm)
+    var aaOsmoles = aaMass * OSM_FACTOR_AA;
+    var gluOsmoles = gluMass * OSM_FACTOR_GLU;
+    var fatOsmoles = fatMass * fatFactor;
+
+    // 电解质渗透粒子量 (mOsm)
+    // 每种电解质: mmol × 2 mOsm/mmol
+    var naOsmoles = naMmol * OSM_FACTOR_ELECTROLYTE;
+    var kOsmoles = kMmol * OSM_FACTOR_ELECTROLYTE;
+    var caOsmoles = caMmol * OSM_FACTOR_ELECTROLYTE;
+    var mgOsmoles = mgMmol * OSM_FACTOR_ELECTROLYTE;
+    var po4Osmoles = po4Mmol * OSM_FACTOR_ELECTROLYTE;
+    var totalElectrolyteOsmoles = naOsmoles + kOsmoles + caOsmoles + mgOsmoles + po4Osmoles;
+
+    // 总渗透粒子量
+    var totalOsmoles = aaOsmoles + gluOsmoles + fatOsmoles + totalElectrolyteOsmoles;
+
+    // 总体积 (mL)
+    var totalVolume = aaVol + gluVol + fatVol + addVol;
+
+    // 检查总体积是否为 0
+    if (totalVolume <= 0) {
+        if (totalOsmoles === 0) {
+            // 所有输入均为 0 的情况
+            return {
+                success: true,
+                totalOsmoles: 0,
+                totalVolume: 0,
+                osmolarity: 0,
+                exceedsThreshold: false,
+                components: {
+                    aaOsmoles: 0, gluOsmoles: 0, fatOsmoles: 0,
+                    naOsmoles: 0, kOsmoles: 0, caOsmoles: 0,
+                    mgOsmoles: 0, po4Osmoles: 0, totalElectrolyteOsmoles: 0
+                },
+                note: '所有输入为零，无液体可计算'
+            };
+        } else {
+            return { success: false, error: '总体积为零但存在渗透粒子，无法计算渗透压（除零错误）' };
+        }
+    }
+
+    // 总渗透压 (mOsm/L)
+    var osmolarity = totalOsmoles / (totalVolume / 1000);
+
+    // 是否超过外周静脉阈值
+    var exceedsThreshold = osmolarity > PERIPHERAL_THRESHOLD;
+
+    return {
+        success: true,
+        totalOsmoles: Math.round(totalOsmoles * 100) / 100,
+        totalVolume: totalVolume,
+        osmolarity: Math.round(osmolarity * 10) / 10,
+        exceedsThreshold: exceedsThreshold,
+        components: {
+            aaMass: Math.round(aaMass * 100) / 100,
+            gluMass: Math.round(gluMass * 100) / 100,
+            fatMass: Math.round(fatMass * 100) / 100,
+            aaOsmoles: Math.round(aaOsmoles * 100) / 100,
+            gluOsmoles: Math.round(gluOsmoles * 100) / 100,
+            fatOsmoles: Math.round(fatOsmoles * 100) / 100,
+            naOsmoles: Math.round(naOsmoles * 100) / 100,
+            kOsmoles: Math.round(kOsmoles * 100) / 100,
+            caOsmoles: Math.round(caOsmoles * 100) / 100,
+            mgOsmoles: Math.round(mgOsmoles * 100) / 100,
+            po4Osmoles: Math.round(po4Osmoles * 100) / 100,
+            totalElectrolyteOsmoles: Math.round(totalElectrolyteOsmoles * 100) / 100
+        }
+    };
+}
+
+/**
+ * 从 DOM 读取输入值
+ * 
+ * 公式名称：N/A（数据读取辅助函数）
+ * 文献出处：N/A
+ * 
+ * @returns {Object} 输入参数对象
+ */
+function readInputsFromDOM() {
+    return {
+        aaConc: document.getElementById('aaConc').value,
+        aaVol: document.getElementById('aaVol').value,
+        gluConc: document.getElementById('gluConc').value,
+        gluVol: document.getElementById('gluVol').value,
+        fatConc: document.getElementById('fatConc').value,
+        fatVol: document.getElementById('fatVol').value,
+        fatFactor: document.getElementById('fatFactor').value,
+        naMmol: document.getElementById('naMmol').value,
+        kMmol: document.getElementById('kMmol').value,
+        caMmol: document.getElementById('caMmol').value,
+        mgMmol: document.getElementById('mgMmol').value,
+        po4Mmol: document.getElementById('po4Mmol').value,
+        addVol: document.getElementById('addVol').value
+    };
+}
+
+/**
+ * 将计算结果显示在 DOM 中
+ * 
+ * 公式名称：N/A（显示辅助函数）
+ * 文献出处：N/A
+ * 
+ * @param {Object} result - calculateOsmolarity 的返回值
+ */
+function displayResult(result) {
+    var resultArea = document.getElementById('resultArea');
+    var resultBox = document.getElementById('resultBox');
+    var resultOsm = document.getElementById('resultOsm');
+    var resultVerdict = document.getElementById('resultVerdict');
+    var resTotalOsm = document.getElementById('resTotalOsm');
+    var resTotalVol = document.getElementById('resTotalVol');
+    var resMargin = document.getElementById('resMargin');
+    var breakdownBody = document.getElementById('breakdownBody');
+
+    resultArea.style.display = 'block';
+
+    if (!result.success) {
+        resultBox.className = 'result-box warn';
+        resultOsm.className = 'result-main warn';
+        resultOsm.textContent = '计算错误';
+        resultVerdict.className = 'result-verdict warn';
+        resultVerdict.textContent = result.error;
+        resTotalOsm.textContent = '—';
+        resTotalVol.textContent = '—';
+        resMargin.textContent = '—';
+        breakdownBody.innerHTML = '';
+        return;
+    }
+
+    if (result.note) {
+        resultBox.className = 'result-box';
+        resultOsm.className = 'result-main';
+        resultOsm.textContent = '0 mOsm/L';
+        resultVerdict.className = 'result-verdict safe';
+        resultVerdict.textContent = result.note;
+        resTotalOsm.textContent = '0 mOsm';
+        resTotalVol.textContent = '0 mL';
+        resMargin.textContent = '—';
+        breakdownBody.innerHTML = '';
+        return;
+    }
+
+    var osm = result.osmolarity;
+    var isWarn = result.exceedsThreshold;
+
+    resultBox.className = 'result-box ' + (isWarn ? 'warn' : 'safe');
+    resultOsm.className = 'result-main ' + (isWarn ? 'warn' : 'safe');
+    resultOsm.textContent = osm.toFixed(1) + ' mOsm/L';
+
+    if (isWarn) {
+        resultVerdict.className = 'result-verdict warn';
+        resultVerdict.textContent = '⚠ 超过 900 mOsm/L 外周静脉安全阈值 → 须经中心静脉输注';
+    } else {
+        resultVerdict.className = 'result-verdict safe';
+        resultVerdict.textContent = '✓ 未超过 900 mOsm/L 外周静脉安全阈值 → 可考虑外周静脉输注';
+    }
+
+    resTotalOsm.textContent = result.totalOsmoles.toFixed(1) + ' mOsm';
+    resTotalVol.textContent = result.totalVolume + ' mL';
+
+    var margin = PERIPHERAL_THRESHOLD - osm;
+    if (margin >= 0) {
+        resMargin.textContent = '+' + margin.toFixed(1) + ' mOsm/L (安全余量)';
+        resMargin.style.color = '#27ae60';
+    } else {
+        resMargin.textContent = margin.toFixed(1) + ' mOsm/L (超标)';
+        resMargin.style.color = '#e74c3c';
+    }
+
+    // 明细表
+    var c = result.components;
+    var rows = [
+        ['氨基酸', c.aaMass.toFixed(2) + ' g', '10 mOsm/g', c.aaOsmoles.toFixed(1)],
+        ['葡萄糖(右旋糖)', c.gluMass.toFixed(2) + ' g', '5.04 mOsm/g', c.gluOsmoles.toFixed(1)],
+        ['脂肪乳', c.fatMass.toFixed(2) + ' g', document.getElementById('fatFactor').value + ' mOsm/g', c.fatOsmoles.toFixed(1)],
+        ['Na⁺', (document.getElementById('naMmol').value || 0) + ' mmol', '2 mOsm/mmol', c.naOsmoles.toFixed(1)],
+        ['K⁺', (document.getElementById('kMmol').value || 0) + ' mmol', '2 mOsm/mmol', c.kOsmoles.toFixed(1)],
+        ['Ca²⁺', (document.getElementById('caMmol').value || 0) + ' mmol', '2 mOsm/mmol', c.caOsmoles.toFixed(1)],
+        ['Mg²⁺', (document.getElementById('mgMmol').value || 0) + ' mmol', '2 mOsm/mmol', c.mgOsmoles.toFixed(1)],
+        ['PO₄³⁻', (document.getElementById('po4Mmol').value || 0) + ' mmol', '2 mOsm/mmol', c.po4Osmoles.toFixed(1)]
+    ];
+
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+        html += '<tr><td>' + rows[i][0] + '</td><td>' + rows[i][1] + '</td><td>' + rows[i][2] + '</td><td>' + rows[i][3] + '</td></tr>';
+    }
+    html += '<tr style="font-weight:700;background:#f0f3f7"><td colspan="3">合计</td><td>' + result.totalOsmoles.toFixed(1) + '</td></tr>';
+    breakdownBody.innerHTML = html;
+}
+
+// ============================================================
+// 标签页切换
+// ============================================================
+(function initTabs() {
+    var tabs = document.querySelectorAll('.tab');
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].addEventListener('click', function() {
+            var target = this.getAttribute('data-tab');
+            for (var j = 0; j < tabs.length; j++) {
+                tabs[j].classList.remove('active');
+                contents[j].classList.remove('active');
+            }
+            this.classList.add('active');
+            document.getElementById(target).classList.add('active');
+        });
+    }
+})();
+
+// ============================================================
+// 计算按钮事件
+// ============================================================
+document.getElementById('btnCalc').addEventListener('click', function() {
+    var inputs = readInputsFromDOM();
+    var result = calculateOsmolarity(inputs);
+    displayResult(result);
+});
+
+// ============================================================
+// 单元测试（10 项）
+// ============================================================
+/**
+ * 运行全部单元测试并显示结果
+ * 
+ * 公式名称：N/A（测试框架辅助函数）
+ * 文献出处：N/A
+ * 
+ * 测试覆盖：
+ *   1. 标准 TPN 配方（正常值）
+ *   2. 低渗外周配方（正常值）
+ *   3. 零氨基酸（边界条件）
+ *   4. 零葡萄糖（边界条件）
+ *   5. 零脂肪乳（边界条件）
+ *   6. 负数输入（异常输入）
+ *   7. NaN 输入（异常输入）
+ *   8. 极高葡萄糖浓度（极端值）
+ *   9. 极低体积（极端值）
+ *   10. 全零输入（极端边界）
+ */
+function runUnitTests() {
+    var results = [];
+    var passCount = 0;
+    var failCount = 0;
+
+    /**
+     * 断言辅助函数
+     * @param {string} name - 测试名称
+     * @param {string} description - 测试描述
+     * @param {boolean} condition - 断言条件
+     * @param {string} detail - 详细信息
+     */
+    function assert(name, description, condition, detail) {
+        var passed = !!condition;
+        if (passed) passCount++; else failCount++;
+        results.push({
+            name: name,
+            description: description,
+            passed: passed,
+            detail: detail
+        });
+    }
+
+    // ---- 测试 1: 标准 TPN 配方 ----
+    (function test1() {
+        var r = calculateOsmolarity({
+            aaConc: 8.5, aaVol: 500,
+            gluConc: 50, gluVol: 250,
+            fatConc: 20, fatVol: 250,
+            fatFactor: 1.75,
+            naMmol: 100, kMmol: 40,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // AA: 8.5*500/100*10 = 425
+        // Glu: 50*250/100*5.04 = 630
+        // Fat: 20*250/100*1.75 = 87.5
+        // Na: 100*2 = 200, K: 40*2 = 80
+        // Total: 425+630+87.5+200+80 = 1422.5
+        // Vol: 1000 mL = 1 L
+        // Osm: 1422.5 mOsm/L
+        assert(
+            '测试 1: 标准 TPN 配方',
+            '测什么：正常全合一配方，验证各组分加和计算正确性。输入：AA 8.5% 500mL + Glu 50% 250mL + Fat 20% 250mL + Na 100mmol + K 40mmol。期望：总渗透压 ≈ 1422.5 mOsm/L，超过 900 阈值。',
+            r.success && Math.abs(r.osmolarity - 1422.5) < 1 && r.exceedsThreshold === true,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L, exceeds=' + r.exceedsThreshold : 'ERROR: ' + r.error) + ' | 期望: 1422.5 mOsm/L, exceeds=true'
+        );
+    })();
+
+    // ---- 测试 2: 低渗外周配方 ----
+    (function test2() {
+        var r = calculateOsmolarity({
+            aaConc: 5, aaVol: 250,
+            gluConc: 5, gluVol: 500,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 20, kMmol: 10,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // AA: 5*250/100*10 = 125
+        // Glu: 5*500/100*5.04 = 126
+        // Na: 20*2=40, K: 10*2=20
+        // Total: 125+126+40+20 = 311
+        // Vol: 750 mL = 0.75 L
+        // Osm: 311/0.75 = 414.67 mOsm/L
+        assert(
+            '测试 2: 低渗外周配方',
+            '测什么：低浓度配方，验证可安全经外周输注的判断。输入：AA 5% 250mL + Glu 5% 500mL + Na 20mmol + K 10mmol。期望：总渗透压 ≈ 414.7 mOsm/L，未超过阈值。',
+            r.success && Math.abs(r.osmolarity - 414.7) < 1 && r.exceedsThreshold === false,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L, exceeds=' + r.exceedsThreshold : 'ERROR: ' + r.error) + ' | 期望: ≈414.7 mOsm/L, exceeds=false'
+        );
+    })();
+
+    // ---- 测试 3: 零氨基酸 ----
+    (function test3() {
+        var r = calculateOsmolarity({
+            aaConc: 0, aaVol: 0,
+            gluConc: 10, gluVol: 1000,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // Glu: 10*1000/100*5.04 = 504
+        // Vol: 1000 mL = 1 L
+        // Osm: 504 mOsm/L
+        assert(
+            '测试 3: 零氨基酸（边界条件）',
+            '测什么：无氨基酸输入，仅葡萄糖溶液。验证零值输入不导致错误。输入：Glu 10% 1000mL。期望：504 mOsm/L。',
+            r.success && Math.abs(r.osmolarity - 504) < 1,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L' : 'ERROR: ' + r.error) + ' | 期望: 504 mOsm/L'
+        );
+    })();
+
+    // ---- 测试 4: 零葡萄糖 ----
+    (function test4() {
+        var r = calculateOsmolarity({
+            aaConc: 10, aaVol: 500,
+            gluConc: 0, gluVol: 0,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // AA: 10*500/100*10 = 500
+        // Vol: 500 mL = 0.5 L
+        // Osm: 500/0.5 = 1000 mOsm/L
+        assert(
+            '测试 4: 零葡萄糖（边界条件）',
+            '测什么：无葡萄糖输入，仅氨基酸溶液。验证零值输入。输入：AA 10% 500mL。期望：1000 mOsm/L，超过阈值。',
+            r.success && Math.abs(r.osmolarity - 1000) < 1 && r.exceedsThreshold === true,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L, exceeds=' + r.exceedsThreshold : 'ERROR: ' + r.error) + ' | 期望: 1000 mOsm/L, exceeds=true'
+        );
+    })();
+
+    // ---- 测试 5: 零脂肪乳 ----
+    (function test5() {
+        var r = calculateOsmolarity({
+            aaConc: 8.5, aaVol: 500,
+            gluConc: 25, gluVol: 500,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // AA: 8.5*500/100*10 = 425
+        // Glu: 25*500/100*5.04 = 630
+        // Total: 1055
+        // Vol: 1000 mL = 1 L
+        // Osm: 1055 mOsm/L
+        assert(
+            '测试 5: 零脂肪乳（边界条件）',
+            '测什么：无脂肪乳输入。验证脂肪乳为零时不影响计算。输入：AA 8.5% 500mL + Glu 25% 500mL。期望：1055 mOsm/L。',
+            r.success && Math.abs(r.osmolarity - 1055) < 1,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L' : 'ERROR: ' + r.error) + ' | 期望: 1055 mOsm/L'
+        );
+    })();
+
+    // ---- 测试 6: 负数输入 ----
+    (function test6() {
+        var r = calculateOsmolarity({
+            aaConc: -5, aaVol: 500,
+            gluConc: 10, gluVol: 500,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        assert(
+            '测试 6: 负数输入（异常输入）',
+            '测什么：氨基酸浓度为负数，验证工具能正确拒绝并返回错误信息。输入：AA -5% 500mL。期望：success=false，返回错误信息。',
+            r.success === false && r.error && r.error.indexOf('负数') !== -1,
+            '实际: success=' + r.success + ', error="' + (r.error || '') + '" | 期望: success=false, error含"负数"'
+        );
+    })();
+
+    // ---- 测试 7: NaN 输入 ----
+    (function test7() {
+        var r = calculateOsmolarity({
+            aaConc: 'abc', aaVol: 500,
+            gluConc: 10, gluVol: 500,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        assert(
+            '测试 7: NaN 输入（异常输入）',
+            '测什么：氨基酸浓度输入非数字字符串 "abc"，验证工具能正确识别并拒绝。输入：AA "abc" 500mL。期望：success=false，返回错误信息。',
+            r.success === false && r.error && (r.error.indexOf('非数字') !== -1 || r.error.indexOf('NaN') !== -1 || r.error.indexOf('未输入') !== -1),
+            '实际: success=' + r.success + ', error="' + (r.error || '') + '" | 期望: success=false, error含"非数字"或"NaN"'
+        );
+    })();
+
+    // ---- 测试 8: 极高葡萄糖浓度 ----
+    (function test8() {
+        var r = calculateOsmolarity({
+            aaConc: 0, aaVol: 0,
+            gluConc: 70, gluVol: 100,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // Glu: 70*100/100*5.04 = 352.8
+        // Vol: 100 mL = 0.1 L
+        // Osm: 352.8/0.1 = 3528 mOsm/L
+        assert(
+            '测试 8: 极高葡萄糖浓度（极端值）',
+            '测什么：70% 葡萄糖 100mL，验证极端高浓度下的计算正确性。输入：Glu 70% 100mL。期望：3528 mOsm/L，远超阈值。',
+            r.success && Math.abs(r.osmolarity - 3528) < 5 && r.exceedsThreshold === true,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L' : 'ERROR: ' + r.error) + ' | 期望: 3528 mOsm/L'
+        );
+    })();
+
+    // ---- 测试 9: 极低体积 ----
+    (function test9() {
+        var r = calculateOsmolarity({
+            aaConc: 10, aaVol: 1,
+            gluConc: 0, gluVol: 0,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        // AA: 10*1/100*10 = 1
+        // Vol: 1 mL = 0.001 L
+        // Osm: 1/0.001 = 1000 mOsm/L
+        assert(
+            '测试 9: 极低体积（极端值）',
+            '测什么：仅 1mL 氨基酸溶液，验证极小体积下的计算正确性。输入：AA 10% 1mL。期望：1000 mOsm/L。',
+            r.success && Math.abs(r.osmolarity - 1000) < 1,
+            '实际: ' + (r.success ? r.osmolarity + ' mOsm/L' : 'ERROR: ' + r.error) + ' | 期望: 1000 mOsm/L'
+        );
+    })();
+
+    // ---- 测试 10: 全零输入 ----
+    (function test10() {
+        var r = calculateOsmolarity({
+            aaConc: 0, aaVol: 0,
+            gluConc: 0, gluVol: 0,
+            fatConc: 0, fatVol: 0,
+            fatFactor: 1.75,
+            naMmol: 0, kMmol: 0,
+            caMmol: 0, mgMmol: 0, po4Mmol: 0,
+            addVol: 0
+        });
+        assert(
+            '测试 10: 全零输入（极端边界）',
+            '测什么：所有输入均为零，验证工具不崩溃、不出现除零错误。输入：全部为 0。期望：success=true，osmolarity=0。',
+            r.success && r.osmolarity === 0 && r.totalOsmoles === 0 && r.totalVolume === 0,
+            '实际: success=' + r.success + ', osm=' + (r.osmolarity !== undefined ? r.osmolarity : 'N/A') + ', totalOsm=' + (r.totalOsmoles !== undefined ? r.totalOsmoles : 'N/A') + ', totalVol=' + (r.totalVolume !== undefined ? r.totalVolume : 'N/A') + ' | 期望: success=true, osm=0, totalOsm=0, totalVol=0'
+        );
+    })();
+
+    // 显示结果
+    var summaryEl = document.getElementById('testSummary');
+    var resultsEl = document.getElementById('testResults');
+
+    if (failCount === 0) {
+        summaryEl.className = 'test-summary all-pass';
+        summaryEl.textContent = '全部通过 ✓ (' + passCount + '/' + (passCount + failCount) + ')';
+    } else {
+        summaryEl.className = 'test-summary has-fail';
+        summaryEl.textContent = '存在失败 ✗ (通过 ' + passCount + '/' + (passCount + failCount) + ')';
+    }
+
+    var html = '';
+    for (var i = 0; i < results.length; i++) {
+        var t = results[i];
+        html += '<div class="test-item ' + (t.passed ? 'pass' : 'fail') + '">';
+        html += '<span class="' + (t.passed ? 'test-pass' : 'test-fail') + '">' + (t.passed ? '✓ PASS' : '✗ FAIL') + '</span> ';
+        html += '<strong>' + t.name + '</strong><br>';
+        html += '<span style="color:#666;font-size:.82em">' + t.description + '</span><br>';
+        html += '<span style="color:#888;font-size:.78em">' + t.detail + '</span>';
+        html += '</div>';
+    }
+    resultsEl.innerHTML = html;
+}
+
+// 页面加载后自动运行测试
+window.addEventListener('DOMContentLoaded', function() {
+    runUnitTests();
+});
+</script>
+</body>
+</html>

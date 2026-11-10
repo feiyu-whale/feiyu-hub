@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>算盘与珠算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  background: #f5f0e8;
+  color: #333;
+  line-height: 1.6;
+  padding-bottom: 40px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px;
+}
+h1 {
+  text-align: center;
+  font-size: 20px;
+  padding: 12px 0;
+  color: #5a3e1b;
+}
+h2 {
+  font-size: 16px;
+  color: #5a3e1b;
+  margin: 16px 0 8px;
+  border-left: 4px solid #8b5e3c;
+  padding-left: 8px;
+}
+h3 {
+  font-size: 14px;
+  color: #6b4423;
+  margin: 10px 0 6px;
+}
+.section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.switch-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.switch-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px 12px;
+  border: 2px solid #8b5e3c;
+  border-radius: 6px;
+  background: #fff;
+  color: #5a3e1b;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+.switch-btn.active {
+  background: #8b5e3c;
+  color: #fff;
+}
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.input-row label {
+  font-size: 14px;
+  white-space: nowrap;
+}
+.input-row input {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+/* Abacus styles */
+.abacus-frame {
+  background: #6b3a1f;
+  border-radius: 10px;
+  padding: 8px;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+.abacus-inner {
+  display: flex;
+  min-width: fit-content;
+  margin: 0 auto;
+}
+.abacus-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 44px;
+  min-width: 44px;
+  position: relative;
+}
+.abacus-col::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  background: #d4a76a;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+.col-upper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  height: 100px;
+  justify-content: flex-start;
+  position: relative;
+  z-index: 1;
+}
+.col-beam {
+  width: 100%;
+  height: 6px;
+  background: #d4a76a;
+  position: relative;
+  z-index: 2;
+}
+.col-lower {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  height: 160px;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+.bead {
+  width: 36px;
+  height: 22px;
+  border-radius: 50%;
+  margin: 2px 0;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s;
+}
+.bead-upper {
+  background: radial-gradient(circle at 35% 35%, #e8c170, #a0722a);
+  border: 1px solid #7a5420;
+}
+.bead-lower {
+  background: radial-gradient(circle at 35% 35%, #e8c170, #a0722a);
+  border: 1px solid #7a5420;
+}
+.bead-upper.inactive {
+  transform: translateY(-4px);
+  opacity: 0.6;
+}
+.bead-lower.inactive {
+  transform: translateY(4px);
+  opacity: 0.6;
+}
+.col-label {
+  font-size: 11px;
+  color: #d4a76a;
+  text-align: center;
+  margin-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+.col-digit {
+  font-size: 13px;
+  color: #fff;
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 2px;
+  position: relative;
+  z-index: 1;
+}
+/* Formula styles */
+.formula-category {
+  margin-bottom: 8px;
+}
+.formula-toggle {
+  width: 100%;
+  padding: 8px 12px;
+  background: #f0e6d6;
+  border: 1px solid #d4b896;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  color: #5a3e1b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.formula-toggle:hover {
+  background: #e8dcc8;
+}
+.formula-content {
+  display: none;
+  padding: 8px;
+  background: #faf6f0;
+  border: 1px solid #e8dcc8;
+  border-radius: 0 0 6px 6px;
+  margin-top: -1px;
+}
+.formula-content.show {
+  display: block;
+}
+.formula-item {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 3px 8px;
+  margin: 3px;
+  font-size: 13px;
+  color: #5a3e1b;
+}
+.note {
+  background: #fff8e1;
+  border-left: 4px solid #ffa000;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 13px;
+  border-radius: 0 4px 4px 0;
+}
+.data-basis {
+  background: #f0f0f0;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+.data-basis p {
+  margin: 4px 0;
+}
+.version {
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  font-size: 11px;
+  color: #999;
+  z-index: 100;
+}
+.tab-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 6px 10px;
+  border: 1px solid #8b5e3c;
+  border-radius: 4px;
+  background: #fff;
+  color: #5a3e1b;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tab-btn.active {
+  background: #8b5e3c;
+  color: #fff;
+}
+.result-display {
+  text-align: center;
+  font-size: 18px;
+  color: #5a3e1b;
+  font-weight: bold;
+  padding: 8px;
+  background: #faf6f0;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧮 算盘与珠算工具</h1>
+
+  <div class="section">
+    <h2>📿 算盘类型切换</h2>
+    <div class="switch-row">
+      <button class="switch-btn active" onclick="switchType(2,5)" id="btn25">二五珠算盘（上2下5）</button>
+      <button class="switch-btn" onclick="switchType(1,4)" id="btn14">一四珠算盘（上1下4）</button>
+    </div>
+    <div class="note">💡 二五珠算盘每档可表示0~15，常用于乘除；一四珠算盘每档表示0~9，为现代常见形制。</div>
+  </div>
+
+  <div class="section">
+    <h2>🔢 数字摆盘</h2>
+    <div class="input-row">
+      <label>输入数字：</label>
+      <input type="number" id="numInput" placeholder="输入0~999999999" min="0" max="999999999" value="123456789">
+      <button class="switch-btn" style="flex:none;min-width:60px" onclick="renderAbacus()">摆盘</button>
+    </div>
+    <div class="result-display" id="resultDisplay">当前数字：123456789</div>
+    <div class="abacus-frame">
+      <div class="abacus-inner" id="abacusDisplay"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📜 珠算口诀查询</h2>
+    <div class="note">⚠️ 珠算口诀属民间通行说法，世代口传心授，无强制国家标准。以下整理自传统珠算教材。</div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchFormulaTab('add')">加法口诀</button>
+      <button class="tab-btn" onclick="switchFormulaTab('sub')">减法口诀</button>
+    </div>
+
+    <div id="addFormulas">
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📗 直加（本档直接加）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">一上一</div>
+          <div class="formula-item">二上二</div>
+          <div class="formula-item">三上三</div>
+          <div class="formula-item">四上四</div>
+          <div class="formula-item">五上五</div>
+          <div class="formula-item">六上六</div>
+          <div class="formula-item">七上七</div>
+          <div class="formula-item">八上八</div>
+          <div class="formula-item">九上九</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：下珠够加，直接拨上相应下珠。</p>
+        </div>
+      </div>
+
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📘 满五加（下珠不够，用下五珠）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">一下五去四</div>
+          <div class="formula-item">二下五去三</div>
+          <div class="formula-item">三下五去二</div>
+          <div class="formula-item">四下五去一</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：加数与当前下珠之和≥5但＜10，拨下一个上珠（+5），去掉多余下珠。</p>
+        </div>
+      </div>
+
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📙 进位加（本档满十，向前档进一）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">一去九进一</div>
+          <div class="formula-item">二去八进一</div>
+          <div class="formula-item">三去七进一</div>
+          <div class="formula-item">四去六进一</div>
+          <div class="formula-item">五去五进一</div>
+          <div class="formula-item">六去四进一</div>
+          <div class="formula-item">七去三进一</div>
+          <div class="formula-item">八去二进一</div>
+          <div class="formula-item">九去一进一</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：本档加后≥10，去掉补数（10-加数），前档加一。</p>
+        </div>
+      </div>
+
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📕 破五进位加（满五又进位）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">六上一去五进一</div>
+          <div class="formula-item">七上二去五进一</div>
+          <div class="formula-item">八上三去五进一</div>
+          <div class="formula-item">九上四去五进一</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：加6~9时，本档上珠已用，需拨上上珠同时去五并进位。仅适用于一四珠算盘场景。</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="subFormulas" style="display:none">
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📗 直减（本档直接减）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">一下一</div>
+          <div class="formula-item">二下二</div>
+          <div class="formula-item">三下三</div>
+          <div class="formula-item">四下四</div>
+          <div class="formula-item">五下五</div>
+          <div class="formula-item">六下六</div>
+          <div class="formula-item">七下七</div>
+          <div class="formula-item">八下八</div>
+          <div class="formula-item">九下九</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：下珠够减，直接拨去相应下珠。</p>
+        </div>
+      </div>
+
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📘 破五减（需破开上珠）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">一上四去五</div>
+          <div class="formula-item">二上三去五</div>
+          <div class="formula-item">三上二去五</div>
+          <div class="formula-item">四上一去五</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：下珠不够减，拨去上珠（-5），补回多余下珠。</p>
+        </div>
+      </div>
+
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📙 退位减（本档不够减，从前档退一）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">一退一还九</div>
+          <div class="formula-item">二退一还八</div>
+          <div class="formula-item">三退一还七</div>
+          <div class="formula-item">四退一还六</div>
+          <div class="formula-item">五退一还五</div>
+          <div class="formula-item">六退一还四</div>
+          <div class="formula-item">七退一还三</div>
+          <div class="formula-item">八退一还二</div>
+          <div class="formula-item">九退一还一</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：本档不够减，前档退一（-10），本档加还数（10-减数）。</p>
+        </div>
+      </div>
+
+      <div class="formula-category">
+        <button class="formula-toggle" onclick="toggleFormula(this)">
+          <span>📕 破五退位减（退位又破五）</span><span>▼</span>
+        </button>
+        <div class="formula-content">
+          <div class="formula-item">六退一还四去五</div>
+          <div class="formula-item">七退一还三去五</div>
+          <div class="formula-item">八退一还二去五</div>
+          <div class="formula-item">九退一还一去五</div>
+          <p style="font-size:12px;color:#888;margin-top:6px">说明：退位后还数≥5，需同时破开上珠。仅适用于一四珠算盘场景。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📖 使用说明</h2>
+    <p style="font-size:13px">
+      <strong>算盘结构：</strong>横梁将算盘分为上下两部分。横梁上方为上珠，每颗代表5；横梁下方为下珠，每颗代表1。拨珠靠梁表示计入数值。<br><br>
+      <strong>二五珠算盘：</strong>每档上2珠下5珠，一档最大可表示 2×5+5×1=15。传统中式算盘形制，便于乘除运算中暂存进位。<br><br>
+      <strong>一四珠算盘：</strong>每档上1珠下4珠，一档最大表示 1×5+4×1=9。日本改良形制（和算盘），现代教学常用。<br><br>
+      <strong>读盘方法：</strong>从右到左依次为个位、十位、百位……每档靠梁的珠子数值之和即为该位数字。
+    </p>
+  </div>
+
+  <div class="data-basis">
+    <h2>📋 数据依据</h2>
+    <p>1. 珠算口诀（加法口诀、减法口诀等）属<strong>民间通行说法</strong>，为世代珠算艺人及教材口传心授之内容，无对应国家标准。</p>
+    <p>2. 算盘结构描述（上珠当5、下珠当1）为珠算基本常识，参见《珠算教程》等通用教材。</p>
+    <p>3. 2013年珠算被列入联合国教科文组织人类非物质文化遗产代表作名录。</p>
+    <p>4. 本工具中口诀内容整理自传统珠算教学体系，具体表述可能因地区、流派略有差异。</p>
+  </div>
+</div>
+
+<div class="version">v1.0.0-算盘珠算口诀 20261021</div>
+
+<script>
+let upperCount = 2;
+let lowerCount = 5;
+const colNames = ['个','十','百','千','万','十万','百万','千万','亿'];
+
+function switchType(u, l) {
+  upperCount = u;
+  lowerCount = l;
+  document.getElementById('btn25').classList.toggle('active', u===2);
+  document.getElementById('btn14').classList.toggle('active', u===1);
+  renderAbacus();
+}
+
+function renderAbacus() {
+  const input = document.getElementById('numInput');
+  let num = parseInt(input.value) || 0;
+  if (num < 0) num = 0;
+  const maxVal = upperCount === 2 ? 999999999 : 999999999;
+  if (num > maxVal) { num = maxVal; input.value = num; }
+
+  document.getElementById('resultDisplay').textContent = '当前数字：' + num.toLocaleString();
+
+  const digits = num.toString().split('').map(Number);
+  // Pad to at least 1 digit, max 9 columns
+  while (digits.length < 1) digits.push(0);
+  // We show from left (highest) to right (lowest)
+  const numCols = Math.max(digits.length, 1);
+  const container = document.getElementById('abacusDisplay');
+  container.innerHTML = '';
+
+  for (let i = 0; i < numCols; i++) {
+    const digit = digits[i];
+    const colDiv = document.createElement('div');
+    colDiv.className = 'abacus-col';
+
+    // Digit label on top
+    const digitLabel = document.createElement('div');
+    digitLabel.className = 'col-digit';
+    digitLabel.textContent = digit;
+    colDiv.appendChild(digitLabel);
+
+    // Upper section
+    const upperDiv = document.createElement('div');
+    upperDiv.className = 'col-upper';
+    const upperActive = Math.floor(digit / 5);
+    for (let j = 0; j < upperCount; j++) {
+      const bead = document.createElement('div');
+      bead.className = 'bead bead-upper';
+      // Active beads are at bottom (near beam), inactive at top
+      if (j < upperCount - upperActive) {
+        bead.classList.add('inactive');
+      }
+      upperDiv.appendChild(bead);
+    }
+    colDiv.appendChild(upperDiv);
+
+    // Beam
+    const beam = document.createElement('div');
+    beam.className = 'col-beam';
+    colDiv.appendChild(beam);
+
+    // Lower section
+    const lowerDiv = document.createElement('div');
+    lowerDiv.className = 'col-lower';
+    const lowerActive = digit % 5;
+    for (let j = 0; j < lowerCount; j++) {
+      const bead = document.createElement('div');
+      bead.className = 'bead bead-lower';
+      // Active beads are at top (near beam), inactive at bottom
+      if (j >= lowerActive) {
+        bead.classList.add('inactive');
+      }
+      lowerDiv.appendChild(bead);
+    }
+    colDiv.appendChild(lowerDiv);
+
+    // Position label
+    const posIndex = numCols - 1 - i;
+    const label = document.createElement('div');
+    label.className = 'col-label';
+    label.textContent = posIndex < colNames.length ? colNames[posIndex] : '10^'+posIndex;
+    colDiv.appendChild(label);
+
+    container.appendChild(colDiv);
+  }
+}
+
+function switchFormulaTab(tab) {
+  const btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(b => b.classList.remove('active'));
+  if (tab === 'add') {
+    btns[0].classList.add('active');
+    document.getElementById('addFormulas').style.display = 'block';
+    document.getElementById('subFormulas').style.display = 'none';
+  } else {
+    btns[1].classList.add('active');
+    document.getElementById('addFormulas').style.display = 'none';
+    document.getElementById('subFormulas').style.display = 'block';
+  }
+}
+
+function toggleFormula(btn) {
+  const content = btn.nextElementSibling;
+  const arrow = btn.querySelector('span:last-child');
+  if (content.classList.contains('show')) {
+    content.classList.remove('show');
+    arrow.textContent = '▼';
+  } else {
+    content.classList.add('show');
+    arrow.textContent = '▲';
+  }
+}
+
+// Initialize
+document.getElementById('numInput').addEventListener('input', renderAbacus);
+document.getElementById('numInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') renderAbacus();
+});
+renderAbacus();
+</script>
+</body>
+</html>

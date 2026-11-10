@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🪙 六爻起卦</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:#0d0a06; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",serif; color:#e8d8b8;
+    padding:16px 12px 40px; user-select:none; display:flex; justify-content:center; }
+  #wrap { width:100%; max-width:560px; }
+  h1 { font-size:12px; text-align:center; color:#e0b060; margin-bottom:4px; letter-spacing:3px; }
+  .sub { text-align:center; color:#8a7650; font-size:12px; margin-bottom:16px; line-height:1.6; }
+  .card { background:linear-gradient(160deg,#231a10,#171008); border:1px solid #4a3820;
+    border-radius:12px; padding:14px; margin-bottom:11px; }
+  .card h3 { font-size:13px; color:#c09a50; margin-bottom:10px; border-left:3px solid #c09a50; padding-left:8px; }
+  button.go { width:100%; padding:14px; font-size:11px; font-weight:700; color:#1a1208;
+    background:linear-gradient(160deg,#e0b060,#b08030); border:none; border-radius:11px;
+    cursor:pointer; font-family:inherit; letter-spacing:2px; }
+  button.go:active { transform:scale(.98); }
+  button.go:disabled { opacity:.45; cursor:default; }
+  .coins { display:flex; justify-content:center; gap:18px; margin:14px 0 6px; height:70px; align-items:center; }
+  .coin { width:54px; height:54px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#f0d080,#b08030);
+    border:2px solid #8a6020; position:relative; box-shadow:0 3px 10px rgba(0,0,0,.5); }
+  .coin::after { content:''; position:absolute; inset:14px; border:2px solid #8a6020; border-radius:2px; }
+  .coin.spin { animation:spin .5s linear infinite; }
+  .coin.yang { background:radial-gradient(circle at 35% 30%,#ffe9a0,#d0a040); }
+  .coin.yin  { background:radial-gradient(circle at 35% 30%,#8a95a5,#4a5565); border-color:#2a3038; }
+  .coin.yin::after { border-color:#2a3038; }
+  @keyframes spin { to { transform:rotateY(360deg); } }
+  .cointip { text-align:center; color:#8a7650; font-size:12px; min-height:18px; margin-bottom:4px; }
+  /* 卦爻 */
+  .gua { display:flex; flex-direction:column-reverse; gap:6px; margin:6px 0; }
+  .yao { display:flex; align-items:center; gap:10px; padding:4px 6px; border-radius:6px; }
+  .yao .bars { flex:1; display:flex; gap:6px; justify-content:center; align-items:center; height:14px; }
+  .yao .bar { height:12px; background:#e0b060; border-radius:2px; }
+  .yao .bar.full { flex:1; }
+  .yao .bar.half { flex:1; }
+  .yao .gap { width:14px; }
+  .yao .lab { font-size:11px; color:#8a7650; width:52px; text-align:left; }
+  .yao .mark { font-size:11px; color:#e08080; width:34px; text-align:right; }
+  .sect { color:#c09a50; font-size:14px; font-weight:700; margin:14px 0 8px; }
+  .row { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px dashed #33261a; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#a08a58; } .row .v { color:#e8d8b8; text-align:right; max-width:64%; }
+  .interp { background:#1a1208; border:1px solid #4a3820; border-radius:10px; padding:12px 14px;
+    font-size:13px; line-height:1.8; color:#d8c090; }
+  .interp b { color:#e0b060; }
+  .interp ul { margin:0 0 8px; padding-left:18px; }
+  .interp li { margin-bottom:5px; color:#c0a878; }
+  .interp .disclaim { color:#ffb3c1; background:#2a0f1a; border:1px solid #5a2a3a; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-bottom:8px; }
+  .interp .note { color:#8a7650; font-size:11px; margin-top:6px; }
+  .gua-name { text-align:center; font-size:12px; font-weight:800; color:#e0b060; margin:8px 0; letter-spacing:2px; }
+  .hint { text-align:center; color:#5a4a30; font-size:11px; margin-top:10px; line-height:1.7; }
+  .ver { text-align:center; color:#3a2e1e; font-size:10px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🪙 六 爻 起 卦</h1>
+  <div class="sub">三枚铜钱 · 摇六次 · 装卦解卦<br>纯本地 · 心诚则灵（当娱乐）</div>
+
+  <div class="card">
+    <h3>摇卦</h3>
+    <div class="coins" id="coins">
+      <div class="coin" id="c0"></div>
+      <div class="coin" id="c1"></div>
+      <div class="coin" id="c2"></div>
+    </div>
+    <div class="cointip" id="tip">点下面按钮，连摇六次成卦</div>
+    <button class="go" id="shake">摇 一 卦（第 1/6 次）</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="hint">六爻为传统占卜术，属民俗文化，仅供娱乐参考 🐳</div>
+  <div class="ver">v2-删冗余卦 20261016</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 【数据来源】卦名：*《周易》通行本*（64 卦卦名 + 上下卦对应关系，公有领域）
+  //   爻序自下而上，二进制编码；完整命名见 THIRD-PARTY-NOTICES.md「三之二」
+  // 八卦：三爻(自下而上)，1=阳 0=阴。索引=二进制
+  var BAGUA = ['坤','震','坎','兑','艮','离','巽','乾']; // 000=坤 ... 111=乾
+  var BAGUA_SYM = {'坤':'☷','震':'☳','坎':'☵','兑':'☱','艮':'☶','离':'☲','巽':'☴','乾':'☰'};
+  // 64 卦名（下卦,上卦）→ 卦名
+  var GUA64 = {
+    '乾乾':'乾为天','坤坤':'坤为地','坎坎':'坎为水','离离':'离为火',
+    '震震':'震为雷','艮艮':'艮为山','巽巽':'巽为风','兑兑':'兑为泽',
+    '坤震':'地雷复','震坤':'雷地豫','坎震':'水雷屯','震坎':'雷水解',
+    '艮震':'山雷颐','震艮':'雷山小过','巽震':'风雷益','震巽':'雷风恒',
+    '兑震':'泽雷随','震兑':'雷泽归妹','离震':'火雷噬嗑','震离':'雷火丰',
+    '乾震':'天雷无妄','震乾':'雷天大壮','坤坎':'地水师','坎坤':'水地比',
+    '坤艮':'地山谦','艮坤':'山地剥','坤巽':'地风升','巽坤':'风地观',
+    '坤兑':'地泽临','兑坤':'泽地萃','坤离':'地火明夷','离坤':'火地晋',
+    '坤乾':'地天泰','乾坤':'天地否',
+    '坎艮':'水山蹇','艮坎':'山水蒙','坎巽':'水风井','巽坎':'风水涣',
+    '坎兑':'水泽节','兑坎':'泽水困','坎离':'水火既济','离坎':'火水未济',
+    '坎乾':'水天需','乾坎':'天水讼',
+    '艮巽':'山风蛊','巽艮':'风山渐','艮兑':'山泽损','兑艮':'泽山咸',
+    '艮离':'山火贲','离艮':'火山旅','艮乾':'山天大畜','乾艮':'天山遁',
+    '巽兑':'风泽中孚','兑巽':'泽风大过','巽离':'风火家人','离巽':'火风鼎',
+    '巽乾':'风天小畜','乾巽':'天风姤',
+    '兑离':'泽火革','离兑':'火泽睽','兑乾':'泽天夬','乾兑':'天泽履',
+    '离乾':'火天大有','乾离':'天火同人'
+  };
+
+  var coins=[document.getElementById('c0'),document.getElementById('c1'),document.getElementById('c2')];
+  var yaos=[];        // 每爻 {val:6/7/8/9}
+  var shaking=false;
+
+  function baguaOf(tri){ return BAGUA[tri[0]|(tri[1]<<1)|(tri[2]<<2)]; }
+
+  function shake(){
+    if(shaking||yaos.length>=6) return;
+    shaking=true;
+    var btn=document.getElementById('shake');
+    btn.disabled=true;
+    coins.forEach(function(c){ c.classList.add('spin'); c.classList.remove('yang','yin'); });
+    document.getElementById('tip').textContent='铜钱翻滚中…';
+
+    // 2026-10-16 改用真随机源 crypto.getRandomValues（操作系统熵池），老浏览器回退 Math.random
+    // ⚠️ 只改本页随机源，不动其他逻辑！
+    function secureRand(){
+      if(window.crypto && window.crypto.getRandomValues){
+        var a=new Uint32Array(1); window.crypto.getRandomValues(a);
+        return a[0]/4294967296;
+      }
+      return Math.random();
+    }
+    // 2026-10-16 趣味彩蛋：会话内连10次一模一样 → 弹窗（纯内存，不存储）
+    // ⚠️ 只改本页展示逻辑，不动其他逻辑！
+    var _eggStreak={sig:'',n:0};
+    function streakCheck(sig){
+      if(_eggStreak.sig===sig){ _eggStreak.n++; } else { _eggStreak.sig=sig; _eggStreak.n=1; }
+      return _eggStreak.n===10 ? '你的运气过于奇特' : '';
+    }
+    function showEgg(msg){
+      setTimeout(function(){
+        var mask=document.createElement('div');
+        mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer';
+        mask.innerHTML='<div style="background:#28241a;border:1px solid #7a6a3a;border-radius:14px;padding:26px 30px;text-align:center;max-width:80%"><div style="font-size:12px;font-weight:700;color:#f0d060;margin-bottom:10px">'+msg+'</div><div style="font-size:13px;color:#b0a080;margin-bottom:16px">连摇 10 次一模一样的卦，天意难测啊 🌀</div><div style="font-size:12px;color:#908060">（点任意处关闭）</div></div>';
+        mask.onclick=function(){ mask.remove(); };
+        document.body.appendChild(mask);
+      }, 400);
+    }
+    // 随机正反
+    var result=[0,0,0];
+    for(var i=0;i<3;i++) result[i]=secureRand()<0.5?1:0;
+    var yangCount=result.reduce(function(a,b){return a+b;},0);
+
+    // 动画结束定格
+    setTimeout(function(){
+      coins.forEach(function(c,i){ c.classList.remove('spin'); c.classList.add(result[i]?'yang':'yin'); });
+      var val = yangCount===3?9 : yangCount===2?7 : yangCount===1?8 : 6;
+      yaos.push({val:val, coins:result.slice()});
+      var name = val===9?'老阳（动）」':val===7?'少阳':'';
+      var label = val===9?'老阳 ⟨○动⟩':val===7?'少阳 ⟨—⟩':val===8?'少阴 ⟨- -⟩':'老阴 ⟨×动⟩';
+      document.getElementById('tip').textContent='第'+yaos.length+'爻：'+label+'（'+yangCount+' 正）';
+      renderGua();
+      shaking=false;
+      if(yaos.length>=6){
+        btn.textContent='已成卦 · 再摇重新起卦';
+        btn.disabled=false;
+        btn.onclick=reset;
+        fmtResult();
+      } else {
+        btn.textContent='摇 一 卦（第 '+(yaos.length+1)+'/6 次）';
+        btn.disabled=false;
+      }
+    }, 620);
+  }
+
+  function yaoIsYang(val){ return val===7||val===9; }
+
+  function renderGua(){
+    // 已摇的爻（自下而上显示）
+    var box=document.getElementById('result');
+    if(!yaos.length){ box.innerHTML=''; return; }
+    var h='<div class="card"><h3>卦象（自下而上）</h3><div class="gua">';
+    for(var i=0;i<6;i++){
+      var y=yaos[i];
+      if(!y){ h+='<div class="yao"><span class="lab">第'+(i+1)+'爻</span><div class="bars" style="opacity:.25"><span class="bar full" style="background:#3a2c18"></span></div><span class="mark">未摇</span></div>'; continue; }
+      var yang=yaoIsYang(y.val);
+      var mark = y.val===9?'○ 动':y.val===6?'× 动':'';
+      h+='<div class="yao"><span class="lab">第'+(i+1)+'爻</span><div class="bars">';
+      if(yang) h+='<span class="bar full"></span>';
+      else h+='<span class="bar half"></span><span class="gap"></span><span class="bar half"></span>';
+      h+='</div><span class="mark">'+mark+'</span></div>';
+    }
+    h+='</div></div>';
+    box.innerHTML=h;
+  }
+
+  function reset(){
+    yaos=[]; renderGua();
+    var btn=document.getElementById('shake');
+    btn.textContent='摇 一 卦（第 1/6 次）'; btn.onclick=shake;
+    document.getElementById('tip').textContent='点下面按钮，连摇六次成卦';
+    coins.forEach(function(c){ c.classList.remove('yang','yin','spin'); });
+  }
+
+  function fmtResult(){
+    // 本卦 vs 变卦
+    if(yaos.length<6) return;
+    // 下卦=爻1-3, 上卦=爻4-6（本卦）
+    var benTri=[yaoIsYang(yaos[0].val)?1:0, yaoIsYang(yaos[1].val)?1:0, yaoIsYang(yaos[2].val)?1:0];
+    var benTri2=[yaoIsYang(yaos[3].val)?1:0, yaoIsYang(yaos[4].val)?1:0, yaoIsYang(yaos[5].val)?1:0];
+    var benLower=baguaOf(benTri), benUpper=baguaOf(benTri2);
+    var benName=GUA64[benLower+benUpper]||(benUpper+'上'+benLower+'下');
+
+    // 变卦：动爻（6/9）变反
+    var bianVals=yaos.map(function(y){ return (y.val===6||y.val===9)? (y.val===9?8:7) : y.val; });
+    var bianTri=[yaoIsYang(bianVals[0])?1:0, yaoIsYang(bianVals[1])?1:0, yaoIsYang(bianVals[2])?1:0];
+    var bianTri2=[yaoIsYang(bianVals[3])?1:0, yaoIsYang(bianVals[4])?1:0, yaoIsYang(bianVals[5])?1:0];
+    var bianLower=baguaOf(bianTri), bianUpper=baguaOf(bianTri2);
+    var bianName=GUA64[bianLower+bianUpper]||(bianUpper+'上'+bianLower+'下');
+    var hasBian = bianName!==benName;
+
+    var dong=[]; yaos.forEach(function(y,i){ if(y.val===6||y.val===9) dong.push(i+1); });
+
+    var h='<div class="card"><h3>成卦</h3>';
+    h+='<div class="gua-name">'+benName+'</div>';
+    h+='<div class="row"><span class="k">本卦</span><span class="v">'+BAGUA_SYM[benUpper]+'上 '+BAGUA_SYM[benLower]+'下 · '+benName+'</span></div>';
+    if(hasBian) h+='<div class="row"><span class="k">变卦</span><span class="v">'+BAGUA_SYM[bianUpper]+'上 '+BAGUA_SYM[bianLower]+'下 · '+bianName+'</span></div>';
+    h+='<div class="row"><span class="k">动爻</span><span class="v">'+(dong.length?dong.join('、')+' 爻':'无（静卦）')+'</span></div>';
+    h+='</div>';
+
+    // 解读
+    h+='<div class="sect">📖 解读</div><div class="interp">';
+    h+='<div class="disclaim">⚠️ 六爻为传统占卜术，以下为传统说法，非科学结论，仅供娱乐参考。</div>';
+    h+='<p><b>你的卦：'+benName+'</b>'+(hasBian?('，变卦 '+bianName):'（静卦）')+'</p>';
+    h+='<ul>';
+    h+='<li><b>起卦</b>：三枚铜钱摇六次，每次 3 正=老阳、2 正=少阳、1 正=少阴、0 正=老阴，自下而上排成六爻。</li>';
+    h+='<li><b>本卦</b>：代表事情的当前状态，'+benName+'。</li>';
+    if(hasBian) h+='<li><b>变卦</b>：'+dong.length+' 个动爻变化后得到 '+bianName+'，代表事情的发展趋势。</li>';
+    h+='<li><b>'+(dong.length?'看动爻':'静卦')+'</b>：'+(dong.length?('传统上以动爻（第'+dong.join('、')+'爻）的爻辞为主要参考。'):'无动爻，传统上以本卦卦辞整体参考。')+'</li>';
+    h+='</ul>';
+    h+='<p class="note">六爻是传统易学体系，解卦流派众多；此工具仅起卦成形，爻辞吉凶请查阅《周易》原典或请教专业人士。仅供参考娱乐。</p>';
+    h+='</div>';
+
+    // 2026-10-16 趣味彩蛋：连10次一模一样（本卦+变卦）→ 弹窗
+    var _sig=benName+'|'+(hasBian?bianName:'静');
+    var blow=streakCheck(_sig);
+    if(blow) showEgg(blow);
+
+    document.getElementById('result').innerHTML += h;
+  }
+
+  document.getElementById('shake').addEventListener('click', shake);
+})();
+</script>
+</body>
+</html>

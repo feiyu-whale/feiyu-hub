@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>数字用法规范工具 · GB/T 15835-2011</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #f5f6f8; color: #222;
+    line-height: 1.7;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: #fff; padding: 28px 32px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; opacity: 0.9; font-size: 14px; }
+  .tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #e5e7eb;
+    padding: 0 24px;
+  }
+  .tab {
+    padding: 14px 22px; cursor: pointer; font-size: 15px;
+    border-bottom: 3px solid transparent; color: #555;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #2563eb; }
+  .tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+  .panel { display: none; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e293b; color: #e2e8f0; padding: 18px;
+    border-radius: 8px; overflow-x: auto; font-size: 13px;
+    line-height: 1.6;
+  }
+  code.inline {
+    background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+    font-size: 13px; color: #be185d;
+  }
+  .demo-box {
+    background: #fff; padding: 20px; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 16px;
+  }
+  textarea {
+    width: 100%; min-height: 120px; padding: 12px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-family: inherit; font-size: 14px; resize: vertical;
+  }
+  button {
+    background: #2563eb; color: #fff; border: none;
+    padding: 10px 20px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; margin-top: 10px;
+  }
+  button:hover { background: #1d4ed8; }
+  .result {
+    margin-top: 16px; padding: 14px; border-radius: 6px;
+    background: #f8fafc; border-left: 4px solid #2563eb;
+    font-size: 14px;
+  }
+  .result.err { border-left-color: #dc2626; background: #fef2f2; }
+  .result.ok { border-left-color: #16a34a; background: #f0fdf4; }
+  .issue-item {
+    padding: 8px 12px; margin: 6px 0; background: #fff;
+    border-radius: 4px; border-left: 3px solid #f59e0b;
+    font-size: 13px;
+  }
+  .issue-item .rule { color: #2563eb; font-weight: 600; }
+  .issue-item .fix { color: #16a34a; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0;
+    background: #fff; font-size: 14px;
+  }
+  th, td { padding: 10px 12px; border: 1px solid #e5e7eb; text-align: left; }
+  th { background: #f1f5f9; font-weight: 600; }
+  .correct { color: #16a34a; }
+  .wrong { color: #dc2626; text-decoration: line-through; }
+  h2 { color: #1e3a8a; margin-top: 28px; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; }
+  h3 { color: #1e40af; margin-top: 20px; }
+  .version {
+    position: fixed; right: 12px; bottom: 8px;
+    font-size: 11px; color: #9ca3af;
+  }
+  .test-log {
+    background: #0f172a; color: #a7f3d0; padding: 14px;
+    border-radius: 6px; font-family: monospace; font-size: 12px;
+    max-height: 400px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .test-log .fail { color: #fca5a5; }
+  .test-log .pass { color: #86efac; }
+  .summary {
+    display: flex; gap: 16px; margin: 12px 0;
+  }
+  .summary-card {
+    flex: 1; background: #fff; padding: 14px; border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .summary-card .num { font-size: 24px; font-weight: 700; color: #2563eb; }
+  .summary-card .label { font-size: 12px; color: #6b7280; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>数字用法规范工具</h1>
+  <p>依据 GB/T 15835-2011《出版物上数字用法》 · 校验 · 转换 · 示例</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="doc">三、使用说明书</div>
+</div>
+
+<!-- ============ 第一部分：源码 ============ -->
+<div class="panel active" id="panel-source">
+  <h2>核心源码</h2>
+  <p>纯函数实现，零外部依赖，可直接在浏览器控制台运行。</p>
+  <pre id="sourceCode"></pre>
+
+  <h2>在线校验</h2>
+  <div class="demo-box">
+    <textarea id="inputText" placeholder="输入一段文本，例如：二〇二四年八月十五日，第三十届奥运会在北京举行，气温达到三十五摄氏度。">二〇二四年八月十五日，第三十届奥运会在北京举行，气温达到三十五摄氏度。体重约一百二十斤左右。</textarea>
+    <button onclick="runCheck()">校验数字用法</button>
+    <button onclick="loadExample(1)" style="background:#64748b">示例1：公元纪年误用</button>
+    <button onclick="loadExample(2)" style="background:#64748b">示例2：物理量误用</button>
+    <button onclick="loadExample(3)" style="background:#64748b">示例3：概数误用</button>
+    <div id="checkResult"></div>
+  </div>
+</div>
+
+<!-- ============ 第二部分：测试 ============ -->
+<div class="panel" id="panel-test">
+  <h2>单元测试（纯 JS 实现）</h2>
+  <div class="summary">
+    <div class="summary-card"><div class="num" id="passCount">0</div><div class="label">通过</div></div>
+    <div class="summary-card"><div class="num" id="failCount" style="color:#dc2626">0</div><div class="label">失败</div></div>
+    <div class="summary-card"><div class="num" id="totalCount" style="color:#6b7280">0</div><div class="label">总计</div></div>
+  </div>
+  <button onclick="runAllTests()">运行全部测试</button>
+  <div class="test-log" id="testLog">点击「运行全部测试」查看结果…</div>
+</div>
+
+<!-- ============ 第三部分：说明书 ============ -->
+<div class="panel" id="panel-doc">
+  <h2>一、工具简介</h2>
+  <p>本工具依据 <strong>GB/T 15835-2011《出版物上数字用法》</strong>，对中文文本中的数字用法进行规范性校验与转换。解决的核心问题是：编辑、记者、公文撰写者在处理数字时，常常混淆阿拉伯数字与汉字数字的使用场景，导致出版物不符合国家标准。</p>
+  <p>工具覆盖的主要规则包括：公元纪年、干支纪年、农历日期、物理量量值、概数与约数、序数、编号、统计数值等的正确写法，并提供正误对比示例。</p>
+
+  <h2>二、核心函数与参数说明</h2>
+
+  <h3>1. <code class="inline">checkNumberUsage(text)</code></h3>
+  <p>主入口函数，对输入文本进行全面校验。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+    <tr><td>text</td><td>string</td><td>任意字符串</td><td>待校验的中文文本</td></tr>
+  </table>
+  <p><strong>返回值</strong>：<code class="inline">{ valid: boolean, issues: Array, statistics: Object }</code></p>
+  <ul>
+    <li><code class="inline">valid</code>：是否完全符合规范</li>
+    <li><code class="inline">issues</code>：问题列表，每项含 <code class="inline">rule</code>（规则编号）、<code class="inline">location</code>（位置）、<code class="inline">original</code>（原文）、<code class="inline">suggestion</code>（建议）</li>
+    <li><code class="inline">statistics</code>：统计信息（阿拉伯数字个数、汉字数字个数等）</li>
+  </ul>
+
+  <h3>2. <code class="inline">chineseToArabic(str)</code></h3>
+  <p>将汉字数字转换为阿拉伯数字。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+    <tr><td>str</td><td>string</td><td>由"零一二三四五六七八九十百千万亿"组成的字符串</td><td>汉字数字</td></tr>
+  </table>
+  <p><strong>返回</strong>：number。若输入非法抛出 <code class="inline">TypeError</code>。</p>
+
+  <h3>3. <code class="inline">arabicToChinese(num, mode)</code></h3>
+  <p>将阿拉伯数字转换为汉字数字。</p>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+    <tr><td>num</td><td>number</td><td>非负整数，建议 ≤ 9999999999999</td><td>阿拉伯数字</td></tr>
+    <tr><td>mode</td><td>string</td><td>'lower' | 'upper'</td><td>小写（一二三）或大写（壹贰叁）</td></tr>
+  </table>
+
+  <h3>4. <code class="inline">isGanzhiYear(str)</code> / <code class="inline">isGregorianYear(str)</code> / <code class="inline">isLunarDate(str)</code></h3>
+  <p>识别类函数，返回 boolean。分别判断是否为干支纪年、公元纪年、农历日期。</p>
+
+  <h3>5. <code class="inline">isPhysicalQuantity(str)</code></h3>
+  <p>判断是否为物理量量值（数字 + 单位），物理量中的数值应使用阿拉伯数字。</p>
+
+  <h3>6. <code class="inline">isApproximateNumber(str)</code></h3>
+  <p>判断是否为概数（如"三四天""十七八岁"），概数应使用汉字数字。</p>
+
+  <h2>三、完整使用场景</h2>
+
+  <h3>场景 1：公元纪年校验</h3>
+  <p><strong>输入</strong>：<code class="inline">"二〇二四年十月一日，中华人民共和国成立七十五周年。"</code></p>
+  <p><strong>结果</strong>：检出问题 —— 公元纪年应使用阿拉伯数字。</p>
+  <p><strong>建议修改</strong>：<code class="inline">"2024年10月1日，中华人民共和国成立75周年。"</code></p>
+  <p><strong>依据</strong>：GB/T 15835-2011 第 4.1.1 条，公元纪年应使用阿拉伯数字。</p>
+
+  <h3>场景 2：干支纪年校验</h3>
+  <p><strong>输入</strong>：<code class="inline">"2024年是甲辰年。"</code>（此处"甲辰年"正确）</p>
+  <p><strong>错误示例</strong>：<code class="inline">"甲辰年是二〇二四年。"</code>（公元纪年误用汉字）</p>
+  <p><strong>建议修改</strong>：<code class="inline">"甲辰年是2024年。"</code></p>
+
+  <h3>场景 3：物理量量值校验</h3>
+  <p><strong>输入</strong>：<code class="inline">"体重约一百二十斤，身高一点七五米。"</code></p>
+  <p><strong>结果</strong>：检出问题 —— 物理量数值应使用阿拉伯数字。</p>
+  <p><strong>建议修改</strong>：<code class="inline">"体重约120斤，身高1.75米。"</code></p>
+  <p><strong>依据</strong>：GB/T 15835-2011 第 4.1.2 条，物理量量值中的数值应使用阿拉伯数字。</p>
+
+  <h3>场景 4：概数校验</h3>
+  <p><strong>输入</strong>：<code class="inline">"参加人数约34人，年龄在178岁之间。"</code></p>
+  <p><strong>结果</strong>：检出问题 —— 相邻数字连用表示概数时应使用汉字。</p>
+  <p><strong>建议修改</strong>：<code class="inline">"参加人数约三四十人，年龄在十七八岁之间。"</code></p>
+  <p><strong>依据</strong>：GB/T 15835-2011 第 4.2.1 条。</p>
+
+  <h3>场景 5：农历日期校验</h3>
+  <p><strong>输入</strong>：<code class="inline">"今天是8月15（农历）。"</code></p>
+  <p><strong>结果</strong>：若指农历日期，应使用汉字。</p>
+  <p><strong>建议修改</strong>：<code class="inline">"今天是八月十五（农历）。"</code> 或 <code class="inline">"今天是农历八月十五。"</code></p>
+
+  <h3>场景 6：序数校验</h3>
+  <p><strong>输入</strong>：<code class="inline">"第三十届奥运会。"</code></p>
+  <p><strong>说明</strong>：GB/T 15835-2011 允许"第三十"或"第30"两种写法，均合规。</p>
+
+  <h2>四、常见错误与排查</h2>
+  <table>
+    <tr><th>错误现象</th><th>原因</th><th>正确写法</th></tr>
+    <tr><td><span class="wrong">二〇二四年</span></td><td>公元纪年误用汉字</td><td><span class="correct">2024年</span></td></tr>
+    <tr><td><span class="wrong">1百千克</span></td><td>物理量数值应完整使用阿拉伯数字</td><td><span class="correct">100千克</span></td></tr>
+    <tr><td><span class="wrong">3、4天</span></td><td>概数应使用汉字</td><td><span class="correct">三四天</span></td></tr>
+    <tr><td><span class="wrong">正月15</span></td><td>农历日期应使用汉字</td><td><span class="correct">正月十五</span></td></tr>
+    <tr><td><span class="wrong">2024 年</span>（年字换行）</td><td>年份不能拆分移行</td><td><span class="correct">2024年</span>（整体不拆分）</td></tr>
+    <tr><td><span class="wrong">100～200元</span></td><td>数值范围连接号应使用一字线或浪纹线</td><td><span class="correct">100～200元</span>（浪纹线）或 <span class="correct">100—200元</span>（一字线）</td></tr>
+  </table>
+
+  <h2>五、数据来源与标准依据</h2>
+  <ul>
+    <li>主要依据：<strong>GB/T 15835-2011《出版物上数字用法》</strong>（中华人民共和国国家标准，2011年发布，现行有效）</li>
+    <li>辅助参考：《出版物汉字使用管理规定》（1992年）、《标点符号用法》GB/T 15834-2011</li>
+    <li>干支纪年对照表、农历月名规范：依据传统历法规范</li>
+    <li>部分细节（如具体条款编号、个别边界案例）<strong>需查标准原文</strong>，本工具实现基于公开资料与行业通行理解</li>
+  </ul>
+
+  <h2>六、局限性说明</h2>
+  <ol>
+    <li><strong>上下文理解有限</strong>：本工具基于正则与规则匹配，无法完全理解语义上下文。例如"第一"在"第一次"中是序数，在"第一产业"中是分类编号，工具可能给出相同建议。</li>
+    <li><strong>不处理文学修辞</strong>：文学作品中为修辞效果故意使用的数字（如"白发三千丈"）会被误判为不规范，需人工复核。</li>
+    <li><strong>不覆盖所有行业规范</strong>：某些行业（如法律、金融、科技）有专门的数字用法细则，本工具仅覆盖通用出版物规范。</li>
+    <li><strong>繁体与异体字</strong>：对繁体数字（如"壹贰叁"）仅支持大写模式识别，小写繁体（如"壹"作小写用）需查标准原文确认。</li>
+    <li><strong>不处理排版细节</strong>：如"年份不能拆分移行"属于排版规则，本工具仅做文本层面提示，不介入实际排版引擎。</li>
+    <li><strong>不保证100%准确</strong>：任何规则引擎都无法替代专业编辑的人工判断，本工具定位为辅助工具。</li>
+    <li><strong>部分边界案例需查标准原文</strong>：如含"几"字的概数（"几天""十几岁"）的具体写法，标准中有细致规定，本工具仅做基础识别。</li>
+  </ol>
+
+  <h2>七、正误对比示例汇总</h2>
+  <table>
+    <tr><th>场景</th><th>错误</th><th>正确</th><th>依据</th></tr>
+    <tr><td>公元纪年</td><td><span class="wrong">二〇二四年</span></td><td><span class="correct">2024年</span></td><td>GB/T 15835-2011 §4.1</td></tr>
+    <tr><td>干支纪年</td><td><span class="wrong">甲辰2024</span></td><td><span class="correct">甲辰年</span></td><td>GB/T 15835-2011 §4.2</td></tr>
+    <tr><td>农历月日</td><td><span class="wrong">8月15</span>（指农历）</td><td><span class="correct">八月十五</span></td><td>GB/T 15835-2011 §4.2</td></tr>
+    <tr><td>物理量</td><td><span class="wrong">一百千克</span></td><td><span class="correct">100千克</span></td><td>GB/T 15835-2011 §4.1</td></tr>
+    <tr><td>概数</td><td><span class="wrong">34人</span>（意为三四十）</td><td><span class="correct">三四十人</span></td><td>GB/T 15835-2011 §4.2</td></tr>
+    <tr><td>统计数值</td><td><span class="wrong">增长百分之五</span></td><td><span class="correct">增长5%</span></td><td>GB/T 15835-2011 §4.1</td></tr>
+    <tr><td>定型词语</td><td><span class="wrong">第1星期五</span></td><td><span class="correct">星期五</span>（定型词）</td><td>GB/T 15835-2011 §4.2</td></tr>
+    <tr><td>编号</td><td><span class="wrong">第叁拾伍号</span></td><td><span class="correct">35号</span> 或 <span class="correct">第三十五号</span></td><td>GB/T 15835-2011 §4.1</td></tr>
+  </table>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* =========================================================
+ *  第一部分：JS 源码
+ *  依据：GB/T 15835-2011《出版物上数字用法》
+ *  纯函数实现，零外部依赖
+ * ========================================================= */
+
+/**
+ * 汉字数字（小写）到阿拉伯数字的映射
+ * @type {Object<string, number>}
+ */
+const CN_NUM_MAP = {
+  '零': 0, '〇': 0,
+  '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+  '六': 6, '七': 7, '八': 8, '九': 9,
+  '十': 10, '百': 100, '千': 1000,
+  '万': 10000, '亿': 100000000
+};
+
+/**
+ * 阿拉伯数字到汉字数字（小写）的映射
+ * @type {Object<string, string>}
+ */
+const NUM_CN_MAP = {
+  '0': '零', '1': '一', '2': '二', '3': '三', '4': '四',
+  '5': '五', '6': '六', '7': '七', '8': '八', '9': '九'
+};
+
+/**
+ * 阿拉伯数字到汉字数字（大写）的映射
+ * @type {Object<string, string>}
+ */
+const NUM_CN_UPPER_MAP = {
+  '0': '零', '1': '壹', '2': '贰', '3': '叁', '4': '肆',
+  '5': '伍', '6': '陆', '7': '柒', '8': '捌', '9': '玖'
+};
+
+/**
+ * 天干
+ * @type {string[]}
+ */
+const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+
+/**
+ * 地支
+ * @type {string[]}
+ */
+const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+/**
+ * 农历月份名
+ * @type {string[]}
+ */
+const LUNAR_MONTHS = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
+
+/**
+ * 物理量单位（常见）
+ * @type {string[]}
+ */
+const PHYSICAL_UNITS = [
+  '米', '千米', '公里', '厘米', '毫米', '微米', '纳米',
+  '千克', '公斤', '克', '毫克', '吨', '斤', '两',
+  '秒', '分', '时', '小时', '天', '日', '年',
+  '摄氏度', '℃', '°C', '开尔文', 'K',
+  '安培', 'A', '伏特', 'V', '欧姆', 'Ω', '瓦特', 'W',
+  '帕斯卡', 'Pa', '焦耳', 'J', '牛顿', 'N',
+  '升', 'L', '毫升', 'mL',
+  '赫兹', 'Hz', '摩尔', 'mol',
+  'km', 'm', 'cm', 'mm', 'kg', 'g', 'mg', 't',
+  's', 'min', 'h', 'd',
+  'mol', 'cd', 'rad', 'sr'
+];
+
+/**
+ * 判断字符是否为汉字数字
+ * @param {string} ch - 单个字符
+ * @returns {boolean} 是否为汉字数字
+ * @example
+ * isChineseNumeralChar('一'); // true
+ * isChineseNumeralChar('a'); // false
+ */
+function isChineseNumeralChar(ch) {
+  if (typeof ch !== 'string' || ch.length !== 1) return false;
+  return ch in CN_NUM_MAP;
+}
+
+/**
+ * 判断字符是否为阿拉伯数字
+ * @param {string} ch - 单个字符
+ * @returns {boolean} 是否为阿拉伯数字
+ * @example
+ * isArabicNumeralChar('5'); // true
+ * isArabicNumeralChar('五'); // false
+ */
+function isArabicNumeralChar(ch) {
+  if (typeof ch !== 'string' || ch.length !== 1) return false;
+  return /^[0-9]$/.test(ch);
+}
+
+/**
+ * 将汉字数字转换为阿拉伯数字
+ * @param {string} str - 汉字数字字符串，如"一百二十三"
+ * @returns {number} 对应的阿拉伯数字
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @throws {Error} 输入包含非汉字数字字符时抛出
+ * @example
+ * chineseToArabic('一'); // 1
+ * chineseToArabic('十二'); // 12
+ * chineseToArabic('一百二十三'); // 123
+ * chineseToArabic('三千五百'); // 3500
+ * chineseToArabic('一万'); // 10000
+ */
+function chineseToArabic(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('chineseToArabic: 输入必须是字符串');
+  }
+  if (str.length === 0) {
+    throw new Error('chineseToArabic: 输入不能为空字符串');
+  }
+  // 校验每个字符
+  for (let i = 0; i < str.length; i++) {
+    if (!(str[i] in CN_NUM_MAP)) {
+      throw new Error(`chineseToArabic: 非法字符 "${str[i]}"`);
+    }
+  }
+
+  let total = 0;    // 已结算的大单位段（万 / 亿）累计
+  let section = 0;  // 当前段内（万以下）累计
+  let current = 0;  // 当前待用的数字
+
+  /* 从左向右扫描，按「数字 + 单位」组合累加：
+     - 十/百/千：把前面的数字（省略时按 1）乘该单位后并入 section；
+     - 万/亿：把整个 section 乘该单位后并入 total，section 归零；
+     - “十二” 这种首位是单位的，自动补 1。 */
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    const val = CN_NUM_MAP[ch];
+
+    if (val < 10) {
+      current = val;
+    } else if (val === 10000 || val === 100000000) {
+      section = (section + current) * val;
+      total += section;
+      section = 0;
+      current = 0;
+    } else {
+      if (current === 0) current = 1;
+      section += current * val;
+      current = 0;
+    }
+  }
+  return total + section + current;
+}
+
+/**
+ * 将阿拉伯数字转换为汉字数字
+ * @param {number} num - 非负整数
+ * @param {string} [mode='lower'] - 'lower' 小写（一二三），'upper' 大写（壹贰叁）
+ * @returns {string} 汉字数字字符串
+ * @throws {TypeError} 输入不是数字时抛出
+ * @throws {Error} 输入为负数或非整数时抛出
+ * @example
+ * arabicToChinese(1); // "一"
+ * arabicToChinese(12); // "十二"
+ * arabicToChinese(123); // "一百二十三"
+ * arabicToChinese(0); // "零"
+ */
+function arabicToChinese(num, mode) {
+  if (typeof num !== 'number') {
+    throw new TypeError('arabicToChinese: 输入必须是数字');
+  }
+  if (!Number.isInteger(num)) {
+    throw new Error('arabicToChinese: 输入必须是整数');
+  }
+  if (num < 0) {
+    throw new Error('arabicToChinese: 输入不能为负数');
+  }
+  mode = mode || 'lower';
+  if (mode !== 'lower' && mode !== 'upper') {
+    throw new Error('arabicToChinese: mode 必须是 "lower" 或 "upper"');
+  }
+
+  if (num === 0) return '零';
+
+  const map = mode === 'upper' ? NUM_CN_UPPER_MAP : NUM_CN_MAP;
+  const str = String(num);
+  const len = str.length;
+
+  // 按四位一组（个、万、亿）处理
+  const units = ['', '十', '百', '千'];
+  const bigUnits = ['', '万', '亿', '万亿'];
+
+  let result = '';
+  let groupIndex = 0;
+  let zeroFlag = false; // 是否需要补零
+
+  // 从右向左每4位一组
+  for (let i = len; i > 0; i -= 4) {
+    const start = Math.max(0, i - 4);
+    const group = str.slice(start, i);
+    let groupStr = '';
+    let groupZero = false;
+
+    for (let j = 0; j < group.length; j++) {
+      const digit = parseInt(group[j], 10);
+      const unitIdx = group.length - 1 - j;
+      if (digit === 0) {
+        groupZero = true;
+      } else {
+        if (groupZero) {
+          groupStr += '零';
+          groupZero = false;
+        }
+        // 特殊处理：10-19 的"一十"可以省略"一"
+        if (digit === 1 && unitIdx === 1 && group.length === 2 && start === 0) {
+          groupStr += units[unitIdx];
+        } else {
+          groupStr += map[String(digit)] + units[unitIdx];
+        }
+      }
+    }
+
+    if (groupStr) {
+      result = groupStr + bigUnits[groupIndex] + result;
+      zeroFlag = false;
+    } else {
+      if (groupIndex > 0 && result) {
+        // 整组为零，如 100000000 -> 一亿
+        // 不需要额外补零
+      }
+    }
+    groupIndex++;
+  }
+
+  return result || '零';
+}
+
+/**
+ * 判断字符串是否为干支纪年
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为干支纪年（如"甲子年""甲辰年"）
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * isGanzhiYear('甲子年'); // true
+ * isGanzhiYear('甲辰年'); // true
+ * isGanzhiYear('2024年'); // false
+ */
+function isGanzhiYear(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isGanzhiYear: 输入必须是字符串');
+  }
+  const regex = new RegExp('^[' + TIAN_GAN.join('') + '][' + DI_ZHI.join('') + ']年$');
+  return regex.test(str);
+}
+
+/**
+ * 判断字符串是否为公元纪年（阿拉伯数字形式）
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为公元纪年
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * isGregorianYear('2024年'); // true
+ * isGregorianYear('公元前221年'); // true
+ * isGregorianYear('二〇二四年'); // false
+ */
+function isGregorianYear(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isGregorianYear: 输入必须是字符串');
+  }
+  return /^(公元前)?\d{1,4}年$/.test(str);
+}
+
+/**
+ * 判断字符串是否为汉字形式的"年份"（应改为阿拉伯数字）
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为汉字年份
+ * @example
+ * isChineseYear('二〇二四年'); // true
+ * isChineseYear('二零二四年'); // true
+ * isChineseYear('2024年'); // false
+ */
+function isChineseYear(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isChineseYear: 输入必须是字符串');
+  }
+  // 匹配"二〇二四"或"二零二四"这种年份写法
+  return /^(公元前)?[零〇一二三四五六七八九十百千万]+年$/.test(str) && !isGanzhiYear(str);
+}
+
+/**
+ * 判断字符串是否为农历日期
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为农历日期
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * isLunarDate('正月初一'); // true
+ * isLunarDate('八月十五'); // true
+ * isLunarDate('腊月初八'); // true
+ * isLunarDate('8月15'); // false
+ */
+function isLunarDate(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isLunarDate: 输入必须是字符串');
+  }
+  const monthPattern = '(' + LUNAR_MONTHS.join('|') + ')月';
+  const dayPattern = '(初[一二三四五六七八九十]|十[一二三四五六七八九]?|二十[一二三四五六七八九]?|三十)';
+  const regex = new RegExp('^' + monthPattern + dayPattern + '$');
+  return regex.test(str);
+}
+
+/**
+ * 判断字符串是否为物理量量值
+ * @param {string} str - 待判断字符串，如"100千克""25℃"
+ * @returns {boolean} 是否为物理量量值
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * isPhysicalQuantity('100千克'); // true
+ * isPhysicalQuantity('25℃'); // true
+ * isPhysicalQuantity('1.75米'); // true
+ * isPhysicalQuantity('一百千克'); // false（汉字数字形式，不规范）
+ */
+function isPhysicalQuantity(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isPhysicalQuantity: 输入必须是字符串');
+  }
+  // 匹配：阿拉伯数字（含小数）+ 单位
+  const regex = /^\d+(\.\d+)?\s*([a-zA-Z°%℃]+|[\u4e00-\u9fa5]+)$/;
+  const match = str.match(regex);
+  if (!match) return false;
+  const unit = match[2];
+  // 检查单位是否在已知列表中
+  return PHYSICAL_UNITS.some(u => unit === u || unit.startsWith(u));
+}
+
+/**
+ * 判断字符串是否为概数（相邻数字连用表示约数）
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为概数
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * isApproximateNumber('三四天'); // true
+ * isApproximateNumber('十七八岁'); // true
+ * isApproximateNumber('一两个'); // true
+ * isApproximateNumber('34人'); // false
+ */
+function isApproximateNumber(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isApproximateNumber: 输入必须是字符串');
+  }
+  /* 相邻汉字数字连用：一二、两三、十七八、三十四…（“两”常与“一”连用，如“一两个”） */
+  const digit = '[一二三四五六七八九十两]';
+  const patterns = [
+    new RegExp('^' + digit + '[一二三四五六七八九两](?=[天个人岁件条只块元角分年月日])'),
+    new RegExp('^' + digit + '[一二三四五六七八九两]')
+  ];
+  return patterns.some(p => p.test(str));
+}
+
+/**
+ * 判断字符串是否为序数
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为序数
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * isOrdinal('第一'); // true
+ * isOrdinal('第三十'); // true
+ * isOrdinal('第1'); // true（GB/T 15835-2011 允许）
+ * isOrdinal('第30'); // true
+ */
+function isOrdinal(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isOrdinal: 输入必须是字符串');
+  }
+  if (str.length === 0) {
+    throw new Error('isOrdinal: 输入不能为空字符串');
+  }
+  return /^第[一二三四五六七八九十百千万零〇两\d]+$/.test(str);
+}
+
+/**
+ * 判断字符串是否含"几"字概数
+ * @param {string} str - 待判断字符串
+ * @returns {boolean} 是否为"几"字概数
+ * @example
+ * isJiApproximate('十几岁'); // true
+ * isJiApproximate('几天'); // true
+ * isJiApproximate('几十个'); // true
+ */
+function isJiApproximate(str) {
+  if (typeof str !== 'string') {
+    throw new TypeError('isJiApproximate: 输入必须是字符串');
+  }
+  if (str.length === 0) {
+    throw new Error('isJiApproximate: 输入不能为空字符串');
+  }
+  /* 两类形态：
+     ① 数字在前：十几岁、几十个、几百几
+     ② “几”在前接量词：几天、几个人、几块 */
+  const CN = '[零一二三四五六七八九十百千万两\\d]';
+  return new RegExp(CN + '+几').test(str) ||
+         new RegExp('几' + CN).test(str) ||
+         /几[天个人岁件条只块元角分年月日次回倍]/.test(str);
+}
+
+/**
+ * 主校验函数：检查文本中的数字用法是否符合 GB/T 15835-2011
+ * @param {string} text - 待校验的中文文本
+ * @returns {Object} 校验结果
+ * @returns {boolean} returns.valid - 是否完全符合规范
+ * @returns {Array} returns.issues - 问题列表
+ * @returns {Object} returns.statistics - 统计信息
+ * @throws {TypeError} 输入不是字符串时抛出
+ * @example
+ * checkNumberUsage('2024年'); // { valid: true, issues: [], ... }
+ * checkNumberUsage('二〇二四年'); // { valid: false, issues: [...], ... }
+ */
+function checkNumberUsage(text) {
+  if (typeof text !== 'string') {
+    throw new TypeError('checkNumberUsage: 输入必须是字符串');
+  }
+
+  const issues = [];
+  const statistics = {
+    arabicCount: 0,
+    chineseCount: 0,
+    totalNumbers: 0
+  };
+
+  // 规则1：公元纪年应使用阿拉伯数字
+  // 匹配汉字形式的年份（排除干支纪年）
+  const chineseYearRegex = /((?:公元前)?[零〇一二三四五六七八九十百千万]+)年/g;
+  let match;
+  while ((match = chineseYearRegex.exec(text)) !== null) {
+    const full = match[0];
+    const yearPart = match[1];
+    // 排除干支纪年（如"甲子年"）
+    if (isGanzhiYear(full)) continue;
+    // 排除明显不是年份的（如"一年""三年"）
+    if (yearPart.length <= 2 && !/百|千|万/.test(yearPart)) continue;
+    issues.push({
+      rule: 'GB/T 15835-2011 §4.1.1',
+      ruleName: '公元纪年应使用阿拉伯数字',
+      location: match.index,
+      original: full,
+      suggestion: '改为阿拉伯数字形式',
+      severity: 'error'
+    });
+  }
+
+  // 规则2：物理量量值应使用阿拉伯数字
+  // 匹配：汉字数字 + 物理单位
+  const physicalRegex = /([零一二三四五六七八九十百千万]+)\s*(米|千米|厘米|毫米|千克|公斤|克|吨|斤|两|秒|分|时|小时|天|摄氏度|安培|伏特|瓦特|帕斯卡|焦耳|牛顿|升|毫升|赫兹|摩尔)/g;
+  while ((match = physicalRegex.exec(text)) !== null) {
+    issues.push({
+      rule: 'GB/T 15835-2011 §4.1.2',
+      ruleName: '物理量量值中的数值应使用阿拉伯数字',
+      location: match.index,
+      original: match[0],
+      suggestion: '数值部分改为阿拉伯数字',
+      severity: 'error'
+    });
+  }
+
+  // 规则3：概数应使用汉字数字
+  // 匹配：阿拉伯数字相邻连用表示概数
+  const approxArabicRegex = /\d[、,，]\d(?=[天个人岁件条只块元角分年月日])/g;
+  while ((match = approxArabicRegex.exec(text)) !== null) {
+    issues.push({
+      rule: 'GB/T 15835-2011 §4.2.1',
+      ruleName: '相邻两个数字连用表示概数时应使用汉字',
+      location: match.index,
+      original: match[0],
+      suggestion: '改为汉字数字连用形式（如"三四天"）',
+      severity: 'error'
+    });
+  }
+
+  // 规则4：农历月日应使用汉字
+  // 匹配：阿拉伯数字 + "月" + 阿拉伯数字（在农历上下文中）
+  // 注意：这条规则需要上下文，这里做简化处理
+  const lunarContextRegex = /农历\s*(\d{1,2})月(\d{1,2})/g;
+  while ((match = lunarContextRegex.exec(text)) !== null) {
+    issues.push({
+      rule: 'GB/T 15835-2011 §4.2.2',
+      ruleName: '农历月日应使用汉字数字',
+      location: match.index,
+      original: match[0],
+      suggestion: '改为汉字形式（如"农历八月十五"）',
+      severity: 'error'
+    });
+  }
+
+  // 规则5：年份不能拆分移行（文本层面无法完全检测，仅做提示）
+  // 匹配：年份中间有换行或空格
+  const yearSplitRegex = /(\d{4})\s*\n\s*(年)/g;
+  while ((match = yearSplitRegex.exec(text)) !== null) {
+    issues.push({
+      rule: 'GB/T 15835-2011 §5.2',
+      ruleName: '年份不能拆分移行',
+      location: match.index,
+      original: match[0].replace(/\n/g, '↵'),
+      suggestion: '年份应整体不拆分',
+      severity: 'warning'
+    });
+  }
+
+  // 统计
+  const arabicMatches = text.match(/\d+/g) || [];
+  statistics.arabicCount = arabicMatches.length;
+  const chineseMatches = text.match(/[零一二三四五六七八九十百千万]+/g) || [];
+  statistics.chineseCount = chineseMatches.length;
+  statistics.totalNumbers = statistics.arabicCount + statistics.chineseCount;
+
+  return {
+    valid: issues.length === 0,
+    issues: issues,
+    statistics: statistics
+  };
+}
+
+/**
+ * 格式化年份为规范形式
+ * @param {string|number} year - 年份
+ * @returns {string} 规范形式的年份字符串
+ * @example
+ * formatYear(2024); // "2024年"
+ * formatYear('2024'); // "2024年"
+ */
+function formatYear(year) {
+  const y = typeof year === 'number' ? year : parseInt(year, 10);
+  if (isNaN(y) || y < 0) {
+    throw new Error('formatYear: 无效的年份');
+  }
+  return y + '年';
+}
+
+/**
+ * 格式化物理量量值
+ * @param {number} value - 数值
+ * @param {string} unit - 单位
+ * @returns {string} 规范形式的物理量字符串
+ * @example
+ * formatPhysicalQuantity(100, '千克'); // "100千克"
+ * formatPhysicalQuantity(25.5, '℃'); // "25.5℃"
+ */
+function formatPhysicalQuantity(value, unit) {
+  if (typeof value !== 'number' || typeof unit !== 'string') {
+    throw new TypeError('formatPhysicalQuantity: 参数类型错误');
+  }
+  return value + unit;
+}
+
+// 导出到全局（浏览器环境）
+if (typeof window !== 'undefined') {
+  window.NumberUsageChecker = {
+    checkNumberUsage: checkNumberUsage,
+    chineseToArabic: chineseToArabic,
+    arabicToChinese: arabicToChinese,
+    isGanzhiYear: isGanzhiYear,
+    isGregorianYear: isGregorianYear,
+    isChineseYear: isChineseYear,
+    isLunarDate: isLunarDate,
+    isPhysicalQuantity: isPhysicalQuantity,
+    isApproximateNumber: isApproximateNumber,
+    isOrdinal: isOrdinal,
+    isJiApproximate: isJiApproximate,
+    formatYear: formatYear,
+    formatPhysicalQuantity: formatPhysicalQuantity,
+    isChineseNumeralChar: isChineseNumeralChar,
+    isArabicNumeralChar: isArabicNumeralChar
+  };
+}
+
+/* =========================================================
+ *  第二部分：单元测试（纯 JS 实现）
+ * ========================================================= */
+
+let testPass = 0;
+let testFail = 0;
+let testLog = [];
+
+/**
+ * 断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} name - 测试名称
+ * @param {string} detail - 详细信息
+ */
+function assert(condition, name, detail) {
+  if (condition) {
+    testPass++;
+    testLog.push({ pass: true, name: name, detail: detail });
+  } else {
+    testFail++;
+    testLog.push({ pass: false, name: name, detail: detail });
+  }
+}
+
+/**
+ * 断言相等
+ */
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, `期望: ${JSON.stringify(expected)}, 实际: ${JSON.stringify(actual)}`);
+}
+
+/**
+ * 断言抛出异常
+ */
+function assertThrows(fn, name) {
+  let threw = false;
+  try {
+    fn();
+  } catch (e) {
+    threw = true;
+  }
+  assert(threw, name, `期望抛出异常`);
+}
+
+/**
+ * 运行全部测试
+ */
+function runAllTests() {
+  testPass = 0;
+  testFail = 0;
+  testLog = [];
+
+  // ===== chineseToArabic 测试 =====
+  assertEqual(chineseToArabic('一'), 1, 'chineseToArabic: "一" -> 1');
+  assertEqual(chineseToArabic('五'), 5, 'chineseToArabic: "五" -> 5');
+  assertEqual(chineseToArabic('十'), 10, 'chineseToArabic: "十" -> 10');
+  assertEqual(chineseToArabic('十二'), 12, 'chineseToArabic: "十二" -> 12');
+  assertEqual(chineseToArabic('二十'), 20, 'chineseToArabic: "二十" -> 20');
+  assertEqual(chineseToArabic('一百'), 100, 'chineseToArabic: "一百" -> 100');
+  assertEqual(chineseToArabic('一百二十三'), 123, 'chineseToArabic: "一百二十三" -> 123');
+  assertEqual(chineseToArabic('三千五百'), 3500, 'chineseToArabic: "三千五百" -> 3500');
+  assertEqual(chineseToArabic('一万'), 10000, 'chineseToArabic: "一万" -> 10000');
+  assertEqual(chineseToArabic('零'), 0, 'chineseToArabic: "零" -> 0');
+  assertThrows(() => chineseToArabic(null), 'chineseToArabic: null 抛出异常');
+  assertThrows(() => chineseToArabic(undefined), 'chineseToArabic: undefined 抛出异常');
+  assertThrows(() => chineseToArabic(''), 'chineseToArabic: 空字符串抛出异常');
+  assertThrows(() => chineseToArabic('abc'), 'chineseToArabic: 非法字符抛出异常');
+
+  // ===== arabicToChinese 测试 =====
+  assertEqual(arabicToChinese(0), '零', 'arabicToChinese: 0 -> "零"');
+  assertEqual(arabicToChinese(1), '一', 'arabicToChinese: 1 -> "一"');
+  assertEqual(arabicToChinese(10), '十', 'arabicToChinese: 10 -> "十"');
+  assertEqual(arabicToChinese(12), '十二', 'arabicToChinese: 12 -> "十二"');
+  assertEqual(arabicToChinese(100), '一百', 'arabicToChinese: 100 -> "一百"');
+  assertEqual(arabicToChinese(123), '一百二十三', 'arabicToChinese: 123 -> "一百二十三"');
+  assertEqual(arabicToChinese(1000), '一千', 'arabicToChinese: 1000 -> "一千"');
+  assertEqual(arabicToChinese(10000), '一万', 'arabicToChinese: 10000 -> "一万"');
+  assertThrows(() => arabicToChinese(-1), 'arabicToChinese: 负数抛出异常');
+  assertThrows(() => arabicToChinese(1.5), 'arabicToChinese: 小数抛出异常');
+  assertThrows(() => arabicToChinese('abc'), 'arabicToChinese: 非数字抛出异常');
+  assertThrows(() => arabicToChinese(NaN), 'arabicToChinese: NaN 抛出异常');
+
+  // ===== isGanzhiYear 测试 =====
+  assertEqual(isGanzhiYear('甲子年'), true, 'isGanzhiYear: "甲子年" -> true');
+  assertEqual(isGanzhiYear('甲辰年'), true, 'isGanzhiYear: "甲辰年" -> true');
+  assertEqual(isGanzhiYear('癸亥年'), true, 'isGanzhiYear: "癸亥年" -> true');
+  assertEqual(isGanzhiYear('2024年'), false, 'isGanzhiYear: "2024年" -> false');
+  assertEqual(isGanzhiYear('甲子'), false, 'isGanzhiYear: "甲子"（缺年字）-> false');
+  assertThrows(() => isGanzhiYear(null), 'isGanzhiYear: null 抛出异常');
+
+  // ===== isGregorianYear 测试 =====
+  assertEqual(isGregorianYear('2024年'), true, 'isGregorianYear: "2024年" -> true');
+  assertEqual(isGregorianYear('公元前221年'), true, 'isGregorianYear: "公元前221年" -> true');
+  assertEqual(isGregorianYear('1年'), true, 'isGregorianYear: "1年" -> true');
+  assertEqual(isGregorianYear('二〇二四年'), false, 'isGregorianYear: "二〇二四年" -> false');
+  assertThrows(() => isGregorianYear(undefined), 'isGregorianYear: undefined 抛出异常');
+
+  // ===== isLunarDate 测试 =====
+  assertEqual(isLunarDate('正月初一'), true, 'isLunarDate: "正月初一" -> true');
+  assertEqual(isLunarDate('八月十五'), true, 'isLunarDate: "八月十五" -> true');
+  assertEqual(isLunarDate('腊月初八'), true, 'isLunarDate: "腊月初八" -> true');
+  assertEqual(isLunarDate('8月15'), false, 'isLunarDate: "8月15" -> false');
+  assertThrows(() => isLunarDate(123), 'isLunarDate: 数字抛出异常');
+
+  // ===== isPhysicalQuantity 测试 =====
+  assertEqual(isPhysicalQuantity('100千克'), true, 'isPhysicalQuantity: "100千克" -> true');
+  assertEqual(isPhysicalQuantity('25℃'), true, 'isPhysicalQuantity: "25℃" -> true');
+  assertEqual(isPhysicalQuantity('1.75米'), true, 'isPhysicalQuantity: "1.75米" -> true');
+  assertEqual(isPhysicalQuantity('一百千克'), false, 'isPhysicalQuantity: "一百千克" -> false');
+  assertThrows(() => isPhysicalQuantity(null), 'isPhysicalQuantity: null 抛出异常');
+
+  // ===== isApproximateNumber 测试 =====
+  assertEqual(isApproximateNumber('三四天'), true, 'isApproximateNumber: "三四天" -> true');
+  assertEqual(isApproximateNumber('十七八岁'), true, 'isApproximateNumber: "十七八岁" -> true');
+  assertEqual(isApproximateNumber('一两个'), true, 'isApproximateNumber: "一两个" -> true');
+  assertEqual(isApproximateNumber('34人'), false, 'isApproximateNumber: "34人" -> false');
+  assertThrows(() => isApproximateNumber(NaN), 'isApproximateNumber: NaN 抛出异常');
+
+  // ===== isOrdinal 测试 =====
+  assertEqual(isOrdinal('第一'), true, 'isOrdinal: "第一" -> true');
+  assertEqual(isOrdinal('第三十'), true, 'isOrdinal: "第三十" -> true');
+  assertEqual(isOrdinal('第1'), true, 'isOrdinal: "第1" -> true');
+  assertEqual(isOrdinal('第30'), true, 'isOrdinal: "第30" -> true');
+  assertEqual(isOrdinal('第一万'), true, 'isOrdinal: "第一万" -> true');
+  assertThrows(() => isOrdinal(''), 'isOrdinal: 空字符串不匹配');
+
+  // ===== checkNumberUsage 测试 =====
+  const r1 = checkNumberUsage('2024年');
+  assertEqual(r1.valid, true, 'checkNumberUsage: "2024年" 合规');
+
+  const r2 = checkNumberUsage('二〇二四年');
+  assertEqual(r2.valid, false, 'checkNumberUsage: "二〇二四年" 不合规');
+  assert(r2.issues.length > 0, 'checkNumberUsage: "二〇二四年" 有问题');
+
+  const r3 = checkNumberUsage('甲辰年');
+  assertEqual(r3.valid, true, 'checkNumberUsage: "甲辰年" 合规');
+
+  const r4 = checkNumberUsage('一百千克');
+  assertEqual(r4.valid, false, 'checkNumberUsage: "一百千克" 不合规');
+
+  const r5 = checkNumberUsage('农历8月15');
+  assertEqual(r5.valid, false, 'checkNumberUsage: "农历8月15" 不合规');
+
+  assertThrows(() => checkNumberUsage(null), 'checkNumberUsage: null 抛出异常');
+  assertThrows(() => checkNumberUsage(123), 'checkNumberUsage: 数字抛出异常');
+
+  // ===== isChineseYear 测试 =====
+  assertEqual(isChineseYear('二〇二四年'), true, 'isChineseYear: "二〇二四年" -> true');
+  assertEqual(isChineseYear('二零二四年'), true, 'isChineseYear: "二零二四年" -> true');
+  assertEqual(isChineseYear('2024年'), false, 'isChineseYear: "2024年" -> false');
+  assertEqual(isChineseYear('甲子年'), false, 'isChineseYear: "甲子年" -> false（干支纪年）');
+
+  // ===== formatYear 测试 =====
+  assertEqual(formatYear(2024), '2024年', 'formatYear: 2024 -> "2024年"');
+  assertEqual(formatYear('2024'), '2024年', 'formatYear: "2024" -> "2024年"');
+  assertThrows(() => formatYear(-1), 'formatYear: 负数抛出异常');
+
+  // ===== formatPhysicalQuantity 测试 =====
+  assertEqual(formatPhysicalQuantity(100, '千克'), '100千克', 'formatPhysicalQuantity: 100, "千克" -> "100千克"');
+  assertEqual(formatPhysicalQuantity(25.5, '℃'), '25.5℃', 'formatPhysicalQuantity: 25.5, "℃" -> "25.5℃"');
+  assertThrows(() => formatPhysicalQuantity('abc', '千克'), 'formatPhysicalQuantity: 非数字抛出异常');
+
+  // ===== isChineseNumeralChar / isArabicNumeralChar 测试 =====
+  assertEqual(isChineseNumeralChar('一'), true, 'isChineseNumeralChar: "一" -> true');
+  assertEqual(isChineseNumeralChar('a'), false, 'isChineseNumeralChar: "a" -> false');
+  assertEqual(isArabicNumeralChar('5'), true, 'isArabicNumeralChar: "5" -> true');
+  assertEqual(isArabicNumeralChar('五'), false, 'isArabicNumeralChar: "五" -> false');
+
+  // ===== isJiApproximate 测试 =====
+  assertEqual(isJiApproximate('十几岁'), true, 'isJiApproximate: "十几岁" -> true');
+  assertEqual(isJiApproximate('几天'), true, 'isJiApproximate: "几天" -> true');
+  assertEqual(isJiApproximate('几十个'), true, 'isJiApproximate: "几十个" -> true');
+  assertEqual(isJiApproximate('十个'), false, 'isJiApproximate: "十个" -> false');
+
+  // 渲染结果
+  const logEl = document.getElementById('testLog');
+  let html = '';
+  testLog.forEach((t, i) => {
+    const cls = t.pass ? 'pass' : 'fail';
+    const icon = t.pass ? '✓' : '✗';
+    html += `<span class="${cls}">[${i + 1}] ${icon} ${t.name}</span>\n`;
+    if (!t.pass) {
+      html += `<span class="fail">    ${t.detail}</span>\n`;
+    }
+  });
+  html += `\n<span class="pass">通过 ${testPass} / 共 ${testPass + testFail}</span>\n`;
+  if (testFail > 0) {
+    html += `<span class="fail">失败 ${testFail}</span>\n`;
+  }
+  logEl.innerHTML = html;
+
+  document.getElementById('passCount').textContent = testPass;
+  document.getElementById('failCount').textContent = testFail;
+  document.getElementById('totalCount').textContent = testPass + testFail;
+}
+
+/* =========================================================
+ *  UI 交互
+ * ========================================================= */
+
+// 标签页切换
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// 显示源码
+document.getElementById('sourceCode').textContent = `/* =========================================================
+ *  数字用法规范工具 · 核心源码
+ *  依据：GB/T 15835-2011《出版物上数字用法》
+ *  纯函数实现，零外部依赖
+ * ========================================================= */
+
+// 常量定义
+const CN_NUM_MAP = {
+  '零': 0, '〇': 0,
+  '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+  '六': 6, '七': 7, '八': 8, '九': 9,
+  '十': 10, '百': 100, '千': 1000,
+  '万': 10000, '亿': 100000000
+};
+
+const TIAN_GAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+const DI_ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+const LUNAR_MONTHS = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
+
+// 核心函数（完整实现见页面内嵌 script）
+// - chineseToArabic(str)
+// - arabicToChinese(num, mode)
+// - isGanzhiYear(str)
+// - isGregorianYear(str)
+// - isLunarDate(str)
+// - isPhysicalQuantity(str)
+// - isApproximateNumber(str)
+// - isOrdinal(str)
+// - checkNumberUsage(text)  ← 主入口
+// - formatYear(year)
+// - formatPhysicalQuantity(value, unit)
+
+// 完整源码已内嵌于本页面，可直接在浏览器控制台调用：
+// NumberUsageChecker.checkNumberUsage('二〇二四年')
+// NumberUsageChecker.chineseToArabic('一百二十三')
+// NumberUsageChecker.arabicToChinese(2024)`;
+
+// 在线校验
+function runCheck() {
+  const text = document.getElementById('inputText').value;
+  const resultEl = document.getElementById('checkResult');
+  try {
+    const result = checkNumberUsage(text);
+    let html = '';
+    if (result.valid) {
+      html = '<div class="result ok"><strong>✓ 校验通过</strong>：文本中的数字用法符合 GB/T 15835-2011 规范。</div>';
+    } else {
+      html = '<div class="result err"><strong>✗ 检出 ' + result.issues.length + ' 处问题</strong>：</div>';
+      result.issues.forEach(issue => {
+        html += '<div class="issue-item">' +
+          '<div class="rule">[' + issue.rule + '] ' + issue.ruleName + '</div>' +
+          '<div>原文：<code class="inline">' + issue.original + '</code>（位置 ' + issue.location + '）</div>' +
+          '<div class="fix">建议：' + issue.suggestion + '</div>' +
+          '</div>';
+      });
+    }
+    html += '<div class="result"><strong>统计</strong>：阿拉伯数字 ' + result.statistics.arabicCount +
+      ' 处，汉字数字 ' + result.statistics.chineseCount + ' 处，共计 ' +
+      result.statistics.totalNumbers + ' 处。</div>';
+    resultEl.innerHTML = html;
+  } catch (e) {
+    resultEl.innerHTML = '<div class="result err"><strong>错误</strong>：' + e.message + '</div>';
+  }
+}
+
+function loadExample(n) {
+  const examples = {
+    1: '二〇二四年十月一日，中华人民共和国成立七十五周年。',
+    2: '体重约一百二十斤，身高一点七五米，血压120/80毫米汞柱。',
+    3: '参加人数约3、4人，年龄在17、8岁之间，历时3、4天。'
+  };
+  document.getElementById('inputText').value = examples[n] || '';
+  runCheck();
+}
+
+// 自动运行一次测试
+window.addEventListener('load', () => {
+  runAllTests();
+});
+</script>
+
+</body>
+</html>

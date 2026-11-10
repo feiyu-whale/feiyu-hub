@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>空调匹数与面积匹配工具 · 完整交付物</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding-bottom: 40px;
+  }
+  header {
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    padding: 28px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { font-size: 24px; margin-bottom: 6px; }
+  header p { font-size: 14px; opacity: 0.9; }
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e0e6ed;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #5a6c7d;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { background: #f0f4f8; }
+  .tab-btn.active {
+    color: #1e88e5;
+    border-bottom-color: #1e88e5;
+    font-weight: 600;
+  }
+  .panel { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  pre code { color: inherit; }
+  .doc h2 { color: #1565c0; margin: 24px 0 12px; font-size: 20px; border-left: 4px solid #1e88e5; padding-left: 10px; }
+  .doc h3 { color: #2c3e50; margin: 18px 0 10px; font-size: 16px; }
+  .doc p { margin: 8px 0; }
+  .doc ul, .doc ol { margin: 8px 0 8px 24px; }
+  .doc li { margin: 4px 0; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .doc th, .doc td {
+    border: 1px solid #e0e6ed;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 14px;
+  }
+  .doc th { background: #f0f4f8; font-weight: 600; }
+  .doc .warn {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+  }
+  .doc .info {
+    background: #e3f2fd;
+    border-left: 4px solid #1e88e5;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+  }
+  .doc .scene {
+    background: #fff;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .doc .scene h4 { color: #1565c0; margin-bottom: 8px; }
+  .doc code {
+    background: #f0f4f8;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .version {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #95a5a6;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+    z-index: 100;
+  }
+  .test-result {
+    background: #fff;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #e0e6ed;
+  }
+  .test-result .summary {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .test-result .pass { color: #27ae60; }
+  .test-result .fail { color: #e74c3c; }
+  .test-log {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .run-btn {
+    background: #1e88e5;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .run-btn:hover { background: #1565c0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>空调匹数与面积匹配工具 · 完整交付物</h1>
+  <p>基于 GB 50736《采暖通风与空气调节设计规范》冷负荷估算方法 + 行业通行经验值</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="source">一、JS 源码</button>
+  <button class="tab-btn" data-tab="test">二、单元测试</button>
+  <button class="tab-btn" data-tab="doc">三、使用说明书</button>
+</div>
+
+<!-- 第一部分：JS 源码 -->
+<section id="source" class="panel active">
+<pre><code id="sourceCode"></code></pre>
+</section>
+
+<!-- 第二部分：单元测试 -->
+<section id="test" class="panel">
+  <button class="run-btn" id="runTests">▶ 运行全部测试</button>
+  <div class="test-result" id="testResult" style="display:none;">
+    <div class="summary" id="testSummary"></div>
+    <div class="test-log" id="testLog"></div>
+  </div>
+<pre><code id="testCode"></code></pre>
+</section>
+
+<!-- 第三部分：使用说明书 -->
+<section id="doc" class="panel">
+  <div class="doc" id="docContent"></div>
+</section>
+
+<div class="version">v2.0.1-修-匹数档位 20261025</div>
+
+<script>
+/* ============================================================
+ * 第一部分：JS 源码（空调制冷量计算与选型）
+ * 依据：GB 50736《采暖通风与空气调节设计规范》冷负荷估算方法
+ *       + 空调行业通行经验值（住宅 150-200 W/㎡）
+ * 注意：本工具为估算值，精确选型需按 GB 50736 做逐时冷负荷计算
+ * ============================================================ */
+
+const AC_CALCULATOR_SOURCE = `
+/**
+ * 空调制冷量估算与选型核心模块
+ *
+ * 算法依据：
+ *   1. GB 50736-2012《民用建筑供暖通风与空气调节设计规范》冷负荷估算思路
+ *   2. 住宅空调行业通行经验值：基础冷指标 150~200 W/㎡
+ *   3. 人员显热+潜热负荷：约 100 W/人（轻活动，夏季）
+ *   4. 设备负荷：台式机 ~200W，厨房设备 ~500W（经验值）
+ *
+ * 重要声明：
+ *   本工具输出为估算值，不能替代按 GB 50736 进行的逐时冷负荷计算。
+ *   西晒、顶层、大面积玻璃幕墙、高人员密度等场景应适当加大选型。
+ */
+
+/**
+ * 参数合法性校验辅助函数
+ * @param {number} value - 待校验数值
+ * @param {string} name - 参数名称（用于错误信息）
+ * @param {number} min - 最小值（含）
+ * @param {number} max - 最大值（含）
+ * @returns {number} 校验通过的数值
+ * @throws {TypeError} 非有限数字时抛出
+ * @throws {RangeError} 超出范围时抛出
+ */
+function validateNumber(value, name, min, max) {
+  if (value === null || value === undefined || value === '') {
+    throw new TypeError(name + ' 不能为空');
+  }
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    throw new TypeError(name + ' 必须是有限数字，收到: ' + value);
+  }
+  if (num < min || num > max) {
+    throw new RangeError(name + ' 超出范围 [' + min + ', ' + max + ']，收到: ' + num);
+  }
+  return num;
+}
+
+/**
+ * 校验枚举值是否在允许列表中
+ * @param {*} value - 待校验值
+ * @param {string} name - 参数名称
+ * @param {Array} allowed - 允许值列表
+ * @returns {*} 校验通过的值
+ * @throws {TypeError} 值不在允许列表中
+ */
+function validateEnum(value, name, allowed) {
+  if (value === null || value === undefined || value === '') {
+    throw new TypeError(name + ' 不能为空');
+  }
+  if (allowed.indexOf(value) === -1) {
+    throw new TypeError(name + ' 必须是 ' + JSON.stringify(allowed) + ' 之一，收到: ' + value);
+  }
+  return value;
+}
+
+/**
+ * 计算朝向修正系数
+ * 依据：行业经验值，西晒房间冷负荷明显偏高
+ * @param {string} orientation - 朝向：'北' | '东' | '南' | '西'
+ * @returns {number} 修正系数（0.95 ~ 1.15）
+ * @throws {TypeError} 非法朝向
+ * @example
+ *   getOrientationFactor('西') // 1.15
+ *   getOrientationFactor('北') // 0.95
+ */
+function getOrientationFactor(orientation) {
+  validateEnum(orientation, '朝向', ['北', '东', '南', '西']);
+  const map = { '北': 0.95, '东': 1.00, '南': 1.05, '西': 1.15 };
+  return map[orientation];
+}
+
+/**
+ * 计算楼层修正系数
+ * 顶层受屋顶辐射热影响较大，底层受地面影响较小
+ * @param {string} floorLevel - 楼层：'顶层' | '中间层' | '底层'
+ * @returns {number} 修正系数（0.95 ~ 1.15）
+ * @throws {TypeError} 非法楼层
+ * @example
+ *   getFloorFactor('顶层') // 1.15
+ */
+function getFloorFactor(floorLevel) {
+  validateEnum(floorLevel, '楼层', ['顶层', '中间层', '底层']);
+  const map = { '顶层': 1.15, '中间层': 1.00, '底层': 0.95 };
+  return map[floorLevel];
+}
+
+/**
+ * 计算保温情况修正系数
+ * @param {string} insulation - 保温：'好' | '中' | '差'
+ * @returns {number} 修正系数（0.90 ~ 1.15）
+ * @throws {TypeError} 非法保温等级
+ * @example
+ *   getInsulationFactor('差') // 1.15
+ */
+function getInsulationFactor(insulation) {
+  validateEnum(insulation, '保温情况', ['好', '中', '差']);
+  const map = { '好': 0.90, '中': 1.00, '差': 1.15 };
+  return map[insulation];
+}
+
+/**
+ * 计算窗户大小修正系数
+ * 窗墙比越大，冷负荷越高
+ * @param {string} windowSize - 窗户大小：'小'（窗墙比<15%）| '中'（15%~30%）| '大'（>30%）
+ * @returns {number} 修正系数（1.00 ~ 1.15）
+ * @throws {TypeError} 非法窗户大小
+ * @example
+ *   getWindowFactor('大') // 1.15
+ */
+function getWindowFactor(windowSize) {
+  validateEnum(windowSize, '窗户大小', ['小', '中', '大']);
+  const map = { '小': 1.00, '中': 1.05, '大': 1.15 };
+  return map[windowSize];
+}
+
+/**
+ * 计算层高修正系数
+ * 标准层高 2.8m，每增加 0.1m 约增加 3% 冷负荷
+ * @param {number} height - 层高（m），范围 [2.0, 6.0]
+ * @returns {number} 修正系数（≥ 0.70）
+ * @throws {RangeError} 超出范围
+ * @example
+ *   getHeightFactor(3.2) // 1.12
+ */
+function getHeightFactor(height) {
+  const h = validateNumber(height, '层高', 2.0, 6.0);
+  // 基准 2.8m，每 0.1m 增减 3%
+  const factor = 1 + (h - 2.8) * 0.3;
+  return Math.max(0.70, factor);
+}
+
+/**
+ * 计算人员附加冷负荷
+ * 夏季室内人员显热+潜热约 100W/人（轻活动，行业经验值）
+ * @param {number} people - 人数，范围 [0, 50]
+ * @returns {number} 人员附加冷负荷（W）
+ * @throws {RangeError} 超出范围
+ * @example
+ *   getPeopleLoad(4) // 400
+ */
+function getPeopleLoad(people) {
+  const n = validateNumber(people, '人数', 0, 50);
+  return n * 100;
+}
+
+/**
+ * 计算设备附加冷负荷
+ * @param {boolean} hasComputer - 是否有大功率电脑（台式机/游戏本等）
+ * @param {boolean} hasKitchen - 是否为厨房或紧邻厨房
+ * @returns {number} 设备附加冷负荷（W）
+ * @example
+ *   getEquipmentLoad(true, false) // 200
+ *   getEquipmentLoad(true, true)  // 700
+ */
+function getEquipmentLoad(hasComputer, hasKitchen) {
+  let load = 0;
+  if (hasComputer) load += 200;
+  if (hasKitchen) load += 500;
+  return load;
+}
+
+/**
+ * 根据所需制冷量（W）推荐匹数
+ * 行业惯例：1 匹 ≈ 2500W 制冷量
+ * 推荐向上取整到常见匹数档位
+ * @param {number} coolingW - 所需制冷量（W）
+ * @returns {{hp: number, hpLabel: string}} 匹数与标签
+ * @throws {RangeError} 制冷量为负
+ * @example
+ *   recommendHorsepower(3200) // {hp: 1.5, hpLabel: '1.5匹'}
+ */
+function recommendHorsepower(coolingW) {
+  if (!Number.isFinite(coolingW) || coolingW < 0) {
+    throw new RangeError('制冷量必须为非负有限数字');
+  }
+  // 常见匹数档位（制冷量上限），口径统一按 1 匹 ≈ 2500 W 递增
+  // 1/1.5/2/2.5/3/3.5/4/5/6/7/8/10/12/16/20 匹，超 20 匹按实际匹数显示
+  const tiers = [
+    { hp: 1,   max: 2500,  label: '1匹' },
+    { hp: 1.5, max: 3750,  label: '1.5匹' },
+    { hp: 2,   max: 5000,  label: '2匹' },
+    { hp: 2.5, max: 6250,  label: '2.5匹' },
+    { hp: 3,   max: 7500,  label: '3匹' },
+    { hp: 3.5, max: 8750,  label: '3.5匹' },
+    { hp: 4,   max: 10000, label: '4匹' },
+    { hp: 5,   max: 12500, label: '5匹' },
+    { hp: 6,   max: 15000, label: '6匹' },
+    { hp: 7,   max: 17500, label: '7匹' },
+    { hp: 8,   max: 20000, label: '8匹' },
+    { hp: 10,  max: 25000, label: '10匹' },
+    { hp: 12,  max: 30000, label: '12匹' },
+    { hp: 16,  max: 40000, label: '16匹' },
+    { hp: 20,  max: 50000, label: '20匹' }
+  ];
+  for (let i = 0; i < tiers.length; i++) {
+    if (coolingW <= tiers[i].max) {
+      return { hp: tiers[i].hp, hpLabel: tiers[i].label };
+    }
+  }
+  // 超出 20 匹档：按 2500 W/匹向上取整，给出实际匹数（不再一刀切“10匹及以上”）
+  const hp = Math.ceil(coolingW / 2500);
+  return { hp: hp, hpLabel: hp + '匹（超出常规机型，建议多台并联或中央空调）' };
+}
+
+/**
+ * 根据匹数推荐机型（挂机/柜机/中央空调）
+ * 行业惯例：
+ *   ≤ 1.5匹：壁挂式
+ *   2~3匹：柜机或大挂机
+ *   > 3匹：柜机或中央空调
+ * @param {number} hp - 匹数
+ * @returns {string} 推荐机型
+ * @example
+ *   recommendMachineType(1.5) // '壁挂式'
+ */
+function recommendMachineType(hp) {
+  if (hp <= 1.5) return '壁挂式';
+  if (hp <= 3) return '柜机或大挂机';
+  return '柜机或中央空调';
+}
+
+/**
+ * 计算房间所需制冷量（核心函数）
+ *
+ * 公式：
+ *   Q = 面积 × 基础冷指标 × 朝向系数 × 楼层系数 × 保温系数 × 窗户系数 × 层高系数
+ *       + 人员负荷 + 设备负荷
+ *
+ * 基础冷指标默认 175 W/㎡（住宅 150~200 W/㎡ 的中间值）
+ *
+ * @param {Object} params - 输入参数
+ * @param {number} params.area - 房间面积（㎡），范围 [1, 500]
+ * @param {number} [params.height=2.8] - 层高（m），范围 [2.0, 6.0]
+ * @param {string} params.orientation - 朝向：'北'|'东'|'南'|'西'
+ * @param {string} params.floorLevel - 楼层：'顶层'|'中间层'|'底层'
+ * @param {string} params.windowSize - 窗户大小：'小'|'中'|'大'
+ * @param {string} params.insulation - 保温：'好'|'中'|'差'
+ * @param {number} [params.people=0] - 人数，范围 [0, 50]
+ * @param {boolean} [params.hasComputer=false] - 是否有大功率电脑
+ * @param {boolean} [params.hasKitchen=false] - 是否为厨房
+ * @param {number} [params.baseLoad=175] - 基础冷指标（W/㎡），范围 [100, 300]
+ * @returns {{coolingW: number, hp: number, hpLabel: string, machineType: string, heatingW: number, detail: Object}}
+ * @throws {TypeError|RangeError} 参数非法时抛出
+ * @example
+ *   calculateAC({
+ *     area: 20, orientation: '南', floorLevel: '中间层',
+ *     windowSize: '中', insulation: '中', people: 2
+ *   })
+ *   // => { coolingW: 4165, hp: 2, hpLabel: '2匹', machineType: '柜机或大挂机', ... }
+ */
+function calculateAC(params) {
+  if (!params || typeof params !== 'object') {
+    throw new TypeError('参数必须是对象');
+  }
+
+  const area = validateNumber(params.area, '面积', 1, 500);
+  const height = params.height === undefined ? 2.8 : validateNumber(params.height, '层高', 2.0, 6.0);
+  const orientation = validateEnum(params.orientation, '朝向', ['北', '东', '南', '西']);
+  const floorLevel = validateEnum(params.floorLevel, '楼层', ['顶层', '中间层', '底层']);
+  const windowSize = validateEnum(params.windowSize, '窗户大小', ['小', '中', '大']);
+  const insulation = validateEnum(params.insulation, '保温情况', ['好', '中', '差']);
+  const people = params.people === undefined ? 0 : validateNumber(params.people, '人数', 0, 50);
+  const hasComputer = Boolean(params.hasComputer);
+  const hasKitchen = Boolean(params.hasKitchen);
+  const baseLoad = params.baseLoad === undefined ? 175 : validateNumber(params.baseLoad, '基础冷指标', 100, 300);
+
+  const fOrient = getOrientationFactor(orientation);
+  const fFloor = getFloorFactor(floorLevel);
+  const fInsul = getInsulationFactor(insulation);
+  const fWindow = getWindowFactor(windowSize);
+  const fHeight = getHeightFactor(height);
+
+  const baseTotal = area * baseLoad;
+  const adjustedBase = baseTotal * fOrient * fFloor * fInsul * fWindow * fHeight;
+  const peopleLoad = getPeopleLoad(people);
+  const equipLoad = getEquipmentLoad(hasComputer, hasKitchen);
+
+  const coolingW = Math.round(adjustedBase + peopleLoad + equipLoad);
+  const { hp, hpLabel } = recommendHorsepower(coolingW);
+  const machineType = recommendMachineType(hp);
+
+  // 制热量参考：制冷量 × 1.15（取 1.1~1.2 中间值）
+  const heatingW = Math.round(coolingW * 1.15);
+
+  return {
+    coolingW: coolingW,
+    hp: hp,
+    hpLabel: hpLabel,
+    machineType: machineType,
+    heatingW: heatingW,
+    detail: {
+      area: area,
+      height: height,
+      baseLoad: baseLoad,
+      orientationFactor: fOrient,
+      floorFactor: fFloor,
+      insulationFactor: fInsul,
+      windowFactor: fWindow,
+      heightFactor: fHeight,
+      peopleLoad: peopleLoad,
+      equipmentLoad: equipLoad
+    }
+  };
+}
+
+/**
+ * 将计算结果格式化为可读字符串
+ * @param {Object} result - calculateAC 的返回值
+ * @returns {string} 格式化字符串
+ * @example
+ *   formatResult(calculateAC({...}))
+ */
+function formatResult(result) {
+  return [
+    '所需制冷量：' + result.coolingW + ' W',
+    '推荐匹数：' + result.hpLabel,
+    '推荐机型：' + result.machineType,
+    '参考制热量：' + result.heatingW + ' W（按制冷量×1.15 估算）',
+    '',
+    '【计算明细】',
+    '  面积基础负荷：' + Math.round(result.detail.area * result.detail.baseLoad) + ' W',
+    '  朝向系数：' + result.detail.orientationFactor,
+    '  楼层系数：' + result.detail.floorFactor,
+    '  保温系数：' + result.detail.insulationFactor,
+    '  窗户系数：' + result.detail.windowFactor,
+    '  层高系数：' + result.detail.heightFactor.toFixed(2),
+    '  人员附加：' + result.detail.peopleLoad + ' W',
+    '  设备附加：' + result.detail.equipmentLoad + ' W'
+  ].join('\\n');
+}
+`;
+
+// 把源码字符串里的函数真正注册到全局，供测试使用
+eval(AC_CALCULATOR_SOURCE);
+
+/* ============================================================
+ * 第二部分：单元测试（纯 JS 实现，至少 30 个）
+ * ============================================================ */
+
+const UNIT_TEST_SOURCE = `
+/**
+ * 空调制冷量计算工具 - 单元测试
+ * 纯 JS 实现，不依赖 Jest/Mocha
+ * 覆盖：正常值、边界值、异常输入、精度问题
+ */
+
+let passCount = 0;
+let failCount = 0;
+const failDetails = [];
+
+/**
+ * 简易断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} name - 测试用例名称
+ */
+function assert(condition, name) {
+  if (condition) {
+    passCount++;
+    console.log('  ✓ ' + name);
+  } else {
+    failCount++;
+    failDetails.push(name);
+    console.log('  ✗ ' + name);
+  }
+}
+
+/**
+ * 断言抛出指定类型异常
+ * @param {Function} fn - 待测函数
+ * @param {Function} ErrorType - 期望的异常类型
+ * @param {string} name - 测试名称
+ */
+function assertThrows(fn, ErrorType, name) {
+  try {
+    fn();
+    failCount++;
+    failDetails.push(name + ' (未抛出异常)');
+    console.log('  ✗ ' + name + ' (未抛出异常)');
+  } catch (e) {
+    if (e instanceof ErrorType) {
+      passCount++;
+      console.log('  ✓ ' + name);
+    } else {
+      failCount++;
+      failDetails.push(name + ' (异常类型错误: ' + e.constructor.name + ')');
+      console.log('  ✗ ' + name + ' (异常类型错误: ' + e.constructor.name + ')');
+    }
+  }
+}
+
+/**
+ * 断言数值近似相等（处理浮点精度）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} tolerance - 容差
+ * @param {string} name - 测试名称
+ */
+function assertApprox(actual, expected, tolerance, name) {
+  assert(Math.abs(actual - expected) <= tolerance,
+    name + ' (实际=' + actual + ', 期望=' + expected + ')');
+}
+
+// ==================== 开始测试 ====================
+console.log('=== 空调制冷量计算工具 单元测试 ===\\n');
+
+// ---------- 1. 朝向系数 ----------
+console.log('[朝向系数]');
+assert(getOrientationFactor('北') === 0.95, '北向 = 0.95');
+assert(getOrientationFactor('东') === 1.00, '东向 = 1.00');
+assert(getOrientationFactor('南') === 1.05, '南向 = 1.05');
+assert(getOrientationFactor('西') === 1.15, '西向 = 1.15');
+assertThrows(() => getOrientationFactor('东北'), TypeError, '非法朝向抛 TypeError');
+assertThrows(() => getOrientationFactor(null), TypeError, 'null 朝向抛 TypeError');
+assertThrows(() => getOrientationFactor(''), TypeError, '空串朝向抛 TypeError');
+
+// ---------- 2. 楼层系数 ----------
+console.log('\\n[楼层系数]');
+assert(getFloorFactor('顶层') === 1.15, '顶层 = 1.15');
+assert(getFloorFactor('中间层') === 1.00, '中间层 = 1.00');
+assert(getFloorFactor('底层') === 0.95, '底层 = 0.95');
+assertThrows(() => getFloorFactor('阁楼'), TypeError, '非法楼层抛 TypeError');
+
+// ---------- 3. 保温系数 ----------
+console.log('\\n[保温系数]');
+assert(getInsulationFactor('好') === 0.90, '保温好 = 0.90');
+assert(getInsulationFactor('中') === 1.00, '保温中 = 1.00');
+assert(getInsulationFactor('差') === 1.15, '保温差 = 1.15');
+assertThrows(() => getInsulationFactor(undefined), TypeError, 'undefined 保温抛 TypeError');
+
+// ---------- 4. 窗户系数 ----------
+console.log('\\n[窗户系数]');
+assert(getWindowFactor('小') === 1.00, '小窗 = 1.00');
+assert(getWindowFactor('中') === 1.05, '中窗 = 1.05');
+assert(getWindowFactor('大') === 1.15, '大窗 = 1.15');
+
+// ---------- 5. 层高系数 ----------
+console.log('\\n[层高系数]');
+assertApprox(getHeightFactor(2.8), 1.00, 0.001, '标准层高 2.8m = 1.00');
+assertApprox(getHeightFactor(3.2), 1.12, 0.001, '3.2m 层高 = 1.12');
+assertApprox(getHeightFactor(2.4), 0.88, 0.001, '2.4m 层高 = 0.88');
+assertThrows(() => getHeightFactor(1.5), RangeError, '层高 1.5m 超范围');
+assertThrows(() => getHeightFactor(7), RangeError, '层高 7m 超范围');
+assertThrows(() => getHeightFactor(NaN), TypeError, 'NaN 层高抛 TypeError');
+
+// ---------- 6. 人员负荷 ----------
+console.log('\\n[人员负荷]');
+assert(getPeopleLoad(0) === 0, '0 人 = 0W');
+assert(getPeopleLoad(1) === 100, '1 人 = 100W');
+assert(getPeopleLoad(4) === 400, '4 人 = 400W');
+assertThrows(() => getPeopleLoad(-1), RangeError, '负数人数抛 RangeError');
+assertThrows(() => getPeopleLoad(51), RangeError, '51 人超范围');
+
+// ---------- 7. 设备负荷 ----------
+console.log('\\n[设备负荷]');
+assert(getEquipmentLoad(false, false) === 0, '无设备 = 0W');
+assert(getEquipmentLoad(true, false) === 200, '仅电脑 = 200W');
+assert(getEquipmentLoad(false, true) === 500, '仅厨房 = 500W');
+assert(getEquipmentLoad(true, true) === 700, '电脑+厨房 = 700W');
+
+// ---------- 8. 匹数推荐 ----------
+console.log('\\n[匹数推荐]');
+assert(recommendHorsepower(2000).hp === 1, '2000W → 1匹');
+assert(recommendHorsepower(2500).hp === 1, '2500W → 1匹（边界）');
+assert(recommendHorsepower(2501).hp === 1.5, '2501W → 1.5匹');
+assert(recommendHorsepower(3500).hp === 1.5, '3500W → 1.5匹');
+assert(recommendHorsepower(5000).hp === 2, '5000W → 2匹');
+assert(recommendHorsepower(7500).hp === 3, '7500W → 3匹');
+assert(recommendHorsepower(10000).hp === 5, '10000W → 5匹');
+assertThrows(() => recommendHorsepower(-100), RangeError, '负制冷量抛 RangeError');
+
+// ---------- 9. 机型推荐 ----------
+console.log('\\n[机型推荐]');
+assert(recommendMachineType(1) === '壁挂式', '1匹 → 壁挂式');
+assert(recommendMachineType(1.5) === '壁挂式', '1.5匹 → 壁挂式');
+assert(recommendMachineType(2) === '柜机或大挂机', '2匹 → 柜机或大挂机');
+assert(recommendMachineType(3) === '柜机或大挂机', '3匹 → 柜机或大挂机');
+assert(recommendMachineType(5) === '柜机或中央空调', '5匹 → 柜机或中央空调');
+
+// ---------- 10. 核心计算函数 ----------
+console.log('\\n[核心计算 calculateAC]');
+
+// 标准场景：20㎡ 南向 中间层 中窗 中保温 2人
+const r1 = calculateAC({
+  area: 20, orientation: '南', floorLevel: '中间层',
+  windowSize: '中', insulation: '中', people: 2
+});
+// 20*175*1.05*1.0*1.0*1.05*1.0 + 200 = 3858.75 + 200 = 4058.75 → 4059
+assertApprox(r1.coolingW, 4059, 1, '标准场景 20㎡ 计算结果 ≈ 4059W');
+assert(r1.hp === 2, '标准场景 → 2匹');
+assert(r1.machineType === '柜机或大挂机', '标准场景 → 柜机或大挂机');
+
+// 极端场景：西晒顶层大窗差保温
+const r2 = calculateAC({
+  area: 30, orientation: '西', floorLevel: '顶层',
+  windowSize: '大', insulation: '差', people: 5,
+  hasComputer: true, hasKitchen: true
+});
+// 30*175*1.15*1.15*1.15*1.15*1.0 + 500 + 700
+// = 5250 * 1.749... ≈ 9182 + 1200 = 10382
+assert(r2.coolingW > 10000, '极端场景冷负荷 > 10000W');
+assert(r2.hp === 5, '极端场景 → 5匹');
+
+// 最小场景
+const r3 = calculateAC({
+  area: 1, orientation: '北', floorLevel: '底层',
+  windowSize: '小', insulation: '好'
+});
+// 1*175*0.95*0.95*0.90*1.0*1.0 = 142.2 → 142
+assertApprox(r3.coolingW, 142, 1, '最小场景 1㎡ ≈ 142W');
+assert(r3.hp === 1, '最小场景 → 1匹');
+
+// 参数校验
+assertThrows(() => calculateAC(null), TypeError, 'null 参数抛 TypeError');
+assertThrows(() => calculateAC({}), TypeError, '空对象缺必填项抛 TypeError');
+assertThrows(() => calculateAC({ area: 0, orientation: '南', floorLevel: '中间层', windowSize: '中', insulation: '中' }),
+  RangeError, '面积 0 抛 RangeError');
+assertThrows(() => calculateAC({ area: -5, orientation: '南', floorLevel: '中间层', windowSize: '中', insulation: '中' }),
+  RangeError, '面积负数抛 RangeError');
+assertThrows(() => calculateAC({ area: 600, orientation: '南', floorLevel: '中间层', windowSize: '中', insulation: '中' }),
+  RangeError, '面积 600 超范围抛 RangeError');
+assertThrows(() => calculateAC({ area: 'abc', orientation: '南', floorLevel: '中间层', windowSize: '中', insulation: '中' }),
+  TypeError, '面积字符串抛 TypeError');
+
+// 制热量
+assert(r1.heatingW === Math.round(r1.coolingW * 1.15), '制热量 = 制冷量 × 1.15');
+
+// 自定义基础冷指标
+const r4 = calculateAC({
+  area: 10, orientation: '东', floorLevel: '中间层',
+  windowSize: '小', insulation: '中', baseLoad: 200
+});
+// 10*200*1.0*1.0*1.0*1.0*1.0 = 2000
+assertApprox(r4.coolingW, 2000, 1, '自定义 baseLoad=200 → 2000W');
+
+// ---------- 11. 格式化函数 ----------
+console.log('\\n[格式化 formatResult]');
+const formatted = formatResult(r1);
+assert(typeof formatted === 'string', 'formatResult 返回字符串');
+assert(formatted.indexOf('所需制冷量') !== -1, '格式化包含"所需制冷量"');
+assert(formatted.indexOf('推荐匹数') !== -1, '格式化包含"推荐匹数"');
+assert(formatted.indexOf('推荐机型') !== -1, '格式化包含"推荐机型"');
+
+// ---------- 汇总 ----------
+console.log('\\n=== 测试汇总 ===');
+console.log('通过: ' + passCount + ' / 共 ' + (passCount + failCount));
+if (failCount > 0) {
+  console.log('\\n失败用例:');
+  failDetails.forEach(d => console.log('  - ' + d));
+}
+`;
+
+/* ============================================================
+ * 第三部分：使用说明书
+ * ============================================================ */
+
+const USER_MANUAL = `
+<h2>一、工具简介</h2>
+<p>本工具用于<strong>估算住宅房间所需空调制冷量</strong>，并据此推荐合适的空调匹数与机型（壁挂式 / 柜机 / 中央空调）。</p>
+<p>它解决的核心问题是：<em>我家这个房间，到底该买多大匹数的空调？买小了不凉，买大了浪费电、初投资高、还容易频繁启停影响寿命。</em></p>
+<p>本工具基于以下两类依据：</p>
+<ol>
+  <li><strong>GB 50736-2012《民用建筑供暖通风与空气调节设计规范》</strong>中的冷负荷估算思路（以下简称"国标"）；</li>
+  <li>空调行业长期积累的<strong>住宅经验值</strong>：基础冷指标 150~200 W/㎡。</li>
+</ol>
+
+<div class="warn">
+  <strong>重要声明：</strong>本工具输出为<strong>估算值</strong>，不能替代按 GB 50736 进行的逐时冷负荷计算。对于大型住宅、别墅、西晒严重、大面积玻璃幕墙、人员密度高、设备发热大的场景，建议请专业暖通工程师做详细计算。
+</div>
+
+<h2>二、参数详解</h2>
+
+<h3>2.1 房间面积（㎡）</h3>
+<ul>
+  <li><strong>范围：</strong>1 ~ 500 ㎡</li>
+  <li><strong>单位：</strong>平方米</li>
+  <li><strong>含义：</strong>房间地面面积，按长×宽计算。建议测量实际使用面积，扣除固定衣柜占地。</li>
+  <li><strong>注意：</strong>开放式客餐厅建议合并计算；若中间有隔断且平时关闭，可分开计算。</li>
+</ul>
+
+<h3>2.2 层高（m）</h3>
+<ul>
+  <li><strong>范围：</strong>2.0 ~ 6.0 m</li>
+  <li><strong>默认值：</strong>2.8 m（国内住宅常见层高）</li>
+  <li><strong>含义：</strong>地面到天花的净高。层高越高，房间体积越大，冷负荷越高。</li>
+  <li><strong>算法：</strong>以 2.8m 为基准，每增加 0.1m 冷负荷约增加 3%。</li>
+  <li><strong>注意：</strong>LOFT、复式挑空客厅务必如实填写，否则选型会偏小。</li>
+</ul>
+
+<h3>2.3 朝向</h3>
+<ul>
+  <li><strong>可选值：</strong>北、东、南、西</li>
+  <li><strong>含义：</strong>房间主要采光面（通常是最大窗户所在墙面）的朝向。</li>
+  <li><strong>修正系数：</strong>
+    <table>
+      <tr><th>朝向</th><th>系数</th><th>说明</th></tr>
+      <tr><td>北</td><td>0.95</td><td>几乎无直射阳光，冷负荷最低</td></tr>
+      <tr><td>东</td><td>1.00</td><td>上午有阳光，基准</td></tr>
+      <tr><td>南</td><td>1.05</td><td>日照时间长，略高</td></tr>
+      <tr><td>西</td><td>1.15</td><td>西晒强烈，夏季午后室温显著升高</td></tr>
+    </table>
+  </li>
+  <li><strong>注意：</strong>若房间有两面以上外墙，按日照最严重的一面计。</li>
+</ul>
+
+<h3>2.4 楼层</h3>
+<ul>
+  <li><strong>可选值：</strong>顶层、中间层、底层</li>
+  <li><strong>修正系数：</strong>
+    <table>
+      <tr><th>楼层</th><th>系数</th><th>说明</th></tr>
+      <tr><td>顶层</td><td>1.15</td><td>屋顶受太阳辐射，夏季明显偏热</td></tr>
+      <tr><td>中间层</td><td>1.00</td><td>基准</td></tr>
+      <tr><td>底层</td><td>0.95</td><td>接地，温度相对稳定</td></tr>
+    </table>
+  </li>
+  <li><strong>注意：</strong>次顶层（顶层下一层）若屋顶隔热差，建议按顶层计。</li>
+</ul>
+
+<h3>2.5 窗户大小</h3>
+<ul>
+  <li><strong>可选值：</strong>小、中、大</li>
+  <li><strong>含义：</strong>按窗墙比（窗户面积 / 该面墙总面积）划分：
+    <table>
+      <tr><th>档位</th><th>窗墙比</th><th>系数</th></tr>
+      <tr><td>小</td><td>&lt; 15%</td><td>1.00</td></tr>
+      <tr><td>中</td><td>15% ~ 30%</td><td>1.05</td></tr>
+      <tr><td>大</td><td>&gt; 30%</td><td>1.15</td></tr>
+    </table>
+  </li>
+  <li><strong>注意：</strong>落地窗、飘窗、大面积玻璃幕墙一律按"大"计；若为 Low-E 中空玻璃，可适当下调一档（但本工具未单独提供此选项，需在结果基础上人工判断）。</li>
+</ul>
+
+<h3>2.6 保温情况</h3>
+<ul>
+  <li><strong>可选值：</strong>好、中、差</li>
+  <li><strong>含义：</strong>外墙、屋顶、门窗的整体保温性能。
+    <table>
+      <tr><th>等级</th><th>典型情况</th><th>系数</th></tr>
+      <tr><td>好</td><td>2005 年后新建商品房，外墙有保温层，断桥铝窗</td><td>0.90</td></tr>
+      <tr><td>中</td><td>2000 年前后住宅，普通双层玻璃</td><td>1.00</td></tr>
+      <tr><td>差</td><td>老旧房屋，单层玻璃，无外墙保温</td><td>1.15</td></tr>
+    </table>
+  </li>
+</ul>
+
+<h3>2.7 人数</h3>
+<ul>
+  <li><strong>范围：</strong>0 ~ 50 人</li>
+  <li><strong>默认值：</strong>0</li>
+  <li><strong>含义：</strong>房间常态使用人数。每人按 100W 附加冷负荷（夏季轻活动显热+潜热，行业经验值）。</li>
+  <li><strong>注意：</strong>办公室、会议室等人员密集场所应按最大在室人数计。</li>
+</ul>
+
+<h3>2.8 是否有大功率热源</h3>
+<ul>
+  <li><strong>大功率电脑：</strong>台式机 / 游戏本等，附加 200W</li>
+  <li><strong>厨房：</strong>灶台、烤箱等，附加 500W</li>
+  <li>两者可同时勾选，叠加计算。</li>
+</ul>
+
+<h2>三、完整使用场景</h2>
+
+<div class="scene">
+<h4>场景 1：普通卧室（15㎡，南向，中间层）</h4>
+<p><strong>输入：</strong>面积 15㎡，层高 2.8m，朝向 南，楼层 中间层，窗户 中，保温 中，人数 2</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>基础负荷：15 × 175 = 2625 W</li>
+  <li>朝向系数 1.05 × 楼层 1.0 × 保温 1.0 × 窗户 1.05 × 层高 1.0 = 1.1025</li>
+  <li>调整后：2625 × 1.1025 ≈ 2894 W</li>
+  <li>人员附加：2 × 100 = 200 W</li>
+  <li>合计：≈ 3094 W</li>
+</ul>
+<p><strong>结果：</strong>制冷量 ≈ 3094 W → <strong>1.5 匹</strong>，推荐 <strong>壁挂式</strong></p>
+</div>
+
+<div class="scene">
+<h4>场景 2：西晒顶层大客厅（35㎡）</h4>
+<p><strong>输入：</strong>面积 35㎡，层高 2.9m，朝向 西，楼层 顶层，窗户 大，保温 中，人数 4，有电脑</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>基础：35 × 175 = 6125 W</li>
+  <li>系数：1.15 × 1.15 × 1.0 × 1.15 × 1.03 ≈ 1.578</li>
+  <li>调整后：≈ 9665 W</li>
+  <li>人员 400W + 电脑 200W = 600 W</li>
+  <li>合计：≈ 10265 W</li>
+</ul>
+<p><strong>结果：</strong>制冷量 ≈ 10265 W → <strong>5 匹</strong>，推荐 <strong>柜机或中央空调</strong></p>
+</div>
+
+<div class="scene">
+<h4>场景 3：保温良好的小书房（10㎡，北向）</h4>
+<p><strong>输入：</strong>面积 10㎡，层高 2.7m，朝向 北，楼层 中间层，窗户 小，保温 好，人数 1，有电脑</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>基础：10 × 175 = 1750 W</li>
+  <li>系数：0.95 × 1.0 × 0.90 × 1.0 × 0.97 ≈ 0.829</li>
+  <li>调整后：≈ 1451 W</li>
+  <li>人员 100W + 电脑 200W = 300 W</li>
+  <li>合计：≈ 1751 W</li>
+</ul>
+<p><strong>结果：</strong>制冷量 ≈ 1751 W → <strong>1 匹</strong>，推荐 <strong>壁挂式</strong></p>
+</div>
+
+<div class="scene">
+<h4>场景 4：开放式客餐厅（45㎡，挑高 3.6m）</h4>
+<p><strong>输入：</strong>面积 45㎡，层高 3.6m，朝向 南，楼层 中间层，窗户 大，保温 中，人数 5</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>基础：45 × 175 = 7875 W</li>
+  <li>层高系数：1 + (3.6-2.8)×0.3 = 1.24</li>
+  <li>系数：1.05 × 1.0 × 1.0 × 1.15 × 1.24 ≈ 1.493</li>
+  <li>调整后：≈ 11757 W</li>
+  <li>人员：500 W</li>
+  <li>合计：≈ 12257 W</li>
+</ul>
+<p><strong>结果：</strong>制冷量 ≈ 12257 W → <strong>5 匹</strong>，推荐 <strong>柜机或中央空调</strong></p>
+</div>
+
+<div class="scene">
+<h4>场景 5：老旧房屋小卧室（12㎡，差保温，底层）</h4>
+<p><strong>输入：</strong>面积 12㎡，层高 2.8m，朝向 东，楼层 底层，窗户 中，保温 差，人数 1</p>
+<p><strong>计算过程：</strong></p>
+<ul>
+  <li>基础：12 × 175 = 2100 W</li>
+  <li>系数：1.0 × 0.95 × 1.15 × 1.05 × 1.0 ≈ 1.142</li>
+  <li>调整后：≈ 2398 W</li>
+  <li>人员：100 W</li>
+  <li>合计：≈ 2498 W</li>
+</ul>
+<p><strong>结果：</strong>制冷量 ≈ 2498 W → <strong>1 匹</strong>（接近 1.5 匹边界），推荐 <strong>壁挂式</strong></p>
+<p><em>提示：若该房间夏季实际体感偏热，建议直接上 1.5 匹。</em></p>
+</div>
+
+<h2>四、常见错误与排查</h2>
+
+<table>
+  <tr><th>现象</th><th>可能原因</th><th>处理</th></tr>
+  <tr>
+    <td>计算结果明显偏小，空调不凉</td>
+    <td>① 西晒/顶层未如实选择 ② 大面积玻璃窗按"小"计 ③ 挑高空间层高未填</td>
+    <td>重新核对朝向、楼层、窗户、层高；西晒顶层建议结果再上浮 10%</td>
+  </tr>
+  <tr>
+    <td>计算结果明显偏大，空调频繁启停</td>
+    <td>① 保温"差"但实际是新房 ② 人数按最大聚会人数填</td>
+    <td>按日常使用情况填写；保温等级如实评估</td>
+  </tr>
+  <tr>
+    <td>报错"参数超出范围"</td>
+    <td>面积、层高、人数超出工具允许范围</td>
+    <td>检查输入数值；超大空间建议分区域计算或联系专业工程师</td>
+  </tr>
+  <tr>
+    <td>报错"参数不能为空"</td>
+    <td>必填项未填写</td>
+    <td>检查朝向、楼层、窗户、保温是否都已选择</td>
+  </tr>
+  <tr>
+    <td>计算结果与空调商家推荐不符</td>
+    <td>商家可能按"宁大勿小"原则推荐，或本工具按标准估算</td>
+    <td>本工具为估算下限参考，商家推荐偏大属正常；以本工具结果 + 一档为稳妥选择</td>
+  </tr>
+</table>
+
+<h2>五、数据来源与标准依据</h2>
+
+<ol>
+  <li><strong>GB 50736-2012《民用建筑供暖通风与空气调节设计规范》</strong>：冷负荷计算方法的权威依据。本工具采用其估算思路，但未做逐时计算。</li>
+  <li><strong>住宅基础冷指标 150~200 W/㎡</strong>：空调行业长期积累的经验值，默认取中间值 175 W/㎡。该数值在多个暖通设计手册中均有引用，但<strong>并非国标强制规定</strong>。</li>
+  <li><strong>人员负荷 100W/人</strong>：夏季室内轻活动状态下，成人显热+潜热的行业经验值。精确数值需查 GB 50736 表 4.2 或相关手册。</li>
+  <li><strong>设备负荷（电脑 200W、厨房 500W）</strong>：行业经验值，非国标强制数据。</li>
+  <li><strong>1 匹 ≈ 2500W 制冷量</strong>：行业惯例，源于早期空调能效标定。</li>
+  <li><strong>制热量 = 制冷量 × 1.1~1.2</strong>：热泵空调在冬季制热时，因室外温度低、结霜除霜等，能力衰减，需按此比例放大配置。本工具取中间值 1.15。</li>
+</ol>
+
+<div class="info">
+  <strong>说明：</strong>本工具中的朝向、楼层、保温、窗户等修正系数为行业经验值，<strong>并非 GB 50736 的强制规定</strong>。GB 50736 要求精确计算时应采用逐时冷负荷法，考虑围护结构传热、太阳辐射、人员设备灯光等全部因素。
+</div>
+
+<h2>六、局限性说明</h2>
+
+<ol>
+  <li><strong>估算性质：</strong>本工具为快速估算，不能替代按 GB 50736 进行的逐时冷负荷计算。对于大型住宅、别墅、商业场所、机房等，必须做专业计算。</li>
+  <li><strong>未考虑因素：</strong>
+    <ul>
+      <li>相邻房间传热（如隔壁无空调）</li>
+      <li>新风负荷（开窗通风、新风系统）</li>
+      <li>灯光负荷</li>
+      <li>具体围护结构传热系数（K 值）</li>
+      <li>当地夏季室外设计参数（不同城市差异大）</li>
+      <li>玻璃类型（单层/双层/Low-E/中空）</li>
+      <li>遮阳措施（窗帘、外遮阳）</li>
+    </ul>
+  </li>
+  <li><strong>修正系数为经验值：</strong>朝向、楼层、保温、窗户的修正系数为行业经验，不同地区、不同建筑年代可能有差异。</li>
+  <li><strong>人员密度假设：</strong>按轻活动（静坐、办公）估算，剧烈活动（健身、聚会）需另行增加。</li>
+  <li><strong>气候差异：</strong>本工具未区分城市。华南（广州、海口）与华东（上海、南京）、华北（北京、沈阳）的室外设计温度差异显著，极端高温地区建议在结果基础上再上浮 10%~15%。</li>
+  <li><strong>空调实际能力：</strong>标称匹数对应的制冷量因品牌、能效等级、变频/定频而异，选购时应以铭牌标称制冷量为准。</li>
+  <li><strong>制热场景：</strong>本工具以制冷为主，制热仅按 1.15 倍粗略估算。北方集中供暖地区无需参考；长江流域冬季湿冷，热泵空调制热能力衰减严重，建议按制冷量 × 1.2 甚至更高配置，或考虑辅助电加热。</li>
+</ol>
+
+<h2>七、API 参考</h2>
+
+<h3>7.1 calculateAC(params)</h3>
+<p>核心计算函数，返回完整计算结果。</p>
+<p><strong>参数：</strong></p>
+<table>
+  <tr><th>字段</th><th>类型</th><th>必填</th><th>默认值</th><th>说明</th></tr>
+  <tr><td>area</td><td>number</td><td>是</td><td>-</td><td>面积（㎡），1~500</td></tr>
+  <tr><td>height</td><td>number</td><td>否</td><td>2.8</td><td>层高（m），2.0~6.0</td></tr>
+  <tr><td>orientation</td><td>string</td><td>是</td><td>-</td><td>朝向：北/东/南/西</td></tr>
+  <tr><td>floorLevel</td><td>string</td><td>是</td><td>-</td><td>楼层：顶层/中间层/底层</td></tr>
+  <tr><td>windowSize</td><td>string</td><td>是</td><td>-</td><td>窗户：小/中/大</td></tr>
+  <tr><td>insulation</td><td>string</td><td>是</td><td>-</td><td>保温：好/中/差</td></tr>
+  <tr><td>people</td><td>number</td><td>否</td><td>0</td><td>人数，0~50</td></tr>
+  <tr><td>hasComputer</td><td>boolean</td><td>否</td><td>false</td><td>是否有大功率电脑</td></tr>
+  <tr><td>hasKitchen</td><td>boolean</td><td>否</td><td>false</td><td>是否为厨房</td></tr>
+  <tr><td>baseLoad</td><td>number</td><td>否</td><td>175</td><td>基础冷指标（W/㎡），100~300</td></tr>
+</table>
+
+<p><strong>返回值：</strong></p>
+<table>
+  <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+  <tr><td>coolingW</td><td>number</td><td>所需制冷量（W）</td></tr>
+  <tr><td>hp</td><td>number</td><td>推荐匹数</td></tr>
+  <tr><td>hpLabel</td><td>string</td><td>匹数标签（如"1.5匹"）</td></tr>
+  <tr><td>machineType</td><td>string</td><td>推荐机型</td></tr>
+  <tr><td>heatingW</td><td>number</td><td>参考制热量（W）</td></tr>
+  <tr><td>detail</td><td>Object</td><td>计算明细（各项系数与负荷）</td></tr>
+</table>
+
+<h3>7.2 辅助函数</h3>
+<ul>
+  <li><code>getOrientationFactor(orientation)</code>：返回朝向修正系数</li>
+  <li><code>getFloorFactor(floorLevel)</code>：返回楼层修正系数</li>
+  <li><code>getInsulationFactor(insulation)</code>：返回保温修正系数</li>
+  <li><code>getWindowFactor(windowSize)</code>：返回窗户修正系数</li>
+  <li><code>getHeightFactor(height)</code>：返回层高修正系数</li>
+  <li><code>getPeopleLoad(people)</code>：返回人员附加冷负荷（W）</li>
+  <li><code>getEquipmentLoad(hasComputer, hasKitchen)</code>：返回设备附加冷负荷（W）</li>
+  <li><code>recommendHorsepower(coolingW)</code>：根据制冷量推荐匹数</li>
+  <li><code>recommendMachineType(hp)</code>：根据匹数推荐机型</li>
+  <li><code>formatResult(result)</code>：将结果格式化为可读字符串</li>
+</ul>
+
+<h2>八、版本信息</h2>
+<p><strong>版本号：</strong>v2.0.1-修-匹数档位 20261025</p>
+<p><strong>更新内容：</strong></p>
+<ul>
+  <li>完整 JSDoc 注释</li>
+  <li>30+ 单元测试覆盖</li>
+  <li>详细使用说明书</li>
+  <li>参数合法性校验</li>
+  <li>制热量参考输出</li>
+</ul>
+`;
+
+/* ============================================================
+ * 渲染逻辑
+ * ============================================================ */
+
+// 渲染源码
+document.getElementById('sourceCode').textContent = AC_CALCULATOR_SOURCE.trim();
+
+// 渲染测试代码
+document.getElementById('testCode').textContent = UNIT_TEST_SOURCE.trim();
+
+// 渲染说明书
+document.getElementById('docContent').innerHTML = USER_MANUAL;
+
+// 标签页切换
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 运行测试
+document.getElementById('runTests').addEventListener('click', () => {
+  // 重置计数
+  passCount = 0;
+  failCount = 0;
+  failDetails.length = 0;
+
+  // 捕获 console.log
+  const logs = [];
+  const originalLog = console.log;
+  console.log = function() {
+    const msg = Array.from(arguments).join(' ');
+    logs.push(msg);
+    originalLog.apply(console, arguments);
+  };
+
+  try {
+    eval(UNIT_TEST_SOURCE);
+  } catch (e) {
+    logs.push('测试执行异常: ' + e.message);
+  } finally {
+    console.log = originalLog;
+  }
+
+  const resultDiv = document.getElementById('testResult');
+  const summary = document.getElementById('testSummary');
+  const logDiv = document.getElementById('testLog');
+
+  resultDiv.style.display = 'block';
+  summary.className = 'summary ' + (failCount === 0 ? 'pass' : 'fail');
+  summary.textContent = '通过 ' + passCount + ' / 共 ' + (passCount + failCount) + (failCount > 0 ? ' （失败 ' + failCount + ' 个）' : ' ✓ 全部通过');
+  logDiv.textContent = logs.join('\n');
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>存贷款利息计算工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; line-height: 1.7; padding-bottom: 40px; }
+  header { background: linear-gradient(135deg, #1e3c72, #2a5298); color: #fff; padding: 24px 32px; }
+  header h1 { font-size: 22px; font-weight: 600; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  .tabs { display: flex; background: #fff; border-bottom: 1px solid #e4e7ed; padding: 0 32px; position: sticky; top: 0; z-index: 10; }
+  .tab { padding: 14px 22px; cursor: pointer; font-size: 14px; color: #606266; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: #2a5298; }
+  .tab.active { color: #2a5298; border-bottom-color: #2a5298; font-weight: 600; }
+  .panel { display: none; padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  h2 { font-size: 18px; color: #1e3c72; margin: 18px 0 12px; border-left: 4px solid #2a5298; padding-left: 10px; }
+  h3 { font-size: 15px; color: #333; margin: 14px 0 8px; }
+  p, li { font-size: 14px; color: #444; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  pre { background: #1e1e1e; color: #dcdcdc; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 12.5px; line-height: 1.55; font-family: "SF Mono", Consolas, monospace; max-height: 560px; }
+  .warn { background: #fff8e1; border-left: 4px solid #f5a623; padding: 10px 14px; margin: 10px 0; font-size: 13px; color: #7a5a00; border-radius: 4px; }
+  .info { background: #e8f4fd; border-left: 4px solid #2a5298; padding: 10px 14px; margin: 10px 0; font-size: 13px; color: #1e3c72; border-radius: 4px; }
+  .err { background: #fde8e8; border-left: 4px solid #d9534f; padding: 10px 14px; margin: 10px 0; font-size: 13px; color: #8a2a2a; border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+  th, td { border: 1px solid #e4e7ed; padding: 8px 10px; text-align: left; }
+  th { background: #f5f7fa; color: #1e3c72; font-weight: 600; }
+  .version { position: fixed; right: 12px; bottom: 8px; font-size: 11px; color: #999; background: rgba(255,255,255,0.9); padding: 2px 8px; border-radius: 3px; }
+  .scene { background: #fff; border: 1px solid #e4e7ed; border-radius: 6px; padding: 14px 18px; margin: 10px 0; }
+  .scene h4 { color: #2a5298; font-size: 14px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div style="background:#4a2a10;border:2px solid #ff9a40;border-radius:8px;padding:10px;margin:10px;color:#ffd0a0;font-size:12px;line-height:1.7;">
+⚠️ <b>仅有源码与说明</b>：本页展示的是计算函数的源码和使用说明，<b>没有可操作的输入界面</b>。<br>
+想用请看源码自行调用，<b>不能当计算器直接使用</b>。
+</div>
+
+<header>
+  <h1>存贷款利息计算工具</h1>
+  <p>单利 · 复利 · 等额本息 · 等额本金 —— 计算与对比</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-panel="p1">一、JS 源码</div>
+  <div class="tab" data-panel="p2">二、单元测试</div>
+  <div class="tab" data-panel="p3">三、使用说明书</div>
+  <div class="tab" data-panel="p4">🧮 开始计算</div>
+</div>
+
+<div class="panel active" id="p1">
+  <h2>核心算法源码（纯函数，无外部依赖）</h2>
+  <div class="info">以下代码可直接复制到浏览器控制台运行。所有函数均为纯函数，输入相同则输出相同，不产生副作用。</div>
+<pre id="srcCode"></pre>
+</div>
+
+<div class="panel" id="p2">
+  <h2>单元测试（纯 JS 实现）</h2>
+  <div class="info">覆盖正常值、边界值、异常输入、精度问题。运行结果见下方「测试结果」区域。</div>
+  <h3>测试源码</h3>
+<pre id="testCode"></pre>
+  <h3>测试结果</h3>
+<pre id="testResult" style="background:#0d1117;color:#7ee787;"></pre>
+</div>
+
+<div class="panel" id="p4">
+<style>
+.is-box{background:#fafcff;border:1px solid #d8e4f0;border-radius:10px;padding:20px 22px;margin-bottom:18px}
+.is-box h3{font-size:15px;color:#1a5276;margin:0 0 4px}
+.is-box .hint{font-size:12px;color:#8899aa;margin-bottom:14px}
+.is-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.is-fg{flex:1;min-width:140px}
+.is-fg label{display:block;font-size:13px;color:#4a5a6a;font-weight:600;margin-bottom:5px}
+.is-fg input,.is-fg select{width:100%;padding:9px 12px;border:1px solid #cdd8e3;border-radius:6px;font-size:15px;font-family:inherit;background:#fff}
+.is-fg input:focus,.is-fg select:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15)}
+.is-btn{background:#3498db;color:#fff;border:none;padding:10px 26px;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit}
+.is-btn:hover{background:#2980b9}
+.is-out{margin-top:14px;padding:14px 16px;background:#eaf4fd;border-radius:8px;display:none;line-height:1.9;font-size:14px}
+.is-out.show{display:block}
+.is-out .k{color:#5a6a7a}
+.is-out .v{font-weight:700;color:#1a5276;font-size:16px}
+.is-err{margin-top:12px;padding:10px 14px;background:#fdeeee;border-left:3px solid #e06060;border-radius:4px;color:#c0392b;font-size:13px;display:none}
+.is-err.show{display:block}
+</style>
+
+<div class="is-box">
+  <h3>① 单利计算</h3>
+  <div class="hint">利息 = 本金 × 年利率 × 年数</div>
+  <div class="is-row">
+    <div class="is-fg"><label>本金（元）</label><input type="number" id="siP" step="any" placeholder="例如 100000"></div>
+    <div class="is-fg"><label>年利率（%）</label><input type="number" id="siR" step="any" placeholder="例如 2.5"></div>
+    <div class="is-fg"><label>年数</label><input type="number" id="siY" step="any" placeholder="例如 3"></div>
+  </div>
+  <button class="is-btn" onclick="calcSI()">计算</button>
+  <div class="is-out" id="siOut"></div>
+  <div class="is-err" id="siErr"></div>
+</div>
+
+<div class="is-box">
+  <h3>② 复利计算</h3>
+  <div class="hint">本息和 = 本金 × (1 + 年利率/复利次数)^(年数 × 复利次数)</div>
+  <div class="is-row">
+    <div class="is-fg"><label>本金（元）</label><input type="number" id="ciP" step="any" placeholder="例如 100000"></div>
+    <div class="is-fg"><label>年利率（%）</label><input type="number" id="ciR" step="any" placeholder="例如 2.5"></div>
+    <div class="is-fg"><label>年数</label><input type="number" id="ciY" step="any" placeholder="例如 3"></div>
+    <div class="is-fg"><label>每年复利次数</label>
+      <select id="ciF">
+        <option value="1">1 次（年复利）</option>
+        <option value="2">2 次（半年）</option>
+        <option value="4">4 次（季度）</option>
+        <option value="12">12 次（月复利）</option>
+      </select>
+    </div>
+  </div>
+  <button class="is-btn" onclick="calcCI()">计算</button>
+  <div class="is-out" id="ciOut"></div>
+  <div class="is-err" id="ciErr"></div>
+</div>
+
+<div class="is-box">
+  <h3>③ 贷款还款方式对比（等额本息 vs 等额本金）</h3>
+  <div class="hint">输入贷款金额、年利率、期数，同时算出两种方式的月供与总利息</div>
+  <div class="is-row">
+    <div class="is-fg"><label>贷款金额（元）</label><input type="number" id="lnP" step="any" placeholder="例如 120000"></div>
+    <div class="is-fg"><label>年利率（%）</label><input type="number" id="lnR" step="any" placeholder="例如 4.9"></div>
+    <div class="is-fg"><label>期数（月）</label><input type="number" id="lnM" step="any" placeholder="例如 120"></div>
+  </div>
+  <button class="is-btn" onclick="calcLoan()">计算</button>
+  <div class="is-out" id="lnOut"></div>
+  <div class="is-err" id="lnErr"></div>
+</div>
+</div>
+
+<div class="panel" id="p3">
+  <h2>使用说明书</h2>
+
+  <h3>一、本工具干什么用</h3>
+  <p>本工具面向个人储户、贷款借款人、财务学习者与小型机构业务人员，提供四类最常见的存贷款利息计算能力：</p>
+  <ol>
+    <li><b>单利计算</b>：适用于短期存款、国债、部分票据贴现等按单利计息的场景。</li>
+    <li><b>复利计算</b>：适用于定期复投、理财滚存、长期储蓄等按复利滚算的场景。</li>
+    <li><b>等额本息还款</b>：适用于房贷、车贷、消费贷等每月还款额固定的场景。</li>
+    <li><b>等额本金还款</b>：适用于每月偿还本金固定、利息逐月递减的场景。</li>
+  </ol>
+  <p>工具同时支持对四种方式进行横向对比，帮助使用者在贷款方案选择、存款产品比较时获得直观的数量级参考。</p>
+
+  <h3>二、参数详解</h3>
+  <table>
+    <tr><th>参数</th><th>含义</th><th>单位</th><th>取值范围</th></tr>
+    <tr><td>本金 P</td><td>初始存入或借入的金额</td><td>元（人民币）</td><td>≥ 0，建议 ≤ 10^12</td></tr>
+    <tr><td>年利率 r</td><td>名义年利率</td><td>小数（如 0.05 表示 5%）</td><td>≥ 0</td></tr>
+    <tr><td>期限 t</td><td>存贷款期限</td><td>年（支持小数，如 0.5 表示半年）</td><td>≥ 0</td></tr>
+    <tr><td>复利频次 n</td><td>每年复利次数</td><td>次/年</td><td>正整数（1/2/4/12/365 等）</td></tr>
+    <tr><td>还款月数 N</td><td>贷款总期数</td><td>月</td><td>正整数</td></tr>
+  </table>
+
+  <h3>三、计算公式与依据</h3>
+  <p><b>单利：</b>I = P × r × t，本息和 A = P + I。</p>
+  <p><b>复利：</b>A = P × (1 + r/n)^(n×t)。</p>
+  <p><b>等额本息月供：</b>PMT = P × i × (1+i)^N / ((1+i)^N − 1)，其中 i 为月利率（年利率/12）。</p>
+  <p><b>等额本金月供：</b>每月本金 = P / N；第 k 月利息 = (P − (k−1)×P/N) × i。</p>
+  <div class="warn">上述公式为数学标准形式。实际银行计息可能涉及「算头不算尾」「实际天数/360」「实际天数/365」等规则，参见中国人民银行《人民币利率管理规定》（银发〔1999〕77 号，后续有修订，具体以最新有效版本为准，需查标准原文）。本工具未内置日历天数折算，仅按年化/月化比例计算。</div>
+
+  <h3>四、使用场景（5 例）</h3>
+  <div class="scene">
+    <h4>场景 1：三年期定存到期收益估算</h4>
+    <p>存入 10 万元，年利率 2.5%，三年到期。选择「单利」，输入 P=100000、r=0.025、t=3，可得利息约 7500 元，本息和 107500 元。注意：国内银行定期存款通常按单利计息，到期一次付息，本场景匹配度较高。</p>
+  </div>
+  <div class="scene">
+    <h4>场景 2：理财产品按季复投</h4>
+    <p>投入 5 万元，年化 4%，按季复利，持有 2 年。选择「复利」，n=4，可得本息和约 54142.87 元。与单利（54000 元）对比，复利多出约 142.87 元，体现复利效应。</p>
+  </div>
+  <div class="scene">
+    <h4>场景 3：房贷等额本息方案</h4>
+    <p>贷款 100 万元，年利率 4.2%，30 年（360 期）。选择「等额本息」，可得月供约 4889.94 元，总利息约 760377 元。该方式每月还款额固定，便于家庭预算规划。</p>
+  </div>
+  <div class="scene">
+    <h4>场景 4：房贷等额本金方案对比</h4>
+    <p>同样 100 万元、4.2%、30 年，选择「等额本金」，首月月供约 6166.67 元，末月约 2788.43 元，总利息约 631750 元。相比等额本息少付约 12.86 万元利息，但前期还款压力更大。</p>
+  </div>
+  <div class="scene">
+    <h4>场景 5：教育储蓄长期规划</h4>
+    <p>为 10 年后子女留学准备 50 万元，假设年化 3.5% 按年复利，反推现在需一次性存入多少。可用复利公式反算 P = A / (1+r)^t ≈ 35533.87 元（此处为演示思路，工具当前版本仅支持正向计算，反向求解需使用者自行代入）。</p>
+  </div>
+
+  <h3>五、常见错误</h3>
+  <ul>
+    <li><b>年利率与月利率混淆：</b>等额本息/等额本金公式中的 i 应为月利率（年利率/12），切勿直接代入年利率。</li>
+    <li><b>期限单位错误：</b>单利、复利的 t 以「年」为单位；还款期数 N 以「月」为单位，二者不可混用。</li>
+    <li><b>复利频次误用：</b>「按月复利」应填 n=12，而非 r 直接除以 12 再填 n=1。</li>
+    <li><b>忽略费用：</b>实际贷款可能含手续费、保险费、担保费，本工具仅计算利息，不涵盖这些成本。</li>
+    <li><b>忽略提前还款：</b>本工具假设按期足额还款至到期，不支持部分提前还款、利率调整等动态场景。</li>
+    <li><b>忽略税费：</b>利息所得可能涉及个人所得税（如储蓄存款利息所得，政策有阶段性调整，需查最新税务文件），本工具未扣除税费。</li>
+  </ul>
+
+  <h3>六、数据依据</h3>
+  <ul>
+    <li>计息规则参考：中国人民银行《人民币利率管理规定》（银发〔1999〕77 号，后续有修订，需查标准原文）。</li>
+    <li>等额本息/等额本金为商业银行个人住房贷款通用算法，参见各银行公开披露的贷款计算器说明。</li>
+    <li>本工具未引用任何具体银行的实时利率数据，所有利率均由用户自行输入。</li>
+  </ul>
+  <div class="warn">本工具不内置 LPR、基准利率、存款挂牌利率等动态数据，使用者需自行从中国人民银行官网或开户银行渠道查询最新利率。</div>
+
+  <h3>七、精度与误差说明（有限精准原则）</h3>
+  <p>现实金融变量是无限的（利率可能精确到小数点后更多位、天数可能涉及闰年与节假日、还款日可能遇周末顺延等），本工具只做到「方法准、输入项准、结果给误差范围」，<b>不承诺绝对精确</b>。</p>
+
+  <p><b>① 算准了什么：</b></p>
+  <ul>
+    <li>数学公式本身按标准形式实现，单利、复利、等额本息、等额本金的代数推导正确。</li>
+    <li>在用户输入的本金、利率、期限完全确定的前提下，输出结果与公式计算一致。</li>
+    <li>JavaScript 使用 IEEE 754 双精度浮点数，有效数字约 15–17 位，对常规金额（≤ 10^12 元）的元位计算通常可靠。</li>
+  </ul>
+
+  <p><b>② 哪些因素没算进去：</b></p>
+  <ul>
+    <li>实际天数折算规则（ACT/360、ACT/365、30/360 等）未实现，仅按年化/月化比例。</li>
+    <li>闰年、节假日顺延、还款日调整未考虑。</li>
+    <li>利率浮动（如 LPR 重定价周期）未支持。</li>
+    <li>提前还款、逾期罚息、宽限期未支持。</li>
+    <li>利息税、手续费、保险费、担保费等未计入。</li>
+    <li>分段计息（如利率调整日切分）未支持。</li>
+  </ul>
+
+  <p><b>③ 误差大概多大：</b></p>
+  <ul>
+    <li>浮点运算本身：单次四则运算相对误差约 10^−15 量级，累计到数百期还款明细，末位（分以下）可能偏差 10^−10 元量级，经四舍五入到分后通常不影响结果。</li>
+    <li>与实际银行计息对比：因天数规则、利率生效日、还款日等差异，<b>总利息可能偏差数元至数十元</b>，长期限、大金额、高利率场景偏差可能更大。</li>
+    <li>本工具输出结果仅供估算与方案对比参考，<b>不作为实际结息、对账、诉讼依据</b>。实际金额以开户银行或贷款机构出具的正式对账单为准。</li>
+  </ul>
+
+  <h3>八、局限性</h3>
+  <ul>
+    <li>仅支持固定利率、固定期限、按期足额还款的理想化模型。</li>
+    <li>不支持组合贷款（公积金 + 商业）、不支持多笔贷款合并计算。</li>
+    <li>不支持外币、不支持与通胀联动的实际利率计算。</li>
+    <li>不支持反向求解（已知本息和求本金/利率/期限）。</li>
+    <li>前端运行，未做数据持久化，刷新页面后输入丢失。</li>
+    <li>未做输入合法性强校验（如超大数值、非数字字符），异常输入可能返回 NaN 或 Infinity。</li>
+  </ul>
+
+  <h3>九、免责声明</h3>
+  <p>本工具为学习与参考用途，不构成任何金融建议、投资建议或合同要约。使用者基于本工具输出做出的任何决策，由使用者自行承担责任。涉及实际存贷款业务，请以银行、金融机构的正式合同与对账单为准。</p>
+</div>
+
+<div class="version">v2.1.0-加计算界面 20261022</div>
+
+<script>
+/* ============ 第一部分：JS 源码 ============ */
+const SOURCE_CODE = `/**
+ * 将数值四舍五入到指定小数位（默认 2 位，即「分」）。
+ * 注意：采用 Math.round 实现，对负数行为与银行「四舍五入」可能略有差异。
+ * @param {number} v - 待舍入数值
+ * @param {number} [digits=2] - 小数位数
+ * @returns {number} 舍入后的数值
+ */
+function roundTo(v, digits = 2) {
+  const k = Math.pow(10, digits);
+  return Math.round(v * k) / k;
+}
+
+/**
+ * 校验输入是否为有限非负数字。
+ * @param {*} v - 待校验值
+ * @param {string} name - 参数名（用于错误信息）
+ * @throws {TypeError|RangeError} 类型或范围错误
+ */
+function assertNonNegNumber(v, name) {
+  if (typeof v !== 'number' || Number.isNaN(v)) {
+    throw new TypeError(name + ' 必须为数字');
+  }
+  if (!Number.isFinite(v)) {
+    throw new RangeError(name + ' 必须为有限值');
+  }
+  if (v < 0) {
+    throw new RangeError(name + ' 不能为负数');
+  }
+}
+
+/**
+ * 单利计算。
+ * 公式：利息 I = P × r × t；本息和 A = P + I。
+ * @param {number} principal - 本金（元），≥ 0
+ * @param {number} annualRate - 年利率（小数，如 0.05 表示 5%），≥ 0
+ * @param {number} years - 期限（年，支持小数），≥ 0
+ * @returns {{ principal:number, interest:number, total:number }} 本金、利息、本息和
+ */
+function calculateSimpleInterest(principal, annualRate, years) {
+  assertNonNegNumber(principal, '本金');
+  assertNonNegNumber(annualRate, '年利率');
+  assertNonNegNumber(years, '期限');
+  const interest = principal * annualRate * years;
+  return {
+    principal: roundTo(principal),
+    interest: roundTo(interest),
+    total: roundTo(principal + interest)
+  };
+}
+
+/**
+ * 复利计算。
+ * 公式：A = P × (1 + r/n)^(n×t)。
+ * @param {number} principal - 本金（元），≥ 0
+ * @param {number} annualRate - 年利率（小数），≥ 0
+ * @param {number} years - 期限（年），≥ 0
+ * @param {number} [freq=1] - 每年复利次数（正整数，如 12 表示按月复利）
+ * @returns {{ principal:number, interest:number, total:number, freq:number }}
+ */
+function calculateCompoundInterest(principal, annualRate, years, freq = 1) {
+  assertNonNegNumber(principal, '本金');
+  assertNonNegNumber(annualRate, '年利率');
+  assertNonNegNumber(years, '期限');
+  if (typeof freq !== 'number' || !Number.isInteger(freq) || freq <= 0) {
+    throw new RangeError('复利频次必须为正整数');
+  }
+  const total = principal * Math.pow(1 + annualRate / freq, freq * years);
+  const interest = total - principal;
+  return {
+    principal: roundTo(principal),
+    interest: roundTo(interest),
+    total: roundTo(total),
+    freq: freq
+  };
+}
+
+/**
+ * 等额本息还款计算。
+ * 公式：PMT = P × i × (1+i)^N / ((1+i)^N − 1)，i 为月利率，N 为总月数。
+ * 最后一期做尾差调整，保证累计本金等于 P。
+ * @param {number} principal - 贷款本金（元），> 0
+ * @param {number} annualRate - 年利率（小数），≥ 0
+ * @param {number} months - 还款总月数（正整数），> 0
+ * @returns {{ monthlyPayment:number, totalPayment:number, totalInterest:number, schedule:Array }}
+ *   schedule 元素：{ period, payment, principal, interest, remaining }
+ */
+function calculateEqualInstallment(principal, annualRate, months) {
+  assertNonNegNumber(principal, '本金');
+  assertNonNegNumber(annualRate, '年利率');
+  if (typeof months !== 'number' || !Number.isInteger(months) || months <= 0) {
+    throw new RangeError('还款月数必须为正整数');
+  }
+  if (principal === 0) {
+    return {
+      monthlyPayment: 0,
+      totalPayment: 0,
+      totalInterest: 0,
+      schedule: []
+    };
+  }
+  const i = annualRate / 12;
+  let payment;
+  if (i === 0) {
+    payment = principal / months;
+  } else {
+    const pow = Math.pow(1 + i, months);
+    payment = principal * i * pow / (pow - 1);
+  }
+  const schedule = [];
+  let remaining = principal;
+  let totalInterest = 0;
+  for (let k = 1; k <= months; k++) {
+    const interest = remaining * i;
+    let principalPart;
+    if (k === months) {
+      principalPart = remaining; // 尾差调整
+    } else {
+      principalPart = payment - interest;
+      if (principalPart > remaining) principalPart = remaining;
+    }
+    const actualPayment = principalPart + interest;
+    remaining -= principalPart;
+    totalInterest += interest;
+    schedule.push({
+      period: k,
+      payment: roundTo(actualPayment),
+      principal: roundTo(principalPart),
+      interest: roundTo(interest),
+      remaining: roundTo(Math.max(remaining, 0))
+    });
+  }
+  return {
+    monthlyPayment: roundTo(payment),
+    totalPayment: roundTo(schedule.reduce((s, x) => s + x.payment, 0)),
+    totalInterest: roundTo(totalInterest),
+    schedule: schedule
+  };
+}
+
+/**
+ * 等额本金还款计算。
+ * 每月本金 = P / N；第 k 月利息 = (P − (k−1)×P/N) × i。
+ * @param {number} principal - 贷款本金（元），> 0
+ * @param {number} annualRate - 年利率（小数），≥ 0
+ * @param {number} months - 还款总月数（正整数），> 0
+ * @returns {{ firstPayment:number, lastPayment:number, totalPayment:number, totalInterest:number, schedule:Array }}
+ */
+function calculateEqualPrincipal(principal, annualRate, months) {
+  assertNonNegNumber(principal, '本金');
+  assertNonNegNumber(annualRate, '年利率');
+  if (typeof months !== 'number' || !Number.isInteger(months) || months <= 0) {
+    throw new RangeError('还款月数必须为正整数');
+  }
+  if (principal === 0) {
+    return {
+      firstPayment: 0, lastPayment: 0,
+      totalPayment: 0, totalInterest: 0,
+      schedule: []
+    };
+  }
+  const i = annualRate / 12;
+  const principalPart = principal / months;
+  const schedule = [];
+  let remaining = principal;
+  let totalInterest = 0;
+  for (let k = 1; k <= months; k++) {
+    const interest = remaining * i;
+    let pPart = principalPart;
+    if (k === months) pPart = remaining; // 尾差调整
+    const payment = pPart + interest;
+    remaining -= pPart;
+    totalInterest += interest;
+    schedule.push({
+      period: k,
+      payment: roundTo(payment),
+      principal: roundTo(pPart),
+      interest: roundTo(interest),
+      remaining: roundTo(Math.max(remaining, 0))
+    });
+  }
+  return {
+    firstPayment: schedule[0].payment,
+    lastPayment: schedule[schedule.length - 1].payment,
+    totalPayment: roundTo(schedule.reduce((s, x) => s + x.payment, 0)),
+    totalInterest: roundTo(totalInterest),
+    schedule: schedule
+  };
+}
+
+/**
+ * 对比多种还款/计息方式，返回结构化对比结果。
+ * @param {number} principal - 本金
+ * @param {number} annualRate - 年利率
+ * @param {number} months - 期限（月）
+ * @returns {{ equalInstallment:object, equalPrincipal:object, diff:object }}
+ */
+function compareRepaymentPlans(principal, annualRate, months) {
+  const a = calculateEqualInstallment(principal, annualRate, months);
+  const b = calculateEqualPrincipal(principal, annualRate, months);
+  return {
+    equalInstallment: { totalPayment: a.totalPayment, totalInterest: a.totalInterest, monthlyPayment: a.monthlyPayment },
+    equalPrincipal: { totalPayment: b.totalPayment, totalInterest: b.totalInterest, firstPayment: b.firstPayment, lastPayment: b.lastPayment },
+    diff: {
+      interestSaved: roundTo(a.totalInterest - b.totalInterest),
+      firstPaymentMore: roundTo(b.firstPayment - a.monthlyPayment)
+    }
+  };
+}`;
+
+document.getElementById('srcCode').textContent = SOURCE_CODE;
+
+/* ============ 第二部分：单元测试 ============ */
+const TEST_CODE = `// 简易测试框架
+let passed = 0, failed = 0, total = 0;
+const failures = [];
+
+function assert(cond, msg) {
+  total++;
+  if (cond) { passed++; }
+  else { failed++; failures.push('✗ ' + msg); }
+}
+function assertClose(a, b, eps, msg) {
+  assert(Math.abs(a - b) <= eps, msg + ' (期望 ' + b + '，实际 ' + a + '，容差 ' + eps + ')');
+}
+function assertThrows(fn, msg) {
+  total++;
+  try { fn(); failed++; failures.push('✗ ' + msg + '（未抛出异常）'); }
+  catch (e) { passed++; }
+}
+
+// ===== 单利测试 =====
+// 1. 常规值
+let r = calculateSimpleInterest(100000, 0.025, 3);
+assertClose(r.interest, 7500, 0.01, '单利#1 10万2.5%3年利息');
+assertClose(r.total, 107500, 0.01, '单利#1 本息和');
+
+// 2. 短期
+r = calculateSimpleInterest(10000, 0.036, 0.5);
+assertClose(r.interest, 180, 0.01, '单利#2 1万3.6%半年');
+
+// 3. 零本金
+r = calculateSimpleInterest(0, 0.05, 2);
+assert(r.interest === 0 && r.total === 0, '单利#3 零本金');
+
+// 4. 零利率
+r = calculateSimpleInterest(100000, 0, 5);
+assert(r.interest === 0 && r.total === 100000, '单利#4 零利率');
+
+// 5. 零期限
+r = calculateSimpleInterest(100000, 0.05, 0);
+assert(r.interest === 0, '单利#5 零期限');
+
+// 6. 高利率
+r = calculateSimpleInterest(10000, 0.24, 1);
+assertClose(r.interest, 2400, 0.01, '单利#6 高利率24%');
+
+// 7. 小数本金
+r = calculateSimpleInterest(1234.56, 0.03, 2);
+assertClose(r.interest, 74.07, 0.01, '单利#7 小数本金');
+
+// 8. 异常：负本金
+assertThrows(() => calculateSimpleInterest(-100, 0.05, 1), '单利#8 负本金应抛错');
+
+// 9. 异常：NaN
+assertThrows(() => calculateSimpleInterest(NaN, 0.05, 1), '单利#9 NaN应抛错');
+
+// 10. 异常：Infinity
+assertThrows(() => calculateSimpleInterest(Infinity, 0.05, 1), '单利#10 Infinity应抛错');
+
+// ===== 复利测试 =====
+// 11. 年复利
+r = calculateCompoundInterest(10000, 0.05, 2, 1);
+assertClose(r.total, 11025, 0.01, '复利#11 年复利1万5%2年');
+
+// 12. 月复利
+r = calculateCompoundInterest(10000, 0.05, 2, 12);
+assertClose(r.total, 11049.41, 0.1, '复利#12 月复利');
+
+// 13. 日复利
+r = calculateCompoundInterest(10000, 0.05, 1, 365);
+assertClose(r.total, 10512.67, 0.1, '复利#13 日复利');
+
+// 14. 零利率
+r = calculateCompoundInterest(10000, 0, 5, 12);
+assertClose(r.total, 10000, 0.01, '复利#14 零利率');
+
+// 15. 零本金
+r = calculateCompoundInterest(0, 0.05, 5, 12);
+assert(r.total === 0, '复利#15 零本金');
+
+// 16. 零期限
+r = calculateCompoundInterest(10000, 0.05, 0, 12);
+assertClose(r.total, 10000, 0.01, '复利#16 零期限');
+
+// 17. 复利 > 单利
+const s = calculateSimpleInterest(10000, 0.05, 5);
+const c = calculateCompoundInterest(10000, 0.05, 5, 1);
+assert(c.total >= s.total, '复利#17 复利≥单利');
+
+// 18. 异常：非整数频次
+assertThrows(() => calculateCompoundInterest(1000, 0.05, 1, 2.5), '复利#18 非整数频次');
+
+// 19. 异常：零频次
+assertThrows(() => calculateCompoundInterest(1000, 0.05, 1, 0), '复利#19 零频次');
+
+// 20. 异常：负利率
+assertThrows(() => calculateCompoundInterest(1000, -0.05, 1, 1), '复利#20 负利率');
+
+// ===== 等额本息测试 =====
+// 21. 标准房贷
+r = calculateEqualInstallment(1000000, 0.042, 360);
+assertClose(r.monthlyPayment, 4889.94, 0.1, '等额本息#21 100万4.2%30年');
+assertClose(r.totalInterest, 760377.61, 1, '等额本息#21 总利息');
+
+// 22. 短期
+r = calculateEqualInstallment(10000, 0.06, 12);
+assertClose(r.monthlyPayment, 860.66, 0.1, '等额本息#22 1万6%12月');
+
+// 23. 零利率
+r = calculateEqualInstallment(12000, 0, 12);
+assertClose(r.monthlyPayment, 1000, 0.01, '等额本息#23 零利率');
+
+// 24. 1期
+r = calculateEqualInstallment(10000, 0.06, 1);
+assertClose(r.monthlyPayment, 10050, 0.1, '等额本息#24 1期');
+
+// 25. 尾差：累计本金应等于 P
+r = calculateEqualInstallment(100000, 0.05, 36);
+const sumP = r.schedule.reduce((s, x) => s + x.principal, 0);
+assertClose(sumP, 100000, 0.05, '等额本息#25 累计本金=本金');
+
+// 26. 最后一期剩余应为 0
+assert(r.schedule[r.schedule.length - 1].remaining === 0, '等额本息#26 末位剩余=0');
+
+// 27. 零本金
+r = calculateEqualInstallment(0, 0.05, 12);
+assert(r.monthlyPayment === 0 && r.totalInterest === 0, '等额本息#27 零本金');
+
+// 28. 异常：0月
+assertThrows(() => calculateEqualInstallment(10000, 0.05, 0), '等额本息#28 0月');
+
+// 29. 异常：负月
+assertThrows(() => calculateEqualInstallment(10000, 0.05, -1), '等额本息#29 负月');
+
+// 30. 异常：非整数月
+assertThrows(() => calculateEqualInstallment(10000, 0.05, 12.5), '等额本息#30 非整数月');
+
+// ===== 等额本金测试 =====
+// 31. 标准
+r = calculateEqualPrincipal(1000000, 0.042, 360);
+assertClose(r.firstPayment, 6166.67, 0.1, '等额本金#31 首月');
+assertClose(r.lastPayment, 2788.43, 0.1, '等额本金#31 末月');
+assertClose(r.totalInterest, 631750, 1, '等额本金#31 总利息');
+
+// 32. 每月本金固定
+r = calculateEqualPrincipal(12000, 0.06, 12);
+const pParts = r.schedule.map(x => x.principal);
+const allSame = pParts.every(v => Math.abs(v - 1000) < 0.01);
+assert(allSame, '等额本金#32 每月本金相等');
+
+// 33. 利息递减
+const interests = r.schedule.map(x => x.interest);
+let decreasing = true;
+for (let i = 1; i < interests.length; i++) if (interests[i] >= interests[i-1]) decreasing = false;
+assert(decreasing, '等额本金#33 利息递减');
+
+// 34. 累计本金
+const sumP2 = r.schedule.reduce((s, x) => s + x.principal, 0);
+assertClose(sumP2, 12000, 0.05, '等额本金#34 累计本金=本金');
+
+// 35. 零利率
+r = calculateEqualPrincipal(12000, 0, 12);
+assertClose(r.totalInterest, 0, 0.01, '等额本金#35 零利率');
+
+// 36. 1期
+r = calculateEqualPrincipal(10000, 0.06, 1);
+assertClose(r.firstPayment, 10050, 0.1, '等额本金#36 1期');
+
+// 37. 零本金
+r = calculateEqualPrincipal(0, 0.05, 12);
+assert(r.totalInterest === 0, '等额本金#37 零本金');
+
+// 38. 异常：0月
+assertThrows(() => calculateEqualPrincipal(10000, 0.05, 0), '等额本金#38 0月');
+
+// 39. 异常：负月
+assertThrows(() => calculateEqualPrincipal(10000, 0.05, -1), '等额本金#39 负月');
+
+// 40. 异常：非整数月
+assertThrows(() => calculateEqualPrincipal(10000, 0.05, 12.5), '等额本金#40 非整数月');
+
+// ===== 精度与对比 =====
+// 41. 浮点精度：0.1+0.2 问题不应影响元位
+r = calculateSimpleInterest(0.1, 0.03, 1);
+assert(r.interest === 0, '精度#41 极小本金利息为0');
+
+// 42. 大金额
+r = calculateEqualInstallment(10000000, 0.05, 360);
+assert(Number.isFinite(r.monthlyPayment), '精度#42 大金额有限');
+
+// 43. 对比：等额本息总利息 > 等额本金
+const cmp = compareRepaymentPlans(1000000, 0.05, 360);
+assert(cmp.diff.interestSaved > 0, '精度#43 等额本息利息更多');
+
+// 44. 对比：等额本金首月 > 等额本息月供
+assert(cmp.diff.firstPaymentMore > 0, '精度#44 等额本金首月更高');
+
+// 45. 利率精度：0.0001 级别
+r = calculateEqualInstallment(100000, 0.0001, 12);
+assert(Number.isFinite(r.monthlyPayment), '精度#45 极低利率可算');
+
+// 输出结果
+console.log('通过 ' + passed + ' / 共 ' + total + '（失败 ' + failed + '）');
+if (failures.length) console.log(failures.join('\\n'));`;
+
+document.getElementById('testCode').textContent = TEST_CODE;
+
+/* 执行测试 */
+(function runTests() {
+  const logs = [];
+  const origLog = console.log;
+  console.log = function() {
+    const msg = Array.from(arguments).map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
+    logs.push(msg);
+  };
+  try {
+    // 注入源码（eval 内 function 声明不外泄，显式挂全局）
+    (0, eval)(SOURCE_CODE + '\n;window.assertNonNegNumber=assertNonNegNumber;window.calculateCompoundInterest=calculateCompoundInterest;window.calculateEqualInstallment=calculateEqualInstallment;window.calculateEqualPrincipal=calculateEqualPrincipal;window.calculateSimpleInterest=calculateSimpleInterest;window.compareRepaymentPlans=compareRepaymentPlans;window.roundTo=roundTo;');
+    // 执行测试
+    eval(TEST_CODE);
+  } catch (e) {
+    logs.push('执行异常：' + e.message);
+  }
+  console.log = origLog;
+  document.getElementById('testResult').textContent = logs.join('\n');
+})();
+
+/* 标签页切换 */
+// ====== 计算界面逻辑（v2.1.0 新增） ======
+function _n(id){ var e=document.getElementById(id); if(!e) return NaN; var v=String(e.value).trim(); return v===''?NaN:parseFloat(v); }
+function _setOut(oid, html){ var o=document.getElementById(oid); o.innerHTML=html; o.classList.add('show'); }
+function _clrOut(oid){ var o=document.getElementById(oid); o.classList.remove('show'); }
+function _setErr(eid, msg){ var e=document.getElementById(eid); if(msg){ e.textContent='⚠ '+msg; e.classList.add('show'); } else { e.classList.remove('show'); } }
+function _fmt(v){ return (Math.round(v*100)/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function calcSI(){
+  _setErr('siErr',''); _clrOut('siOut');
+  var P=_n('siP'), R=_n('siR'), Y=_n('siY');
+  if(isNaN(P)||isNaN(R)||isNaN(Y)){ _setErr('siErr','三项都要填'); return; }
+  try{
+    var r=calculateSimpleInterest(P, R/100, Y);
+    _setOut('siOut','<div><span class="k">利息：</span><span class="v">'+_fmt(r.interest)+' 元</span></div>'+
+      '<div><span class="k">本息合计：</span><span class="v">'+_fmt(r.total||(P+r.interest))+' 元</span></div>');
+  }catch(e){ _setErr('siErr', e.message); }
+}
+function calcCI(){
+  _setErr('ciErr',''); _clrOut('ciOut');
+  var P=_n('ciP'), R=_n('ciR'), Y=_n('ciY'), F=parseInt(document.getElementById('ciF').value,10);
+  if(isNaN(P)||isNaN(R)||isNaN(Y)){ _setErr('ciErr','金额、利率、年数都要填'); return; }
+  try{
+    var r=calculateCompoundInterest(P, R/100, Y, F);
+    _setOut('ciOut','<div><span class="k">本息合计：</span><span class="v">'+_fmt(r.total||r.amount||0)+' 元</span></div>'+
+      '<div><span class="k">利息：</span><span class="v">'+_fmt(r.interest||((r.total||r.amount||0)-P))+' 元</span></div>'+
+      '<div style="font-size:12px;color:#8899aa;margin-top:6px">按每年复利 '+F+' 次计算</div>');
+  }catch(e){ _setErr('ciErr', e.message); }
+}
+function calcLoan(){
+  _setErr('lnErr',''); _clrOut('lnOut');
+  var P=_n('lnP'), R=_n('lnR'), M=_n('lnM');
+  if(isNaN(P)||isNaN(R)||isNaN(M)){ _setErr('lnErr','贷款金额、利率、期数都要填'); return; }
+  if(M<1||M!==Math.floor(M)){ _setErr('lnErr','期数必须是正整数（月）'); return; }
+  try{
+    var a=calculateEqualInstallment(P, R/100, M);
+    var b=calculateEqualPrincipal(P, R/100, M);
+    var html='<div style="margin-bottom:10px"><b style="color:#1a5276">等额本息</b>（每月还款固定）</div>'+
+      '<div><span class="k">每月还款：</span><span class="v">'+_fmt(a.monthlyPayment)+' 元</span></div>'+
+      '<div><span class="k">总利息：</span><span class="v">'+_fmt(a.totalInterest)+' 元</span></div>'+
+      '<div><span class="k">还款总额：</span><span class="v">'+_fmt(a.totalPayment)+' 元</span></div>'+
+      '<hr style="border:none;border-top:1px dashed #b8d4e8;margin:14px 0">'+
+      '<div style="margin-bottom:10px"><b style="color:#1a5276">等额本金</b>（本金固定、利息递减）</div>'+
+      '<div><span class="k">首月还款：</span><span class="v">'+_fmt(b.firstPayment)+' 元</span></div>'+
+      '<div><span class="k">末月还款：</span><span class="v">'+_fmt(b.lastPayment)+' 元</span></div>'+
+      '<div><span class="k">总利息：</span><span class="v">'+_fmt(b.totalInterest)+' 元</span></div>'+
+      '<div><span class="k">还款总额：</span><span class="v">'+_fmt(b.totalPayment)+' 元</span></div>';
+    if(a.totalInterest!==undefined && b.totalInterest!==undefined){
+      var diff=a.totalInterest-b.totalInterest;
+      html+='<div style="margin-top:12px;padding:10px 12px;background:#fff8e1;border-radius:6px;font-size:13px;color:#8a6d3b">💡 等额本金总利息比等额本息 '+(diff>0?'少':'多')+' <b>'+_fmt(Math.abs(diff))+' 元</b>，但前期月供更高。</div>';
+    }
+    _setOut('lnOut', html);
+  }catch(e){ _setErr('lnErr', e.message); }
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.panel).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

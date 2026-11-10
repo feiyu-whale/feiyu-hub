@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>择日查找 · 建除十二神 | 传统民俗择日工具</title>
+<style>
+:root{
+  --bg:#13100d; --paper:#f6efdd; --paper2:#efe4c9; --ink:#2b2118; --ink2:#6b5a41;
+  --gold:#d9a441; --gold2:#f0c46a; --zhu:#b23a2b; --zhu2:#d4553f;
+  --yi:#1e7a45; --ji:#b23a2b; --line:rgba(43,33,24,.16);
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong","SimSun",serif;
+  --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC","Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:#e9dfc8;font-family:var(--sans);font-size:15px;line-height:1.65;min-height:100vh;overflow-x:hidden}
+::selection{background:rgba(217,164,65,.4)}
+.amb{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.amb::before,.amb::after{content:"";position:absolute;border-radius:50%}
+.amb::before{width:64vmax;height:64vmax;left:-20vmax;top:-26vmax;background:radial-gradient(circle,rgba(178,58,43,.20),transparent 62%);animation:brA 16s ease-in-out infinite alternate}
+.amb::after{width:52vmax;height:52vmax;right:-18vmax;bottom:-20vmax;background:radial-gradient(circle,rgba(217,164,65,.13),transparent 60%);animation:brB 21s ease-in-out infinite alternate}
+@keyframes brA{from{transform:translate(0,0) scale(1)}to{transform:translate(5vmax,4vmax) scale(1.12)}}
+@keyframes brB{from{transform:translate(0,0) scale(1.08)}to{transform:translate(-5vmax,-3vmax) scale(.96)}}
+.wrap{max-width:640px;margin:0 auto;padding:26px 16px 90px}
+.mast{display:flex;gap:16px;align-items:center;margin-bottom:16px}
+.seal{flex:none;width:60px;height:60px;background:linear-gradient(150deg,#c14434,#8e2d20);color:#f8ecd6;font-family:var(--serif);font-size:32px;font-weight:700;display:grid;place-items:center;border-radius:9px;transform:rotate(-5deg);box-shadow:0 8px 20px rgba(178,58,43,.35),inset 0 0 0 2px rgba(248,236,214,.35);transition:transform .35s}
+.seal:hover{transform:rotate(3deg) scale(1.06)}
+h1{font-family:var(--serif);font-size:31px;color:#f4e7c8;letter-spacing:3px;line-height:1.2}
+.sub{font-size:13.5px;color:#b7a67f;letter-spacing:1px;margin-top:3px}
+.range{margin:0 0 14px;padding:11px 14px;border-radius:10px;font-size:15.5px;font-weight:700;color:#ffd98a;background:rgba(217,164,65,.10);border:1px solid rgba(217,164,65,.38);letter-spacing:.5px}
+.range small{display:block;font-weight:400;font-size:13px;color:#c8b78e;margin-top:2px;letter-spacing:0}
+.notice{border-left:4px solid var(--zhu2);background:rgba(178,58,43,.13);padding:12px 14px;border-radius:0 10px 10px 0;font-size:13.5px;color:#f0d9c6;margin-bottom:24px}
+.notice b{color:#ffb0a0}
+.card{background:linear-gradient(175deg,#f8f1e0,#efe3c8);color:var(--ink);border-radius:14px;padding:18px 16px;box-shadow:0 14px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.55);margin-bottom:18px}
+h2{font-family:var(--serif);font-size:19px;letter-spacing:2px;display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#3a2c1c}
+h2::before{content:"";width:10px;height:10px;background:var(--zhu);border-radius:2px;transform:rotate(45deg);flex:none}
+.mrow{display:flex;gap:8px;align-items:stretch}
+.nbtn{flex:none;width:44px;border-radius:10px;border:1px solid var(--line);background:#fbf6e8;color:#5a4930;font-size:19px;cursor:pointer;transition:.2s}
+.nbtn:hover{background:var(--zhu);color:#f8ecd6;transform:translateY(-1px)}
+.nbtn:active{transform:translateY(0)}
+input[type=month]{flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:#fbf6e8;color:var(--ink);font-size:16px;padding:0 12px;font-family:inherit}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.chip{border:1px solid var(--line);background:#fbf6e8;border-radius:999px;padding:8px 2px;font-size:13.5px;color:#5a4930;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;transition:transform .18s,background .18s,color .18s,border-color .18s,box-shadow .18s;font-family:inherit;line-height:1.25}
+.chip .em{font-size:17px}
+.chip:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 4px 10px rgba(0,0,0,.12)}
+.chip.on{background:var(--zhu);border-color:var(--zhu);color:#f8ecd6;box-shadow:0 5px 14px rgba(178,58,43,.4)}
+.chip.on::after{content:"所选";font-size:10.5px;opacity:.85}
+.chip.wide{grid-column:span 4;flex-direction:row;gap:8px;padding:9px}
+.hint{font-size:13px;color:var(--ink2);margin-top:10px}
+label.tgl{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#5a4930;margin-top:12px;cursor:pointer;user-select:none}
+label.tgl input{accent-color:var(--zhu);width:16px;height:16px}
+#outOfRange{border:1px dashed rgba(217,164,65,.5);background:rgba(217,164,65,.07);color:#ffd98a;padding:22px 16px;border-radius:12px;text-align:center;font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:18px}
+#outOfRange small{display:block;font-weight:400;font-size:13px;color:#c8b78e;margin-top:6px}
+.hidden{display:none!important}
+.ov{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.ov .tag{background:#fbf6e8;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;color:#5a4930}
+.ov .tag b{color:#8e2d20;font-family:var(--serif)}
+.sum{font-size:14.5px;color:#e6d9b8;margin-bottom:12px}
+.sum b{color:var(--gold2);font-size:20px;font-family:var(--serif);padding:0 3px}
+.sum .why{color:#a2916c;font-size:13px}
+.day{display:flex;gap:12px;background:linear-gradient(175deg,#f8f1e0,#efe3c8);color:var(--ink);border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.35);border-left:5px solid #b9a98a;opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease,box-shadow .25s;position:relative}
+.day.in{opacity:1;transform:none}
+.day:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(0,0,0,.5)}
+.day.hit{border-left-color:var(--gold)}
+.day.no{border-left-color:#6d6252;background:linear-gradient(175deg,#efe7d4,#e6dbc0);opacity:0}
+.day.no.in{opacity:.92}
+.dL{flex:none;width:64px;text-align:center;border-right:1px dashed var(--line);padding-right:10px}
+.dNum{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1.05;color:#3a2c1c}
+.dW{font-size:13px;color:var(--ink2)}
+.dGz{font-size:13px;color:#8e2d20;font-weight:600;letter-spacing:1px}
+.dM{flex:1;min-width:0}
+.dSolar{font-size:13.5px;color:#5a4930}
+.dLunar{font-size:13px;color:var(--ink2)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.bdg{font-size:13px;padding:2px 9px;border-radius:6px;font-weight:600;letter-spacing:.5px;white-space:nowrap}
+.b12{color:#fff}
+.bhb.h{background:#3a2f1c;color:var(--gold2);border:1px solid rgba(217,164,65,.55)}
+.bhb.b{background:#e7dfcd;color:#6a5c46;border:1px solid rgba(43,33,24,.25)}
+.dV{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:48px}
+.vd{font-family:var(--serif);font-size:17px;font-weight:700;padding:4px 9px;border-radius:8px;white-space:nowrap}
+.vd.y{background:rgba(30,122,69,.14);color:var(--yi);border:1px solid rgba(30,122,69,.4)}
+.vd.n{background:rgba(178,58,43,.10);color:var(--ji);border:1px solid rgba(178,58,43,.35)}
+.vd.p{background:rgba(43,33,24,.07);color:var(--ink2);border:1px solid var(--line)}
+.car{font-size:13px;color:#a2916c;transition:transform .3s}
+.day.open .car{transform:rotate(180deg)}
+.dD{grid-column:1/-1;display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s ease}
+.day.open .dD{grid-template-rows:1fr}
+.dDi{overflow:hidden;border-top:1px dashed transparent}
+.day.open .dDi{border-top-color:var(--line);margin-top:10px;padding-top:10px}
+.dD h4{font-size:13px;color:#8e2d20;margin:6px 0 4px;letter-spacing:2px;font-weight:700}
+.dD ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.dD li{font-size:13px;padding:2px 9px;border-radius:6px;background:#fbf6e8;border:1px solid var(--line);color:#5a4930}
+.dD li.ok{color:var(--yi);border-color:rgba(30,122,69,.4);background:rgba(30,122,69,.08)}
+.dD li.no{color:var(--ji);border-color:rgba(178,58,43,.35);background:rgba(178,58,43,.06)}
+.dD .tip{font-size:12.5px;color:var(--ink2);margin-top:8px}
+.none{border:1px dashed rgba(217,164,65,.45);border-radius:12px;padding:20px 16px;text-align:center;color:#e6d9b8;font-size:14.5px;margin-bottom:18px}
+.none small{display:block;color:#a2916c;font-size:13px;margin-top:6px}
+.jq{margin-bottom:18px}
+.jq .jcard{background:rgba(246,239,221,.06);border:1px solid rgba(217,164,65,.25);border-radius:12px;padding:14px 16px}
+.jq h3{font-family:var(--serif);font-size:16px;color:var(--gold2);letter-spacing:2px;margin-bottom:8px}
+.jq .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed rgba(233,223,200,.15);font-size:14.5px}
+.jq .row:last-of-type{border-bottom:none}
+.jq .row b{font-family:var(--serif);color:#f4e7c8;letter-spacing:1px}
+.jq .row span{color:#c8b78e;font-variant-numeric:tabular-nums}
+.jq .note{font-size:12.5px;color:#a2916c;margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 26px}
+.legend .it{font-size:13px;color:#c8b78e;background:rgba(246,239,221,.06);border:1px solid rgba(233,223,200,.15);border-radius:999px;padding:3px 11px}
+footer{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease}
+footer.in{opacity:1;transform:none}
+.foot{background:rgba(246,239,221,.05);border:1px solid rgba(233,223,200,.14);border-radius:14px;padding:18px 16px;font-size:13.5px;color:#cfc2a2}
+.foot h3{font-family:var(--serif);font-size:17px;color:#f4e7c8;letter-spacing:2px;margin-bottom:10px}
+.foot h4{font-size:14px;color:var(--gold2);margin:12px 0 4px;letter-spacing:1px}
+.foot ul{padding-left:1.3em}
+.foot li{margin:4px 0}
+.foot b{color:#e9dfc8}
+.colophon{text-align:center;font-size:13px;color:#8d7f61;margin-top:20px;letter-spacing:1px}
+.ver{position:fixed;right:10px;bottom:8px;font-size:13px;color:rgba(233,223,200,.5);z-index:5;letter-spacing:.3px;pointer-events:none}
+@media (max-width:420px){
+  h1{font-size:26px}
+  .chips{grid-template-columns:repeat(3,1fr)}
+  .chip.wide{grid-column:span 3}
+  .dL{width:56px;padding-right:8px}
+  .dNum{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .day,.day.no{opacity:1;transform:none}
+  footer{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<div class="amb" aria-hidden="true"></div>
+<div class="wrap">
+
+<header>
+  <div class="mast">
+    <div class="seal" aria-hidden="true">历</div>
+    <div>
+      <h1>择日查找</h1>
+      <p class="sub">建除十二神 · 黄黑道日 · 按月查宜忌</p>
+    </div>
+  </div>
+  <p class="range">📏 本工具支持 1900–2100 年
+    <small>农历数据采用标准数据表（紫金山天文台编算口径，与 GB/T 33661-2017《农历的编算和颁行》一致）；超出该区间一律不做计算、不外推。</small>
+  </p>
+  <p class="notice">⚠️ <b>显著声明：</b>本工具属<b>传统民俗择日</b>（建除十二神 / 黄黑道日），建除法出自《协纪辨方书》，是传统术数，<b>不是国家标准</b>，<b>无科学依据，仅供文化参考</b>。婚丧嫁娶、开业签约等要事请以实际情况为准。</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>查询条件</h2>
+    <div class="mrow">
+      <button type="button" id="mPrev" class="nbtn" aria-label="上一月">‹</button>
+      <input type="month" id="mIn" min="1900-01" max="2100-12" aria-label="选择月份">
+      <button type="button" id="mNext" class="nbtn" aria-label="下一月">›</button>
+      <button type="button" id="mToday" class="nbtn" style="width:auto;padding:0 12px;font-size:14px">今月</button>
+    </div>
+    <p class="hint">第一步：选择公历月份（1900 年 1 月 至 2100 年 12 月）。</p>
+    <div class="chips" id="chips" style="margin-top:14px"></div>
+    <label class="tgl"><input type="checkbox" id="allDays"> 显示全月所有日子（含不宜之日，便于对比）</label>
+    <p class="hint">第二步：点选事项后自动筛选；再点一次可取消。点开任意日子卡片可看全部 12 项宜忌明细。</p>
+  </section>
+
+  <div id="outOfRange" class="hidden">⛔ 超出范围，不做计算<small>本工具仅支持 1900–2100 年，不外推。其他年份需查《中国天文年历》原文。</small></div>
+
+  <section id="results">
+    <div class="ov" id="ov"></div>
+    <p class="sum" id="sum"></p>
+    <div id="list"></div>
+    <div id="noneBox" class="none hidden"></div>
+  </section>
+
+  <section class="jq" id="jq"></section>
+
+  <div class="legend">
+    <span class="it">🟨 黄道日（青龙·明堂·金匮·天德·玉堂·司命）</span>
+    <span class="it">⬛ 黑道日（天刑·朱雀·白虎·天牢·玄武·勾陈）</span>
+    <span class="it">左侧色条：金＝所选事项宜 · 灰＝不宜</span>
+  </div>
+</main>
+
+<footer id="foot">
+  <div class="foot">
+    <h3>📜 算法依据与局限</h3>
+    <h4>一、历法部分（有天文依据）</h4>
+    <ul>
+      <li><b>农历日期：</b>采用标准农历数据表（1900–2100 年，紫金山天文台编算口径，与 GB/T 33661-2017《农历的编算和颁行》一致），按表查算，不作任何近似推算或外推。超出 1900–2100 年一律提示「超出范围，不做计算」，需查《中国天文年历》原文。</li>
+      <li><b>节气时刻：</b>由太阳视黄经数值算法计算（J2000.0 起算的儒略日 → 太阳几何黄经 + 黄经章动 + 光行差，反解目标黄经），时刻已换算为北京时间（东八区）。精度约 <b>±1~2 分钟</b>，与《中国天文年历》刊值可能存在分钟级差异。</li>
+      <li><b>干支纪日：</b>按连续 60 日循环推算（以 1970-01-01 为庚午日锚定），纪日循环两千余年未间断，结果可靠；年柱以立春为界、月柱以十二节气分月。</li>
+    </ul>
+    <h4>二、择日部分（传统民俗，无科学依据）</h4>
+    <ul>
+      <li><b>建除十二神：</b>出《协纪辨方书》卷三十六等，以月建（节气月地支）起「建」，与日支顺排十二值。本工具宜忌清单为常见通书的<b>简化归纳</b>，历代版本互有出入，仅列通行说法。</li>
+      <li><b>黄黑道日：</b>依「正七起子、二八起寅…」口诀排青龙等十二日神，属传统术数。</li>
+      <li>本工具<b>不考虑</b>二十八宿、彭祖百忌、冲煞方位、个人生辰八字及各类神煞叠加，与市面「老黄历」结论可能不一致。</li>
+      <li>择日习俗<b>无科学依据，不是国家标准</b>，仅供民俗文化参考，请勿据此决定医疗、法律、投资等事项。</li>
+    </ul>
+    <h4>三、不适用情形</h4>
+    <ul>
+      <li>1900 年以前、2100 年以后的日期（不外推，需查官方历书）；</li>
+      <li>北京时间（东八区）以外的时区换算；</li>
+      <li>需要分钟级以下节气精度、或需与官方刊值完全一致的场景（需查《中国天文年历》原文）。</li>
+    </ul>
+  </div>
+  <p class="colophon">历法有凭 · 择日从俗 · 仅供文化参考</p>
+</footer>
+
+</div>
+<div class="ver">v1.0.0-建除择日 20261021</div>
+<noscript><p style="text-align:center;color:#c8b78e">本页面需要启用 JavaScript 才能计算。</p></noscript>
+
+<script>
+"use strict";
+/* ================= 基础常量 ================= */
+const GS=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const ZS=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const LUNAR_M=["正","二","三","四","五","六","七","八","九","十","冬","腊"];
+const TERM24=[["小寒",285],["大寒",300],["立春",315],["雨水",330],["惊蛰",345],["春分",0],["清明",15],["谷雨",30],["立夏",45],["小满",60],["芒种",75],["夏至",90],["小暑",105],["大暑",120],["立秋",135],["处暑",150],["白露",165],["秋分",180],["寒露",195],["霜降",210],["立冬",225],["小雪",240],["大雪",255],["冬至",270]];
+const JIE_IDX=[2,4,6,8,10,12,14,16,18,20,22,0]; /* 立春..小寒 在 TERM24 的下标 */
+const J12N=["建","除","满","平","定","执","破","危","成","收","开","闭"];
+const J12C=["#c2452f","#2e8b57","#c98a2b","#8a7f6c","#3b6ea5","#5d7a34","#7a3b5e","#a5622f","#b8860b","#5b7065","#1e7a45","#55627a"];
+const HB12=["青龙","明堂","天刑","朱雀","金匮","天德","白虎","玉堂","天牢","玄武","司命","勾陈"];
+const HB_H=[1,1,0,0,1,1,0,1,0,0,1,0];
+const ACTS=[
+ {n:"嫁娶",e:"💍",s:"成开皆可用，闭除平定攻"},
+ {n:"开市",e:"🏮",s:"成开多吉利，破闭不宜商"},
+ {n:"动土",e:"⛏️",s:"成开除危可，建破闭须防"},
+ {n:"出行",e:"🧳",s:"成开除危吉，破闭莫登程"},
+ {n:"安床",e:"🛏️",s:"成开除危定，破闭不宜安"},
+ {n:"搬迁",e:"📦",s:"成开除危可，破闭忌迁移"},
+ {n:"求财",e:"💰",s:"成开满利求，破闭财难聚"},
+ {n:"祈福",e:"🙏",s:"成开除危吉，破闭不宜祈"},
+ {n:"求医",e:"🩺",s:"除成开可治，建满破闭凶"},
+ {n:"签约",e:"✒️",s:"成开定执吉，破闭忌立券"},
+ {n:"上任",e:"🎖️",s:"成开除危吉，破闭莫赴任"},
+ {n:"安葬",e:"🕯️",s:"成开除危可，建破闭须防"}
+];
+/* 宜忌矩阵：下标对应 建除满平定执破危成收开闭；Y=宜 J=忌 -=平 */
+const M12=[
+ "Y---Y--Y-Y--", /* 嫁娶 */
+ "Y---Y-Y-Y-Y-", /* 开市 */
+ "-Y--Y-Y-Y-Y-", /* 动土 */
+ "Y-Y--Y--YY--", /* 出行 */
+ "-Y--Y-Y-Y-Y-", /* 安床 */
+ "-Y--Y-Y-Y-Y-", /* 搬迁 */
+ "--Y---Y-YY--", /* 求财 */
+ "-Y----Y-YY--", /* 祈福 */
+ "-Y----Y-Y-Y-", /* 求医 */
+ "---Y--Y-Y-Y-", /* 签约 */
+ "Y---Y-Y-Y-Y-", /* 上任 */
+ "-Y----Y-Y-Y-"  /* 安葬 */
+];
+
+/* ============ 农历标准数据表（1900–2100，紫金山天文台口径） ============
+   每年 4 位十六进制：
+   bit16-13：闰月月数（0=无闰）；bit12-1：第1~12月大小（1=30天）；
+   bit0：闰月大小（1=30天）。 */
+const LUNAR_INFO=[
+0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x05ac0,0x0ab60,0x096d5,0x092e0,
+0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06aa0,0x1a6c4,0x0aae0,
+0x092e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,
+0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,
+0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,
+0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a4d0,0x0d150,0x0f252,
+0x0d520];
+
+/* ================= 天文：太阳视黄经与节气 ================= */
+function g2jd(y,m,d){ if(m<=2){y-=1;m+=12;} const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+  return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5; }
+function sunLambda(jd){
+  const T=(jd-2451545.0)/36525;
+  const L0=(280.46646+36000.76983*T+0.0003032*T*T)%360;
+  const M=((357.52911+35999.05029*T-0.0001537*T*T)%360)*Math.PI/180;
+  const C=(1.914602-0.004817*T-0.000014*T*T)*Math.sin(M)
+        +(0.019993-0.000101*T)*Math.sin(2*M)+0.000289*Math.sin(3*M);
+  const lon=L0+C;
+  const om=(125.04452-1934.136261*T)*Math.PI/180;
+  let lam=lon-0.00569-0.004779*Math.sin(om);
+  return ((lam%360)+360)%360;
+}
+function sunReach(target, year){
+  // [2026-11-02 修] 原版忽略年份，永远从 J2000 起算 → 返回 2000 年的节气。
+  // 现在以该年 1 月 1 日为起点，向前找最近的交节时刻。
+  let jd;
+  if (year === undefined || year === null) {
+    const k=((target-280.46646)%360+360)%360;
+    jd=2451545.0+(k/360)*365.25+4;
+  } else {
+    jd = g2jd(year, 1, 1) + 3;   // 从 1 月 1 日附近起步，稍留余量
+  }
+  for(let i=0;i<8;i++){
+    let d=((sunLambda(jd)-target+540)%360)-180;
+    jd-=d/360*365.25;
+  }
+  return jd;
+}
+const termCache={};
+function yearTerms(y){
+  if(termCache[y])return termCache[y];
+  // [2026-11-02 修] 原版没用参数 y，导致任何年份都算成 2000 年
+  const arr=TERM24.map((t,i)=>{
+    // 黄经 target 落在该年时，起点应在 1 月或上一年 12 月；按目标黄经粗定位月份
+    let jd = sunReach(t[1], y);
+    // 若算出的时刻偏到相邻年份，向回/向前收敛一次
+    const cy = fmtJd(jd + 8/24).y;
+    if (cy < y) jd = sunReach(t[1], y + 1) - 0;      // 落在上一年 → 取下一轮
+    else if (cy > y) jd = sunReach(t[1], y - 1);
+    // 重新核对，仍未落在 y 年则用最近一轮
+    if (fmtJd(jd + 8/24).y !== y) {
+      jd = sunReach(t[1], y);
+    }
+    return {name:t[0], lon:t[1], idx:i, jd};
+  });
+  arr.sort((a,b)=>a.jd-b.jd);
+  termCache[y]=arr; return arr;
+}
+function fmtJd(jd){
+  const z=Math.floor(jd+0.5), f=jd+0.5-z;
+  let A=z; if(z>=2299161){const a=Math.floor((z-1867216.25)/36524.25);A=z+1+a-Math.floor(a/4);}
+  const B=A+1524, C=Math.floor((B-122.1)/365.25), D=Math.floor(365.25*C), E=Math.floor((B-D)/30.6001);
+  const day=B-D-Math.floor(30.6001*E)+f;   // [2026-11-02 修] 原为 (f*24)，导致日期偏约 12 天
+  const m=E<14?E-1:E-13, yy=m>2?C-4716:C-4715;
+  const dd=Math.floor(day);
+  let hh=Math.round((day-dd)*24*60);
+  let D2=dd,H=Math.floor(hh/60),MI=hh%60;
+  if(H>=24){H-=24;D2++;}
+  return {y:yy,m:m,d:D2,h:H,mi:MI};
+}
+const p2=n=>String(n).padStart(2,"0");
+
+/* ================= 农历查算（按表，不外推） ================= */
+const leapMonth=y=>LUNAR_INFO[y-1900]&0xf;
+const leapDays=y=>leapMonth(y)?(LUNAR_INFO[y-1900]&0x10000?30:29):0;
+const monthDays=(y,m)=>(LUNAR_INFO[y-1900]&(0x10000>>m))?30:29;
+function yearDays(y){let s=348;for(let i=0x8000;i>0x8;i>>=1)s+=(LUNAR_INFO[y-1900]&i)?1:0;return s+leapDays(y);}
+function solar2lunar(y,m,d){
+  if(y<1900||y>2100)return null;
+  let offset=Math.floor(g2jd(y,m,d)-g2jd(1900,1,31));
+  if(offset<0)return null;
+  let ly=1900,days;
+  for(;ly<2101;ly++){days=yearDays(ly);if(offset<days)break;offset-=days;}
+  if(ly>2100)return null;
+  const leap=leapMonth(ly); let isLeap=false;
+  for(let lm=1;lm<13;lm++){
+    if(leap>0&&lm===leap+1&&!isLeap){--lm;isLeap=true;days=leapDays(ly);}
+    else{days=monthDays(ly,lm);}
+    if(isLeap&&lm!==leap+1)isLeap=false;
+    if(offset<days)break;
+    offset-=days;
+  }
+  return {y:ly,m:arguments[1]===undefined?0:0,lm:0,_m:0,month:0,day:0,isLeap:false,year:ly,mon:0};
+}
+/* 上一函数返回结构较绕，重写清晰版覆盖之 */
+function solar2lunar(y,m,d){
+  if(y<1900||y>2100)return null;
+  let offset=Math.floor(g2jd(y,m,d)-g2jd(1900,1,31));
+  if(offset<0)return null;
+  let ly=1900,temp=0;
+  for(ly=1900;ly<2101;ly++){temp=yearDays(ly);if(offset<temp)break;offset-=temp;}
+  if(ly>2100)return null;
+  const leap=leapMonth(ly); let isLeap=false,lm=1,days=0;
+  for(lm=1;lm<13;lm++){
+    if(leap>0&&lm===(leap+1)&&!isLeap){--lm;isLeap=true;days=leapDays(ly);}
+    else{days=monthDays(ly,lm);}
+    if(isLeap&&lm!==(leap+1))isLeap=false;
+    if(offset<days)break;
+    offset-=days;
+  }
+  return {year:ly,month:lm,day:offset+1,isLeap:isLeap};
+}
+
+/* ================= 干支 / 建除 / 黄黑道 ================= */
+function dayGZ(y,m,d){const off=(Math.floor(g2jd(y,m,d)-g2jd(1970,1,1))+45)%60;return {g:off%10,z:off%12};}
+function jieList(y){return JIE_IDX.map((ti,k)=>({k:k,br:(k+2)%12,jd:yearTerms(y)[ti].jd})).sort((a,b)=>a.jd-b.jd);}
+function monthBr(y,m,d){
+  const jd=g2jd(y,m,d)+0.5;
+  let list=jieList(y),cur=null;
+  for(const j of list){if(jd>=j.jd)cur=j;else break;}
+  if(!cur){list=jieList(y-1);cur=list[list.length-1];}
+  return cur.br;
+}
+function jianchu(brDay,brMonth){return ((brDay-brMonth)%12+12)%12;}
+function hbOff(brMonth){return ((brMonth-2)*2+14)%12;}
+function hbOf(brDay,brMonth){const off=hbOff(brMonth);return ((brDay-off)%12+12)%12;}
+
+/* ================= 文案工具 ================= */
+const WK=["日","一","二","三","四","五","六"];
+function lunarDayName(d){return d===10?"初十":d===20?"二十":d===30?"三十":["","初一","初二","初三","初四","初五","初六","初七","初八","初九"][d]||("廿"+(d-20));}
+function lunarMonthName(m,leap){return (leap?"闰":"")+LUNAR_M[m-1]+"月";}
+function actMarks(j){
+  const yi=[],ji=[];
+  ACTS.forEach((a,i)=>{const c=M12[i][j];if(c==="Y")yi.push(a.n);else if(c==="J")ji.push(a.n);});
+  return {yi,ji};
+}
+function verdict(act,j,hbIdx){
+  const c=M12[act][j], hb=HB_H[hbIdx];
+  if(c==="Y")return {t:"宜 "+ACTS[act].n,c:"y"};
+  if(c==="J")return {t:"忌 "+ACTS[act].n,c:"n"};
+  return {t:hb?"平·偏吉":"平·偏凶",c:"p"};
+}
+
+/* ================= 状态与渲染 ================= */
+const $=id=>document.getElementById(id);
+const state={y:0,m:0,act:null,all:false};
+const mIn=$("mIn");
+
+function renderChips(){
+  let h='<button type="button" class="chip wide'+(state.act===null?" on":"")+'" data-a="-1"><span class="em">🗓️</span>不限事项 · 纵览全月</button>';
+  ACTS.forEach((a,i)=>{h+='<button type="button" class="chip'+(state.act===i?" on":"")+'" data-a="'+i+'"><span class="em">'+a.e+'</span>'+a.n+'</button>';});
+  $("chips").innerHTML=h;
+}
+function monthInfo(y,m){
+  const d1=solar2lunar(y,m,1), dn=new Date(y,m-1,1), last=new Date(y,m,0).getDate();
+  const dl=solar2lunar(y,m,last);
+  const seen=[],spans=[];
+  [d1,dl].forEach(o=>{const k=o.year+"-"+o.month+"-"+o.isLeap;if(!seen.includes(k)){seen.push(k);spans.push(o);}});
+  const names=spans.map(o=>lunarMonthName(o.month,o.isLeap));
+  const mb=monthBr(y,m,1);
+  return {d1,mb,span:names.join(" · "),gzM:GS[(d1.g!==undefined?0:0)]};
+}
+function monthGzStr(y,m){
+  const mb=monthBr(y,m,1);
+  const off=(Math.floor(g2jd(y,m,1)-g2jd(1970,1,1))+45)%60, g=off%10;
+  let jy=y; const t=yearTerms(y)[2]; if(g2jd(y,m,1)+0.5<t.jd)jy--;
+  const yg=((jy-1900)%10+6)%10;
+  const mg=((yg*2+((mb-2+12)%12+1))%10+10)%10;
+  return GS[mg]+ZS[mb]+"月";
+}
+function renderJq(y,m){
+  const terms=yearTerms(y).filter(t=>{const c=fmtJd(t.jd+8/24);return c.y===y&&c.m===m;});
+  let h='<div class="jcard"><h3>🌞 本月节气（太阳视黄经算法）</h3>';
+  if(!terms.length){h+='<p style="font-size:13.5px;color:#a2916c">本月无节气交节日。</p>';}
+  terms.forEach(t=>{
+    const c=fmtJd(t.jd+8/24);
+    h+='<div class="row"><b>'+t.name+'（黄经 '+t.lon+'°）</b><span>'+c.m+'月'+c.d+'日 '+p2(c.h)+":"+p2(c.mi)+' 北京时间</span></div>';
+  });
+  h+='<p class="note">※ 节气时刻精度约 ±1~2 分钟；建除十二神按节气月（'+monthGzStr(y,m)+'）起「建」，交节即换月将。</p></div>';
+  $("jq").innerHTML=h;
+}
+function cardHTML(r,i){
+  const marks=actMarks(r.j);
+  const yiHtml=marks.yi.length?marks.yi.map(n=>'<li class="ok">✓ '+n+'</li>').join(""):'<li>（本表无明确列宜）</li>';
+  const jiHtml=marks.ji.length?marks.ji.map(n=>'<li class="no">✗ '+n+'</li>').join(""):'<li>（本表无明确列忌）</li>';
+  const vd=state.act!==null?verdict(state.act,r.j,r.hbIdx):{t:(r.hb?"黄道":"黑道"),c:(r.hb?"y":"p")};
+  const cls=state.act===null?"":(M12[state.act][r.j]==="Y"?"hit":(M12[state.act][r.j]==="J"?"no":""));
+  const tip=state.act!==null?'<p class="tip">「'+ACTS[state.act].n+'」一项：'+({Y:"建除判为 <b>宜</b>",J:"建除判为 <b>忌</b>","-":"建除未明确列宜忌，按平日常规论"}[M12[state.act][r.j]])+'；'+(r.hb?"又值黄道日，民俗从吉。":"又值黑道日，民俗偏凶。")+'</p>':'';
+  return '<article class="day '+cls+'" style="transition-delay:'+Math.min(i*45,400)+'ms">'
+   +'<div class="dL"><div class="dNum">'+r.d+'</div><div class="dW">周'+WK[r.w]+'</div><div class="dGz">'+r.gz+'</div></div>'
+   +'<div class="dM"><div class="dSolar">'+r.y+'年'+r.m+'月'+r.d+'日</div><div class="dLunar">农历'+r.lunar+'</div>'
+   +'<div class="badges"><span class="bdg b12" style="background:'+J12C[r.j]+'">'+J12N[r.j]+'日</span>'
+   +'<span class="bdg bhb '+(r.hb?"h":"b")+'">'+(r.hb?"🟨":"⬛")+' '+HB12[r.hbIdx]+'·'+(r.hb?"黄道":"黑道")+'</span></div></div>'
+   +'<div class="dV"><span class="vd '+vd.c+'">'+vd.t+'</span><span class="car">▾</span></div>'
+   +'<div class="dD"><div class="dDi"><h4>宜</h4><ul>'+yiHtml+'</ul><h4>忌</h4><ul>'+jiHtml+'</ul>'+tip+'</div></div>'
+   +'</article>';
+}
+function render(){
+  const y=state.y,m=state.m;
+  const bad=y<1900||y>2100;
+  $("outOfRange").classList.toggle("hidden",!bad);
+  $("results").classList.toggle("hidden",bad);
+  $("jq").classList.toggle("hidden",bad);
+  if(bad)return;
+
+  const last=new Date(y,m,0).getDate();
+  const mi=monthInfo(y,m);
+  $("ov").innerHTML=
+    '<span class="tag">🗓️ 公历 <b>'+y+'年'+m+'月</b></span>'
+   +'<span class="tag">🌙 农历 <b>'+mi.span+'</b></span>'
+   +'<span class="tag">🧭 节气月 <b>'+monthGzStr(y,m)+'</b>（「'+J12N[mi.mb]+'」日起建）</span>';
+
+  const rows=[];
+  for(let d=1;d<=last;d++){
+    const dt=new Date(y,m-1,d), lu=solar2lunar(y,m,d);
+    if(!lu){rows.push(null);continue;}
+    const gz=dayGZ(y,m,d);
+    const mb=monthBr(y,m,d);
+    const j=jianchu(gz.z,mb), hbIdx=hbOf(gz.z,mb);
+    rows.push({d:d,w:dt.getDay(),y:y,m:m,gz:GS[gz.g]+ZS[gz.z],
+      lunar:lunarMonthName(lu.month,lu.isLeap)+lunarDayName(lu.day)+(lu.day===1?"（月首）":""),
+      j:j,hbIdx:hbIdx,hb:HB_H[hbIdx]===1});
+  }
+  let shown=rows.filter(r=>r&&(state.act===null||state.all||M12[state.act][r.j]==="Y"));
+  let html="";shown.forEach((r,i)=>{if(r)html+=cardHTML(r,i);});
+  $("list").innerHTML=html;
+  $("list").querySelectorAll(".day").forEach(el=>{
+    el.addEventListener("click",()=>el.classList.toggle("open"));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("in")));
+  });
+
+  const sum=$("sum");
+  if(state.act===null){
+    sum.innerHTML='🗓️ '+y+'年'+m+'月 共 <b>'+shown.length+'</b> 天 · 未选事项，纵览全月（点开卡片看每日宜忌）';
+  }else{
+    const cnt=rows.filter(r=>r&&M12[state.act][r.j]==="Y").length;
+    sum.innerHTML='🔎 '+y+'年'+m+'月 宜「'+ACTS[state.act].e+' '+ACTS[state.act].n+'」共 <b>'+cnt+'</b> 天'
+      +(state.all?'（已含不宜之日，便于对比）':'')
+      +'<br><span class="why">筛选依据：'+ACTS[state.act].s+'（建除民俗口诀）</span>';
+  }
+  const none=$("noneBox");
+  if(state.act!==null&&!state.all&&shown.length===0){
+    none.classList.remove("hidden");
+    none.innerHTML='😶 本月没有建除判为「宜 '+ACTS[state.act].n+'」的日子。<small>可勾选「显示全月所有日子」对比查看，或换一个月再试。民俗说法，不必拘泥。</small>';
+  }else none.classList.add("hidden");
+
+  renderJq(y,m);
+}
+function syncInput(){mIn.value=state.y+"-"+p2(state.m);}
+function setMonth(y,m){state.y=y;state.m=m;syncInput();render();}
+function shiftMonth(dm){
+  const dt=new Date(state.y,state.m-1+dm,1);
+  let y=dt.getFullYear(),m=dt.getMonth()+1;
+  if(y<1900){y=1900;m=1;} if(y>2100){y=2100;m=12;}
+  setMonth(y,m);
+}
+
+/* ================= 事件绑定 ================= */
+$("mPrev").addEventListener("click",()=>shiftMonth(-1));
+$("mNext").addEventListener("click",()=>shiftMonth(1));
+$("mToday").addEventListener("click",()=>{
+  const n=new Date();let y=n.getFullYear(),m=n.getMonth()+1;
+  if(y<1900){y=1900;m=1;} if(y>2100){y=2100;m=12;}
+  setMonth(y,m);
+});
+mIn.addEventListener("change",()=>{
+  const v=mIn.value; if(!v)return;
+  const parts=v.split("-"),y=+parts[0],m=+parts[1];
+  setMonth(y,m);
+});
+$("chips").addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b)return;
+  const a=+b.dataset.a;
+  state.act=(a<0)?null:((state.act===a)?null:a);
+  renderChips();render();
+});
+$("allDays").addEventListener("change",e=>{state.all=e.target.checked;render();});
+
+/* 页脚滚动显现 */
+const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("in");io.unobserve(en.target);}}),{threshold:.08});
+io.observe($("foot"));
+
+/* ================= 初始化 ================= */
+(function init(){
+  const n=new Date();let y=n.getFullYear(),m=n.getMonth()+1;
+  if(y<1900){y=1900;m=1;} if(y>2100){y=2100;m=12;}
+  state.y=y;state.m=m;
+  renderChips();syncInput();render();
+})();
+</script>
+</body>
+</html>

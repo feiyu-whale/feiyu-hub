@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>联轴器选型工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+    line-height: 1.7;
+    padding: 20px;
+    padding-bottom: 60px;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  h1 {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: #fff;
+    padding: 24px 32px;
+    font-size: 24px;
+    font-weight: 600;
+  }
+  .tabs {
+    display: flex;
+    background: #ecf0f1;
+    border-bottom: 1px solid #dfe4ea;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    color: #555;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .tab:hover { background: #dfe4ea; }
+  .tab.active {
+    background: #fff;
+    color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    font-weight: 600;
+  }
+  .tab-content {
+    display: none;
+    padding: 28px 32px;
+    min-height: 500px;
+  }
+  .tab-content.active { display: block; }
+  pre {
+    background: #1e272e;
+    color: #d2dae2;
+    padding: 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: "Consolas", "Monaco", monospace;
+  }
+  .doc h2 {
+    color: #2c3e50;
+    border-left: 4px solid #3498db;
+    padding-left: 12px;
+    margin: 28px 0 14px;
+    font-size: 20px;
+  }
+  .doc h3 {
+    color: #34495e;
+    margin: 20px 0 10px;
+    font-size: 16px;
+  }
+  .doc p { margin: 10px 0; text-indent: 2em; }
+  .doc ul, .doc ol { margin: 10px 0 10px 2em; }
+  .doc li { margin: 6px 0; }
+  .doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .doc th, .doc td {
+    border: 1px solid #dfe4ea;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .doc th { background: #ecf0f1; font-weight: 600; }
+  .doc .warn {
+    background: #fff3cd;
+    border-left: 4px solid #f39c12;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .doc .info {
+    background: #d1ecf1;
+    border-left: 4px solid #17a2b8;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .run-btn {
+    background: #3498db;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .run-btn:hover { background: #2980b9; }
+  #testOutput {
+    background: #1e272e;
+    color: #d2dae2;
+    padding: 16px;
+    border-radius: 6px;
+    min-height: 200px;
+    font-family: "Consolas", monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  .version {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    font-size: 11px;
+    color: #95a5a6;
+    background: rgba(255,255,255,0.9);
+    padding: 4px 8px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  code.inline {
+    background: #f1f2f6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    color: #c0392b;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>联轴器选型工具</h1>
+  <div class="tabs">
+    <button class="tab active" data-tab="source">JS 源码</button>
+    <button class="tab" data-tab="test">单元测试</button>
+    <button class="tab" data-tab="doc">使用说明书</button>
+  </div>
+
+  <div class="tab-content active" id="source">
+    <pre><code id="sourceCode"></code></pre>
+  </div>
+
+  <div class="tab-content" id="test">
+    <button class="run-btn" onclick="runTests()">▶ 运行全部测试</button>
+    <div id="testOutput">点击按钮运行测试...</div>
+  </div>
+
+  <div class="tab-content doc" id="doc">
+    <h2>一、工具用途</h2>
+    <p>本工具用于机械传动系统中联轴器的初步选型。输入名义扭矩、工作转速、轴径以及驱动机/工作机类型后，工具将依据工况系数计算设计扭矩，并在内置的联轴器规格库中筛选出满足扭矩、转速、轴径三项约束的候选型号，按规格从小到大排列输出。</p>
+    <p>适用场景：机械设计初期的方案比选、课程设计的快速校核、现场工程师的初步估算。本工具不替代正式设计计算书，最终选型仍需结合安装空间、对中精度、环境温度、润滑条件等因素，由设计人员确认。</p>
+
+    <h2>二、参数详解</h2>
+    <h3>2.1 输入参数</h3>
+    <table>
+      <tr><th>参数</th><th>符号</th><th>单位</th><th>说明</th></tr>
+      <tr><td>名义扭矩</td><td>T</td><td>N·m</td><td>传递的公称扭矩，按工作机额定工况取值</td></tr>
+      <tr><td>工作转速</td><td>n</td><td>r/min</td><td>联轴器实际工作转速</td></tr>
+      <tr><td>轴径</td><td>d</td><td>mm</td><td>被联接轴的直径，依据 GB/T 3852 轴孔尺寸系列</td></tr>
+      <tr><td>驱动机类型</td><td>-</td><td>-</td><td>电动机 / 内燃机 / 汽轮机</td></tr>
+      <tr><td>工作机类型</td><td>-</td><td>-</td><td>均匀 / 轻微冲击 / 中等冲击 / 强冲击</td></tr>
+      <tr><td>启动方式</td><td>-</td><td>-</td><td>软启动 / 正常启动 / 重载启动</td></tr>
+    </table>
+
+    <h3>2.2 输出参数</h3>
+    <table>
+      <tr><th>参数</th><th>说明</th></tr>
+      <tr><td>工况系数 K</td><td>依据驱动机、工作机、启动方式组合查表得到</td></tr>
+      <tr><td>设计扭矩 Tc</td><td>Tc = K × T，用于与联轴器许用扭矩比较</td></tr>
+      <tr><td>候选型号列表</td><td>满足 [T] ≥ Tc、[n] ≥ n、d ∈ [dmin, dmax] 的型号</td></tr>
+      <tr><td>误差范围</td><td>考虑计算与数据离散性给出的工程裕度</td></tr>
+    </table>
+
+    <h2>三、使用场景</h2>
+    <h3>场景 1：电动机驱动风机</h3>
+    <p>某离心风机由 7.5 kW 电动机驱动，额定转速 1450 r/min，电机轴径 38 mm，传递扭矩约 50 N·m。工作机属轻微冲击，电动机正常启动。输入 T=50、n=1450、d=38，驱动机选"电动机"，工作机选"轻微冲击"，启动选"正常"。工具计算 K≈1.5，Tc=75 N·m，筛选出 TL4、HL2、LM4 等候选型号。</p>
+
+    <h3>场景 2：破碎机传动</h3>
+    <p>颚式破碎机由电动机驱动，扭矩 800 N·m，转速 750 r/min，轴径 70 mm。工作机属强冲击，重载启动。K 取 2.5~3.0，Tc 约 2000~2400 N·m。工具将推荐 GICL 齿式联轴器或大规格弹性联轴器，并提示强冲击工况下建议选用带缓冲元件的挠性联轴器。</p>
+
+    <h3>场景 3：精密伺服传动</h3>
+    <p>数控机床进给轴伺服电机，扭矩 5 N·m，转速 3000 r/min，轴径 14 mm。工作机均匀，软启动。K≈1.0，Tc=5 N·m。工具推荐 LM1、JM I 1 等小规格高转速型号，并提示伺服系统应优先选用零背隙的膜片联轴器。</p>
+
+    <h3>场景 4：内燃机驱动发电机</h3>
+    <p>柴油发电机组，内燃机输出扭矩 600 N·m，转速 1500 r/min，轴径 55 mm。内燃机驱动，工作机均匀，正常启动。K 取 1.75，Tc=1050 N·m。工具推荐 HL4、GICL2 等型号，并提示内燃机扭振较大，必要时应做扭振计算。</p>
+
+    <h3>场景 5：输送机长轴联接</h3>
+    <p>皮带输送机减速器输出轴，扭矩 2500 N·m，转速 120 r/min，轴径 90 mm。工作机中等冲击，正常启动。K≈1.75，Tc≈4375 N·m。工具推荐 GICL4、HL6 等大规格型号，并提示低速重载场合应校核轴孔键联接强度。</p>
+
+    <h2>四、常见错误</h2>
+    <ul>
+      <li><b>误用额定功率代替扭矩：</b>必须将功率换算为扭矩 T=9550×P/n，不可直接代入功率值。</li>
+      <li><b>忽略工况系数：</b>仅按名义扭矩选型，未考虑启动、冲击、频繁正反转等动态因素，导致联轴器早期失效。</li>
+      <li><b>轴径不匹配：</b>只校核扭矩和转速，忽略轴径范围，导致轴孔无法安装或需额外加工过渡套。</li>
+      <li><b>转速超限：</b>高速场合未校核许用转速，导致弹性元件离心破坏或动平衡失效。</li>
+      <li><b>忽视对中误差：</b>本工具未考虑两轴相对位移，实际选型需根据对中精度选择补偿能力匹配的联轴器类型。</li>
+      <li><b>温度与环境影响：</b>高温、腐蚀、粉尘环境需特殊材质或密封结构，本工具未涵盖。</li>
+    </ul>
+
+    <h2>五、数据依据</h2>
+    <p>本工具所依据的主要标准：</p>
+    <ul>
+      <li>GB/T 3852 《联轴器轴孔和联结型式与尺寸》—— 轴孔直径系列与键槽尺寸</li>
+      <li>GB/T 4323 《弹性套柱销联轴器》—— TL 系列规格</li>
+      <li>GB/T 5014 《弹性柱销联轴器》—— HL 系列规格</li>
+      <li>GB/T 5272 《梅花形弹性联轴器》—— LM 系列规格</li>
+      <li>GB/T 29217 《膜片联轴器》—— JM 系列规格</li>
+      <li>GB/T 26103 《齿式联轴器》—— GICL 系列规格</li>
+    </ul>
+    <div class="warn">
+      <b>重要提示：</b>工具内置的规格数据为工程常用参考值，具体数值（如许用扭矩、许用转速、轴径范围）需以最新版标准原文为准。不同厂家产品参数可能存在差异，正式选型应核对厂家样本。
+    </div>
+
+    <h2>六、精度与误差说明</h2>
+    <div class="info">
+      <b>有限精准原则：</b>现实变量是无限的，本工具只做到"方法准、输入项准、结果给误差范围"，<b>不承诺绝对精确</b>。
+    </div>
+
+    <h3>6.1 算准了什么</h3>
+    <ul>
+      <li><b>设计扭矩计算：</b>Tc = K × T 的算术运算，精度由输入值决定，浮点运算误差在 1e-10 量级，工程上可忽略。</li>
+      <li><b>工况系数查表：</b>按驱动机、工作机、启动方式三因素组合查表，方法符合机械设计手册通用做法。</li>
+      <li><b>三项约束筛选：</b>扭矩、转速、轴径的数值比较逻辑严格，无近似。</li>
+    </ul>
+
+    <h3>6.2 哪些因素没算进去</h3>
+    <ul>
+      <li>两轴相对位移（径向、轴向、角向）—— 需根据对中精度另选类型</li>
+      <li>启动频次与发热 —— 频繁启动需降额使用</li>
+      <li>环境温度 —— 高温下弹性元件性能下降</li>
+      <li>腐蚀、粉尘、防爆要求 —— 需特殊材质</li>
+      <li>扭振计算 —— 内燃机驱动必须单独校核</li>
+      <li>键联接强度 —— 低速重载时需另算</li>
+      <li>安装空间限制 —— 需核对外形尺寸</li>
+      <li>厂家具体产品参数差异</li>
+    </ul>
+
+    <h3>6.3 误差大概多大</h3>
+    <table>
+      <tr><th>项目</th><th>误差来源</th><th>工程估计</th></tr>
+      <tr><td>工况系数 K</td><td>查表离散、工况判断主观</td><td>±10% ~ ±20%</td></tr>
+      <tr><td>许用扭矩 [T]</td><td>标准数据离散、厂家差异</td><td>±5% ~ ±15%</td></tr>
+      <tr><td>许用转速 [n]</td><td>动平衡等级、安装精度</td><td>±10%</td></tr>
+      <tr><td>综合选型裕度</td><td>上述因素叠加</td><td>建议保留 15% ~ 30% 裕量</td></tr>
+    </table>
+    <p>因此，工具输出的候选型号为"初步筛选结果"，最终确认需设计人员结合具体工况、厂家样本、安装条件综合判断。若候选型号处于边界值附近，建议向上选取一档规格。</p>
+
+    <h2>七、局限性</h2>
+    <ul>
+      <li>仅覆盖 5 类常用联轴器（TL、HL、LM、JM、GICL），未包含万向、液力、安全、离合器等特殊类型。</li>
+      <li>规格库为有限离散点，无法覆盖所有非标尺寸。</li>
+      <li>工况系数表为简化版本，复杂工况（如双向冲击、周期性变载）需专门分析。</li>
+      <li>未考虑联轴器串联、并联、带制动轮等特殊配置。</li>
+      <li>不替代正式设计计算书与强度校核。</li>
+      <li>数据基于公开工程参考，具体数值需查标准原文或厂家样本确认。</li>
+    </ul>
+
+    <h2>八、版本与维护</h2>
+    <p>当前版本：v2.0.0-完整版 20261021。后续将根据标准更新与用户反馈持续迭代。如发现数据疑义，请以最新国家标准原文为准。</p>
+  </div>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（纯函数实现，无外部依赖）
+ * ============================================================ */
+
+/**
+ * 联轴器规格数据库
+ * 数据基于工程常用参考值，具体选型需查标准原文
+ * @type {Object.<string, Array<{model:string, dMin:number, dMax:number, Tn:number, nMax:number}>>}
+ */
+const COUPLING_DB = {
+  /** 弹性套柱销联轴器（GB/T 4323）TL 系列 */
+  TL: [
+    { model: 'TL1', dMin: 10, dMax: 14, Tn: 16,    nMax: 5700 },
+    { model: 'TL2', dMin: 12, dMax: 19, Tn: 31.5,  nMax: 5200 },
+    { model: 'TL3', dMin: 16, dMax: 28, Tn: 63,    nMax: 4750 },
+    { model: 'TL4', dMin: 20, dMax: 38, Tn: 125,   nMax: 4200 },
+    { model: 'TL5', dMin: 25, dMax: 48, Tn: 250,   nMax: 3750 },
+    { model: 'TL6', dMin: 32, dMax: 55, Tn: 500,   nMax: 3300 },
+    { model: 'TL7', dMin: 40, dMax: 65, Tn: 1000,  nMax: 2850 },
+    { model: 'TL8', dMin: 50, dMax: 80, Tn: 2000,  nMax: 2400 },
+    { model: 'TL9', dMin: 63, dMax: 100,Tn: 4000,  nMax: 2000 },
+    { model: 'TL10',dMin: 71, dMax: 110,Tn: 8000,  nMax: 1650 }
+  ],
+  /** 弹性柱销联轴器（GB/T 5014）HL 系列 */
+  HL: [
+    { model: 'HL1', dMin: 12, dMax: 28, Tn: 160,   nMax: 7100 },
+    { model: 'HL2', dMin: 20, dMax: 42, Tn: 315,   nMax: 6300 },
+    { model: 'HL3', dMin: 30, dMax: 60, Tn: 630,   nMax: 5000 },
+    { model: 'HL4', dMin: 40, dMax: 80, Tn: 1250,  nMax: 4000 },
+    { model: 'HL5', dMin: 50, dMax: 100,Tn: 2500,  nMax: 3200 },
+    { model: 'HL6', dMin: 60, dMax: 120,Tn: 5000,  nMax: 2500 },
+    { model: 'HL7', dMin: 75, dMax: 140,Tn: 10000, nMax: 2000 }
+  ],
+  /** 梅花形弹性联轴器（GB/T 5272）LM 系列 */
+  LM: [
+    { model: 'LM1', dMin: 12, dMax: 22, Tn: 25,    nMax: 15000 },
+    { model: 'LM2', dMin: 14, dMax: 30, Tn: 50,    nMax: 12000 },
+    { model: 'LM3', dMin: 20, dMax: 38, Tn: 120,   nMax: 9500 },
+    { model: 'LM4', dMin: 25, dMax: 48, Tn: 250,   nMax: 7500 },
+    { model: 'LM5', dMin: 30, dMax: 60, Tn: 500,   nMax: 6000 },
+    { model: 'LM6', dMin: 40, dMax: 75, Tn: 1000,  nMax: 4750 },
+    { model: 'LM7', dMin: 50, dMax: 90, Tn: 2000,  nMax: 3750 },
+    { model: 'LM8', dMin: 60, dMax: 110,Tn: 4000,  nMax: 3000 }
+  ],
+  /** 膜片联轴器（GB/T 29217）JM I 系列 */
+  JM: [
+    { model: 'JM-I-1',  dMin: 14, dMax: 30, Tn: 100,   nMax: 10000 },
+    { model: 'JM-I-2',  dMin: 20, dMax: 42, Tn: 250,   nMax: 8000 },
+    { model: 'JM-I-3',  dMin: 25, dMax: 55, Tn: 500,   nMax: 6300 },
+    { model: 'JM-I-4',  dMin: 32, dMax: 70, Tn: 1000,  nMax: 5000 },
+    { model: 'JM-I-5',  dMin: 40, dMax: 85, Tn: 2000,  nMax: 4000 },
+    { model: 'JM-I-6',  dMin: 50, dMax: 100,Tn: 4000,  nMax: 3150 },
+    { model: 'JM-I-7',  dMin: 60, dMax: 120,Tn: 8000,  nMax: 2500 }
+  ],
+  /** 齿式联轴器（GB/T 26103）GICL 系列 */
+  GICL: [
+    { model: 'GICL1', dMin: 22, dMax: 42, Tn: 800,   nMax: 4000 },
+    { model: 'GICL2', dMin: 30, dMax: 56, Tn: 1400,  nMax: 3550 },
+    { model: 'GICL3', dMin: 35, dMax: 70, Tn: 2800,  nMax: 3150 },
+    { model: 'GICL4', dMin: 45, dMax: 90, Tn: 5600,  nMax: 2500 },
+    { model: 'GICL5', dMin: 55, dMax: 110,Tn: 11200, nMax: 2000 },
+    { model: 'GICL6', dMin: 70, dMax: 140,Tn: 20000, nMax: 1600 }
+  ]
+};
+
+/**
+ * 工况系数表
+ * 按驱动机类型、工作机冲击等级、启动方式组合
+ * 数据参考机械设计手册通用推荐值
+ * @type {Object}
+ */
+const K_TABLE = {
+  motor: {
+    uniform:     { soft: 1.0,  normal: 1.25, hard: 1.5  },
+    lightShock:  { soft: 1.25, normal: 1.5,  hard: 1.75 },
+    mediumShock: { soft: 1.5,  normal: 1.75, hard: 2.0  },
+    heavyShock:  { soft: 2.0,  normal: 2.5,  hard: 3.0  }
+  },
+  engine: {
+    uniform:     { soft: 1.5,  normal: 1.75, hard: 2.0  },
+    lightShock:  { soft: 1.75, normal: 2.0,  hard: 2.5  },
+    mediumShock: { soft: 2.0,  normal: 2.5,  hard: 3.0  },
+    heavyShock:  { soft: 2.5,  normal: 3.0,  hard: 3.5  }
+  },
+  turbine: {
+    uniform:     { soft: 1.0,  normal: 1.25, hard: 1.5  },
+    lightShock:  { soft: 1.25, normal: 1.5,  hard: 1.75 },
+    mediumShock: { soft: 1.5,  normal: 1.75, hard: 2.0  },
+    heavyShock:  { soft: 1.75, normal: 2.0,  hard: 2.5  }
+  }
+};
+
+/**
+ * 驱动机类型白名单
+ * @type {string[]}
+ */
+const DRIVE_TYPES = ['motor', 'engine', 'turbine'];
+
+/**
+ * 工作机冲击等级白名单
+ * @type {string[]}
+ */
+const SHOCK_LEVELS = ['uniform', 'lightShock', 'mediumShock', 'heavyShock'];
+
+/**
+ * 启动方式白名单
+ * @type {string[]}
+ */
+const START_TYPES = ['soft', 'normal', 'hard'];
+
+/**
+ * 校验输入参数合法性
+ * @param {number} T - 名义扭矩 (N·m)
+ * @param {number} n - 工作转速 (r/min)
+ * @param {number} d - 轴径 (mm)
+ * @returns {{valid:boolean, message:string}} 校验结果
+ */
+function validateInputs(T, n, d) {
+  if (typeof T !== 'number' || typeof n !== 'number' || typeof d !== 'number') {
+    return { valid: false, message: '输入必须为数字' };
+  }
+  if (Number.isNaN(T) || Number.isNaN(n) || Number.isNaN(d)) {
+    return { valid: false, message: '输入不能为 NaN' };
+  }
+  if (!Number.isFinite(T) || !Number.isFinite(n) || !Number.isFinite(d)) {
+    return { valid: false, message: '输入必须为有限值' };
+  }
+  if (T <= 0) return { valid: false, message: '名义扭矩必须大于 0' };
+  if (n <= 0) return { valid: false, message: '转速必须大于 0' };
+  if (d <= 0) return { valid: false, message: '轴径必须大于 0' };
+  if (T > 1e7) return { valid: false, message: '扭矩超出合理范围' };
+  if (n > 50000) return { valid: false, message: '转速超出合理范围' };
+  if (d > 500) return { valid: false, message: '轴径超出合理范围' };
+  return { valid: true, message: 'ok' };
+}
+
+/**
+ * 校验工况参数合法性
+ * @param {string} driveType - 驱动机类型
+ * @param {string} shockLevel - 工作机冲击等级
+ * @param {string} startType - 启动方式
+ * @returns {{valid:boolean, message:string}} 校验结果
+ */
+function validateConditions(driveType, shockLevel, startType) {
+  if (!DRIVE_TYPES.includes(driveType)) {
+    return { valid: false, message: '驱动机类型不合法：' + driveType };
+  }
+  if (!SHOCK_LEVELS.includes(shockLevel)) {
+    return { valid: false, message: '工作机冲击等级不合法：' + shockLevel };
+  }
+  if (!START_TYPES.includes(startType)) {
+    return { valid: false, message: '启动方式不合法：' + startType };
+  }
+  return { valid: true, message: 'ok' };
+}
+
+/**
+ * 获取工况系数 K
+ * @param {string} driveType - 驱动机类型 (motor|engine|turbine)
+ * @param {string} shockLevel - 工作机冲击等级 (uniform|lightShock|mediumShock|heavyShock)
+ * @param {string} startType - 启动方式 (soft|normal|hard)
+ * @returns {number} 工况系数 K
+ * @throws {Error} 参数不合法时抛出异常
+ */
+function getWorkingConditionFactor(driveType, shockLevel, startType) {
+  const v = validateConditions(driveType, shockLevel, startType);
+  if (!v.valid) throw new Error(v.message);
+  return K_TABLE[driveType][shockLevel][startType];
+}
+
+/**
+ * 计算设计扭矩
+ * @param {number} T - 名义扭矩 (N·m)
+ * @param {number} K - 工况系数
+ * @returns {number} 设计扭矩 Tc = K × T (N·m)
+ * @throws {Error} 输入非法时抛出异常
+ */
+function calculateDesignTorque(T, K) {
+  if (typeof T !== 'number' || typeof K !== 'number') {
+    throw new Error('T 和 K 必须为数字');
+  }
+  if (Number.isNaN(T) || Number.isNaN(K)) {
+    throw new Error('T 和 K 不能为 NaN');
+  }
+  if (T <= 0) throw new Error('名义扭矩必须大于 0');
+  if (K <= 0) throw new Error('工况系数必须大于 0');
+  return T * K;
+}
+
+/**
+ * 判断轴径是否在联轴器允许范围内
+ * @param {{dMin:number, dMax:number}} coupling - 联轴器规格
+ * @param {number} d - 轴径 (mm)
+ * @returns {boolean} 是否匹配
+ */
+function matchShaftDiameter(coupling, d) {
+  return d >= coupling.dMin && d <= coupling.dMax;
+}
+
+/**
+ * 判断联轴器是否满足扭矩与转速约束
+ * @param {{Tn:number, nMax:number}} coupling - 联轴器规格
+ * @param {number} Tc - 设计扭矩 (N·m)
+ * @param {number} n - 工作转速 (r/min)
+ * @returns {boolean} 是否满足
+ */
+function satisfyTorqueAndSpeed(coupling, Tc, n) {
+  return coupling.Tn >= Tc && coupling.nMax >= n;
+}
+
+/**
+ * 联轴器选型主函数
+ * @param {number} T - 名义扭矩 (N·m)
+ * @param {number} n - 工作转速 (r/min)
+ * @param {number} d - 轴径 (mm)
+ * @param {string} driveType - 驱动机类型
+ * @param {string} shockLevel - 工作机冲击等级
+ * @param {string} startType - 启动方式
+ * @returns {{success:boolean, message?:string, K?:number, Tc?:number, candidates?:Array<{series:string, model:string, dMin:number, dMax:number, Tn:number, nMax:number}>}}
+ */
+function selectCoupling(T, n, d, driveType, shockLevel, startType) {
+  const vInput = validateInputs(T, n, d);
+  if (!vInput.valid) return { success: false, message: vInput.message };
+
+  const vCond = validateConditions(driveType, shockLevel, startType);
+  if (!vCond.valid) return { success: false, message: vCond.message };
+
+  let K, Tc;
+  try {
+    K = getWorkingConditionFactor(driveType, shockLevel, startType);
+    Tc = calculateDesignTorque(T, K);
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+
+  const candidates = [];
+  for (const series in COUPLING_DB) {
+    for (const spec of COUPLING_DB[series]) {
+      if (matchShaftDiameter(spec, d) && satisfyTorqueAndSpeed(spec, Tc, n)) {
+        candidates.push({
+          series: series,
+          model: spec.model,
+          dMin: spec.dMin,
+          dMax: spec.dMax,
+          Tn: spec.Tn,
+          nMax: spec.nMax
+        });
+      }
+    }
+  }
+
+  // 按许用扭矩从小到大排序
+  candidates.sort((a, b) => a.Tn - b.Tn);
+
+  return {
+    success: true,
+    K: K,
+    Tc: Tc,
+    candidates: candidates
+  };
+}
+
+/**
+ * 格式化选型结果为可读字符串
+ * @param {{success:boolean, message?:string, K?:number, Tc?:number, candidates?:Array}} result - selectCoupling 返回值
+ * @returns {string} 格式化后的文本
+ */
+function formatResult(result) {
+  if (!result.success) {
+    return '选型失败：' + result.message;
+  }
+  let s = '工况系数 K = ' + result.K.toFixed(3) + '\n';
+  s += '设计扭矩 Tc = ' + result.Tc.toFixed(2) + ' N·m\n';
+  s += '候选型号（共 ' + result.candidates.length + ' 个）：\n';
+  if (result.candidates.length === 0) {
+    s += '  （无满足条件的型号，请检查输入或放宽工况）\n';
+  } else {
+    result.candidates.forEach(function(c) {
+      s += '  ' + c.series + '-' + c.model +
+           '  轴径 ' + c.dMin + '~' + c.dMax + ' mm' +
+           '  [T]=' + c.Tn + ' N·m' +
+           '  [n]=' + c.nMax + ' r/min\n';
+    });
+  }
+  s += '\n注：结果为初步筛选，最终选型需结合安装空间、对中精度、环境温度等综合确认。';
+  return s;
+}
+
+/**
+ * 由功率和转速计算名义扭矩
+ * @param {number} P - 功率 (kW)
+ * @param {number} n - 转速 (r/min)
+ * @returns {number} 名义扭矩 T (N·m)
+ * @throws {Error} 输入非法时抛出异常
+ */
+function powerToTorque(P, n) {
+  if (typeof P !== 'number' || typeof n !== 'number') {
+    throw new Error('P 和 n 必须为数字');
+  }
+  if (P <= 0) throw new Error('功率必须大于 0');
+  if (n <= 0) throw new Error('转速必须大于 0');
+  return 9550 * P / n;
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS，自写 assert）
+ * ============================================================ */
+
+let _testPassed = 0;
+let _testTotal = 0;
+let _testLog = [];
+
+/**
+ * 断言函数
+ * @param {boolean} condition - 断言条件
+ * @param {string} name - 测试用例名称
+ */
+function assert(condition, name) {
+  _testTotal++;
+  if (condition) {
+    _testPassed++;
+    _testLog.push('[PASS] ' + name);
+  } else {
+    _testLog.push('[FAIL] ' + name);
+  }
+}
+
+/**
+ * 浮点数近似相等判断
+ * @param {number} a
+ * @param {number} b
+ * @param {number} eps - 容差
+ * @returns {boolean}
+ */
+function approxEqual(a, b, eps) {
+  if (typeof eps === 'undefined') eps = 1e-6;
+  return Math.abs(a - b) <= eps;
+}
+
+/**
+ * 运行全部单元测试
+ */
+function runAllTests() {
+  _testPassed = 0;
+  _testTotal = 0;
+  _testLog = [];
+
+  // ---- 工况系数测试 ----
+  assert(getWorkingConditionFactor('motor', 'uniform', 'soft') === 1.0,
+    '工况系数：电动机+均匀+软启动 = 1.0');
+  assert(getWorkingConditionFactor('motor', 'uniform', 'normal') === 1.25,
+    '工况系数：电动机+均匀+正常启动 = 1.25');
+  assert(getWorkingConditionFactor('motor', 'heavyShock', 'hard') === 3.0,
+    '工况系数：电动机+强冲击+重载启动 = 3.0');
+  assert(getWorkingConditionFactor('engine', 'mediumShock', 'normal') === 2.5,
+    '工况系数：内燃机+中等冲击+正常启动 = 2.5');
+  assert(getWorkingConditionFactor('turbine', 'lightShock', 'soft') === 1.25,
+    '工况系数：汽轮机+轻微冲击+软启动 = 1.25');
+
+  // ---- 工况系数异常输入 ----
+  let thrown = false;
+  try { getWorkingConditionFactor('xxx', 'uniform', 'soft'); } catch (e) { thrown = true; }
+  assert(thrown, '工况系数：非法驱动机类型抛异常');
+
+  thrown = false;
+  try { getWorkingConditionFactor('motor', 'xxx', 'soft'); } catch (e) { thrown = true; }
+  assert(thrown, '工况系数：非法冲击等级抛异常');
+
+  thrown = false;
+  try { getWorkingConditionFactor('motor', 'uniform', 'xxx'); } catch (e) { thrown = true; }
+  assert(thrown, '工况系数：非法启动方式抛异常');
+
+  // ---- 设计扭矩计算 ----
+  assert(approxEqual(calculateDesignTorque(100, 1.5), 150),
+    '设计扭矩：100 × 1.5 = 150');
+  assert(approxEqual(calculateDesignTorque(50, 1.0), 50),
+    '设计扭矩：50 × 1.0 = 50');
+  assert(approxEqual(calculateDesignTorque(33.3, 2.0), 66.6),
+    '设计扭矩：33.3 × 2.0 = 66.6');
+  assert(approxEqual(calculateDesignTorque(1000, 1.25), 1250),
+    '设计扭矩：1000 × 1.25 = 1250');
+  assert(approxEqual(calculateDesignTorque(0.001, 1.0), 0.001),
+    '设计扭矩：极小值 0.001 × 1.0');
+
+  // ---- 设计扭矩异常输入 ----
+  thrown = false;
+  try { calculateDesignTorque(-10, 1.5); } catch (e) { thrown = true; }
+  assert(thrown, '设计扭矩：负扭矩抛异常');
+
+  thrown = false;
+  try { calculateDesignTorque(100, 0); } catch (e) { thrown = true; }
+  assert(thrown, '设计扭矩：零工况系数抛异常');
+
+  thrown = false;
+  try { calculateDesignTorque(NaN, 1.5); } catch (e) { thrown = true; }
+  assert(thrown, '设计扭矩：NaN 抛异常');
+
+  // ---- 轴径匹配 ----
+  assert(matchShaftDiameter({ dMin: 20, dMax: 38 }, 25) === true,
+    '轴径匹配：25 在 [20,38] 内');
+  assert(matchShaftDiameter({ dMin: 20, dMax: 38 }, 20) === true,
+    '轴径匹配：边界值 20');
+  assert(matchShaftDiameter({ dMin: 20, dMax: 38 }, 38) === true,
+    '轴径匹配：边界值 38');
+  assert(matchShaftDiameter({ dMin: 20, dMax: 38 }, 19) === false,
+    '轴径匹配：19 小于下界');
+  assert(matchShaftDiameter({ dMin: 20, dMax: 38 }, 39) === false,
+    '轴径匹配：39 大于上界');
+
+  // ---- 扭矩转速约束 ----
+  assert(satisfyTorqueAndSpeed({ Tn: 100, nMax: 3000 }, 80, 2500) === true,
+    '扭矩转速：满足约束');
+  assert(satisfyTorqueAndSpeed({ Tn: 100, nMax: 3000 }, 100, 3000) === true,
+    '扭矩转速：边界值恰好满足');
+  assert(satisfyTorqueAndSpeed({ Tn: 100, nMax: 3000 }, 101, 3000) === false,
+    '扭矩转速：扭矩超限');
+  assert(satisfyTorqueAndSpeed({ Tn: 100, nMax: 3000 }, 80, 3001) === false,
+    '扭矩转速：转速超限');
+
+  // ---- 输入校验 ----
+  assert(validateInputs(100, 1500, 30).valid === true,
+    '输入校验：正常值通过');
+  assert(validateInputs(-1, 1500, 30).valid === false,
+    '输入校验：负扭矩不通过');
+  assert(validateInputs(100, 0, 30).valid === false,
+    '输入校验：零转速不通过');
+  assert(validateInputs(100, 1500, -5).valid === false,
+    '输入校验：负轴径不通过');
+  assert(validateInputs(NaN, 1500, 30).valid === false,
+    '输入校验：NaN 不通过');
+  assert(validateInputs(Infinity, 1500, 30).valid === false,
+    '输入校验：Infinity 不通过');
+  assert(validateInputs('100', 1500, 30).valid === false,
+    '输入校验：字符串类型不通过');
+
+  // ---- 选型主函数 ----
+  let r = selectCoupling(50, 1450, 38, 'motor', 'lightShock', 'normal');
+  assert(r.success === true, '选型主函数：正常输入返回 success');
+  assert(approxEqual(r.K, 1.5), '选型主函数：K=1.5');
+  assert(approxEqual(r.Tc, 75), '选型主函数：Tc=75');
+  assert(r.candidates.length > 0, '选型主函数：有候选型号');
+  assert(r.candidates[0].Tn >= 75, '选型主函数：候选型号 Tn ≥ Tc');
+
+  // 轴径不匹配场景
+  r = selectCoupling(50, 1450, 500, 'motor', 'uniform', 'soft');
+  assert(r.success === true && r.candidates.length === 0,
+    '选型主函数：超大轴径无候选');
+
+  // 非法输入
+  r = selectCoupling(-10, 1450, 30, 'motor', 'uniform', 'soft');
+  assert(r.success === false, '选型主函数：负扭矩返回失败');
+
+  r = selectCoupling(50, 1450, 30, 'xxx', 'uniform', 'soft');
+  assert(r.success === false, '选型主函数：非法驱动机返回失败');
+
+  // ---- 功率换算 ----
+  assert(approxEqual(powerToTorque(7.5, 1450), 49.48, 0.01),
+    '功率换算：7.5kW@1450rpm ≈ 49.48 N·m');
+  assert(approxEqual(powerToTorque(1, 1000), 9.55),
+    '功率换算：1kW@1000rpm = 9.55 N·m');
+
+  thrown = false;
+  try { powerToTorque(-1, 1000); } catch (e) { thrown = true; }
+  assert(thrown, '功率换算：负功率抛异常');
+
+  // ---- 格式化输出 ----
+  r = selectCoupling(50, 1450, 38, 'motor', 'lightShock', 'normal');
+  let txt = formatResult(r);
+  assert(txt.indexOf('K =') !== -1, '格式化：包含 K');
+  assert(txt.indexOf('Tc =') !== -1, '格式化：包含 Tc');
+  assert(txt.indexOf('候选型号') !== -1, '格式化：包含候选型号');
+
+  r = { success: false, message: '测试错误' };
+  txt = formatResult(r);
+  assert(txt.indexOf('选型失败') !== -1, '格式化：失败情况包含提示');
+
+  // ---- 浮点精度 ----
+  assert(approxEqual(calculateDesignTorque(0.1, 0.2), 0.02, 1e-10),
+    '浮点精度：0.1 × 0.2 在容差内');
+  assert(approxEqual(calculateDesignTorque(3.33, 3.0), 9.99, 1e-6),
+    '浮点精度：3.33 × 3.0 = 9.99');
+
+  // 输出结果
+  return { passed: _testPassed, total: _testTotal, log: _testLog };
+}
+
+/**
+ * 在页面上运行测试并显示结果
+ */
+function runTests() {
+  const result = runAllTests();
+  const output = document.getElementById('testOutput');
+  let text = result.log.join('\n') + '\n\n';
+  text += '========================================\n';
+  text += '通过 ' + result.passed + ' / 共 ' + result.total + '\n';
+  text += '========================================\n';
+  output.textContent = text;
+}
+
+/* ============================================================
+ *  标签页切换
+ * ============================================================ */
+document.querySelectorAll('.tab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* 将源码注入到页面 */
+(function injectSource() {
+  const scripts = document.querySelectorAll('script');
+  let source = '';
+  for (let i = 0; i < scripts.length; i++) {
+    if (scripts[i].textContent.indexOf('COUPLING_DB') !== -1) {
+      source = scripts[i].textContent;
+      break;
+    }
+  }
+  document.getElementById('sourceCode').textContent = source;
+})();
+</script>
+</body>
+</html>

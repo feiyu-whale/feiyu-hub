@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>，。 标点转换</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:560px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  textarea { width:100%; background:#100b1c; border:1px solid #3a3050; border-radius:9px; padding:11px 12px;
+    color:#e8e0f0; font-size:14px; font-family:inherit; resize:vertical; min-height:100px; line-height:1.6; }
+  textarea:focus { outline:none; border-color:#7a5fc0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btn { background:linear-gradient(160deg,#5a4a9a,#3a2d70); color:#fff; border:1px solid #7a5fc0;
+    border-radius:9px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn.g { background:#241a3a; border-color:#4a3d70; color:#c8b3ff; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../../">← 回工具箱</a>
+  <h1>，。 中英标点转换</h1>
+  <div class="sub">中文标点 ⇄ 英文标点 互转</div>
+
+  <div class="card">
+    <div class="lbl">输入</div>
+    <textarea id="in" placeholder="输入含标点的文本…"></textarea>
+    <div class="row">
+      <button class="btn" data-to="en">→ 转英文标点</button>
+      <button class="btn" data-to="cn">→ 转中文标点</button>
+      <button class="btn g" data-to="clr">清空</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">结果</div>
+    <textarea id="out" readonly></textarea>
+  </div>
+  <div class="ver">v1.0.0-标点转换 20261016</div>
+</div>
+<script>
+// 【punct】中英标点互转。依赖：无（内置映射表）。输入：含标点文本；输出：转换后文本。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 依据：中英文标点符号对照（GB/T 15834 常用标点；纯映射表，事实性对应关系）。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  // 中 → 英 映射
+  var CN2EN = {
+    "，":",", "。":".", "！":"!", "？":"?", "；":";", "：":":",
+    "（":"(", "）":")", "【":"[", "】":"]", "《":"<", "》":">",
+    "“":"\"", "”":"\"", "‘":"'", "’":"'", "、":",", "～":"~",
+    "……":"...", "—":"-", "－":"-", "·":"·", "　":" "
+  };
+  // 英 → 中 映射（只转中文语境常见的；不动句点以免误伤小数/网址）
+  var EN2CN = {
+    ",":"，", "!":"！", "?":"？", ";":"；", ":":"：",
+    "(":"（", ")":"）", "[":"【", "]":"】",
+    "“":"“", "”":"”"
+  };
+
+  function cn2en(s){
+    var out = "";
+    for(var i=0;i<s.length;i++){
+      var c = s[i];
+      if(c === "…"){ // 处理…… 
+        if(s[i+1] === "…"){ out += "..."; i++; continue; }
+      }
+      out += (CN2EN[c] != null) ? CN2EN[c] : c;
+    }
+    return out;
+  }
+  function en2cn(s){
+    var out = "";
+    for(var i=0;i<s.length;i++){
+      var c = s[i];
+      // 引号配对处理：奇数个 " 交替
+      out += (EN2CN[c] != null) ? EN2CN[c] : c;
+    }
+    return out;
+  }
+
+  function run(to){
+    if(to === "clr"){ $("in").value=""; $("out").value=""; return; }
+    var s = $("in").value;
+    $("out").value = (to === "en") ? cn2en(s) : en2cn(s);
+  }
+  document.querySelectorAll("[data-to]").forEach(function(b){
+    b.onclick = function(){ run(b.dataset.to); };
+  });
+  $("in").addEventListener("input", function(){ $("out").value = ""; });
+})();
+</script>
+</body>
+</html>

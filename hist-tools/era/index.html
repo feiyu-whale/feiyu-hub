@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🕰 年号 ⇄ 公元换算</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { min-height:100%; background:linear-gradient(160deg,#1a1428 0%,#241a33 55%,#120e1c 100%); }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#e8e0f0;
+    padding:6px 6px 12px; display:flex; justify-content:center; user-select:none; }
+  #wrap { width:100%; max-width:660px; }
+  .back { display:inline-block; text-decoration:none; color:#9a8fc0; font-size:13px; margin-bottom:12px;
+    padding:6px 12px; border:1px solid #3a3050; border-radius:20px; }
+  h1 { font-size:12px; color:#c8b3ff; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; color:#8a7fb0; font-size:12px; margin-bottom:16px; }
+  .card { background:#1c1530; border:1px solid #3a3050; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .lbl { font-size:11px; color:#8a7fb0; margin-bottom:9px; letter-spacing:1px; }
+  .f { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+  .f label { width:76px; font-size:13px; color:#c8b3ff; flex-shrink:0; }
+  .f input, .f select { flex:1; min-width:0; background:#100b1c; border:1px solid #3a3050; border-radius:9px;
+    padding:10px 11px; color:#e8e0f0; font-size:14px; font-family:inherit; }
+  .f input:focus, .f select:focus { outline:none; border-color:#7a5fc0; }
+  .stat { display:flex; justify-content:space-between; padding:9px 12px; background:#100b1c; border-radius:9px;
+    margin-bottom:7px; font-size:14px; gap:10px; }
+  .stat .k { color:#9a8fc0; flex-shrink:0; }
+  .stat .v { color:#b8a0ff; font-weight:700; text-align:right; word-break:break-word; }
+  .hit { font-size:13px; padding:8px 11px; background:#100b1c; border-radius:8px; margin-bottom:6px;
+    color:#c8b3ff; line-height:1.6; border-left:3px solid #5a4a9a; cursor:pointer; }
+  .hit:hover { background:#181228; }
+  .hint { font-size:12px; color:#6a5f90; line-height:1.6; margin-top:6px; }
+  .err { color:#ff8fa3; font-size:13px; padding:10px; }
+  .ver { text-align:center; color:#2a2440; font-size:10px; margin-top:22px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <a class="back" href="../">← 回文科专区</a>
+  <h1>🕰 年号 · 公元换算</h1>
+  <div class="sub">年号 → 公元 ／ 公元 → 年号（双向）</div>
+
+  <div class="card">
+    <div class="lbl">① 年号 → 公元</div>
+    <div class="f"><label>年号</label><input id="eraIn" placeholder="如：贞观 / 建元 / 宣统"></div>
+    <div id="eraOut"><div class="hint">输入年号查起止年份与君主</div></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">② 公元年 → 年号／朝代</div>
+    <div class="f"><label>公元年</label><input id="yearIn" type="text" inputmode="numeric" placeholder="如：627（公元前用负数）"></div>
+    <div id="yearOut"><div class="hint">输入年份查当时年号</div></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">③ 按朝代浏览年号</div>
+    <div class="f"><label>朝代</label><select id="dynSel"></select></div>
+    <div id="dynOut"></div>
+  </div>
+  <div class="ver">v1.1.0-修数据起止+公元0年 20261029</div>
+</div>
+<script>
+// 【era】年号⇄公元双向换算。依赖：data/eras.json（源自上海图书馆开放数据平台，MIT）。输入：年号或年份；输出：对应记录。
+// 本文件为单页工具，IIFE 隔离，无全局污染。
+// 数据来源：SongshGeoLab/chinese_history_toolkits (MIT)，原始数据 © 上海图书馆开放数据平台。
+// 说明：年号纪年按整年对应（起始/结束年），不处理年内进位（如"贞观三年"的月日级）。
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var ERAS = null;
+
+  function load(){
+    if(ERAS) return Promise.resolve(ERAS);
+    return fetch("../data/eras.json").then(function(r){ return r.json(); }).then(function(j){ ERAS = j; return j; });
+  }
+  function yl(y){ return y < 0 ? ("前" + (-y) + "年") : (y + "年"); }
+
+  function searchEra(q){
+    q = q.trim();
+    if(!q){ return []; }
+    var exact = ERAS.filter(function(e){ return e.era === q; });
+    if(exact.length) return exact;
+    // 模糊：包含
+    return ERAS.filter(function(e){ return e.era.indexOf(q) >= 0; }).slice(0, 30);
+  }
+
+  function renderEra(){
+    var q = $("eraIn").value;
+    var box = $("eraOut");
+    if(!q.trim()){ box.innerHTML = "<div class='hint'>输入年号查起止年份与君主</div>"; return; }
+    load().then(function(){
+      // 容错：若用户在此框输了数字，当作年份查
+      if(/^-?\d+$/.test(q.trim())){
+        var y = parseInt(q.trim(), 10);
+        var yh = ERAS.filter(function(e){ return y >= e.begin && y <= e.end; });
+        box.innerHTML = '<div class="stat"><span class="k">公元</span><span class="v">'+yl(y)+'</span></div>' +
+          (yh.length ? yh.map(function(e){
+            return '<div class="hit">'+e.dynasty+' · '+e.era+'<span style="color:#8a7fb0;font-size:12px">（'+
+              (e.monarch || '君主不详')+'，'+yl(e.begin)+'~'+yl(e.end)+'）</span></div>';
+          }).join("") : '<div class="err">该年无收录年号</div>');
+        return;
+      }
+      var hits = searchEra(q);
+      if(!hits.length){ box.innerHTML = "<div class='err'>未找到年号「"+q+"」</div>"; return; }
+      box.innerHTML = hits.map(function(e){
+        return '<div class="hit">'+e.era+'<span style="color:#8a7fb0;font-size:12px"> ｜ '+e.dynasty+
+          (e.monarch ? ' · '+e.monarch : '')+' ｜ '+yl(e.begin)+'~'+yl(e.end)+'</span></div>';
+      }).join("");
+    });
+  }
+
+  function renderYear(){
+    var raw = $("yearIn").value.trim();
+    var box = $("yearOut");
+    if(!/^-?\d+$/.test(raw)){ box.innerHTML = "<div class='hint'>输入年份（公元前用负数）</div>"; return; }
+    var y = parseInt(raw, 10);
+    // 公元 0 年不存在
+    if(y === 0){ box.innerHTML = "<div class='err'>历史上没有公元 0 年——公元前 1 年之后直接是公元 1 年</div>"; return; }
+    load().then(function(){
+      var hits = ERAS.filter(function(e){ return y >= e.begin && y <= e.end; });
+      if(!hits.length){ box.innerHTML = "<div class='err'>该年无收录年号（可能为无年号纪年时期）</div>"; return; }
+      box.innerHTML = '<div class="stat"><span class="k">公元</span><span class="v">'+yl(y)+'</span></div>' +
+        hits.map(function(e){
+          return '<div class="hit">'+e.dynasty+' · '+e.era+'<span style="color:#8a7fb0;font-size:12px">（'+
+            (e.monarch || '君主不详')+'，'+yl(e.begin)+'~'+yl(e.end)+'）</span></div>';
+        }).join("");
+    });
+  }
+
+  function buildDyn(){
+    load().then(function(){
+      var set = {};
+      ERAS.forEach(function(e){ set[e.dynasty] = (set[e.dynasty]||0)+1; });
+      var list = Object.keys(set);
+      $("dynSel").innerHTML = list.map(function(d){ return '<option value="'+d+'">'+d+'（'+set[d]+'）</option>'; }).join("");
+      renderDyn();
+    });
+  }
+  function renderDyn(){
+    var d = $("dynSel").value;
+    if(!d){ $("dynOut").innerHTML = ""; return; }
+    load().then(function(){
+      var list = ERAS.filter(function(e){ return e.dynasty === d; });
+      $("dynOut").innerHTML = list.map(function(e){
+        return '<div class="hit">'+e.era+'<span style="color:#8a7fb0;font-size:12px"> ｜ '+
+          (e.monarch||'—')+' ｜ '+yl(e.begin)+'~'+yl(e.end)+'</span></div>';
+      }).join("");
+    });
+  }
+
+  function debounce(fn){ var t; return function(){ clearTimeout(t); t = setTimeout(fn, 180); }; }
+  $("eraIn").addEventListener("input", debounce(renderEra));
+  $("yearIn").addEventListener("input", debounce(renderYear));
+  $("dynSel").addEventListener("change", renderDyn);
+  // 首次自动渲染：预填公元当前年，点开即有内容
+  if(!$("yearIn").value){ $("yearIn").value = (new Date()).getFullYear(); }
+  buildDyn(); renderYear(); renderEra();
+})();
+</script>
+</body>
+</html>

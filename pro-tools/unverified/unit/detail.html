@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>法定计量单位换算工具 v2.0.0</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #f5f7fa; color: #2c3e50;
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: #fff; padding: 24px 32px;
+  }
+  header h1 { margin: 0; font-size: 24px; }
+  header p { margin: 6px 0 0; opacity: 0.85; font-size: 14px; }
+  .tabs {
+    display: flex; background: #fff; border-bottom: 1px solid #e1e4e8;
+    padding: 0 24px; position: sticky; top: 0; z-index: 10;
+  }
+  .tab {
+    padding: 14px 22px; cursor: pointer; border-bottom: 3px solid transparent;
+    font-size: 15px; color: #586069; transition: all .2s;
+  }
+  .tab:hover { color: #2c3e50; }
+  .tab.active { color: #0366d6; border-bottom-color: #0366d6; font-weight: 600; }
+  .panel { display: none; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+  pre {
+    background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 6px;
+    overflow-x: auto; font-size: 13px; line-height: 1.5;
+    font-family: "SF Mono", Consolas, Monaco, monospace;
+  }
+  .doc h2 { border-bottom: 2px solid #0366d6; padding-bottom: 6px; margin-top: 28px; }
+  .doc h3 { color: #0366d6; margin-top: 22px; }
+  .doc table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  .doc th, .doc td { border: 1px solid #d0d7de; padding: 8px 12px; text-align: left; font-size: 14px; }
+  .doc th { background: #f6f8fa; }
+  .doc code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  .scene { background: #fff; border: 1px solid #e1e4e8; border-radius: 6px; padding: 16px; margin: 12px 0; }
+  .scene h4 { margin: 0 0 8px; color: #0366d6; }
+  .test-controls { margin-bottom: 16px; }
+  button {
+    background: #0366d6; color: #fff; border: none; padding: 10px 20px;
+    border-radius: 4px; cursor: pointer; font-size: 14px;
+  }
+  button:hover { background: #0256b9; }
+  #testResult {
+    background: #fff; border: 1px solid #e1e4e8; border-radius: 6px;
+    padding: 16px; font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px; white-space: pre-wrap; max-height: 600px; overflow-y: auto;
+  }
+  .pass { color: #28a745; }
+  .fail { color: #d73a49; }
+  .summary { font-weight: bold; font-size: 15px; margin-top: 12px; }
+  .version {
+    position: fixed; right: 12px; bottom: 8px; font-size: 11px;
+    color: #8b949e; z-index: 100;
+  }
+  .warn { background: #fff8c5; border-left: 4px solid #d4a72c; padding: 10px 14px; margin: 12px 0; }
+  .info { background: #ddf4ff; border-left: 4px solid #0366d6; padding: 10px 14px; margin: 12px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>法定计量单位换算工具</h1>
+  <p>依据 GB 3100-1993《国际单位制及其应用》、GB 3101-1993《有关量、单位和符号的一般原则》</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="source">一、JS 源码</div>
+  <div class="tab" data-tab="test">二、单元测试</div>
+  <div class="tab" data-tab="doc">三、使用说明书</div>
+</div>
+
+<!-- 第一部分：源码 -->
+<div class="panel active" id="panel-source">
+<pre id="sourceCode"></pre>
+</div>
+
+<!-- 第二部分：测试 -->
+<div class="panel" id="panel-test">
+  <div class="test-controls">
+    <button onclick="runAllTests()">▶ 运行全部测试</button>
+    <span style="margin-left:12px;color:#586069;font-size:13px;">点击按钮执行 30+ 个测试用例</span>
+  </div>
+  <div id="testResult">点击「运行全部测试」查看结果…</div>
+</div>
+
+<!-- 第三部分：说明书 -->
+<div class="panel doc" id="panel-doc">
+  <h2>一、工具简介</h2>
+  <p>本工具是一个纯 JavaScript 实现的法定计量单位换算库，用于在浏览器环境下完成长度、面积、体积、质量、压力、功率、温度七大类物理量的单位换算。核心算法采用「基准单位中转」模式：每个类别选定一个 SI 基准单位，所有输入值先换算到基准单位，再从基准单位换算到目标单位，从而将 N×N 的两两换算简化为 N 次线性映射。</p>
+  <p>该工具解决的核心问题：在工程计算、报表生成、数据可视化、表单录入等场景中，不同来源的数据往往使用不同单位（如国内工程用 MPa，进口设备用 psi；国内土地用亩，国际标准用公顷）。本工具提供统一、可复用的换算能力，避免业务代码中重复编写换算逻辑。</p>
+
+  <h2>二、核心 API</h2>
+  <h3>2.1 <code>convert(value, fromUnit, toUnit, category)</code></h3>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>取值范围</th><th>含义</th></tr>
+    <tr><td>value</td><td>number</td><td>有限数值（非 NaN、非 Infinity）</td><td>待换算的数值</td></tr>
+    <tr><td>fromUnit</td><td>string</td><td>见下方单位表</td><td>源单位符号</td></tr>
+    <tr><td>toUnit</td><td>string</td><td>见下方单位表</td><td>目标单位符号</td></tr>
+    <tr><td>category</td><td>string</td><td>'length'|'area'|'volume'|'mass'|'pressure'|'power'|'temperature'</td><td>物理量类别</td></tr>
+  </table>
+  <p><b>返回值：</b>number，换算后的数值。</p>
+  <p><b>异常：</b>参数类型错误、单位不存在、类别不存在时抛出 <code>Error</code>。</p>
+
+  <h3>2.2 各类别支持的单位</h3>
+  <table>
+    <tr><th>类别</th><th>基准单位</th><th>支持单位（符号）</th></tr>
+    <tr><td>长度 length</td><td>m（米）</td><td>km, m, dm, cm, mm, μm, nm, 里, 丈, 尺, 寸, 分, 厘, 毫, nmi, mile, ft, in</td></tr>
+    <tr><td>面积 area</td><td>m²（平方米）</td><td>km², m², dm², cm², mm², ha, 亩, 平方公里</td></tr>
+    <tr><td>体积 volume</td><td>m³（立方米）</td><td>km³, m³, dm³, cm³, mm³, L, mL</td></tr>
+    <tr><td>质量 mass</td><td>kg（千克）</td><td>t, kg, g, mg, μg, 斤, 两, 钱</td></tr>
+    <tr><td>压力 pressure</td><td>Pa（帕斯卡）</td><td>Pa, kPa, MPa, GPa, bar, mbar, atm, mmHg, psi</td></tr>
+    <tr><td>功率 power</td><td>W（瓦特）</td><td>W, kW, MW, GW, mW, μW, hp, PS</td></tr>
+    <tr><td>温度 temperature</td><td>K（开尔文）</td><td>K, °C, °F, °R</td></tr>
+  </table>
+
+  <h2>三、实际使用场景</h2>
+
+  <div class="scene">
+    <h4>场景 1：进口设备压力参数转换</h4>
+    <p><b>背景：</b>某进口液压泵铭牌标注工作压力 3000 psi，需转换为国内工程常用的 MPa 用于选型。</p>
+    <p><b>输入：</b><code>convert(3000, 'psi', 'MPa', 'pressure')</code></p>
+    <p><b>结果：</b>约 20.684 MPa（精确值 3000 × 6894.757293168 / 1e6）</p>
+    <p><b>说明：</b>1 psi = 6894.757293168 Pa，该系数源自 1 lbf/in² 的英制定义。</p>
+  </div>
+
+  <div class="scene">
+    <h4>场景 2：土地面积亩与公顷互换</h4>
+    <p><b>背景：</b>国土部门数据以「亩」登记，需换算为「公顷」用于国际报告。</p>
+    <p><b>输入：</b><code>convert(1500, '亩', 'ha', 'area')</code></p>
+    <p><b>结果：</b>100 ha（精确值：1500 × 2000/3 / 10000 = 100）</p>
+    <p><b>说明：</b>1 亩 = 2000/3 m² ≈ 666.6667 m²，1 公顷 = 10000 m²。</p>
+  </div>
+
+  <div class="scene">
+    <h4>场景 3：汽车发动机功率换算</h4>
+    <p><b>背景：</b>德系车标注 150 PS（公制马力），需换算为 kW 用于国内参数表。</p>
+    <p><b>输入：</b><code>convert(150, 'PS', 'kW', 'power')</code></p>
+    <p><b>结果：</b>约 110.325 kW（精确值 150 × 735.49875 / 1000）</p>
+    <p><b>说明：</b>PS 为公制马力（Pferdestärke），1 PS = 735.49875 W；注意与英制马力 hp（1 hp ≈ 745.7 W）区分。</p>
+  </div>
+
+  <div class="scene">
+    <h4>场景 4：体温单位转换</h4>
+    <p><b>背景：</b>海外医疗资料使用华氏度，需转换为摄氏度。</p>
+    <p><b>输入：</b><code>convert(98.6, '°F', '°C', 'temperature')</code></p>
+    <p><b>结果：</b>37 °C（精确值：(98.6 − 32) × 5/9 = 37）</p>
+    <p><b>说明：</b>温度换算为非线性，需先转到开尔文基准再转出。</p>
+  </div>
+
+  <div class="scene">
+    <h4>场景 5：木材体积从立方英寸转升</h4>
+    <p><b>背景：</b>进口木材规格以 in³ 标注，需换算为 L 用于仓储计算。</p>
+    <p><b>输入：</b><code>convert(1000, 'in', 'm', 'length')</code> 先换算边长，再立方；或直接体积换算：</p>
+    <p><b>直接输入：</b><code>convert(61.0237, 'in', 'cm', 'length')</code> 不适用体积，应使用体积类：<br>
+    由于本工具体积单位未直接包含 in³，可先换算长度再立方：1 in = 2.54 cm = 0.0254 m，故 1 in³ = (0.0254)³ m³ ≈ 1.6387×10⁻⁵ m³ = 0.016387 L。</p>
+    <p><b>说明：</b>如需 in³ 直接换算，可在业务层扩展单位表。</p>
+  </div>
+
+  <h2>四、常见错误与排查</h2>
+  <table>
+    <tr><th>错误现象</th><th>可能原因</th><th>排查方法</th></tr>
+    <tr><td>抛出 "Unknown category"</td><td>category 拼写错误或不在七类之中</td><td>检查 category 是否为 'length'|'area'|'volume'|'mass'|'pressure'|'power'|'temperature' 之一</td></tr>
+    <tr><td>抛出 "Unknown unit"</td><td>单位符号拼写错误或大小写不符</td><td>单位符号区分大小写，如 'MPa' 不能写成 'mpa'；中文单位如 '亩' 需完整输入</td></tr>
+    <tr><td>结果出现 0.30000000000000004</td><td>IEEE 754 浮点精度问题</td><td>业务层按需使用 <code>Number(result.toFixed(n))</code> 截断</td></tr>
+    <tr><td>温度换算结果异常</td><td>混淆了线性与非线性换算</td><td>温度必须使用 'temperature' 类别，不能当作线性量处理</td></tr>
+    <tr><td>传入 null/undefined 报错</td><td>参数校验失败</td><td>调用前确保 value 为有限数字</td></tr>
+  </table>
+
+  <h2>五、数据来源与标准依据</h2>
+  <ul>
+    <li><b>GB 3100-1993</b>《国际单位制及其应用》—— 等效采用 ISO 1000:1992，规定 SI 基本单位、导出单位及 SI 词头。</li>
+    <li><b>GB 3101-1993</b>《有关量、单位和符号的一般原则》—— 等效采用 ISO 31-0:1992。</li>
+    <li><b>GB 3102.1-1993</b> 至 <b>GB 3102.13-1993</b> —— 各物理量的具体单位定义。</li>
+    <li>市制单位（里、丈、尺、寸、斤、两、钱、亩）依据《中华人民共和国法定计量单位》（1984 年国务院发布）及国家计量总局相关解释。</li>
+    <li>英制/美制单位换算系数（mile、ft、in、psi、hp、atm、mmHg）采用 NIST（美国国家标准与技术研究院）公布的精确值。</li>
+    <li>公制马力 PS 采用 DIN 1302 / ISO 80000-5 定义：1 PS = 735.49875 W。</li>
+  </ul>
+  <div class="info">注：所有换算系数均为定义值或国际协议值，非测量值，因此不存在不确定度。如需核对原始定义，请查阅上述标准原文。</div>
+
+  <h2>六、局限性说明</h2>
+  <div class="warn">
+    <b>本工具不能做以下事情，请勿超范围使用：</b>
+    <ul style="margin:6px 0 0;">
+      <li>不支持跨类别换算（如长度不能换算为面积，即便数值上看似可行）。物理量纲不同，跨类换算无物理意义。</li>
+      <li>不支持「市制特殊行业单位」，如中药的「钱」在不同历史时期定义不同（本工具采用 1 钱 = 5 g 的现代市制定义，不适用于明清古方换算）。</li>
+      <li>不支持「英制体积单位」（gal、ft³、in³ 等），如需使用请自行扩展单位表。</li>
+      <li>不支持「能量/热量」类别（J、cal、BTU、kWh 等），因需求未列出。</li>
+      <li>不支持「时间」「电流」「物质的量」「发光强度」等其他 SI 基本量。</li>
+      <li>不处理「有效数字」与「测量不确定度」。本工具仅做数学换算，不对输入数据的有效位数做保留或传播。</li>
+      <li>浮点精度受 IEEE 754 双精度限制，极大值（>1e300）或极小值（<1e-300）可能出现溢出或下溢。</li>
+      <li>温度换算仅支持 K、°C、°F、°R 四种，不支持 Réaumur、Rankine 变体等罕见温标。</li>
+      <li>本工具不保证在 Node.js 以外 JS 运行时（如 QuickJS、Duktape）的行为一致，但理论上兼容 ES5+ 环境。</li>
+      <li>本工具不对「单位符号的书写规范」做校验，例如 'm2' 与 'm²' 视为不同符号，用户需按表中符号严格输入。</li>
+    </ul>
+  </div>
+
+  <h2>七、版本与许可</h2>
+  <p>版本：v2.0.0-完整版 20261021</p>
+  <p>本工具以教学与工程参考为目的发布，换算系数来源于公开标准，使用者应自行核对关键场景的准确性。</p>
+</div>
+
+<div class="version">v2.0.0-完整版 20261021</div>
+
+<script>
+/* ============================================================
+ *  第一部分：JS 源码（法定计量单位换算核心库）
+ *  依据：GB 3100-1993、GB 3101-1993
+ * ============================================================ */
+
+/**
+ * 单位定义表。每个类别以 SI 基准单位为中转。
+ * 线性类别：factor 表示 1 个该单位等于多少基准单位。
+ * 温度类别：使用 toBase / fromBase 函数处理非线性。
+ * @type {Object}
+ */
+const UNIT_TABLE = {
+  length: {
+    base: 'm',
+    units: {
+      'km':   { factor: 1000,              name: '千米' },
+      'm':    { factor: 1,                 name: '米' },
+      'dm':   { factor: 0.1,               name: '分米' },
+      'cm':   { factor: 0.01,              name: '厘米' },
+      'mm':   { factor: 0.001,             name: '毫米' },
+      'μm':   { factor: 1e-6,              name: '微米' },
+      'nm':   { factor: 1e-9,              name: '纳米' },
+      '里':    { factor: 500,               name: '市里' },
+      '丈':    { factor: 10/3,              name: '市丈' },
+      '尺':    { factor: 1/3,               name: '市尺' },
+      '寸':    { factor: 1/30,              name: '市寸' },
+      '分':    { factor: 1/300,             name: '市分' },
+      '厘':    { factor: 1/3000,            name: '市厘' },
+      '毫':    { factor: 1/30000,           name: '市毫' },
+      'nmi':  { factor: 1852,              name: '海里' },
+      'mile': { factor: 1609.344,          name: '英里' },
+      'ft':   { factor: 0.3048,            name: '英尺' },
+      'in':   { factor: 0.0254,            name: '英寸' }
+    }
+  },
+  area: {
+    base: 'm²',
+    units: {
+      'km²': { factor: 1e6,    name: '平方千米' },
+      'm²':  { factor: 1,      name: '平方米' },
+      'dm²': { factor: 0.01,   name: '平方分米' },
+      'cm²': { factor: 1e-4,   name: '平方厘米' },
+      'mm²': { factor: 1e-6,   name: '平方毫米' },
+      'ha':  { factor: 10000,  name: '公顷' },
+      '亩':   { factor: 2000/3, name: '市亩' },
+      '平方公里': { factor: 1e6, name: '平方公里' }
+    }
+  },
+  volume: {
+    base: 'm³',
+    units: {
+      'km³': { factor: 1e9,    name: '立方千米' },
+      'm³':  { factor: 1,      name: '立方米' },
+      'dm³': { factor: 0.001,  name: '立方分米' },
+      'cm³': { factor: 1e-6,   name: '立方厘米' },
+      'mm³': { factor: 1e-9,   name: '立方毫米' },
+      'L':   { factor: 0.001,  name: '升' },
+      'mL':  { factor: 1e-6,   name: '毫升' }
+    }
+  },
+  mass: {
+    base: 'kg',
+    units: {
+      't':   { factor: 1000,   name: '吨' },
+      'kg':  { factor: 1,      name: '千克' },
+      'g':   { factor: 0.001,  name: '克' },
+      'mg':  { factor: 1e-6,   name: '毫克' },
+      'μg':  { factor: 1e-9,   name: '微克' },
+      '斤':   { factor: 0.5,    name: '市斤' },
+      '两':   { factor: 0.05,   name: '市两' },
+      '钱':   { factor: 0.005,  name: '市钱' }
+    }
+  },
+  pressure: {
+    base: 'Pa',
+    units: {
+      'Pa':    { factor: 1,              name: '帕斯卡' },
+      'kPa':   { factor: 1000,           name: '千帕' },
+      'MPa':   { factor: 1e6,            name: '兆帕' },
+      'GPa':   { factor: 1e9,            name: '吉帕' },
+      'bar':   { factor: 1e5,            name: '巴' },
+      'mbar':  { factor: 100,            name: '毫巴' },
+      'atm':   { factor: 101325,         name: '标准大气压' },
+      'mmHg':  { factor: 133.322387415,  name: '毫米汞柱' },
+      'psi':   { factor: 6894.757293168, name: '磅每平方英寸' }
+    }
+  },
+  power: {
+    base: 'W',
+    units: {
+      'W':   { factor: 1,              name: '瓦特' },
+      'kW':  { factor: 1000,           name: '千瓦' },
+      'MW':  { factor: 1e6,            name: '兆瓦' },
+      'GW':  { factor: 1e9,            name: '吉瓦' },
+      'mW':  { factor: 0.001,          name: '毫瓦' },
+      'μW':  { factor: 1e-6,           name: '微瓦' },
+      'hp':  { factor: 745.69987158227022, name: '英制马力' },
+      'PS':  { factor: 735.49875,      name: '公制马力' }
+    }
+  },
+  temperature: {
+    base: 'K',
+    units: {
+      'K':   {
+        name: '开尔文',
+        toBase:   function(x){ return x; },
+        fromBase: function(x){ return x; }
+      },
+      '°C':  {
+        name: '摄氏度',
+        toBase:   function(x){ return x + 273.15; },
+        fromBase: function(x){ return x - 273.15; }
+      },
+      '°F':  {
+        name: '华氏度',
+        toBase:   function(x){ return (x - 32) * 5/9 + 273.15; },
+        fromBase: function(x){ return (x - 273.15) * 9/5 + 32; }
+      },
+      '°R':  {
+        name: '兰金度',
+        toBase:   function(x){ return x * 5/9; },
+        fromBase: function(x){ return x * 9/5; }
+      }
+    }
+  }
+};
+
+/**
+ * 校验数值是否为有限数字
+ * @param {*} v - 待校验值
+ * @returns {boolean} 是否为有限数字
+ */
+function isFiniteNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * 执行法定计量单位换算。
+ * 算法：value → 基准单位 → 目标单位。
+ * 温度类别使用专用非线性函数，其余类别使用线性 factor。
+ *
+ * @param {number} value - 待换算的数值，必须为有限数字
+ * @param {string} fromUnit - 源单位符号（如 'km'、'MPa'、'°C'）
+ * @param {string} toUnit - 目标单位符号
+ * @param {string} category - 物理量类别，取值：
+ *   'length'|'area'|'volume'|'mass'|'pressure'|'power'|'temperature'
+ * @returns {number} 换算后的数值
+ * @throws {Error} 参数类型错误、单位不存在、类别不存在时抛出
+ *
+ * @example
+ * // 长度：1 千米 = 1000 米
+ * convert(1, 'km', 'm', 'length'); // 1000
+ *
+ * @example
+ * // 压力：1 标准大气压 = 101325 帕
+ * convert(1, 'atm', 'Pa', 'pressure'); // 101325
+ *
+ * @example
+ * // 温度：0 °C = 273.15 K
+ * convert(0, '°C', 'K', 'temperature'); // 273.15
+ *
+ * @example
+ * // 质量：1 市斤 = 500 克
+ * convert(1, '斤', 'g', 'mass'); // 500
+ */
+function convert(value, fromUnit, toUnit, category) {
+  if (!isFiniteNumber(value)) {
+    throw new Error('value 必须为有限数字，收到: ' + String(value));
+  }
+  if (typeof fromUnit !== 'string' || fromUnit === '') {
+    throw new Error('fromUnit 必须为非空字符串');
+  }
+  if (typeof toUnit !== 'string' || toUnit === '') {
+    throw new Error('toUnit 必须为非空字符串');
+  }
+  if (typeof category !== 'string' || !UNIT_TABLE[category]) {
+    throw new Error('Unknown category: ' + String(category) +
+      '。合法值: length|area|volume|mass|pressure|power|temperature');
+  }
+
+  var cat = UNIT_TABLE[category];
+  var from = cat.units[fromUnit];
+  var to   = cat.units[toUnit];
+
+  if (!from) throw new Error('Unknown unit in [' + category + ']: ' + fromUnit);
+  if (!to)   throw new Error('Unknown unit in [' + category + ']: ' + toUnit);
+
+  // 温度：非线性
+  if (category === 'temperature') {
+    var baseValue = from.toBase(value);
+    return to.fromBase(baseValue);
+  }
+
+  // 线性类别：value × from.factor / to.factor
+  return value * from.factor / to.factor;
+}
+
+/**
+ * 列出指定类别下所有可用单位
+ * @param {string} category - 物理量类别
+ * @returns {string[]} 单位符号数组
+ * @throws {Error} 类别不存在时抛出
+ * @example
+ * listUnits('length'); // ['km','m','dm','cm','mm','μm','nm','里','丈','尺','寸','分','厘','毫','nmi','mile','ft','in']
+ */
+function listUnits(category) {
+  if (!UNIT_TABLE[category]) {
+    throw new Error('Unknown category: ' + category);
+  }
+  return Object.keys(UNIT_TABLE[category].units);
+}
+
+/**
+ * 列出所有支持的物理量类别
+ * @returns {string[]} 类别名数组
+ * @example
+ * listCategories(); // ['length','area','volume','mass','pressure','power','temperature']
+ */
+function listCategories() {
+  return Object.keys(UNIT_TABLE);
+}
+
+/* ============================================================
+ *  第二部分：单元测试（纯 JS 实现，不依赖任何框架）
+ * ============================================================ */
+
+var TEST_PASS = 0;
+var TEST_FAIL = 0;
+var TEST_LOG = [];
+
+/**
+ * 断言两数近似相等（考虑浮点误差）
+ * @param {number} actual - 实际值
+ * @param {number} expected - 期望值
+ * @param {number} [tolerance=1e-9] - 容差
+ * @returns {boolean}
+ */
+function approxEqual(actual, expected, tolerance) {
+  if (tolerance === undefined) tolerance = 1e-9;
+  if (expected === 0) return Math.abs(actual) < tolerance;
+  return Math.abs(actual - expected) / Math.max(Math.abs(expected), 1e-15) < tolerance;
+}
+
+/**
+ * 执行单个测试用例
+ * @param {string} name - 用例名
+ * @param {Function} fn - 测试函数，抛出异常即视为失败
+ */
+function test(name, fn) {
+  try {
+    fn();
+    TEST_PASS++;
+    TEST_LOG.push('<span class="pass">✓ ' + name + '</span>');
+  } catch (e) {
+    TEST_FAIL++;
+    TEST_LOG.push('<span class="fail">✗ ' + name + '：' + e.message + '</span>');
+  }
+}
+
+/**
+ * 断言相等
+ * @param {*} actual
+ * @param {*} expected
+ * @param {string} [msg]
+ */
+function assertEqual(actual, expected, msg) {
+  if (actual !== expected) {
+    throw new Error((msg || 'assertEqual') + '：期望 ' + expected + '，实际 ' + actual);
+  }
+}
+
+/**
+ * 断言近似相等
+ */
+function assertApprox(actual, expected, msg) {
+  if (!approxEqual(actual, expected)) {
+    throw new Error((msg || 'assertApprox') + '：期望 ' + expected + '，实际 ' + actual);
+  }
+}
+
+/**
+ * 断言抛出异常
+ * @param {Function} fn
+ * @param {RegExp|string} [matcher]
+ */
+function assertThrows(fn, matcher, msg) {
+  var thrown = false;
+  var errMsg = '';
+  try { fn(); } catch (e) { thrown = true; errMsg = e.message; }
+  if (!thrown) throw new Error((msg || 'assertThrows') + '：期望抛出异常但未抛出');
+  if (matcher) {
+    if (matcher instanceof RegExp) {
+      if (!matcher.test(errMsg)) throw new Error('异常信息不匹配：' + errMsg);
+    } else if (errMsg.indexOf(matcher) === -1) {
+      throw new Error('异常信息不包含 "' + matcher + '"：' + errMsg);
+    }
+  }
+}
+
+/**
+ * 运行全部测试用例
+ */
+function runAllTests() {
+  TEST_PASS = 0;
+  TEST_FAIL = 0;
+  TEST_LOG = [];
+
+  // ---------- 长度（10 个） ----------
+  test('长度：1 km = 1000 m', function(){
+    assertEqual(convert(1, 'km', 'm', 'length'), 1000);
+  });
+  test('长度：1 m = 100 cm', function(){
+    assertEqual(convert(1, 'm', 'cm', 'length'), 100);
+  });
+  test('长度：1 里 = 500 m', function(){
+    assertEqual(convert(1, '里', 'm', 'length'), 500);
+  });
+  test('长度：1 mile = 1.609344 km', function(){
+    assertApprox(convert(1, 'mile', 'km', 'length'), 1.609344);
+  });
+  test('长度：1 ft = 0.3048 m', function(){
+    assertApprox(convert(1, 'ft', 'm', 'length'), 0.3048);
+  });
+  test('长度：1 in = 2.54 cm', function(){
+    assertApprox(convert(1, 'in', 'cm', 'length'), 2.54);
+  });
+  test('长度：1 nmi = 1852 m', function(){
+    assertEqual(convert(1, 'nmi', 'm', 'length'), 1852);
+  });
+  test('长度：1 尺 = 1/3 m', function(){
+    assertApprox(convert(1, '尺', 'm', 'length'), 1/3);
+  });
+  test('长度：0 m = 0 km（边界 0）', function(){
+    assertEqual(convert(0, 'm', 'km', 'length'), 0);
+  });
+  test('长度：负数 -5 m = -500 cm', function(){
+    assertEqual(convert(-5, 'm', 'cm', 'length'), -500);
+  });
+
+  // ---------- 面积（5 个） ----------
+  test('面积：1 ha = 10000 m²', function(){
+    assertEqual(convert(1, 'ha', 'm²', 'area'), 10000);
+  });
+  test('面积：1 亩 = 2000/3 m²', function(){
+    assertApprox(convert(1, '亩', 'm²', 'area'), 2000/3);
+  });
+  test('面积：1 km² = 100 ha', function(){
+    assertEqual(convert(1, 'km²', 'ha', 'area'), 100);
+  });
+  test('面积：1500 亩 = 100 ha', function(){
+    assertApprox(convert(1500, '亩', 'ha', 'area'), 100);
+  });
+  test('面积：1 m² = 10000 cm²', function(){
+    assertEqual(convert(1, 'm²', 'cm²', 'area'), 10000);
+  });
+
+  // ---------- 体积（4 个） ----------
+  test('体积：1 L = 1000 mL', function(){
+    assertEqual(convert(1, 'L', 'mL', 'volume'), 1000);
+  });
+  test('体积：1 m³ = 1000 L', function(){
+    assertEqual(convert(1, 'm³', 'L', 'volume'), 1000);
+  });
+  test('体积：1 dm³ = 1 L', function(){
+    assertEqual(convert(1, 'dm³', 'L', 'volume'), 1);
+  });
+  test('体积：1 cm³ = 1 mL', function(){
+    assertEqual(convert(1, 'cm³', 'mL', 'volume'), 1);
+  });
+
+  // ---------- 质量（5 个） ----------
+  test('质量：1 t = 1000 kg', function(){
+    assertEqual(convert(1, 't', 'kg', 'mass'), 1000);
+  });
+  test('质量：1 斤 = 500 g', function(){
+    assertEqual(convert(1, '斤', 'g', 'mass'), 500);
+  });
+  test('质量：1 kg = 20 两', function(){
+    assertEqual(convert(1, 'kg', '两', 'mass'), 20);
+  });
+  test('质量：1 两 = 10 钱', function(){
+    assertEqual(convert(1, '两', '钱', 'mass'), 10);
+  });
+  test('质量：1 g = 1e6 μg', function(){
+    assertEqual(convert(1, 'g', 'μg', 'mass'), 1e6);
+  });
+
+  // ---------- 压力（5 个） ----------
+  test('压力：1 atm = 101325 Pa', function(){
+    assertEqual(convert(1, 'atm', 'Pa', 'pressure'), 101325);
+  });
+  test('压力：1 bar = 100 kPa', function(){
+    assertEqual(convert(1, 'bar', 'kPa', 'pressure'), 100);
+  });
+  test('压力：1 MPa = 10 bar', function(){
+    assertEqual(convert(1, 'MPa', 'bar', 'pressure'), 10);
+  });
+  test('压力：1 psi ≈ 6894.757 Pa', function(){
+    assertApprox(convert(1, 'psi', 'Pa', 'pressure'), 6894.757293168);
+  });
+  test('压力：760 mmHg = 1 atm', function(){
+    assertApprox(convert(760, 'mmHg', 'atm', 'pressure'), 1);
+  });
+
+  // ---------- 功率（4 个） ----------
+  test('功率：1 kW = 1000 W', function(){
+    assertEqual(convert(1, 'kW', 'W', 'power'), 1000);
+  });
+  test('功率：1 hp ≈ 745.7 W', function(){
+    assertApprox(convert(1, 'hp', 'W', 'power'), 745.69987158227022);
+  });
+  test('功率：1 PS = 735.49875 W', function(){
+    assertApprox(convert(1, 'PS', 'W', 'power'), 735.49875);
+  });
+  test('功率：1 MW = 0.001 GW', function(){
+    assertEqual(convert(1, 'MW', 'GW', 'power'), 0.001);
+  });
+
+  // ---------- 温度（5 个） ----------
+  test('温度：0 °C = 273.15 K', function(){
+    assertApprox(convert(0, '°C', 'K', 'temperature'), 273.15);
+  });
+  test('温度：100 °C = 212 °F', function(){
+    assertApprox(convert(100, '°C', '°F', 'temperature'), 212);
+  });
+  test('温度：32 °F = 0 °C', function(){
+    assertApprox(convert(32, '°F', '°C', 'temperature'), 0);
+  });
+  test('温度：0 K = -273.15 °C', function(){
+    assertApprox(convert(0, 'K', '°C', 'temperature'), -273.15);
+  });
+  test('温度：-40 °C = -40 °F（交汇点）', function(){
+    assertApprox(convert(-40, '°C', '°F', 'temperature'), -40);
+  });
+
+  // ---------- 异常输入（7 个） ----------
+  test('异常：value 为 null 抛出', function(){
+    assertThrows(function(){ convert(null, 'm', 'km', 'length'); }, /有限数字/);
+  });
+  test('异常：value 为 undefined 抛出', function(){
+    assertThrows(function(){ convert(undefined, 'm', 'km', 'length'); }, /有限数字/);
+  });
+  test('异常：value 为 NaN 抛出', function(){
+    assertThrows(function(){ convert(NaN, 'm', 'km', 'length'); }, /有限数字/);
+  });
+  test('异常：value 为 Infinity 抛出', function(){
+    assertThrows(function(){ convert(Infinity, 'm', 'km', 'length'); }, /有限数字/);
+  });
+  test('异常：fromUnit 为空字符串抛出', function(){
+    assertThrows(function(){ convert(1, '', 'km', 'length'); }, /fromUnit/);
+  });
+  test('异常：未知单位抛出', function(){
+    assertThrows(function(){ convert(1, 'xxx', 'm', 'length'); }, /Unknown unit/);
+  });
+  test('异常：未知类别抛出', function(){
+    assertThrows(function(){ convert(1, 'm', 'km', 'xxx'); }, /Unknown category/);
+  });
+
+  // ---------- 精度与边界（4 个） ----------
+  test('精度：0.1 + 0.2 类浮点误差受控', function(){
+    // 1 mm = 0.1 cm，验证不会因浮点产生明显偏差
+    assertApprox(convert(1, 'mm', 'cm', 'length'), 0.1, 1e-12);
+  });
+  test('精度：大数值 1e9 mm = 1e6 m', function(){
+    assertEqual(convert(1e9, 'mm', 'm', 'length'), 1e6);
+  });
+  test('精度：小数值 1e-9 km = 1e-6 m', function(){
+    assertApprox(convert(1e-9, 'km', 'm', 'length'), 1e-6);
+  });
+  test('同单位换算返回原值', function(){
+    assertEqual(convert(123.456, 'MPa', 'MPa', 'pressure'), 123.456);
+  });
+
+  // ---------- 辅助函数（2 个） ----------
+  test('listUnits 返回长度单位数组', function(){
+    var u = listUnits('length');
+    if (!Array.isArray(u) || u.indexOf('km') === -1 || u.indexOf('里') === -1) {
+      throw new Error('listUnits 结果异常');
+    }
+  });
+  test('listCategories 返回 7 个类别', function(){
+    var c = listCategories();
+    assertEqual(c.length, 7);
+  });
+
+  // ---------- 渲染结果 ----------
+  var total = TEST_PASS + TEST_FAIL;
+  var html = TEST_LOG.join('\n') +
+    '\n\n<div class="summary">通过 <span class="pass">' + TEST_PASS +
+    '</span> / 共 ' + total +
+    (TEST_FAIL > 0 ? '，失败 <span class="fail">' + TEST_FAIL + '</span>' : '') +
+    '</div>';
+  document.getElementById('testResult').innerHTML = html;
+}
+
+/* ============================================================
+ *  UI：标签页切换 + 源码展示
+ * ============================================================ */
+
+(function(){
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.classList.remove('active'); });
+      t.classList.add('active');
+      document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+      document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 把源码文本填入 pre（避免 HTML 解析干扰）
+  var src = document.querySelector('script').innerText;
+  // 截取第一部分（从文件头到 "第二部分" 注释之前）
+  var cut = src.indexOf('第二部分：单元测试');
+  var part1 = src.substring(0, cut).trim();
+  document.getElementById('sourceCode').textContent = part1;
+})();
+</script>
+
+</body>
+</html>

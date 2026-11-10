@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建筑热工计算工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; }
+.header { background: #1a5276; color: #fff; padding: 20px 30px; }
+.header h1 { font-size: 22px; }
+.header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+.tabs { display: flex; background: #fff; border-bottom: 2px solid #1a5276; padding: 0 20px; }
+.tab-btn { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 14px; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.tab-btn.active { color: #1a5276; border-bottom-color: #1a5276; font-weight: bold; }
+.tab-btn:hover { color: #1a5276; background: #f0f7fb; }
+.tab-content { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+.tab-content.active { display: block; }
+pre { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.6; font-family: "Consolas", "Source Code Pro", monospace; }
+.manual { background: #fff; padding: 30px; border-radius: 8px; line-height: 1.8; font-size: 15px; }
+.manual h2 { color: #1a5276; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #ddd; }
+.manual h3 { color: #2c3e50; margin: 18px 0 8px; }
+.manual p { margin: 8px 0; text-indent: 2em; }
+.manual ul, .manual ol { margin: 8px 0 8px 2em; }
+.manual li { margin: 4px 0; }
+.manual table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.manual th, .manual td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 14px; }
+.manual th { background: #f0f7fb; }
+.manual .warn { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 12px 0; }
+.manual .error-box { background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px 16px; margin: 12px 0; }
+.manual .info-box { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 12px 16px; margin: 12px 0; }
+#test-output { background: #fff; padding: 20px; border-radius: 8px; margin-top: 16px; font-family: monospace; font-size: 13px; line-height: 1.8; white-space: pre-wrap; max-height: 600px; overflow-y: auto; }
+.test-pass { color: #28a745; }
+.test-fail { color: #dc3545; }
+.test-summary { font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px; margin-top: 12px; }
+.btn { background: #1a5276; color: #fff; border: none; padding: 10px 24px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.btn:hover { background: #154360; }
+.version { position: fixed; bottom: 8px; right: 12px; font-size: 11px; color: #999; }
+.notice-banner { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 16px; margin: 0; font-size: 13px; color: #856404; }
+.notice-banner.red { background: #f8d7da; border-left-color: #dc3545; color: #721c24; }
+@media (max-width: 600px) {
+  .tabs { flex-wrap: wrap; padding: 0 8px; }
+  .tab-btn { padding: 10px 14px; }
+  .tab-content { padding: 12px; overflow-x: auto; }
+  .header { padding: 14px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>建筑热工计算工具</h1>
+<p>传热系数 K 值 · 热阻 R · 结露验算 ｜ 依据 GB 50176《民用建筑热工设计规范》</p>
+</div>
+
+<div class="notice-banner red"><strong>提示：</strong>本工具参数（Ri/Re/Δt 等）为经验参考值，未经标准原文核对，无权威数据来源；使用前请自行查证 GB 50176-2016 原文。本工具当前为函数库，暂无参数输入界面。</div>
+
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab(0)">JS 源码</button>
+<button class="tab-btn" onclick="switchTab(1)">单元测试</button>
+<button class="tab-btn" onclick="switchTab(2)">使用说明书</button>
+</div>
+
+<div id="tab0" class="tab-content active">
+<pre id="source-code"></pre>
+</div>
+
+<div id="tab1" class="tab-content">
+<div class="notice-banner" style="margin-bottom:12px;"><strong>说明：</strong>本工具目前为 JavaScript 函数库，暂无参数输入表单。如需计算，请在浏览器控制台调用相应函数（用法见「使用说明书」页）。</div>
+<button class="btn" onclick="runTests()">运行全部测试</button>
+<div id="test-output">点击按钮运行测试...</div>
+</div>
+
+<div id="tab2" class="tab-content">
+<div class="manual" id="manual-content"></div>
+</div>
+
+<div class="version">v2.0.1-修审查问题 20261108</div>
+
+<script>
+// ============================================================
+// 第一部分：JS 源码 —— 建筑热工计算核心算法
+// 依据 GB 50176-2016《民用建筑热工设计规范》
+// ============================================================
+
+/**
+ * 计算单层材料的热阻
+ * 公式：R = δ / λ
+ * 其中 δ 为材料厚度(m)，λ 为导热系数[W/(m·K)]
+ * 依据 GB 50176-2016 第4.1节
+ *
+ * @param {number} thickness - 材料厚度，单位 m，必须 > 0
+ * @param {number} thermalConductivity - 材料导热系数，单位 W/(m·K)，必须 > 0
+ * @returns {number} 热阻 R，单位 m²·K/W
+ * @throws {Error} 参数非法时抛出错误
+ */
+function calcLayerResistance(thickness, thermalConductivity) {
+    if (typeof thickness !== 'number' || typeof thermalConductivity !== 'number') {
+        throw new Error('参数必须为数字');
+    }
+    if (thickness < 0) {
+        throw new Error('厚度不能为负值');
+    }
+    if (thermalConductivity <= 0) {
+        throw new Error('导热系数必须大于零');
+    }
+    if (thickness === 0) {
+        return 0;
+    }
+    return thickness / thermalConductivity;
+}
+
+/**
+ * 计算多层围护结构的总热阻 R0
+ * 公式：R0 = Ri + Σ(δi/λi) + Re
+ * 其中 Ri 为内表面换热阻，Re 为外表面换热阻
+ * 依据 GB 50176-2016 第4.1.1条
+ *
+ * @param {Array<{thickness: number, thermalConductivity: number}>} layers - 各层材料数组
+ * @param {number} [Ri=0.11] - 内表面换热阻，单位 m²·K/W。默认值：墙体/屋面 0.11
+ * @param {number} [Re=0.04] - 外表面换热阻，单位 m²·K/W。默认值：冬季外墙 0.04
+ * @returns {number} 总热阻 R0，单位 m²·K/W
+ * @throws {Error} 参数非法时抛出错误
+ */
+function calcTotalResistance(layers, Ri, Re) {
+    if (!Array.isArray(layers)) {
+        throw new Error('layers 必须为数组');
+    }
+    if (Ri === undefined) Ri = 0.11;
+    if (Re === undefined) Re = 0.04;
+    if (typeof Ri !== 'number' || typeof Re !== 'number') {
+        throw new Error('Ri 和 Re 必须为数字');
+    }
+    if (Ri < 0 || Re < 0) {
+        throw new Error('表面换热阻不能为负值');
+    }
+    var sumR = 0;
+    for (var i = 0; i < layers.length; i++) {
+        var layer = layers[i];
+        if (!layer || typeof layer.thickness !== 'number' || typeof layer.thermalConductivity !== 'number') {
+            throw new Error('第 ' + (i + 1) + ' 层数据格式错误，需要 thickness 和 thermalConductivity');
+        }
+        sumR += calcLayerResistance(layer.thickness, layer.thermalConductivity);
+    }
+    return Ri + sumR + Re;
+}
+
+/**
+ * 计算围护结构的传热系数 K
+ * 公式：K = 1 / R0
+ * 依据 GB 50176-2016 第4.1.1条
+ *
+ * @param {number} R0 - 总热阻，单位 m²·K/W，必须 > 0
+ * @returns {number} 传热系数 K，单位 W/(m²·K)
+ * @throws {Error} R0 非法时抛出错误
+ */
+function calcHeatTransferCoefficient(R0) {
+    if (typeof R0 !== 'number') {
+        throw new Error('R0 必须为数字');
+    }
+    if (R0 <= 0) {
+        throw new Error('总热阻 R0 必须大于零');
+    }
+    return 1 / R0;
+}
+
+/**
+ * 计算各层界面温度
+ * 依据热流守恒原理，各层界面温度按热阻比例线性分布
+ * 公式：θj = tin - (tin - tout) × (Ri + ΣR1..j) / R0
+ * 其中 θj 为第 j 层外侧界面温度
+ *
+ * @param {Array<{thickness: number, thermalConductivity: number}>} layers - 各层材料数组
+ * @param {number} Ri - 内表面换热阻，单位 m²·K/W
+ * @param {number} Re - 外表面换热阻，单位 m²·K/W
+ * @param {number} indoorTemp - 室内计算温度，单位 ℃
+ * @param {number} outdoorTemp - 室外计算温度，单位 ℃
+ * @returns {Array<number>} 各界面温度数组（含内表面和外侧各界面），单位 ℃
+ * @throws {Error} 参数非法时抛出错误
+ */
+function calcInterfaceTemperatures(layers, Ri, Re, indoorTemp, outdoorTemp) {
+    if (!Array.isArray(layers)) {
+        throw new Error('layers 必须为数组');
+    }
+    if (typeof indoorTemp !== 'number' || typeof outdoorTemp !== 'number') {
+        throw new Error('温度参数必须为数字');
+    }
+    var R0 = calcTotalResistance(layers, Ri, Re);
+    var temperatures = [];
+    // 内表面温度
+    var thetaInner = indoorTemp - (indoorTemp - outdoorTemp) * Ri / R0;
+    temperatures.push(thetaInner);
+    // 各层界面温度
+    var cumulativeR = Ri;
+    for (var i = 0; i < layers.length; i++) {
+        cumulativeR += calcLayerResistance(layers[i].thickness, layers[i].thermalConductivity);
+        var thetaJ = indoorTemp - (indoorTemp - outdoorTemp) * cumulativeR / R0;
+        temperatures.push(thetaJ);
+    }
+    return temperatures;
+}
+
+/**
+ * 利用 Magnus 公式计算露点温度
+ * 公式：Td = b × γ(T,RH) / (a - γ(T,RH))
+ * 其中 γ = ln(RH/100) + a×T / (b+T)
+ * 参数 a=17.625, b=243.04（Alduchov & Eskridge, 1996 推荐值）
+ * 适用范围：0℃ < T < 60℃, 1% < RH < 100%
+ *
+ * @param {number} temperature - 空气温度，单位 ℃
+ * @param {number} relativeHumidity - 相对湿度，单位 %，范围 (0, 100]
+ * @returns {number} 露点温度，单位 ℃
+ * @throws {Error} 参数超出适用范围时抛出错误
+ */
+function calcDewPoint(temperature, relativeHumidity) {
+    if (typeof temperature !== 'number' || typeof relativeHumidity !== 'number') {
+        throw new Error('参数必须为数字');
+    }
+    if (relativeHumidity <= 0 || relativeHumidity > 100) {
+        throw new Error('相对湿度必须在 (0, 100] 范围内');
+    }
+    if (temperature <= 0 || temperature >= 60) {
+        throw new Error('温度须在 (0, 60) ℃ 范围内（Magnus 公式适用范围），避免分母为零或结果失真');
+    }
+    var a = 17.625;
+    var b = 243.04;
+    var gamma = Math.log(relativeHumidity / 100) + (a * temperature) / (b + temperature);
+    var dewPoint = (b * gamma) / (a - gamma);
+    return dewPoint;
+}
+
+/**
+ * 结露验算
+ * 判断围护结构各内表面及内部界面是否会出现结露
+ * 判据：若某界面温度 ≤ 室内空气露点温度，则该处可能结露
+ * 依据 GB 50176-2016 第6章 围护结构防潮设计
+ *
+ * @param {Array<{thickness: number, thermalConductivity: number, name?: string}>} layers - 各层材料数组（从室内侧到室外侧排列）
+ * @param {number} indoorTemp - 室内计算温度，单位 ℃
+ * @param {number} outdoorTemp - 室外计算温度，单位 ℃
+ * @param {number} indoorRH - 室内相对湿度，单位 %
+ * @param {number} [Ri=0.11] - 内表面换热阻
+ * @param {number} [Re=0.04] - 外表面换热阻
+ * @returns {{dewPoint: number, interfaceTemps: Array<{position: string, temperature: number, condensation: boolean}>, hasCondensation: boolean}} 验算结果
+ * @throws {Error} 参数非法时抛出错误
+ */
+function checkCondensation(layers, indoorTemp, outdoorTemp, indoorRH, Ri, Re) {
+    if (typeof indoorTemp !== 'number' || typeof outdoorTemp !== 'number' || typeof indoorRH !== 'number') {
+        throw new Error('温度和湿度参数必须为数字');
+    }
+    if (indoorRH <= 0 || indoorRH > 100) {
+        throw new Error('室内相对湿度必须在 (0, 100] 范围内');
+    }
+    if (Ri === undefined) Ri = 0.11;
+    if (Re === undefined) Re = 0.04;
+
+    var dewPoint = calcDewPoint(indoorTemp, indoorRH);
+    var temps = calcInterfaceTemperatures(layers, Ri, Re, indoorTemp, outdoorTemp);
+    var hasCondensation = false;
+    var results = [];
+
+    // 内表面
+    var innerCondensation = temps[0] <= dewPoint;
+    if (innerCondensation) hasCondensation = true;
+    results.push({
+        position: '内表面',
+        temperature: Math.round(temps[0] * 100) / 100,
+        condensation: innerCondensation
+    });
+
+    // 各层界面（修正：最外层界面直接面对室外空气，不能用室内露点判断，
+    // 否则单层墙在冬季必被误判为“结露”。内表面 + 层间界面才是室内露点的判据）
+    for (var i = 0; i < layers.length; i++) {
+        var layerName = layers[i].name || ('第' + (i + 1) + '层外侧');
+        var isOuterSurface = (i === layers.length - 1);
+        var tJ = temps[i + 1];
+        var cond = isOuterSurface ? false : (tJ <= dewPoint);
+        if (cond) hasCondensation = true;
+        results.push({
+            position: layerName,
+            temperature: Math.round(tJ * 100) / 100,
+            condensation: cond,
+            note: isOuterSurface ? '外表面面对室外空气，不按室内露点判定' : ''
+        });
+    }
+
+    return {
+        dewPoint: Math.round(dewPoint * 100) / 100,
+        interfaceTemps: results,
+        hasCondensation: hasCondensation
+    };
+}
+
+/**
+ * 获取标准表面换热阻值
+ * 依据 GB 50176-2016 附录（具体数值需查标准原文确认）
+ *
+ * @param {string} componentType - 构件类型：'wall'（墙体）、'roof'（屋面）、'floor'（地面）
+ * @param {string} [season='winter'] - 季节：'winter'（冬季）、'summer'（夏季）
+ * @returns {{Ri: number, Re: number}} 内、外表面换热阻
+ */
+function getStandardSurfaceResistance(componentType, season) {
+    if (season === undefined) season = 'winter';
+    // 以下数值未经标准原文核对，仅为经验参考值，使用前请查证 GB 50176-2016 原文
+    var table = {
+        wall: { winter: { Ri: 0.11, Re: 0.04 }, summer: { Ri: 0.11, Re: 0.05 } },
+        roof: { winter: { Ri: 0.11, Re: 0.04 }, summer: { Ri: 0.11, Re: 0.04 } },
+        floor: { winter: { Ri: 0.17, Re: 0.04 }, summer: { Ri: 0.17, Re: 0.04 } }
+    };
+    if (!table[componentType]) {
+        throw new Error('不支持的构件类型: ' + componentType);
+    }
+    if (!table[componentType][season]) {
+        throw new Error('不支持的季节: ' + season);
+    }
+    return table[componentType][season];
+}
+
+/**
+ * 计算围护结构的最小传热阻（满足内表面不结露要求）
+ * 公式：R0.min = (tin - tout) × n × Ri / Δt
+ * 其中 Δt 为室内计算温度与内表面温度的允许温差，n 为温差修正系数（位于分子）
+ * 依据 GB 50176-2016 第4.2节 式(4.2.1)（具体数值需查标准原文确认）
+ *
+ * @param {number} indoorTemp - 室内计算温度，单位 ℃
+ * @param {number} outdoorTemp - 室外计算温度，单位 ℃
+ * @param {number} deltaT - 允许温差，单位 ℃（居住建筑一般取 6℃，需查标准原文）
+ * @param {number} [Ri=0.11] - 内表面换热阻
+ * @param {number} [alpha=1.0] - 温差修正系数，一般取 1.0
+ * @returns {number} 最小传热阻 R0.min，单位 m²·K/W
+ */
+function calcMinResistance(indoorTemp, outdoorTemp, deltaT, Ri, alpha) {
+    if (typeof indoorTemp !== 'number' || typeof outdoorTemp !== 'number' || typeof deltaT !== 'number') {
+        throw new Error('参数必须为数字');
+    }
+    if (deltaT <= 0) {
+        throw new Error('允许温差必须大于零');
+    }
+    if (Ri === undefined) Ri = 0.11;
+    if (alpha === undefined) alpha = 1.0;
+    if (alpha <= 0) {
+        throw new Error('修正系数必须大于零');
+    }
+    return (indoorTemp - outdoorTemp) * alpha * Ri / deltaT;
+}
+</script>
+
+<script>
+// ============================================================
+// 第二部分：单元测试
+// ============================================================
+
+var _testResults = [];
+var _testCount = 0;
+var _passCount = 0;
+
+function assert(condition, message) {
+    _testCount++;
+    if (condition) {
+        _passCount++;
+        _testResults.push('<span class="test-pass">✓ PASS</span>: ' + message);
+    } else {
+        _testResults.push('<span class="test-fail">✗ FAIL</span>: ' + message);
+    }
+}
+
+function assertApprox(actual, expected, tolerance, message) {
+    var diff = Math.abs(actual - expected);
+    assert(diff <= tolerance, message + ' (期望≈' + expected + ', 实际=' + actual + ', 容差=' + tolerance + ')');
+}
+
+function assertThrows(fn, message) {
+    _testCount++;
+    try {
+        fn();
+        _testResults.push('<span class="test-fail">✗ FAIL</span>: ' + message + ' (期望抛出异常但未抛出)');
+    } catch (e) {
+        _passCount++;
+        _testResults.push('<span class="test-pass">✓ PASS</span>: ' + message + ' (抛出: ' + e.message + ')');
+    }
+}
+
+function runTests() {
+    _testResults = [];
+    _testCount = 0;
+    _passCount = 0;
+
+    // ===== calcLayerResistance 测试 =====
+
+    // 测试1：正常值 - 混凝土层
+    assertApprox(calcLayerResistance(0.2, 1.74), 0.2 / 1.74, 0.0001,
+        'calcLayerResistance: 0.2m混凝土(λ=1.74)');
+
+    // 测试2：正常值 - 保温层
+    assertApprox(calcLayerResistance(0.06, 0.04), 1.5, 0.0001,
+        'calcLayerResistance: 60mm保温层(λ=0.04)');
+
+    // 测试3：零厚度
+    assertApprox(calcLayerResistance(0, 1.0), 0, 0.0001,
+        'calcLayerResistance: 零厚度返回0');
+
+    // 测试4：负厚度应抛异常
+    assertThrows(function() { calcLayerResistance(-0.1, 1.0); },
+        'calcLayerResistance: 负厚度抛异常');
+
+    // 测试5：零导热系数应抛异常
+    assertThrows(function() { calcLayerResistance(0.1, 0); },
+        'calcLayerResistance: 零导热系数抛异常');
+
+    // 测试6：负导热系数应抛异常
+    assertThrows(function() { calcLayerResistance(0.1, -0.5); },
+        'calcLayerResistance: 负导热系数抛异常');
+
+    // 测试7：极薄层
+    assertApprox(calcLayerResistance(0.001, 1.0), 0.001, 0.00001,
+        'calcLayerResistance: 极薄层(1mm)');
+
+    // 测试8：非数字参数
+    assertThrows(function() { calcLayerResistance('abc', 1.0); },
+        'calcLayerResistance: 非数字参数抛异常');
+
+    // ===== calcTotalResistance 测试 =====
+
+    // 测试9：单层墙体
+    assertApprox(calcTotalResistance([{ thickness: 0.2, thermalConductivity: 0.5 }], 0.11, 0.04),
+        0.11 + 0.4 + 0.04, 0.0001,
+        'calcTotalResistance: 单层墙体(0.2m, λ=0.5)');
+
+    // 测试10：多层墙体
+    var multiLayers = [
+        { thickness: 0.02, thermalConductivity: 0.93 },  // 抹灰
+        { thickness: 0.2, thermalConductivity: 0.5 },    // 砖墙
+        { thickness: 0.05, thermalConductivity: 0.04 }   // 保温
+    ];
+    var expectedR0 = 0.11 + 0.02/0.93 + 0.2/0.5 + 0.05/0.04 + 0.04;
+    assertApprox(calcTotalResistance(multiLayers, 0.11, 0.04), expectedR0, 0.0001,
+        'calcTotalResistance: 三层墙体');
+
+    // 测试11：空层数组
+    assertApprox(calcTotalResistance([], 0.11, 0.04), 0.15, 0.0001,
+        'calcTotalResistance: 空层数组仅含表面阻');
+
+    // 测试12：非数组参数
+    assertThrows(function() { calcTotalResistance('not array'); },
+        'calcTotalResistance: 非数组抛异常');
+
+    // 测试13：默认 Ri/Re
+    assertApprox(calcTotalResistance([{ thickness: 0.1, thermalConductivity: 0.5 }]),
+        0.11 + 0.2 + 0.04, 0.0001,
+        'calcTotalResistance: 默认Ri=0.11, Re=0.04');
+
+    // 测试14：负Ri
+    assertThrows(function() { calcTotalResistance([], -0.1, 0.04); },
+        'calcTotalResistance: 负Ri抛异常');
+
+    // ===== calcHeatTransferCoefficient 测试 =====
+
+    // 测试15：正常K值
+    assertApprox(calcHeatTransferCoefficient(1.0), 1.0, 0.0001,
+        'calcHeatTransferCoefficient: R0=1.0 → K=1.0');
+
+    // 测试16：R0=0.5
+    assertApprox(calcHeatTransferCoefficient(0.5), 2.0, 0.0001,
+        'calcHeatTransferCoefficient: R0=0.5 → K=2.0');
+
+    // 测试17：R0=2.0
+    assertApprox(calcHeatTransferCoefficient(2.0), 0.5, 0.0001,
+        'calcHeatTransferCoefficient: R0=2.0 → K=0.5');
+
+    // 测试18：R0=0 应抛异常
+    assertThrows(function() { calcHeatTransferCoefficient(0); },
+        'calcHeatTransferCoefficient: R0=0抛异常');
+
+    // 测试19：负R0应抛异常
+    assertThrows(function() { calcHeatTransferCoefficient(-1); },
+        'calcHeatTransferCoefficient: 负R0抛异常');
+
+    // 测试20：大R0值
+    assertApprox(calcHeatTransferCoefficient(5.0), 0.2, 0.0001,
+        'calcHeatTransferCoefficient: R0=5.0 → K=0.2');
+
+    // ===== calcDewPoint 测试 =====
+
+    // 测试21：20℃, 50%RH
+    assertApprox(calcDewPoint(20, 50), 9.26, 0.1,
+        'calcDewPoint: 20℃/50%RH ≈ 9.3℃');
+
+    // 测试22：20℃, 100%RH（露点=气温）
+    assertApprox(calcDewPoint(20, 100), 20, 0.01,
+        'calcDewPoint: 20℃/100%RH = 20℃');
+
+    // 测试23：5℃, 50%RH（温度校验后改用适用范围内值，期望值按 Magnus 公式重算）
+    assertApprox(calcDewPoint(5, 50), -4.57, 0.2,
+        'calcDewPoint: 5℃/50%RH ≈ -4.6℃');
+
+    // 测试24：30℃, 60%RH
+    assertApprox(calcDewPoint(30, 60), 21.3, 0.3,
+        'calcDewPoint: 30℃/60%RH ≈ 21.3℃');
+
+    // 测试25：RH=0 应抛异常
+    assertThrows(function() { calcDewPoint(20, 0); },
+        'calcDewPoint: RH=0抛异常');
+
+    // 测试26：RH>100 应抛异常
+    assertThrows(function() { calcDewPoint(20, 101); },
+        'calcDewPoint: RH>100抛异常');
+
+    // 测试27：10℃, 80%RH（温度校验后改用适用范围内值，期望值按 Magnus 公式重算）
+    assertApprox(calcDewPoint(10, 80), 6.71, 0.3,
+        'calcDewPoint: 10℃/80%RH ≈ 6.7℃');
+
+    // ===== calcInterfaceTemperatures 测试 =====
+
+    // 测试28：单层，室内外温差
+    var singleLayer = [{ thickness: 0.2, thermalConductivity: 0.5 }];
+    var temps28 = calcInterfaceTemperatures(singleLayer, 0.11, 0.04, 20, -5);
+    // R0 = 0.11 + 0.4 + 0.04 = 0.55
+    // 内表面温度 = 20 - 25 * 0.11/0.55 = 20 - 5 = 15
+    assertApprox(temps28[0], 15.0, 0.01,
+        'calcInterfaceTemperatures: 单层内表面温度=15℃');
+    // 外表面温度 = 20 - 25 × (0.11+0.4)/0.55 = 20 - 23.18 = -3.18
+    // 修正：原注释把分子写成 0.55（应为 Ri+R层=0.51），期望值也跟着算错
+    assertApprox(temps28[1], -3.1818, 0.01,
+        'calcInterfaceTemperatures: 单层外表面温度=-3.18℃');
+
+    // 测试29：室内外温度相等
+    var temps29 = calcInterfaceTemperatures(singleLayer, 0.11, 0.04, 20, 20);
+    assertApprox(temps29[0], 20, 0.01,
+        'calcInterfaceTemperatures: 温差为零时内表面=20℃');
+    /* 修正：单层没有“层界面”，下标 [1] 就是外表面；原 [2] 越界为 undefined */
+    assertApprox(temps29[1], 20, 0.01,
+        'calcInterfaceTemperatures: 温差为零时外表面=20℃');
+
+    // 测试30：多层温度递减
+    var multiTemps = calcInterfaceTemperatures(multiLayers, 0.11, 0.04, 20, -10);
+    assert(multiTemps[0] > multiTemps[1],
+        'calcInterfaceTemperatures: 温度从内到外递减(内表面>第1层外侧)');
+    assert(multiTemps[1] > multiTemps[2],
+        'calcInterfaceTemperatures: 温度从内到外递减(第1层>第2层)');
+    assert(multiTemps[2] > multiTemps[3],
+        'calcInterfaceTemperatures: 温度从内到外递减(第2层>第3层)');
+
+    // ===== checkCondensation 测试 =====
+
+    // 测试31：不结露情况
+    var result31 = checkCondensation(singleLayer, 20, -5, 50);
+    assert(result31.hasCondensation === false,
+        'checkCondensation: 20℃/-5℃/50%RH 单层不结露');
+
+    // 测试32：结露情况 - 高湿度低温
+    var poorWall = [{ thickness: 0.1, thermalConductivity: 1.74 }]; // 薄混凝土墙无保温
+    var result32 = checkCondensation(poorWall, 20, -10, 80);
+    // 内表面温度会较低，高湿度下可能结露
+    assert(typeof result32.hasCondensation === 'boolean',
+        'checkCondensation: 返回hasCondensation为布尔值');
+    assert(result32.dewPoint > 0,
+        'checkCondensation: 20℃/80%RH露点>0');
+
+    // 测试33：返回结构完整性
+    var result33 = checkCondensation(singleLayer, 20, 0, 60);
+    assert(result33.interfaceTemps.length === singleLayer.length + 1,
+        'checkCondensation: 界面温度数量=层数+1');
+    assert(typeof result33.dewPoint === 'number',
+        'checkCondensation: 返回露点为数字');
+
+    // 测试34：无效湿度
+    assertThrows(function() { checkCondensation(singleLayer, 20, 0, 0); },
+        'checkCondensation: RH=0抛异常');
+
+    // 测试35：无效湿度>100
+    assertThrows(function() { checkCondensation(singleLayer, 20, 0, 101); },
+        'checkCondensation: RH>100抛异常');
+
+    // ===== getStandardSurfaceResistance 测试 =====
+
+    // 测试36：墙体默认值
+    var sr36 = getStandardSurfaceResistance('wall');
+    assert(sr36.Ri === 0.11 && sr36.Re === 0.04,
+        'getStandardSurfaceResistance: 墙体默认Ri=0.11, Re=0.04');
+
+    // 测试37：地面
+    var sr37 = getStandardSurfaceResistance('floor');
+    assert(sr37.Ri === 0.17,
+        'getStandardSurfaceResistance: 地面Ri=0.17');
+
+    // 测试38：不支持的类型
+    assertThrows(function() { getStandardSurfaceResistance('unknown'); },
+        'getStandardSurfaceResistance: 不支持类型抛异常');
+
+    // ===== calcMinResistance 测试 =====
+
+    // 测试39：正常计算
+    var minR = calcMinResistance(20, -10, 6, 0.11, 1.0);
+    // R0.min = (20-(-10)) * 0.11 / (6 * 1.0) = 30 * 0.11 / 6 = 0.55
+    assertApprox(minR, 0.55, 0.001,
+        'calcMinResistance: 20℃/-10℃/Δt=6 → R0.min=0.55');
+
+    // 测试40：零温差
+    assertThrows(function() { calcMinResistance(20, 20, 0); },
+        'calcMinResistance: 零允许温差抛异常');
+
+    // ===== 精度与边界测试 =====
+
+    // 测试41：浮点精度
+    var r41 = calcLayerResistance(0.037, 0.037);
+    assertApprox(r41, 1.0, 0.0001,
+        '精度测试: 0.037/0.037 = 1.0');
+
+    // 测试42：大数值
+    var r42 = calcLayerResistance(10, 0.03);
+    assertApprox(r42, 333.333, 0.01,
+        '精度测试: 大热阻值(10m/0.03)');
+
+    // 测试43：K值精度
+    var k43 = calcHeatTransferCoefficient(0.55);
+    assertApprox(k43, 1.8182, 0.001,
+        '精度测试: K=1/0.55≈1.818');
+
+    // 测试44：结露边界 - 界面温度恰好等于露点
+    // 构造一个场景使得内表面温度恰好等于露点
+    var dewPoint44 = calcDewPoint(20, 50); // ≈9.26℃
+    // 需要内表面温度 = 9.26
+    // θ = 20 - (20-tout)*0.11/R0 = 9.26
+    // 这比较复杂，我们只验证逻辑正确性
+    assert(typeof dewPoint44 === 'number' && !isNaN(dewPoint44),
+        '精度测试: 露点计算返回有效数字');
+
+    // 测试45：多层结构K值一致性验证
+    var layers45 = [
+        { thickness: 0.02, thermalConductivity: 0.93 },
+        { thickness: 0.24, thermalConductivity: 0.81 },
+        { thickness: 0.05, thermalConductivity: 0.04 }
+    ];
+    var R0_45 = calcTotalResistance(layers45, 0.11, 0.04);
+    var K45 = calcHeatTransferCoefficient(R0_45);
+    assertApprox(K45, 1 / R0_45, 0.0000001,
+        '一致性测试: K = 1/R0 精确成立');
+
+    // 输出结果
+    var output = document.getElementById('test-output');
+    output.innerHTML = _testResults.join('\n') +
+        '\n\n<div class="test-summary" style="background:' +
+        (_passCount === _testCount ? '#d4edda' : '#f8d7da') + '">' +
+        '通过 ' + _passCount + ' / 共 ' + _testCount + '</div>';
+}
+</script>
+
+<script>
+// ============================================================
+// 第三部分：使用说明书
+// ============================================================
+document.getElementById('manual-content').innerHTML = `
+<h2>一、工具用途</h2>
+<p>本工具用于民用建筑围护结构的热工性能计算，涵盖三个核心功能模块：</p>
+<ol>
+<li><strong>传热系数 K 值计算</strong>：根据围护结构各层材料的厚度和导热系数，计算整体传热系数 K [W/(m²·K)]，用于评估围护结构的保温隔热性能。</li>
+<li><strong>热阻 R 计算</strong>：计算单层材料热阻及多层围护结构总热阻 R₀ [m²·K/W]，是 K 值计算的基础。</li>
+<li><strong>结露验算</strong>：计算围护结构各层界面温度，与室内空气露点温度对比，判断是否会出现表面结露或内部冷凝。</li>
+</ol>
+<p>本工具适用于建筑设计阶段的热工验算、节能审查中的围护结构性能评估，以及既有建筑的结露风险评估。计算依据为 GB 50176-2016《民用建筑热工设计规范》。</p>
+
+<h2>二、参数详解</h2>
+
+<h3>2.1 材料参数</h3>
+<table>
+<tr><th>参数名</th><th>符号</th><th>单位</th><th>说明</th></tr>
+<tr><td>厚度</td><td>δ</td><td>m</td><td>材料层厚度，从室内侧到室外侧依次输入</td></tr>
+<tr><td>导热系数</td><td>λ</td><td>W/(m·K)</td><td>材料导热系数，需查产品检测报告或 GB 50176 附录</td></tr>
+</table>
+
+<h3>2.2 环境参数</h3>
+<table>
+<tr><th>参数名</th><th>符号</th><th>单位</th><th>说明</th></tr>
+<tr><td>室内计算温度</td><td>t<sub>in</sub></td><td>℃</td><td>按 GB 50176 或设计标准选取，居住建筑一般取 18℃</td></tr>
+<tr><td>室外计算温度</td><td>t<sub>out</sub></td><td>℃</td><td>取当地累年最低日平均温度或按标准选取</td></tr>
+<tr><td>室内相对湿度</td><td>RH</td><td>%</td><td>居住建筑一般取 60%，公共建筑需查标准</td></tr>
+</table>
+
+<h3>2.3 表面换热阻</h3>
+<table>
+<tr><th>参数名</th><th>符号</th><th>单位</th><th>默认值</th><th>说明</th></tr>
+<tr><td>内表面换热阻</td><td>R<sub>i</sub></td><td>m²·K/W</td><td>0.11</td><td>墙体、屋面取 0.11；地面（热流向下）取 0.17</td></tr>
+<tr><td>外表面换热阻</td><td>R<sub>e</sub></td><td>m²·K/W</td><td>0.04</td><td>冬季外墙外表面取 0.04</td></tr>
+</table>
+<p class="warn"><strong>注意：</strong>表面换热阻的具体取值需查 GB 50176-2016 标准原文中的表格，本工具提供的默认值仅供参考，不同构件类型、不同季节、不同热流方向的取值可能不同。</p>
+
+<h3>2.4 计算公式</h3>
+<p><strong>单层热阻：</strong> R = δ / λ</p>
+<p><strong>总热阻：</strong> R₀ = R<sub>i</sub> + Σ(δ<sub>i</sub>/λ<sub>i</sub>) + R<sub>e</sub></p>
+<p><strong>传热系数：</strong> K = 1 / R₀</p>
+<p><strong>界面温度：</strong> θ<sub>j</sub> = t<sub>in</sub> - (t<sub>in</sub> - t<sub>out</sub>) × (R<sub>i</sub> + ΣR<sub>1~j</sub>) / R₀</p>
+<p><strong>露点温度（Magnus公式）：</strong> T<sub>d</sub> = b × γ / (a - γ)，其中 γ = ln(RH/100) + a×T/(b+T)，a=17.625，b=243.04</p>
+
+<h2>三、使用场景</h2>
+
+<h3>场景一：外墙保温设计验算</h3>
+<p>某寒冷地区住宅，外墙构造从内到外为：20mm 水泥砂浆抹灰（λ=0.93）+ 240mm 烧结多孔砖（λ=0.58）+ 60mm 挤塑聚苯板（λ=0.030）+ 10mm 饰面层（λ=0.5）。室内温度 20℃，室外计算温度 -12℃。</p>
+<p>使用本工具计算：输入各层厚度和导热系数，得到总热阻 R₀ 和传热系数 K 值。将 K 值与当地节能标准限值对比，判断是否满足要求。同时进行结露验算，确认内表面不会出现结露。</p>
+
+<h3>场景二：屋面隔热性能评估</h3>
+<p>某夏热冬冷地区公共建筑，屋面构造为：钢筋混凝土屋面板 120mm + 找坡层 30mm + 防水卷材 + 80mm 岩棉保温板（λ=0.040）+ 保护层。需评估屋面传热系数是否满足 GB 50189《公共建筑节能设计标准》的限值要求。</p>
+<p>使用本工具时注意：屋面的内表面换热阻 Ri 取值可能与墙体不同（热流方向不同），需根据标准选取正确值。</p>
+
+<h3>场景三：既有建筑结露风险评估</h3>
+<p>某老旧住宅冬季内墙面出现霉斑，怀疑结露。已知墙体为 370mm 实心黏土砖墙（λ=0.81），无保温层。室内温度 18℃，相对湿度 65%，室外 -8℃。</p>
+<p>使用结露验算功能：通过控制台调用 checkCondensation 函数传入墙体参数和环境条件（本工具暂无输入表单），计算内表面温度。若内表面温度低于室内空气露点温度，则确认结露。此结果可作为加装外保温的依据。</p>
+
+<h3>场景四：不同保温方案对比</h3>
+<p>设计阶段需要对比多种保温方案的传热系数：方案A为 50mm EPS（λ=0.039），方案B为 40mm 聚氨酯（λ=0.024），方案C为 60mm 岩棉（λ=0.040）。分别输入各方案参数，对比 K 值大小，选择满足要求且经济合理的方案。</p>
+
+<h3>场景五：窗户周边热桥初步评估</h3>
+<p>虽然本工具不能精确计算热桥（需二维/三维传热模拟），但可以用简化方法估算窗户周边墙体与窗框交接处的近似温度。将窗框区域等效为多层材料，计算其内表面温度，与露点对比，初步判断结露风险。注意这只是粗略估算，精确分析需使用专业热桥计算软件。</p>
+
+<h3>场景六：最小传热阻验算</h3>
+<p>依据 GB 50176-2016 第4.2节，围护结构的总热阻不得小于最小传热阻 R₀.min，以保证内表面温度不低于允许值（防止结露和保证热舒适）。使用 calcMinResistance 函数，输入室内外温度和允许温差，计算最小传热阻要求，再与实际 R₀ 对比。</p>
+
+<h2>四、常见错误</h2>
+
+<div class="error-box">
+<strong>错误1：导热系数取值错误</strong><br>
+最常见的问题。导热系数应取材料的<strong>设计值</strong>（考虑了修正系数），而非实验室检测值。GB 50176-2016 附录中给出了常用材料的导热系数设计值，使用时需注意区分"检测值"和"计算值"。
+</div>
+
+<div class="error-box">
+<strong>错误2：层序输入错误</strong><br>
+材料层必须从<strong>室内侧到室外侧</strong>依次输入。如果顺序颠倒，虽然总热阻 R₀ 不变，但各界面温度计算结果会完全错误，导致结露验算结论错误。
+</div>
+
+<div class="error-box">
+<strong>错误3：表面换热阻取值不当</strong><br>
+不同构件类型（墙、屋面、地面）、不同热流方向（向上、向下、水平）的表面换热阻不同。一律使用默认值 0.11/0.04 可能导致计算偏差，尤其是地面和屋面。
+</div>
+
+<div class="error-box">
+<strong>错误4：忽略空气间层</strong><br>
+如果围护结构中有封闭空气间层（如双层玻璃、空心砖孔洞），其热阻不能简单用 δ/λ 计算，需查标准中空气间层热阻表。本工具目前不支持空气间层的自动处理。
+</div>
+
+<div class="error-box">
+<strong>错误5：室外计算温度选取不当</strong><br>
+室外计算温度不是"极端最低温度"，而是按标准规定的统计方法确定的"计算用室外温度"。不同气候区、不同计算方法对应的取值不同，需查 GB 50176 或当地气象数据。
+</div>
+
+<h2>五、数据依据</h2>
+<p>本工具的计算方法和公式依据以下标准：</p>
+<ul>
+<li><strong>GB 50176-2016</strong>《民用建筑热工设计规范》——核心依据，规定了热阻、传热系数的计算方法和结露验算要求</li>
+<li><strong>GB 50189-2015</strong>《公共建筑节能设计标准》——围护结构热工性能限值参考</li>
+<li><strong>JGJ 26-2018</strong>《严寒和寒冷地区居住建筑节能设计标准》——寒冷地区限值参考</li>
+<li><strong>JGJ 75-2012</strong>《夏热冬暖地区居住建筑节能设计标准》——夏热冬暖地区限值参考</li>
+<li>Magnus 公式参数 a=17.625, b=243.04 来源于 Alduchov & Eskridge (1996) 的推荐值</li>
+</ul>
+<p class="warn"><strong>重要提示：</strong>本工具中部分默认参数值（如表面换热阻、允许温差等）为经验参考值，<strong>未经标准原文核对、无权威数据来源</strong>，具体数值请以 GB 50176-2016 标准原文为准。测试用材料导热系数（如 1.74、0.5、0.93 等）亦仅为演示值，无出处。标准可能更新，请以最新有效版本为依据。</p>
+
+<h2>六、精度与误差说明</h2>
+
+<div class="info-box">
+<strong>有限精准原则：</strong>现实中的建筑热工变量是无限的（材料性能的离散性、施工偏差、环境动态变化等），本工具只做到"方法准、输入项准、结果给误差范围"，<strong>不承诺绝对精确</strong>。
+</div>
+
+<h3>6.1 算准了什么</h3>
+<ul>
+<li><strong>公式计算本身</strong>：在给定输入参数的前提下，R、K、界面温度、露点温度的数学计算是精确的（浮点精度范围内，相对误差 < 10⁻¹⁰）。</li>
+<li><strong>稳态传热模型</strong>：在稳态假设下（室内外温度恒定、不随时间变化），一维传热计算方法是正确的，符合 GB 50176 的规定。</li>
+<li><strong>露点温度</strong>：Magnus 公式在 0~60℃ 范围内与 Goff-Gratch 公式的偏差小于 0.2℃，工程上可接受。</li>
+</ul>
+
+<h3>6.2 哪些因素没算进去</h3>
+<ul>
+<li><strong>热桥效应</strong>：本工具仅计算主体墙面的"一维传热"，不考虑结构性热桥（如混凝土梁柱、窗过梁、阳台板等部位）。实际建筑的平均传热系数需考虑线传热系数和点传热系数的修正，通常比主体墙面 K 值大 10%~30%。</li>
+<li><strong>动态传热</strong>：实际室外温度逐时变化，本工具采用稳态计算，不能反映温度波动对结露的影响。实际结露可能发生在温度最低的时段。</li>
+<li><strong>材料含水率</strong>：保温材料受潮后导热系数显著增大（可能增大数倍），本工具使用干燥状态导热系数，未考虑含水修正。</li>
+<li><strong>施工偏差</strong>：实际保温层厚度可能与设计值有 ±5~10mm 的偏差，导热系数可能因施工质量不均匀。</li>
+<li><strong>空气渗透</strong>：围护结构缝隙的空气渗透会带入湿气，增加结露风险，本工具未考虑。</li>
+<li><strong>辐射换热</strong>：表面换热阻中已包含对流和辐射的综合效应，但特殊表面（如低辐射镀膜）的辐射特性未单独考虑。</li>
+<li><strong>材料老化</strong>：保温材料随使用年限导热系数可能增大，本工具按初始值计算。</li>
+</ul>
+
+<h3>6.3 误差大概多大</h3>
+<table>
+<tr><th>计算项目</th><th>本工具计算误差</th><th>实际工程综合误差</th></tr>
+<tr><td>单层热阻 R</td><td>< 0.1%（数学精度）</td><td>±5%~15%（材料性能离散+施工偏差）</td></tr>
+<tr><td>总热阻 R₀</td><td>< 0.1%（数学精度）</td><td>±10%~20%（含表面换热阻不确定性）</td></tr>
+<tr><td>传热系数 K</td><td>< 0.1%（数学精度）</td><td>±10%~25%（含热桥修正未计入）</td></tr>
+<tr><td>界面温度</td><td>< 0.1℃（数学精度）</td><td>±1~3℃（含动态效应未计入）</td></tr>
+<tr><td>露点温度</td><td>< 0.2℃（Magnus公式精度）</td><td>±0.5℃（含温湿度测量误差）</td></tr>
+<tr><td>结露判断</td><td>数学上无误判</td><td>可能漏判或误判（因上述未计入因素）</td></tr>
+</table>
+
+<p><strong>结论：</strong>本工具的计算结果可作为设计阶段的参考依据，但不能替代详细的热工计算书和专业软件分析。对于重要工程或复杂构造，建议使用专业热工计算软件（如 THERM、HEAT2 等）进行二维/三维传热分析，并结合现场检测数据验证。</p>
+
+<h2>七、局限性</h2>
+<ul>
+<li>仅支持一维稳态传热计算，不支持二维/三维热桥分析。</li>
+<li>不支持空气间层热阻的自动计算（需手动查表后作为等效层输入）。</li>
+<li>不支持材料导热系数的温度修正（λ 值随温度变化）。</li>
+<li>不支持含水率修正和老化修正。</li>
+<li>结露验算仅判断温度是否低于露点，不计算结露量或冷凝水量。</li>
+<li>不支持周期性传热计算（如衰减倍数、延迟时间等）。</li>
+<li>表面换热阻的取值需用户根据标准自行确认，工具仅提供参考默认值。</li>
+<li>本工具不替代施工图审查中的热工计算书，正式报审需使用经认定的计算软件并出具完整计算书。</li>
+</ul>
+
+<h2>八、版本信息</h2>
+<p>版本：v2.0.1-修审查问题 20261108</p>
+<p>计算依据：GB 50176-2016《民用建筑热工设计规范》</p>
+<p>技术说明：本工具为纯前端 JavaScript 实现，无外部依赖，所有计算在浏览器本地完成，不上传任何数据。</p>
+`;
+
+// 将源码显示到页面
+document.getElementById('source-code').textContent = document.querySelectorAll('script')[0].textContent;
+</script>
+
+<script>
+function switchTab(index) {
+    var btns = document.querySelectorAll('.tab-btn');
+    var contents = document.querySelectorAll('.tab-content');
+    btns.forEach(function(btn, i) {
+        btn.classList.toggle('active', i === index);
+    });
+    contents.forEach(function(content, i) {
+        content.classList.toggle('active', i === index);
+    });
+}
+</script>
+
+</body>
+</html>

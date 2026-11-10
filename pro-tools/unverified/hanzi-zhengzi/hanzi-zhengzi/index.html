@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>异体字与正体字对照查询</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;background:#f0f2f5;color:#333;font-size:15px;line-height:1.6;padding:12px}
+.container{max-width:640px;margin:0 auto}
+h1{font-size:21px;text-align:center;margin-bottom:4px;color:#1a1a1a}
+.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:18px}
+.search-box{display:flex;gap:8px;margin-bottom:12px}
+.search-box input{flex:1;padding:10px 14px;font-size:16px;border:2px solid #d0d5dd;border-radius:8px;outline:none;transition:border-color .2s;background:#fff}
+.search-box input:focus{border-color:#4a90d9}
+.search-box button{padding:10px 18px;font-size:15px;background:#4a90d9;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;transition:background .2s}
+.search-box button:hover{background:#357abd}
+.search-box button:active{background:#2a5f9e}
+.stats{font-size:13px;color:#999;text-align:center;margin-bottom:10px}
+.results{margin-bottom:16px}
+.result-item{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.char-main{font-size:32px;font-weight:bold;margin-bottom:8px;color:#1a1a1a;text-align:center;letter-spacing:4px}
+.row{display:flex;padding:5px 0;font-size:15px;border-bottom:1px solid #f0f0f0;align-items:center}
+.row:last-child{border-bottom:none}
+.label{width:72px;color:#888;flex-shrink:0;font-size:13px}
+.value{flex:1;color:#333;font-size:17px}
+.value.hl{color:#c0392b;font-weight:bold;font-size:20px}
+.value.none{color:#ccc}
+.note{font-size:13px;color:#999;margin-top:6px;padding-top:6px;border-top:1px dashed #eee}
+.no-result{text-align:center;padding:30px 16px;color:#aaa;font-size:14px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.info-section{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.info-section h2{font-size:15px;margin-bottom:8px;color:#1a1a1a}
+.info-section p{font-size:13px;color:#666;margin-bottom:4px;line-height:1.7}
+.data-source{background:#fafbfc;border-radius:10px;padding:14px 16px;margin-top:16px;margin-bottom:44px;border:1px solid #e8e8e8}
+.data-source h2{font-size:15px;margin-bottom:8px;color:#1a1a1a}
+.data-source p{font-size:13px;color:#666;margin-bottom:4px;line-height:1.7}
+.version{position:fixed;bottom:6px;right:10px;font-size:11px;color:#ccc}
+.tag{display:inline-block;background:#eef4fb;color:#4a90d9;font-size:12px;padding:1px 6px;border-radius:4px;margin-right:4px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📖 异体字与正体字对照查询</h1>
+<p class="subtitle">依据《通用规范汉字表》（2013年 国务院公布）</p>
+
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="输入汉字查询（简/繁/异体均可）" maxlength="20" autocomplete="off">
+<button onclick="doSearch()">🔍 查询</button>
+</div>
+
+<div class="stats" id="stats"></div>
+<div class="results" id="results"></div>
+
+<div class="info-section">
+<h2>📋 使用说明</h2>
+<p>• 输入任意汉字（简体、繁体或异体），查询其对应的规范字、繁体字和异体字。</p>
+<p>• 支持同时输入多个汉字，将逐一查询并显示结果。</p>
+<p>• <span class="tag">规范字</span>即《通用规范汉字表》收录的标准字形。</p>
+<p>• <span class="tag">繁体字</span>为该规范字对应的繁体字形（无则标"无"）。</p>
+<p>• <span class="tag">异体字</span>为该规范字对应的异体字形，已停止使用（无则标"无"）。</p>
+</div>
+
+<div class="data-source">
+<h2>📚 数据来源</h2>
+<p><strong>主要依据：</strong>《通用规范汉字表》（2013年6月由国务院公布，教育部、国家语言文字工作委员会组织制定，语文出版社出版）。</p>
+<p><strong>具体参照：</strong>该表「附表1——规范字与繁体字、异体字对照表」。</p>
+<p><strong>说明：</strong>本工具仅收录部分常用字对照数据（约210组），完整对照表（涵盖全部8105个规范字）请查阅《通用规范汉字表》原文。</p>
+<p><strong>获取方式：</strong>标准原文可从教育部官方网站或语文出版社获取。</p>
+</div>
+</div>
+
+<div class="version">v1.0.0-异体字正体字查询 20261021</div>
+
+<script>
+var DATA=[
+{s:"万",t:"萬",v:""},
+{s:"与",t:"與",v:""},
+{s:"专",t:"專",v:""},
+{s:"业",t:"業",v:""},
+{s:"东",t:"東",v:""},
+{s:"丝",t:"絲",v:""},
+{s:"丢",t:"丟",v:""},
+{s:"两",t:"兩",v:""},
+{s:"严",t:"嚴",v:""},
+{s:"丧",t:"喪",v:""},
+{s:"个",t:"個",v:"箇"},
+{s:"丰",t:"豐",v:"豊"},
+{s:"临",t:"臨",v:""},
+{s:"为",t:"為",v:"爲"},
+{s:"丽",t:"麗",v:""},
+{s:"举",t:"舉",v:""},
+{s:"义",t:"義",v:""},
+{s:"乌",t:"烏",v:""},
+{s:"乐",t:"樂",v:""},
+{s:"习",t:"習",v:""},
+{s:"乡",t:"鄉",v:""},
+{s:"书",t:"書",v:""},
+{s:"买",t:"買",v:""},
+{s:"乱",t:"亂",v:""},
+{s:"争",t:"爭",v:""},
+{s:"亏",t:"虧",v:""},
+{s:"云",t:"雲",v:""},
+{s:"亚",t:"亞",v:""},
+{s:"产",t:"產",v:"産"},
+{s:"亩",t:"畝",v:""},
+{s:"亲",t:"親",v:""},
+{s:"亿",t:"億",v:""},
+{s:"仅",t:"僅",v:""},
+{s:"从",t:"從",v:""},
+{s:"仓",t:"倉",v:""},
+{s:"仪",t:"儀",v:""},
+{s:"们",t:"們",v:""},
+{s:"价",t:"價",v:""},
+{s:"众",t:"眾",v:"衆"},
+{s:"优",t:"優",v:""},
+{s:"会",t:"會",v:""},
+{s:"伟",t:"偉",v:""},
+{s:"传",t:"傳",v:""},
+{s:"伤",t:"傷",v:""},
+{s:"伦",t:"倫",v:""},
+{s:"伪",t:"偽",v:""},
+{s:"体",t:"體",v:""},
+{s:"余",t:"餘",v:""},
+{s:"佣",t:"傭",v:""},
+{s:"侠",t:"俠",v:""},
+{s:"侥",t:"僥",v:""},
+{s:"侦",t:"偵",v:""},
+{s:"侧",t:"側",v:""},
+{s:"侨",t:"僑",v:""},
+{s:"俩",t:"倆",v:""},
+{s:"俭",t:"儉",v:""},
+{s:"债",t:"債",v:""},
+{s:"倾",t:"傾",v:""},
+{s:"偿",t:"償",v:""},
+{s:"储",t:"儲",v:""},
+{s:"办",t:"辦",v:""},
+{s:"报",t:"報",v:""},
+{s:"贝",t:"貝",v:""},
+{s:"笔",t:"筆",v:""},
+{s:"边",t:"邊",v:""},
+{s:"变",t:"變",v:""},
+{s:"标",t:"標",v:""},
+{s:"补",t:"補",v:""},
+{s:"参",t:"參",v:""},
+{s:"层",t:"層",v:""},
+{s:"尝",t:"嘗",v:""},
+{s:"长",t:"長",v:""},
+{s:"车",t:"車",v:""},
+{s:"称",t:"稱",v:""},
+{s:"诚",t:"誠",v:""},
+{s:"虫",t:"蟲",v:""},
+{s:"处",t:"處",v:""},
+{s:"创",t:"創",v:""},
+{s:"辞",t:"辭",v:""},
+{s:"达",t:"達",v:""},
+{s:"带",t:"帶",v:""},
+{s:"单",t:"單",v:""},
+{s:"当",t:"當",v:""},
+{s:"导",t:"導",v:""},
+{s:"灯",t:"燈",v:""},
+{s:"点",t:"點",v:""},
+{s:"电",t:"電",v:""},
+{s:"动",t:"動",v:""},
+{s:"断",t:"斷",v:""},
+{s:"对",t:"對",v:""},
+{s:"队",t:"隊",v:""},
+{s:"尔",t:"爾",v:""},
+{s:"发",t:"發",v:"",n:"发展、发生等义"},
+{s:"发",t:"髮",v:"",n:"头发等义"},
+{s:"飞",t:"飛",v:""},
+{s:"坟",t:"墳",v:""},
+{s:"奋",t:"奮",v:""},
+{s:"风",t:"風",v:""},
+{s:"复",t:"復",v:"",n:"恢复、反复等义"},
+{s:"复",t:"複",v:"",n:"复杂、重复等义"},
+{s:"宫",t:"宮",v:""},
+{s:"沟",t:"溝",v:""},
+{s:"构",t:"構",v:""},
+{s:"购",t:"購",v:""},
+{s:"顾",t:"顧",v:""},
+{s:"关",t:"關",v:""},
+{s:"观",t:"觀",v:""},
+{s:"广",t:"廣",v:""},
+{s:"归",t:"歸",v:""},
+{s:"龟",t:"龜",v:""},
+{s:"国",t:"國",v:""},
+{s:"过",t:"過",v:""},
+{s:"还",t:"還",v:""},
+{s:"华",t:"華",v:""},
+{s:"画",t:"畫",v:""},
+{s:"怀",t:"懷",v:""},
+{s:"欢",t:"歡",v:""},
+{s:"环",t:"環",v:""},
+{s:"汇",t:"匯",v:""},
+{s:"汉",t:"漢",v:""},
+{s:"号",t:"號",v:""},
+{s:"护",t:"護",v:""},
+{s:"获",t:"獲",v:""},
+{s:"击",t:"擊",v:""},
+{s:"积",t:"積",v:""},
+{s:"极",t:"極",v:""},
+{s:"际",t:"際",v:""},
+{s:"继",t:"繼",v:""},
+{s:"坚",t:"堅",v:""},
+{s:"间",t:"間",v:""},
+{s:"检",t:"檢",v:""},
+{s:"见",t:"見",v:""},
+{s:"将",t:"將",v:""},
+{s:"节",t:"節",v:""},
+{s:"经",t:"經",v:""},
+{s:"惊",t:"驚",v:""},
+{s:"竞",t:"競",v:""},
+{s:"旧",t:"舊",v:""},
+{s:"据",t:"據",v:""},
+{s:"决",t:"決",v:""},
+{s:"绝",t:"絕",v:""},
+{s:"军",t:"軍",v:""},
+{s:"开",t:"開",v:""},
+{s:"课",t:"課",v:""},
+{s:"来",t:"來",v:""},
+{s:"离",t:"離",v:""},
+{s:"历",t:"歷",v:""},
+{s:"连",t:"連",v:""},
+{s:"联",t:"聯",v:""},
+{s:"练",t:"練",v:""},
+{s:"粮",t:"糧",v:""},
+{s:"疗",t:"療",v:""},
+{s:"辽",t:"遼",v:""},
+{s:"灵",t:"靈",v:""},
+{s:"刘",t:"劉",v:""},
+{s:"龙",t:"龍",v:""},
+{s:"楼",t:"樓",v:""},
+{s:"录",t:"錄",v:""},
+{s:"虑",t:"慮",v:""},
+{s:"论",t:"論",v:""},
+{s:"罗",t:"羅",v:""},
+{s:"马",t:"馬",v:""},
+{s:"卖",t:"賣",v:""},
+{s:"满",t:"滿",v:""},
+{s:"猫",t:"貓",v:""},
+{s:"门",t:"門",v:""},
+{s:"难",t:"難",v:""},
+{s:"脑",t:"腦",v:""},
+{s:"鸟",t:"鳥",v:""},
+{s:"农",t:"農",v:""},
+{s:"盘",t:"盤",v:""},
+{s:"庞",t:"龐",v:""},
+{s:"凭",t:"憑",v:""},
+{s:"齐",t:"齊",v:""},
+{s:"气",t:"氣",v:""},
+{s:"迁",t:"遷",v:""},
+{s:"庆",t:"慶",v:""},
+{s:"穷",t:"窮",v:""},
+{s:"区",t:"區",v:""},
+{s:"权",t:"權",v:""},
+{s:"劝",t:"勸",v:""},
+{s:"确",t:"確",v:""},
+{s:"让",t:"讓",v:""},
+{s:"热",t:"熱",v:""},
+{s:"认",t:"認",v:""},
+{s:"荣",t:"榮",v:""},
+{s:"杀",t:"殺",v:""},
+{s:"设",t:"設",v:""},
+{s:"审",t:"審",v:""},
+{s:"胜",t:"勝",v:""},
+{s:"师",t:"師",v:""},
+{s:"时",t:"時",v:""},
+{s:"实",t:"實",v:""},
+{s:"识",t:"識",v:""},
+{s:"适",t:"適",v:""},
+{s:"释",t:"釋",v:""},
+{s:"寿",t:"壽",v:""},
+{s:"属",t:"屬",v:""},
+{s:"术",t:"術",v:""},
+{s:"树",t:"樹",v:""},
+{s:"双",t:"雙",v:""},
+{s:"顺",t:"順",v:""},
+{s:"说",t:"說",v:""},
+{s:"苏",t:"蘇",v:""},
+{s:"虽",t:"雖",v:""},
+{s:"随",t:"隨",v:""},
+{s:"孙",t:"孫",v:""},
+{s:"损",t:"損",v:""},
+{s:"态",t:"態",v:""},
+{s:"条",t:"條",v:""},
+{s:"听",t:"聽",v:""},
+{s:"头",t:"頭",v:""},
+{s:"图",t:"圖",v:""},
+{s:"团",t:"團",v:""},
+{s:"网",t:"網",v:""},
+{s:"卫",t:"衛",v:""},
+{s:"稳",t:"穩",v:""},
+{s:"无",t:"無",v:""},
+{s:"务",t:"務",v:""},
+{s:"误",t:"誤",v:""},
+{s:"细",t:"細",v:""},
+{s:"虾",t:"蝦",v:""},
+{s:"险",t:"險",v:""},
+{s:"现",t:"現",v:""},
+{s:"线",t:"線",v:""},
+{s:"响",t:"響",v:""},
+{s:"协",t:"協",v:""},
+{s:"写",t:"寫",v:""},
+{s:"谢",t:"謝",v:""},
+{s:"兴",t:"興",v:""},
+{s:"须",t:"須",v:""},
+{s:"许",t:"許",v:""},
+{s:"选",t:"選",v:""},
+{s:"学",t:"學",v:""},
+{s:"压",t:"壓",v:""},
+{s:"养",t:"養",v:""},
+{s:"样",t:"樣",v:""},
+{s:"药",t:"藥",v:""},
+{s:"艺",t:"藝",v:""},
+{s:"阴",t:"陰",v:""},
+{s:"隐",t:"隱",v:""},
+{s:"应",t:"應",v:""},
+{s:"营",t:"營",v:""},
+{s:"拥",t:"擁",v:""},
+{s:"邮",t:"郵",v:""},
+{s:"犹",t:"猶",v:""},
+{s:"语",t:"語",v:""},
+{s:"预",t:"預",v:""},
+{s:"员",t:"員",v:""},
+{s:"园",t:"園",v:""},
+{s:"远",t:"遠",v:""},
+{s:"愿",t:"願",v:""},
+{s:"约",t:"約",v:""},
+{s:"运",t:"運",v:""},
+{s:"杂",t:"雜",v:""},
+{s:"灾",t:"災",v:""},
+{s:"赞",t:"贊",v:""},
+{s:"脏",t:"臟",v:""},
+{s:"暂",t:"暫",v:""},
+{s:"战",t:"戰",v:""},
+{s:"张",t:"張",v:""},
+{s:"赵",t:"趙",v:""},
+{s:"这",t:"這",v:""},
+{s:"针",t:"針",v:""},
+{s:"诊",t:"診",v:""},
+{s:"证",t:"證",v:""},
+{s:"郑",t:"鄭",v:""},
+{s:"质",t:"質",v:""},
+{s:"钟",t:"鐘",v:""},
+{s:"组",t:"組",v:""},
+{s:"钻",t:"鑽",v:""},
+{s:"群",t:"",v:"羣"},
+{s:"峰",t:"",v:"峯"},
+{s:"够",t:"",v:"夠"},
+{s:"唇",t:"",v:"脣"}
+];
+
+var IDX={};
+DATA.forEach(function(e,i){
+  var chars=[e.s];
+  if(e.t)chars.push(e.t);
+  if(e.v)chars.push(e.v);
+  chars.forEach(function(c){
+    if(!IDX[c])IDX[c]=[];
+    if(IDX[c].indexOf(i)===-1)IDX[c].push(i);
+  });
+});
+
+document.getElementById("stats").textContent="已收录 "+DATA.length+" 组对照数据";
+
+function doSearch(){
+  var input=document.getElementById("searchInput").value.trim();
+  var rd=document.getElementById("results");
+  if(!input){rd.innerHTML='<div class="no-result">⬆️ 请输入要查询的汉字</div>';return;}
+  var html="",found=false;
+  for(var k=0;k<input.length;k++){
+    var ch=input[k];
+    if(ch<"\u4e00"||ch>"\u9fff"){continue;}
+    if(IDX[ch]){
+      found=true;
+      var ids=IDX[ch];
+      for(var j=0;j<ids.length;j++){
+        html+=renderEntry(DATA[ids[j]],ch);
+      }
+    }else{
+      html+='<div class="result-item"><div class="char-main">'+ch+'</div><div class="row"><span class="label">查询结果：</span><span class="value none">该字在已收录数据中无繁体字或异体字对照记录。</span></div><div class="note">可能该字简繁同形，或未被本工具收录。完整数据请查阅《通用规范汉字表》原文。</div></div>';
+    }
+  }
+  if(!html){html='<div class="no-result">未识别到有效汉字，请输入汉字进行查询。</div>';}
+  rd.innerHTML=html;
+}
+
+function renderEntry(e,q){
+  var h='<div class="result-item">';
+  h+='<div class="char-main">'+e.s+(e.t?' → '+e.t:'')+(e.v?' → '+e.v:'')+'</div>';
+  h+='<div class="row"><span class="label">📌 规范字：</span><span class="value'+(q===e.s?' hl':'')+'">'+e.s+'</span></div>';
+  h+='<div class="row"><span class="label">📝 繁体字：</span><span class="value'+(e.t&&q===e.t?' hl':'')+(e.t?'':' none')+'">'+(e.t||'（无）')+'</span></div>';
+  h+='<div class="row"><span class="label">📎 异体字：</span><span class="value'+(e.v&&q===e.v?' hl':'')+(e.v?'':' none')+'">'+(e.v||'（无）')+'</span></div>';
+  if(e.n){h+='<div class="note">💡 '+e.n+'</div>';}
+  h+='</div>';
+  return h;
+}
+
+document.getElementById("searchInput").addEventListener("keypress",function(e){if(e.key==="Enter")doSearch();});
+document.getElementById("searchInput").addEventListener("input",function(){if(this.value.trim())doSearch();});
+</script>
+</body>
+</html>

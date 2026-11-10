@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>滚动轴承寿命计算工具</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 16px;
+  padding-bottom: 60px;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+h1 {
+  text-align: center;
+  font-size: 22px;
+  margin-bottom: 6px;
+  color: #16213e;
+}
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 20px;
+}
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #16213e;
+}
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group:last-child {
+  margin-bottom: 0;
+}
+label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #333;
+}
+.label-hint {
+  font-weight: 400;
+  font-size: 12px;
+  color: #888;
+}
+input[type="number"], select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #1a1a2e;
+  background: #fafbfc;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.radio-group {
+  display: flex;
+  gap: 10px;
+}
+.radio-item {
+  flex: 1;
+  position: relative;
+}
+.radio-item input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.radio-item label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.2s;
+  background: #fafbfc;
+  margin-bottom: 0;
+}
+.radio-item input[type="radio"]:checked + label {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.10);
+}
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+.btn-reset {
+  background: #f3f4f6;
+  color: #555;
+  margin-top: 8px;
+}
+.btn-reset:hover {
+  background: #e5e7eb;
+}
+.result-area {
+  display: none;
+}
+.result-area.show {
+  display: block;
+}
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px dashed #e5e7eb;
+}
+.result-row:last-child {
+  border-bottom: none;
+}
+.result-label {
+  font-size: 14px;
+  color: #555;
+}
+.result-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d4ed8;
+  text-align: right;
+}
+.result-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: #888;
+  margin-left: 3px;
+}
+.formula-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.8;
+}
+.formula-box code {
+  background: #e2e8f0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+}
+.step-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.8;
+}
+.step-box .step-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.source-section {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.8;
+}
+.source-section h3 {
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 8px;
+}
+.source-section ul {
+  padding-left: 20px;
+}
+.source-section li {
+  margin-bottom: 4px;
+}
+.version-tag {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  font-size: 11px;
+  color: #aaa;
+  z-index: 999;
+  background: rgba(255,255,255,0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.error-msg {
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 6px;
+  display: none;
+}
+.error-msg.show {
+  display: block;
+}
+.input-with-unit {
+  position: relative;
+}
+.input-with-unit input {
+  padding-right: 50px;
+}
+.input-unit {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: #888;
+  pointer-events: none;
+}
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.compare-table th, .compare-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 10px;
+  text-align: center;
+}
+.compare-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #334155;
+}
+.compare-table td {
+  color: #475569;
+}
+.highlight {
+  background: #eff6ff;
+}
+@media (max-width: 640px) {
+  body {
+    padding: 12px;
+    font-size: 14px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+  .card {
+    padding: 16px;
+  }
+  .result-value {
+    font-size: 16px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚙️ 滚动轴承寿命计算</h1>
+  <p class="subtitle">依据 GB/T 6391 计算基本额定寿命 L₁₀</p>
+
+  <!-- 参数输入 -->
+  <div class="card">
+    <div class="card-title">📋 参数输入</div>
+
+    <div class="form-group">
+      <label>轴承类型</label>
+      <div class="radio-group">
+        <div class="radio-item">
+          <input type="radio" id="typeBall" name="bearingType" value="ball" checked>
+          <label for="typeBall">🔵 球轴承 (ε=3)</label>
+        </div>
+        <div class="radio-item">
+          <input type="radio" id="typeRoller" name="bearingType" value="roller">
+          <label for="typeRoller">🟠 滚子轴承 (ε=10/3)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="inputC">基本额定动载荷 C <span class="label-hint">查轴承手册</span></label>
+      <div class="input-with-unit">
+        <input type="number" id="inputC" placeholder="例如：32500" min="0" step="any">
+        <span class="input-unit">N</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="inputP">当量动载荷 P <span class="label-hint">P = X·Fr + Y·Fa</span></label>
+      <div class="input-with-unit">
+        <input type="number" id="inputP" placeholder="例如：4500" min="0" step="any">
+        <span class="input-unit">N</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="inputN">转速 n <span class="label-hint">工作转速</span></label>
+      <div class="input-with-unit">
+        <input type="number" id="inputN" placeholder="例如：1500" min="0" step="any">
+        <span class="input-unit">r/min</span>
+      </div>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <button class="btn btn-primary" id="btnCalc" onclick="calculate()">🔧 计算寿命</button>
+    <button class="btn btn-reset" onclick="resetForm()">🔄 重置</button>
+  </div>
+
+  <!-- 计算结果 -->
+  <div class="card result-area" id="resultArea">
+    <div class="card-title">📊 计算结果</div>
+
+    <div class="result-row">
+      <span class="result-label">寿命指数 ε</span>
+      <span class="result-value" id="resEpsilon">—</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">载荷比 C/P</span>
+      <span class="result-value" id="resRatio">—</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">基本额定寿命 L₁₀</span>
+      <span class="result-value"><span id="resL10">—</span><span class="result-unit">×10⁶ 转</span></span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">基本额定寿命 L₁₀ₕ</span>
+      <span class="result-value"><span id="resL10h">—</span><span class="result-unit">h</span></span>
+    </div>
+
+    <div class="step-box" id="stepBox">
+      <div class="step-title">📝 计算过程</div>
+      <div id="stepDetail"></div>
+    </div>
+  </div>
+
+  <!-- 常用寿命参考 -->
+  <div class="card">
+    <div class="card-title">📖 常用寿命参考（一般工业）</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>使用场景</th>
+          <th>推荐 L₁₀ₕ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>家用电器、小型电机</td><td>3 000 ~ 8 000</td></tr>
+        <tr><td>一般工业机械</td><td>20 000 ~ 30 000</td></tr>
+        <tr><td>连续运转设备</td><td>40 000 ~ 60 000</td></tr>
+        <tr><td>航空、高可靠性场合</td><td>≥ 60 000</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:#999;margin-top:8px;">* 参考值仅供初步估算，具体需依据工况与标准要求确定。</p>
+  </div>
+
+  <!-- 公式说明 -->
+  <div class="card">
+    <div class="card-title">📐 公式说明</div>
+    <div class="formula-box">
+      <strong>基本额定寿命（转数）：</strong><br>
+      <code>L₁₀ = (C/P)<sup>ε</sup> × 10⁶</code> （单位：转）<br><br>
+      <strong>基本额定寿命（小时）：</strong><br>
+      <code>L₁₀ₕ = (10⁶ / (60·n)) × (C/P)<sup>ε</sup></code> （单位：h）<br><br>
+      <strong>参数说明：</strong><br>
+      • <code>C</code> — 基本额定动载荷（N），由轴承型号查手册获得<br>
+      • <code>P</code> — 当量动载荷（N），P = X·F<sub>r</sub> + Y·F<sub>a</sub><br>
+      • <code>n</code> — 轴承转速（r/min）<br>
+      • <code>ε</code> — 寿命指数：球轴承 ε = 3，滚子轴承 ε = 10/3<br>
+      • <code>L₁₀</code> — 基本额定寿命，即 90% 可靠度下的寿命
+    </div>
+  </div>
+
+  <!-- 数据来源 -->
+  <div class="card source-section">
+    <h3>📚 数据来源</h3>
+    <ul>
+      <li><strong>GB/T 6391</strong>《滚动轴承 额定动载荷和额定寿命》（等同采用 ISO 281）——定义了基本额定寿命 L₁₀ 的计算方法、寿命指数 ε 的取值及基本额定动载荷 C 的确定方法。</li>
+      <li><strong>ISO 281</strong>《Rolling bearings — Dynamic load ratings and rating life》——国际标准，GB/T 6391 的上游标准。</li>
+      <li>常用寿命推荐值参考自《机械设计》教材（濮良贵主编，高等教育出版社）中关于滚动轴承寿命设计的工程推荐范围。</li>
+    </ul>
+    <p style="margin-top:8px;font-size:12px;color:#999;">注：当量动载荷 P 的计算涉及载荷系数 X、Y，其具体取值需根据轴承类型、Fa/Fr 比值等查 GB/T 6391 或轴承厂商手册中的对应表格，本工具直接接受 P 值输入。</p>
+  </div>
+</div>
+
+<div class="version-tag">v1.0.0-轴承寿命计算 20261021</div>
+
+<script>
+function getEpsilon() {
+  var type = document.querySelector('input[name="bearingType"]:checked').value;
+  return type === 'ball' ? 3 : (10 / 3);
+}
+
+function getEpsilonLabel() {
+  var type = document.querySelector('input[name="bearingType"]:checked').value;
+  return type === 'ball' ? '3' : '10/3';
+}
+
+function formatNum(num, digits) {
+  if (digits === undefined) digits = 4;
+  if (num === 0) return '0';
+  if (Math.abs(num) >= 1e8) return num.toExponential(4);
+  if (Math.abs(num) >= 1) return parseFloat(num.toFixed(digits)).toString();
+  return parseFloat(num.toPrecision(digits)).toString();
+}
+
+function showError(msg) {
+  var el = document.getElementById('errorMsg');
+  el.textContent = '⚠️ ' + msg;
+  el.classList.add('show');
+}
+
+function hideError() {
+  var el = document.getElementById('errorMsg');
+  el.textContent = '';
+  el.classList.remove('show');
+}
+
+function calculate() {
+  hideError();
+
+  var C = parseFloat(document.getElementById('inputC').value);
+  var P = parseFloat(document.getElementById('inputP').value);
+  var n = parseFloat(document.getElementById('inputN').value);
+
+  if (isNaN(C) || C <= 0) {
+    showError('请输入有效的基本额定动载荷 C（> 0）');
+    return;
+  }
+  if (isNaN(P) || P <= 0) {
+    showError('请输入有效的当量动载荷 P（> 0）');
+    return;
+  }
+  if (isNaN(n) || n <= 0) {
+    showError('请输入有效的转速 n（> 0）');
+    return;
+  }
+
+  var epsilon = getEpsilon();
+  var epsilonLabel = getEpsilonLabel();
+  var ratio = C / P;
+  var power = Math.pow(ratio, epsilon);
+  var L10 = power; // 单位：百万转 (×10⁶ 转)
+  var L10h = (1e6 / (60 * n)) * power;
+
+  // 显示结果
+  document.getElementById('resEpsilon').textContent = epsilonLabel;
+  document.getElementById('resRatio').textContent = formatNum(ratio, 4);
+  document.getElementById('resL10').textContent = formatNum(L10, 6);
+  document.getElementById('resL10h').textContent = formatNum(L10h, 2);
+
+  // 计算过程
+  var stepHTML = '';
+  stepHTML += '① ε = ' + epsilonLabel + ' （' + (epsilonLabel === '3' ? '球轴承' : '滚子轴承') + '）<br>';
+  stepHTML += '② C/P = ' + formatNum(C, 2) + ' / ' + formatNum(P, 2) + ' = ' + formatNum(ratio, 4) + '<br>';
+  stepHTML += '③ (C/P)^ε = ' + formatNum(ratio, 4) + '^' + epsilonLabel + ' = ' + formatNum(power, 6) + '<br>';
+  stepHTML += '④ L₁₀ = (C/P)^ε × 10⁶ = <strong>' + formatNum(L10, 6) + ' ×10⁶ 转</strong><br>';
+  stepHTML += '⑤ L₁₀ₕ = 10⁶/(60×' + formatNum(n, 0) + ') × ' + formatNum(power, 6) + '<br>';
+  stepHTML += '&nbsp;&nbsp;&nbsp;= ' + formatNum(1e6 / (60 * n), 4) + ' × ' + formatNum(power, 6) + '<br>';
+  stepHTML += '&nbsp;&nbsp;&nbsp;= <strong>' + formatNum(L10h, 2) + ' h</strong>';
+
+  document.getElementById('stepDetail').innerHTML = stepHTML;
+
+  var resultArea = document.getElementById('resultArea');
+  resultArea.classList.add('show');
+
+  // 滚动到结果
+  setTimeout(function() {
+    resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function resetForm() {
+  document.getElementById('inputC').value = '';
+  document.getElementById('inputP').value = '';
+  document.getElementById('inputN').value = '';
+  document.getElementById('typeBall').checked = true;
+  hideError();
+  document.getElementById('resultArea').classList.remove('show');
+}
+
+// 回车键触发计算
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    calculate();
+  }
+});
+</script>
+</body>
+</html>
