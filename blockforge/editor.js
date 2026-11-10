@@ -514,7 +514,7 @@ function bfForgeReset() {
   document.getElementById('bfFgIn').value = '';
   document.getElementById('bfFgOut').value = 'out:结果';
   document.getElementById('bfFgFields').value = 'title:标题:text:我的块';
-  document.getElementById('bfFgHtml').value = '<div class="card"><h3>{{title}}</h3></div>';
+  document.getElementById('bfFgHtml').value = '<div class="card"><h3>' + '{' + '{' + 'title' + '}' + '}' + '</h3></div>';
   document.getElementById('bfFgId').value = '';
 }
 
